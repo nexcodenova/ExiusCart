@@ -1,0 +1,10 @@
+{
+  "name": "ExiusCart Dashboard",
+  "short_name": "ExiusCart",
+  "description": "Manage your shop with ExiusCart — POS, Inventory, Orders, and more",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6"
+}

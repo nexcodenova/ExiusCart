@@ -1,0 +1,23 @@
+from fastapi import APIRouter
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo
+
+api_router = APIRouter()
+
+api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(users.router, prefix="/users", tags=["Users"])
+api_router.include_router(shops.router, prefix="/shops", tags=["Shops"])
+api_router.include_router(products.router, prefix="/products", tags=["Products"])
+api_router.include_router(orders.router, prefix="/orders", tags=["Orders"])
+api_router.include_router(customers.router, prefix="/customers", tags=["Customers"])
+api_router.include_router(product_fields.router, prefix="", tags=["Product Fields & Images"])
+api_router.include_router(admin.router, prefix="", tags=["Admin"])
+api_router.include_router(shopping.router, prefix="", tags=["Shopping Storefront"])
+api_router.include_router(webhooks.router, prefix="", tags=["Webhooks"])
+api_router.include_router(hr.router, prefix="", tags=["HR & Payroll"])
+api_router.include_router(marketing.router, prefix="", tags=["Marketing"])
+api_router.include_router(recruitment.router, prefix="", tags=["Recruitment"])
+api_router.include_router(attendance.router, prefix="", tags=["Attendance"])
+api_router.include_router(fleet.router, prefix="", tags=["Fleet"])
+api_router.include_router(services.router, prefix="", tags=["Services"])
+api_router.include_router(shopify_integration.router, prefix="", tags=["Shopify Integration"])
+api_router.include_router(ai_seo.router, prefix="", tags=["AI SEO"])
