@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminSidebar } from '@/components/layout/sidebar';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 
@@ -9,8 +10,21 @@ export default function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_access_token');
+    if (!token) {
+      router.replace('/login');
+    } else {
+      setAuthed(true);
+    }
+  }, [router]);
+
+  if (!authed) return null;
 
   return (
     <div className="min-h-screen bg-[#0B1121]">
