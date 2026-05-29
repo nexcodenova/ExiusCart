@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
@@ -203,7 +203,7 @@ export default function TermsPage() {
           <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
             <Link
               href="/privacy"
-              className="text-[#F5A623] hover:text-[#FFB84D] text-sm transition"
+              className="text-[#6B3FD9] hover:text-[#8B5CF6] text-sm transition"
             >
               Read our Privacy Policy
             </Link>
@@ -221,3 +221,4 @@ export default function TermsPage() {
     </div>
   );
 }
+

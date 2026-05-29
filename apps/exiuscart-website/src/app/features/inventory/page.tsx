@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import {
   ArrowRight,
@@ -91,9 +91,9 @@ export default function InventoryFeaturePage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 bg-[#F5A623]/10 border border-[#F5A623]/30 rounded-full px-4 py-2 mb-6">
-                <Package className="w-4 h-4 text-[#F5A623]" />
-                <span className="text-[#F5A623] text-sm font-medium">Inventory Management</span>
+              <div className="inline-flex items-center gap-2 bg-[#6B3FD9]/10 border border-[#6B3FD9]/30 rounded-full px-4 py-2 mb-6">
+                <Package className="w-4 h-4 text-[#6B3FD9]" />
+                <span className="text-[#6B3FD9] text-sm font-medium">Inventory Management</span>
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
                 Know Your Stock, Control Your Business
@@ -104,7 +104,7 @@ export default function InventoryFeaturePage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-4 rounded-lg transition-all"
+                  className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-4 rounded-lg transition-all"
                 >
                   Start Free Trial
                   <ArrowRight className="w-5 h-5" />
@@ -184,7 +184,7 @@ export default function InventoryFeaturePage() {
               </div>
 
               {/* Decorative */}
-              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#F5A623]/5 rounded-full blur-3xl"></div>
+              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#6B3FD9]/5 rounded-full blur-3xl"></div>
             </div>
           </div>
         </div>
@@ -206,9 +206,9 @@ export default function InventoryFeaturePage() {
             {inventoryFeatures.map((feature, i) => {
               const Icon = feature.icon;
               return (
-                <div key={i} className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                  <div className="w-12 h-12 bg-[#F5A623]/20 rounded-xl flex items-center justify-center mb-4">
-                    <Icon className="w-6 h-6 text-[#F5A623]" />
+                <div key={i} className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                  <div className="w-12 h-12 bg-[#6B3FD9]/20 rounded-xl flex items-center justify-center mb-4">
+                    <Icon className="w-6 h-6 text-[#6B3FD9]" />
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
                   <p className="text-gray-400">{feature.description}</p>
@@ -259,7 +259,7 @@ export default function InventoryFeaturePage() {
               <ul className="space-y-4">
                 {benefits.map((benefit, i) => (
                   <li key={i} className="flex items-center gap-3 bg-[#151F32] rounded-xl border border-gray-800 p-4">
-                    <Check className="w-5 h-5 text-[#F5A623] flex-shrink-0" />
+                    <Check className="w-5 h-5 text-[#6B3FD9] flex-shrink-0" />
                     <span className="text-gray-300">{benefit}</span>
                   </li>
                 ))}
@@ -325,19 +325,19 @@ export default function InventoryFeaturePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 text-center">
-                  <Layers className="w-8 h-8 text-[#F5A623] mx-auto mb-2" />
+                  <Layers className="w-8 h-8 text-[#6B3FD9] mx-auto mb-2" />
                   <p className="text-white font-medium">Full Audit Trail</p>
                 </div>
                 <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 text-center">
-                  <TrendingDown className="w-8 h-8 text-[#F5A623] mx-auto mb-2" />
+                  <TrendingDown className="w-8 h-8 text-[#6B3FD9] mx-auto mb-2" />
                   <p className="text-white font-medium">Shrinkage Reports</p>
                 </div>
                 <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 text-center">
-                  <RefreshCw className="w-8 h-8 text-[#F5A623] mx-auto mb-2" />
+                  <RefreshCw className="w-8 h-8 text-[#6B3FD9] mx-auto mb-2" />
                   <p className="text-white font-medium">Auto Sync</p>
                 </div>
                 <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 text-center">
-                  <Download className="w-8 h-8 text-[#F5A623] mx-auto mb-2" />
+                  <Download className="w-8 h-8 text-[#6B3FD9] mx-auto mb-2" />
                   <p className="text-white font-medium">Export History</p>
                 </div>
               </div>
@@ -358,7 +358,7 @@ export default function InventoryFeaturePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
             >
               Start Free Trial
               <ArrowRight className="w-5 h-5" />
@@ -377,3 +377,4 @@ export default function InventoryFeaturePage() {
     </div>
   );
 }
+

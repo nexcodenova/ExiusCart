@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Mail, CheckCircle, Loader2, ArrowRight } from 'lucide-react';
@@ -51,13 +51,13 @@ export function NewsletterSignup({ variant = 'default', className = '' }: Newsle
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              className="flex-1 bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#F5A623] transition"
+              className="flex-1 bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#6B3FD9] transition"
               disabled={status === 'loading'}
             />
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {status === 'loading' ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -78,8 +78,8 @@ export function NewsletterSignup({ variant = 'default', className = '' }: Newsle
     return (
       <div className={`bg-[#151F32] rounded-xl border border-gray-800 p-6 ${className}`}>
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Mail className="w-5 h-5 text-[#F5A623]" />
+          <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Mail className="w-5 h-5 text-[#6B3FD9]" />
           </div>
           <div className="flex-1">
             <h4 className="text-white font-semibold mb-1">Stay Updated</h4>
@@ -97,13 +97,13 @@ export function NewsletterSignup({ variant = 'default', className = '' }: Newsle
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  className="flex-1 bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#F5A623] transition"
+                  className="flex-1 bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#6B3FD9] transition"
                   disabled={status === 'loading'}
                 />
                 <button
                   type="submit"
                   disabled={status === 'loading'}
-                  className="bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-4 py-2 rounded-lg text-sm transition-all disabled:opacity-50"
+                  className="bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2 rounded-lg text-sm transition-all disabled:opacity-50"
                 >
                   {status === 'loading' ? 'Subscribing...' : 'Subscribe'}
                 </button>
@@ -122,8 +122,8 @@ export function NewsletterSignup({ variant = 'default', className = '' }: Newsle
   return (
     <section className={`py-16 px-4 ${className}`}>
       <div className="max-w-2xl mx-auto text-center">
-        <div className="w-16 h-16 bg-[#F5A623]/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Mail className="w-8 h-8 text-[#F5A623]" />
+        <div className="w-16 h-16 bg-[#6B3FD9]/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <Mail className="w-8 h-8 text-[#6B3FD9]" />
         </div>
         <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
           Get Business Tips & Updates
@@ -147,13 +147,13 @@ export function NewsletterSignup({ variant = 'default', className = '' }: Newsle
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
-                className="flex-1 bg-[#151F32] border border-gray-700 rounded-lg px-5 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-[#F5A623] transition"
+                className="flex-1 bg-[#151F32] border border-gray-700 rounded-lg px-5 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-[#6B3FD9] transition"
                 disabled={status === 'loading'}
               />
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-6 py-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-6 py-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {status === 'loading' ? (
                   <>
@@ -180,3 +180,4 @@ export function NewsletterSignup({ variant = 'default', className = '' }: Newsle
     </section>
   );
 }
+

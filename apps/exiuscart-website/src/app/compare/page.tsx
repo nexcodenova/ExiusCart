@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowRight, Check, X, Star, DollarSign, Smartphone, Globe } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
@@ -24,10 +24,10 @@ export default function ComparePage() {
       {/* Hero Section */}
       <section className="pt-28 pb-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-[#F5A623] font-medium mb-4">Compare</p>
+          <p className="text-[#6B3FD9] font-medium mb-4">Compare</p>
           <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.1] mb-6">
             Why Choose
-            <span className="text-[#F5A623]"> ExiusCart</span>?
+            <span className="text-[#6B3FD9]"> ExiusCart</span>?
           </h1>
           <p className="text-lg text-gray-400 leading-relaxed max-w-2xl mx-auto">
             See how ExiusCart compares to other business management solutions.
@@ -41,8 +41,8 @@ export default function ComparePage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 text-center">
-              <div className="w-14 h-14 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-5">
-                <DollarSign className="w-7 h-7 text-[#F5A623]" />
+              <div className="w-14 h-14 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-5">
+                <DollarSign className="w-7 h-7 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3">80% More Affordable</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -51,8 +51,8 @@ export default function ComparePage() {
               </p>
             </div>
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 text-center">
-              <div className="w-14 h-14 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-5">
-                <Globe className="w-7 h-7 text-[#F5A623]" />
+              <div className="w-14 h-14 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-5">
+                <Globe className="w-7 h-7 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Built for UAE</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -61,8 +61,8 @@ export default function ComparePage() {
               </p>
             </div>
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 text-center">
-              <div className="w-14 h-14 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-5">
-                <Smartphone className="w-7 h-7 text-[#F5A623]" />
+              <div className="w-14 h-14 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-5">
+                <Smartphone className="w-7 h-7 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3">WhatsApp Integration</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -92,7 +92,7 @@ export default function ComparePage() {
             <div className="grid grid-cols-4 gap-4 px-6 py-5 bg-[#1A2540] border-b border-gray-800">
               <div className="text-gray-400 font-medium text-sm">Feature</div>
               <div className="text-center">
-                <span className="text-[#F5A623] font-bold">ExiusCart</span>
+                <span className="text-[#6B3FD9] font-bold">ExiusCart</span>
               </div>
               <div className="text-center">
                 <span className="text-gray-400 font-medium text-sm">Typical POS</span>
@@ -104,7 +104,7 @@ export default function ComparePage() {
 
             {/* Pricing Section */}
             <div className="px-6 py-3 bg-[#0D1526]">
-              <span className="text-[#F5A623] text-xs font-semibold uppercase tracking-wider">Pricing</span>
+              <span className="text-[#6B3FD9] text-xs font-semibold uppercase tracking-wider">Pricing</span>
             </div>
             <CompareRow feature="One-time payment option" exius={true} typical={false} spreadsheet={true} />
             <CompareRow feature="Affordable for small shops" exius={true} typical={false} spreadsheet={true} />
@@ -113,7 +113,7 @@ export default function ComparePage() {
 
             {/* Features Section */}
             <div className="px-6 py-3 bg-[#0D1526]">
-              <span className="text-[#F5A623] text-xs font-semibold uppercase tracking-wider">Core Features</span>
+              <span className="text-[#6B3FD9] text-xs font-semibold uppercase tracking-wider">Core Features</span>
             </div>
             <CompareRow feature="POS / Point of Sale" exius={true} typical={true} spreadsheet={false} />
             <CompareRow feature="VAT-compliant invoicing (5%)" exius={true} typical="Partial" spreadsheet={false} />
@@ -124,7 +124,7 @@ export default function ComparePage() {
 
             {/* Unique Features Section */}
             <div className="px-6 py-3 bg-[#0D1526]">
-              <span className="text-[#F5A623] text-xs font-semibold uppercase tracking-wider">Unique to ExiusCart</span>
+              <span className="text-[#6B3FD9] text-xs font-semibold uppercase tracking-wider">Unique to ExiusCart</span>
             </div>
             <CompareRow feature="WhatsApp order management" exius={true} typical={false} spreadsheet={false} />
             <CompareRow feature="Arabic & English interface" exius={true} typical="Partial" spreadsheet={false} />
@@ -134,7 +134,7 @@ export default function ComparePage() {
 
             {/* Support Section */}
             <div className="px-6 py-3 bg-[#0D1526]">
-              <span className="text-[#F5A623] text-xs font-semibold uppercase tracking-wider">Support</span>
+              <span className="text-[#6B3FD9] text-xs font-semibold uppercase tracking-wider">Support</span>
             </div>
             <CompareRow feature="WhatsApp support" exius={true} typical={false} spreadsheet={false} />
             <CompareRow feature="Setup assistance" exius={true} typical="Extra cost" spreadsheet={false} />
@@ -148,7 +148,7 @@ export default function ComparePage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <p className="text-[#F5A623] font-medium mb-3">Still Using Spreadsheets?</p>
+              <p className="text-[#6B3FD9] font-medium mb-3">Still Using Spreadsheets?</p>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
                 It&apos;s time to upgrade
               </h2>
@@ -240,7 +240,7 @@ export default function ComparePage() {
 
               <div className="mt-8 pt-6 border-t border-gray-800">
                 <p className="text-gray-500 text-sm mb-4">All of this starting from just</p>
-                <p className="text-4xl font-bold text-[#F5A623]">AED 499 <span className="text-base text-gray-500 font-normal">one-time</span></p>
+                <p className="text-4xl font-bold text-[#6B3FD9]">AED 499 <span className="text-base text-gray-500 font-normal">one-time</span></p>
               </div>
             </div>
           </div>
@@ -251,7 +251,7 @@ export default function ComparePage() {
       <section className="py-20 px-4 bg-[#0D1526]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-[#F5A623] font-medium mb-3">Cost Comparison</p>
+            <p className="text-[#6B3FD9] font-medium mb-3">Cost Comparison</p>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Stop Overpaying for Software
             </h2>
@@ -275,18 +275,18 @@ export default function ComparePage() {
             </div>
 
             {/* ExiusCart */}
-            <div className="bg-[#151F32] rounded-2xl border-2 border-[#F5A623] p-8 text-center relative">
+            <div className="bg-[#151F32] rounded-2xl border-2 border-[#6B3FD9] p-8 text-center relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-[#F5A623] text-black text-xs font-bold px-4 py-1 rounded-full">
+                <span className="bg-[#6B3FD9] text-black text-xs font-bold px-4 py-1 rounded-full">
                   BEST VALUE
                 </span>
               </div>
-              <p className="text-[#F5A623] text-sm font-medium mb-2">ExiusCart</p>
+              <p className="text-[#6B3FD9] text-sm font-medium mb-2">ExiusCart</p>
               <p className="text-3xl font-bold text-white mb-1">AED 499</p>
               <p className="text-gray-500 text-sm mb-6">one-time</p>
-              <div className="bg-[#F5A623]/10 rounded-lg p-4 mb-4">
-                <p className="text-[#F5A623] text-sm">Lifetime cost</p>
-                <p className="text-2xl font-bold text-[#F5A623]">AED 499</p>
+              <div className="bg-[#6B3FD9]/10 rounded-lg p-4 mb-4">
+                <p className="text-[#6B3FD9] text-sm">Lifetime cost</p>
+                <p className="text-2xl font-bold text-[#6B3FD9]">AED 499</p>
               </div>
               <p className="text-gray-400 text-xs">Free updates, no hidden fees, full support</p>
             </div>
@@ -311,11 +311,11 @@ export default function ComparePage() {
         <div className="max-w-3xl mx-auto">
           <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-10 text-center">
             <div className="flex justify-center gap-1 mb-6">
-              <Star className="w-5 h-5 fill-[#F5A623] text-[#F5A623]" />
-              <Star className="w-5 h-5 fill-[#F5A623] text-[#F5A623]" />
-              <Star className="w-5 h-5 fill-[#F5A623] text-[#F5A623]" />
-              <Star className="w-5 h-5 fill-[#F5A623] text-[#F5A623]" />
-              <Star className="w-5 h-5 fill-[#F5A623] text-[#F5A623]" />
+              <Star className="w-5 h-5 fill-[#6B3FD9] text-[#6B3FD9]" />
+              <Star className="w-5 h-5 fill-[#6B3FD9] text-[#6B3FD9]" />
+              <Star className="w-5 h-5 fill-[#6B3FD9] text-[#6B3FD9]" />
+              <Star className="w-5 h-5 fill-[#6B3FD9] text-[#6B3FD9]" />
+              <Star className="w-5 h-5 fill-[#6B3FD9] text-[#6B3FD9]" />
             </div>
             <p className="text-xl text-gray-300 leading-relaxed mb-8">
               &ldquo;I was paying AED 250/month for a POS system that couldn&apos;t even do WhatsApp
@@ -343,7 +343,7 @@ export default function ComparePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
             >
               Start 7-Day Free Trial
               <ArrowRight className="w-5 h-5" />
@@ -393,8 +393,8 @@ function CompareRow({
 function CellValue({ value, highlight }: { value: boolean | string; highlight?: boolean }) {
   if (value === true) {
     return (
-      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${highlight ? 'bg-[#F5A623]/10' : 'bg-green-500/10'}`}>
-        <Check className={`w-4 h-4 ${highlight ? 'text-[#F5A623]' : 'text-green-400'}`} />
+      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${highlight ? 'bg-[#6B3FD9]/10' : 'bg-green-500/10'}`}>
+        <Check className={`w-4 h-4 ${highlight ? 'text-[#6B3FD9]' : 'text-green-400'}`} />
       </span>
     );
   }
@@ -407,3 +407,4 @@ function CellValue({ value, highlight }: { value: boolean | string; highlight?: 
   }
   return <span className="text-yellow-400 text-xs font-medium">{value}</span>;
 }
+

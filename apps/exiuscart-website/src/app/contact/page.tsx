@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -80,16 +80,16 @@ export default function ContactPage() {
             {/* Email */}
             <a
               href="mailto:support@exiuscart.com"
-              className="group bg-[#151F32] border border-gray-800 rounded-2xl p-6 hover:border-[#F5A623]/50 transition-all"
+              className="group bg-[#151F32] border border-gray-800 rounded-2xl p-6 hover:border-[#6B3FD9]/50 transition-all"
             >
-              <div className="w-14 h-14 bg-[#F5A623]/20 rounded-xl flex items-center justify-center mb-4">
-                <Mail className="w-7 h-7 text-[#F5A623]" />
+              <div className="w-14 h-14 bg-[#6B3FD9]/20 rounded-xl flex items-center justify-center mb-4">
+                <Mail className="w-7 h-7 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Email Us</h3>
               <p className="text-gray-400 mb-4">
                 Send us a detailed message. We typically respond within 24 hours.
               </p>
-              <span className="inline-flex items-center gap-2 text-[#F5A623] font-medium group-hover:gap-3 transition-all">
+              <span className="inline-flex items-center gap-2 text-[#6B3FD9] font-medium group-hover:gap-3 transition-all">
                 support@exiuscart.com
                 <ArrowRight className="w-4 h-4" />
               </span>
@@ -98,16 +98,16 @@ export default function ContactPage() {
             {/* Phone */}
             <a
               href="tel:+971562393573"
-              className="group bg-[#151F32] border border-gray-800 rounded-2xl p-6 hover:border-[#F5A623]/50 transition-all"
+              className="group bg-[#151F32] border border-gray-800 rounded-2xl p-6 hover:border-[#6B3FD9]/50 transition-all"
             >
-              <div className="w-14 h-14 bg-[#F5A623]/20 rounded-xl flex items-center justify-center mb-4">
-                <Phone className="w-7 h-7 text-[#F5A623]" />
+              <div className="w-14 h-14 bg-[#6B3FD9]/20 rounded-xl flex items-center justify-center mb-4">
+                <Phone className="w-7 h-7 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Call Us</h3>
               <p className="text-gray-400 mb-4">
                 Speak directly with our team for urgent inquiries or support.
               </p>
-              <span className="inline-flex items-center gap-2 text-[#F5A623] font-medium group-hover:gap-3 transition-all">
+              <span className="inline-flex items-center gap-2 text-[#6B3FD9] font-medium group-hover:gap-3 transition-all">
                 +971 562393573
                 <ArrowRight className="w-4 h-4" />
               </span>
@@ -138,7 +138,7 @@ export default function ContactPage() {
                   </p>
                   <button
                     onClick={() => setIsSubmitted(false)}
-                    className="text-[#F5A623] hover:text-[#FFB84D] font-medium"
+                    className="text-[#6B3FD9] hover:text-[#8B5CF6] font-medium"
                   >
                     Send another message
                   </button>
@@ -157,7 +157,7 @@ export default function ContactPage() {
                         value={formData.name}
                         onChange={handleChange}
                         required
-                        className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-[#F5A623] focus:ring-1 focus:ring-[#F5A623] outline-none transition"
+                        className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:ring-1 focus:ring-[#6B3FD9] outline-none transition"
                         placeholder="Your name"
                       />
                     </div>
@@ -172,7 +172,7 @@ export default function ContactPage() {
                         value={formData.email}
                         onChange={handleChange}
                         required
-                        className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-[#F5A623] focus:ring-1 focus:ring-[#F5A623] outline-none transition"
+                        className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:ring-1 focus:ring-[#6B3FD9] outline-none transition"
                         placeholder="you@example.com"
                       />
                     </div>
@@ -189,7 +189,7 @@ export default function ContactPage() {
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
-                        className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-[#F5A623] focus:ring-1 focus:ring-[#F5A623] outline-none transition"
+                        className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:ring-1 focus:ring-[#6B3FD9] outline-none transition"
                         placeholder="+971 50 123 4567"
                       />
                     </div>
@@ -203,7 +203,7 @@ export default function ContactPage() {
                         value={formData.subject}
                         onChange={handleChange}
                         required
-                        className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#F5A623] focus:ring-1 focus:ring-[#F5A623] outline-none transition"
+                        className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-[#6B3FD9] focus:ring-1 focus:ring-[#6B3FD9] outline-none transition"
                       >
                         <option value="">Select a subject</option>
                         <option value="sales">Sales Inquiry</option>
@@ -226,7 +226,7 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       rows={5}
-                      className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-[#F5A623] focus:ring-1 focus:ring-[#F5A623] outline-none transition resize-none"
+                      className="w-full bg-[#0B1121] border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:ring-1 focus:ring-[#6B3FD9] outline-none transition resize-none"
                       placeholder="Tell us how we can help..."
                     />
                   </div>
@@ -234,7 +234,7 @@ export default function ContactPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-[#F5A623] hover:bg-[#E09612] disabled:bg-[#F5A623]/50 text-black font-semibold py-4 rounded-lg transition-all flex items-center justify-center gap-2"
+                    className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] disabled:bg-[#6B3FD9]/50 text-black font-semibold py-4 rounded-lg transition-all flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -257,8 +257,8 @@ export default function ContactPage() {
               {/* Business Hours */}
               <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-[#F5A623]/20 rounded-lg flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-[#F5A623]" />
+                  <div className="w-10 h-10 bg-[#6B3FD9]/20 rounded-lg flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-[#6B3FD9]" />
                   </div>
                   <h3 className="text-lg font-semibold text-white">Business Hours</h3>
                 </div>
@@ -281,8 +281,8 @@ export default function ContactPage() {
               {/* Location */}
               <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-[#F5A623]/20 rounded-lg flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-[#F5A623]" />
+                  <div className="w-10 h-10 bg-[#6B3FD9]/20 rounded-lg flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-[#6B3FD9]" />
                   </div>
                   <h3 className="text-lg font-semibold text-white">Our Location</h3>
                 </div>
@@ -300,21 +300,21 @@ export default function ContactPage() {
                 <div className="space-y-3">
                   <Link
                     href="/pricing"
-                    className="flex items-center justify-between text-gray-400 hover:text-[#F5A623] transition"
+                    className="flex items-center justify-between text-gray-400 hover:text-[#6B3FD9] transition"
                   >
                     <span>View Pricing Plans</span>
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                   <Link
                     href="/features"
-                    className="flex items-center justify-between text-gray-400 hover:text-[#F5A623] transition"
+                    className="flex items-center justify-between text-gray-400 hover:text-[#6B3FD9] transition"
                   >
                     <span>Explore Features</span>
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                   <Link
                     href="/register"
-                    className="flex items-center justify-between text-gray-400 hover:text-[#F5A623] transition"
+                    className="flex items-center justify-between text-gray-400 hover:text-[#6B3FD9] transition"
                   >
                     <span>Start Free Trial</span>
                     <ArrowRight className="w-4 h-4" />
@@ -354,3 +354,4 @@ export default function ContactPage() {
     </div>
   );
 }
+

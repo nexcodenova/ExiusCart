@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Copy, X, Sparkles } from 'lucide-react';
@@ -17,7 +17,7 @@ export function PromoBanner() {
   if (dismissed || !seasonalOffer.isActive) return null;
 
   return (
-    <div className="bg-gradient-to-r from-[#F5A623] to-[#E09612] py-2 md:py-3 px-4 relative">
+    <div className="bg-gradient-to-r from-[#6B3FD9] to-[#5A2EC9] py-2 md:py-3 px-4 relative">
       {/* Desktop View */}
       <div className="hidden md:flex max-w-7xl mx-auto items-center justify-center gap-3">
         <Sparkles className="w-5 h-5 text-black" />
@@ -73,3 +73,4 @@ export function PromoBanner() {
     </div>
   );
 }
+

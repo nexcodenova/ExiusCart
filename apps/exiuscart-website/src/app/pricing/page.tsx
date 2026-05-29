@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
@@ -39,7 +39,7 @@ export default function PricingPage() {
 
       {/* Promo Code Banner - Shows current promo based on billing period */}
       {seasonalOffer.isActive && (
-        <div className="bg-gradient-to-r from-[#F5A623] to-[#E09612] py-3 px-4">
+        <div className="bg-gradient-to-r from-[#6B3FD9] to-[#5A2EC9] py-3 px-4">
           <div className="max-w-7xl mx-auto flex items-center justify-center gap-3 flex-wrap">
             <Sparkles className="w-5 h-5 text-black" />
             <span className="text-black font-bold">{seasonalOffer.name} Sale!</span>
@@ -86,7 +86,7 @@ export default function PricingPage() {
                 onClick={() => setBillingPeriod('onetime')}
                 className={`px-6 py-2 rounded-md font-medium text-sm transition-all ${
                   billingPeriod === 'onetime'
-                    ? 'bg-[#F5A623] text-black'
+                    ? 'bg-[#6B3FD9] text-black'
                     : 'text-gray-400 hover:text-gray-300'
                 }`}
               >
@@ -101,7 +101,7 @@ export default function PricingPage() {
                 onClick={() => setBillingPeriod('monthly')}
                 className={`px-6 py-2 rounded-md font-medium text-sm transition-all ${
                   billingPeriod === 'monthly'
-                    ? 'bg-[#F5A623] text-black'
+                    ? 'bg-[#6B3FD9] text-black'
                     : 'text-gray-400 hover:text-gray-300'
                 }`}
               >
@@ -192,11 +192,11 @@ export default function PricingPage() {
         </div>
 
         {/* Free Trial Banner */}
-        <div className="max-w-4xl mx-auto mt-12 bg-gradient-to-r from-[#F5A623]/10 via-[#F5A623]/5 to-[#F5A623]/10 rounded-2xl p-8 border border-[#F5A623]/30">
+        <div className="max-w-4xl mx-auto mt-12 bg-gradient-to-r from-[#6B3FD9]/10 via-[#6B3FD9]/5 to-[#6B3FD9]/10 rounded-2xl p-8 border border-[#6B3FD9]/30">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-[#F5A623]/20 rounded-full flex items-center justify-center flex-shrink-0">
-                <Gift className="w-7 h-7 text-[#F5A623]" />
+              <div className="w-14 h-14 bg-[#6B3FD9]/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <Gift className="w-7 h-7 text-[#6B3FD9]" />
               </div>
               <div>
                 <h3 className="text-xl font-bold text-white mb-1">Try Free for 7 Days</h3>
@@ -207,7 +207,7 @@ export default function PricingPage() {
             </div>
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-3 rounded-lg transition-all whitespace-nowrap"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-3 rounded-lg transition-all whitespace-nowrap"
             >
               Start Free Trial
               <ArrowRight className="w-5 h-5" />
@@ -323,13 +323,13 @@ export default function PricingPage() {
             7 days free. No credit card required. Cancel anytime.
           </p>
           {seasonalOffer.isActive && (
-            <p className="text-[#F5A623] font-medium mb-6">
+            <p className="text-[#6B3FD9] font-medium mb-6">
               {seasonalOffer.name} Sale! Use <span className="font-bold">{seasonalOffer.oneTime.code}</span> for {seasonalOffer.oneTime.discount}% off one-time or <span className="font-bold">{seasonalOffer.monthly.code}</span> for {seasonalOffer.monthly.discount}% off monthly!
             </p>
           )}
           <Link
             href="/register"
-            className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-10 py-4 rounded-lg transition-all"
+            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all"
           >
             Start Free Trial
             <ArrowRight className="w-5 h-5" />
@@ -374,11 +374,11 @@ function PricingCard({
   return (
     <div
       className={`relative bg-[#151F32] rounded-2xl border p-6 flex flex-col ${
-        popular ? 'border-[#F5A623] ring-1 ring-[#F5A623]' : 'border-gray-800'
+        popular ? 'border-[#6B3FD9] ring-1 ring-[#6B3FD9]' : 'border-gray-800'
       }`}
     >
       {popular && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#F5A623] text-black text-xs font-semibold px-3 py-1 rounded-full">
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#6B3FD9] text-black text-xs font-semibold px-3 py-1 rounded-full">
           Most Popular
         </div>
       )}
@@ -402,7 +402,7 @@ function PricingCard({
           return (
             <span
               key={i}
-              className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[#F5A623]/20 text-[#F5A623]"
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[#6B3FD9]/20 text-[#6B3FD9]"
             >
               <Icon className="w-3.5 h-3.5" />
               {highlight.text}
@@ -415,7 +415,7 @@ function PricingCard({
         href="/register"
         className={`block text-center font-semibold py-3 rounded-lg transition-all mb-6 ${
           popular
-            ? 'bg-[#F5A623] hover:bg-[#E09612] text-black'
+            ? 'bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black'
             : 'bg-white/10 hover:bg-white/20 text-white'
         }`}
       >
@@ -426,7 +426,7 @@ function PricingCard({
         {features.map((feature, i) => (
           <li key={i} className="flex items-start gap-2.5">
             {feature.included ? (
-              <Check className="w-4 h-4 text-[#F5A623] mt-0.5 flex-shrink-0" />
+              <Check className="w-4 h-4 text-[#6B3FD9] mt-0.5 flex-shrink-0" />
             ) : (
               <X className="w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0" />
             )}
@@ -456,7 +456,7 @@ function CompareRow({
       return <span className="text-gray-300 text-xs">{value}</span>;
     }
     if (value) {
-      return <Check className="w-5 h-5 text-[#F5A623] mx-auto" />;
+      return <Check className="w-5 h-5 text-[#6B3FD9] mx-auto" />;
     }
     return <X className="w-5 h-5 text-gray-700 mx-auto" />;
   };
@@ -479,3 +479,4 @@ function FAQ({ question, answer }: { question: string; answer: string }) {
     </div>
   );
 }
+

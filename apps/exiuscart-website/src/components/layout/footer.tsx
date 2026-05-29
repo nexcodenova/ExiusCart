@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import Image from 'next/image';
 import { MessageCircle, Instagram, Facebook, Linkedin, Mail, MapPin } from 'lucide-react';
 
@@ -202,7 +202,7 @@ export function Footer() {
               href="mailto:support@exiuscart.com"
               className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition"
             >
-              <Mail className="w-4 h-4 text-[#F5A623]" />
+              <Mail className="w-4 h-4 text-[#6B3FD9]" />
               support@exiuscart.com
             </a>
             <a
@@ -215,13 +215,13 @@ export function Footer() {
               +971 562393573
             </a>
             <span className="flex items-center gap-2 text-gray-400 text-sm">
-              <MapPin className="w-4 h-4 text-[#F5A623]" />
+              <MapPin className="w-4 h-4 text-[#6B3FD9]" />
                Dubai| Sri Lanka
             </span>
           </div>
           <Link
             href="/register"
-            className="bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-6 py-2 rounded-lg text-sm transition whitespace-nowrap"
+            className="bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-6 py-2 rounded-lg text-sm transition whitespace-nowrap"
           >
             Start 7-Day Free Trial
           </Link>
@@ -238,7 +238,7 @@ export function Footer() {
               href="https://nexcodenova.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#F5A623] hover:text-[#FFB84D] transition"
+              className="text-[#6B3FD9] hover:text-[#8B5CF6] transition"
             >
               NexCodeNova
             </a>
@@ -249,3 +249,4 @@ export function Footer() {
     </footer>
   );
 }
+

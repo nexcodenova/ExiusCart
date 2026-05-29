@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
 import { ArrowRight, Check } from 'lucide-react';
@@ -40,7 +40,7 @@ export default function FeaturesPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <span className="text-[#F5A623] text-sm font-medium mb-4 block">
+              <span className="text-[#6B3FD9] text-sm font-medium mb-4 block">
                 POS & INVOICING
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
@@ -61,7 +61,7 @@ export default function FeaturesPage() {
               </ul>
               <Link
                 href="/features/pos"
-                className="inline-flex items-center gap-2 text-[#F5A623] hover:text-[#FFB84D] font-medium transition"
+                className="inline-flex items-center gap-2 text-[#6B3FD9] hover:text-[#8B5CF6] font-medium transition"
               >
                 Learn more about POS
                 <ArrowRight className="w-4 h-4" />
@@ -94,7 +94,7 @@ export default function FeaturesPage() {
               />
             </div>
             <div className="order-1 lg:order-2">
-              <span className="text-[#F5A623] text-sm font-medium mb-4 block">
+              <span className="text-[#6B3FD9] text-sm font-medium mb-4 block">
                 INVENTORY MANAGEMENT
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
@@ -114,7 +114,7 @@ export default function FeaturesPage() {
               </ul>
               <Link
                 href="/features/inventory"
-                className="inline-flex items-center gap-2 text-[#F5A623] hover:text-[#FFB84D] font-medium transition"
+                className="inline-flex items-center gap-2 text-[#6B3FD9] hover:text-[#8B5CF6] font-medium transition"
               >
                 Learn more about Inventory
                 <ArrowRight className="w-4 h-4" />
@@ -129,7 +129,7 @@ export default function FeaturesPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <span className="text-[#F5A623] text-sm font-medium mb-4 block">
+              <span className="text-[#6B3FD9] text-sm font-medium mb-4 block">
                 WHATSAPP ORDERS
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
@@ -183,7 +183,7 @@ export default function FeaturesPage() {
               />
             </div>
             <div className="order-1 lg:order-2">
-              <span className="text-[#F5A623] text-sm font-medium mb-4 block">
+              <span className="text-[#6B3FD9] text-sm font-medium mb-4 block">
                 CUSTOMER MANAGEMENT
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
@@ -211,7 +211,7 @@ export default function FeaturesPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <span className="text-[#F5A623] text-sm font-medium mb-4 block">
+              <span className="text-[#6B3FD9] text-sm font-medium mb-4 block">
                 REPORTS & ANALYTICS
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
@@ -231,7 +231,7 @@ export default function FeaturesPage() {
               </ul>
               <Link
                 href="/features/reports"
-                className="inline-flex items-center gap-2 text-[#F5A623] hover:text-[#FFB84D] font-medium transition"
+                className="inline-flex items-center gap-2 text-[#6B3FD9] hover:text-[#8B5CF6] font-medium transition"
               >
                 Learn more about Reports
                 <ArrowRight className="w-4 h-4" />
@@ -303,7 +303,7 @@ export default function FeaturesPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-4 rounded-lg transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-4 rounded-lg transition-all"
             >
               Start Free Trial
               <ArrowRight className="w-5 h-5" />
@@ -326,7 +326,7 @@ export default function FeaturesPage() {
 function FeatureItem({ text }: { text: string }) {
   return (
     <li className="flex items-center gap-3">
-      <Check className="w-5 h-5 text-[#F5A623] flex-shrink-0" />
+      <Check className="w-5 h-5 text-[#6B3FD9] flex-shrink-0" />
       <span className="text-gray-300">{text}</span>
     </li>
   );
@@ -340,3 +340,4 @@ function MoreFeature({ title, desc }: { title: string; desc: string }) {
     </div>
   );
 }
+

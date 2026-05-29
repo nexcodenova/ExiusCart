@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { Check } from 'lucide-react';
@@ -47,7 +47,7 @@ export function PricingPreview() {
 
       <Link
         href="/pricing"
-        className="block text-center bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold py-4 rounded-lg transition-all"
+        className="block text-center bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold py-4 rounded-lg transition-all"
       >
         View All Plans
       </Link>
@@ -63,8 +63,9 @@ export function PricingPreview() {
 function PricingFeature({ text }: { text: string }) {
   return (
     <div className="flex items-center gap-2">
-      <Check className="w-4 h-4 text-[#F5A623]" />
+      <Check className="w-4 h-4 text-[#6B3FD9]" />
       <span className="text-gray-300 text-sm">{text}</span>
     </div>
   );
 }
+

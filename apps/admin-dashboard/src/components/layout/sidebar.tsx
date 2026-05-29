@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -69,7 +69,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
       {/* Admin Badge */}
       {!collapsed && (
         <div className="px-4 py-3 border-b border-gray-800">
-          <span className="text-xs font-semibold text-[#F5A623] bg-[#F5A623]/10 px-2.5 py-1 rounded">
+          <span className="text-xs font-semibold text-[#6B3FD9] bg-[#6B3FD9]/10 px-2.5 py-1 rounded">
             ADMIN PANEL
           </span>
         </div>
@@ -90,7 +90,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
               title={collapsed ? item.label : undefined}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                 isActive
-                  ? 'bg-[#F5A623] text-black'
+                  ? 'bg-[#6B3FD9] text-black'
                   : 'text-gray-400 hover:bg-[#151F32] hover:text-white'
               }`}
             >
@@ -105,7 +105,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
       <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-800">
         {!collapsed && (
           <div className="flex items-center gap-3 mb-3 px-2">
-            <div className="w-10 h-10 bg-[#F5A623] rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-[#6B3FD9] rounded-full flex items-center justify-center">
               <span className="text-sm font-bold text-black">SA</span>
             </div>
             <div className="flex-1 min-w-0">
@@ -126,3 +126,4 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
     </aside>
   );
 }
+

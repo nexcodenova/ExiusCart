@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -75,9 +75,9 @@ export default function DemoPage() {
       {/* Hero Section */}
       <section className="pt-28 pb-16 px-4">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#F5A623]/10 border border-[#F5A623]/30 rounded-full px-4 py-2 mb-6">
-            <Play className="w-4 h-4 text-[#F5A623]" />
-            <span className="text-[#F5A623] text-sm font-medium">Live Demo Available</span>
+          <div className="inline-flex items-center gap-2 bg-[#6B3FD9]/10 border border-[#6B3FD9]/30 rounded-full px-4 py-2 mb-6">
+            <Play className="w-4 h-4 text-[#6B3FD9]" />
+            <span className="text-[#6B3FD9] text-sm font-medium">Live Demo Available</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
             See ExiusCart in Action
@@ -90,7 +90,7 @@ export default function DemoPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               onClick={() => setShowVideo(true)}
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-4 rounded-lg transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-4 rounded-lg transition-all"
             >
               <Play className="w-5 h-5" />
               Watch Video Demo
@@ -110,7 +110,7 @@ export default function DemoPage() {
       <section className="py-12 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-center gap-6 mb-8">
-            <div className="flex items-center gap-2 text-[#F5A623]">
+            <div className="flex items-center gap-2 text-[#6B3FD9]">
               <Monitor className="w-5 h-5" />
               <span className="text-sm font-medium">Desktop</span>
             </div>
@@ -168,8 +168,8 @@ export default function DemoPage() {
                     <p className="text-gray-400 text-sm mb-4">Sales Overview</p>
                     <div className="flex items-end gap-2 h-32">
                       {['h-[40%]', 'h-[65%]', 'h-[45%]', 'h-[80%]', 'h-[55%]', 'h-[90%]', 'h-[70%]'].map((height, i) => (
-                        <div key={i} className={`flex-1 bg-[#F5A623]/20 rounded-t ${height}`}>
-                          <div className="w-full bg-[#F5A623] rounded-t h-[60%]"></div>
+                        <div key={i} className={`flex-1 bg-[#6B3FD9]/20 rounded-t ${height}`}>
+                          <div className="w-full bg-[#6B3FD9] rounded-t h-[60%]"></div>
                         </div>
                       ))}
                     </div>
@@ -190,7 +190,7 @@ export default function DemoPage() {
             </div>
 
             {/* Decorative elements */}
-            <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#F5A623]/5 rounded-full blur-3xl"></div>
+            <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#6B3FD9]/5 rounded-full blur-3xl"></div>
           </div>
         </div>
       </section>
@@ -219,15 +219,15 @@ export default function DemoPage() {
                     onClick={() => setSelectedFeature(feature)}
                     className={`w-full text-left p-4 rounded-xl border transition-all ${
                       isSelected
-                        ? 'bg-[#F5A623]/10 border-[#F5A623]/50'
+                        ? 'bg-[#6B3FD9]/10 border-[#6B3FD9]/50'
                         : 'bg-[#151F32] border-gray-800 hover:border-gray-700'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        isSelected ? 'bg-[#F5A623]' : 'bg-[#1A2540]'
+                        isSelected ? 'bg-[#6B3FD9]' : 'bg-[#1A2540]'
                       }`}>
-                        <Icon className={`w-5 h-5 ${isSelected ? 'text-black' : 'text-[#F5A623]'}`} />
+                        <Icon className={`w-5 h-5 ${isSelected ? 'text-black' : 'text-[#6B3FD9]'}`} />
                       </div>
                       <div>
                         <h3 className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
@@ -244,8 +244,8 @@ export default function DemoPage() {
             <div className="lg:col-span-2">
               <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 h-full">
                 <div className="flex items-start gap-4 mb-6">
-                  <div className="w-14 h-14 bg-[#F5A623]/20 rounded-xl flex items-center justify-center">
-                    <selectedFeature.icon className="w-7 h-7 text-[#F5A623]" />
+                  <div className="w-14 h-14 bg-[#6B3FD9]/20 rounded-xl flex items-center justify-center">
+                    <selectedFeature.icon className="w-7 h-7 text-[#6B3FD9]" />
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-2">{selectedFeature.title}</h3>
@@ -256,7 +256,7 @@ export default function DemoPage() {
                 <div className="grid sm:grid-cols-2 gap-4 mb-8">
                   {selectedFeature.highlights.map((highlight, i) => (
                     <div key={i} className="flex items-center gap-3 bg-[#0B1121] rounded-lg p-3">
-                      <Check className="w-5 h-5 text-[#F5A623] flex-shrink-0" />
+                      <Check className="w-5 h-5 text-[#6B3FD9] flex-shrink-0" />
                       <span className="text-gray-300">{highlight}</span>
                     </div>
                   ))}
@@ -265,12 +265,12 @@ export default function DemoPage() {
                 {/* Mini Preview */}
                 <div className="bg-[#0B1121] rounded-xl p-4 border border-gray-800">
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-2 h-2 rounded-full bg-[#F5A623]"></div>
+                    <div className="w-2 h-2 rounded-full bg-[#6B3FD9]"></div>
                     <span className="text-gray-500 text-sm">Live Preview</span>
                   </div>
                   <div className="h-40 flex items-center justify-center">
                     <div className="text-center">
-                      <selectedFeature.icon className="w-12 h-12 text-[#F5A623]/30 mx-auto mb-3" />
+                      <selectedFeature.icon className="w-12 h-12 text-[#6B3FD9]/30 mx-auto mb-3" />
                       <p className="text-gray-500 text-sm">
                         Start your free trial to explore {selectedFeature.title}
                       </p>
@@ -288,8 +288,8 @@ export default function DemoPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center p-6">
-              <div className="w-16 h-16 bg-[#F5A623]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Play className="w-8 h-8 text-[#F5A623]" />
+              <div className="w-16 h-16 bg-[#6B3FD9]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Play className="w-8 h-8 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">No Signup Required</h3>
               <p className="text-gray-400">
@@ -297,8 +297,8 @@ export default function DemoPage() {
               </p>
             </div>
             <div className="text-center p-6">
-              <div className="w-16 h-16 bg-[#F5A623]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Monitor className="w-8 h-8 text-[#F5A623]" />
+              <div className="w-16 h-16 bg-[#6B3FD9]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Monitor className="w-8 h-8 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Full Feature Tour</h3>
               <p className="text-gray-400">
@@ -306,8 +306,8 @@ export default function DemoPage() {
               </p>
             </div>
             <div className="text-center p-6">
-              <div className="w-16 h-16 bg-[#F5A623]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <MessageCircle className="w-8 h-8 text-[#F5A623]" />
+              <div className="w-16 h-16 bg-[#6B3FD9]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <MessageCircle className="w-8 h-8 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Ask Questions</h3>
               <p className="text-gray-400">
@@ -331,7 +331,7 @@ export default function DemoPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
             >
               Start Free Trial
               <ArrowRight className="w-5 h-5" />
@@ -388,3 +388,4 @@ export default function DemoPage() {
     </div>
   );
 }
+

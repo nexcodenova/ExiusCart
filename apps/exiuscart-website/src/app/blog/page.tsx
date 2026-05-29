@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
 import { ArrowRight, Clock, User, Tag, Search } from 'lucide-react';
@@ -110,7 +110,7 @@ export default function BlogPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              ExiusCart <span className="text-[#F5A623]">Blog</span>
+              ExiusCart <span className="text-[#6B3FD9]">Blog</span>
             </h1>
             <p className="text-lg text-gray-400 mb-8">
               Tips, guides, and insights to help you grow your UAE business.
@@ -123,7 +123,7 @@ export default function BlogPage() {
               <input
                 type="text"
                 placeholder="Search articles..."
-                className="w-full pl-12 pr-4 py-4 bg-[#151F32] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition"
+                className="w-full pl-12 pr-4 py-4 bg-[#151F32] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
               />
             </div>
           </div>
@@ -139,7 +139,7 @@ export default function BlogPage() {
                 key={category.name}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition ${
                   index === 0
-                    ? 'bg-[#F5A623] text-black'
+                    ? 'bg-[#6B3FD9] text-black'
                     : 'bg-[#151F32] text-gray-400 hover:text-white hover:bg-[#1A2540]'
                 }`}
               >
@@ -155,13 +155,13 @@ export default function BlogPage() {
       <section className="px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <Link href={`/blog/${featuredPost.slug}`} className="group block">
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 overflow-hidden hover:border-[#F5A623]/50 transition">
+            <div className="bg-[#151F32] rounded-2xl border border-gray-800 overflow-hidden hover:border-[#6B3FD9]/50 transition">
               <div className="grid md:grid-cols-2 gap-0">
                 {/* Image */}
-                <div className="relative h-64 md:h-full min-h-[300px] bg-gradient-to-br from-[#F5A623]/20 to-[#0B1121] flex items-center justify-center">
+                <div className="relative h-64 md:h-full min-h-[300px] bg-gradient-to-br from-[#6B3FD9]/20 to-[#0B1121] flex items-center justify-center">
                   <div className="text-center p-8">
-                    <div className="w-20 h-20 bg-[#F5A623]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Tag className="w-10 h-10 text-[#F5A623]" />
+                    <div className="w-20 h-20 bg-[#6B3FD9]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Tag className="w-10 h-10 text-[#6B3FD9]" />
                     </div>
                     <p className="text-gray-500 text-sm">Featured Article</p>
                   </div>
@@ -170,15 +170,15 @@ export default function BlogPage() {
                 {/* Content */}
                 <div className="p-8 flex flex-col justify-center">
                   <div className="flex items-center gap-3 mb-4">
-                    <span className="bg-[#F5A623]/20 text-[#F5A623] text-xs font-semibold px-3 py-1 rounded-full">
+                    <span className="bg-[#6B3FD9]/20 text-[#6B3FD9] text-xs font-semibold px-3 py-1 rounded-full">
                       Featured
                     </span>
-                    <span className="text-[#F5A623] text-sm font-medium">
+                    <span className="text-[#6B3FD9] text-sm font-medium">
                       {featuredPost.category}
                     </span>
                   </div>
 
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-4 group-hover:text-[#F5A623] transition">
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-4 group-hover:text-[#6B3FD9] transition">
                     {featuredPost.title}
                   </h2>
 
@@ -198,7 +198,7 @@ export default function BlogPage() {
                     <span>{featuredPost.date}</span>
                   </div>
 
-                  <div className="flex items-center gap-2 text-[#F5A623] font-medium group-hover:gap-3 transition-all">
+                  <div className="flex items-center gap-2 text-[#6B3FD9] font-medium group-hover:gap-3 transition-all">
                     Read Article
                     <ArrowRight className="w-4 h-4" />
                   </div>
@@ -214,7 +214,7 @@ export default function BlogPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-white">Latest Articles</h2>
-            <select className="bg-[#151F32] border border-gray-700 rounded-lg px-4 py-2 text-gray-400 text-sm focus:border-[#F5A623] focus:outline-none">
+            <select className="bg-[#151F32] border border-gray-700 rounded-lg px-4 py-2 text-gray-400 text-sm focus:border-[#6B3FD9] focus:outline-none">
               <option>Most Recent</option>
               <option>Most Popular</option>
               <option>Oldest First</option>
@@ -250,9 +250,9 @@ export default function BlogPage() {
             <input
               type="email"
               placeholder="Enter your email"
-              className="flex-1 px-5 py-4 bg-[#151F32] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none"
+              className="flex-1 px-5 py-4 bg-[#151F32] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none"
             />
-            <button className="bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-4 rounded-lg transition whitespace-nowrap">
+            <button className="bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-4 rounded-lg transition whitespace-nowrap">
               Subscribe
             </button>
           </div>
@@ -270,25 +270,25 @@ export default function BlogPage() {
 function BlogCard({ post }: { post: typeof blogPosts[0] }) {
   return (
     <Link href={`/blog/${post.slug}`} className="group block">
-      <article className="bg-[#151F32] rounded-xl border border-gray-800 overflow-hidden hover:border-[#F5A623]/50 transition h-full flex flex-col">
+      <article className="bg-[#151F32] rounded-xl border border-gray-800 overflow-hidden hover:border-[#6B3FD9]/50 transition h-full flex flex-col">
         {/* Image Placeholder */}
         <div className="h-48 bg-gradient-to-br from-[#1A2540] to-[#0B1121] flex items-center justify-center">
-          <div className="w-12 h-12 bg-[#F5A623]/20 rounded-xl flex items-center justify-center">
-            <Tag className="w-6 h-6 text-[#F5A623]" />
+          <div className="w-12 h-12 bg-[#6B3FD9]/20 rounded-xl flex items-center justify-center">
+            <Tag className="w-6 h-6 text-[#6B3FD9]" />
           </div>
         </div>
 
         {/* Content */}
         <div className="p-6 flex-1 flex flex-col">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-[#F5A623] text-xs font-medium">
+            <span className="text-[#6B3FD9] text-xs font-medium">
               {post.category}
             </span>
             <span className="text-gray-600 text-xs">•</span>
             <span className="text-gray-500 text-xs">{post.readTime}</span>
           </div>
 
-          <h3 className="text-lg font-semibold text-white mb-3 group-hover:text-[#F5A623] transition line-clamp-2">
+          <h3 className="text-lg font-semibold text-white mb-3 group-hover:text-[#6B3FD9] transition line-clamp-2">
             {post.title}
           </h3>
 
@@ -298,7 +298,7 @@ function BlogCard({ post }: { post: typeof blogPosts[0] }) {
 
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">{post.date}</span>
-            <span className="flex items-center gap-1 text-[#F5A623] font-medium group-hover:gap-2 transition-all">
+            <span className="flex items-center gap-1 text-[#6B3FD9] font-medium group-hover:gap-2 transition-all">
               Read
               <ArrowRight className="w-3 h-3" />
             </span>
@@ -308,3 +308,4 @@ function BlogCard({ post }: { post: typeof blogPosts[0] }) {
     </Link>
   );
 }
+

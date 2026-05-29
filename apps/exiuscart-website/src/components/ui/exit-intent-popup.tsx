@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -63,7 +63,7 @@ export function ExitIntentPopup() {
         </button>
 
         {/* Gradient Header */}
-        <div className="bg-gradient-to-r from-[#F5A623] to-[#FF6B35] p-6 text-center">
+        <div className="bg-gradient-to-r from-[#6B3FD9] to-[#FF6B35] p-6 text-center">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
@@ -80,13 +80,13 @@ export function ExitIntentPopup() {
           {/* Two Offer Boxes */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             {/* One-time Offer */}
-            <div className="bg-[#151F32] rounded-xl p-4 text-center border border-[#F5A623]/30">
+            <div className="bg-[#151F32] rounded-xl p-4 text-center border border-[#6B3FD9]/30">
               <p className="text-gray-400 text-xs mb-1">ONE-TIME</p>
-              <div className="text-3xl font-bold text-[#F5A623] mb-1">
+              <div className="text-3xl font-bold text-[#6B3FD9] mb-1">
                 {seasonalOffer.oneTime.discount}% OFF
               </div>
-              <div className="bg-[#0B1121] rounded py-2 px-3 border border-dashed border-[#F5A623]">
-                <span className="text-[#F5A623] font-mono text-sm font-bold">
+              <div className="bg-[#0B1121] rounded py-2 px-3 border border-dashed border-[#6B3FD9]">
+                <span className="text-[#6B3FD9] font-mono text-sm font-bold">
                   {seasonalOffer.oneTime.code}
                 </span>
               </div>
@@ -133,7 +133,7 @@ export function ExitIntentPopup() {
             <Link
               href="/register"
               onClick={handleClose}
-              className="flex items-center justify-center gap-2 w-full bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold py-4 rounded-lg transition"
+              className="flex items-center justify-center gap-2 w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold py-4 rounded-lg transition"
             >
               Claim Your Discount
               <ArrowRight className="w-5 h-5" />
@@ -151,3 +151,4 @@ export function ExitIntentPopup() {
     </div>
   );
 }
+

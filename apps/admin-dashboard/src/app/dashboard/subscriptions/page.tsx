@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -67,7 +67,7 @@ export default function SubscriptionsPage() {
   const planStyles: Record<string, string> = {
     starter: 'text-gray-400',
     business: 'text-blue-400',
-    pro: 'text-[#F5A623]',
+    pro: 'text-[#6B3FD9]',
   };
 
   const statusStyles: Record<string, string> = {
@@ -90,11 +90,11 @@ export default function SubscriptionsPage() {
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button type="button" onClick={() => setActiveTab('subscriptions')}
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition ${activeTab === 'subscriptions' ? 'bg-[#F5A623] text-black' : 'bg-[#151F32] text-gray-400 hover:text-white border border-gray-800'}`}>
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition ${activeTab === 'subscriptions' ? 'bg-[#6B3FD9] text-black' : 'bg-[#151F32] text-gray-400 hover:text-white border border-gray-800'}`}>
           All Subscriptions
         </button>
         <button type="button" onClick={() => setActiveTab('pending')}
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${activeTab === 'pending' ? 'bg-[#F5A623] text-black' : 'bg-[#151F32] text-gray-400 hover:text-white border border-gray-800'}`}>
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${activeTab === 'pending' ? 'bg-[#6B3FD9] text-black' : 'bg-[#151F32] text-gray-400 hover:text-white border border-gray-800'}`}>
           Pending Approval
           {pendingCount > 0 && (
             <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'pending' ? 'bg-black/20 text-black' : 'bg-orange-500 text-white'}`}>
@@ -121,7 +121,7 @@ export default function SubscriptionsPage() {
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
           <div className="flex items-center justify-between">
             <div><p className="text-gray-400 text-sm">One-Time</p><p className="text-2xl font-bold text-white mt-1">{subs.filter((s) => s.billing_type === 'one_time').length}</p></div>
-            <div className="p-2.5 rounded-lg bg-[#F5A623]/10 text-[#F5A623]"><TrendingUp className="w-5 h-5" /></div>
+            <div className="p-2.5 rounded-lg bg-[#6B3FD9]/10 text-[#6B3FD9]"><TrendingUp className="w-5 h-5" /></div>
           </div>
         </div>
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
@@ -141,19 +141,19 @@ export default function SubscriptionsPage() {
               placeholder="Search shops..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-4 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition"
+              className="w-full pl-4 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
             />
           </div>
           <div className="flex gap-3">
             <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}
-              className="px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#F5A623] focus:outline-none transition appearance-none cursor-pointer">
+              className="px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer">
               <option value="all">All Plans</option>
               <option value="starter">Starter</option>
               <option value="business">Business</option>
               <option value="pro">Pro</option>
             </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#F5A623] focus:outline-none transition appearance-none cursor-pointer">
+              className="px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer">
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="trial">Trial/Pending</option>
@@ -166,7 +166,7 @@ export default function SubscriptionsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-48">
-          <Loader2 className="w-8 h-8 text-[#F5A623] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#6B3FD9] animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-16 text-center">
@@ -264,3 +264,4 @@ export default function SubscriptionsPage() {
     </div>
   );
 }
+

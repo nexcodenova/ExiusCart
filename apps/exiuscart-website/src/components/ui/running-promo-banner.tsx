@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Gift, Sparkles, Copy, Check } from 'lucide-react';
@@ -20,20 +20,20 @@ export function RunningPromoBanner() {
   const PromoContent = () => (
     <div className="flex items-center gap-6 whitespace-nowrap px-4">
       <span className="flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-[#F5A623]" />
+        <Sparkles className="w-4 h-4 text-[#6B3FD9]" />
         <span className="font-bold text-white">{seasonalOffer.name} Special!</span>
       </span>
 
       <span className="text-gray-500">|</span>
 
       <span className="flex items-center gap-2">
-        <Gift className="w-4 h-4 text-[#F5A623]" />
+        <Gift className="w-4 h-4 text-[#6B3FD9]" />
         <span className="text-gray-300 text-sm">
-          <span className="text-[#F5A623] font-bold">{seasonalOffer.oneTime.discount}% OFF</span> One-time:
+          <span className="text-[#6B3FD9] font-bold">{seasonalOffer.oneTime.discount}% OFF</span> One-time:
         </span>
         <button
           onClick={(e) => copyCode(seasonalOffer.oneTime.code, e)}
-          className="inline-flex items-center gap-1 bg-[#F5A623]/20 hover:bg-[#F5A623]/30 text-[#F5A623] font-mono font-bold px-2 py-0.5 rounded text-sm transition-all"
+          className="inline-flex items-center gap-1 bg-[#6B3FD9]/20 hover:bg-[#6B3FD9]/30 text-[#6B3FD9] font-mono font-bold px-2 py-0.5 rounded text-sm transition-all"
         >
           {seasonalOffer.oneTime.code}
           {copiedCode === seasonalOffer.oneTime.code ? (
@@ -69,7 +69,7 @@ export function RunningPromoBanner() {
 
   return (
     <div className="mt-8 max-w-3xl mx-auto overflow-hidden group">
-      <div className="relative bg-gradient-to-r from-[#151F32] via-[#1A2540] to-[#151F32] border border-[#F5A623]/20 rounded-lg py-3">
+      <div className="relative bg-gradient-to-r from-[#151F32] via-[#1A2540] to-[#151F32] border border-[#6B3FD9]/20 rounded-lg py-3">
         {/* Marquee wrapper */}
         <div
           className="flex group-hover:[animation-play-state:paused]"
@@ -95,3 +95,4 @@ export function RunningPromoBanner() {
     </div>
   );
 }
+

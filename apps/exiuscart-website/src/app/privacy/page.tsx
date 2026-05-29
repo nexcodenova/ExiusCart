@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowLeft, Shield, Lock, Eye, Database, Bell, Trash2, Globe, Mail } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
@@ -35,8 +35,8 @@ export default function PrivacyPage() {
           {/* Header */}
           <div className="mb-12">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-[#F5A623]/20 rounded-xl flex items-center justify-center">
-                <Shield className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/20 rounded-xl flex items-center justify-center">
+                <Shield className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <div>
                 <h1 className="text-4xl font-bold text-white">Privacy Policy</h1>
@@ -50,19 +50,19 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-semibold text-white mb-4">Quick Summary</h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="flex items-start gap-3">
-                <Lock className="w-5 h-5 text-[#F5A623] flex-shrink-0 mt-0.5" />
+                <Lock className="w-5 h-5 text-[#6B3FD9] flex-shrink-0 mt-0.5" />
                 <p className="text-gray-400 text-sm">Your data is encrypted and secured</p>
               </div>
               <div className="flex items-start gap-3">
-                <Eye className="w-5 h-5 text-[#F5A623] flex-shrink-0 mt-0.5" />
+                <Eye className="w-5 h-5 text-[#6B3FD9] flex-shrink-0 mt-0.5" />
                 <p className="text-gray-400 text-sm">We never sell your data to third parties</p>
               </div>
               <div className="flex items-start gap-3">
-                <Database className="w-5 h-5 text-[#F5A623] flex-shrink-0 mt-0.5" />
+                <Database className="w-5 h-5 text-[#6B3FD9] flex-shrink-0 mt-0.5" />
                 <p className="text-gray-400 text-sm">You own your business data</p>
               </div>
               <div className="flex items-start gap-3">
-                <Trash2 className="w-5 h-5 text-[#F5A623] flex-shrink-0 mt-0.5" />
+                <Trash2 className="w-5 h-5 text-[#6B3FD9] flex-shrink-0 mt-0.5" />
                 <p className="text-gray-400 text-sm">You can request data deletion anytime</p>
               </div>
             </div>
@@ -138,22 +138,22 @@ export default function PrivacyPage() {
                 </p>
                 <div className="grid sm:grid-cols-2 gap-4 mt-4">
                   <div className="bg-[#1A2540] rounded-xl p-4">
-                    <Lock className="w-5 h-5 text-[#F5A623] mb-2" />
+                    <Lock className="w-5 h-5 text-[#6B3FD9] mb-2" />
                     <p className="text-white font-medium text-sm">SSL/TLS Encryption</p>
                     <p className="text-gray-500 text-xs">All data transmitted is encrypted</p>
                   </div>
                   <div className="bg-[#1A2540] rounded-xl p-4">
-                    <Database className="w-5 h-5 text-[#F5A623] mb-2" />
+                    <Database className="w-5 h-5 text-[#6B3FD9] mb-2" />
                     <p className="text-white font-medium text-sm">Encrypted Storage</p>
                     <p className="text-gray-500 text-xs">Data at rest is encrypted</p>
                   </div>
                   <div className="bg-[#1A2540] rounded-xl p-4">
-                    <Shield className="w-5 h-5 text-[#F5A623] mb-2" />
+                    <Shield className="w-5 h-5 text-[#6B3FD9] mb-2" />
                     <p className="text-white font-medium text-sm">Regular Backups</p>
                     <p className="text-gray-500 text-xs">Automated daily backups</p>
                   </div>
                   <div className="bg-[#1A2540] rounded-xl p-4">
-                    <Eye className="w-5 h-5 text-[#F5A623] mb-2" />
+                    <Eye className="w-5 h-5 text-[#6B3FD9] mb-2" />
                     <p className="text-white font-medium text-sm">Access Controls</p>
                     <p className="text-gray-500 text-xs">Limited employee access</p>
                   </div>
@@ -241,15 +241,15 @@ export default function PrivacyPage() {
                   <p className="text-white font-medium mb-4">NexCodeNova - Data Protection</p>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <Mail className="w-4 h-4 text-[#F5A623]" />
+                      <Mail className="w-4 h-4 text-[#6B3FD9]" />
                       <span className="text-gray-400">privacy@exiuscart.com</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Bell className="w-4 h-4 text-[#F5A623]" />
+                      <Bell className="w-4 h-4 text-[#6B3FD9]" />
                       <span className="text-gray-400">WhatsApp: +971 56 239 3573</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Globe className="w-4 h-4 text-[#F5A623]" />
+                      <Globe className="w-4 h-4 text-[#6B3FD9]" />
                       <span className="text-gray-400">Sri Lanka | Dubai</span>
                     </div>
                   </div>
@@ -262,7 +262,7 @@ export default function PrivacyPage() {
           <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
             <Link
               href="/terms"
-              className="text-[#F5A623] hover:text-[#FFB84D] text-sm transition"
+              className="text-[#6B3FD9] hover:text-[#8B5CF6] text-sm transition"
             >
               Read our Terms of Service
             </Link>
@@ -280,3 +280,4 @@ export default function PrivacyPage() {
     </div>
   );
 }
+

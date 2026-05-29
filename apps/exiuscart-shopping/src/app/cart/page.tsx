@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -86,7 +86,7 @@ export default function CartPage() {
             <p className="text-[#999]">Looks like you haven&apos;t added anything yet.</p>
             <Link
               href="/"
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#F5A623] text-black font-bold rounded-xl hover:bg-[#e8961a] transition-colors"
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#6B3FD9] text-black font-bold rounded-xl hover:bg-[#e8961a] transition-colors"
             >
               Start Shopping
             </Link>
@@ -129,17 +129,17 @@ export default function CartPage() {
                     <div className="flex-1 min-w-0">
                       <Link
                         href={`/product/${item.id}`}
-                        className="text-sm font-semibold text-white hover:text-[#F5A623] transition-colors line-clamp-2"
+                        className="text-sm font-semibold text-white hover:text-[#6B3FD9] transition-colors line-clamp-2"
                       >
                         {item.name}
                       </Link>
-                      <div className="text-[#F5A623] font-bold text-sm mt-1">{itemPrice}</div>
+                      <div className="text-[#6B3FD9] font-bold text-sm mt-1">{itemPrice}</div>
 
                       {/* Quantity controls */}
                       <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={() => updateQty(item.id, item.quantity - 1)}
-                          className="w-7 h-7 flex items-center justify-center bg-[#1a1a1a] border border-[#333] rounded-lg hover:border-[#F5A623]/50 hover:text-[#F5A623] transition-colors"
+                          className="w-7 h-7 flex items-center justify-center bg-[#1a1a1a] border border-[#333] rounded-lg hover:border-[#6B3FD9]/50 hover:text-[#6B3FD9] transition-colors"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
@@ -149,7 +149,7 @@ export default function CartPage() {
                         <button
                           onClick={() => updateQty(item.id, item.quantity + 1)}
                           disabled={item.quantity >= item.stock}
-                          className="w-7 h-7 flex items-center justify-center bg-[#1a1a1a] border border-[#333] rounded-lg hover:border-[#F5A623]/50 hover:text-[#F5A623] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="w-7 h-7 flex items-center justify-center bg-[#1a1a1a] border border-[#333] rounded-lg hover:border-[#6B3FD9]/50 hover:text-[#6B3FD9] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -185,12 +185,12 @@ export default function CartPage() {
 
               <div className="border-t border-[#222] pt-3 flex justify-between font-extrabold text-white text-base">
                 <span>Total</span>
-                <span className="text-[#F5A623]">{formattedSubtotal}</span>
+                <span className="text-[#6B3FD9]">{formattedSubtotal}</span>
               </div>
 
               <button
                 onClick={handleCheckout}
-                className="w-full py-3 bg-[#F5A623] text-black font-bold rounded-xl hover:bg-[#e8961a] active:scale-[0.98] transition-all duration-150"
+                className="w-full py-3 bg-[#6B3FD9] text-black font-bold rounded-xl hover:bg-[#e8961a] active:scale-[0.98] transition-all duration-150"
               >
                 Proceed to Checkout
               </button>
@@ -208,3 +208,4 @@ export default function CartPage() {
     </div>
   );
 }
+

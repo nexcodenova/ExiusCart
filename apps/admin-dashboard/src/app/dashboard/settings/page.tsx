@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import {
@@ -46,7 +46,7 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={handleSave}
-          className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-4 py-2.5 rounded-lg transition w-full sm:w-auto"
+          className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2.5 rounded-lg transition w-full sm:w-auto"
         >
           <Save className="w-5 h-5" />
           Save Changes
@@ -73,7 +73,7 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-[#F5A623] text-black'
+                  ? 'bg-[#6B3FD9] text-black'
                   : 'text-gray-400 hover:text-white hover:bg-[#1A2540]'
               }`}
             >
@@ -110,7 +110,7 @@ function GeneralSettings() {
         <div className="mt-4">
           <label className="block text-sm font-medium text-gray-400 mb-2">Platform Description</label>
           <textarea
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition resize-none"
+            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition resize-none"
             rows={3}
             defaultValue="Multi-tenant SaaS platform for UAE mobile shop businesses"
           />
@@ -310,7 +310,7 @@ function SecuritySettings() {
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition pr-12"
+                className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition pr-12"
                 placeholder="Enter current password"
               />
               <button
@@ -420,7 +420,7 @@ function APISettings() {
               <div className="relative flex-1">
                 <input
                   type={showApiKey ? 'text' : 'password'}
-                  className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white font-mono text-sm focus:border-[#F5A623] focus:outline-none transition pr-12"
+                  className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white font-mono text-sm focus:border-[#6B3FD9] focus:outline-none transition pr-12"
                   defaultValue="exc_prod_abc123xyz789def456"
                   readOnly
                 />
@@ -484,7 +484,7 @@ function APISettings() {
                 >
                   <input
                     type="checkbox"
-                    className="w-4 h-4 rounded border-gray-600 bg-[#0B1121] text-[#F5A623] focus:ring-[#F5A623] focus:ring-offset-0"
+                    className="w-4 h-4 rounded border-gray-600 bg-[#0B1121] text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0"
                     defaultChecked={event.includes('payment')}
                   />
                   <span className="text-sm text-gray-300 font-mono">{event}</span>
@@ -534,7 +534,7 @@ function APISettings() {
             </div>
             <button
               type="button"
-              className="text-xs px-3 py-1.5 rounded-lg bg-[#F5A623] text-black font-medium hover:bg-[#E09612] transition"
+              className="text-xs px-3 py-1.5 rounded-lg bg-[#6B3FD9] text-black font-medium hover:bg-[#5A2EC9] transition"
             >
               Connect
             </button>
@@ -558,7 +558,7 @@ function SettingsSection({
   return (
     <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 md:p-6">
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-800">
-        <div className="text-[#F5A623]">{icon}</div>
+        <div className="text-[#6B3FD9]">{icon}</div>
         <h2 className="text-lg font-semibold text-white">{title}</h2>
       </div>
       {children}
@@ -582,7 +582,7 @@ function InputField({
       <label className="block text-sm font-medium text-gray-400 mb-2">{label}</label>
       <input
         type={type}
-        className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition"
+        className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
         defaultValue={defaultValue}
         placeholder={placeholder}
       />
@@ -603,7 +603,7 @@ function SelectField({
     <div>
       <label className="block text-sm font-medium text-gray-400 mb-2">{label}</label>
       <select
-        className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#F5A623] focus:outline-none transition appearance-none cursor-pointer"
+        className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer"
         defaultValue={defaultValue}
       >
         {options.map((option) => (
@@ -637,7 +637,7 @@ function ToggleField({
         type="button"
         onClick={() => setChecked(!checked)}
         className={`relative w-11 h-6 rounded-full transition flex-shrink-0 ${
-          checked ? 'bg-[#F5A623]' : 'bg-gray-700'
+          checked ? 'bg-[#6B3FD9]' : 'bg-gray-700'
         }`}
       >
         <span
@@ -649,3 +649,4 @@ function ToggleField({
     </div>
   );
 }
+

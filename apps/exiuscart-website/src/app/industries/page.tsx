@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowRight, ShoppingBasket, Smartphone, Shirt, Wrench, Coffee, Pill } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
@@ -24,10 +24,10 @@ export default function IndustriesPage() {
       {/* Hero Section */}
       <section className="pt-28 pb-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-[#F5A623] font-medium mb-4">Industries</p>
+          <p className="text-[#6B3FD9] font-medium mb-4">Industries</p>
           <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.1] mb-6">
             Built for Your
-            <span className="block text-[#F5A623]">Type of Business</span>
+            <span className="block text-[#6B3FD9]">Type of Business</span>
           </h1>
           <p className="text-lg text-gray-400 leading-relaxed max-w-2xl mx-auto">
             ExiusCart adapts to your industry. Whether you run a grocery store,
@@ -102,7 +102,7 @@ export default function IndustriesPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-4 rounded-lg transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-4 rounded-lg transition-all"
             >
               Start Free Trial
               <ArrowRight className="w-5 h-5" />
@@ -172,3 +172,4 @@ function IndustryCard({
     </Link>
   );
 }
+

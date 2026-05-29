@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -57,7 +57,7 @@ export default function ShopsPage() {
   const planStyles: Record<string, string> = {
     starter: 'text-gray-400',
     business: 'text-blue-400',
-    pro: 'text-[#F5A623]',
+    pro: 'text-[#6B3FD9]',
     none: 'text-gray-600',
   };
 
@@ -80,7 +80,7 @@ export default function ShopsPage() {
               placeholder="Search shops, owners, emails..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
             />
           </div>
           <div className="relative">
@@ -88,7 +88,7 @@ export default function ShopsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-9 pr-8 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#F5A623] focus:outline-none transition appearance-none cursor-pointer"
+              className="pl-9 pr-8 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -116,7 +116,7 @@ export default function ShopsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-48">
-          <Loader2 className="w-8 h-8 text-[#F5A623] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#6B3FD9] animate-spin" />
         </div>
       ) : shops.length === 0 ? (
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-16 text-center">
@@ -144,8 +144,8 @@ export default function ShopsPage() {
                     <tr key={shop.id} className="border-b border-gray-800 last:border-0 hover:bg-[#1A2540] transition">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center">
-                            <Store className="w-5 h-5 text-[#F5A623]" />
+                          <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+                            <Store className="w-5 h-5 text-[#6B3FD9]" />
                           </div>
                           <div>
                             <p className="font-medium text-white">{shop.name}</p>
@@ -191,8 +191,8 @@ export default function ShopsPage() {
               <div key={shop.id} className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center">
-                      <Store className="w-5 h-5 text-[#F5A623]" />
+                    <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+                      <Store className="w-5 h-5 text-[#6B3FD9]" />
                     </div>
                     <div>
                       <p className="font-medium text-white">{shop.name}</p>
@@ -221,3 +221,4 @@ export default function ShopsPage() {
     </div>
   );
 }
+

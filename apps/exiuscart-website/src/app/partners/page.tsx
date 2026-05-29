@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import {
   ArrowRight, Share2, DollarSign, Users, TrendingUp,
@@ -42,13 +42,13 @@ export default function PartnersPage() {
       {/* Hero */}
       <section className="pt-28 pb-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#F5A623]/10 text-[#F5A623] text-sm font-medium px-4 py-2 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 bg-[#6B3FD9]/10 text-[#6B3FD9] text-sm font-medium px-4 py-2 rounded-full mb-6">
             <Share2 className="w-4 h-4" />
             Affiliate Program
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.1] mb-6">
             Refer businesses.<br />
-            <span className="text-[#F5A623]">Earn up to 40%.</span>
+            <span className="text-[#6B3FD9]">Earn up to 40%.</span>
           </h1>
           <p className="text-lg text-gray-400 leading-relaxed max-w-2xl mx-auto mb-10">
             One affiliate program, two tracks. The more shops you refer each month,
@@ -56,7 +56,7 @@ export default function PartnersPage() {
           </p>
           <Link
             href="/affiliate"
-            className="inline-flex items-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-bold px-10 py-4 rounded-xl text-lg transition"
+            className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-bold px-10 py-4 rounded-xl text-lg transition"
           >
             Apply Now — It's Free
             <ArrowRight className="w-5 h-5" />
@@ -92,7 +92,7 @@ export default function PartnersPage() {
                     <p className="text-sm font-medium text-white">Tier 1</p>
                     <p className="text-xs text-gray-500 mt-0.5">1–10 paid referrals / month</p>
                   </div>
-                  <p className="text-3xl font-bold text-[#F5A623]">20%</p>
+                  <p className="text-3xl font-bold text-[#6B3FD9]">20%</p>
                 </div>
                 <div className="flex items-center justify-between bg-[#0B1121] rounded-xl px-5 py-4">
                   <div>
@@ -121,15 +121,15 @@ export default function PartnersPage() {
             </div>
 
             {/* Shop Owner */}
-            <div className="bg-[#151F32] rounded-2xl border-2 border-[#F5A623] p-8 relative overflow-hidden">
+            <div className="bg-[#151F32] rounded-2xl border-2 border-[#6B3FD9] p-8 relative overflow-hidden">
               <div className="absolute -top-1 -right-1">
-                <span className="bg-[#F5A623] text-black text-xs font-bold px-3 py-1.5 rounded-bl-lg">
+                <span className="bg-[#6B3FD9] text-black text-xs font-bold px-3 py-1.5 rounded-bl-lg">
                   HIGHER RATES
                 </span>
               </div>
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 bg-[#F5A623]/10 rounded-xl flex items-center justify-center">
-                  <Store className="w-7 h-7 text-[#F5A623]" />
+                <div className="w-14 h-14 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center">
+                  <Store className="w-7 h-7 text-[#6B3FD9]" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-white">Shop Owner Affiliate</h3>
@@ -143,7 +143,7 @@ export default function PartnersPage() {
                     <p className="text-sm font-medium text-white">Tier 1</p>
                     <p className="text-xs text-gray-500 mt-0.5">1–10 paid referrals / month</p>
                   </div>
-                  <p className="text-3xl font-bold text-[#F5A623]">25%</p>
+                  <p className="text-3xl font-bold text-[#6B3FD9]">25%</p>
                 </div>
                 <div className="flex items-center justify-between bg-[#0B1121] rounded-xl px-5 py-4">
                   <div>
@@ -165,7 +165,7 @@ export default function PartnersPage() {
 
               <Link
                 href="/affiliate"
-                className="block text-center bg-[#F5A623] hover:bg-[#E09612] text-black font-bold py-3 rounded-xl transition"
+                className="block text-center bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-bold py-3 rounded-xl transition"
               >
                 Apply as Shop Owner
               </Link>
@@ -173,9 +173,9 @@ export default function PartnersPage() {
           </div>
 
           {/* Example callout */}
-          <div className="mt-6 bg-[#F5A623]/5 border border-[#F5A623]/20 rounded-xl px-6 py-4 text-sm text-gray-400 text-center">
+          <div className="mt-6 bg-[#6B3FD9]/5 border border-[#6B3FD9]/20 rounded-xl px-6 py-4 text-sm text-gray-400 text-center">
             <strong className="text-white">Example (Shop Owner):</strong> You refer 15 shops in April.
-            First 10 earn <span className="text-[#F5A623] font-semibold">25%</span> each.
+            First 10 earn <span className="text-[#6B3FD9] font-semibold">25%</span> each.
             The remaining 5 earn <span className="text-green-400 font-semibold">40%</span> each.
             Resets on May 1st.
           </div>
@@ -189,8 +189,8 @@ export default function PartnersPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {HOW_IT_WORKS.map((step) => (
               <div key={step.step} className="text-center">
-                <div className="w-14 h-14 bg-[#F5A623]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <span className="text-[#F5A623] font-bold text-xl">{step.step}</span>
+                <div className="w-14 h-14 bg-[#6B3FD9]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <span className="text-[#6B3FD9] font-bold text-xl">{step.step}</span>
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">{step.title}</h3>
                 <p className="text-gray-400 text-sm leading-relaxed">{step.desc}</p>
@@ -209,8 +209,8 @@ export default function PartnersPage() {
               const Icon = item.icon;
               return (
                 <div key={item.title} className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center">
-                  <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-6 h-6 text-[#F5A623]" />
+                  <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <Icon className="w-6 h-6 text-[#6B3FD9]" />
                   </div>
                   <h3 className="text-white font-semibold mb-2">{item.title}</h3>
                   <p className="text-gray-500 text-sm">{item.desc}</p>
@@ -233,7 +233,7 @@ export default function PartnersPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/affiliate"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-bold px-10 py-4 rounded-xl transition text-lg"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-bold px-10 py-4 rounded-xl transition text-lg"
             >
               Apply Now
               <ArrowRight className="w-5 h-5" />
@@ -255,3 +255,4 @@ export default function PartnersPage() {
     </div>
   );
 }
+

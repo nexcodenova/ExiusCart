@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -50,7 +50,7 @@ export function MobileBottomNav() {
                   onClick={() => setShowMore(false)}
                   className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${
                     isActive
-                      ? 'bg-[#F5A623] text-black'
+                      ? 'bg-[#6B3FD9] text-black'
                       : 'text-gray-400 hover:bg-[#151F32] hover:text-white'
                   }`}
                 >
@@ -85,7 +85,7 @@ export function MobileBottomNav() {
                 href={item.href}
                 className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-all min-w-[60px] ${
                   isActive
-                    ? 'text-[#F5A623]'
+                    ? 'text-[#6B3FD9]'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
@@ -94,7 +94,7 @@ export function MobileBottomNav() {
                   {item.label}
                 </span>
                 {isActive && (
-                  <div className="w-1 h-1 bg-[#F5A623] rounded-full mt-0.5" />
+                  <div className="w-1 h-1 bg-[#6B3FD9] rounded-full mt-0.5" />
                 )}
               </Link>
             );
@@ -103,7 +103,7 @@ export function MobileBottomNav() {
           <button
             onClick={() => setShowMore(!showMore)}
             className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-all min-w-[60px] ${
-              showMore ? 'text-[#F5A623]' : 'text-gray-400 hover:text-white'
+              showMore ? 'text-[#6B3FD9]' : 'text-gray-400 hover:text-white'
             }`}
           >
             <MoreHorizontal className="w-5 h-5" />
@@ -114,3 +114,4 @@ export function MobileBottomNav() {
     </>
   );
 }
+

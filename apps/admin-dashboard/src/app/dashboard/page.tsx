@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-[#F5A623] animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#6B3FD9] animate-spin" />
       </div>
     );
   }
@@ -95,11 +95,11 @@ export default function AdminDashboardPage() {
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-[#F5A623]" />
+              <AlertCircle className="w-5 h-5 text-[#6B3FD9]" />
               <h2 className="font-semibold text-white">Pending Approvals</h2>
             </div>
             {pending.length > 0 && (
-              <span className="text-xs bg-[#F5A623]/10 text-[#F5A623] px-2 py-1 rounded-full">
+              <span className="text-xs bg-[#6B3FD9]/10 text-[#6B3FD9] px-2 py-1 rounded-full">
                 {pending.length} pending
               </span>
             )}
@@ -128,7 +128,7 @@ export default function AdminDashboardPage() {
               ))}
             </div>
           )}
-          <Link href="/dashboard/subscriptions" className="flex items-center justify-center gap-1 text-[#F5A623] hover:text-[#FFB84D] mt-4 text-sm font-medium transition">
+          <Link href="/dashboard/subscriptions" className="flex items-center justify-center gap-1 text-[#6B3FD9] hover:text-[#8B5CF6] mt-4 text-sm font-medium transition">
             View All Payments <ArrowUpRight className="w-4 h-4" />
           </Link>
         </div>
@@ -159,7 +159,7 @@ export default function AdminDashboardPage() {
               ))}
             </div>
           )}
-          <Link href="/dashboard/subscriptions" className="flex items-center justify-center gap-1 text-[#F5A623] hover:text-[#FFB84D] mt-4 text-sm font-medium transition">
+          <Link href="/dashboard/subscriptions" className="flex items-center justify-center gap-1 text-[#6B3FD9] hover:text-[#8B5CF6] mt-4 text-sm font-medium transition">
             View All Subscriptions <ArrowUpRight className="w-4 h-4" />
           </Link>
         </div>
@@ -169,7 +169,7 @@ export default function AdminDashboardPage() {
       <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-semibold text-white">Recently Registered Shops</h2>
-          <Link href="/dashboard/shops" className="text-sm text-[#F5A623] hover:text-[#FFB84D] transition">View All</Link>
+          <Link href="/dashboard/shops" className="text-sm text-[#6B3FD9] hover:text-[#8B5CF6] transition">View All</Link>
         </div>
         {recentShops.length === 0 ? (
           <p className="text-gray-500 text-sm text-center py-4">No shops registered yet</p>
@@ -203,7 +203,7 @@ function StatCard({ title, value, subtitle, icon, color }: {
   icon: React.ReactNode; color: 'primary' | 'blue' | 'green' | 'orange';
 }) {
   const colors = {
-    primary: 'bg-[#F5A623]/10 text-[#F5A623]',
+    primary: 'bg-[#6B3FD9]/10 text-[#6B3FD9]',
     blue: 'bg-blue-500/10 text-blue-400',
     green: 'bg-green-500/10 text-green-400',
     orange: 'bg-orange-500/10 text-orange-400',
@@ -231,7 +231,7 @@ function ShopRow({ shop }: { shop: any }) {
   const planStyles: Record<string, string> = {
     starter: 'text-gray-400',
     business: 'text-blue-400',
-    pro: 'text-[#F5A623]',
+    pro: 'text-[#6B3FD9]',
     none: 'text-gray-600',
   };
   const status = shop.is_active ? (shop.subscription_status || 'active') : 'suspended';
@@ -251,3 +251,4 @@ function ShopRow({ shop }: { shop: any }) {
     </tr>
   );
 }
+

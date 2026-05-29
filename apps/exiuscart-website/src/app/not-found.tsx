@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { Home, Search } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
@@ -11,7 +11,7 @@ export default function NotFound() {
       <section className="pt-28 pb-20 px-4 flex items-center justify-center min-h-[70vh]">
         <div className="max-w-2xl mx-auto text-center">
           <div className="mb-8">
-            <p className="text-[#F5A623] text-8xl md:text-9xl font-bold">404</p>
+            <p className="text-[#6B3FD9] text-8xl md:text-9xl font-bold">404</p>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Page Not Found
@@ -24,7 +24,7 @@ export default function NotFound() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-4 rounded-lg transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-4 rounded-lg transition-all"
             >
               <Home className="w-5 h-5" />
               Go Home
@@ -65,3 +65,4 @@ export default function NotFound() {
     </div>
   );
 }
+

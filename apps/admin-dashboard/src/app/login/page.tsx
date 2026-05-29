@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
@@ -38,11 +38,11 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#F5A623]/10 rounded-2xl mb-4">
-            <Shield className="w-8 h-8 text-[#F5A623]" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#6B3FD9]/10 rounded-2xl mb-4">
+            <Shield className="w-8 h-8 text-[#6B3FD9]" />
           </div>
           <h1 className="text-2xl font-bold text-white">
-            <span className="text-[#F5A623]">Exius</span>Cart Admin
+            <span className="text-[#6B3FD9]">Exius</span>Cart Admin
           </h1>
           <p className="text-gray-400 text-sm mt-2">Sign in to admin panel</p>
         </div>
@@ -60,7 +60,7 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition"
+                className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
                 placeholder="admin@exiuscart.com"
               />
             </div>
@@ -76,7 +76,7 @@ export default function AdminLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition pr-12"
+                  className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition pr-12"
                   placeholder="Enter your password"
                 />
                 <button
@@ -97,7 +97,7 @@ export default function AdminLoginPage() {
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 rounded border-gray-600 bg-[#0B1121] text-[#F5A623] focus:ring-[#F5A623] focus:ring-offset-0"
+                  className="w-4 h-4 rounded border-gray-600 bg-[#0B1121] text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0"
                 />
                 <span className="text-sm text-gray-400">Remember me</span>
               </label>
@@ -112,7 +112,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
               Sign In
@@ -123,7 +123,7 @@ export default function AdminLoginPage() {
         {/* Footer */}
         <p className="text-center text-gray-500 text-sm mt-6">
           Protected admin area.{' '}
-          <Link href="/" className="text-[#F5A623] hover:text-[#FFB84D] transition">
+          <Link href="/" className="text-[#6B3FD9] hover:text-[#8B5CF6] transition">
             Go to website
           </Link>
         </p>
@@ -131,3 +131,4 @@ export default function AdminLoginPage() {
     </div>
   );
 }
+

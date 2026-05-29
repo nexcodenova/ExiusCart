@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowRight, MessageCircle, FileText, Printer, BarChart3, CreditCard, Globe, Smartphone, Mail, Package, ShoppingCart, Receipt } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
@@ -24,10 +24,10 @@ export default function IntegrationsPage() {
       {/* Hero Section */}
       <section className="pt-28 pb-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-[#F5A623] font-medium mb-4">Integrations</p>
+          <p className="text-[#6B3FD9] font-medium mb-4">Integrations</p>
           <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.1] mb-6">
             Connect With the Tools
-            <span className="block text-[#F5A623]">Your Business Uses</span>
+            <span className="block text-[#6B3FD9]">Your Business Uses</span>
           </h1>
           <p className="text-lg text-gray-400 leading-relaxed max-w-2xl mx-auto">
             ExiusCart integrates with popular platforms and services to streamline
@@ -92,19 +92,19 @@ export default function IntegrationsPage() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3 flex-row-reverse">
-                  <div className="w-10 h-10 bg-[#F5A623] rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-[#6B3FD9] rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-black font-bold text-xs">EC</span>
                   </div>
-                  <div className="bg-[#F5A623]/10 rounded-xl rounded-tr-none p-4 flex-1">
+                  <div className="bg-[#6B3FD9]/10 rounded-xl rounded-tr-none p-4 flex-1">
                     <p className="text-gray-300 text-sm">Order #1234 confirmed! iPhone 15 Pro Case - AED 45. Your order is being prepared.</p>
                     <p className="text-gray-600 text-xs mt-1">10:31 AM</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 flex-row-reverse">
-                  <div className="w-10 h-10 bg-[#F5A623] rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-[#6B3FD9] rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-black font-bold text-xs">EC</span>
                   </div>
-                  <div className="bg-[#F5A623]/10 rounded-xl rounded-tr-none p-4 flex-1">
+                  <div className="bg-[#6B3FD9]/10 rounded-xl rounded-tr-none p-4 flex-1">
                     <p className="text-gray-300 text-sm">Here&apos;s your receipt: Invoice #INV-1234.pdf</p>
                     <p className="text-gray-600 text-xs mt-1">10:31 AM</p>
                   </div>
@@ -145,10 +145,10 @@ export default function IntegrationsPage() {
             </div>
 
             {/* Thermal Printers */}
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
+            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center">
-                  <Printer className="w-6 h-6 text-[#F5A623]" />
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center">
+                  <Printer className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">Thermal Printers</h3>
@@ -161,10 +161,10 @@ export default function IntegrationsPage() {
             </div>
 
             {/* PDF Export */}
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
+            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-[#F5A623]" />
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">PDF &amp; Excel Export</h3>
@@ -177,10 +177,10 @@ export default function IntegrationsPage() {
             </div>
 
             {/* Analytics */}
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
+            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-[#F5A623]" />
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center">
+                  <BarChart3 className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">Sales Analytics</h3>
@@ -193,10 +193,10 @@ export default function IntegrationsPage() {
             </div>
 
             {/* Multi-Currency */}
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
+            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center">
-                  <Globe className="w-6 h-6 text-[#F5A623]" />
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center">
+                  <Globe className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">Multi-Currency</h3>
@@ -209,10 +209,10 @@ export default function IntegrationsPage() {
             </div>
 
             {/* Email Notifications */}
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
+            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center">
-                  <Mail className="w-6 h-6 text-[#F5A623]" />
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center">
+                  <Mail className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">Email Notifications</h3>
@@ -232,7 +232,7 @@ export default function IntegrationsPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">Mobile App</h3>
-                  <span className="text-[#F5A623] text-xs font-medium">Coming Soon</span>
+                  <span className="text-[#6B3FD9] text-xs font-medium">Coming Soon</span>
                 </div>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -248,7 +248,7 @@ export default function IntegrationsPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">Payment Gateway</h3>
-                  <span className="text-[#F5A623] text-xs font-medium">Coming Soon</span>
+                  <span className="text-[#6B3FD9] text-xs font-medium">Coming Soon</span>
                 </div>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -264,7 +264,7 @@ export default function IntegrationsPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">Online Store</h3>
-                  <span className="text-[#F5A623] text-xs font-medium">Coming Soon</span>
+                  <span className="text-[#6B3FD9] text-xs font-medium">Coming Soon</span>
                 </div>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -280,7 +280,7 @@ export default function IntegrationsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <p className="text-[#F5A623] font-medium mb-3">Become a Partner</p>
+              <p className="text-[#6B3FD9] font-medium mb-3">Become a Partner</p>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
                 Partner With ExiusCart
               </h2>
@@ -337,7 +337,7 @@ export default function IntegrationsPage() {
               <div className="mt-8">
                 <Link
                   href="/contact"
-                  className="block text-center bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold py-4 rounded-lg transition-all"
+                  className="block text-center bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold py-4 rounded-lg transition-all"
                 >
                   Contact Us to Partner
                 </Link>
@@ -358,7 +358,7 @@ export default function IntegrationsPage() {
           </p>
           <Link
             href="/register"
-            className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
+            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
           >
             Start 7-Day Free Trial
             <ArrowRight className="w-5 h-5" />
@@ -373,3 +373,4 @@ export default function IntegrationsPage() {
     </div>
   );
 }
+

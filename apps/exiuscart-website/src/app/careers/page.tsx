@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import {
   ArrowLeft,
@@ -55,8 +55,8 @@ export default function CareersPage() {
 
           {/* Hero Section */}
           <div className="text-center mb-16">
-            <div className="w-16 h-16 bg-[#F5A623]/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Briefcase className="w-8 h-8 text-[#F5A623]" />
+            <div className="w-16 h-16 bg-[#6B3FD9]/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Briefcase className="w-8 h-8 text-[#6B3FD9]" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Join Our Team
@@ -67,15 +67,15 @@ export default function CareersPage() {
             </p>
             <div className="flex items-center justify-center gap-6 text-sm">
               <span className="flex items-center gap-2 text-gray-400">
-                <MapPin className="w-4 h-4 text-[#F5A623]" />
+                <MapPin className="w-4 h-4 text-[#6B3FD9]" />
                 Sri Lanka | Dubai
               </span>
               <span className="flex items-center gap-2 text-gray-400">
-                <Globe className="w-4 h-4 text-[#F5A623]" />
+                <Globe className="w-4 h-4 text-[#6B3FD9]" />
                 Remote First
               </span>
               <span className="flex items-center gap-2 text-gray-400">
-                <Coffee className="w-4 h-4 text-[#F5A623]" />
+                <Coffee className="w-4 h-4 text-[#6B3FD9]" />
                 Freelance Friendly
               </span>
             </div>
@@ -86,7 +86,7 @@ export default function CareersPage() {
             <div className="bg-gradient-to-r from-[#151F32] to-[#1A2540] rounded-2xl border border-gray-800 p-8 md:p-12">
               <div className="grid md:grid-cols-2 gap-8 items-center">
                 <div>
-                  <span className="text-[#F5A623] font-medium text-sm">ABOUT NEXCODENOVA</span>
+                  <span className="text-[#6B3FD9] font-medium text-sm">ABOUT NEXCODENOVA</span>
                   <h2 className="text-2xl md:text-3xl font-bold text-white mt-2 mb-4">
                     Building Tech for UAE Small Businesses
                   </h2>
@@ -103,19 +103,19 @@ export default function CareersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[#0B1121] rounded-xl p-6 text-center">
-                    <p className="text-3xl font-bold text-[#F5A623]">100%</p>
+                    <p className="text-3xl font-bold text-[#6B3FD9]">100%</p>
                     <p className="text-gray-400 text-sm">Remote Team</p>
                   </div>
                   <div className="bg-[#0B1121] rounded-xl p-6 text-center">
-                    <p className="text-3xl font-bold text-[#F5A623]">2</p>
+                    <p className="text-3xl font-bold text-[#6B3FD9]">2</p>
                     <p className="text-gray-400 text-sm">Countries</p>
                   </div>
                   <div className="bg-[#0B1121] rounded-xl p-6 text-center">
-                    <p className="text-3xl font-bold text-[#F5A623]">UAE</p>
+                    <p className="text-3xl font-bold text-[#6B3FD9]">UAE</p>
                     <p className="text-gray-400 text-sm">Target Market</p>
                   </div>
                   <div className="bg-[#0B1121] rounded-xl p-6 text-center">
-                    <p className="text-3xl font-bold text-[#F5A623]">∞</p>
+                    <p className="text-3xl font-bold text-[#6B3FD9]">∞</p>
                     <p className="text-gray-400 text-sm">Growth Potential</p>
                   </div>
                 </div>
@@ -126,36 +126,36 @@ export default function CareersPage() {
           {/* Our Values */}
           <section className="mb-20">
             <div className="text-center mb-12">
-              <span className="text-[#F5A623] font-medium text-sm">OUR VALUES</span>
+              <span className="text-[#6B3FD9] font-medium text-sm">OUR VALUES</span>
               <h2 className="text-2xl md:text-3xl font-bold text-white mt-2">
                 What We Stand For
               </h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Target className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Target className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Customer First</h3>
                 <p className="text-gray-400 text-sm">Every decision starts with &quot;How does this help our customers?&quot;</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Rocket className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Rocket className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Move Fast</h3>
                 <p className="text-gray-400 text-sm">We ship quickly, learn from feedback, and iterate. Done is better than perfect.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Lightbulb className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Lightbulb className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Think Big</h3>
                 <p className="text-gray-400 text-sm">We are building something that will transform how businesses operate in the UAE.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Shield className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Trust & Transparency</h3>
                 <p className="text-gray-400 text-sm">We share openly, give honest feedback, and trust each other to do great work.</p>
@@ -166,50 +166,50 @@ export default function CareersPage() {
           {/* Benefits */}
           <section className="mb-20">
             <div className="text-center mb-12">
-              <span className="text-[#F5A623] font-medium text-sm">WHY JOIN US</span>
+              <span className="text-[#6B3FD9] font-medium text-sm">WHY JOIN US</span>
               <h2 className="text-2xl md:text-3xl font-bold text-white mt-2">
                 Benefits & Perks
               </h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Globe className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
+                  <Globe className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Work From Anywhere</h3>
                 <p className="text-gray-400 text-sm">We are fully remote. Work from home, a coffee shop, or the beach — wherever you do your best work.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Clock className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
+                  <Clock className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Flexible Hours</h3>
                 <p className="text-gray-400 text-sm">No rigid 9-5 schedules. We care about results, not when you clock in. Work when you are most productive.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Laptop className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
+                  <Laptop className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Latest Tools</h3>
                 <p className="text-gray-400 text-sm">We provide the tools you need — modern tech stack, premium software, and collaboration tools.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Rocket className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
+                  <Rocket className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Growth Opportunities</h3>
                 <p className="text-gray-400 text-sm">As we expand to Dubai and beyond, grow with us. Early team members get exciting opportunities.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Heart className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
+                  <Heart className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Work-Life Balance</h3>
                 <p className="text-gray-400 text-sm">Your life matters. Generous time off, no micromanagement, and a culture that respects boundaries.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-[#F5A623]" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
+                  <Users className="w-6 h-6 text-[#6B3FD9]" />
                 </div>
                 <h3 className="text-white font-semibold mb-2">Great Team</h3>
                 <p className="text-gray-400 text-sm">Work with passionate, skilled people who love what they do. We collaborate, not compete.</p>
@@ -220,29 +220,29 @@ export default function CareersPage() {
           {/* Departments */}
           <section className="mb-20">
             <div className="text-center mb-12">
-              <span className="text-[#F5A623] font-medium text-sm">TEAMS</span>
+              <span className="text-[#6B3FD9] font-medium text-sm">TEAMS</span>
               <h2 className="text-2xl md:text-3xl font-bold text-white mt-2">
                 Our Departments
               </h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <Code className="w-8 h-8 text-[#F5A623] mb-4" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <Code className="w-8 h-8 text-[#6B3FD9] mb-4" />
                 <h3 className="text-white font-semibold mb-2">Engineering</h3>
                 <p className="text-gray-400 text-sm">Build scalable products with modern technologies like React, Next.js, Node.js, and TypeScript.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <Palette className="w-8 h-8 text-[#F5A623] mb-4" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <Palette className="w-8 h-8 text-[#6B3FD9] mb-4" />
                 <h3 className="text-white font-semibold mb-2">Design</h3>
                 <p className="text-gray-400 text-sm">Create beautiful, intuitive experiences that delight users and solve real problems.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <Megaphone className="w-8 h-8 text-[#F5A623] mb-4" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <Megaphone className="w-8 h-8 text-[#6B3FD9] mb-4" />
                 <h3 className="text-white font-semibold mb-2">Marketing</h3>
                 <p className="text-gray-400 text-sm">Tell our story, reach new audiences, and help UAE businesses discover ExiusCart.</p>
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                <Headphones className="w-8 h-8 text-[#F5A623] mb-4" />
+              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                <Headphones className="w-8 h-8 text-[#6B3FD9] mb-4" />
                 <h3 className="text-white font-semibold mb-2">Customer Success</h3>
                 <p className="text-gray-400 text-sm">Help our customers succeed. Be the friendly voice that guides them through their journey.</p>
               </div>
@@ -252,7 +252,7 @@ export default function CareersPage() {
           {/* Open Positions */}
           <section className="mb-20">
             <div className="text-center mb-12">
-              <span className="text-[#F5A623] font-medium text-sm">OPEN POSITIONS</span>
+              <span className="text-[#6B3FD9] font-medium text-sm">OPEN POSITIONS</span>
               <h2 className="text-2xl md:text-3xl font-bold text-white mt-2">
                 Current Opportunities
               </h2>
@@ -274,7 +274,7 @@ export default function CareersPage() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a
                   href="mailto:careers@exiuscart.com"
-                  className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-3 rounded-lg transition"
+                  className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-3 rounded-lg transition"
                 >
                   <Mail className="w-5 h-5" />
                   Send Your Resume
@@ -293,7 +293,7 @@ export default function CareersPage() {
 
           {/* Working Style */}
           <section className="mb-20">
-            <div className="bg-gradient-to-r from-[#F5A623]/10 to-[#FF6B35]/10 rounded-2xl border border-[#F5A623]/20 p-8 md:p-12">
+            <div className="bg-gradient-to-r from-[#6B3FD9]/10 to-[#FF6B35]/10 rounded-2xl border border-[#6B3FD9]/20 p-8 md:p-12">
               <div className="text-center mb-8">
                 <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
                   How We Work
@@ -305,7 +305,7 @@ export default function CareersPage() {
               <div className="grid sm:grid-cols-3 gap-6">
                 <div className="text-center">
                   <div className="w-14 h-14 bg-[#151F32] rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Globe className="w-7 h-7 text-[#F5A623]" />
+                    <Globe className="w-7 h-7 text-[#6B3FD9]" />
                   </div>
                   <h3 className="text-white font-semibold mb-2">Remote & Flexible</h3>
                   <p className="text-gray-400 text-sm">
@@ -314,7 +314,7 @@ export default function CareersPage() {
                 </div>
                 <div className="text-center">
                   <div className="w-14 h-14 bg-[#151F32] rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Zap className="w-7 h-7 text-[#F5A623]" />
+                    <Zap className="w-7 h-7 text-[#6B3FD9]" />
                   </div>
                   <h3 className="text-white font-semibold mb-2">Freelance Welcome</h3>
                   <p className="text-gray-400 text-sm">
@@ -323,7 +323,7 @@ export default function CareersPage() {
                 </div>
                 <div className="text-center">
                   <div className="w-14 h-14 bg-[#151F32] rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Rocket className="w-7 h-7 text-[#F5A623]" />
+                    <Rocket className="w-7 h-7 text-[#6B3FD9]" />
                   </div>
                   <h3 className="text-white font-semibold mb-2">Grow With Us</h3>
                   <p className="text-gray-400 text-sm">
@@ -349,7 +349,7 @@ export default function CareersPage() {
                   href="mailto:careers@exiuscart.com"
                   className="flex items-center gap-2 text-gray-400 hover:text-white transition"
                 >
-                  <Mail className="w-5 h-5 text-[#F5A623]" />
+                  <Mail className="w-5 h-5 text-[#6B3FD9]" />
                   careers@exiuscart.com
                 </a>
                 <span className="text-gray-700 hidden sm:block">|</span>
@@ -372,3 +372,4 @@ export default function CareersPage() {
     </div>
   );
 }
+

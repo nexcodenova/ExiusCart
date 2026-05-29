@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -85,7 +85,7 @@ function ToggleBtn({
       onClick={onClick}
       className={`p-1.5 rounded-lg transition ${
         active
-          ? 'bg-[#F5A623]/20 text-[#F5A623]'
+          ? 'bg-[#6B3FD9]/20 text-[#6B3FD9]'
           : 'text-gray-600 hover:text-gray-400 hover:bg-gray-800'
       }`}
     >
@@ -271,7 +271,7 @@ export default function ShoppingAdminPage() {
         <button
           type="button"
           onClick={openAdd}
-          className="inline-flex items-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-4 py-2.5 rounded-lg transition"
+          className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2.5 rounded-lg transition"
         >
           <Plus className="w-4 h-4" />
           Add Product
@@ -295,13 +295,13 @@ export default function ShoppingAdminPage() {
             placeholder="Search products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:border-[#F5A623] focus:outline-none text-sm"
+            className="w-full pl-9 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:border-[#6B3FD9] focus:outline-none text-sm"
           />
         </div>
         <select
           value={shopFilter}
           onChange={(e) => setShopFilter(e.target.value)}
-          className="px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#F5A623] focus:outline-none text-sm"
+          className="px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none text-sm"
         >
           <option value="">All Shops</option>
           {shops.map((s) => (
@@ -312,7 +312,7 @@ export default function ShoppingAdminPage() {
           href="http://localhost:3003"
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-[#F5A623]/50 transition text-sm"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-[#6B3FD9]/50 transition text-sm"
         >
           <ExternalLink className="w-4 h-4" />
           Preview Store
@@ -323,7 +323,7 @@ export default function ShoppingAdminPage() {
       <div className="bg-[#151F32] rounded-xl border border-gray-800 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <Loader2 className="w-8 h-8 animate-spin text-[#F5A623]" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#6B3FD9]" />
           </div>
         ) : products.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-gray-500">
@@ -332,7 +332,7 @@ export default function ShoppingAdminPage() {
             <button
               type="button"
               onClick={openAdd}
-              className="mt-3 text-sm text-[#F5A623] hover:underline"
+              className="mt-3 text-sm text-[#6B3FD9] hover:underline"
             >
               Add your first product
             </button>
@@ -386,7 +386,7 @@ export default function ShoppingAdminPage() {
 
                       {/* Price */}
                       <td className="px-4 py-4 text-right">
-                        <span className="text-sm font-semibold text-[#F5A623]">
+                        <span className="text-sm font-semibold text-[#6B3FD9]">
                           {p.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {p.currency}
                         </span>
                       </td>
@@ -484,7 +484,7 @@ export default function ShoppingAdminPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-medium text-white text-sm truncate">{p.name}</p>
-                      <span className="text-sm font-bold text-[#F5A623] flex-shrink-0">
+                      <span className="text-sm font-bold text-[#6B3FD9] flex-shrink-0">
                         {p.price.toFixed(2)} {p.currency}
                       </span>
                     </div>
@@ -541,7 +541,7 @@ export default function ShoppingAdminPage() {
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Wireless Earbuds Pro"
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#F5A623] focus:outline-none text-sm"
+                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                 />
               </div>
 
@@ -553,7 +553,7 @@ export default function ShoppingAdminPage() {
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   placeholder="Short product description..."
                   rows={2}
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#F5A623] focus:outline-none text-sm resize-none"
+                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm resize-none"
                 />
               </div>
 
@@ -569,7 +569,7 @@ export default function ShoppingAdminPage() {
                     value={form.price}
                     onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#F5A623] focus:outline-none text-sm"
+                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                   />
                 </div>
                 <div>
@@ -580,7 +580,7 @@ export default function ShoppingAdminPage() {
                     value={form.stock}
                     onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
                     placeholder="0"
-                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#F5A623] focus:outline-none text-sm"
+                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                   />
                 </div>
               </div>
@@ -593,7 +593,7 @@ export default function ShoppingAdminPage() {
                     required
                     value={form.shop_id}
                     onChange={(e) => handleShopChange(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#F5A623] focus:outline-none text-sm"
+                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none text-sm"
                   >
                     <option value="">Select shop</option>
                     {shops.map((s) => (
@@ -609,7 +609,7 @@ export default function ShoppingAdminPage() {
                     value={form.category_id}
                     onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
                     disabled={!form.shop_id}
-                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#F5A623] focus:outline-none text-sm disabled:opacity-50"
+                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none text-sm disabled:opacity-50"
                   >
                     <option value="">No category</option>
                     {categories
@@ -629,7 +629,7 @@ export default function ShoppingAdminPage() {
                   value={form.sku}
                   onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
                   placeholder="Product SKU (optional)"
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#F5A623] focus:outline-none text-sm"
+                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                 />
               </div>
 
@@ -641,7 +641,7 @@ export default function ShoppingAdminPage() {
                   value={form.image_url}
                   onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
                   placeholder="https://..."
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#F5A623] focus:outline-none text-sm"
+                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                 />
                 {form.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -660,7 +660,7 @@ export default function ShoppingAdminPage() {
                   value={form.video_url}
                   onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
                   placeholder="https://... (mp4 or YouTube/TikTok link)"
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#F5A623] focus:outline-none text-sm"
+                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                 />
               </div>
 
@@ -718,7 +718,7 @@ export default function ShoppingAdminPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 py-3 bg-[#F5A623] hover:bg-[#E09612] text-black rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="flex-1 py-3 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   {saving ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
@@ -783,7 +783,7 @@ function StatCard({
     yellow: 'bg-yellow-500/10 text-yellow-400',
     red: 'bg-red-500/10 text-red-400',
   };
-  const iconColor = accent ? colorMap[accent] : 'bg-[#F5A623]/10 text-[#F5A623]';
+  const iconColor = accent ? colorMap[accent] : 'bg-[#6B3FD9]/10 text-[#6B3FD9]';
   return (
     <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
       <div className="flex items-center justify-between mb-3">
@@ -794,3 +794,4 @@ function StatCard({
     </div>
   );
 }
+

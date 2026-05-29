@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
 import { ArrowRight, Check, Star, Quote } from 'lucide-react';
@@ -34,7 +34,7 @@ export default function HomePage() {
             <div>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.1]">
                 Manage Your
-                <span className="block text-[#F5A623]">Small Business</span>
+                <span className="block text-[#6B3FD9]">Small Business</span>
                 <span className="block">With Ease</span>
               </h1>
               <p className="mt-6 text-lg text-gray-400 leading-relaxed">
@@ -45,7 +45,7 @@ export default function HomePage() {
               <div className="mt-10 flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-4 rounded-lg transition-all"
+                  className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-4 rounded-lg transition-all"
                 >
                   Get Started
                   <ArrowRight className="w-5 h-5" />
@@ -127,13 +127,13 @@ export default function HomePage() {
                   <path
                     d="M 0 10 Q 40 10, 60 40 T 80 50"
                     fill="none"
-                    stroke="#F5A623"
+                    stroke="#6B3FD9"
                     strokeWidth="2"
                     strokeDasharray="4 4"
                     opacity="0.5"
                   />
-                  <circle cx="0" cy="10" r="3" fill="#F5A623" opacity="0.7" />
-                  <circle cx="80" cy="50" r="3" fill="#F5A623" opacity="0.7" />
+                  <circle cx="0" cy="10" r="3" fill="#6B3FD9" opacity="0.7" />
+                  <circle cx="80" cy="50" r="3" fill="#6B3FD9" opacity="0.7" />
                 </svg>
               </div>
             </div>
@@ -188,7 +188,7 @@ export default function HomePage() {
           <div className="mt-12">
             <Link
               href="/features"
-              className="inline-flex items-center gap-2 text-[#F5A623] hover:text-[#FFB84D] font-medium transition"
+              className="inline-flex items-center gap-2 text-[#6B3FD9] hover:text-[#8B5CF6] font-medium transition"
             >
               See all features
               <ArrowRight className="w-4 h-4" />
@@ -283,7 +283,7 @@ export default function HomePage() {
           </p>
           <Link
             href="/register"
-            className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
+            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
           >
             Start Free Trial
             <ArrowRight className="w-5 h-5" />
@@ -302,7 +302,7 @@ export default function HomePage() {
 function TrustItem({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="flex items-center gap-3">
-      <Check className="w-5 h-5 text-[#F5A623] flex-shrink-0" />
+      <Check className="w-5 h-5 text-[#6B3FD9] flex-shrink-0" />
       <div>
         <span className="text-white font-medium">{title}</span>
         <span className="text-gray-500 text-sm ml-2">{desc}</span>
@@ -323,7 +323,7 @@ function FeatureCard({ title, desc }: { title: string; desc: string }) {
 function BenefitRow({ text }: { text: string }) {
   return (
     <div className="flex items-center gap-3">
-      <Check className="w-5 h-5 text-[#F5A623] flex-shrink-0" />
+      <Check className="w-5 h-5 text-[#6B3FD9] flex-shrink-0" />
       <span className="text-gray-300">{text}</span>
     </div>
   );
@@ -344,12 +344,12 @@ function TestimonialCard({
 }) {
   return (
     <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 relative">
-      <Quote className="absolute top-6 right-6 w-8 h-8 text-[#F5A623]/20" />
+      <Quote className="absolute top-6 right-6 w-8 h-8 text-[#6B3FD9]/20" />
 
       {/* Rating */}
       <div className="flex gap-1 mb-4">
         {[...Array(rating)].map((_, i) => (
-          <Star key={i} className="w-4 h-4 fill-[#F5A623] text-[#F5A623]" />
+          <Star key={i} className="w-4 h-4 fill-[#6B3FD9] text-[#6B3FD9]" />
         ))}
       </div>
 
@@ -358,8 +358,8 @@ function TestimonialCard({
 
       {/* Author */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-[#F5A623]/20 flex items-center justify-center">
-          <span className="text-[#F5A623] font-semibold text-sm">
+        <div className="w-10 h-10 rounded-full bg-[#6B3FD9]/20 flex items-center justify-center">
+          <span className="text-[#6B3FD9] font-semibold text-sm">
             {name.split(' ').map(n => n[0]).join('')}
           </span>
         </div>
@@ -375,8 +375,9 @@ function TestimonialCard({
 function StatItem({ value, label }: { value: string; label: string }) {
   return (
     <div className="text-center">
-      <p className="text-3xl md:text-4xl font-bold text-[#F5A623] mb-1">{value}</p>
+      <p className="text-3xl md:text-4xl font-bold text-[#6B3FD9] mb-1">{value}</p>
       <p className="text-gray-400 text-sm">{label}</p>
     </div>
   );
 }
+

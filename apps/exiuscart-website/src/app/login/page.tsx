@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -48,13 +48,13 @@ export default function LoginPage() {
           {/* Logo */}
           <Link href="/" className="mb-8">
             <span className="text-3xl font-bold text-white tracking-tight">
-              <span className="text-[#F5A623]">Exius</span>Cart
+              <span className="text-[#6B3FD9]">Exius</span>Cart
             </span>
           </Link>
 
           <h2 className="text-3xl xl:text-4xl font-bold text-white mb-4 leading-tight">
             Manage your business
-            <span className="text-[#F5A623]"> smarter</span>
+            <span className="text-[#6B3FD9]"> smarter</span>
           </h2>
           <p className="text-gray-400 mb-8 text-lg leading-relaxed">
             Access your dashboard to track sales, manage inventory, and grow your business.
@@ -63,8 +63,8 @@ export default function LoginPage() {
           {/* Features List */}
           <div className="space-y-4 mb-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-[#F5A623]" />
+              <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-[#6B3FD9]" />
               </div>
               <div>
                 <p className="text-white font-medium">Real-time Analytics</p>
@@ -72,8 +72,8 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center">
-                <Zap className="w-5 h-5 text-[#F5A623]" />
+              <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+                <Zap className="w-5 h-5 text-[#6B3FD9]" />
               </div>
               <div>
                 <p className="text-white font-medium">Fast & Easy POS</p>
@@ -81,8 +81,8 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5 text-[#F5A623]" />
+              <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-[#6B3FD9]" />
               </div>
               <div>
                 <p className="text-white font-medium">Secure & Reliable</p>
@@ -114,17 +114,17 @@ export default function LoginPage() {
         <div className="px-12 xl:px-16 py-8 border-t border-gray-800">
           <div className="flex items-center gap-8">
             <div>
-              <p className="text-2xl font-bold text-[#F5A623]">50+</p>
+              <p className="text-2xl font-bold text-[#6B3FD9]">50+</p>
               <p className="text-gray-500 text-sm">Active Shops</p>
             </div>
             <div className="w-px h-10 bg-gray-800"></div>
             <div>
-              <p className="text-2xl font-bold text-[#F5A623]">10K+</p>
+              <p className="text-2xl font-bold text-[#6B3FD9]">10K+</p>
               <p className="text-gray-500 text-sm">Invoices Created</p>
             </div>
             <div className="w-px h-10 bg-gray-800"></div>
             <div>
-              <p className="text-2xl font-bold text-[#F5A623]">99%</p>
+              <p className="text-2xl font-bold text-[#6B3FD9]">99%</p>
               <p className="text-gray-500 text-sm">Uptime</p>
             </div>
           </div>
@@ -150,7 +150,7 @@ export default function LoginPage() {
             {/* Logo - Mobile Only */}
             <Link href="/" className="lg:hidden flex items-center justify-center gap-2 mb-8">
               <span className="text-2xl font-bold text-white tracking-tight">
-                <span className="text-[#F5A623]">Exius</span>Cart
+                <span className="text-[#6B3FD9]">Exius</span>Cart
               </span>
             </Link>
 
@@ -170,7 +170,7 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     {...register('email')}
-                    className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
                     placeholder="you@example.com"
                   />
                   {errors.email && (
@@ -187,7 +187,7 @@ export default function LoginPage() {
                       id="password"
                       type={showPassword ? 'text' : 'password'}
                       {...register('password')}
-                      className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition pr-12 text-sm sm:text-base"
+                      className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition pr-12 text-sm sm:text-base"
                       placeholder="Enter your password"
                     />
                     <button
@@ -212,13 +212,13 @@ export default function LoginPage() {
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 rounded border-gray-600 bg-[#0B1121] text-[#F5A623] focus:ring-[#F5A623] focus:ring-offset-0"
+                      className="w-4 h-4 rounded border-gray-600 bg-[#0B1121] text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0"
                     />
                     <span className="text-sm text-gray-400">Remember me</span>
                   </label>
                   <Link
                     href="/forgot-password"
-                    className="text-sm text-[#F5A623] hover:text-[#FFB84D] transition"
+                    className="text-sm text-[#6B3FD9] hover:text-[#8B5CF6] transition"
                   >
                     Forgot password?
                   </Link>
@@ -227,7 +227,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold py-3 sm:py-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold py-3 sm:py-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
                   Sign In
@@ -236,7 +236,7 @@ export default function LoginPage() {
 
               <p className="text-center mt-8 text-gray-400 text-sm sm:text-base">
                 Don&apos;t have an account?{' '}
-                <Link href="/register" className="text-[#F5A623] font-semibold hover:text-[#FFB84D] transition">
+                <Link href="/register" className="text-[#6B3FD9] font-semibold hover:text-[#8B5CF6] transition">
                   Create one
                 </Link>
               </p>
@@ -253,3 +253,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

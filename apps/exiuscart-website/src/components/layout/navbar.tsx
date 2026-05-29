@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -53,7 +53,7 @@ export function Navbar() {
             </Link>
             <Link
               href="/register"
-              className="inline-flex items-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-5 py-2.5 rounded-lg transition-all text-sm"
+              className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-5 py-2.5 rounded-lg transition-all text-sm"
             >
               Get Started
               <ArrowRight className="w-4 h-4" />
@@ -95,7 +95,7 @@ export function Navbar() {
               <Link
                 href="/register"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-5 py-3 rounded-lg transition-all"
+                className="flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-5 py-3 rounded-lg transition-all"
               >
                 Get Started
                 <ArrowRight className="w-4 h-4" />
@@ -107,3 +107,4 @@ export function Navbar() {
     </nav>
   );
 }
+

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import {
   ArrowRight,
@@ -94,9 +94,9 @@ export default function ReportsFeaturePage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 bg-[#F5A623]/10 border border-[#F5A623]/30 rounded-full px-4 py-2 mb-6">
-                <BarChart3 className="w-4 h-4 text-[#F5A623]" />
-                <span className="text-[#F5A623] text-sm font-medium">Reports & Analytics</span>
+              <div className="inline-flex items-center gap-2 bg-[#6B3FD9]/10 border border-[#6B3FD9]/30 rounded-full px-4 py-2 mb-6">
+                <BarChart3 className="w-4 h-4 text-[#6B3FD9]" />
+                <span className="text-[#6B3FD9] text-sm font-medium">Reports & Analytics</span>
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
                 Understand Your Business With Data
@@ -107,7 +107,7 @@ export default function ReportsFeaturePage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-4 rounded-lg transition-all"
+                  className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-4 rounded-lg transition-all"
                 >
                   Start Free Trial
                   <ArrowRight className="w-5 h-5" />
@@ -147,7 +147,7 @@ export default function ReportsFeaturePage() {
                   </div>
                   <div className="bg-[#1A2540] rounded-xl p-4">
                     <p className="text-gray-400 text-xs mb-1">Profit</p>
-                    <p className="text-2xl font-bold text-[#F5A623]">7,850</p>
+                    <p className="text-2xl font-bold text-[#6B3FD9]">7,850</p>
                     <p className="text-green-400 text-xs">+15% margin</p>
                   </div>
                 </div>
@@ -169,7 +169,7 @@ export default function ReportsFeaturePage() {
                       { height: 'h-[70%]', day: 'S' },
                     ].map((bar, i) => (
                       <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                        <div className={`w-full bg-[#F5A623] rounded-t transition-all ${bar.height}`}></div>
+                        <div className={`w-full bg-[#6B3FD9] rounded-t transition-all ${bar.height}`}></div>
                         <span className="text-gray-500 text-xs">{bar.day}</span>
                       </div>
                     ))}
@@ -187,7 +187,7 @@ export default function ReportsFeaturePage() {
                     ].map((product, i) => (
                       <div key={i} className="flex items-center justify-between bg-[#1A2540] rounded-lg p-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-[#F5A623] font-bold text-sm">#{i + 1}</span>
+                          <span className="text-[#6B3FD9] font-bold text-sm">#{i + 1}</span>
                           <span className="text-white text-sm">{product.name}</span>
                         </div>
                         <div className="text-right">
@@ -201,7 +201,7 @@ export default function ReportsFeaturePage() {
               </div>
 
               {/* Decorative */}
-              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#F5A623]/5 rounded-full blur-3xl"></div>
+              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-[#6B3FD9]/5 rounded-full blur-3xl"></div>
             </div>
           </div>
         </div>
@@ -223,9 +223,9 @@ export default function ReportsFeaturePage() {
             {reportFeatures.map((feature, i) => {
               const Icon = feature.icon;
               return (
-                <div key={i} className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#F5A623]/30 transition">
-                  <div className="w-12 h-12 bg-[#F5A623]/20 rounded-xl flex items-center justify-center mb-4">
-                    <Icon className="w-6 h-6 text-[#F5A623]" />
+                <div key={i} className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
+                  <div className="w-12 h-12 bg-[#6B3FD9]/20 rounded-xl flex items-center justify-center mb-4">
+                    <Icon className="w-6 h-6 text-[#6B3FD9]" />
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
                   <p className="text-gray-400">{feature.description}</p>
@@ -262,13 +262,13 @@ export default function ReportsFeaturePage() {
               {/* Filter Preview */}
               <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <Filter className="w-5 h-5 text-[#F5A623]" />
+                  <Filter className="w-5 h-5 text-[#6B3FD9]" />
                   <h3 className="text-white font-semibold">Flexible Filtering</h3>
                 </div>
                 <p className="text-gray-400 mb-4">Filter reports by date range, category, payment method, or customer.</p>
                 <div className="flex flex-wrap gap-2">
                   <span className="bg-[#1A2540] text-gray-300 px-3 py-1.5 rounded-lg text-sm">Today</span>
-                  <span className="bg-[#F5A623]/20 text-[#F5A623] px-3 py-1.5 rounded-lg text-sm">This Week</span>
+                  <span className="bg-[#6B3FD9]/20 text-[#6B3FD9] px-3 py-1.5 rounded-lg text-sm">This Week</span>
                   <span className="bg-[#1A2540] text-gray-300 px-3 py-1.5 rounded-lg text-sm">This Month</span>
                   <span className="bg-[#1A2540] text-gray-300 px-3 py-1.5 rounded-lg text-sm">Custom Range</span>
                 </div>
@@ -277,7 +277,7 @@ export default function ReportsFeaturePage() {
               {/* Export Preview */}
               <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <Download className="w-5 h-5 text-[#F5A623]" />
+                  <Download className="w-5 h-5 text-[#6B3FD9]" />
                   <h3 className="text-white font-semibold">Export Anywhere</h3>
                 </div>
                 <p className="text-gray-400 mb-4">Download reports in your preferred format. Share with your team or accountant.</p>
@@ -296,7 +296,7 @@ export default function ReportsFeaturePage() {
               {/* Real-time */}
               <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <Clock className="w-5 h-5 text-[#F5A623]" />
+                  <Clock className="w-5 h-5 text-[#6B3FD9]" />
                   <h3 className="text-white font-semibold">Real-Time Data</h3>
                 </div>
                 <p className="text-gray-400">Reports update instantly as you make sales. Always see the latest numbers.</p>
@@ -312,22 +312,22 @@ export default function ReportsFeaturePage() {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center">
-                <PieChart className="w-8 h-8 text-[#F5A623] mx-auto mb-3" />
+                <PieChart className="w-8 h-8 text-[#6B3FD9] mx-auto mb-3" />
                 <p className="text-2xl font-bold text-white mb-1">8+</p>
                 <p className="text-gray-400 text-sm">Report Types</p>
               </div>
               <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center">
-                <Clock className="w-8 h-8 text-[#F5A623] mx-auto mb-3" />
+                <Clock className="w-8 h-8 text-[#6B3FD9] mx-auto mb-3" />
                 <p className="text-2xl font-bold text-white mb-1">Real-time</p>
                 <p className="text-gray-400 text-sm">Data Updates</p>
               </div>
               <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center">
-                <Download className="w-8 h-8 text-[#F5A623] mx-auto mb-3" />
+                <Download className="w-8 h-8 text-[#6B3FD9] mx-auto mb-3" />
                 <p className="text-2xl font-bold text-white mb-1">PDF/Excel</p>
                 <p className="text-gray-400 text-sm">Export Formats</p>
               </div>
               <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center">
-                <TrendingUp className="w-8 h-8 text-[#F5A623] mx-auto mb-3" />
+                <TrendingUp className="w-8 h-8 text-[#6B3FD9] mx-auto mb-3" />
                 <p className="text-2xl font-bold text-white mb-1">Trends</p>
                 <p className="text-gray-400 text-sm">& Comparisons</p>
               </div>
@@ -343,7 +343,7 @@ export default function ReportsFeaturePage() {
               <ul className="space-y-4">
                 {benefits.map((benefit, i) => (
                   <li key={i} className="flex items-center gap-3">
-                    <Check className="w-5 h-5 text-[#F5A623] flex-shrink-0" />
+                    <Check className="w-5 h-5 text-[#6B3FD9] flex-shrink-0" />
                     <span className="text-gray-300">{benefit}</span>
                   </li>
                 ))}
@@ -365,7 +365,7 @@ export default function ReportsFeaturePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
             >
               Start Free Trial
               <ArrowRight className="w-5 h-5" />
@@ -384,3 +384,4 @@ export default function ReportsFeaturePage() {
     </div>
   );
 }
+

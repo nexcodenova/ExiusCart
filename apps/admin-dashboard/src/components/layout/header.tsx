@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Bell, Search, Menu } from 'lucide-react';
 
@@ -42,7 +42,7 @@ export function AdminHeader({ title, onMenuClick }: HeaderProps) {
           className="relative p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition"
         >
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-[#F5A623] rounded-full"></span>
+          <span className="absolute top-1 right-1 w-2 h-2 bg-[#6B3FD9] rounded-full"></span>
         </button>
 
         {/* Status Badge */}
@@ -63,3 +63,4 @@ export function AdminHeader({ title, onMenuClick }: HeaderProps) {
     </header>
   );
 }
+

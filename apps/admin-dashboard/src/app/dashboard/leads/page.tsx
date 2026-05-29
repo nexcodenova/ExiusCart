@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -26,7 +26,7 @@ const SOURCE_OPTIONS = ['manual', 'website', 'whatsapp', 'referral'];
 
 const statusStyles: Record<string, string> = {
   new: 'bg-blue-500/10 text-blue-400',
-  contacted: 'bg-[#F5A623]/10 text-[#F5A623]',
+  contacted: 'bg-[#6B3FD9]/10 text-[#6B3FD9]',
   demo: 'bg-purple-500/10 text-purple-400',
   converted: 'bg-green-500/10 text-green-400',
   lost: 'bg-red-500/10 text-red-400',
@@ -75,7 +75,7 @@ export default function LeadsPage() {
         <button
           type="button"
           onClick={() => { setEditingLead(null); setShowModal(true); }}
-          className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-4 py-2.5 rounded-lg transition"
+          className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2.5 rounded-lg transition"
         >
           <Plus className="w-5 h-5" /> Add Lead
         </button>
@@ -101,7 +101,7 @@ export default function LeadsPage() {
               placeholder="Search leads..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
             />
           </div>
           <div className="relative">
@@ -109,7 +109,7 @@ export default function LeadsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-9 pr-8 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#F5A623] focus:outline-none transition appearance-none cursor-pointer"
+              className="pl-9 pr-8 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer"
             >
               <option value="all">All Status</option>
               {STATUS_OPTIONS.map((s) => (
@@ -122,7 +122,7 @@ export default function LeadsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-48">
-          <Loader2 className="w-8 h-8 text-[#F5A623] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#6B3FD9] animate-spin" />
         </div>
       ) : leads.length === 0 ? (
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-16 text-center">
@@ -131,7 +131,7 @@ export default function LeadsPage() {
           <button
             type="button"
             onClick={() => { setEditingLead(null); setShowModal(true); }}
-            className="inline-flex items-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-4 py-2 rounded-lg transition text-sm"
+            className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2 rounded-lg transition text-sm"
           >
             <Plus className="w-4 h-4" /> Add First Lead
           </button>
@@ -269,52 +269,52 @@ function LeadModal({ lead, onClose, onSaved }: {
             <div className="col-span-2">
               <label className="text-sm text-gray-400 mb-1.5 block">Name *</label>
               <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)} required
-                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#F5A623] outline-none text-white" />
+                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white" />
             </div>
             <div>
               <label className="text-sm text-gray-400 mb-1.5 block">Shop Name</label>
               <input type="text" value={form.shop_name} onChange={(e) => set('shop_name', e.target.value)}
-                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#F5A623] outline-none text-white" />
+                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white" />
             </div>
             <div>
               <label className="text-sm text-gray-400 mb-1.5 block">Business Type</label>
               <input type="text" value={form.business_type} onChange={(e) => set('business_type', e.target.value)}
                 placeholder="e.g. Mobile, Grocery"
-                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#F5A623] outline-none text-white" />
+                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white" />
             </div>
             <div>
               <label className="text-sm text-gray-400 mb-1.5 block">Phone</label>
               <input type="text" value={form.phone} onChange={(e) => set('phone', e.target.value)}
-                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#F5A623] outline-none text-white" />
+                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white" />
             </div>
             <div>
               <label className="text-sm text-gray-400 mb-1.5 block">Email</label>
               <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)}
-                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#F5A623] outline-none text-white" />
+                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white" />
             </div>
             <div>
               <label className="text-sm text-gray-400 mb-1.5 block">City</label>
               <input type="text" value={form.city} onChange={(e) => set('city', e.target.value)}
-                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#F5A623] outline-none text-white" />
+                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white" />
             </div>
             <div>
               <label className="text-sm text-gray-400 mb-1.5 block">Status</label>
               <select value={form.status} onChange={(e) => set('status', e.target.value)}
-                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#F5A623] outline-none text-white">
+                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white">
                 {STATUS_OPTIONS.map((s) => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
               </select>
             </div>
             <div>
               <label className="text-sm text-gray-400 mb-1.5 block">Source</label>
               <select value={form.source} onChange={(e) => set('source', e.target.value)}
-                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#F5A623] outline-none text-white">
+                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white">
                 {SOURCE_OPTIONS.map((s) => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
               </select>
             </div>
             <div className="col-span-2">
               <label className="text-sm text-gray-400 mb-1.5 block">Notes</label>
               <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={3}
-                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#F5A623] outline-none text-white resize-none" />
+                className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white resize-none" />
             </div>
           </div>
 
@@ -324,7 +324,7 @@ function LeadModal({ lead, onClose, onSaved }: {
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="flex-1 px-4 py-2.5 bg-[#F5A623] text-black font-semibold rounded-lg hover:bg-[#E09612] transition disabled:opacity-50 inline-flex items-center justify-center gap-2">
+              className="flex-1 px-4 py-2.5 bg-[#6B3FD9] text-black font-semibold rounded-lg hover:bg-[#5A2EC9] transition disabled:opacity-50 inline-flex items-center justify-center gap-2">
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               {lead ? 'Update' : 'Add Lead'}
             </button>
@@ -334,3 +334,4 @@ function LeadModal({ lead, onClose, onSaved }: {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -78,7 +78,7 @@ export default function ProductCard({ product, onCartUpdate }: ProductCardProps)
 
   return (
     <Link href={`/product/${id}`} className="group block">
-      <div className="bg-[#111] border border-[#222] rounded-2xl overflow-hidden transition-all duration-200 hover:border-[#F5A623]/50 hover:shadow-lg hover:shadow-[#F5A623]/10 h-full flex flex-col">
+      <div className="bg-[#111] border border-[#222] rounded-2xl overflow-hidden transition-all duration-200 hover:border-[#6B3FD9]/50 hover:shadow-lg hover:shadow-[#6B3FD9]/10 h-full flex flex-col">
         {/* Image area */}
         <div className="relative aspect-square bg-[#1a1a1a] overflow-hidden">
           {topBadge()}
@@ -110,7 +110,7 @@ export default function ProductCard({ product, onCartUpdate }: ProductCardProps)
           </h3>
 
           <div className="flex items-center justify-between gap-2 mt-auto">
-            <span className="text-[#F5A623] font-bold text-base">{formattedPrice}</span>
+            <span className="text-[#6B3FD9] font-bold text-base">{formattedPrice}</span>
             {stockBadge()}
           </div>
 
@@ -118,8 +118,8 @@ export default function ProductCard({ product, onCartUpdate }: ProductCardProps)
             onClick={handleAddToCart}
             disabled={stock === 0}
             className="w-full mt-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-sm font-semibold transition-all duration-150
-              bg-[#F5A623] text-black hover:bg-[#e8961a] active:scale-95
-              disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#F5A623] disabled:active:scale-100"
+              bg-[#6B3FD9] text-black hover:bg-[#e8961a] active:scale-95
+              disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#6B3FD9] disabled:active:scale-100"
           >
             <ShoppingCart className="w-4 h-4" />
             {stock === 0 ? 'Unavailable' : 'Add to Cart'}
@@ -129,3 +129,4 @@ export default function ProductCard({ product, onCartUpdate }: ProductCardProps)
     </Link>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -154,9 +154,9 @@ function RegisterForm() {
 
       {/* Referral Badge */}
       {refCode && (
-        <div className="bg-[#F5A623]/10 border border-[#F5A623]/30 rounded-lg p-3 mb-4 flex items-center gap-2">
-          <Tag className="w-4 h-4 text-[#F5A623] flex-shrink-0" />
-          <p className="text-[#F5A623] text-sm">
+        <div className="bg-[#6B3FD9]/10 border border-[#6B3FD9]/30 rounded-lg p-3 mb-4 flex items-center gap-2">
+          <Tag className="w-4 h-4 text-[#6B3FD9] flex-shrink-0" />
+          <p className="text-[#6B3FD9] text-sm">
             Referred by <span className="font-semibold">{refCode}</span>
           </p>
         </div>
@@ -177,7 +177,7 @@ function RegisterForm() {
             id="shopName"
             type="text"
             {...register('shopName')}
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition text-sm sm:text-base"
+            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
             placeholder="e.g., My Mobile Store"
           />
           {errors.shopName && (
@@ -193,7 +193,7 @@ function RegisterForm() {
             id="ownerName"
             type="text"
             {...register('ownerName')}
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition text-sm sm:text-base"
+            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
             placeholder="Your full name"
           />
           {errors.ownerName && (
@@ -210,7 +210,7 @@ function RegisterForm() {
               id="email"
               type="email"
               {...register('email')}
-              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition text-sm sm:text-base"
+              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
               placeholder="you@example.com"
             />
             {errors.email && (
@@ -226,7 +226,7 @@ function RegisterForm() {
               id="phone"
               type="tel"
               {...register('phone')}
-              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition text-sm sm:text-base"
+              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
               placeholder="+971 50 123 4567"
             />
             {errors.phone && (
@@ -244,7 +244,7 @@ function RegisterForm() {
             <select
               id="country"
               {...register('country')}
-              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition text-sm sm:text-base appearance-none"
+              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base appearance-none"
             >
               <option value="">Select your country...</option>
               {COUNTRIES.map(c => (
@@ -253,7 +253,7 @@ function RegisterForm() {
             </select>
             {countryObj && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-                <span className="text-xs text-[#F5A623] font-medium bg-[#F5A623]/10 px-2 py-0.5 rounded-full">{countryObj.currency}</span>
+                <span className="text-xs text-[#6B3FD9] font-medium bg-[#6B3FD9]/10 px-2 py-0.5 rounded-full">{countryObj.currency}</span>
               </div>
             )}
           </div>
@@ -261,10 +261,10 @@ function RegisterForm() {
             <p className="text-red-400 text-sm mt-1">{errors.country.message}</p>
           )}
           {countryObj && countryObj.code === 'AE' && (
-            <p className="text-[#F5A623] text-xs mt-1">Pricing shown in AED • Payments via UAE bank cards</p>
+            <p className="text-[#6B3FD9] text-xs mt-1">Pricing shown in AED • Payments via UAE bank cards</p>
           )}
           {countryObj && countryObj.code === 'LK' && (
-            <p className="text-[#F5A623] text-xs mt-1">Pricing shown in LKR • Payments via Sri Lankan bank cards</p>
+            <p className="text-[#6B3FD9] text-xs mt-1">Pricing shown in LKR • Payments via Sri Lankan bank cards</p>
           )}
           {countryObj && countryObj.code !== 'AE' && countryObj.code !== 'LK' && countryObj.code !== '' && (
             <p className="text-gray-400 text-xs mt-1">Pricing shown in USD • International cards accepted</p>
@@ -280,7 +280,7 @@ function RegisterForm() {
               id="password"
               type={showPassword ? 'text' : 'password'}
               {...register('password')}
-              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition pr-12 text-sm sm:text-base"
+              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition pr-12 text-sm sm:text-base"
               placeholder="Min 8 characters"
             />
             <button
@@ -305,7 +305,7 @@ function RegisterForm() {
             id="confirmPassword"
             type="password"
             {...register('confirmPassword')}
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition text-sm sm:text-base"
+            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
             placeholder="Confirm your password"
           />
           {errors.confirmPassword && (
@@ -322,7 +322,7 @@ function RegisterForm() {
             id="refCode"
             type="text"
             {...register('refCode')}
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#F5A623] focus:outline-none transition text-sm sm:text-base uppercase"
+            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base uppercase"
             placeholder="e.g., JOHN8F2A"
           />
         </div>
@@ -332,15 +332,15 @@ function RegisterForm() {
             type="checkbox"
             id="terms"
             required
-            className="w-4 h-4 mt-0.5 rounded border-gray-600 bg-[#0B1121] text-[#F5A623] focus:ring-[#F5A623] focus:ring-offset-0"
+            className="w-4 h-4 mt-0.5 rounded border-gray-600 bg-[#0B1121] text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0"
           />
           <label htmlFor="terms" className="text-sm text-gray-400">
             I agree to the{' '}
-            <Link href="/terms" className="text-[#F5A623] hover:text-[#FFB84D] transition">
+            <Link href="/terms" className="text-[#6B3FD9] hover:text-[#8B5CF6] transition">
               Terms of Service
             </Link>{' '}
             and{' '}
-            <Link href="/privacy" className="text-[#F5A623] hover:text-[#FFB84D] transition">
+            <Link href="/privacy" className="text-[#6B3FD9] hover:text-[#8B5CF6] transition">
               Privacy Policy
             </Link>
           </label>
@@ -349,7 +349,7 @@ function RegisterForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold py-3 sm:py-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
+          className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold py-3 sm:py-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
         >
           {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
           Create Account
@@ -358,7 +358,7 @@ function RegisterForm() {
 
       <p className="text-center mt-6 text-gray-400 text-sm sm:text-base">
         Already have an account?{' '}
-        <Link href="/login" className="text-[#F5A623] font-semibold hover:text-[#FFB84D] transition">
+        <Link href="/login" className="text-[#6B3FD9] font-semibold hover:text-[#8B5CF6] transition">
           Sign in
         </Link>
       </p>
@@ -372,20 +372,20 @@ export default function RegisterPage() {
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#151F32] to-[#0B1121] flex-col justify-between p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-[#F5A623] rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#F5A623] rounded-full blur-3xl" />
+          <div className="absolute top-20 left-20 w-72 h-72 bg-[#6B3FD9] rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#6B3FD9] rounded-full blur-3xl" />
         </div>
 
         <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-2 mb-12">
             <span className="text-2xl font-bold text-white tracking-tight">
-              <span className="text-[#F5A623]">Exius</span>Cart
+              <span className="text-[#6B3FD9]">Exius</span>Cart
             </span>
           </Link>
 
           <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
             Start Your Business<br />
-            <span className="text-[#F5A623]">Journey Today</span>
+            <span className="text-[#6B3FD9]">Journey Today</span>
           </h1>
           <p className="text-gray-400 text-lg mb-8 max-w-md">
             Join thousands of successful retailers using ExiusCart to manage and grow their business.
@@ -394,8 +394,8 @@ export default function RegisterPage() {
           <div className="space-y-4 mb-8">
             {features.map((feature, index) => (
               <div key={index} className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center">
-                  <feature.icon className="w-5 h-5 text-[#F5A623]" />
+                <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+                  <feature.icon className="w-5 h-5 text-[#6B3FD9]" />
                 </div>
                 <span className="text-gray-300">{feature.text}</span>
               </div>
@@ -421,7 +421,7 @@ export default function RegisterPage() {
               <p className="text-gray-500 text-sm">Active Stores</p>
             </div>
             <div className="bg-[#1A2540]/50 rounded-lg p-4 border border-gray-800/50">
-              <p className="text-2xl font-bold text-[#F5A623]">99.9%</p>
+              <p className="text-2xl font-bold text-[#6B3FD9]">99.9%</p>
               <p className="text-gray-500 text-sm">Uptime</p>
             </div>
             <div className="bg-[#1A2540]/50 rounded-lg p-4 border border-gray-800/50">
@@ -448,7 +448,7 @@ export default function RegisterPage() {
           <div className="w-full max-w-md">
             <Link href="/" className="lg:hidden flex items-center justify-center gap-2 mb-8">
               <span className="text-2xl font-bold text-white tracking-tight">
-                <span className="text-[#F5A623]">Exius</span>Cart
+                <span className="text-[#6B3FD9]">Exius</span>Cart
               </span>
             </Link>
 
@@ -462,7 +462,7 @@ export default function RegisterPage() {
                 <p className="text-gray-500 text-xs">Stores</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-[#F5A623]">99.9%</p>
+                <p className="text-lg font-bold text-[#6B3FD9]">99.9%</p>
                 <p className="text-gray-500 text-xs">Uptime</p>
               </div>
               <div>
@@ -476,3 +476,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

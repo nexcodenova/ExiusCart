@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
@@ -120,7 +120,7 @@ export default function HomePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search products..."
-              className="w-full bg-[#111] border border-[#222] rounded-xl pl-9 pr-9 py-2 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#F5A623]/60 transition-colors"
+              className="w-full bg-[#111] border border-[#222] rounded-xl pl-9 pr-9 py-2 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#6B3FD9]/60 transition-colors"
             />
             {search && (
               <button
@@ -134,11 +134,11 @@ export default function HomePage() {
 
           {/* Cart icon */}
           <Link href="/cart" className="relative flex-shrink-0">
-            <div className="p-2 bg-[#111] border border-[#222] rounded-xl hover:border-[#F5A623]/50 transition-colors">
+            <div className="p-2 bg-[#111] border border-[#222] rounded-xl hover:border-[#6B3FD9]/50 transition-colors">
               <ShoppingCart className="w-5 h-5 text-white" />
             </div>
             {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#F5A623] text-black text-[10px] font-extrabold rounded-full flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#6B3FD9] text-black text-[10px] font-extrabold rounded-full flex items-center justify-center">
                 {cartCount > 99 ? '99+' : cartCount}
               </span>
             )}
@@ -152,8 +152,8 @@ export default function HomePage() {
               onClick={() => setActiveCategory('all')}
               className={`flex-shrink-0 text-sm font-semibold px-4 py-1.5 rounded-full border transition-colors ${
                 activeCategory === 'all'
-                  ? 'bg-[#F5A623] text-black border-[#F5A623]'
-                  : 'bg-transparent text-[#999] border-[#333] hover:border-[#F5A623]/50 hover:text-white'
+                  ? 'bg-[#6B3FD9] text-black border-[#6B3FD9]'
+                  : 'bg-transparent text-[#999] border-[#333] hover:border-[#6B3FD9]/50 hover:text-white'
               }`}
             >
               All
@@ -164,8 +164,8 @@ export default function HomePage() {
                 onClick={() => setActiveCategory(cat.slug)}
                 className={`flex-shrink-0 text-sm font-semibold px-4 py-1.5 rounded-full border transition-colors ${
                   activeCategory === cat.slug
-                    ? 'bg-[#F5A623] text-black border-[#F5A623]'
-                    : 'bg-transparent text-[#999] border-[#333] hover:border-[#F5A623]/50 hover:text-white'
+                    ? 'bg-[#6B3FD9] text-black border-[#6B3FD9]'
+                    : 'bg-transparent text-[#999] border-[#333] hover:border-[#6B3FD9]/50 hover:text-white'
                 }`}
               >
                 {cat.name}
@@ -204,3 +204,4 @@ export default function HomePage() {
     </div>
   );
 }
+

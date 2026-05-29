@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import {
@@ -48,7 +48,7 @@ interface ReportsData {
 const PLAN_COLORS: Record<string, string> = {
   starter: 'bg-gray-500',
   business: 'bg-blue-500',
-  pro: 'bg-[#F5A623]',
+  pro: 'bg-[#6B3FD9]',
 };
 
 export default function ReportsPage() {
@@ -74,7 +74,7 @@ export default function ReportsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-[#F5A623]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#6B3FD9]" />
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function ReportsPage() {
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="px-4 py-2.5 bg-[#151F32] border border-gray-700 rounded-lg text-white focus:border-[#F5A623] focus:outline-none transition appearance-none cursor-pointer"
+            className="px-4 py-2.5 bg-[#151F32] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer"
           >
             <option value="last_7_days">Last 7 days</option>
             <option value="last_30_days">Last 30 days</option>
@@ -107,7 +107,7 @@ export default function ReportsPage() {
           </select>
           <button
             type="button"
-            className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-4 py-2.5 rounded-lg transition"
+            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2.5 rounded-lg transition"
           >
             <Download className="w-5 h-5" />
             <span className="hidden sm:inline">Export</span>
@@ -143,7 +143,7 @@ export default function ReportsPage() {
               <h3 className="text-lg font-semibold text-white">Revenue Overview</h3>
               <p className="text-sm text-gray-500">Monthly revenue trend</p>
             </div>
-            <BarChart3 className="w-5 h-5 text-[#F5A623]" />
+            <BarChart3 className="w-5 h-5 text-[#6B3FD9]" />
           </div>
           {monthly.length === 0 ? (
             <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
@@ -157,7 +157,7 @@ export default function ReportsPage() {
                   <div key={item.month} className="flex-1 flex flex-col items-center gap-2">
                     <div
                       className={`w-full rounded-t-lg transition-all ${
-                        index === monthly.length - 1 ? 'bg-[#F5A623]' : 'bg-[#F5A623]/30'
+                        index === monthly.length - 1 ? 'bg-[#6B3FD9]' : 'bg-[#6B3FD9]/30'
                       }`}
                       style={{ height: `${heightPercentage}%` }}
                     />
@@ -184,7 +184,7 @@ export default function ReportsPage() {
               <h3 className="text-lg font-semibold text-white">Plan Distribution</h3>
               <p className="text-sm text-gray-500">Active subscriptions by plan</p>
             </div>
-            <Package className="w-5 h-5 text-[#F5A623]" />
+            <Package className="w-5 h-5 text-[#6B3FD9]" />
           </div>
           {planDist.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-gray-500 text-sm">
@@ -254,7 +254,7 @@ export default function ReportsPage() {
                         <span
                           className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
                             index === 0
-                              ? 'bg-[#F5A623]/10 text-[#F5A623]'
+                              ? 'bg-[#6B3FD9]/10 text-[#6B3FD9]'
                               : index === 1
                               ? 'bg-gray-400/10 text-gray-400'
                               : index === 2
@@ -267,8 +267,8 @@ export default function ReportsPage() {
                       </td>
                       <td className="py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center">
-                            <Store className="w-5 h-5 text-[#F5A623]" />
+                          <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+                            <Store className="w-5 h-5 text-[#6B3FD9]" />
                           </div>
                           <span className="font-medium text-white">{shop.name}</span>
                         </div>
@@ -289,7 +289,7 @@ export default function ReportsPage() {
                   <span
                     className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold flex-shrink-0 ${
                       index === 0
-                        ? 'bg-[#F5A623]/10 text-[#F5A623]'
+                        ? 'bg-[#6B3FD9]/10 text-[#6B3FD9]'
                         : index === 1
                         ? 'bg-gray-400/10 text-gray-400'
                         : index === 2
@@ -354,7 +354,7 @@ function StatCard({
   return (
     <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="p-2 rounded-lg bg-[#F5A623]/10 text-[#F5A623]">{icon}</div>
+        <div className="p-2 rounded-lg bg-[#6B3FD9]/10 text-[#6B3FD9]">{icon}</div>
       </div>
       <p className="text-2xl font-bold text-white">{value}</p>
       <p className="text-sm text-gray-500 mt-1">{label}</p>
@@ -383,3 +383,4 @@ function QuickStatCard({
     </div>
   );
 }
+

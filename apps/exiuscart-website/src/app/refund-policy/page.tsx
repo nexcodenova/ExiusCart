@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowRight, MessageCircle } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
@@ -24,7 +24,7 @@ export default function RefundPolicyPage() {
       {/* Hero Section */}
       <section className="pt-28 pb-12 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-[#F5A623] font-medium mb-4">Legal</p>
+          <p className="text-[#6B3FD9] font-medium mb-4">Legal</p>
           <h1 className="text-4xl md:text-5xl font-bold text-white leading-[1.1] mb-6">
             Refund Policy
           </h1>
@@ -124,19 +124,19 @@ export default function RefundPolicyPage() {
               </p>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
-                  <span className="text-[#F5A623] mt-1">&#8226;</span>
+                  <span className="text-[#6B3FD9] mt-1">&#8226;</span>
                   <span className="text-gray-400 text-sm">Custom development or integration services</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-[#F5A623] mt-1">&#8226;</span>
+                  <span className="text-[#6B3FD9] mt-1">&#8226;</span>
                   <span className="text-gray-400 text-sm">Setup and training services</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-[#F5A623] mt-1">&#8226;</span>
+                  <span className="text-[#6B3FD9] mt-1">&#8226;</span>
                   <span className="text-gray-400 text-sm">Add-on modules purchased separately after the initial 7-day period</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-[#F5A623] mt-1">&#8226;</span>
+                  <span className="text-[#6B3FD9] mt-1">&#8226;</span>
                   <span className="text-gray-400 text-sm">Accounts terminated due to policy violations</span>
                 </li>
               </ul>
@@ -202,7 +202,7 @@ export default function RefundPolicyPage() {
               </p>
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-8 py-3 rounded-lg transition-all"
+                className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-3 rounded-lg transition-all"
               >
                 Contact Us
                 <ArrowRight className="w-4 h-4" />
@@ -216,3 +216,4 @@ export default function RefundPolicyPage() {
     </div>
   );
 }
+

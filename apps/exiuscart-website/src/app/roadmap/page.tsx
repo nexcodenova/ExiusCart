@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowRight, CheckCircle, Clock, Rocket, Sparkles, Target, Calendar, MessageCircle } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
@@ -24,13 +24,13 @@ export default function RoadmapPage() {
       {/* Hero Section */}
       <section className="pt-28 pb-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#F5A623]/10 text-[#F5A623] text-sm font-medium px-4 py-2 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 bg-[#6B3FD9]/10 text-[#6B3FD9] text-sm font-medium px-4 py-2 rounded-full mb-6">
             <Rocket className="w-4 h-4" />
             Product Roadmap
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.1] mb-6">
             Building the Future of
-            <span className="block text-[#F5A623]">Small Business Tools</span>
+            <span className="block text-[#6B3FD9]">Small Business Tools</span>
           </h1>
           <p className="text-lg text-gray-400 leading-relaxed max-w-2xl mx-auto">
             See what we&apos;re working on and what&apos;s coming next. Your feedback
@@ -46,16 +46,16 @@ export default function RoadmapPage() {
           {/* Q1 2026 - In Progress */}
           <div className="mb-16">
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-12 h-12 bg-[#F5A623]/20 rounded-xl flex items-center justify-center">
-                <Clock className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/20 rounded-xl flex items-center justify-center">
+                <Clock className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-white">Q1 2026</h2>
-                <p className="text-[#F5A623] text-sm font-medium">In Progress</p>
+                <p className="text-[#6B3FD9] text-sm font-medium">In Progress</p>
               </div>
             </div>
 
-            <div className="space-y-4 pl-6 border-l-2 border-[#F5A623]/30">
+            <div className="space-y-4 pl-6 border-l-2 border-[#6B3FD9]/30">
               <RoadmapItem
                 status="in-progress"
                 title="Online Store Integration"
@@ -193,7 +193,7 @@ export default function RoadmapPage() {
       {/* Feature Request CTA */}
       <section className="py-20 px-4 bg-[#0D1526]">
         <div className="max-w-3xl mx-auto text-center">
-          <Calendar className="w-12 h-12 text-[#F5A623] mx-auto mb-6" />
+          <Calendar className="w-12 h-12 text-[#6B3FD9] mx-auto mb-6" />
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Have a Feature Request?
           </h2>
@@ -244,10 +244,10 @@ function RoadmapItem({
       dot: 'bg-green-500',
     },
     'in-progress': {
-      bg: 'bg-[#F5A623]/10',
-      text: 'text-[#F5A623]',
+      bg: 'bg-[#6B3FD9]/10',
+      text: 'text-[#6B3FD9]',
       label: 'In Progress',
-      dot: 'bg-[#F5A623]',
+      dot: 'bg-[#6B3FD9]',
     },
     'planned': {
       bg: 'bg-purple-500/10',
@@ -278,3 +278,4 @@ function RoadmapItem({
     </div>
   );
 }
+

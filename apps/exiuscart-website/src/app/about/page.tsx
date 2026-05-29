@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowRight, Target, Rocket, Globe, Users, Code, Zap, ShieldCheck, Heart, MapPin, Building2, TrendingUp } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
@@ -24,10 +24,10 @@ export default function AboutPage() {
       {/* Hero Section */}
       <section className="pt-28 pb-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-[#F5A623] font-medium mb-4">About Us</p>
+          <p className="text-[#6B3FD9] font-medium mb-4">About Us</p>
           <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.1] mb-6">
             Building the Future of
-            <span className="block text-[#F5A623]">Small Business Technology</span>
+            <span className="block text-[#6B3FD9]">Small Business Technology</span>
           </h1>
           <p className="text-lg text-gray-400 leading-relaxed max-w-2xl mx-auto">
             ExiusCart is built by NexCodeNova — a passionate tech company on a mission
@@ -42,7 +42,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <p className="text-[#F5A623] font-medium mb-3">Our Story</p>
+              <p className="text-[#6B3FD9] font-medium mb-3">Our Story</p>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
                 From Sri Lanka to the UAE — and beyond
               </h2>
@@ -67,28 +67,28 @@ export default function AboutPage() {
 
             <div className="space-y-6">
               {/* Timeline */}
-              <div className="relative pl-8 border-l-2 border-[#F5A623]/30 space-y-8">
+              <div className="relative pl-8 border-l-2 border-[#6B3FD9]/30 space-y-8">
                 <div className="relative">
-                  <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]"></div>
-                  <p className="text-[#F5A623] font-semibold text-sm">Founded</p>
+                  <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]"></div>
+                  <p className="text-[#6B3FD9] font-semibold text-sm">Founded</p>
                   <h3 className="text-white font-semibold text-lg">NexCodeNova Established</h3>
                   <p className="text-gray-500 text-sm">Started as a software development company in Sri Lanka</p>
                 </div>
                 <div className="relative">
-                  <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]"></div>
-                  <p className="text-[#F5A623] font-semibold text-sm">Product Launch</p>
+                  <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]"></div>
+                  <p className="text-[#6B3FD9] font-semibold text-sm">Product Launch</p>
                   <h3 className="text-white font-semibold text-lg">ExiusCart v1.0 Released</h3>
                   <p className="text-gray-500 text-sm">First version launched for UAE small businesses</p>
                 </div>
                 <div className="relative">
-                  <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]"></div>
-                  <p className="text-[#F5A623] font-semibold text-sm">Expansion</p>
+                  <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]"></div>
+                  <p className="text-[#6B3FD9] font-semibold text-sm">Expansion</p>
                   <h3 className="text-white font-semibold text-lg">Dubai Office &amp; Multi-Region</h3>
                   <p className="text-gray-500 text-sm">Expanding to Dubai with support for multiple currencies</p>
                 </div>
                 <div className="relative">
-                  <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]/50"></div>
-                  <p className="text-[#F5A623] font-semibold text-sm">What&apos;s Next</p>
+                  <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]/50"></div>
+                  <p className="text-[#6B3FD9] font-semibold text-sm">What&apos;s Next</p>
                   <h3 className="text-white font-semibold text-lg">Growing Across the Region</h3>
                   <p className="text-gray-500 text-sm">Expanding to Saudi Arabia, India, and more markets</p>
                 </div>
@@ -103,8 +103,8 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8">
-              <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-6">
-                <Target className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-6">
+                <Target className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-4">Our Mission</h3>
               <p className="text-gray-400 leading-relaxed">
@@ -115,8 +115,8 @@ export default function AboutPage() {
               </p>
             </div>
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8">
-              <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-6">
-                <Rocket className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-6">
+                <Rocket className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-4">Our Vision</h3>
               <p className="text-gray-400 leading-relaxed">
@@ -134,7 +134,7 @@ export default function AboutPage() {
       <section className="py-20 px-4 bg-[#0D1526]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-[#F5A623] font-medium mb-3">What Drives Us</p>
+            <p className="text-[#6B3FD9] font-medium mb-3">What Drives Us</p>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Our Core Values
             </h2>
@@ -145,29 +145,29 @@ export default function AboutPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center">
-              <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <h3 className="text-white font-semibold mb-2">Customer First</h3>
               <p className="text-gray-500 text-sm">Every feature we build starts with a real customer need</p>
             </div>
             <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center">
-              <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <h3 className="text-white font-semibold mb-2">Simplicity</h3>
               <p className="text-gray-500 text-sm">Powerful doesn&apos;t have to mean complicated</p>
             </div>
             <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center">
-              <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <ShieldCheck className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <ShieldCheck className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <h3 className="text-white font-semibold mb-2">Trust & Quality</h3>
               <p className="text-gray-500 text-sm">We ship reliable software you can count on</p>
             </div>
             <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center">
-              <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Globe className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Globe className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <h3 className="text-white font-semibold mb-2">Local Focus</h3>
               <p className="text-gray-500 text-sm">Built for local regulations, languages, and workflows</p>
@@ -181,19 +181,19 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <p className="text-4xl md:text-5xl font-bold text-[#F5A623] mb-2">50+</p>
+              <p className="text-4xl md:text-5xl font-bold text-[#6B3FD9] mb-2">50+</p>
               <p className="text-gray-400">Active Businesses</p>
             </div>
             <div className="text-center">
-              <p className="text-4xl md:text-5xl font-bold text-[#F5A623] mb-2">5+</p>
+              <p className="text-4xl md:text-5xl font-bold text-[#6B3FD9] mb-2">5+</p>
               <p className="text-gray-400">Countries Served</p>
             </div>
             <div className="text-center">
-              <p className="text-4xl md:text-5xl font-bold text-[#F5A623] mb-2">10K+</p>
+              <p className="text-4xl md:text-5xl font-bold text-[#6B3FD9] mb-2">10K+</p>
               <p className="text-gray-400">Invoices Generated</p>
             </div>
             <div className="text-center">
-              <p className="text-4xl md:text-5xl font-bold text-[#F5A623] mb-2">99%</p>
+              <p className="text-4xl md:text-5xl font-bold text-[#6B3FD9] mb-2">99%</p>
               <p className="text-gray-400">Uptime Guarantee</p>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function AboutPage() {
       <section className="py-20 px-4 bg-[#0D1526]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-[#F5A623] font-medium mb-3">Our Presence</p>
+            <p className="text-[#6B3FD9] font-medium mb-3">Our Presence</p>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Where We Operate
             </h2>
@@ -216,8 +216,8 @@ export default function AboutPage() {
           <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-[#F5A623]" />
+                <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-[#6B3FD9]" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">Sri Lanka</h3>
@@ -231,8 +231,8 @@ export default function AboutPage() {
             </div>
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-[#F5A623]/10 rounded-lg flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-[#F5A623]" />
+                <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-[#6B3FD9]" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">Dubai, UAE</h3>
@@ -252,7 +252,7 @@ export default function AboutPage() {
       <section className="py-20 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-[#F5A623] font-medium mb-3">NexCodeNova</p>
+            <p className="text-[#6B3FD9] font-medium mb-3">NexCodeNova</p>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Part of the NexCodeNova Family
             </h2>
@@ -263,14 +263,14 @@ export default function AboutPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-[#151F32] rounded-2xl border border-[#F5A623]/30 p-8 relative">
+            <div className="bg-[#151F32] rounded-2xl border border-[#6B3FD9]/30 p-8 relative">
               <div className="absolute top-4 right-4">
-                <span className="bg-[#F5A623]/10 text-[#F5A623] text-xs font-medium px-3 py-1 rounded-full">
+                <span className="bg-[#6B3FD9]/10 text-[#6B3FD9] text-xs font-medium px-3 py-1 rounded-full">
                   Flagship
                 </span>
               </div>
-              <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-6">
-                <TrendingUp className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-6">
+                <TrendingUp className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">ExiusCart</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -279,8 +279,8 @@ export default function AboutPage() {
               </p>
             </div>
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8">
-              <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-6">
-                <Code className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-6">
+                <Code className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Custom Development</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -289,8 +289,8 @@ export default function AboutPage() {
               </p>
             </div>
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8">
-              <div className="w-12 h-12 bg-[#F5A623]/10 rounded-xl flex items-center justify-center mb-6">
-                <Users className="w-6 h-6 text-[#F5A623]" />
+              <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-6">
+                <Users className="w-6 h-6 text-[#6B3FD9]" />
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Consulting</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
@@ -315,7 +315,7 @@ export default function AboutPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
             >
               Start 7-Day Free Trial
               <ArrowRight className="w-5 h-5" />
@@ -337,3 +337,4 @@ export default function AboutPage() {
     </div>
   );
 }
+

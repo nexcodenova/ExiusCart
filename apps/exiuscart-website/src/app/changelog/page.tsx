@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowRight, Zap, Bug, Sparkles, Shield } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
@@ -24,10 +24,10 @@ export default function ChangelogPage() {
       {/* Hero Section */}
       <section className="pt-28 pb-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-[#F5A623] font-medium mb-4">Changelog</p>
+          <p className="text-[#6B3FD9] font-medium mb-4">Changelog</p>
           <h1 className="text-4xl md:text-5xl font-bold text-white leading-[1.1] mb-6">
             What&apos;s New in
-            <span className="text-[#F5A623]"> ExiusCart</span>
+            <span className="text-[#6B3FD9]"> ExiusCart</span>
           </h1>
           <p className="text-lg text-gray-400 leading-relaxed max-w-2xl mx-auto">
             We&apos;re constantly improving ExiusCart. Here&apos;s what&apos;s been
@@ -39,13 +39,13 @@ export default function ChangelogPage() {
       {/* Changelog Entries */}
       <section className="py-12 px-4">
         <div className="max-w-3xl mx-auto">
-          <div className="relative pl-8 border-l-2 border-[#F5A623]/20 space-y-16">
+          <div className="relative pl-8 border-l-2 border-[#6B3FD9]/20 space-y-16">
 
             {/* v2.5 */}
             <div className="relative">
-              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]"></div>
+              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]"></div>
               <div className="flex items-center gap-3 mb-4">
-                <span className="bg-[#F5A623]/10 text-[#F5A623] text-sm font-bold px-3 py-1 rounded-lg">v2.5</span>
+                <span className="bg-[#6B3FD9]/10 text-[#6B3FD9] text-sm font-bold px-3 py-1 rounded-lg">v2.5</span>
                 <span className="text-gray-500 text-sm">January 2026</span>
                 <span className="bg-green-500/10 text-green-400 text-xs font-medium px-2 py-0.5 rounded">Latest</span>
               </div>
@@ -64,7 +64,7 @@ export default function ChangelogPage() {
                   <span className="text-gray-400 text-sm">Region-specific pricing plans for each market</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <Zap className="w-4 h-4 text-[#F5A623] mt-1 flex-shrink-0" />
+                  <Zap className="w-4 h-4 text-[#6B3FD9] mt-1 flex-shrink-0" />
                   <span className="text-gray-400 text-sm">Improved pricing page with monthly/one-time toggle</span>
                 </div>
               </div>
@@ -72,9 +72,9 @@ export default function ChangelogPage() {
 
             {/* v2.4 */}
             <div className="relative">
-              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]/60"></div>
+              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]/60"></div>
               <div className="flex items-center gap-3 mb-4">
-                <span className="bg-[#F5A623]/10 text-[#F5A623] text-sm font-bold px-3 py-1 rounded-lg">v2.4</span>
+                <span className="bg-[#6B3FD9]/10 text-[#6B3FD9] text-sm font-bold px-3 py-1 rounded-lg">v2.4</span>
                 <span className="text-gray-500 text-sm">December 2025</span>
               </div>
               <h3 className="text-xl font-bold text-white mb-4">WhatsApp Order Management</h3>
@@ -88,7 +88,7 @@ export default function ChangelogPage() {
                   <span className="text-gray-400 text-sm">Automated order confirmation and receipt sending via WhatsApp</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <Zap className="w-4 h-4 text-[#F5A623] mt-1 flex-shrink-0" />
+                  <Zap className="w-4 h-4 text-[#6B3FD9] mt-1 flex-shrink-0" />
                   <span className="text-gray-400 text-sm">Product catalog sharing through WhatsApp links</span>
                 </div>
                 <div className="flex items-start gap-3">
@@ -100,9 +100,9 @@ export default function ChangelogPage() {
 
             {/* v2.3 */}
             <div className="relative">
-              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]/60"></div>
+              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]/60"></div>
               <div className="flex items-center gap-3 mb-4">
-                <span className="bg-[#F5A623]/10 text-[#F5A623] text-sm font-bold px-3 py-1 rounded-lg">v2.3</span>
+                <span className="bg-[#6B3FD9]/10 text-[#6B3FD9] text-sm font-bold px-3 py-1 rounded-lg">v2.3</span>
                 <span className="text-gray-500 text-sm">November 2025</span>
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Advanced Reporting</h3>
@@ -116,7 +116,7 @@ export default function ChangelogPage() {
                   <span className="text-gray-400 text-sm">Export reports as PDF and Excel with custom date ranges</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <Zap className="w-4 h-4 text-[#F5A623] mt-1 flex-shrink-0" />
+                  <Zap className="w-4 h-4 text-[#6B3FD9] mt-1 flex-shrink-0" />
                   <span className="text-gray-400 text-sm">Improved inventory report with stock movement history</span>
                 </div>
                 <div className="flex items-start gap-3">
@@ -128,9 +128,9 @@ export default function ChangelogPage() {
 
             {/* v2.2 */}
             <div className="relative">
-              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]/40"></div>
+              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]/40"></div>
               <div className="flex items-center gap-3 mb-4">
-                <span className="bg-[#F5A623]/10 text-[#F5A623] text-sm font-bold px-3 py-1 rounded-lg">v2.2</span>
+                <span className="bg-[#6B3FD9]/10 text-[#6B3FD9] text-sm font-bold px-3 py-1 rounded-lg">v2.2</span>
                 <span className="text-gray-500 text-sm">October 2025</span>
               </div>
               <h3 className="text-xl font-bold text-white mb-4">Inventory Improvements</h3>
@@ -144,7 +144,7 @@ export default function ChangelogPage() {
                   <span className="text-gray-400 text-sm">Barcode scanning for quick product lookup</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <Zap className="w-4 h-4 text-[#F5A623] mt-1 flex-shrink-0" />
+                  <Zap className="w-4 h-4 text-[#6B3FD9] mt-1 flex-shrink-0" />
                   <span className="text-gray-400 text-sm">Bulk product import via Excel upload</span>
                 </div>
                 <div className="flex items-start gap-3">
@@ -156,9 +156,9 @@ export default function ChangelogPage() {
 
             {/* v2.1 */}
             <div className="relative">
-              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]/40"></div>
+              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]/40"></div>
               <div className="flex items-center gap-3 mb-4">
-                <span className="bg-[#F5A623]/10 text-[#F5A623] text-sm font-bold px-3 py-1 rounded-lg">v2.1</span>
+                <span className="bg-[#6B3FD9]/10 text-[#6B3FD9] text-sm font-bold px-3 py-1 rounded-lg">v2.1</span>
                 <span className="text-gray-500 text-sm">September 2025</span>
               </div>
               <h3 className="text-xl font-bold text-white mb-4">POS &amp; Invoicing Updates</h3>
@@ -172,11 +172,11 @@ export default function ChangelogPage() {
                   <span className="text-gray-400 text-sm">Thermal printer support for receipt printing</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <Zap className="w-4 h-4 text-[#F5A623] mt-1 flex-shrink-0" />
+                  <Zap className="w-4 h-4 text-[#6B3FD9] mt-1 flex-shrink-0" />
                   <span className="text-gray-400 text-sm">Faster checkout flow with quick product search</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <Zap className="w-4 h-4 text-[#F5A623] mt-1 flex-shrink-0" />
+                  <Zap className="w-4 h-4 text-[#6B3FD9] mt-1 flex-shrink-0" />
                   <span className="text-gray-400 text-sm">Arabic language support for invoices</span>
                 </div>
               </div>
@@ -184,9 +184,9 @@ export default function ChangelogPage() {
 
             {/* v2.0 */}
             <div className="relative">
-              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#F5A623]/30"></div>
+              <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full bg-[#6B3FD9]/30"></div>
               <div className="flex items-center gap-3 mb-4">
-                <span className="bg-[#F5A623]/10 text-[#F5A623] text-sm font-bold px-3 py-1 rounded-lg">v2.0</span>
+                <span className="bg-[#6B3FD9]/10 text-[#6B3FD9] text-sm font-bold px-3 py-1 rounded-lg">v2.0</span>
                 <span className="text-gray-500 text-sm">August 2025</span>
               </div>
               <h3 className="text-xl font-bold text-white mb-4">ExiusCart 2.0 Launch</h3>
@@ -221,7 +221,7 @@ export default function ChangelogPage() {
                 <span className="text-gray-400 text-sm">New Feature</span>
               </div>
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[#F5A623]" />
+                <Zap className="w-4 h-4 text-[#6B3FD9]" />
                 <span className="text-gray-400 text-sm">Improvement</span>
               </div>
               <div className="flex items-center gap-2">
@@ -249,7 +249,7 @@ export default function ChangelogPage() {
           </p>
           <Link
             href="/register"
-            className="inline-flex items-center justify-center gap-2 bg-[#F5A623] hover:bg-[#E09612] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
+            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
           >
             Start 7-Day Free Trial
             <ArrowRight className="w-5 h-5" />
@@ -261,3 +261,4 @@ export default function ChangelogPage() {
     </div>
   );
 }
+
