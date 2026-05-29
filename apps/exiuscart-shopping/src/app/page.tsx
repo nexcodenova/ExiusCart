@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ShoppingCart, Search, X } from 'lucide-react';
 import { shoppingApi, cartApi, Product, Category } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
@@ -103,9 +104,10 @@ export default function HomePage() {
       <header className="sticky top-0 z-50 bg-[#0a0a0a]/90 backdrop-blur border-b border-[#1a1a1a]">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0">
+          <Link href="/" className="flex-shrink-0 flex items-center gap-2">
+            <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} />
             <span className="text-xl font-extrabold tracking-tight">
-              <span className="text-[#F5A623]">Exius</span>
+              <span className="text-[#6B3FD9]">Exius</span>
               <span className="text-white">Cart</span>
             </span>
           </Link>

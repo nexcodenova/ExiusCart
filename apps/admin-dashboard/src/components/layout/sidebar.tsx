@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -47,12 +48,11 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
         <Link href="/dashboard" className="flex items-center gap-2">
-          {!collapsed ? (
+          <Image src="/logo.svg" alt="ExiusCart" width={32} height={32} className="flex-shrink-0" />
+          {!collapsed && (
             <span className="text-xl font-bold text-white tracking-tight">
-              <span className="text-[#F5A623]">Exius</span>Cart
+              <span className="text-[#6B3FD9]">Exius</span>Cart
             </span>
-          ) : (
-            <span className="text-xl font-bold text-[#F5A623]">E</span>
           )}
         </Link>
         <button
