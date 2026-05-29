@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { MessageCircle, Instagram, Facebook, Linkedin, Mail, MapPin } from 'lucide-react';
 
 export function Footer() {
@@ -8,9 +9,10 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2">
-            <Link href="/" className="inline-block mb-4">
+            <Link href="/" className="inline-flex items-center gap-2 mb-4">
+              <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} />
               <span className="text-xl font-bold text-white tracking-tight">
-                <span className="text-[#F5A623]">Exius</span>Cart
+                <span className="text-[#6B3FD9]">Exius</span>Cart
               </span>
             </Link>
             <p className="text-gray-500 text-sm leading-relaxed max-w-xs mb-6">

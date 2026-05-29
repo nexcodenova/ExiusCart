@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { Menu, X, ArrowRight } from 'lucide-react';
 
@@ -23,8 +24,9 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo.svg" alt="ExiusCart" width={32} height={32} className="flex-shrink-0" />
             <span className="text-xl font-bold text-white tracking-tight">
-              <span className="text-[#F5A623]">Exius</span>Cart
+              <span className="text-[#6B3FD9]">Exius</span>Cart
             </span>
           </Link>
 
