@@ -23,6 +23,7 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: int
     is_active: bool
+    is_superuser: bool = False
     created_at: datetime
 
     class Config:
@@ -37,4 +38,5 @@ class UserUpdate(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    is_superuser: bool = False
     user: UserResponse

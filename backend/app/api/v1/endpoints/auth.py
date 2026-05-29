@@ -61,5 +61,6 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
 
     return Token(
         access_token=access_token,
+        is_superuser=user.is_superuser,
         user=UserResponse.model_validate(user)
     )
