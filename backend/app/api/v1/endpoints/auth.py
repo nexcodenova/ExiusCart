@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from slugify import slugify
+import uuid
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.models.user import User
+from app.models.shop import Shop
 from app.schemas.user import UserCreate, UserResponse, UserLogin, Token
 
 router = APIRouter()
@@ -10,7 +13,6 @@ router = APIRouter()
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    # Check if user exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(
@@ -18,23 +20,37 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
 
-    # Create new user
+    display_name = user_data.owner_name or user_data.full_name or "Shop Owner"
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
         email=user_data.email,
         hashed_password=hashed_password,
-        full_name=user_data.full_name,
+        full_name=display_name,
         phone=user_data.phone,
         referred_by_code=user_data.ref_code or None,
         country=user_data.country or None,
     )
     db.add(new_user)
+    db.flush()
+
+    # Auto-create shop if shop_name provided
+    if user_data.shop_name:
+        base_slug = slugify(user_data.shop_name)
+        slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
+        currency = "AED" if user_data.country == "AE" else "LKR" if user_data.country == "LK" else "USD"
+        shop = Shop(
+            name=user_data.shop_name,
+            slug=slug,
+            owner_id=new_user.id,
+            currency=currency,
+            country=user_data.country or "UAE",
+        )
+        db.add(shop)
+
     db.commit()
     db.refresh(new_user)
 
-    # Create access token
     access_token = create_access_token(data={"sub": str(new_user.id)})
-
     return Token(
         access_token=access_token,
         user=UserResponse.model_validate(new_user)

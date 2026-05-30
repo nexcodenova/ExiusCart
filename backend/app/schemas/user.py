@@ -9,10 +9,15 @@ class UserBase(BaseModel):
     phone: Optional[str] = None
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
+    email: EmailStr
+    full_name: Optional[str] = None
+    owner_name: Optional[str] = None  # alias sent by registration form
+    phone: Optional[str] = None
     password: str
-    ref_code: Optional[str] = None  # affiliate referral code
+    ref_code: Optional[str] = None
     country: Optional[str] = None
+    shop_name: Optional[str] = None  # creates a shop on registration
 
 
 class UserLogin(BaseModel):
