@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
@@ -210,10 +211,12 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
           <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
-            {!collapsed
-              ? <span className="text-xl font-bold text-foreground tracking-tight"><span className="text-primary">Exius</span>Cart</span>
-              : <span className="text-xl font-bold text-primary">E</span>
-            }
+            <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} className="flex-shrink-0" />
+            {!collapsed && (
+              <span className="text-xl font-bold text-foreground tracking-tight">
+                <span className="text-primary">Exius</span>Cart
+              </span>
+            )}
           </Link>
           <button type="button" onClick={onMobileClose} aria-label="Close sidebar"
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition lg:hidden">
@@ -318,8 +321,16 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 border-t border-border bg-card">
           <div className="p-3">
-            <button type="button" aria-label="Logout"
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive w-full transition ${collapsed ? 'justify-center' : ''}`}>
+            <button
+              type="button"
+              aria-label="Logout"
+              onClick={() => {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+              }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive w-full transition ${collapsed ? 'justify-center' : ''}`}
+            >
               <LogOut className="w-5 h-5 flex-shrink-0" />
               {!collapsed && <span className="font-medium text-sm">Logout</span>}
             </button>
