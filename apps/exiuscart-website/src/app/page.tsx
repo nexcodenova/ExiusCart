@@ -1,12 +1,10 @@
 ﻿import Link from 'next/link';
-import Image from 'next/image';
 import type { Metadata } from 'next';
 import { ArrowRight, Check, Star, Quote } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { PricingPreview } from '@/components/ui/pricing-preview';
 import { PromoBanner } from '@/components/ui/promo-banner';
-import { RunningPromoBanner } from '@/components/ui/running-promo-banner';
 
 export const metadata: Metadata = {
   title: 'ExiusCart - Smart Business Management for Small Shops | POS, Invoicing & WhatsApp Orders',
@@ -24,123 +22,116 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#0B1121]">
       <Navbar />
-      <PromoBanner />
 
-      {/* Hero Section */}
-      <section className="pt-28 pb-16 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left Content */}
-            <div>
-              <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.1]">
-                Manage Your
-                <span className="block text-[#6B3FD9]">Small Business</span>
-                <span className="block">With Ease</span>
-              </h1>
-              <p className="mt-6 text-lg text-gray-400 leading-relaxed">
-                All-in-one business solution for UAE shops. Create invoices,
-                track inventory, receive WhatsApp orders — affordable pricing
-                designed for small businesses.
-              </p>
-              <div className="mt-10 flex flex-col sm:flex-row gap-4">
-                <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-4 rounded-lg transition-all"
-                >
-                  Get Started
-                  <ArrowRight className="w-5 h-5" />
-                </Link>
-                <Link
-                  href="/pricing"
-                  className="inline-flex items-center justify-center gap-2 bg-transparent hover:bg-white/5 text-white font-semibold px-8 py-4 rounded-lg transition-all border border-gray-700"
-                >
-                  View Pricing
-                </Link>
-              </div>
+      {/* Hero Section — desktop uses landscape, mobile uses portrait image */}
+      <section
+        className="relative w-full flex"
+        style={{
+          marginTop: '64px',
+          height: 'calc(100vh - 64px)',
+          backgroundColor: '#04060f',
+        }}
+      >
+        {/* Desktop background (lg+) */}
+        <div className="absolute inset-0 hidden lg:block" style={{
+          backgroundImage: 'url(/hero-blank.png)',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center center',
+          backgroundSize: 'cover',
+        }} />
+        {/* Mobile background */}
+        <div className="absolute inset-0 lg:hidden" style={{
+          backgroundImage: 'url(/hero-mobile.png)',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+          backgroundSize: 'cover',
+        }} />
 
-            </div>
+        {/* Desktop gradient overlay */}
+        <div className="absolute inset-0 hidden lg:block" style={{ background: 'linear-gradient(90deg, rgba(4,6,15,0.93) 36%, rgba(4,6,15,0.15) 65%, transparent 100%)' }} />
+        {/* Mobile gradient overlay — dark top for text, fades to reveal devices */}
+        <div className="absolute inset-0 lg:hidden" style={{ background: 'linear-gradient(180deg, rgba(4,6,15,0.92) 45%, rgba(4,6,15,0.2) 75%, transparent 100%)' }} />
 
-            {/* Right - Product Preview - Laptop + Mobile Mockup */}
-            <div className="relative hidden lg:block">
-              <div className="relative">
-                {/* Laptop Frame */}
-                <div className="relative">
-                  {/* Laptop Screen */}
-                  <div className="bg-[#1a1a1a] rounded-t-xl p-2 pb-0 relative shadow-2xl">
-                    {/* Screen bezel */}
-                    <div className="bg-[#0B1121] rounded-t-lg overflow-hidden border border-gray-700">
-                      {/* Browser header */}
-                      <div className="bg-[#1A2540] px-4 py-2 flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#27CA40]"></div>
-                        <div className="ml-4 flex-1 bg-[#0B1121] rounded px-3 py-1 text-xs text-gray-500">
-                          app.exiuscart.com
-                        </div>
-                      </div>
-                      {/* Dashboard screenshot */}
-                      <Image
-                        src="/images/dashboard-preview.png"
-                        alt="ExiusCart Dashboard Preview"
-                        width={600}
-                        height={380}
-                        className="w-full h-auto"
-                        priority
-                      />
-                    </div>
-                  </div>
-                  {/* Laptop base/keyboard */}
-                  <div className="bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] h-4 rounded-b-lg relative">
-                    {/* Notch */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-1.5 bg-[#1a1a1a] rounded-b-lg"></div>
-                  </div>
-                  {/* Laptop bottom stand */}
-                  <div className="bg-gradient-to-b from-[#333] to-[#222] h-2 mx-12 rounded-b-xl"></div>
-                </div>
+        {/* Desktop text — left aligned, vertically centered */}
+        <div className="relative z-10 hidden lg:flex flex-col justify-center px-16 max-w-lg">
+          <p className="text-white/50 text-sm font-medium tracking-widest uppercase mb-3">All-in-One</p>
+          <h1 className="text-5xl xl:text-[3.25rem] font-bold leading-[1.1] mb-5">
+            <span className="text-[#7B4FE9]">Business<br />Management</span>
+            <br /><span className="text-white">Platform</span>
+          </h1>
+          <p className="text-gray-400 text-base leading-relaxed mb-8 max-w-sm">
+            Invoicing, inventory, orders, marketing &amp; more — all in one place. Built for UAE &amp; worldwide small and medium businesses.
+          </p>
+          <Link
+            href="/register"
+            className="inline-flex items-center justify-between gap-4 text-white font-bold px-6 py-4 rounded-xl transition-all hover:scale-105 hover:shadow-xl hover:shadow-purple-900/40 mb-4 self-start"
+            style={{
+              minWidth: '230px',
+              background: 'linear-gradient(135deg, #7B4FE9 0%, #5A2EC9 60%, #4A1FB8 100%)',
+              boxShadow: '0 4px 24px rgba(107,63,217,0.4)',
+            }}
+          >
+            <span className="text-base">Start Free Trial</span>
+            <span className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 border border-white/20">
+              <ArrowRight className="w-5 h-5" />
+            </span>
+          </Link>
+          <p className="text-gray-500 text-sm flex items-center gap-2">
+            <span className="text-[#7B4FE9]">⊕</span>
+            No credit card required &nbsp;•&nbsp; Cancel anytime
+          </p>
+        </div>
 
-                {/* Mobile Phone - Smaller, positioned at bottom-right of laptop */}
-                <div className="absolute right-4 -bottom-6 w-28 z-10">
-                  {/* Phone Frame */}
-                  <div className="bg-[#1a1a1a] rounded-[1.25rem] p-1.5 shadow-2xl border border-gray-700">
-                    {/* Phone screen */}
-                    <div className="bg-[#0B1121] rounded-[1rem] overflow-hidden relative">
-                      {/* Notch */}
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-3 bg-[#1a1a1a] rounded-b-xl z-10"></div>
-                      {/* Mobile app screenshot */}
-                      <Image
-                        src="/images/dashboard-preview-mobile.png"
-                        alt="ExiusCart Mobile App"
-                        width={120}
-                        height={240}
-                        className="w-full h-auto"
-                      />
-                    </div>
-                    {/* Home indicator */}
-                    <div className="flex justify-center py-1">
-                      <div className="w-12 h-0.5 bg-gray-600 rounded-full"></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Connection line between laptop and mobile */}
-                <svg className="absolute right-20 -bottom-2 w-16 h-12 z-0" viewBox="0 0 80 60">
-                  <path
-                    d="M 0 10 Q 40 10, 60 40 T 80 50"
-                    fill="none"
-                    stroke="#6B3FD9"
-                    strokeWidth="2"
-                    strokeDasharray="4 4"
-                    opacity="0.5"
-                  />
-                  <circle cx="0" cy="10" r="3" fill="#6B3FD9" opacity="0.7" />
-                  <circle cx="80" cy="50" r="3" fill="#6B3FD9" opacity="0.7" />
-                </svg>
-              </div>
-            </div>
+        {/* Mobile hero — matches reference design */}
+        <div className="relative z-10 lg:hidden flex flex-col w-full pt-6 px-5">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 self-start mb-6 px-4 py-2 rounded-full border border-[#7B4FE9]/50 bg-[#7B4FE9]/10">
+            <span className="text-yellow-400 text-sm">★</span>
+            <span className="text-white/80 text-sm font-medium">All-in-One Business Management</span>
           </div>
 
-          {/* Running Promo Banner - Centered */}
-          <RunningPromoBanner />
+          {/* Headline */}
+          <h1 className="text-[2.6rem] font-extrabold leading-[1.05] mb-4">
+            <span className="text-white">Everything</span>
+            <br />
+            <span style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Your Business</span>
+            <br />
+            <span className="text-white">Needs,</span>
+            <br />
+            <span style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>In One Place.</span>
+          </h1>
+
+          {/* Underline accent */}
+          <div className="h-[3px] w-48 rounded-full mb-5" style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)' }} />
+
+          {/* Subtitle */}
+          <p className="text-gray-400 text-base leading-relaxed mb-7">
+            Manage invoicing, inventory, orders,<br />marketing &amp; more — all in one platform.
+          </p>
+
+          {/* CTA Button */}
+          <Link
+            href="/register"
+            className="flex items-center justify-between w-full text-white font-bold px-4 py-3.5 rounded-2xl mb-4 transition-all active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, #6B3FD9 0%, #5A2EC9 100%)',
+              boxShadow: '0 8px 32px rgba(107,63,217,0.5)',
+            }}
+          >
+            <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+              <span className="text-lg">🚀</span>
+            </span>
+            <span className="text-lg font-bold flex-1 text-center">Start Free Trial</span>
+            <span className="w-10 h-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center flex-shrink-0">
+              <ArrowRight className="w-5 h-5" />
+            </span>
+          </Link>
+
+          {/* Trust line */}
+          <div className="flex items-center gap-2 mb-8">
+            <span className="w-6 h-6 rounded-full bg-[#7B4FE9]/20 border border-[#7B4FE9]/40 flex items-center justify-center text-xs">✓</span>
+            <span className="text-gray-400 text-sm">No credit card required &nbsp;•&nbsp; Cancel anytime</span>
+          </div>
         </div>
       </section>
 
