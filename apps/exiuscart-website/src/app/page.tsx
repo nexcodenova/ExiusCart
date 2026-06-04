@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link';
 import type { Metadata } from 'next';
-import { ArrowRight, Check, Star, Quote } from 'lucide-react';
+import { ArrowRight, Check, Star, Quote, ShoppingCart, Boxes, FileText, Package, BarChart3, Users, Megaphone, Wallet, Truck, Headphones, Calendar, Shield } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { PricingPreview } from '@/components/ui/pricing-preview';
@@ -119,7 +119,7 @@ export default function HomePage() {
             }}
           >
             <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-              <span className="text-lg">🚀</span>
+              <Shield className="w-5 h-5 text-[#6B3FD9]" />
             </span>
             <span className="text-lg font-bold flex-1 text-center">Start Free Trial</span>
             <span className="w-10 h-10 rounded-full bg-white/20 border border-white/30 flex items-center justify-center flex-shrink-0">
@@ -135,15 +135,29 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Trust Bar */}
-      <section className="py-10 px-4 border-y border-gray-800/50">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <TrustItem title="Easy Setup" desc="Start in minutes" />
-            <TrustItem title="Support" desc="Help when you need" />
-            <TrustItem title="Integrations" desc="WhatsApp & more" />
-            <TrustItem title="Updates" desc="Always improving" />
-          </div>
+      {/* Services App Icons Bar */}
+      <section className="py-8 px-4 border-y border-gray-800/50 overflow-x-auto">
+        <div className="flex items-center gap-6 min-w-max mx-auto px-2 justify-center">
+          {[
+            { icon: ShoppingCart, label: 'Point of Sale',  bg: 'bg-[#6B3FD9]' },
+            { icon: Boxes,        label: 'Inventory',      bg: 'bg-[#16A34A]' },
+            { icon: FileText,     label: 'Invoicing',      bg: 'bg-[#EA580C]' },
+            { icon: Package,      label: 'Orders',         bg: 'bg-[#2563EB]' },
+            { icon: BarChart3,    label: 'Reports',        bg: 'bg-[#0D9488]' },
+            { icon: Users,        label: 'HR & Payroll',   bg: 'bg-[#DB2777]' },
+            { icon: Megaphone,    label: 'Marketing',      bg: 'bg-[#D97706]' },
+            { icon: Wallet,       label: 'Expenses',       bg: 'bg-[#7C3AED]' },
+            { icon: Truck,        label: 'Purchases',      bg: 'bg-[#0369A1]' },
+            { icon: Headphones,   label: 'Helpdesk',       bg: 'bg-[#059669]' },
+            { icon: Calendar,     label: 'Appointments',   bg: 'bg-[#9333EA]' },
+          ].map(({ icon: Icon, label, bg }) => (
+            <div key={label} className="flex flex-col items-center gap-2 flex-shrink-0">
+              <div className={`w-12 h-12 ${bg} rounded-2xl flex items-center justify-center shadow-lg`}>
+                <Icon className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-gray-400 text-xs font-medium whitespace-nowrap">{label}</span>
+            </div>
+          ))}
         </div>
       </section>
 
