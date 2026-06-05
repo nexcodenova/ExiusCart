@@ -161,44 +161,107 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* What We Solve */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="max-w-3xl">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              Stop juggling spreadsheets and paper invoices
-            </h2>
-            <p className="text-gray-400 text-lg leading-relaxed">
-              Running a small business is hard enough. ExiusCart brings everything
-              together — invoicing, inventory, customer orders — so you can focus
-              on what matters: growing your business.
-            </p>
+      {/* Why ExiusCart — Premium Brand Section */}
+      <section className="py-28 px-4 relative overflow-hidden">
+        {/* BG glows */}
+        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full opacity-[0.07] blur-3xl pointer-events-none" style={{ background: '#7B4FE9' }} />
+        <div className="absolute -bottom-40 right-0 w-[400px] h-[400px] rounded-full opacity-[0.06] blur-3xl pointer-events-none" style={{ background: '#60A5FA' }} />
+
+        <div className="max-w-7xl mx-auto relative z-10">
+
+          {/* Split: brand story left, bento right */}
+          <div className="grid lg:grid-cols-5 gap-12 items-start mb-16">
+
+            {/* Left — brand story (2 cols) */}
+            <div className="lg:col-span-2 flex flex-col justify-center">
+              <span className="inline-flex items-center gap-2 text-[#7B4FE9] text-xs font-bold tracking-widest uppercase mb-6 border border-[#7B4FE9]/30 bg-[#7B4FE9]/10 px-3 py-1.5 rounded-full w-fit">
+                <Star className="w-3 h-3 fill-[#7B4FE9]" /> Our Philosophy
+              </span>
+              <h2 className="text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6">
+                Why<br />
+                <span style={{ background: 'linear-gradient(100deg, #7B4FE9 0%, #60A5FA 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  "Exius
+                  <span style={{ WebkitTextFillColor: 'white', color: 'white' }}>Cart</span>
+                  "?
+                </span>
+              </h2>
+              {/* Accent line */}
+              <div className="w-16 h-1 rounded-full mb-6" style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)' }} />
+              <p className="text-gray-300 text-lg leading-relaxed mb-4">
+                Because everything your business needs lives in{' '}
+                <span className="text-white font-bold">one cart.</span>
+              </p>
+              <p className="text-gray-500 text-base leading-relaxed mb-10">
+                Invoicing, inventory, orders, sales &amp; marketing, HR &amp; payroll — not scattered
+                across 10 tools. All in one place, built for real businesses.
+              </p>
+              <Link
+                href="/features"
+                className="inline-flex items-center gap-3 text-white font-bold px-6 py-3.5 rounded-xl transition-all hover:scale-105 self-start"
+                style={{ background: 'linear-gradient(135deg, #7B4FE9, #5A2EC9)', boxShadow: '0 4px 24px rgba(123,79,233,0.35)' }}
+              >
+                Explore all features
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* Right — Bento grid (3 cols) */}
+            <div className="lg:col-span-3 grid grid-cols-2 gap-4">
+              {/* Card 1 — wide */}
+              <div className="col-span-2 group relative rounded-2xl p-6 overflow-hidden border border-gray-800/60 hover:border-[#EA580C]/40 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #0D1526 0%, #1a1020 100%)' }}>
+                <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 blur-2xl" style={{ background: '#EA580C' }} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: '#EA580C22', border: '1px solid #EA580C44' }}>
+                  <FileText className="w-5 h-5" style={{ color: '#EA580C' }} />
+                </div>
+                <h3 className="text-white font-bold text-lg mb-1">Smart Invoicing</h3>
+                <p className="text-gray-400 text-sm">VAT-compliant invoices in seconds. Track payments, send receipts, export reports.</p>
+              </div>
+
+              {/* Card 2 */}
+              <div className="group relative rounded-2xl p-6 overflow-hidden border border-gray-800/60 hover:border-[#16A34A]/40 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #0D1526 0%, #0d1a10 100%)' }}>
+                <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 blur-2xl" style={{ background: '#16A34A' }} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: '#16A34A22', border: '1px solid #16A34A44' }}>
+                  <Boxes className="w-5 h-5" style={{ color: '#16A34A' }} />
+                </div>
+                <h3 className="text-white font-bold mb-1">Inventory</h3>
+                <p className="text-gray-400 text-sm">Real-time stock, low-stock alerts, every movement tracked.</p>
+              </div>
+
+              {/* Card 3 */}
+              <div className="group relative rounded-2xl p-6 overflow-hidden border border-gray-800/60 hover:border-[#2563EB]/40 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #0D1526 0%, #0d1020 100%)' }}>
+                <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 blur-2xl" style={{ background: '#2563EB' }} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: '#2563EB22', border: '1px solid #2563EB44' }}>
+                  <Package className="w-5 h-5" style={{ color: '#2563EB' }} />
+                </div>
+                <h3 className="text-white font-bold mb-1">Orders</h3>
+                <p className="text-gray-400 text-sm">Track, process and manage orders from one dashboard.</p>
+              </div>
+
+              {/* Card 4 — wide */}
+              <div className="col-span-2 group relative rounded-2xl p-6 overflow-hidden border border-gray-800/60 hover:border-[#DB2777]/40 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #0D1526 0%, #1a0d18 100%)' }}>
+                <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 blur-2xl" style={{ background: '#DB2777' }} />
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: '#DB277722', border: '1px solid #DB277744' }}>
+                    <Users className="w-5 h-5" style={{ color: '#DB2777' }} />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-lg mb-1">HR &amp; Payroll</h3>
+                    <p className="text-gray-400 text-sm">Manage your team, attendance, payroll, and recruitment — all inside ExiusCart.</p>
+                  </div>
+                  <div className="ml-auto flex-shrink-0 hidden sm:flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#D9770622', border: '1px solid #D9770644' }}>
+                      <Megaphone className="w-5 h-5" style={{ color: '#D97706' }} />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-bold text-lg mb-1">Marketing</h3>
+                      <p className="text-gray-400 text-sm">Email, SMS campaigns, events and more.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 mt-16">
-            <FeatureCard
-              title="Smart Invoicing"
-              desc="Create professional VAT-compliant invoices in seconds. Track payments, send receipts, export reports."
-            />
-            <FeatureCard
-              title="Inventory Control"
-              desc="Know your stock levels in real-time. Get alerts before you run out. Track every item movement."
-            />
-            <FeatureCard
-              title="WhatsApp Orders"
-              desc="Let customers order through WhatsApp. Manage everything from one dashboard. No more missed messages."
-            />
-          </div>
-
-          <div className="mt-12">
-            <Link
-              href="/features"
-              className="inline-flex items-center gap-2 text-[#6B3FD9] hover:text-[#8B5CF6] font-medium transition"
-            >
-              See all features
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -208,18 +271,19 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                Built for UAE small businesses
+                Built for UAE &amp; worldwide businesses
               </h2>
               <p className="text-gray-400 mb-10">
-                We understand local business needs. ExiusCart is designed with
-                UAE regulations, Arabic support, and affordable pricing in mind.
+                From small shops to growing enterprises — ExiusCart is designed
+                for real businesses. UAE regulations, Arabic support, and
+                international-ready features all in one platform.
               </p>
 
               <div className="space-y-4">
                 <BenefitRow text="VAT compliant invoicing (5%)" />
                 <BenefitRow text="Arabic & English interface" />
                 <BenefitRow text="Works offline" />
-                <BenefitRow text="One-time payment option" />
+                <BenefitRow text="Shopify & store integration" />
                 <BenefitRow text="WhatsApp integration" />
                 <BenefitRow text="Free updates included" />
               </div>
@@ -284,7 +348,7 @@ export default function HomePage() {
             Ready to simplify your business?
           </h2>
           <p className="text-gray-400 mb-10">
-            Join UAE businesses using ExiusCart to manage their daily operations.
+            Join businesses across UAE and worldwide using ExiusCart to manage their daily operations.
           </p>
           <Link
             href="/register"

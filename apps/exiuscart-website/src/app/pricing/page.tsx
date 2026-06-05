@@ -1,29 +1,26 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowRight, Check, X, Users, Package, MessageCircle, Gift, Sparkles, Copy } from 'lucide-react';
+import { ArrowRight, Check, X, Gift, ChevronDown, ChevronUp } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { useCurrency } from '@/context/currency-context';
-import { pricing, formatPrice, seasonalOffer } from '@/config/pricing';
+import { pricing } from '@/config/pricing';
+
+type BillingPeriod = 'monthly' | 'yearly';
 
 export default function PricingPage() {
-  const [billingPeriod, setBillingPeriod] = useState<'onetime' | 'monthly'>('onetime');
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [billing, setBilling] = useState<BillingPeriod>('monthly');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const { currency, currencyConfig, isLoading } = useCurrency();
-
-  // Get prices for current currency
   const prices = pricing[currency];
 
-  // Get current promo based on billing period
-  const currentPromo = billingPeriod === 'onetime' ? seasonalOffer.oneTime : seasonalOffer.monthly;
+  const fmt = (n: number) => currency === 'USD' ? `$${n}` : `AED ${n}`;
 
-  const copyPromoCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
-  };
+  const starterPrice = billing === 'monthly' ? prices.starter.monthly : prices.starter.yearly;
+  const premiumPrice = billing === 'monthly' ? prices.premium.monthly : prices.premium.yearly;
+  const periodLabel  = billing === 'monthly' ? '/mo' : '/yr';
 
   if (isLoading) {
     return (
@@ -37,236 +34,229 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#0B1121]">
       <Navbar />
 
-      {/* Promo Code Banner - Shows current promo based on billing period */}
-      {seasonalOffer.isActive && (
-        <div className="bg-gradient-to-r from-[#6B3FD9] to-[#5A2EC9] py-3 px-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-center gap-3 flex-wrap">
-            <Sparkles className="w-5 h-5 text-black" />
-            <span className="text-black font-bold">{seasonalOffer.name} Sale!</span>
-            <span className="text-black/80">|</span>
-            <span className="text-black font-medium">
-              {billingPeriod === 'onetime' ? 'One-time' : 'Monthly'}: <span className="font-bold">{currentPromo.discount}% OFF</span> with
-            </span>
-            <button
-              onClick={() => copyPromoCode(currentPromo.code)}
-              className="inline-flex items-center gap-1.5 bg-black/20 hover:bg-black/30 text-black font-semibold px-3 py-1 rounded-md text-sm transition-all"
-            >
-              <Copy className="w-4 h-4" />
-              {copiedCode === currentPromo.code ? 'Copied!' : currentPromo.code}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Hero */}
-      <section className="pt-20 pb-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Simple, transparent pricing
+      <section className="pt-24 pb-14 px-4">
+        <div className="max-w-3xl mx-auto text-center">
+          <span className="inline-flex items-center gap-2 text-[#7B4FE9] text-xs font-bold tracking-widest uppercase mb-5 border border-[#7B4FE9]/30 bg-[#7B4FE9]/10 px-3 py-1.5 rounded-full">
+            Transparent Pricing
+          </span>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            Simple, honest pricing
           </h1>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-            {billingPeriod === 'onetime'
-              ? 'One-time payment for lifetime access. No hidden fees, no surprises.'
-              : 'Flexible monthly subscription. Cancel anytime.'}
+          <p className="text-lg text-gray-400 max-w-xl mx-auto mb-4">
+            Start free for 14 days. No credit card required. Upgrade when you&apos;re ready.
           </p>
-          {/* Show current region */}
-          <p className="mt-4 text-sm text-gray-500">
-            Showing prices for {currencyConfig.flag} {currencyConfig.country} ({currency})
+          <p className="text-sm text-gray-500">
+            {currencyConfig.flag} Showing prices for {currencyConfig.country} ({currency})
           </p>
         </div>
       </section>
 
-      {/* Pricing Cards */}
-      <section className="pb-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          {/* Toggle - One Time / Monthly */}
+      {/* Plan Cards */}
+      <section className="pb-24 px-4">
+        <div className="max-w-5xl mx-auto">
+
+          {/* Billing toggle */}
           <div className="flex justify-center mb-12">
-            <div className="inline-flex bg-[#151F32] rounded-lg p-1">
+            <div className="inline-flex bg-[#151F32] rounded-xl p-1 gap-1">
               <button
-                onClick={() => setBillingPeriod('onetime')}
-                className={`px-6 py-2 rounded-md font-medium text-sm transition-all ${
-                  billingPeriod === 'onetime'
-                    ? 'bg-[#6B3FD9] text-black'
-                    : 'text-gray-400 hover:text-gray-300'
-                }`}
-              >
-                One-time
-                {seasonalOffer.isActive && (
-                  <span className="ml-2 text-xs bg-black/20 px-1.5 py-0.5 rounded">
-                    {seasonalOffer.oneTime.discount}% OFF
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setBillingPeriod('monthly')}
-                className={`px-6 py-2 rounded-md font-medium text-sm transition-all ${
-                  billingPeriod === 'monthly'
-                    ? 'bg-[#6B3FD9] text-black'
-                    : 'text-gray-400 hover:text-gray-300'
+                onClick={() => setBilling('monthly')}
+                className={`px-7 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                  billing === 'monthly' ? 'bg-[#7B4FE9] text-white shadow' : 'text-gray-400 hover:text-white'
                 }`}
               >
                 Monthly
-                {seasonalOffer.isActive && (
-                  <span className="ml-2 text-xs bg-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded">
-                    {seasonalOffer.monthly.discount}% OFF
-                  </span>
-                )}
+              </button>
+              <button
+                onClick={() => setBilling('yearly')}
+                className={`px-7 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+                  billing === 'yearly' ? 'bg-[#7B4FE9] text-white shadow' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Yearly
+                <span className="text-xs bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-semibold">
+                  Save ~15%
+                </span>
               </button>
             </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+          {/* Cards */}
+          <div className="grid md:grid-cols-3 gap-6">
+
+            {/* Free Trial */}
+            <PlanCard
+              name="Free Trial"
+              badge="14 Days"
+              description="Test everything basic. No credit card needed."
+              priceDisplay="Free"
+              period=""
+              note="50 products · 1 user · 14 days only"
+              features={[
+                { text: '50 products', ok: true },
+                { text: '50 orders / month', ok: true },
+                { text: '100 customers', ok: true },
+                { text: '1 user', ok: true },
+                { text: 'Basic POS & Invoicing', ok: true },
+                { text: 'VAT invoicing (5%)', ok: true },
+                { text: '50 emails / month', ok: true },
+                { text: 'Shopify sync', ok: false },
+                { text: 'Lead management', ok: false },
+                { text: 'Chat support', ok: false },
+              ]}
+              ctaText="Start Free Trial"
+              ctaHref="/register"
+            />
+
             {/* Starter */}
-            <PricingCard
+            <PlanCard
               name="Starter"
-              price={billingPeriod === 'onetime' ? prices.starter.oneTime : prices.starter.monthly}
-              currency={currency}
-              period={billingPeriod === 'onetime' ? 'one-time' : 'month'}
-              description="Perfect for small shops getting started"
-              highlights={[
-                { icon: Package, text: '45 Products' },
-                { icon: Users, text: '1 User Access' },
-              ]}
-              features={[
-                { text: 'POS & Invoicing', included: true },
-                { text: 'Product Management (45 max)', included: true },
-                { text: 'Customer Database', included: true },
-                { text: 'Sales Reports', included: true },
-                { text: 'PDF & Excel Export', included: true },
-                { text: 'VAT Calculation', included: true },
-                { text: 'WhatsApp Orders', included: false },
-                { text: 'Inventory Management', included: false },
-                { text: 'Low Stock Alerts', included: false },
-              ]}
-            />
-
-            {/* Business */}
-            <PricingCard
-              name="Business"
-              price={billingPeriod === 'onetime' ? prices.business.oneTime : prices.business.monthly}
-              currency={currency}
-              period={billingPeriod === 'onetime' ? 'one-time' : 'month'}
-              description="For growing shops needing more capacity"
-              highlights={[
-                { icon: Package, text: '100 Products' },
-                { icon: Users, text: '2 User Access' },
-              ]}
-              features={[
-                { text: 'Everything in Starter', included: true },
-                { text: 'Product Management (100 max)', included: true },
-                { text: 'Advanced Reports', included: true },
-                { text: 'Customer Insights', included: true },
-                { text: 'WhatsApp Orders', included: false },
-                { text: 'Inventory Management', included: false },
-                { text: 'Low Stock Alerts', included: false },
-                { text: 'Priority Support', included: false },
-              ]}
-            />
-
-            {/* Pro - Popular */}
-            <PricingCard
-              name="Pro"
-              price={billingPeriod === 'onetime' ? prices.pro.oneTime : prices.pro.monthly}
-              currency={currency}
-              period={billingPeriod === 'onetime' ? 'one-time' : 'month'}
-              description="Complete solution with WhatsApp & Inventory"
+              badge="Most Popular"
+              description="For small shops. Most businesses fit here."
+              priceDisplay={fmt(starterPrice)}
+              period={periodLabel}
+              note="1,000 products · 3 users · cancel anytime"
               popular
-              highlights={[
-                { icon: Package, text: '100 Products' },
-                { icon: Users, text: '3 User Access' },
-                { icon: MessageCircle, text: 'WhatsApp Orders' },
-              ]}
               features={[
-                { text: 'Everything in Business', included: true },
-                { text: 'WhatsApp Order Link', included: true },
-                { text: 'Order Dashboard', included: true },
-                { text: 'Order Status Tracking', included: true },
-                { text: 'Customer Notifications', included: true },
-                { text: 'Inventory Management', included: true },
-                { text: 'Low Stock Alerts', included: true },
-                { text: 'Stock Movement History', included: true },
-                { text: 'Priority Support', included: true },
+                { text: '1,000 products', ok: true },
+                { text: '1,000 orders / month', ok: true },
+                { text: '5,000 customers', ok: true },
+                { text: '3 users', ok: true },
+                { text: 'Full POS & Invoicing', ok: true },
+                { text: 'VAT invoicing (5%)', ok: true },
+                { text: '1,000 emails / month', ok: true },
+                { text: 'Shopify + store sync', ok: true },
+                { text: 'Lead management (500)', ok: true },
+                { text: 'Chat support', ok: true },
               ]}
+              ctaText="Get Started"
+              ctaHref="/register"
+            />
+
+            {/* Premium */}
+            <PlanCard
+              name="Premium"
+              description="For growing businesses. Everything unlimited."
+              priceDisplay={fmt(premiumPrice)}
+              period={periodLabel}
+              note="Unlimited everything · multi-store · priority support"
+              features={[
+                { text: 'Unlimited products', ok: true },
+                { text: 'Unlimited orders', ok: true },
+                { text: 'Unlimited customers', ok: true },
+                { text: 'Unlimited users', ok: true },
+                { text: 'Custom invoice branding', ok: true },
+                { text: 'Send from own domain', ok: true },
+                { text: 'Unlimited emails', ok: true },
+                { text: 'Multi-store & multi-location', ok: true },
+                { text: 'Unlimited leads', ok: true },
+                { text: 'Priority support + onboarding', ok: true },
+              ]}
+              ctaText="Get Started"
+              ctaHref="/register"
             />
           </div>
-        </div>
 
-        {/* Free Trial Banner */}
-        <div className="max-w-4xl mx-auto mt-12 bg-gradient-to-r from-[#6B3FD9]/10 via-[#6B3FD9]/5 to-[#6B3FD9]/10 rounded-2xl p-8 border border-[#6B3FD9]/30">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          {/* Free trial CTA bar */}
+          <div className="mt-10 bg-[#7B4FE9]/10 border border-[#7B4FE9]/30 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-[#6B3FD9]/20 rounded-full flex items-center justify-center flex-shrink-0">
-                <Gift className="w-7 h-7 text-[#6B3FD9]" />
+              <div className="w-12 h-12 bg-[#7B4FE9]/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <Gift className="w-6 h-6 text-[#7B4FE9]" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white mb-1">Try Free for 7 Days</h3>
-                <p className="text-gray-400 text-sm">
-                  Full access to all Pro features. No credit card required. Cancel anytime.
-                </p>
+                <p className="text-white font-semibold">Try ExiusCart free for 14 days</p>
+                <p className="text-gray-400 text-sm">Full basic access. No credit card required. Upgrade anytime.</p>
               </div>
             </div>
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-3 rounded-lg transition-all whitespace-nowrap"
+              className="inline-flex items-center gap-2 bg-[#7B4FE9] hover:bg-[#5A2EC9] text-white font-semibold px-7 py-3 rounded-xl transition-all whitespace-nowrap text-sm"
             >
-              Start Free Trial
-              <ArrowRight className="w-5 h-5" />
+              Start Free Trial <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Features Comparison */}
+      {/* Full Feature Comparison */}
       <section className="py-20 px-4 bg-[#0D1526]">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-white text-center mb-12">
-            Compare plans
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-2">
+            Full plan comparison
           </h2>
+          <p className="text-gray-400 text-center mb-12 text-sm">
+            See exactly what&apos;s included in each plan
+          </p>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto rounded-2xl border border-gray-800">
+            <table className="w-full min-w-[580px]">
               <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="text-left py-4 text-gray-400 font-medium">Feature</th>
-                  <th className="text-center py-4 text-gray-400 font-medium">
-                    Starter<br />
-                    <span className="text-xs">
-                      {billingPeriod === 'onetime'
-                        ? formatPrice(prices.starter.oneTime, currency)
-                        : `${formatPrice(prices.starter.monthly, currency)}/mo`}
-                    </span>
+                <tr className="border-b border-gray-800 bg-[#0D1526]">
+                  <th className="text-left py-4 pl-5 text-gray-400 font-medium text-sm w-2/5">Feature</th>
+                  <th className="text-center py-4 text-gray-400 font-medium text-sm">Free Trial</th>
+                  <th className="text-center py-4 font-medium text-sm">
+                    <span className="text-[#7B4FE9]">Starter</span>
                   </th>
-                  <th className="text-center py-4 text-gray-400 font-medium">
-                    Business<br />
-                    <span className="text-xs">
-                      {billingPeriod === 'onetime'
-                        ? formatPrice(prices.business.oneTime, currency)
-                        : `${formatPrice(prices.business.monthly, currency)}/mo`}
-                    </span>
-                  </th>
-                  <th className="text-center py-4 text-gray-400 font-medium">
-                    Pro<br />
-                    <span className="text-xs">
-                      {billingPeriod === 'onetime'
-                        ? formatPrice(prices.pro.oneTime, currency)
-                        : `${formatPrice(prices.pro.monthly, currency)}/mo`}
-                    </span>
-                  </th>
+                  <th className="text-center py-4 text-gray-400 font-medium text-sm pr-5">Premium</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
-                <CompareRow feature="Product Listing" starter="45" business="100" pro="100" />
-                <CompareRow feature="Staff Accounts" starter="1" business="2" pro="3" />
-                <CompareRow feature="POS & Invoicing" starter business pro />
-                <CompareRow feature="VAT Calculation" starter business pro />
-                <CompareRow feature="Customer Database" starter business pro />
-                <CompareRow feature="Sales Reports" starter business pro />
-                <CompareRow feature="PDF & Excel Export" starter business pro />
-                <CompareRow feature="WhatsApp Order Link" pro />
-                <CompareRow feature="Order Dashboard" pro />
-                <CompareRow feature="Inventory Management" pro />
-                <CompareRow feature="Low Stock Alerts" pro />
-                <CompareRow feature="Priority Support" pro />
+
+                <SectionHeader title="Core Limits" />
+                <CompareRow f="Products"       t="50"      s="1,000"   p="Unlimited" />
+                <CompareRow f="Orders / month" t="50"      s="1,000"   p="Unlimited" />
+                <CompareRow f="Customers"      t="100"     s="5,000"   p="Unlimited" />
+                <CompareRow f="Team users"     t="1"       s="3"       p="Unlimited" />
+                <CompareRow f="Storage"        t="500 MB"  s="5 GB"    p="20 GB" />
+                <CompareRow f="Branches"       t="1"       s="1"       p="Multiple" />
+
+                <SectionHeader title="POS & Invoicing" />
+                <CompareRow f="Point of Sale"            t="Basic"       s            p />
+                <CompareRow f="VAT invoicing (5%)"       t               s            p />
+                <CompareRow f="PDF invoice download"     t               s            p />
+                <CompareRow f="Invoice email sending"    t="50/month"    s="1,000/month" p="Unlimited" />
+                <CompareRow f="Custom invoice branding"  t={false}       s="Basic logo"  p="Full branding" />
+                <CompareRow f="Send from own domain"     t={false}       s={false}    p />
+                <CompareRow f="Receipts"                 t               s            p />
+
+                <SectionHeader title="Inventory" />
+                <CompareRow f="Stock tracking"        t="Basic"  s        p />
+                <CompareRow f="Low-stock alerts"      t={false}  s        p />
+                <CompareRow f="Auto stock deduction"  t          s        p />
+                <CompareRow f="Item movement history" t={false}  s        p />
+                <CompareRow f="Multi-location stock"  t={false}  s={false} p />
+
+                <SectionHeader title="Store Integration" />
+                <CompareRow f="Shopify sync"          t={false}  s  p />
+                <CompareRow f="Custom store API"      t={false}  s  p />
+                <CompareRow f="Real-time order sync"  t={false}  s  p />
+                <CompareRow f="Multi-store"           t={false}  s={false} p />
+
+                <SectionHeader title="Marketing & Leads" />
+                <CompareRow f="Lead management"       t={false}  s="500 leads"  p="Unlimited" />
+                <CompareRow f="Meta Ads lead capture" t={false}  s              p />
+                <CompareRow f="Email campaigns"       t={false}  s="Basic"      p />
+                <CompareRow f="Lead source tracking"  t={false}  s              p />
+
+                <SectionHeader title="Orders & Delivery" />
+                <CompareRow f="Order management"     t="Basic"  s  p />
+                <CompareRow f="Delivery tracking"    t={false}  s  p />
+                <CompareRow f="Supplier info"        t={false}  s  p />
+                <CompareRow f="Order status updates" t          s  p />
+
+                <SectionHeader title="Reports & Analytics" />
+                <CompareRow f="Sales reports"          t="Basic"  s="Advanced"  p="Advanced" />
+                <CompareRow f="Inventory reports"      t={false}  s             p />
+                <CompareRow f="VAT reports"            t          s             p />
+                <CompareRow f="Data export (Excel/CSV)" t={false} s             p />
+                <CompareRow f="Custom reports"         t={false}  s={false}     p />
+
+                <SectionHeader title="Support" />
+                <CompareRow f="Email support"     t  s  p />
+                <CompareRow f="Chat support"      t={false}  s  p />
+                <CompareRow f="Priority support"  t={false}  s={false}  p />
+                <CompareRow f="Onboarding help"   t={false}  s={false}  p />
+
               </tbody>
             </table>
           </div>
@@ -279,36 +269,59 @@ export default function PricingPage() {
           <h2 className="text-2xl font-bold text-white text-center mb-12">
             Frequently asked questions
           </h2>
-
-          <div className="space-y-6">
-            <FAQ
-              question="What's included in the one-time payment?"
-              answer="One-time payment gives you lifetime access to all features in your chosen plan, plus free updates and support. No recurring fees."
-            />
-            <FAQ
-              question="What's the difference between one-time and monthly?"
-              answer="One-time payment gives you lifetime access with no recurring fees. Monthly subscription is flexible - pay as you go and cancel anytime."
-            />
-            <FAQ
-              question="How do I use the promo codes?"
-              answer={`Use code ${seasonalOffer.oneTime.code} for ${seasonalOffer.oneTime.discount}% off one-time payments, or ${seasonalOffer.monthly.code} for ${seasonalOffer.monthly.discount}% off monthly subscriptions.`}
-            />
-            <FAQ
-              question="Can I upgrade my plan later?"
-              answer="Yes, you can upgrade anytime. You'll only pay the difference between your current plan and the new one."
-            />
-            <FAQ
-              question="Is there a free trial?"
-              answer="Yes, you get 7 days free trial with full access to all Pro features. No credit card required."
-            />
-            <FAQ
-              question="What payment methods do you accept?"
-              answer="We accept bank transfer and various local payment methods. Card payments coming soon."
-            />
-            <FAQ
-              question="Do you offer refunds?"
-              answer="Yes, we offer a 30-day money-back guarantee if you're not satisfied."
-            />
+          <div className="space-y-3">
+            {[
+              {
+                q: 'What happens after the 14-day free trial?',
+                a: 'After 14 days your account is paused and you must upgrade to Starter or Premium to continue. All your data is saved — nothing is deleted.',
+              },
+              {
+                q: 'Can I cancel my subscription anytime?',
+                a: 'Yes. Cancel anytime from your account settings. You keep access until the end of your current billing period.',
+              },
+              {
+                q: 'What is the difference between monthly and yearly billing?',
+                a: 'Yearly billing saves you approximately 15% compared to monthly. You are charged once per year upfront.',
+              },
+              {
+                q: 'Can I upgrade from Starter to Premium?',
+                a: 'Yes, upgrade at any time. You only pay the prorated difference for the remaining billing period.',
+              },
+              {
+                q: 'Do UAE and international users pay different prices?',
+                a: 'Yes. UAE users pay in AED (Starter AED 69/mo, Premium AED 149/mo). International users pay in USD (Starter $19/mo, Premium $39/mo). Prices are automatically shown based on your location.',
+              },
+              {
+                q: 'Is VAT invoicing available on the free trial?',
+                a: 'Yes, VAT-compliant invoicing is available on all plans including the free trial.',
+              },
+              {
+                q: 'What payment methods do you accept?',
+                a: 'We accept bank transfer and local payment methods. Card payments coming soon.',
+              },
+              {
+                q: 'Do you offer refunds?',
+                a: 'Yes, we offer a 7-day money-back guarantee if you are not satisfied after upgrading.',
+              },
+            ].map((item, i) => (
+              <div key={i} className="border border-gray-800 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/[0.02] transition-colors"
+                >
+                  <span className="text-white font-medium text-sm pr-4">{item.q}</span>
+                  {openFaq === i
+                    ? <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    : <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  }
+                </button>
+                {openFaq === i && (
+                  <div className="px-5 pb-4 pt-3 text-gray-400 text-sm border-t border-gray-800/60">
+                    {item.a}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -316,22 +329,17 @@ export default function PricingPage() {
       {/* CTA */}
       <section className="py-20 px-4 bg-[#0D1526]">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
+          <h2 className="text-3xl font-bold text-white mb-3">
             Start your free trial today
           </h2>
-          <p className="text-gray-400 mb-6">
-            7 days free. No credit card required. Cancel anytime.
+          <p className="text-gray-400 mb-8">
+            14 days free. No credit card required. Cancel anytime.
           </p>
-          {seasonalOffer.isActive && (
-            <p className="text-[#6B3FD9] font-medium mb-6">
-              {seasonalOffer.name} Sale! Use <span className="font-bold">{seasonalOffer.oneTime.code}</span> for {seasonalOffer.oneTime.discount}% off one-time or <span className="font-bold">{seasonalOffer.monthly.code}</span> for {seasonalOffer.monthly.discount}% off monthly!
-            </p>
-          )}
           <Link
             href="/register"
-            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all"
+            className="inline-flex items-center justify-center gap-2 bg-[#7B4FE9] hover:bg-[#5A2EC9] text-white font-semibold px-10 py-4 rounded-xl transition-all"
           >
-            Start Free Trial
+            Get Started Free
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
@@ -342,97 +350,71 @@ export default function PricingPage() {
   );
 }
 
-function PricingCard({
+function PlanCard({
   name,
-  price,
-  currency,
-  period,
+  badge,
   description,
+  priceDisplay,
+  period,
+  note,
   features,
-  highlights,
   popular,
+  ctaText,
+  ctaHref,
 }: {
   name: string;
-  price: number;
-  currency: string;
-  period: string;
+  badge?: string;
   description: string;
-  features: { text: string; included: boolean }[];
-  highlights: { icon: React.ElementType; text: string }[];
+  priceDisplay: string;
+  period: string;
+  note: string;
+  features: { text: string; ok: boolean }[];
   popular?: boolean;
+  ctaText: string;
+  ctaHref: string;
 }) {
-  // Format price - handle decimals for USD
-  const formatDisplayPrice = (p: number) => {
-    if (Number.isInteger(p)) {
-      return p.toLocaleString();
-    }
-    return p.toFixed(2);
-  };
-
-  const formattedPrice = formatDisplayPrice(price);
-
   return (
-    <div
-      className={`relative bg-[#151F32] rounded-2xl border p-6 flex flex-col ${
-        popular ? 'border-[#6B3FD9] ring-1 ring-[#6B3FD9]' : 'border-gray-800'
-      }`}
-    >
-      {popular && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#6B3FD9] text-black text-xs font-semibold px-3 py-1 rounded-full">
-          Most Popular
+    <div className={`relative flex flex-col rounded-2xl border p-6 ${
+      popular
+        ? 'border-[#7B4FE9] bg-[#151F32] ring-1 ring-[#7B4FE9]'
+        : 'border-gray-800 bg-[#151F32]'
+    }`}>
+      {badge && (
+        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${
+          popular ? 'bg-[#7B4FE9] text-white' : 'bg-gray-700 text-gray-300'
+        }`}>
+          {badge}
         </div>
       )}
 
-      <h3 className="text-xl font-bold text-white mb-2">{name}</h3>
-      <p className="text-gray-500 text-sm mb-4">{description}</p>
+      <h3 className="text-xl font-bold text-white mb-1">{name}</h3>
+      <p className="text-gray-500 text-sm mb-5">{description}</p>
 
-      <div className="mb-4">
-        <div className="flex items-baseline gap-1">
-          {currency === 'USD' && <span className="text-3xl font-bold text-white">$</span>}
-          <span className="text-3xl font-bold text-white">{formattedPrice}</span>
-          {currency !== 'USD' && <span className="text-gray-500">{currency}</span>}
-          <span className="text-gray-500 text-sm">/ {period}</span>
-        </div>
+      <div className="flex items-baseline gap-1 mb-1">
+        <span className="text-4xl font-black text-white">{priceDisplay}</span>
+        {period && <span className="text-gray-500 text-sm">{period}</span>}
       </div>
-
-      {/* Highlights */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {highlights.map((highlight, i) => {
-          const Icon = highlight.icon;
-          return (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-[#6B3FD9]/20 text-[#6B3FD9]"
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {highlight.text}
-            </span>
-          );
-        })}
-      </div>
+      <p className="text-gray-600 text-xs mb-6">{note}</p>
 
       <Link
-        href="/register"
-        className={`block text-center font-semibold py-3 rounded-lg transition-all mb-6 ${
+        href={ctaHref}
+        className={`block text-center font-semibold py-3 rounded-xl transition-all mb-6 text-sm ${
           popular
-            ? 'bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black'
+            ? 'bg-[#7B4FE9] hover:bg-[#5A2EC9] text-white'
             : 'bg-white/10 hover:bg-white/20 text-white'
         }`}
       >
-        Get Started
+        {ctaText}
       </Link>
 
-      <ul className="space-y-2.5 flex-1">
-        {features.map((feature, i) => (
-          <li key={i} className="flex items-start gap-2.5">
-            {feature.included ? (
-              <Check className="w-4 h-4 text-[#6B3FD9] mt-0.5 flex-shrink-0" />
-            ) : (
-              <X className="w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0" />
-            )}
-            <span className={`text-sm ${feature.included ? 'text-gray-300' : 'text-gray-600'}`}>
-              {feature.text}
-            </span>
+      <ul className="space-y-3 flex-1">
+        {features.map((f, i) => (
+          <li key={i} className="flex items-center gap-2.5">
+            {f.ok
+              ? <Check className="w-4 h-4 text-[#7B4FE9] flex-shrink-0" />
+              : <X className="w-4 h-4 text-gray-700 flex-shrink-0" />
+            }
+            <span className={`text-sm ${f.ok ? 'text-gray-300' : 'text-gray-600'}`}>{f.text}</span>
           </li>
         ))}
       </ul>
@@ -440,43 +422,40 @@ function PricingCard({
   );
 }
 
-function CompareRow({
-  feature,
-  starter,
-  business,
-  pro,
-}: {
-  feature: string;
-  starter?: boolean | string;
-  business?: boolean | string;
-  pro?: boolean | string;
-}) {
-  const renderCell = (value?: boolean | string) => {
-    if (typeof value === 'string') {
-      return <span className="text-gray-300 text-xs">{value}</span>;
-    }
-    if (value) {
-      return <Check className="w-5 h-5 text-[#6B3FD9] mx-auto" />;
-    }
-    return <X className="w-5 h-5 text-gray-700 mx-auto" />;
-  };
-
+function SectionHeader({ title }: { title: string }) {
   return (
-    <tr className="border-b border-gray-800/50">
-      <td className="py-3 text-gray-300 text-sm">{feature}</td>
-      <td className="py-3 text-center">{renderCell(starter)}</td>
-      <td className="py-3 text-center">{renderCell(business)}</td>
-      <td className="py-3 text-center">{renderCell(pro)}</td>
+    <tr className="bg-[#0B1121]/60">
+      <td colSpan={4} className="pt-6 pb-2 pl-5">
+        <span className="text-xs font-bold tracking-widest uppercase text-[#7B4FE9]">{title}</span>
+      </td>
     </tr>
   );
 }
 
-function FAQ({ question, answer }: { question: string; answer: string }) {
+function CompareRow({
+  f, t, s, p,
+}: {
+  f: string;
+  t?: boolean | string;
+  s?: boolean | string;
+  p?: boolean | string;
+}) {
+  const cell = (val?: boolean | string) => {
+    if (val === undefined || val === false) {
+      return <X className="w-4 h-4 text-gray-700 mx-auto" />;
+    }
+    if (val === true) {
+      return <Check className="w-4 h-4 text-[#7B4FE9] mx-auto" />;
+    }
+    return <span className="text-gray-400 text-xs text-center block leading-tight">{val}</span>;
+  };
+
   return (
-    <div className="border-b border-gray-800 pb-6">
-      <h3 className="text-white font-medium mb-2">{question}</h3>
-      <p className="text-gray-400 text-sm">{answer}</p>
-    </div>
+    <tr className="border-b border-gray-800/40 hover:bg-white/[0.015] transition-colors">
+      <td className="py-3 pl-5 text-gray-300 text-sm">{f}</td>
+      <td className="py-3 text-center">{cell(t)}</td>
+      <td className="py-3 text-center">{cell(s)}</td>
+      <td className="py-3 text-center pr-5">{cell(p)}</td>
+    </tr>
   );
 }
-
