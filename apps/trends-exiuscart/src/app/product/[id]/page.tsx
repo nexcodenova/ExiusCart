@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Package, ShoppingCart, CheckCircle } from 'lucide-react';
-import { shoppingApi, cartApi, Product } from '@/lib/api';
+import { ArrowLeft, Package, ExternalLink } from 'lucide-react';
+import { shoppingApi, Product } from '@/lib/api';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -13,7 +13,6 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [added, setAdded] = useState(false);
 
   const productId = Number(params.id);
 
@@ -23,28 +22,12 @@ export default function ProductDetailPage() {
       setLoading(false);
       return;
     }
-
     shoppingApi
       .getProduct(productId)
-      .then((data) => {
-        setProduct(data);
-      })
-      .catch((err) => {
-        if (err?.response?.status === 404) {
-          setNotFound(true);
-        } else {
-          setNotFound(true);
-        }
-      })
+      .then(setProduct)
+      .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [productId]);
-
-  const handleAddToCart = () => {
-    if (!product || product.stock === 0) return;
-    cartApi.addItem(product);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
-  };
 
   const formattedPrice =
     product &&
@@ -53,9 +36,6 @@ export default function ProductDetailPage() {
       currency: product.currency || 'USD',
     }).format(product.price);
 
-  // -------------------------------------------------------------------------
-  // Loading skeleton
-  // -------------------------------------------------------------------------
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a]">
@@ -76,9 +56,6 @@ export default function ProductDetailPage() {
     );
   }
 
-  // -------------------------------------------------------------------------
-  // Not found
-  // -------------------------------------------------------------------------
   if (notFound || !product) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-5 px-4 text-center">
@@ -87,36 +64,24 @@ export default function ProductDetailPage() {
         <p className="text-[#999]">This product may have been removed or doesn&apos;t exist.</p>
         <Link
           href="/"
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#F5A623] text-black font-semibold rounded-xl hover:bg-[#e8961a] transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#7B4FE9] text-white font-semibold rounded-xl hover:bg-[#5A2EC9] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Shop
+          Back to Trends
         </Link>
       </div>
     );
   }
 
-  // -------------------------------------------------------------------------
-  // Stock indicator
-  // -------------------------------------------------------------------------
-  const stockIndicator = () => {
-    if (product.stock === 0) {
-      return <span className="text-red-400 font-semibold">Out of Stock</span>;
-    }
-    if (product.stock <= 5) {
-      return (
-        <span className="text-orange-400 font-semibold">
-          Only {product.stock} left in stock — order soon!
-        </span>
-      );
-    }
-    return <span className="text-green-400 font-semibold">In Stock ({product.stock} available)</span>;
+  const stockLabel = () => {
+    if (product.stock === 0) return <span className="text-red-400 font-semibold">Out of Stock</span>;
+    if (product.stock <= 5) return <span className="text-orange-400 font-semibold">Only {product.stock} left</span>;
+    return <span className="text-green-400 font-semibold">In Stock</span>;
   };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Back button */}
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-[#999] hover:text-white transition-colors mb-6 group"
@@ -126,18 +91,12 @@ export default function ProductDetailPage() {
         </button>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {/* ---------------------------------------------------------------- */}
-          {/* Media (video or image)                                           */}
-          {/* ---------------------------------------------------------------- */}
+          {/* Media */}
           <div className="relative aspect-square bg-[#111] border border-[#222] rounded-2xl overflow-hidden">
             {product.video_url ? (
               <video
                 src={product.video_url}
-                controls
-                autoPlay
-                muted
-                loop
-                playsInline
+                controls autoPlay muted loop playsInline
                 className="w-full h-full object-cover"
               />
             ) : product.image_url ? (
@@ -154,8 +113,6 @@ export default function ProductDetailPage() {
                 <Package className="w-24 h-24 text-[#444]" />
               </div>
             )}
-
-            {/* Badges */}
             <div className="absolute top-3 left-3 flex flex-col gap-1.5">
               {product.is_trending && (
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-orange-500/90 text-white shadow">
@@ -170,23 +127,18 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Details                                                          */}
-          {/* ---------------------------------------------------------------- */}
+          {/* Details */}
           <div className="flex flex-col gap-4">
             {product.category_name && (
               <span className="text-xs font-semibold text-[#999] uppercase tracking-widest">
                 {product.category_name}
               </span>
             )}
-
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">
               {product.name}
             </h1>
-
-            <div className="text-3xl font-extrabold text-[#F5A623]">{formattedPrice}</div>
-
-            <div className="text-sm">{stockIndicator()}</div>
+            <div className="text-3xl font-extrabold text-[#7B4FE9]">{formattedPrice}</div>
+            <div className="text-sm">{stockLabel()}</div>
 
             {product.description && (
               <p className="text-[#aaa] text-sm leading-relaxed border-t border-[#1e1e1e] pt-4">
@@ -194,33 +146,17 @@ export default function ProductDetailPage() {
               </p>
             )}
 
-            {/* Add to cart */}
-            <button
-              onClick={handleAddToCart}
-              disabled={product.stock === 0}
-              className="mt-auto flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold text-base transition-all duration-150
-                bg-[#F5A623] text-black hover:bg-[#e8961a] active:scale-95
-                disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#F5A623] disabled:active:scale-100"
+            {/* Visit shop — links to seller's store via API */}
+            <a
+              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/shopping/products/${product.id}/shop-link`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-auto flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold text-base transition-all
+                bg-[#7B4FE9] text-white hover:bg-[#5A2EC9] active:scale-95"
             >
-              {added ? (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  Added to Cart!
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="w-5 h-5" />
-                  {product.stock === 0 ? 'Unavailable' : 'Add to Cart'}
-                </>
-              )}
-            </button>
-
-            <Link
-              href="/cart"
-              className="text-center text-sm text-[#999] hover:text-[#F5A623] transition-colors"
-            >
-              View Cart
-            </Link>
+              <ExternalLink className="w-5 h-5" />
+              Visit Shop
+            </a>
           </div>
         </div>
       </div>

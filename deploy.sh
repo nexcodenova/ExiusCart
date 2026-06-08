@@ -10,41 +10,34 @@ cd "$PROJECT_DIR"
 # Pull latest code
 git pull origin main
 
-# Backend — install all dependencies and restart
+# Backend
 echo "--- Backend ---"
-cd "$PROJECT_DIR/backend"
+cd "$PROJECT_DIR/exiuscart-backend"
 source venv/bin/activate
 pip install -r requirements.txt -q
-pm2 restart backend
+pm2 restart exiuscart-backend
 deactivate
 
-# Website
-echo "--- Website ---"
-cd "$PROJECT_DIR/apps/exiuscart-website"
+# Admin
+echo "--- Admin ---"
+cd "$PROJECT_DIR/apps/exiuscart-admin"
 npm install --silent
 NEXT_PUBLIC_API_URL=$API_URL npm run build
-pm2 restart website
+pm2 restart exiuscart-admin
 
-# Admin Dashboard
-echo "--- Admin Dashboard ---"
-cd "$PROJECT_DIR/apps/admin-dashboard"
+# Store
+echo "--- Store ---"
+cd "$PROJECT_DIR/apps/exiuscart-store"
 npm install --silent
 NEXT_PUBLIC_API_URL=$API_URL npm run build
-pm2 restart admin-dashboard
+pm2 restart exiuscart-store
 
-# Shopping
-echo "--- Shopping ---"
-cd "$PROJECT_DIR/apps/exiuscart-shopping"
+# Affiliates
+echo "--- Affiliates ---"
+cd "$PROJECT_DIR/apps/exiuscart-affiliates"
 npm install --silent
 NEXT_PUBLIC_API_URL=$API_URL npm run build
-pm2 restart shopping
-
-# Shop Dashboard
-echo "--- Shop Dashboard ---"
-cd "$PROJECT_DIR/apps/shop-dashboard"
-npm install --silent
-NEXT_PUBLIC_API_URL=$API_URL npm run build
-pm2 restart shop-dashboard
+pm2 restart exiuscart-affiliates
 
 echo "=== Deploy Complete ==="
 pm2 status

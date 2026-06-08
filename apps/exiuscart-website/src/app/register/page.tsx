@@ -11,7 +11,6 @@ import { Eye, EyeOff, Loader2, ArrowLeft, Check, Store, Users, TrendingUp, Shiel
 
 const COUNTRIES = [
   { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', currency: 'AED' },
-  { code: 'LK', name: 'Sri Lanka',            flag: '🇱🇰', currency: 'LKR' },
   { code: 'US', name: 'United States',        flag: '🇺🇸', currency: 'USD' },
   { code: 'GB', name: 'United Kingdom',       flag: '🇬🇧', currency: 'USD' },
   { code: 'SA', name: 'Saudi Arabia',         flag: '🇸🇦', currency: 'USD' },
@@ -263,10 +262,7 @@ function RegisterForm() {
           {countryObj && countryObj.code === 'AE' && (
             <p className="text-[#6B3FD9] text-xs mt-1">Pricing shown in AED • Payments via UAE bank cards</p>
           )}
-          {countryObj && countryObj.code === 'LK' && (
-            <p className="text-[#6B3FD9] text-xs mt-1">Pricing shown in LKR • Payments via Sri Lankan bank cards</p>
-          )}
-          {countryObj && countryObj.code !== 'AE' && countryObj.code !== 'LK' && countryObj.code !== '' && (
+          {countryObj && countryObj.code !== 'AE' && countryObj.code !== '' && (
             <p className="text-gray-400 text-xs mt-1">Pricing shown in USD • International cards accepted</p>
           )}
         </div>
