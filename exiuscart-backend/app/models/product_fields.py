@@ -5,11 +5,12 @@ from app.core.database import Base
 
 
 class ShopField(Base):
-    """Custom product fields defined by each shop owner."""
+    """Custom product fields defined by each shop owner, optionally scoped to a category."""
     __tablename__ = "shop_fields"
 
     id = Column(Integer, primary_key=True, index=True)
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)  # NULL = applies to all categories
 
     # Field definition
     label = Column(String(100), nullable=False)       # "Brand", "Storage", "Expiry Date"

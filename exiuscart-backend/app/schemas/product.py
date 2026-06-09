@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
 
@@ -7,6 +7,8 @@ from decimal import Decimal
 class CategoryBase(BaseModel):
     name: str
     description: Optional[str] = None
+    parent_id: Optional[int] = None
+    sort_order: int = 0
 
 
 class CategoryCreate(CategoryBase):
@@ -19,9 +21,13 @@ class CategoryResponse(CategoryBase):
     shop_id: int
     is_active: bool
     created_at: datetime
+    children: Optional[List["CategoryResponse"]] = []
 
     class Config:
         from_attributes = True
+
+
+CategoryResponse.model_rebuild()
 
 
 class ProductBase(BaseModel):

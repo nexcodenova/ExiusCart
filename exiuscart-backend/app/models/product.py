@@ -13,14 +13,18 @@ class Category(Base):
     description = Column(Text, nullable=True)
     image_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Foreign Keys
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
 
     # Relationships
     shop = relationship("Shop", back_populates="categories")
     products = relationship("Product", back_populates="category")
+    children = relationship("Category", back_populates="parent", cascade="all, delete-orphan")
+    parent = relationship("Category", back_populates="children", remote_side="Category.id")
 
 
 class Product(Base):

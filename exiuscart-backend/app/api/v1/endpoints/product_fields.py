@@ -27,6 +27,7 @@ class FieldCreate(BaseModel):
     options: Optional[List[str]] = None
     is_required: bool = False
     sort_order: int = 0
+    category_id: Optional[int] = None  # None = applies to all categories
 
 class FieldUpdate(BaseModel):
     label: Optional[str] = None
@@ -35,6 +36,7 @@ class FieldUpdate(BaseModel):
     is_required: Optional[bool] = None
     sort_order: Optional[int] = None
     is_active: Optional[bool] = None
+    category_id: Optional[int] = None
 
 class FieldOut(BaseModel):
     id: int
@@ -45,6 +47,7 @@ class FieldOut(BaseModel):
     is_required: bool
     sort_order: int
     is_active: bool
+    category_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -87,14 +90,26 @@ def get_product_or_404(product_id: int, shop_id: int, db: Session) -> Product:
 @router.get("/shops/{shop_id}/fields", response_model=List[FieldOut])
 def get_fields(
     shop_id: int,
+    category_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Get fields for a shop. If category_id is given, returns fields scoped to
+    that category PLUS global fields (category_id=NULL). This way a product
+    form always gets global fields + its category-specific fields combined.
+    """
     get_shop_or_404(shop_id, db, current_user)
-    return db.query(ShopField).filter(
+    query = db.query(ShopField).filter(
         ShopField.shop_id == shop_id,
         ShopField.is_active == True
-    ).order_by(ShopField.sort_order).all()
+    )
+    if category_id is not None:
+        from sqlalchemy import or_
+        query = query.filter(
+            or_(ShopField.category_id == category_id, ShopField.category_id == None)
+        )
+    return query.order_by(ShopField.sort_order).all()
 
 
 @router.post("/shops/{shop_id}/fields", response_model=FieldOut, status_code=201)
@@ -106,16 +121,18 @@ def create_field(
 ):
     get_shop_or_404(shop_id, db, current_user)
 
-    # Ensure unique field_key per shop
+    # Unique field_key per shop+category combination
     existing = db.query(ShopField).filter(
         ShopField.shop_id == shop_id,
-        ShopField.field_key == data.field_key
+        ShopField.field_key == data.field_key,
+        ShopField.category_id == data.category_id
     ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Field key already exists for this shop")
+        raise HTTPException(status_code=400, detail="Field key already exists for this shop/category")
 
     field = ShopField(
         shop_id=shop_id,
+        category_id=data.category_id,
         label=data.label,
         field_key=data.field_key,
         field_type=data.field_type,

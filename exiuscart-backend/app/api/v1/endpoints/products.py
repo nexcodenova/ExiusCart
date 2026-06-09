@@ -8,8 +8,17 @@ from app.core.database import get_db
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product, Category
+from app.models.subscription import Subscription
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, CategoryCreate, CategoryResponse
 from app.api.v1.deps import get_current_user
+
+PLAN_PRODUCT_LIMITS = {
+    "trial": 50,
+    "starter": 1000,
+    "business": 1000,
+    "pro": -1,       # unlimited
+    "premium": -1,
+}
 
 
 class BulkProductRow(BaseModel):
@@ -48,8 +57,19 @@ async def create_category(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
+    if category_data.parent_id:
+        parent = db.query(Category).filter(
+            Category.id == category_data.parent_id,
+            Category.shop_id == shop_id
+        ).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent category not found")
+
     new_category = Category(
-        **category_data.model_dump(),
+        name=category_data.name,
+        description=category_data.description,
+        parent_id=category_data.parent_id,
+        sort_order=category_data.sort_order,
         slug=generate_slug(category_data.name),
         shop_id=shop_id
     )
@@ -65,8 +85,37 @@ async def get_categories(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    categories = db.query(Category).filter(Category.shop_id == shop_id).all()
+    # Return only root categories — children are nested via relationship
+    categories = db.query(Category).filter(
+        Category.shop_id == shop_id,
+        Category.parent_id == None
+    ).order_by(Category.sort_order).all()
     return categories
+
+
+@router.delete("/categories/{category_id}", status_code=status.HTTP_200_OK)
+async def delete_category(
+    category_id: int,
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    category = db.query(Category).filter(
+        Category.id == category_id,
+        Category.shop_id == shop_id
+    ).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    # Move products to uncategorised instead of blocking or orphaning
+    db.query(Product).filter(
+        Product.category_id == category_id,
+        Product.shop_id == shop_id
+    ).update({"category_id": None})
+
+    db.delete(category)
+    db.commit()
+    return {"message": "Category deleted. Products moved to uncategorised."}
 
 
 # Products
@@ -80,6 +129,19 @@ async def create_product(
     shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
+
+    # Plan limit enforcement
+    subscription = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
+    if subscription:
+        plan_key = subscription.plan_type.lower()
+        limit = PLAN_PRODUCT_LIMITS.get(plan_key, 50)
+        if limit != -1:
+            current_count = db.query(Product).filter(Product.shop_id == shop_id).count()
+            if current_count >= limit:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Product limit reached for your plan ({limit} products). Please upgrade."
+                )
 
     new_product = Product(
         **product_data.model_dump(),
