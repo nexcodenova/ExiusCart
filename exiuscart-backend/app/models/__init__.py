@@ -16,3 +16,4 @@ from app.models.attendance import AttendanceRecord
 from app.models.fleet import Vehicle, VehicleService
 from app.models.services import Project, Task, HelpdeskTicket, Appointment
 from app.models.shopify_integration import ShopifyStore, ShopifyWebhook, ShopifySyncLog
+from app.models.partner import PartnerLicense

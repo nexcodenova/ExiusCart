@@ -14,9 +14,10 @@ from app.api.v1.deps import get_current_user
 
 PLAN_PRODUCT_LIMITS = {
     "trial": 50,
+    "thedersi_basic": 50,   # free forever for TheDersi free sellers
     "starter": 1000,
     "business": 1000,
-    "pro": -1,       # unlimited
+    "pro": -1,
     "premium": -1,
 }
 
