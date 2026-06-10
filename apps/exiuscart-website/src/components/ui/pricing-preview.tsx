@@ -47,7 +47,7 @@ export function PricingPreview() {
       <div className="space-y-3 mb-8">
         <PricingFeature text="POS & VAT Invoicing" />
         <PricingFeature text="Inventory Management" />
-        <PricingFeature text="Shopify & Store Sync" />
+        <PricingFeature text="Multi-Store & Marketplace Connect" />
         <PricingFeature text="Lead Management" />
         <PricingFeature text="Sales & VAT Reports" />
       </div>

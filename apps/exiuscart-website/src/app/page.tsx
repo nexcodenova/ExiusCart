@@ -5,6 +5,7 @@ import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { PricingPreview } from '@/components/ui/pricing-preview';
 import { PromoBanner } from '@/components/ui/promo-banner';
+import { LiveStats } from '@/components/ui/live-stats';
 
 export const metadata: Metadata = {
   title: 'ExiusCart - Smart Business Management for Small Shops | POS, Invoicing & WhatsApp Orders',
@@ -271,20 +272,19 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                Built for UAE &amp; worldwide businesses
+                Built for worldwide businesses
               </h2>
               <p className="text-gray-400 mb-10">
                 From small shops to growing enterprises — ExiusCart is designed
-                for real businesses. UAE regulations, Arabic support, and
+                for real businesses. VAT-ready, multi-currency, and
                 international-ready features all in one platform.
               </p>
 
               <div className="space-y-4">
                 <BenefitRow text="VAT compliant invoicing (5%)" />
-                <BenefitRow text="Arabic & English interface" />
-                <BenefitRow text="Works offline" />
-                <BenefitRow text="Shopify & store integration" />
+                <BenefitRow text="Connect any store or marketplace easily" />
                 <BenefitRow text="WhatsApp integration" />
+                <BenefitRow text="Multi-currency & international-ready" />
                 <BenefitRow text="Free updates included" />
               </div>
             </div>
@@ -300,44 +300,26 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Trusted by UAE Business Owners
+              Trusted by Businesses Worldwide
             </h2>
             <p className="text-gray-400 max-w-2xl mx-auto">
-              See what shop owners across UAE are saying about ExiusCart
+              Real businesses running on ExiusCart — more success stories coming soon
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          {/* Featured: TheDersi */}
+          <div className="max-w-3xl mx-auto">
             <TestimonialCard
-              name="Ahmed Al Rashid"
-              business="Mobile Zone Electronics"
-              location="Dubai"
+              name="TheDersi"
+              business="Sri Lankan Fashion Marketplace"
+              location="Sri Lanka · #1 Fashion Platform"
               rating={5}
-              text="ExiusCart transformed how I manage my mobile shop. The POS is so fast, and my customers love getting WhatsApp receipts. Best investment for my business!"
-            />
-            <TestimonialCard
-              name="Fatima Hassan"
-              business="Fashion Corner Boutique"
-              location="Abu Dhabi"
-              rating={5}
-              text="Finally, a system that understands UAE business needs! VAT invoicing is automatic, inventory tracking saves me hours every week. Highly recommend!"
-            />
-            <TestimonialCard
-              name="Mohammed Khalid"
-              business="Tech Hub Accessories"
-              location="Sharjah"
-              rating={5}
-              text="The WhatsApp ordering feature is a game-changer. My customers can browse and order anytime. Sales increased by 40% in the first month!"
+              text="TheDersi is Sri Lanka's leading fashion marketplace. Our sellers rely on ExiusCart to manage their products, inventory, and orders — all in one place. It has made running a multi-seller marketplace seamless and efficient."
+              featured
             />
           </div>
 
-          {/* Trust Stats */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 pt-12 border-t border-gray-800">
-            <StatItem value="50+" label="Active Shops" />
-            <StatItem value="10,000+" label="Invoices Created" />
-            <StatItem value="99%" label="Uptime" />
-            <StatItem value="4.9/5" label="Customer Rating" />
-          </div>
+          <LiveStats />
         </div>
       </section>
 
@@ -404,16 +386,24 @@ function TestimonialCard({
   location,
   rating,
   text,
+  featured,
 }: {
   name: string;
   business: string;
   location: string;
   rating: number;
   text: string;
+  featured?: boolean;
 }) {
   return (
-    <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 relative">
+    <div className={`bg-[#151F32] rounded-2xl border p-6 relative ${featured ? 'border-[#6B3FD9]/40 shadow-lg shadow-[#6B3FD9]/10' : 'border-gray-800'}`}>
       <Quote className="absolute top-6 right-6 w-8 h-8 text-[#6B3FD9]/20" />
+
+      {featured && (
+        <div className="inline-flex items-center gap-1.5 bg-[#7B4FE9]/10 border border-[#7B4FE9]/30 text-[#7B4FE9] text-xs font-bold px-3 py-1 rounded-full mb-4">
+          ✓ Verified Customer
+        </div>
+      )}
 
       {/* Rating */}
       <div className="flex gap-1 mb-4">
@@ -437,15 +427,6 @@ function TestimonialCard({
           <p className="text-gray-500 text-xs">{business} • {location}</p>
         </div>
       </div>
-    </div>
-  );
-}
-
-function StatItem({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="text-center">
-      <p className="text-3xl md:text-4xl font-bold text-[#6B3FD9] mb-1">{value}</p>
-      <p className="text-gray-400 text-sm">{label}</p>
     </div>
   );
 }
