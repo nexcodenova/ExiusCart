@@ -283,7 +283,7 @@ export default function HomePage() {
               <div className="space-y-4">
                 <BenefitRow text="VAT compliant invoicing (5%)" />
                 <BenefitRow text="Connect any store or marketplace easily" />
-                <BenefitRow text="WhatsApp integration" />
+                <BenefitRow text="Email & notification integration" />
                 <BenefitRow text="Multi-currency & international-ready" />
                 <BenefitRow text="Free updates included" />
               </div>
