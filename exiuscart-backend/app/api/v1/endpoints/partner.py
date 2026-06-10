@@ -26,9 +26,9 @@ router = APIRouter()
 # thedersi_basic = trial features, but expires_at = NULL (free forever)
 # starter        = full starter plan, 1 year provisioned by TheDersi
 THEDERSI_TIER_MAP = {
-    "free":     {"plan_type": "thedersi_basic", "duration_months": None},  # forever
-    "standard": {"plan_type": "starter",        "duration_months": 12},    # 999 LKR plan
-    "premium":  {"plan_type": "starter",        "duration_months": 12},    # 1699 LKR plan
+    "free":     {"plan_type": "thedersi_basic", "duration_months": None},  # 50 products, free forever
+    "standard": {"plan_type": "starter",        "duration_months": None},  # 999 LKR sellers, free forever
+    "premium":  {"plan_type": "starter",        "duration_months": None},  # 1699 LKR sellers, free forever
 }
 
 # ── Auth helper ───────────────────────────────────────────────────────────────
