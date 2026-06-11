@@ -357,10 +357,25 @@ export const imagesApi = {
     api.put(`/shops/${shopId}/products/${productId}/images/${imageId}/primary`, {}),
 };
 
+// ── Product Variants ───────────────────────────────────
+export const variantsApi = {
+  getAll: (shopId: string, productId: string) =>
+    api.get(`/shops/${shopId}/products/${productId}/variants`),
+  save: (shopId: string, productId: string, variants: {
+    size?: string; color?: string; sku?: string; quantity: number; price?: number;
+  }[]) => api.put(`/shops/${shopId}/products/${productId}/variants`, variants),
+};
+
 // ── Channel Integrations ───────────────────────────────
 export const channelsApi = {
   getConnections: (shopId: string) =>
     api.get(`/shops/${shopId}/channels`),
+  connect: (shopId: string, data: {
+    channel_type: string;
+    channel_api_key: string;
+    channel_api_url?: string;
+    channel_seller_id?: string;
+  }) => api.post(`/shops/${shopId}/channels`, data),
   syncCategories: (shopId: string, channelId: number) =>
     api.post(`/shops/${shopId}/channels/${channelId}/sync-categories`),
   getCategories: (shopId: string, channelId: number) =>
@@ -370,6 +385,8 @@ export const channelsApi = {
     channel_category_id: string;
     channel_category_name: string;
   }) => api.put(`/shops/${shopId}/products/${productId}/channel-category`, data),
+  getAllChannelStatuses: (shopId: string) =>
+    api.get(`/shops/${shopId}/channel-statuses`),
   getProductChannelStatus: (shopId: string, productId: string) =>
     api.get(`/shops/${shopId}/products/${productId}/channel-status`),
   getProductChannelCategories: (shopId: string, productId: string) =>

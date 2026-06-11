@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product, Category
+from app.models.product_variant import ProductVariant
 from app.models.subscription import Subscription
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, CategoryCreate, CategoryResponse
 from app.api.v1.deps import get_current_user
@@ -313,3 +314,74 @@ async def bulk_import_products(
 
     db.commit()
     return BulkImportResult(created=created, skipped=skipped, errors=errors)
+
+
+# ── Product Variants ──────────────────────────────────────────────────────────
+
+class VariantIn(BaseModel):
+    size: Optional[str] = None
+    color: Optional[str] = None
+    sku: Optional[str] = None
+    quantity: int = 0
+    price: Optional[float] = None
+
+
+class VariantOut(BaseModel):
+    id: int
+    size: Optional[str]
+    color: Optional[str]
+    sku: Optional[str]
+    quantity: int
+    price: Optional[float]
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/{product_id}/variants", response_model=List[VariantOut])
+def get_variants(
+    product_id: int,
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product.variants
+
+
+@router.put("/{product_id}/variants", response_model=List[VariantOut])
+def save_variants(
+    product_id: int,
+    shop_id: int,
+    variants: List[VariantIn],
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Replace all variants for a product. Send the full updated list each time."""
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    db.query(ProductVariant).filter(ProductVariant.product_id == product_id).delete()
+    new_variants = []
+    for v in variants:
+        pv = ProductVariant(
+            product_id=product_id,
+            size=v.size,
+            color=v.color,
+            sku=v.sku,
+            quantity=v.quantity,
+            price=v.price,
+        )
+        db.add(pv)
+        new_variants.append(pv)
+    db.commit()
+    for pv in new_variants:
+        db.refresh(pv)
+
+    # Re-sync to channels so TheDersi gets updated variant info
+    trigger_product_sync(product_id, shop_id, background_tasks)
+    return new_variants

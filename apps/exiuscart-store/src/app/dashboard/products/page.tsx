@@ -6,7 +6,7 @@ import {
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface Product {
@@ -61,6 +61,16 @@ export default function ProductsPage() {
   const [csvResult, setCsvResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
+
+  // Channel status map: { product_id: { thedersi: { status, rejection_reason } } }
+  const [channelStatuses, setChannelStatuses] = useState<Record<string, Record<string, { status: string; rejection_reason?: string }>>>({});
+
+  useEffect(() => {
+    if (!shopId) return;
+    channelsApi.getAllChannelStatuses(shopId)
+      .then((r) => setChannelStatuses(r.data ?? {}))
+      .catch(() => {});
+  }, [shopId]);
 
   const fetchProducts = useCallback(async () => {
     if (!shopId) return;
@@ -290,7 +300,20 @@ export default function ProductsPage() {
                               ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                               : <Package className="w-6 h-6 text-muted-foreground" />}
                           </div>
-                          <span className="font-medium text-foreground">{product.name}</span>
+                          <div>
+                            <span className="font-medium text-foreground">{product.name}</span>
+                            {channelStatuses[product.id]?.thedersi && (() => {
+                              const s = channelStatuses[product.id].thedersi;
+                              const badge = s.status === 'approved'
+                                ? { label: '✅ Live on TheDersi', cls: 'text-green-600 dark:text-green-400' }
+                                : s.status === 'rejected'
+                                ? { label: '❌ Rejected', cls: 'text-red-500' }
+                                : { label: '🟡 Pending Review', cls: 'text-yellow-600 dark:text-yellow-400' };
+                              return (
+                                <p className={`text-xs mt-0.5 ${badge.cls}`} title={s.rejection_reason ?? undefined}>{badge.label}</p>
+                              );
+                            })()}
+                          </div>
                         </div>
                       </td>
                       <td className="p-4"><span className="text-sm text-muted-foreground font-mono">{product.sku}</span></td>
@@ -332,6 +355,15 @@ export default function ProductsPage() {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground truncate">{product.name}</h3>
                       <p className="text-xs text-muted-foreground font-mono mt-0.5">{product.sku}</p>
+                      {channelStatuses[product.id]?.thedersi && (() => {
+                        const s = channelStatuses[product.id].thedersi;
+                        const badge = s.status === 'approved'
+                          ? { label: '✅ Live on TheDersi', cls: 'text-green-600 dark:text-green-400' }
+                          : s.status === 'rejected'
+                          ? { label: '❌ Rejected', cls: 'text-red-500' }
+                          : { label: '🟡 Pending Review', cls: 'text-yellow-600 dark:text-yellow-400' };
+                        return <p className={`text-xs mt-0.5 ${badge.cls}`}>{badge.label}</p>;
+                      })()}
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-sm font-semibold text-foreground">{product.sellingPrice} {sym}</span>
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${product.stock === 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400' : product.stock <= product.lowStockAlert ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400' : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>
@@ -518,6 +550,7 @@ function ProductModal({
     name: product?.name ?? '',
     sku: product?.sku ?? '',
     barcode: product?.barcode ?? '',
+    description: (product as any)?.description ?? '',
     category: product?.category ?? categories[0] ?? '',
     costPrice: product?.costPrice ?? 0,
     sellingPrice: product?.sellingPrice ?? 0,
@@ -537,6 +570,11 @@ function ProductModal({
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Variants state
+  interface Variant { id?: number; size: string; color: string; sku: string; quantity: number; price: string; }
+  const emptyVariant = (): Variant => ({ size: '', color: '', sku: '', quantity: 0, price: '' });
+  const [variants, setVariants] = useState<Variant[]>([]);
 
   // TheDersi channel category state
   const [theDersiConnection, setTheDersiConnection] = useState<{ id: number } | null>(null);
@@ -563,6 +601,14 @@ function ProductModal({
 
       imagesApi.getAll(shopId, product.id)
         .then((res) => setSavedImages(res.data ?? []))
+        .catch(() => {});
+
+      variantsApi.getAll(shopId, product.id)
+        .then((res) => setVariants((res.data ?? []).map((v: any) => ({
+          id: v.id, size: v.size ?? '', color: v.color ?? '',
+          sku: v.sku ?? '', quantity: v.quantity ?? 0,
+          price: v.price != null ? String(v.price) : '',
+        }))))
         .catch(() => {});
     }
 
@@ -691,6 +737,19 @@ function ProductModal({
       if (attrsPayload.length > 0 || customFields.length > 0) {
         try {
           await attributesApi.save(shopId, productId, attrsPayload);
+        } catch {/* no-op */}
+      }
+
+      // Save variants if any are defined
+      if (variants.length > 0) {
+        try {
+          await variantsApi.save(shopId, productId, variants.map((v) => ({
+            size: v.size || undefined,
+            color: v.color || undefined,
+            sku: v.sku || undefined,
+            quantity: v.quantity,
+            price: v.price !== '' ? Number(v.price) : undefined,
+          })));
         } catch {/* no-op */}
       }
 
@@ -845,6 +904,17 @@ function ProductModal({
               />
             </div>
 
+            <div>
+              <label className="text-sm text-muted-foreground mb-1.5 block">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+                placeholder="Describe the product — material, style, occasion..."
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground resize-none"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-muted-foreground mb-1.5 block">SKU</label>
@@ -931,6 +1001,91 @@ function ProductModal({
                 <input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
               </div>
             </div>
+          </section>
+
+          {/* ── Size & Color Variants ─────────────────────────────────── */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <div>
+                <h3 className="text-sm font-medium text-foreground">Sizes & Colors</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Add variants with individual stock counts. Customers on TheDersi will see these options.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVariants((v) => [...v, emptyVariant()])}
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Variant
+              </button>
+            </div>
+
+            {variants.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-3 bg-muted/30 rounded-lg">
+                No variants added. Click "Add Variant" to add sizes and colors (e.g. Red / Size M — 5 in stock).
+              </p>
+            )}
+
+            {variants.map((v, i) => (
+              <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                <div className="col-span-3">
+                  {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Size</label>}
+                  <input
+                    type="text"
+                    value={v.size}
+                    onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, size: e.target.value } : r))}
+                    placeholder="S / M / XL"
+                    className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div className="col-span-3">
+                  {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Color</label>}
+                  <input
+                    type="text"
+                    value={v.color}
+                    onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, color: e.target.value } : r))}
+                    placeholder="Red / Blue"
+                    className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div className="col-span-2">
+                  {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Stock</label>}
+                  <input
+                    type="number"
+                    value={v.quantity}
+                    min={0}
+                    onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, quantity: Number(e.target.value) } : r))}
+                    className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div className="col-span-3">
+                  {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Price (leave blank = default)</label>}
+                  <input
+                    type="number"
+                    value={v.price}
+                    min={0}
+                    onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, price: e.target.value } : r))}
+                    placeholder={String(formData.sellingPrice)}
+                    className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div className="col-span-1 flex justify-end">
+                  {i === 0 && <div className="mb-1 h-4" />}
+                  <button
+                    type="button"
+                    onClick={() => setVariants((arr) => arr.filter((_, j) => j !== i))}
+                    className="p-2 text-muted-foreground hover:text-destructive transition rounded-lg hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {variants.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Total stock across all variants: <strong>{variants.reduce((s, v) => s + v.quantity, 0)}</strong>
+              </p>
+            )}
           </section>
 
           {/* ── Custom Fields ──────────────────────────────────────────── */}

@@ -33,6 +33,7 @@ from app.models.customer import Customer
 from app.models.channel_order_meta import ChannelOrderMeta
 from app.models.channel_product_status import ChannelProductStatus
 from app.models.channel_category import ChannelCategory, ProductChannelCategory
+from app.models.product_variant import ProductVariant
 
 router = APIRouter()
 
@@ -105,26 +106,35 @@ def _webhook_url(conn: ChannelConnection) -> str:
 
 
 def _product_payload(product: Product, currency: str, channel_type: str, channel_category_name: str = None) -> dict:
-    # Marketplace channels (TheDersi) → pending_review (admin must approve before going live)
-    # Own-store channels (Shopify, WooCommerce, custom) → active (goes live instantly)
     status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
-    # Use channel-specific category if seller assigned one, otherwise fall back to ExiusCart category
     category_name = channel_category_name or (product.category.name if product.category else None)
+
+    # Include size/color variants so TheDersi can show options to customers
+    variants = [
+        {
+            "size": v.size,
+            "color": v.color,
+            "sku": v.sku,
+            "quantity": v.quantity,
+            "price": float(v.price) if v.price is not None else None,
+        }
+        for v in (product.variants or [])
+    ]
+    # Total stock = sum of variant quantities if variants exist, else product.quantity
+    total_stock = sum(v["quantity"] for v in variants) if variants else product.quantity
+
     return {
         "exiuscart_product_id": product.id,
         "name": product.name,
         "description": product.description or "",
         "price": float(product.price),
         "currency": currency,
-        "stock": product.quantity,
+        "quantity": total_stock,
         "sku": product.sku or "",
         "image_url": product.image_url or "",
-        "video_url": product.video_url or "",
-        "is_active": product.is_active,
-        "is_featured": product.is_featured,
-        "is_trending": product.is_trending,
-        "category_name": category_name,
+        "category": category_name,
         "status": status,
+        "variants": variants,  # TheDersi shows size/color pickers from this
     }
 
 
@@ -236,6 +246,56 @@ def trigger_product_sync(product_id: int, shop_id: int, background_tasks: Backgr
 
 def trigger_product_delete(product_id: int, shop_id: int, background_tasks: BackgroundTasks):
     background_tasks.add_task(_bg_delete_product, product_id, shop_id)
+
+
+def _bg_push_stock(product_id: int, shop_id: int):
+    """
+    Push updated stock levels to all connected marketplace channels after any
+    inventory change (POS sale, manual adjustment, order fulfillment).
+    Only pushes to marketplace channels (TheDersi) — own-store channels manage stock internally.
+    """
+    db = SessionLocal()
+    try:
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            return
+        connections = db.query(ChannelConnection).filter(
+            ChannelConnection.shop_id == shop_id,
+            ChannelConnection.is_active == True,
+            ChannelConnection.channel_type.in_(MARKETPLACE_CHANNELS),
+        ).all()
+        for conn in connections:
+            api_url = _channel_url(conn)
+            if not api_url:
+                continue
+            # Build variant stock list if variants exist
+            variants = db.query(ProductVariant).filter(ProductVariant.product_id == product_id).all()
+            if variants:
+                stock_payload = {
+                    "quantity": sum(v.quantity for v in variants),
+                    "variants": [
+                        {"size": v.size, "color": v.color, "quantity": v.quantity}
+                        for v in variants
+                    ],
+                }
+            else:
+                stock_payload = {"quantity": product.quantity}
+
+            try:
+                with httpx.Client(timeout=8) as client:
+                    client.patch(
+                        f"{api_url}/exiuscart/products/{product_id}/stock",
+                        json=stock_payload,
+                        headers={"X-Api-Key": conn.channel_api_key},
+                    )
+            except Exception:
+                pass  # stock sync is best-effort
+    finally:
+        db.close()
+
+
+def trigger_stock_sync(product_id: int, shop_id: int, background_tasks: BackgroundTasks):
+    background_tasks.add_task(_bg_push_stock, product_id, shop_id)
 
 
 # ── Channel management endpoints ──────────────────────────────────────────────
@@ -416,6 +476,7 @@ def receive_order_webhook(
     db.flush()
 
     # Create order items + decrease stock
+    stock_changed_product_ids: set = set()
     for item in payload.items:
         product = db.query(Product).filter(
             Product.id == item.exiuscart_product_id,
@@ -432,8 +493,20 @@ def receive_order_webhook(
             total_price=item.item_total or (item.unit_price * item.quantity),
         ))
 
-        # Reduce inventory (never go below 0)
-        product.quantity = max(0, product.quantity - item.quantity)
+        # Reduce variant stock if size/color specified, otherwise reduce product-level stock
+        if item.size or item.color:
+            variant = db.query(ProductVariant).filter(
+                ProductVariant.product_id == product.id,
+                ProductVariant.size == item.size,
+                ProductVariant.color == item.color,
+            ).first()
+            if variant:
+                variant.quantity = max(0, variant.quantity - item.quantity)
+            else:
+                product.quantity = max(0, product.quantity - item.quantity)
+        else:
+            product.quantity = max(0, product.quantity - item.quantity)
+        stock_changed_product_ids.add(product.id)
 
     # Save channel-specific meta (commission, delivery, variants)
     db.add(ChannelOrderMeta(
@@ -451,6 +524,11 @@ def receive_order_webhook(
     ))
 
     db.commit()
+
+    # Push updated stock to TheDersi for all products whose stock changed
+    for pid in stock_changed_product_ids:
+        _bg_push_stock(pid, conn.shop_id)
+
     return {
         "success": True,
         "exiuscart_order_id": order.id,
@@ -666,6 +744,32 @@ def update_product_channel_status(
         "channel": payload.channel,
         "status": payload.status,
     }
+
+
+@router.get("/shops/{shop_id}/channel-statuses")
+def get_all_channel_statuses(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns all channel product statuses for a shop in one call.
+    Used by the product list to show 🟡/✅/❌ badges without N+1 requests.
+    Returns: { product_id: { channel_type: {status, rejection_reason} } }
+    """
+    _shop_or_404(shop_id, current_user, db)
+    rows = db.query(ChannelProductStatus).filter(
+        ChannelProductStatus.shop_id == shop_id,
+    ).all()
+    result: dict = {}
+    for r in rows:
+        if r.product_id not in result:
+            result[r.product_id] = {}
+        result[r.product_id][r.channel_type] = {
+            "status": r.status,
+            "rejection_reason": r.rejection_reason,
+        }
+    return result
 
 
 @router.get("/shops/{shop_id}/products/{product_id}/channel-status")
