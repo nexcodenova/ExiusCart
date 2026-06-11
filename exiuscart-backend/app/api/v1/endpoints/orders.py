@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -10,6 +10,7 @@ from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate
 from app.api.v1.deps import get_current_user
+from app.api.v1.endpoints.channels import trigger_stock_sync
 
 router = APIRouter()
 
@@ -24,6 +25,7 @@ def generate_order_number() -> str:
 async def create_order(
     shop_id: int,
     order_data: OrderCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -51,7 +53,7 @@ async def create_order(
         })
 
         # Update inventory
-        product.quantity -= item.quantity
+        product.quantity = max(0, product.quantity - item.quantity)
 
     # Calculate tax (5% VAT for UAE)
     tax_amount = subtotal * 0.05
@@ -79,6 +81,11 @@ async def create_order(
 
     db.commit()
     db.refresh(new_order)
+
+    # Push updated stock to TheDersi for every product sold via POS
+    for item in order_data.items:
+        trigger_stock_sync(item.product_id, shop_id, background_tasks)
+
     return new_order
 
 

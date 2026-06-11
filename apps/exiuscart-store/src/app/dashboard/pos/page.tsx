@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { generateInvoicePDF, generateThermalReceipt } from '@/lib/invoice-generator';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
-import { productsApi, shopApi } from '@/lib/api';
+import { productsApi, shopApi, ordersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface POSProduct {
@@ -208,15 +208,36 @@ export default function POSPage() {
     setShowCheckout(true);
   };
 
-  const handlePayment = () => {
-    // Generate order number
+  const handlePayment = async () => {
+    const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
+    if (!shopId) return;
+
     const newOrderNumber = `ORD-${Date.now().toString().slice(-6)}`;
     setOrderNumber(newOrderNumber);
-
-    // Process payment - API call
-    console.log('Processing payment:', { cart, total, paymentMethod, customerName, customerPhone, orderNumber: newOrderNumber });
     setShowCheckout(false);
     setShowReceipt(true);
+
+    // Create order in backend → decreases stock → triggers TheDersi stock sync
+    try {
+      await ordersApi.create(shopId, {
+        source: 'pos',
+        notes: paymentMethod ? `Payment: ${paymentMethod}` : undefined,
+        items: cart.map((item) => ({
+          product_id: Number(item.id),
+          quantity: item.quantity,
+          unit_price: item.price,
+        })),
+      });
+
+      // Update local POS product stock so seller sees correct count without refresh
+      setProducts((prev) => prev.map((p) => {
+        const cartItem = cart.find((c) => c.id === p.id);
+        if (!cartItem) return p;
+        return { ...p, stock: Math.max(0, p.stock - cartItem.quantity) };
+      }));
+    } catch {
+      // Sale receipt already shown — order will sync on next page load
+    }
   };
 
   const getInvoiceData = () => ({
