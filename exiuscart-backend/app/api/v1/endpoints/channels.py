@@ -98,6 +98,7 @@ def _product_payload(product: Product, currency: str) -> dict:
         "is_active": product.is_active,
         "is_featured": product.is_featured,
         "is_trending": product.is_trending,
+        "status": "pending_review",  # always goes to TheDersi admin queue first — admin must approve before going live
     }
 
 
