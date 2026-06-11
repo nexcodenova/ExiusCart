@@ -18,3 +18,4 @@ from app.models.services import Project, Task, HelpdeskTicket, Appointment
 from app.models.shopify_integration import ShopifyStore, ShopifyWebhook, ShopifySyncLog
 from app.models.partner import PartnerLicense
 from app.models.channel import ChannelConnection
+from app.models.channel_order_meta import ChannelOrderMeta

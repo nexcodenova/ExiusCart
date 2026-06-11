@@ -30,13 +30,14 @@ from app.models.channel import ChannelConnection
 from app.models.product import Product
 from app.models.order import Order, OrderItem
 from app.models.customer import Customer
+from app.models.channel_order_meta import ChannelOrderMeta
 
 router = APIRouter()
 
 EXIUSCART_BASE = os.getenv("EXIUSCART_API_BASE", "https://api.exiuscart.com/api/v1")
 
 DEFAULT_CHANNEL_URLS = {
-    "thedersi": os.getenv("THEDERSI_API_URL", "https://api.thedersi.com/v1"),
+    "thedersi": os.getenv("THEDERSI_API_URL", "https://thedersi.lk/api/v1"),
 }
 
 # Marketplace channels require admin approval before products go live.
@@ -55,12 +56,16 @@ class ChannelConnectIn(BaseModel):
 
 class OrderItemIn(BaseModel):
     exiuscart_product_id: int
+    product_name: Optional[str] = None
     quantity: int
     unit_price: float
+    item_total: Optional[float] = None
+    size: Optional[str] = None
+    color: Optional[str] = None
 
 
 class ChannelOrderWebhook(BaseModel):
-    channel_order_id: str      # TheDersi/Shopify order ID (for reference)
+    channel_order_id: str
     buyer_name: str
     buyer_email: Optional[str] = None
     buyer_phone: Optional[str] = None
@@ -69,6 +74,15 @@ class ChannelOrderWebhook(BaseModel):
     subtotal: float
     total: float
     currency: str = "LKR"
+    # Delivery info (TheDersi specific)
+    delivery_fee: Optional[float] = None
+    delivery_paid_by: Optional[str] = None      # "customer" | "seller"
+    delivery_note: Optional[str] = None
+    # Commission info (TheDersi specific)
+    seller_plan: Optional[str] = None
+    commission_rate: Optional[float] = None
+    commission_amount: Optional[float] = None
+    seller_net_earnings: Optional[float] = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -89,9 +103,10 @@ def _webhook_url(conn: ChannelConnection) -> str:
 
 
 def _product_payload(product: Product, currency: str, channel_type: str) -> dict:
-    # Marketplace channels (TheDersi) → pending_review (admin must approve)
+    # Marketplace channels (TheDersi) → pending_review (admin must approve before going live)
     # Own-store channels (Shopify, WooCommerce, custom) → active (goes live instantly)
     status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
+    category_name = product.category.name if product.category else None
     return {
         "exiuscart_product_id": product.id,
         "name": product.name,
@@ -105,6 +120,7 @@ def _product_payload(product: Product, currency: str, channel_type: str) -> dict
         "is_active": product.is_active,
         "is_featured": product.is_featured,
         "is_trending": product.is_trending,
+        "category_name": category_name,
         "status": status,
     }
 
@@ -350,6 +366,12 @@ def receive_order_webhook(
 
     # Create order
     order_number = f"{conn.channel_type.upper()}-{uuid.uuid4().hex[:8].upper()}"
+    delivery_note = payload.delivery_note or ""
+    if payload.delivery_paid_by == "customer":
+        delivery_note = delivery_note or f"Customer pays LKR {payload.delivery_fee or 500} delivery on arrival (COD)."
+    elif payload.delivery_paid_by == "seller":
+        delivery_note = delivery_note or "Free shipping — seller arranges and pays delivery."
+
     order = Order(
         shop_id=conn.shop_id,
         customer_id=customer.id if customer else None,
@@ -361,7 +383,7 @@ def receive_order_webhook(
         tax_amount=0,
         discount_amount=0,
         total=payload.total,
-        notes=f"Channel: {conn.channel_type} | Ref: {payload.channel_order_id}",
+        notes=f"{conn.channel_type.title()} Order #{payload.channel_order_id} | {delivery_note}",
         shipping_address=payload.shipping_address,
     )
     db.add(order)
@@ -381,11 +403,26 @@ def receive_order_webhook(
             product_id=product.id,
             quantity=item.quantity,
             unit_price=item.unit_price,
-            total_price=item.unit_price * item.quantity,
+            total_price=item.item_total or (item.unit_price * item.quantity),
         ))
 
         # Reduce inventory (never go below 0)
         product.quantity = max(0, product.quantity - item.quantity)
+
+    # Save channel-specific meta (commission, delivery, variants)
+    db.add(ChannelOrderMeta(
+        order_id=order.id,
+        channel_type=conn.channel_type,
+        channel_order_id=payload.channel_order_id,
+        seller_plan=payload.seller_plan,
+        commission_rate=payload.commission_rate,
+        commission_amount=payload.commission_amount,
+        seller_net_earnings=payload.seller_net_earnings,
+        delivery_fee=payload.delivery_fee,
+        delivery_paid_by=payload.delivery_paid_by,
+        delivery_note=delivery_note,
+        items_detail=[item.model_dump() for item in payload.items],
+    ))
 
     db.commit()
     return {
