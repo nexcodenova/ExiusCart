@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from slugify import slugify
@@ -11,6 +11,7 @@ from app.models.product import Product, Category
 from app.models.subscription import Subscription
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, CategoryCreate, CategoryResponse
 from app.api.v1.deps import get_current_user
+from app.api.v1.endpoints.channels import trigger_product_sync, trigger_product_delete
 
 PLAN_PRODUCT_LIMITS = {
     "trial": 50,
@@ -124,6 +125,7 @@ async def delete_category(
 async def create_product(
     shop_id: int,
     product_data: ProductCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -152,6 +154,9 @@ async def create_product(
     db.add(new_product)
     db.commit()
     db.refresh(new_product)
+
+    # Push to all connected channels (TheDersi etc.) in background
+    trigger_product_sync(new_product.id, shop_id, background_tasks)
     return new_product
 
 
@@ -198,6 +203,7 @@ async def update_product(
     product_id: int,
     shop_id: int,
     product_data: ProductUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -215,6 +221,9 @@ async def update_product(
 
     db.commit()
     db.refresh(product)
+
+    # Sync updated product to all connected channels
+    trigger_product_sync(product.id, shop_id, background_tasks)
     return product
 
 
@@ -222,6 +231,7 @@ async def update_product(
 async def delete_product(
     product_id: int,
     shop_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -233,6 +243,8 @@ async def delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    # Remove from all connected channels before deleting
+    trigger_product_delete(product_id, shop_id, background_tasks)
     db.delete(product)
     db.commit()
 
