@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
 import {
   Plus, Search, Edit, Trash2, Package, X, ChevronDown,
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
-  FileSpreadsheet, Download, CheckCircle, AlertCircle,
+  FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
 } from 'lucide-react';
 import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi } from '@/lib/api';
+import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface Product {
@@ -172,6 +173,14 @@ export default function ProductsPage() {
 
   const lowStockCount = products.filter((p) => p.stock > 0 && p.stock <= p.lowStockAlert).length;
   const outOfStockCount = products.filter((p) => p.stock === 0).length;
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
+  const [alertDismissed, setAlertDismissed] = useState(false);
+
+  const displayedProducts = stockFilter === 'low'
+    ? products.filter(p => p.stock > 0 && p.stock <= p.lowStockAlert)
+    : stockFilter === 'out'
+    ? products.filter(p => p.stock === 0)
+    : products;
 
   return (
     <div className="space-y-6">
@@ -219,6 +228,39 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Low stock alert banner */}
+      {!loading && !alertDismissed && (outOfStockCount > 0 || lowStockCount > 0) && (
+        <div className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${outOfStockCount > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-orange-500/10 border-orange-500/30'}`}>
+          <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${outOfStockCount > 0 ? 'text-red-500' : 'text-orange-500'}`} />
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-semibold ${outOfStockCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}`}>
+              Stock Alert
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {outOfStockCount > 0 && <span className="text-red-500 font-medium">{outOfStockCount} out of stock</span>}
+              {outOfStockCount > 0 && lowStockCount > 0 && <span className="mx-1">·</span>}
+              {lowStockCount > 0 && <span className="text-orange-500 font-medium">{lowStockCount} running low</span>}
+              <span className="ml-2">— restock before you run out.</span>
+            </p>
+            <div className="flex gap-2 mt-2">
+              {outOfStockCount > 0 && (
+                <button onClick={() => setStockFilter('out')} className="text-xs px-2.5 py-1 bg-red-500/15 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-500/25 transition font-medium">
+                  Show out of stock ({outOfStockCount})
+                </button>
+              )}
+              {lowStockCount > 0 && (
+                <button onClick={() => setStockFilter('low')} className="text-xs px-2.5 py-1 bg-orange-500/15 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-500/25 transition font-medium">
+                  Show low stock ({lowStockCount})
+                </button>
+              )}
+            </div>
+          </div>
+          <button onClick={() => setAlertDismissed(true)} className="p-1 hover:bg-muted rounded transition shrink-0">
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex flex-col sm:flex-row gap-4">
@@ -244,6 +286,25 @@ export default function ProductsPage() {
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
           </div>
+          {/* Stock quick-filters */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setStockFilter('all')}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary hover:text-primary'}`}
+            >All</button>
+            {outOfStockCount > 0 && (
+              <button
+                onClick={() => setStockFilter('out')}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'out' ? 'bg-red-500 text-white border-red-500' : 'bg-muted text-red-500 border-red-500/30 hover:border-red-500'}`}
+              >Out of stock ({outOfStockCount})</button>
+            )}
+            {lowStockCount > 0 && (
+              <button
+                onClick={() => setStockFilter('low')}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'low' ? 'bg-orange-500 text-white border-orange-500' : 'bg-muted text-orange-500 border-orange-500/30 hover:border-orange-500'}`}
+              >Low stock ({lowStockCount})</button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -253,18 +314,24 @@ export default function ProductsPage() {
           <div className="p-8 space-y-3">
             {[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}
           </div>
-        ) : products.length === 0 ? (
+        ) : displayedProducts.length === 0 ? (
           <div className="p-16 text-center">
             <Package className="w-14 h-14 text-muted-foreground mx-auto mb-4 opacity-40" />
             <h3 className="font-semibold text-foreground mb-1">
-              {searchQuery || selectedCategory !== 'All' ? 'No products found' : 'No products yet'}
+              {searchQuery || selectedCategory !== 'All' || stockFilter !== 'all' ? 'No products found' : 'No products yet'}
             </h3>
             <p className="text-sm text-muted-foreground mb-5">
-              {searchQuery || selectedCategory !== 'All'
+              {stockFilter !== 'all'
+                ? 'No products match this stock filter'
+                : searchQuery || selectedCategory !== 'All'
                 ? 'Try adjusting your search or filters'
                 : 'Add your first product to start selling'}
             </p>
-            {!searchQuery && selectedCategory === 'All' && (
+            {stockFilter !== 'all' ? (
+              <button type="button" onClick={() => setStockFilter('all')} className="inline-flex items-center gap-2 border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition">
+                Clear filter
+              </button>
+            ) : !searchQuery && selectedCategory === 'All' && (
               <button
                 type="button"
                 onClick={() => { setEditingProduct(null); setShowAddModal(true); }}
@@ -291,7 +358,7 @@ export default function ProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {products.map((product) => (
+                  {displayedProducts.map((product) => (
                     <tr key={product.id} className="hover:bg-muted/30 transition">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
@@ -310,7 +377,12 @@ export default function ProductsPage() {
                                 ? { label: '❌ Rejected', cls: 'text-red-500' }
                                 : { label: '🟡 Pending Review', cls: 'text-yellow-600 dark:text-yellow-400' };
                               return (
-                                <p className={`text-xs mt-0.5 ${badge.cls}`} title={s.rejection_reason ?? undefined}>{badge.label}</p>
+                                <>
+                                  <p className={`text-xs mt-0.5 ${badge.cls}`}>{badge.label}</p>
+                                  {s.status === 'rejected' && s.rejection_reason && (
+                                    <p className="text-xs mt-0.5 text-red-500 bg-red-500/10 rounded px-1.5 py-0.5 max-w-[220px] leading-snug">{s.rejection_reason}</p>
+                                  )}
+                                </>
                               );
                             })()}
                           </div>
@@ -330,6 +402,24 @@ export default function ProductsPage() {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {(product as any).barcode && (
+                            <button
+                              type="button"
+                              title="Print barcode label"
+                              onClick={() => {
+                                const data = encodeURIComponent(JSON.stringify([{
+                                  name: product.name,
+                                  sku: product.sku,
+                                  barcode: (product as any).barcode,
+                                  price: `${product.sellingPrice} ${sym}`,
+                                }]));
+                                window.open(`/dashboard/products/barcode?data=${data}`, '_blank');
+                              }}
+                              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
+                            >
+                              <Barcode className="w-4 h-4" />
+                            </button>
+                          )}
                           <button type="button" onClick={() => { setEditingProduct(product); setShowAddModal(true); }} aria-label={`Edit ${product.name}`} className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition">
                             <Edit className="w-4 h-4" />
                           </button>
@@ -346,7 +436,7 @@ export default function ProductsPage() {
 
             {/* Mobile Cards */}
             <div className="md:hidden divide-y divide-border">
-              {products.map((product) => (
+              {displayedProducts.map((product) => (
                 <div key={product.id} className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -362,7 +452,14 @@ export default function ProductsPage() {
                           : s.status === 'rejected'
                           ? { label: '❌ Rejected', cls: 'text-red-500' }
                           : { label: '🟡 Pending Review', cls: 'text-yellow-600 dark:text-yellow-400' };
-                        return <p className={`text-xs mt-0.5 ${badge.cls}`}>{badge.label}</p>;
+                        return (
+                          <>
+                            <p className={`text-xs mt-0.5 ${badge.cls}`}>{badge.label}</p>
+                            {s.status === 'rejected' && s.rejection_reason && (
+                              <p className="text-xs mt-0.5 text-red-500 bg-red-500/10 rounded px-1.5 py-0.5 leading-snug">{s.rejection_reason}</p>
+                            )}
+                          </>
+                        );
                       })()}
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-sm font-semibold text-foreground">{product.sellingPrice} {sym}</span>
@@ -389,6 +486,7 @@ export default function ProductsPage() {
           product={editingProduct}
           shopId={shopId}
           categories={categories}
+          channelStatus={editingProduct ? channelStatuses[editingProduct.id]?.thedersi : undefined}
           onClose={() => { setShowAddModal(false); setEditingProduct(null); }}
           onSaved={() => { setShowAddModal(false); setEditingProduct(null); fetchProducts(); }}
         />
@@ -535,11 +633,12 @@ interface PendingImage {
 }
 
 function ProductModal({
-  product, shopId, categories, onClose, onSaved,
+  product, shopId, categories, channelStatus, onClose, onSaved,
 }: {
   product: Product | null;
   shopId: string;
   categories: string[];
+  channelStatus?: { status: string; rejection_reason?: string };
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -803,6 +902,19 @@ function ProductModal({
             </div>
           )}
 
+          {channelStatus?.status === 'rejected' && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-600 dark:text-red-400">❌ Rejected on TheDersi</p>
+                {channelStatus.rejection_reason && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">{channelStatus.rejection_reason}</p>
+                )}
+                <p className="text-xs text-red-500/80 mt-1">Fix the issue and save the product — it will be re-submitted for review.</p>
+              </div>
+            </div>
+          )}
+
           {/* ── Product Images ─────────────────────────────────────────── */}
           <section>
             <div className="flex items-center justify-between mb-2">
@@ -936,7 +1048,28 @@ function ProductModal({
               </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-1.5 block">Barcode</label>
-                <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} placeholder="Scan or type" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    placeholder="Scan or type"
+                    className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, barcode: generateBarcode() })}
+                    className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap"
+                    title="Auto-generate barcode"
+                  >
+                    Generate
+                  </button>
+                </div>
+                {formData.barcode && (
+                  <div className="mt-2 bg-white rounded-lg p-2 border border-border">
+                    <BarcodeDisplay value={formData.barcode} height={45} fontSize={11} />
+                  </div>
+                )}
               </div>
             </div>
 

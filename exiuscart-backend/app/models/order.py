@@ -41,6 +41,11 @@ class Order(Base):
     total = Column(Numeric(10, 2), nullable=False)
     notes = Column(Text, nullable=True)
     shipping_address = Column(Text, nullable=True)
+    # Shipment tracking
+    tracking_number = Column(String(200), nullable=True)
+    carrier = Column(String(100), nullable=True)        # "DHL", "FedEx", "Kapruka", etc.
+    shipped_at = Column(DateTime(timezone=True), nullable=True)
+    estimated_delivery = Column(String(50), nullable=True)  # e.g. "2026-06-15"
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

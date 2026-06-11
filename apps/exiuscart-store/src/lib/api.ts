@@ -77,6 +77,15 @@ export const ordersApi = {
     api.post(`/shops/${shopId}/orders`, data),
   updateStatus: (shopId: string, orderId: string, status: string) =>
     api.patch(`/shops/${shopId}/orders/${orderId}/status`, { status }),
+  ship: (shopId: string, orderId: string, data: {
+    tracking_number: string;
+    carrier?: string;
+    estimated_delivery?: string;
+  }) => api.post(`/shops/${shopId}/orders/${orderId}/ship`, data),
+  getTracking: (shopId: string, orderId: string) =>
+    api.get(`/shops/${shopId}/orders/${orderId}/tracking`),
+  getDetails: (shopId: string, orderId: string) =>
+    api.get(`/shops/${shopId}/orders/${orderId}/details`),
 };
 
 // ── Customers ─────────────────────────────────────────

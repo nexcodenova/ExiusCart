@@ -1,0 +1,272 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import {
+  ArrowLeft, Package, Truck, DollarSign, Tag, ShoppingBag,
+  Clock, CheckCircle, XCircle, MapPin, FileText, Percent,
+} from 'lucide-react';
+import Link from 'next/link';
+import { ordersApi } from '@/lib/api';
+import { useCurrency } from '@/components/providers/currency-provider';
+
+interface EnrichedItem {
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_sku: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
+interface ChannelMeta {
+  channel_type: string;
+  channel_order_id: string | null;
+  seller_plan: string | null;
+  commission_rate: number | null;
+  commission_amount: number | null;
+  seller_net_earnings: number | null;
+  delivery_fee: number | null;
+  delivery_paid_by: string | null;
+  delivery_note: string | null;
+  items_detail: any[] | null;
+}
+
+interface OrderDetails {
+  id: number;
+  order_number: string;
+  status: string;
+  payment_status: string;
+  source: string;
+  subtotal: number;
+  tax_amount: number;
+  discount_amount: number;
+  total: number;
+  notes: string | null;
+  shipping_address: string | null;
+  tracking_number: string | null;
+  carrier: string | null;
+  shipped_at: string | null;
+  estimated_delivery: string | null;
+  created_at: string;
+  items: EnrichedItem[];
+  channel_meta: ChannelMeta | null;
+}
+
+const STATUS_STYLES: Record<string, string> = {
+  pending: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+  confirmed: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  processing: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  shipped: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+  delivered: 'bg-green-500/10 text-green-600 dark:text-green-400',
+  completed: 'bg-green-500/10 text-green-600 dark:text-green-400',
+  cancelled: 'bg-red-500/10 text-red-600 dark:text-red-400',
+};
+
+const PAYMENT_STATUS_STYLES: Record<string, string> = {
+  pending: 'bg-yellow-500/10 text-yellow-600',
+  paid: 'bg-green-500/10 text-green-600',
+  failed: 'bg-red-500/10 text-red-500',
+  refunded: 'bg-gray-500/10 text-gray-600',
+};
+
+function InfoRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2.5 border-b border-border last:border-0">
+      <span className="text-sm text-muted-foreground shrink-0">{label}</span>
+      <span className={`text-sm text-right font-medium text-foreground ${mono ? 'font-mono' : ''}`}>{value}</span>
+    </div>
+  );
+}
+
+export default function OrderDetailsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const orderId = params.id as string;
+  const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
+  const { fmt } = useCurrency();
+  const [order, setOrder] = useState<OrderDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!shopId || !orderId) return;
+    ordersApi.getDetails(shopId, orderId)
+      .then(res => setOrder(res.data))
+      .catch(() => setOrder(null))
+      .finally(() => setLoading(false));
+  }, [shopId, orderId]);
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-4 py-4">
+        <div className="h-8 bg-muted rounded-lg w-48 animate-pulse" />
+        {[1,2,3].map(i => <div key={i} className="h-32 bg-muted rounded-xl animate-pulse" />)}
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="max-w-3xl mx-auto py-16 text-center">
+        <Package className="w-14 h-14 mx-auto text-muted-foreground opacity-40 mb-4" />
+        <h2 className="text-lg font-semibold text-foreground mb-2">Order not found</h2>
+        <Link href="/dashboard/orders" className="text-sm text-primary hover:underline">← Back to orders</Link>
+      </div>
+    );
+  }
+
+  const isTheDersi = order.source === 'thedersi' || order.channel_meta?.channel_type === 'thedersi';
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6 py-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button onClick={() => router.back()} className="p-2 hover:bg-muted rounded-lg transition">
+          <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+        </button>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-foreground">{order.order_number}</h1>
+          <p className="text-sm text-muted-foreground">{new Date(order.created_at).toLocaleString('en-AE')}</p>
+        </div>
+        <div className="flex gap-2">
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${STATUS_STYLES[order.status] ?? 'bg-muted text-muted-foreground'}`}>
+            {order.status}
+          </span>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${PAYMENT_STATUS_STYLES[order.payment_status] ?? 'bg-muted text-muted-foreground'}`}>
+            {order.payment_status}
+          </span>
+        </div>
+      </div>
+
+      {/* Channel badge */}
+      {isTheDersi && (
+        <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 flex items-center gap-3">
+          <ShoppingBag className="w-5 h-5 text-indigo-500 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">TheDersi Order</p>
+            {order.channel_meta?.channel_order_id && (
+              <p className="text-xs text-muted-foreground">Channel ref: {order.channel_meta.channel_order_id}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Order Items */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Package className="w-5 h-5 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Items ({order.items.length})</h2>
+        </div>
+        <div className="divide-y divide-border">
+          {order.items.map((item) => {
+            // Check if TheDersi items_detail has size/color info for this item
+            const detail = order.channel_meta?.items_detail?.find((d: any) => d.product_id === item.product_id);
+            return (
+              <div key={item.id} className="px-5 py-4 flex items-start gap-4">
+                <div className="p-2.5 bg-muted rounded-lg shrink-0">
+                  <Package className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{item.product_name}</p>
+                  {item.product_sku && <p className="text-xs text-muted-foreground font-mono">{item.product_sku}</p>}
+                  {detail && (detail.size || detail.color) && (
+                    <div className="flex gap-2 mt-1">
+                      {detail.size && <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">Size: {detail.size}</span>}
+                      {detail.color && <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">Color: {detail.color}</span>}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">Qty: {item.quantity} × {fmt(item.unit_price)}</p>
+                </div>
+                <span className="text-sm font-semibold text-foreground shrink-0">{fmt(item.total_price)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Pricing breakdown */}
+      <div className="bg-card border border-border rounded-2xl px-5 py-4">
+        <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-muted-foreground" /> Pricing
+        </h2>
+        <InfoRow label="Subtotal" value={fmt(order.subtotal)} />
+        {order.discount_amount > 0 && <InfoRow label="Discount" value={`-${fmt(order.discount_amount)}`} />}
+        <InfoRow label="VAT (5%)" value={fmt(order.tax_amount)} />
+        <div className="flex items-center justify-between pt-2.5 mt-0.5">
+          <span className="font-semibold text-foreground">Total</span>
+          <span className="text-lg font-bold text-foreground">{fmt(order.total)}</span>
+        </div>
+      </div>
+
+      {/* TheDersi commission breakdown */}
+      {order.channel_meta && (
+        <div className="bg-card border border-border rounded-2xl px-5 py-4">
+          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Percent className="w-5 h-5 text-muted-foreground" /> Channel Earnings
+          </h2>
+          {order.channel_meta.seller_plan && (
+            <InfoRow label="Your Plan" value={order.channel_meta.seller_plan} />
+          )}
+          {order.channel_meta.commission_rate != null && (
+            <InfoRow label="Commission Rate" value={`${order.channel_meta.commission_rate}%`} />
+          )}
+          {order.channel_meta.commission_amount != null && (
+            <InfoRow label="Commission Amount" value={`-${fmt(order.channel_meta.commission_amount)}`} />
+          )}
+          {order.channel_meta.delivery_fee != null && (
+            <InfoRow
+              label={`Delivery Fee (paid by ${order.channel_meta.delivery_paid_by ?? 'N/A'})`}
+              value={fmt(order.channel_meta.delivery_fee)}
+            />
+          )}
+          {order.channel_meta.seller_net_earnings != null && (
+            <div className="flex items-center justify-between pt-2.5 mt-0.5 border-t border-border">
+              <span className="font-semibold text-foreground">Your Net Earnings</span>
+              <span className="text-lg font-bold text-green-600 dark:text-green-400">{fmt(order.channel_meta.seller_net_earnings)}</span>
+            </div>
+          )}
+          {order.channel_meta.delivery_note && (
+            <p className="text-xs text-muted-foreground mt-3 bg-muted rounded-lg px-3 py-2">{order.channel_meta.delivery_note}</p>
+          )}
+        </div>
+      )}
+
+      {/* Shipping / Tracking */}
+      {(order.shipping_address || order.tracking_number) && (
+        <div className="bg-card border border-border rounded-2xl px-5 py-4">
+          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Truck className="w-5 h-5 text-muted-foreground" /> Shipping
+          </h2>
+          {order.shipping_address && <InfoRow label="Address" value={order.shipping_address} />}
+          {order.carrier && <InfoRow label="Carrier" value={order.carrier} />}
+          {order.tracking_number && <InfoRow label="Tracking #" value={order.tracking_number} mono />}
+          {order.shipped_at && <InfoRow label="Shipped" value={new Date(order.shipped_at).toLocaleDateString('en-AE')} />}
+          {order.estimated_delivery && <InfoRow label="Est. Delivery" value={order.estimated_delivery} />}
+        </div>
+      )}
+
+      {/* Notes */}
+      {order.notes && (
+        <div className="bg-card border border-border rounded-2xl px-5 py-4">
+          <h2 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-muted-foreground" /> Notes
+          </h2>
+          <p className="text-sm text-muted-foreground">{order.notes}</p>
+        </div>
+      )}
+
+      {/* Footer actions */}
+      <div className="flex gap-3 pb-4">
+        <Link href="/dashboard/orders" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
+          <ArrowLeft className="w-4 h-4" /> Back to orders
+        </Link>
+        {order.tracking_number && (
+          <Link href={`/dashboard/orders/${orderId}/tracking`} className="ml-auto flex items-center gap-2 text-sm text-primary hover:underline">
+            <Truck className="w-4 h-4" /> View tracking
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}

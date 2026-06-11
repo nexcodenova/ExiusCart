@@ -35,6 +35,12 @@ class OrderUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class ShipOrderIn(BaseModel):
+    tracking_number: str
+    carrier: Optional[str] = None
+    estimated_delivery: Optional[str] = None
+
+
 class OrderResponse(BaseModel):
     id: int
     order_number: str
@@ -48,6 +54,11 @@ class OrderResponse(BaseModel):
     discount_amount: Decimal
     total: Decimal
     notes: Optional[str] = None
+    shipping_address: Optional[str] = None
+    tracking_number: Optional[str] = None
+    carrier: Optional[str] = None
+    shipped_at: Optional[datetime] = None
+    estimated_delivery: Optional[str] = None
     items: List[OrderItemResponse] = []
     created_at: datetime
 

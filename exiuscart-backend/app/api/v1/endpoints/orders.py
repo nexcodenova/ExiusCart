@@ -8,7 +8,8 @@ from app.models.user import User
 from app.models.shop import Shop
 from app.models.order import Order, OrderItem
 from app.models.product import Product
-from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate
+from app.models.channel_order_meta import ChannelOrderMeta
+from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrderIn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
 
@@ -150,3 +151,112 @@ async def update_order(
     db.commit()
     db.refresh(order)
     return order
+
+
+@router.post("/{order_id}/ship", response_model=OrderResponse)
+async def ship_order(
+    order_id: int,
+    shop_id: int,
+    data: ShipOrderIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark an order as shipped with tracking number and carrier."""
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order.tracking_number = data.tracking_number
+    order.carrier = data.carrier
+    order.estimated_delivery = data.estimated_delivery
+    order.status = "shipped"
+    order.shipped_at = datetime.now(tz=None)
+
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@router.get("/{order_id}/details")
+async def get_order_details(
+    order_id: int,
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Full order detail: items enriched with product names + channel meta if applicable."""
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Enrich items with product names
+    enriched_items = []
+    for item in order.items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        enriched_items.append({
+            "id": item.id,
+            "product_id": item.product_id,
+            "product_name": product.name if product else f"Product #{item.product_id}",
+            "product_sku": product.sku if product else None,
+            "quantity": item.quantity,
+            "unit_price": float(item.unit_price),
+            "total_price": float(item.total_price),
+        })
+
+    # Channel meta (TheDersi commission, delivery, etc.)
+    meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order.id).first()
+    channel_meta = None
+    if meta:
+        channel_meta = {
+            "channel_type": meta.channel_type,
+            "channel_order_id": meta.channel_order_id,
+            "seller_plan": meta.seller_plan,
+            "commission_rate": float(meta.commission_rate) if meta.commission_rate else None,
+            "commission_amount": float(meta.commission_amount) if meta.commission_amount else None,
+            "seller_net_earnings": float(meta.seller_net_earnings) if meta.seller_net_earnings else None,
+            "delivery_fee": float(meta.delivery_fee) if meta.delivery_fee else None,
+            "delivery_paid_by": meta.delivery_paid_by,
+            "delivery_note": meta.delivery_note,
+            "items_detail": meta.items_detail,
+        }
+
+    return {
+        "id": order.id,
+        "order_number": order.order_number,
+        "status": order.status,
+        "payment_status": order.payment_status,
+        "source": order.source,
+        "subtotal": float(order.subtotal),
+        "tax_amount": float(order.tax_amount),
+        "discount_amount": float(order.discount_amount),
+        "total": float(order.total),
+        "notes": order.notes,
+        "shipping_address": order.shipping_address,
+        "tracking_number": order.tracking_number,
+        "carrier": order.carrier,
+        "shipped_at": order.shipped_at,
+        "estimated_delivery": order.estimated_delivery,
+        "created_at": order.created_at,
+        "items": enriched_items,
+        "channel_meta": channel_meta,
+    }
+
+
+@router.get("/{order_id}/tracking")
+async def get_tracking(
+    order_id: int,
+    shop_id: int,
+    db: Session = Depends(get_db),
+):
+    """Public-ish tracking info — no auth required so customers can check status."""
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {
+        "order_number": order.order_number,
+        "status": order.status,
+        "carrier": order.carrier,
+        "tracking_number": order.tracking_number,
+        "shipped_at": order.shipped_at,
+        "estimated_delivery": order.estimated_delivery,
+    }
