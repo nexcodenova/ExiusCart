@@ -36,6 +36,7 @@ class ProductBase(BaseModel):
     sku: Optional[str] = None
     barcode: Optional[str] = None
     price: Decimal
+    compare_at_price: Optional[Decimal] = None   # original price before discount
     cost_price: Optional[Decimal] = None
     quantity: int = 0
     low_stock_threshold: int = 5
@@ -52,6 +53,7 @@ class ProductUpdate(BaseModel):
     sku: Optional[str] = None
     barcode: Optional[str] = None
     price: Optional[Decimal] = None
+    compare_at_price: Optional[Decimal] = None
     cost_price: Optional[Decimal] = None
     quantity: Optional[int] = None
     low_stock_threshold: Optional[int] = None
@@ -74,6 +76,12 @@ class ProductResponse(ProductBase):
     is_trending: bool = False
     created_at: datetime
     category: Optional[CategoryResponse] = None
+
+    @property
+    def discount_percent(self) -> Optional[int]:
+        if self.compare_at_price and self.compare_at_price > self.price:
+            return round((1 - float(self.price) / float(self.compare_at_price)) * 100)
+        return None
 
     class Config:
         from_attributes = True

@@ -37,6 +37,7 @@ class Product(Base):
     sku = Column(String(100), nullable=True)
     barcode = Column(String(100), nullable=True)
     price = Column(Numeric(10, 2), nullable=False)
+    compare_at_price = Column(Numeric(10, 2), nullable=True)  # original price before discount
     cost_price = Column(Numeric(10, 2), nullable=True)
     quantity = Column(Integer, default=0)
     low_stock_threshold = Column(Integer, default=5)

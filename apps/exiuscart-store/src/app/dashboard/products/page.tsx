@@ -554,6 +554,7 @@ function ProductModal({
     category: product?.category ?? categories[0] ?? '',
     costPrice: product?.costPrice ?? 0,
     sellingPrice: product?.sellingPrice ?? 0,
+    compareAtPrice: (product as any)?.compareAtPrice ?? 0,
     stock: product?.stock ?? 0,
     lowStockAlert: product?.lowStockAlert ?? 5,
     vatPercent: product?.vatPercent ?? 5,
@@ -714,12 +715,25 @@ function ProductModal({
     try {
       let productId: string;
 
+      // Map camelCase form state to snake_case API fields
+      const apiData = {
+        name: formData.name,
+        description: formData.description || null,
+        sku: formData.sku || null,
+        barcode: formData.barcode || null,
+        price: formData.sellingPrice,
+        compare_at_price: formData.compareAtPrice > 0 ? formData.compareAtPrice : null,
+        cost_price: formData.costPrice > 0 ? formData.costPrice : null,
+        quantity: formData.stock,
+        low_stock_threshold: formData.lowStockAlert,
+      };
+
       if (product?.id) {
-        await productsApi.update(shopId, product.id, formData);
+        await productsApi.update(shopId, product.id, apiData);
         productId = product.id;
       } else {
-        const res = await productsApi.create(shopId, formData);
-        productId = res.data.id ?? res.data._id ?? String(res.data.id);
+        const res = await productsApi.create(shopId, apiData);
+        productId = res.data.id ?? String(res.data.id);
       }
 
       // Upload pending images
@@ -980,14 +994,42 @@ function ProductModal({
               </div>
             </div>
 
+            {/* Original price before discount (offer price) */}
+            <div>
+              <label className="text-sm text-muted-foreground mb-1.5 block">
+                Original Price ({sym})
+                <span className="ml-2 text-xs font-normal">(only fill if this product is on offer/discount)</span>
+              </label>
+              <input
+                type="number"
+                value={formData.compareAtPrice || ''}
+                onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })}
+                min="0"
+                placeholder={`e.g. ${formData.sellingPrice > 0 ? Math.round(formData.sellingPrice * 1.3) : '5000'}`}
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+              />
+            </div>
+
+            {/* Live preview: profit margin + discount badge */}
             {formData.costPrice > 0 && formData.sellingPrice > 0 && (
-              <div className="bg-muted/50 rounded-lg p-3">
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Profit Margin</span>
                   <span className="font-medium text-green-600 dark:text-green-400">
                     {formData.sellingPrice - formData.costPrice} {sym} ({Math.round(((formData.sellingPrice - formData.costPrice) / formData.costPrice) * 100)}%)
                   </span>
                 </div>
+                {formData.compareAtPrice > formData.sellingPrice && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Discount shown to customer</span>
+                    <span className="font-semibold text-red-500">
+                      {Math.round((1 - formData.sellingPrice / formData.compareAtPrice) * 100)}% OFF
+                      &nbsp;·&nbsp;
+                      <span className="line-through text-muted-foreground font-normal">{formData.compareAtPrice} {sym}</span>
+                      &nbsp;→&nbsp;{formData.sellingPrice} {sym}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

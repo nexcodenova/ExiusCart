@@ -123,18 +123,27 @@ def _product_payload(product: Product, currency: str, channel_type: str, channel
     # Total stock = sum of variant quantities if variants exist, else product.quantity
     total_stock = sum(v["quantity"] for v in variants) if variants else product.quantity
 
+    # Discount calculation
+    compare_at_price = float(product.compare_at_price) if product.compare_at_price else None
+    selling_price = float(product.price)
+    discount_percent = None
+    if compare_at_price and compare_at_price > selling_price:
+        discount_percent = round((1 - selling_price / compare_at_price) * 100)
+
     return {
         "exiuscart_product_id": product.id,
         "name": product.name,
         "description": product.description or "",
-        "price": float(product.price),
+        "price": selling_price,
+        "compare_at_price": compare_at_price,   # original price — TheDersi shows crossed out
+        "discount_percent": discount_percent,    # e.g. 30 → TheDersi shows "30% OFF" badge
         "currency": currency,
         "quantity": total_stock,
         "sku": product.sku or "",
         "image_url": product.image_url or "",
         "category": category_name,
         "status": status,
-        "variants": variants,  # TheDersi shows size/color pickers from this
+        "variants": variants,
     }
 
 
