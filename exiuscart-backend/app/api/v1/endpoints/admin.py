@@ -16,6 +16,7 @@ from app.models.subscription import Subscription
 from app.models.lead import Lead
 from app.models.affiliate import Affiliate, Commission
 from app.models.product import Product, Category
+from app.models.partner import PartnerLicense
 
 router = APIRouter()
 
@@ -993,3 +994,136 @@ def admin_list_categories(
         query = query.filter(Category.shop_id == shop_id)
     cats = query.order_by(Category.name).all()
     return [{"id": c.id, "name": c.name, "slug": c.slug, "shop_id": c.shop_id} for c in cats]
+
+
+# ── NexCode Nova — One-time Client Codes ─────────────────────────────────────
+
+import uuid as _uuid
+import secrets as _secrets
+
+
+def _generate_nexcode() -> str:
+    """NEXC-XXXX-XXXX-XXXX format, 16 chars of randomness."""
+    part = lambda: _secrets.token_hex(2).upper()
+    return f"NEXC-{part()}-{part()}-{part()}"
+
+
+class NexCodeCreate(BaseModel):
+    client_email: Optional[str] = None
+    plan_type: str = "premium"
+    duration_months: Optional[int] = None   # None = lifetime
+    max_uses: int = 1
+    max_shops: int = 1
+    notes: Optional[str] = None
+    code_expires_days: Optional[int] = None  # days until code itself expires
+
+
+@router.get("/admin/nexcodes")
+def list_nexcodes(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    codes = db.query(PartnerLicense).filter(
+        PartnerLicense.partner_name == "nexcodenova"
+    ).order_by(PartnerLicense.created_at.desc()).all()
+
+    return [
+        {
+            "id": c.id,
+            "code": c.code,
+            "client_email": c.allowed_email,
+            "plan_type": c.plan_type,
+            "duration_months": c.duration_months,
+            "max_uses": c.max_uses,
+            "used_count": c.used_count,
+            "max_shops": c.max_shops,
+            "is_active": c.is_active,
+            "notes": c.notes,
+            "code_expires_at": c.code_expires_at,
+            "created_at": c.created_at,
+            "is_used_up": c.used_count >= c.max_uses,
+        }
+        for c in codes
+    ]
+
+
+@router.post("/admin/nexcodes", status_code=201)
+def create_nexcode(
+    data: NexCodeCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    code_value = _generate_nexcode()
+    # Ensure uniqueness (extremely unlikely collision but handle it)
+    while db.query(PartnerLicense).filter(PartnerLicense.code == code_value).first():
+        code_value = _generate_nexcode()
+
+    expires_at = None
+    if data.code_expires_days:
+        expires_at = datetime.now(timezone.utc) + timedelta(days=data.code_expires_days)
+
+    license = PartnerLicense(
+        code=code_value,
+        partner_name="nexcodenova",
+        plan_type=data.plan_type,
+        duration_months=data.duration_months,
+        max_uses=data.max_uses,
+        used_count=0,
+        allowed_email=data.client_email or None,
+        max_shops=data.max_shops,
+        is_active=True,
+        notes=data.notes,
+        code_expires_at=expires_at,
+    )
+    db.add(license)
+    db.commit()
+    db.refresh(license)
+
+    return {
+        "id": license.id,
+        "code": license.code,
+        "client_email": license.allowed_email,
+        "plan_type": license.plan_type,
+        "duration_months": license.duration_months,
+        "max_uses": license.max_uses,
+        "used_count": license.used_count,
+        "max_shops": license.max_shops,
+        "is_active": license.is_active,
+        "notes": license.notes,
+        "code_expires_at": license.code_expires_at,
+        "created_at": license.created_at,
+        "is_used_up": False,
+    }
+
+
+@router.put("/admin/nexcodes/{code_id}/toggle")
+def toggle_nexcode(
+    code_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    license = db.query(PartnerLicense).filter(
+        PartnerLicense.id == code_id,
+        PartnerLicense.partner_name == "nexcodenova",
+    ).first()
+    if not license:
+        raise HTTPException(status_code=404, detail="Code not found")
+    license.is_active = not license.is_active
+    db.commit()
+    return {"id": license.id, "is_active": license.is_active}
+
+
+@router.delete("/admin/nexcodes/{code_id}", status_code=204)
+def delete_nexcode(
+    code_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    license = db.query(PartnerLicense).filter(
+        PartnerLicense.id == code_id,
+        PartnerLicense.partner_name == "nexcodenova",
+    ).first()
+    if not license:
+        raise HTTPException(status_code=404, detail="Code not found")
+    db.delete(license)
+    db.commit()

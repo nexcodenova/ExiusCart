@@ -16,6 +16,7 @@ import {
   UserPlus,
   Link2,
   ShoppingBag,
+  Key,
 } from 'lucide-react';
 
 export const menuItems = [
@@ -28,6 +29,7 @@ export const menuItems = [
   { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: Package },
   { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/dashboard/client-codes', label: 'Client Codes', icon: Key },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 

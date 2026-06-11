@@ -79,6 +79,20 @@ export const adminApi = {
   getCategoriesForShop: (shopId?: number) =>
     api.get('/admin/shopping/categories', { params: shopId ? { shop_id: shopId } : {} }),
 
+  // NexCode Codes
+  getNexCodes: () => api.get('/admin/nexcodes'),
+  createNexCode: (data: {
+    client_email?: string;
+    plan_type?: string;
+    duration_months?: number | null;
+    max_uses?: number;
+    max_shops?: number;
+    notes?: string;
+    code_expires_days?: number | null;
+  }) => api.post('/admin/nexcodes', data),
+  toggleNexCode: (codeId: number) => api.put(`/admin/nexcodes/${codeId}/toggle`),
+  deleteNexCode: (codeId: number) => api.delete(`/admin/nexcodes/${codeId}`),
+
   // Affiliates
   getAffiliates: (params?: { search?: string; status_filter?: string }) =>
     api.get('/admin/affiliates', { params }),
