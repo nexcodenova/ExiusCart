@@ -15,6 +15,7 @@ from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product
 from app.models.product_fields import ShopField, ProductAttribute, ProductImage
+from app.core.storage import upload_image as storage_upload, delete_image as storage_delete
 
 router = APIRouter()
 
@@ -232,7 +233,6 @@ def get_attributes(
 
 # ── Product Images (max 6) ────────────────────────────────────────────────────
 
-UPLOAD_DIR = "uploads/products"
 MAX_IMAGES = 6
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
@@ -277,17 +277,8 @@ async def upload_image(
     if len(contents) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
-    # Save file locally (will be replaced with S3/Cloudinary later)
-    os.makedirs(f"{UPLOAD_DIR}/{shop_id}/{product_id}", exist_ok=True)
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
-    filename = f"{uuid.uuid4()}.{ext}"
-    filepath = f"{UPLOAD_DIR}/{shop_id}/{product_id}/{filename}"
-
-    with open(filepath, "wb") as f:
-        f.write(contents)
-
-    # URL path (in production replace with S3/Cloudinary URL)
-    url = f"/static/products/{shop_id}/{product_id}/{filename}"
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    url = storage_upload(contents, shop_id, product_id, ext, content_type=file.content_type or "image/jpeg")
     is_primary = count == 0  # first image is primary
 
     image = ProductImage(
@@ -318,11 +309,8 @@ def delete_image(
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    # Delete file from disk
-    if image.url.startswith("/static/"):
-        filepath = image.url.replace("/static/", "uploads/")
-        if os.path.exists(filepath):
-            os.remove(filepath)
+    # Delete from storage (R2 or local disk)
+    storage_delete(image.url)
 
     db.delete(image)
     db.commit()
