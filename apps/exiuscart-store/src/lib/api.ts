@@ -86,6 +86,8 @@ export const ordersApi = {
     api.get(`/shops/${shopId}/orders/${orderId}/tracking`),
   getDetails: (shopId: string, orderId: string) =>
     api.get(`/shops/${shopId}/orders/${orderId}/details`),
+  sendInvoice: (shopId: string, orderId: string, customerEmail?: string) =>
+    api.post(`/shops/${shopId}/orders/${orderId}/send-invoice`, { customer_email: customerEmail || null }),
 };
 
 // ── Customers ─────────────────────────────────────────

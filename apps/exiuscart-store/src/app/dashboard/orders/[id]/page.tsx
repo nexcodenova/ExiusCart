@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Package, Truck, DollarSign, Tag, ShoppingBag,
-  Clock, CheckCircle, XCircle, MapPin, FileText, Percent,
+  Clock, CheckCircle, XCircle, MapPin, FileText, Percent, Mail, Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
@@ -88,6 +88,9 @@ export default function OrderDetailsPage() {
   const { fmt } = useCurrency();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+  const [invoiceSent, setInvoiceSent] = useState(false);
+  const [invoiceError, setInvoiceError] = useState('');
 
   useEffect(() => {
     if (!shopId || !orderId) return;
@@ -96,6 +99,21 @@ export default function OrderDetailsPage() {
       .catch(() => setOrder(null))
       .finally(() => setLoading(false));
   }, [shopId, orderId]);
+
+  const handleSendInvoice = async () => {
+    if (!order) return;
+    setSendingInvoice(true);
+    setInvoiceError('');
+    try {
+      await ordersApi.sendInvoice(shopId, orderId);
+      setInvoiceSent(true);
+      setTimeout(() => setInvoiceSent(false), 4000);
+    } catch (err: any) {
+      setInvoiceError(err.response?.data?.detail || 'Failed to send invoice');
+    } finally {
+      setSendingInvoice(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -256,13 +274,30 @@ export default function OrderDetailsPage() {
         </div>
       )}
 
+      {/* Email invoice */}
+      {invoiceError && (
+        <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-xl px-4 py-3">{invoiceError}</div>
+      )}
+
       {/* Footer actions */}
-      <div className="flex gap-3 pb-4">
+      <div className="flex flex-wrap gap-3 pb-4">
         <Link href="/dashboard/orders" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
           <ArrowLeft className="w-4 h-4" /> Back to orders
         </Link>
+        <button
+          onClick={handleSendInvoice}
+          disabled={sendingInvoice}
+          className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg transition font-medium ${
+            invoiceSent
+              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+              : 'bg-primary/10 text-primary hover:bg-primary/20'
+          } disabled:opacity-50`}
+        >
+          {invoiceSent ? <Check className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+          {invoiceSent ? 'Invoice sent!' : sendingInvoice ? 'Sending...' : 'Send Invoice'}
+        </button>
         {order.tracking_number && (
-          <Link href={`/dashboard/orders/${orderId}/tracking`} className="ml-auto flex items-center gap-2 text-sm text-primary hover:underline">
+          <Link href={`/dashboard/orders/${orderId}/tracking`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition ml-auto">
             <Truck className="w-4 h-4" /> View tracking
           </Link>
         )}

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Background
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+from pydantic import BaseModel
 import uuid
 from app.core.database import get_db
 from app.models.user import User
@@ -9,9 +10,11 @@ from app.models.shop import Shop
 from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.channel_order_meta import ChannelOrderMeta
+from app.models.customer import Customer
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrderIn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
+from app.core.email import send_email, build_invoice_html
 
 router = APIRouter()
 
@@ -239,6 +242,77 @@ async def get_order_details(
         "created_at": order.created_at,
         "items": enriched_items,
         "channel_meta": channel_meta,
+    }
+
+
+class SendInvoiceIn(BaseModel):
+    customer_email: Optional[str] = None  # override if not stored on customer
+
+
+@router.post("/{order_id}/send-invoice")
+async def send_invoice(
+    order_id: int,
+    shop_id: int,
+    data: SendInvoiceIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Send a professional HTML invoice email to the customer."""
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+
+    # Determine recipient email
+    recipient = data.customer_email
+    customer_name = "Customer"
+    if not recipient and order.customer_id:
+        customer = db.query(Customer).filter(Customer.id == order.customer_id).first()
+        if customer:
+            recipient = customer.email
+            customer_name = customer.name or "Customer"
+
+    if not recipient:
+        raise HTTPException(status_code=400, detail="No customer email available. Pass customer_email in the request.")
+
+    # Build enriched items
+    items = []
+    for item in order.items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        items.append({
+            "name": product.name if product else f"Product #{item.product_id}",
+            "qty": item.quantity,
+            "unit_price": float(item.unit_price),
+            "total": float(item.total_price),
+        })
+
+    html = build_invoice_html(
+        order_number=order.order_number,
+        order_date=order.created_at.strftime("%d %b %Y") if order.created_at else "",
+        customer_name=customer_name,
+        customer_email=recipient,
+        shop_name=shop.name if shop else "ExiusCart Store",
+        items=items,
+        subtotal=float(order.subtotal),
+        tax_amount=float(order.tax_amount),
+        discount_amount=float(order.discount_amount),
+        total=float(order.total),
+        currency=shop.currency if shop else "AED",
+        notes=order.notes,
+    )
+
+    sent = send_email(
+        to=recipient,
+        subject=f"Your Invoice — {order.order_number}",
+        html_body=html,
+    )
+
+    return {
+        "sent": sent,
+        "recipient": recipient,
+        "order_number": order.order_number,
+        "message": "Invoice sent successfully" if sent else "Email queued (SES disabled — enable AWS_SES_ENABLED=true to send real emails)",
     }
 
 
