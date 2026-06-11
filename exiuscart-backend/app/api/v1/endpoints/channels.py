@@ -32,6 +32,7 @@ from app.models.order import Order, OrderItem
 from app.models.customer import Customer
 from app.models.channel_order_meta import ChannelOrderMeta
 from app.models.channel_product_status import ChannelProductStatus
+from app.models.channel_category import ChannelCategory, ProductChannelCategory
 
 router = APIRouter()
 
@@ -103,11 +104,12 @@ def _webhook_url(conn: ChannelConnection) -> str:
     return f"{EXIUSCART_BASE.rstrip('/')}/channels/webhook/{conn.webhook_secret}"
 
 
-def _product_payload(product: Product, currency: str, channel_type: str) -> dict:
+def _product_payload(product: Product, currency: str, channel_type: str, channel_category_name: str = None) -> dict:
     # Marketplace channels (TheDersi) → pending_review (admin must approve before going live)
     # Own-store channels (Shopify, WooCommerce, custom) → active (goes live instantly)
     status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
-    category_name = product.category.name if product.category else None
+    # Use channel-specific category if seller assigned one, otherwise fall back to ExiusCart category
+    category_name = channel_category_name or (product.category.name if product.category else None)
     return {
         "exiuscart_product_id": product.id,
         "name": product.name,
@@ -186,7 +188,13 @@ def _bg_push_product(product_id: int, shop_id: int):
             ChannelConnection.shop_id == shop_id, ChannelConnection.is_active == True
         ).all()
         for conn in connections:
-            _push_one(_product_payload(product, shop.currency, conn.channel_type), conn)
+            # Look up seller's assigned channel category for this product
+            pcc = db.query(ProductChannelCategory).filter(
+                ProductChannelCategory.product_id == product_id,
+                ProductChannelCategory.channel_connection_id == conn.id,
+            ).first()
+            channel_cat = pcc.channel_category_name if pcc else None
+            _push_one(_product_payload(product, shop.currency, conn.channel_type, channel_cat), conn)
             # Track pending_review status for marketplace channels
             if conn.channel_type in MARKETPLACE_CHANNELS:
                 existing = db.query(ChannelProductStatus).filter(
@@ -448,6 +456,117 @@ def receive_order_webhook(
         "exiuscart_order_id": order.id,
         "order_number": order_number,
     }
+
+
+# ── Channel categories ────────────────────────────────────────────────────────
+
+@router.post("/shops/{shop_id}/channels/{channel_id}/sync-categories")
+def sync_channel_categories(
+    shop_id: int,
+    channel_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Fetch and cache the category list from a connected channel.
+    Call this when seller first connects a channel, or to refresh categories.
+    """
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id,
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+    api_url = _channel_url(conn)
+    if not api_url:
+        raise HTTPException(status_code=400, detail="No API URL configured for this channel")
+
+    headers = {"X-Api-Key": conn.channel_api_key}
+    try:
+        with httpx.Client(timeout=10) as client:
+            r = client.get(f"{api_url}/exiuscart/categories", headers=headers)
+            r.raise_for_status()
+            categories = r.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not fetch categories from channel: {e}")
+
+    # Clear old cached categories and re-save
+    db.query(ChannelCategory).filter(
+        ChannelCategory.channel_connection_id == channel_id
+    ).delete()
+
+    for cat in categories:
+        db.add(ChannelCategory(
+            channel_connection_id=channel_id,
+            channel_category_id=str(cat.get("id") or cat.get("slug") or cat.get("name")),
+            name=cat.get("name", ""),
+            parent_id=str(cat.get("parent_id")) if cat.get("parent_id") else None,
+        ))
+    db.commit()
+
+    return {"synced": len(categories), "categories": [c.get("name") for c in categories]}
+
+
+@router.get("/shops/{shop_id}/channels/{channel_id}/categories")
+def get_channel_categories(
+    shop_id: int,
+    channel_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return cached TheDersi (or other channel) categories for use in product form dropdown."""
+    _shop_or_404(shop_id, current_user, db)
+    cats = db.query(ChannelCategory).filter(
+        ChannelCategory.channel_connection_id == channel_id,
+    ).all()
+    return [{"id": c.channel_category_id, "name": c.name, "parent_id": c.parent_id} for c in cats]
+
+
+class SetProductChannelCategory(BaseModel):
+    channel_connection_id: int
+    channel_category_id: str
+    channel_category_name: str
+
+
+@router.put("/shops/{shop_id}/products/{product_id}/channel-category")
+def set_product_channel_category(
+    shop_id: int,
+    product_id: int,
+    data: SetProductChannelCategory,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Assign a channel-specific category to a product.
+    E.g. seller sets TheDersi category = "Festival Wear" for their Blue Saree product.
+    Automatically re-syncs the product to the channel with the updated category.
+    """
+    _shop_or_404(shop_id, current_user, db)
+
+    existing = db.query(ProductChannelCategory).filter(
+        ProductChannelCategory.product_id == product_id,
+        ProductChannelCategory.channel_connection_id == data.channel_connection_id,
+    ).first()
+
+    if existing:
+        existing.channel_category_id = data.channel_category_id
+        existing.channel_category_name = data.channel_category_name
+    else:
+        db.add(ProductChannelCategory(
+            product_id=product_id,
+            channel_connection_id=data.channel_connection_id,
+            channel_category_id=data.channel_category_id,
+            channel_category_name=data.channel_category_name,
+        ))
+    db.commit()
+
+    # Re-sync product to channel with updated category
+    trigger_product_sync(product_id, shop_id, background_tasks)
+    return {"message": f"Category set to '{data.channel_category_name}' and product re-synced"}
 
 
 # ── Product approval callback — TheDersi calls this when admin approves/rejects ─
