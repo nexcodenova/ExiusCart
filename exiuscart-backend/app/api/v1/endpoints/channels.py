@@ -31,6 +31,7 @@ from app.models.product import Product
 from app.models.order import Order, OrderItem
 from app.models.customer import Customer
 from app.models.channel_order_meta import ChannelOrderMeta
+from app.models.channel_product_status import ChannelProductStatus
 
 router = APIRouter()
 
@@ -186,6 +187,23 @@ def _bg_push_product(product_id: int, shop_id: int):
         ).all()
         for conn in connections:
             _push_one(_product_payload(product, shop.currency, conn.channel_type), conn)
+            # Track pending_review status for marketplace channels
+            if conn.channel_type in MARKETPLACE_CHANNELS:
+                existing = db.query(ChannelProductStatus).filter(
+                    ChannelProductStatus.product_id == product_id,
+                    ChannelProductStatus.channel_type == conn.channel_type,
+                ).first()
+                if existing:
+                    existing.status = "pending_review"
+                    existing.rejection_reason = None
+                else:
+                    db.add(ChannelProductStatus(
+                        product_id=product_id,
+                        shop_id=shop_id,
+                        channel_type=conn.channel_type,
+                        status="pending_review",
+                    ))
+        db.commit()
     finally:
         db.close()
 
@@ -430,3 +448,101 @@ def receive_order_webhook(
         "exiuscart_order_id": order.id,
         "order_number": order_number,
     }
+
+
+# ── Product approval callback — TheDersi calls this when admin approves/rejects ─
+
+class ProductStatusCallback(BaseModel):
+    exiuscart_product_id: int
+    seller_email: str
+    status: str                          # "approved" | "rejected"
+    channel: str = "thedersi"
+    rejection_reason: Optional[str] = None
+
+
+THEDERSI_KEY = os.getenv("THEDERSI_PARTNER_KEY", "")
+
+
+def _require_partner_key(x_partner_key: str = Header(..., alias="X-Partner-Key")):
+    if not THEDERSI_KEY or x_partner_key != THEDERSI_KEY:
+        raise HTTPException(status_code=401, detail="Invalid partner key")
+
+
+@router.patch("/channels/product-status", dependencies=[Depends(_require_partner_key)])
+def update_product_channel_status(
+    payload: ProductStatusCallback,
+    db: Session = Depends(get_db),
+):
+    """
+    Called by TheDersi admin panel when a product is approved or rejected.
+    Updates the product's channel status in ExiusCart so the seller can see:
+      🟡 Pending review on TheDersi
+      ✅ Live on TheDersi
+      ❌ Rejected on TheDersi
+    """
+    if payload.status not in ("approved", "rejected"):
+        raise HTTPException(status_code=400, detail="status must be 'approved' or 'rejected'")
+
+    record = db.query(ChannelProductStatus).filter(
+        ChannelProductStatus.product_id == payload.exiuscart_product_id,
+        ChannelProductStatus.channel_type == payload.channel,
+    ).first()
+
+    if not record:
+        # First time approval callback — create record
+        product = db.query(Product).filter(Product.id == payload.exiuscart_product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        record = ChannelProductStatus(
+            product_id=payload.exiuscart_product_id,
+            shop_id=product.shop_id,
+            channel_type=payload.channel,
+        )
+        db.add(record)
+
+    record.status = payload.status
+    record.rejection_reason = payload.rejection_reason
+    db.commit()
+
+    return {
+        "success": True,
+        "product_id": payload.exiuscart_product_id,
+        "channel": payload.channel,
+        "status": payload.status,
+    }
+
+
+@router.get("/shops/{shop_id}/products/{product_id}/channel-status")
+def get_product_channel_status(
+    shop_id: int,
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns the approval status of a product on each connected channel.
+    Used by ExiusCart seller dashboard to show:
+      🟡 Pending review on TheDersi
+      ✅ Live on TheDersi
+      ❌ Rejected on TheDersi (with reason)
+    """
+    _shop_or_404(shop_id, current_user, db)
+    statuses = db.query(ChannelProductStatus).filter(
+        ChannelProductStatus.product_id == product_id,
+        ChannelProductStatus.shop_id == shop_id,
+    ).all()
+
+    return [
+        {
+            "channel": s.channel_type,
+            "status": s.status,
+            "rejection_reason": s.rejection_reason,
+            "updated_at": s.updated_at,
+            "label": {
+                "pending_review": "🟡 Pending review",
+                "approved": "✅ Live",
+                "rejected": "❌ Rejected",
+            }.get(s.status, s.status),
+        }
+        for s in statuses
+    ]
