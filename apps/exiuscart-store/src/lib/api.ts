@@ -374,4 +374,6 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/products/${productId}/channel-status`),
   getProductChannelCategories: (shopId: string, productId: string) =>
     api.get(`/shops/${shopId}/products/${productId}/channel-category`),
+  getTheDersiInfo: (shopId: string, channelId: number) =>
+    api.get(`/shops/${shopId}/channels/${channelId}/thedersi-info`),
 };
