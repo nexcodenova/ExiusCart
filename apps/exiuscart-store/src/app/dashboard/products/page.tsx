@@ -6,7 +6,7 @@ import {
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface Product {
@@ -538,19 +538,24 @@ function ProductModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // TheDersi channel category state
+  const [theDersiConnection, setTheDersiConnection] = useState<{ id: number } | null>(null);
+  const [theDersiCategories, setTheDersiCategories] = useState<{ id: string; name: string }[]>([]);
+  const [theDersiCategoryId, setTheDersiCategoryId] = useState('');
+  const [theDersiCategoryName, setTheDersiCategoryName] = useState('');
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
   const totalImages = savedImages.length + pendingImages.length;
   const MAX_IMAGES = 6;
 
-  // Load custom fields and existing data on mount
+  // Load custom fields, existing product data, and TheDersi categories on mount
   useEffect(() => {
     if (!shopId) return;
 
-    // Load custom fields
     fieldsApi.getAll(shopId)
       .then((res) => setCustomFields(res.data ?? []))
       .catch(() => {});
 
-    // If editing, load existing attributes + images
     if (product?.id) {
       attributesApi.get(shopId, product.id)
         .then((res) => setAttrValues(res.data ?? {}))
@@ -560,6 +565,38 @@ function ProductModal({
         .then((res) => setSavedImages(res.data ?? []))
         .catch(() => {});
     }
+
+    // Auto-refresh TheDersi categories every time form opens
+    channelsApi.getConnections(shopId)
+      .then((res) => {
+        const dersi = (res.data ?? []).find((c: any) => c.channel_type === 'thedersi' && c.is_active);
+        if (!dersi) return;
+        setTheDersiConnection({ id: dersi.id });
+        setLoadingCategories(true);
+        // Sync from TheDersi (fire-and-forget), then fetch cached list
+        channelsApi.syncCategories(shopId, dersi.id)
+          .catch(() => {})
+          .finally(() => {
+            channelsApi.getCategories(shopId, dersi.id)
+              .then((r) => setTheDersiCategories(r.data ?? []))
+              .catch(() => {})
+              .finally(() => setLoadingCategories(false));
+          });
+
+        // If editing, load already-saved TheDersi category for this product
+        if (product?.id) {
+          channelsApi.getProductChannelCategories(shopId, product.id)
+            .then((r) => {
+              const entry = (r.data ?? []).find((s: any) => s.channel_connection_id === dersi.id);
+              if (entry) {
+                setTheDersiCategoryId(entry.channel_category_id);
+                setTheDersiCategoryName(entry.channel_category_name);
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
   }, [shopId, product?.id]);
 
   // Clean up preview URLs on unmount
@@ -655,6 +692,17 @@ function ProductModal({
         try {
           await attributesApi.save(shopId, productId, attrsPayload);
         } catch {/* no-op */}
+      }
+
+      // Save TheDersi category if selected
+      if (theDersiConnection && theDersiCategoryId) {
+        try {
+          await channelsApi.setProductCategory(shopId, productId, {
+            channel_connection_id: theDersiConnection.id,
+            channel_category_id: theDersiCategoryId,
+            channel_category_name: theDersiCategoryName,
+          });
+        } catch {/* no-op — product still saved */}
       }
 
       onSaved();
@@ -815,6 +863,37 @@ function ProductModal({
               </select>
             </div>
           </section>
+
+          {/* ── Channel Listings ───────────────────────────────────────── */}
+          {theDersiConnection && (
+            <section className="space-y-4">
+              <h3 className="text-sm font-medium text-foreground border-b border-border pb-2">Channel Listings</h3>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block flex items-center gap-2">
+                  TheDersi Category
+                  {loadingCategories && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                </label>
+                <select
+                  value={theDersiCategoryId}
+                  onChange={(e) => {
+                    const opt = theDersiCategories.find((c) => c.id === e.target.value);
+                    setTheDersiCategoryId(e.target.value);
+                    setTheDersiCategoryName(opt?.name ?? '');
+                  }}
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                  disabled={loadingCategories}
+                >
+                  <option value="">-- Select TheDersi category --</option>
+                  {theDersiCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Product will be listed under this category on TheDersi marketplace.
+                </p>
+              </div>
+            </section>
+          )}
 
           {/* ── Pricing ────────────────────────────────────────────────── */}
           <section className="space-y-4">

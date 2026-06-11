@@ -665,3 +665,25 @@ def get_product_channel_status(
         }
         for s in statuses
     ]
+
+
+@router.get("/shops/{shop_id}/products/{product_id}/channel-category")
+def get_product_channel_categories(
+    shop_id: int,
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Returns which channel category the seller assigned to this product per connection."""
+    _shop_or_404(shop_id, current_user, db)
+    rows = db.query(ProductChannelCategory).filter(
+        ProductChannelCategory.product_id == product_id,
+    ).all()
+    return [
+        {
+            "channel_connection_id": r.channel_connection_id,
+            "channel_category_id": r.channel_category_id,
+            "channel_category_name": r.channel_category_name,
+        }
+        for r in rows
+    ]

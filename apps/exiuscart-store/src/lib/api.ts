@@ -356,3 +356,22 @@ export const imagesApi = {
   setPrimary: (shopId: string, productId: string, imageId: string) =>
     api.put(`/shops/${shopId}/products/${productId}/images/${imageId}/primary`, {}),
 };
+
+// ── Channel Integrations ───────────────────────────────
+export const channelsApi = {
+  getConnections: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels`),
+  syncCategories: (shopId: string, channelId: number) =>
+    api.post(`/shops/${shopId}/channels/${channelId}/sync-categories`),
+  getCategories: (shopId: string, channelId: number) =>
+    api.get(`/shops/${shopId}/channels/${channelId}/categories`),
+  setProductCategory: (shopId: string, productId: string, data: {
+    channel_connection_id: number;
+    channel_category_id: string;
+    channel_category_name: string;
+  }) => api.put(`/shops/${shopId}/products/${productId}/channel-category`, data),
+  getProductChannelStatus: (shopId: string, productId: string) =>
+    api.get(`/shops/${shopId}/products/${productId}/channel-status`),
+  getProductChannelCategories: (shopId: string, productId: string) =>
+    api.get(`/shops/${shopId}/products/${productId}/channel-category`),
+};
