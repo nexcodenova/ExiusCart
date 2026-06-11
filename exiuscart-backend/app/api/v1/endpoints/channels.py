@@ -39,6 +39,10 @@ DEFAULT_CHANNEL_URLS = {
     "thedersi": os.getenv("THEDERSI_API_URL", "https://api.thedersi.com/v1"),
 }
 
+# Marketplace channels require admin approval before products go live.
+# Own-store channels (Shopify, WooCommerce) publish instantly — seller is their own admin.
+MARKETPLACE_CHANNELS = {"thedersi"}
+
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -84,7 +88,10 @@ def _webhook_url(conn: ChannelConnection) -> str:
     return f"{EXIUSCART_BASE.rstrip('/')}/channels/webhook/{conn.webhook_secret}"
 
 
-def _product_payload(product: Product, currency: str) -> dict:
+def _product_payload(product: Product, currency: str, channel_type: str) -> dict:
+    # Marketplace channels (TheDersi) → pending_review (admin must approve)
+    # Own-store channels (Shopify, WooCommerce, custom) → active (goes live instantly)
+    status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
     return {
         "exiuscart_product_id": product.id,
         "name": product.name,
@@ -98,7 +105,7 @@ def _product_payload(product: Product, currency: str) -> dict:
         "is_active": product.is_active,
         "is_featured": product.is_featured,
         "is_trending": product.is_trending,
-        "status": "pending_review",  # always goes to TheDersi admin queue first — admin must approve before going live
+        "status": status,
     }
 
 
@@ -143,7 +150,7 @@ def _bg_full_sync(shop_id: int, conn_id: int):
             Product.shop_id == shop_id, Product.is_active == True
         ).all()
         for p in products:
-            _push_one(_product_payload(p, shop.currency), conn)
+            _push_one(_product_payload(p, shop.currency, conn.channel_type), conn)
         conn.last_synced_at = datetime.now(timezone.utc)
         db.commit()
     finally:
@@ -162,7 +169,7 @@ def _bg_push_product(product_id: int, shop_id: int):
             ChannelConnection.shop_id == shop_id, ChannelConnection.is_active == True
         ).all()
         for conn in connections:
-            _push_one(_product_payload(product, shop.currency), conn)
+            _push_one(_product_payload(product, shop.currency, conn.channel_type), conn)
     finally:
         db.close()
 
