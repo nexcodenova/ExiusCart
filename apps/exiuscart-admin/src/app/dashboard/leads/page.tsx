@@ -272,7 +272,7 @@ function LeadModal({ lead, onClose, onSaved }: {
                 className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white" />
             </div>
             <div>
-              <label className="text-sm text-gray-400 mb-1.5 block">Shop Name</label>
+              <label className="text-sm text-gray-400 mb-1.5 block">Store Name</label>
               <input type="text" value={form.shop_name} onChange={(e) => set('shop_name', e.target.value)}
                 className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:border-[#6B3FD9] outline-none text-white" />
             </div>

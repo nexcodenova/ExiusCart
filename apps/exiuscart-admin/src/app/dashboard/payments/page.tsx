@@ -145,7 +145,7 @@ export default function PaymentsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
-            placeholder="Search by shop name..."
+            placeholder="Search by store name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
@@ -170,7 +170,7 @@ export default function PaymentsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="text-left text-sm text-gray-400 border-b border-gray-800">
-                    <th className="px-6 py-4 font-medium">Shop</th>
+                    <th className="px-6 py-4 font-medium">Store</th>
                     <th className="px-6 py-4 font-medium">Plan</th>
                     <th className="px-6 py-4 font-medium">Billing</th>
                     <th className="px-6 py-4 font-medium">Amount</th>

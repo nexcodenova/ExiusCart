@@ -188,7 +188,7 @@ export default function ShoppingAdminPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.price || !form.shop_id) {
-      setModalError('Name, price and shop are required.');
+      setModalError('Name, price and store are required.');
       return;
     }
     setSaving(true);
@@ -303,7 +303,7 @@ export default function ShoppingAdminPage() {
           onChange={(e) => setShopFilter(e.target.value)}
           className="px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none text-sm"
         >
-          <option value="">All Shops</option>
+          <option value="">All Stores</option>
           {shops.map((s) => (
             <option key={s.id} value={String(s.id)}>{s.name}</option>
           ))}
@@ -345,7 +345,7 @@ export default function ShoppingAdminPage() {
                 <thead>
                   <tr className="text-left text-xs text-gray-500 border-b border-gray-800 uppercase tracking-wider">
                     <th className="px-4 py-3 font-medium">Product</th>
-                    <th className="px-4 py-3 font-medium">Shop</th>
+                    <th className="px-4 py-3 font-medium">Store</th>
                     <th className="px-4 py-3 font-medium text-right">Price</th>
                     <th className="px-4 py-3 font-medium text-center">Stock</th>
                     <th className="px-4 py-3 font-medium text-center">Flags</th>
@@ -588,14 +588,14 @@ export default function ShoppingAdminPage() {
               {/* Shop + Category */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-gray-400 mb-1 block">Shop *</label>
+                  <label className="text-sm text-gray-400 mb-1 block">Store *</label>
                   <select
                     required
                     value={form.shop_id}
                     onChange={(e) => handleShopChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none text-sm"
                   >
-                    <option value="">Select shop</option>
+                    <option value="">Select store</option>
                     {shops.map((s) => (
                       <option key={s.id} value={String(s.id)}>
                         {s.name} ({s.currency})

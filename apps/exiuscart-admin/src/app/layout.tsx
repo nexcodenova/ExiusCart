@@ -9,7 +9,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Admin Dashboard | ExiusCart',
-  description: 'ExiusCart Admin - Manage shops, payments, and subscriptions',
+  description: 'ExiusCart Admin - Manage stores, payments, and subscriptions',
 };
 
 export default function RootLayout({

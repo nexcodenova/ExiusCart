@@ -112,7 +112,7 @@ function GeneralSettings() {
           <textarea
             className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition resize-none"
             rows={3}
-            defaultValue="Multi-tenant SaaS platform for UAE mobile shop businesses"
+            defaultValue="Multi-tenant SaaS platform for UAE mobile store businesses"
           />
         </div>
       </SettingsSection>
@@ -166,7 +166,7 @@ function GeneralSettings() {
         <div className="mt-4">
           <ToggleField
             label="Enable Auto-Trial"
-            description="Automatically enable trial for new shop registrations"
+            description="Automatically enable trial for new store registrations"
             defaultChecked={true}
           />
         </div>
@@ -182,8 +182,8 @@ function NotificationSettings() {
       <SettingsSection title="Email Notifications" icon={<Mail className="w-5 h-5" />}>
         <div className="space-y-4">
           <ToggleField
-            label="New Shop Registration"
-            description="Receive email when a new shop registers"
+            label="New Store Registration"
+            description="Receive email when a new store registers"
             defaultChecked={true}
           />
           <ToggleField
@@ -295,8 +295,8 @@ function SecuritySettings() {
             defaultChecked={true}
           />
           <ToggleField
-            label="Require 2FA for Shop Owners"
-            description="Force two-factor authentication for shop owners"
+            label="Require 2FA for Store Owners"
+            description="Force two-factor authentication for store owners"
             defaultChecked={false}
           />
         </div>

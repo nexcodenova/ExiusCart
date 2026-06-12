@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
         <StatCard
-          title="Total Shops"
+          title="Total Stores"
           value={stats?.total_shops ?? 0}
           subtitle={`${stats?.active_shops ?? 0} active`}
           icon={<Store className="w-5 h-5" />}
@@ -168,17 +168,17 @@ export default function AdminDashboardPage() {
       {/* Recent Shops */}
       <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-semibold text-white">Recently Registered Shops</h2>
+          <h2 className="font-semibold text-white">Recently Registered Stores</h2>
           <Link href="/dashboard/shops" className="text-sm text-[#6B3FD9] hover:text-[#8B5CF6] transition">View All</Link>
         </div>
         {recentShops.length === 0 ? (
-          <p className="text-gray-500 text-sm text-center py-4">No shops registered yet</p>
+          <p className="text-gray-500 text-sm text-center py-4">No stores registered yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-400 border-b border-gray-800">
-                  <th className="pb-3 font-medium">Shop Name</th>
+                  <th className="pb-3 font-medium">Store Name</th>
                   <th className="pb-3 font-medium hidden sm:table-cell">Owner</th>
                   <th className="pb-3 font-medium">Plan</th>
                   <th className="pb-3 font-medium">Status</th>

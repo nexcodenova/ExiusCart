@@ -24,7 +24,7 @@ export const menuItems = [
   { href: '/dashboard/leads', label: 'Leads', icon: UserPlus },
   { href: '/dashboard/affiliates', label: 'Affiliates', icon: Link2 },
   { href: '/dashboard/shopping', label: 'Shopping', icon: ShoppingBag },
-  { href: '/dashboard/shops', label: 'Shops', icon: Store },
+  { href: '/dashboard/shops', label: 'Stores', icon: Store },
   { href: '/dashboard/users', label: 'Users', icon: Users },
   { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: Package },
   { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },

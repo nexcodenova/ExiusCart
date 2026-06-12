@@ -65,8 +65,8 @@ export default function ShopsPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Shops</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage all registered shops</p>
+          <h1 className="text-2xl font-bold text-white">Stores</h1>
+          <p className="text-gray-400 text-sm mt-1">Manage all registered stores</p>
         </div>
       </div>
 
@@ -77,7 +77,7 @@ export default function ShopsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
             <input
               type="text"
-              placeholder="Search shops, owners, emails..."
+              placeholder="Search stores, owners, emails..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
@@ -101,7 +101,7 @@ export default function ShopsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
-          <p className="text-gray-400 text-sm">Total Shops</p>
+          <p className="text-gray-400 text-sm">Total Stores</p>
           <p className="text-2xl font-bold text-white mt-1">{loading ? '—' : shops.length}</p>
         </div>
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
@@ -121,7 +121,7 @@ export default function ShopsPage() {
       ) : shops.length === 0 ? (
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-16 text-center">
           <Store className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400">No shops found</p>
+          <p className="text-gray-400">No stores found</p>
         </div>
       ) : (
         <>
@@ -131,7 +131,7 @@ export default function ShopsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="text-left text-sm text-gray-400 border-b border-gray-800">
-                    <th className="px-6 py-4 font-medium">Shop</th>
+                    <th className="px-6 py-4 font-medium">Store</th>
                     <th className="px-6 py-4 font-medium">Owner</th>
                     <th className="px-6 py-4 font-medium">Plan</th>
                     <th className="px-6 py-4 font-medium">Status</th>
@@ -172,7 +172,7 @@ export default function ShopsPage() {
                         <button
                           type="button"
                           onClick={() => toggleStatus(shop)}
-                          title={shop.is_active ? 'Suspend shop' : 'Activate shop'}
+                          title={shop.is_active ? 'Suspend store' : 'Activate store'}
                           className={`p-2 rounded-lg transition ${shop.is_active ? 'text-red-400 hover:bg-red-500/10' : 'text-green-400 hover:bg-green-500/10'}`}
                         >
                           {shop.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}

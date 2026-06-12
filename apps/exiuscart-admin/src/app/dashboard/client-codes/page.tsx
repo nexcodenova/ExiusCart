@@ -220,7 +220,7 @@ export default function ClientCodesPage() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Max Shops</label>
+              <label className="block text-sm text-gray-400 mb-1.5">Max Stores</label>
               <input
                 type="number"
                 min="1"
@@ -325,7 +325,7 @@ export default function ClientCodesPage() {
                       <div>
                         <span className="text-sm text-white capitalize">{code.plan_type}</span>
                         <p className="text-xs text-gray-500">
-                          {code.duration_months ? `${code.duration_months}mo` : 'Lifetime'} · {code.max_shops} shop{code.max_shops > 1 ? 's' : ''}
+                          {code.duration_months ? `${code.duration_months}mo` : 'Lifetime'} · {code.max_shops} store{code.max_shops > 1 ? 's' : ''}
                         </p>
                       </div>
                     </td>

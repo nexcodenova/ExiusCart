@@ -123,7 +123,7 @@ export default function ReportsPage() {
           icon={<TrendingUp className="w-5 h-5" />}
         />
         <StatCard
-          label="New Shops"
+          label="New Stores"
           value={qs ? String(qs.new_shops) : '—'}
           icon={<Store className="w-5 h-5" />}
         />
@@ -199,7 +199,7 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-gray-300 capitalize">{plan.plan}</span>
                       <span className="text-sm text-gray-400">
-                        {plan.count} shops ({plan.percentage}%)
+                        {plan.count} stores ({plan.percentage}%)
                       </span>
                     </div>
                     <div className="h-3 bg-[#0B1121] rounded-full overflow-hidden">
@@ -228,13 +228,13 @@ export default function ReportsPage() {
       <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-white">Top Performing Shops</h3>
+            <h3 className="text-lg font-semibold text-white">Top Performing Stores</h3>
             <p className="text-sm text-gray-500">Ranked by revenue</p>
           </div>
         </div>
 
         {topShops.length === 0 ? (
-          <p className="text-gray-500 text-sm py-4">No shop data available</p>
+          <p className="text-gray-500 text-sm py-4">No store data available</p>
         ) : (
           <>
             {/* Desktop Table */}
@@ -243,7 +243,7 @@ export default function ReportsPage() {
                 <thead>
                   <tr className="text-left text-sm text-gray-400 border-b border-gray-800">
                     <th className="pb-3 font-medium">Rank</th>
-                    <th className="pb-3 font-medium">Shop Name</th>
+                    <th className="pb-3 font-medium">Store Name</th>
                     <th className="pb-3 font-medium text-right">Revenue</th>
                   </tr>
                 </thead>
@@ -318,7 +318,7 @@ export default function ReportsPage() {
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
         <QuickStatCard
-          label="New Shops (period)"
+          label="New Stores (period)"
           value={qs ? String(qs.new_shops) : '—'}
           icon={<Store className="w-5 h-5" />}
         />
@@ -333,7 +333,7 @@ export default function ReportsPage() {
           icon={<CreditCard className="w-5 h-5" />}
         />
         <QuickStatCard
-          label="Avg. Revenue/Shop"
+          label="Avg. Revenue/Store"
           value={qs ? `${qs.avg_revenue_per_shop.toLocaleString(undefined, { maximumFractionDigits: 0 })} AED` : '—'}
           icon={<TrendingUp className="w-5 h-5" />}
         />

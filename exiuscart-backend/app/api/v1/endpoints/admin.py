@@ -188,6 +188,8 @@ def list_users(
     result = []
     for user in users:
         shop = user.shops[0] if user.shops else None
+        sub = db.query(Subscription).filter(Subscription.shop_id == shop.id).order_by(Subscription.created_at.desc()).first() if shop else None
+        source = "thedersi" if (sub and sub.promo_code == "partner_thedersi") else "exiuscart"
         result.append({
             "id": user.id,
             "full_name": user.full_name,
@@ -195,8 +197,11 @@ def list_users(
             "phone": user.phone or "",
             "is_active": user.is_active,
             "created_at": user.created_at.isoformat() if user.created_at else None,
-            "shop_name": shop.name if shop else None,
-            "shop_id": shop.id if shop else None,
+            "store_name": shop.name if shop else None,
+            "store_id": shop.id if shop else None,
+            "plan_type": sub.plan_type if sub else None,
+            "plan_status": sub.status if sub else None,
+            "source": source,
         })
     return result
 

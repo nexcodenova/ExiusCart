@@ -217,7 +217,7 @@ export default function AffiliatesPage() {
                             ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
                             : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                         }`}>
-                          {affiliate.affiliate_type === 'shop_owner' ? 'Shop Owner' : 'External'}
+                          {affiliate.affiliate_type === 'shop_owner' ? 'Store Owner' : 'External'}
                         </span>
                       </div>
                       <p className="text-sm text-gray-400 truncate">{affiliate.email}</p>

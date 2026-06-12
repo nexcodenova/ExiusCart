@@ -138,7 +138,7 @@ export default function SubscriptionsPage() {
           <div className="flex-1 relative">
             <input
               type="text"
-              placeholder="Search shops..."
+              placeholder="Search stores..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-4 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
@@ -148,9 +148,10 @@ export default function SubscriptionsPage() {
             <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}
               className="px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer">
               <option value="all">All Plans</option>
+              <option value="free_trial">Free Trial</option>
+              <option value="thedersi_basic">Free Forever (TheDersi)</option>
               <option value="starter">Starter</option>
-              <option value="business">Business</option>
-              <option value="pro">Pro</option>
+              <option value="premium">Premium</option>
             </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
               className="px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer">
@@ -180,7 +181,7 @@ export default function SubscriptionsPage() {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-400 border-b border-gray-800">
-                  <th className="px-6 py-4 font-medium">Shop</th>
+                  <th className="px-6 py-4 font-medium">Store</th>
                   <th className="px-6 py-4 font-medium">Plan</th>
                   <th className="px-6 py-4 font-medium">Billing</th>
                   <th className="px-6 py-4 font-medium">Status</th>
