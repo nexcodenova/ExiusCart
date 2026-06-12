@@ -16,9 +16,15 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # TheDersi partner integration
+    THEDERSI_PARTNER_KEY: str = ""
+    THEDERSI_HMAC_SECRET: str = ""
+    THEDERSI_WEBHOOK_URL: str = "https://thedersi.lk/api/exiuscart/webhook"
+
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 
 settings = Settings()
