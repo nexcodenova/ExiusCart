@@ -21,11 +21,11 @@ THEDERSI_WEBHOOK_URL = os.getenv(
 # Accepts both new names (confirmed 2026-06) and old names (backward compat)
 THEDERSI_TIER_MAP: dict = {
     "free_forever": {"plan_type": "thedersi_basic"},
-    "starter":      {"plan_type": "starter"},
-    "premium":      {"plan_type": "premium"},
-    # Old names — backward compat
     "free":         {"plan_type": "thedersi_basic"},
-    "standard":     {"plan_type": "starter"},
+    "starter":      {"plan_type": "starter"},
+    "pro":          {"plan_type": "starter"},   # TheDersi Pro also gets ExiusCart Starter
+    "premium":      {"plan_type": "starter"},   # URL param TheDersi uses for Pro plan
+    "standard":     {"plan_type": "starter"},   # backward compat
 }
 
 # Monthly order limits per plan (None = unlimited)

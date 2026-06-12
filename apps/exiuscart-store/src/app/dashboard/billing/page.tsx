@@ -228,11 +228,11 @@ export default function BillingPage() {
               </div>
               <p className="text-sm text-muted-foreground">
                 Your ExiusCart plan is managed by TheDersi. All TheDersi sellers get <strong className="text-foreground">automatic order sync</strong> from TheDersi into ExiusCart.
-                Free sellers are limited to <strong className="text-foreground">50 orders/month</strong> — hit the limit and upgrade your TheDersi plan to continue.
-                TheDersi Growth/Pro sellers enjoy the <strong className="text-foreground">Starter or Premium plan</strong> included at no extra cost.
+                Free sellers are limited to <strong className="text-foreground">50 orders/month</strong> — upgrade your TheDersi plan to unlock 1,000 orders/month.
+                TheDersi Starter &amp; Pro sellers get <strong className="text-foreground">ExiusCart Starter</strong> included at no extra cost.
               </p>
               <div className="mt-3 flex flex-wrap gap-2 items-center">
-                {/* Free Forever — show both upgrade options */}
+                {/* Free Forever — show both TheDersi paid plans */}
                 {currentPlan?.plan_type === 'thedersi_basic' && (
                   <>
                     <a
@@ -241,7 +241,7 @@ export default function BillingPage() {
                       className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
                     >
                       <ExternalLink className="w-4 h-4" />
-                      Growth — ExiusCart Starter
+                      TheDersi Starter — LKR 999/mo
                     </a>
                     <a
                       href="https://thedersi.lk/seller/upgrade?plan=premium"
@@ -249,11 +249,11 @@ export default function BillingPage() {
                       className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition"
                     >
                       <Crown className="w-4 h-4" />
-                      Pro — ExiusCart Premium
+                      TheDersi Pro — LKR 1,699/mo
                     </a>
                   </>
                 )}
-                {/* Growth — only show Pro upgrade */}
+                {/* Starter — show Pro upgrade */}
                 {currentPlan?.plan_type === 'starter' && (
                   <a
                     href="https://thedersi.lk/seller/upgrade?plan=premium"
@@ -261,13 +261,13 @@ export default function BillingPage() {
                     className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition"
                   >
                     <Crown className="w-4 h-4" />
-                    Upgrade to Pro — ExiusCart Premium
+                    Upgrade to TheDersi Pro — LKR 1,699/mo
                   </a>
                 )}
-                {/* Pro — already on top */}
+                {/* Both Starter & Pro are top tier for TheDersi sellers */}
                 {currentPlan?.plan_type === 'premium' && (
                   <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg text-sm font-medium">
-                    👑 You&apos;re on the top plan
+                    🚀 You&apos;re on the top TheDersi plan
                   </span>
                 )}
                 <span className="text-xs text-muted-foreground self-center">
@@ -280,9 +280,9 @@ export default function BillingPage() {
           {/* TheDersi plan mapping */}
           <div className="mt-4 grid sm:grid-cols-3 gap-3">
             {[
-              { dersi: 'TheDersi Free', exius: 'Free Forever', icon: '🆓', desc: 'Sync included · 25 products · 50 orders/mo' },
-              { dersi: 'TheDersi Growth', exius: 'Starter', icon: '⭐', desc: 'Sync included · 1,000 products · 1,000 orders/mo' },
-              { dersi: 'TheDersi Pro', exius: 'Premium', icon: '👑', desc: 'Sync included · Unlimited everything' },
+              { dersi: 'TheDersi Free',    exius: 'Free Forever', icon: '🆓', desc: '25 products · 50 orders/mo' },
+              { dersi: 'TheDersi Starter', exius: 'Starter',      icon: '⭐', desc: '1,000 products · 1,000 orders/mo' },
+              { dersi: 'TheDersi Pro',     exius: 'Starter',      icon: '🚀', desc: '1,000 products · 1,000 orders/mo' },
             ].map((row) => (
               <div key={row.dersi} className="bg-card border border-border rounded-xl p-3 text-sm">
                 <p className="text-muted-foreground text-xs">{row.dersi}</p>
@@ -447,9 +447,7 @@ export default function BillingPage() {
                   >
                     {plan.id === 'free_trial'
                       ? 'Current (Free Forever)'
-                      : plan.id === 'starter'
-                      ? 'Upgrade to Growth on TheDersi'
-                      : 'Upgrade to Pro on TheDersi'}
+                      : 'Upgrade on TheDersi'}
                   </a>
                 ) : (
                   <button type="button" onClick={() => handleUpgrade(plan.id)}
