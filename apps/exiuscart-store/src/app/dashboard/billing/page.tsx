@@ -232,26 +232,39 @@ export default function BillingPage() {
                 TheDersi Growth/Pro sellers enjoy the <strong className="text-foreground">Starter or Premium plan</strong> included at no extra cost.
               </p>
               <div className="mt-3 flex flex-wrap gap-2 items-center">
+                {/* Free Forever — show both upgrade options */}
                 {currentPlan?.plan_type === 'thedersi_basic' && (
-                  <a
-                    href="https://thedersi.lk/seller/upgrade?plan=starter"
-                    target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Upgrade to Growth on TheDersi
-                  </a>
+                  <>
+                    <a
+                      href="https://thedersi.lk/seller/upgrade?plan=starter"
+                      target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Growth — ExiusCart Starter
+                    </a>
+                    <a
+                      href="https://thedersi.lk/seller/upgrade?plan=premium"
+                      target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition"
+                    >
+                      <Crown className="w-4 h-4" />
+                      Pro — ExiusCart Premium
+                    </a>
+                  </>
                 )}
+                {/* Growth — only show Pro upgrade */}
                 {currentPlan?.plan_type === 'starter' && (
                   <a
                     href="https://thedersi.lk/seller/upgrade?plan=premium"
                     target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    Upgrade to Pro on TheDersi
+                    <Crown className="w-4 h-4" />
+                    Upgrade to Pro — ExiusCart Premium
                   </a>
                 )}
+                {/* Pro — already on top */}
                 {currentPlan?.plan_type === 'premium' && (
                   <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg text-sm font-medium">
                     👑 You&apos;re on the top plan
