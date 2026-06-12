@@ -17,6 +17,7 @@ from app.models.lead import Lead
 from app.models.affiliate import Affiliate, Commission
 from app.models.product import Product, Category
 from app.models.partner import PartnerLicense
+from app.models.admin_settings import AdminSettings
 
 router = APIRouter()
 
@@ -1116,6 +1117,119 @@ def toggle_nexcode(
     license.is_active = not license.is_active
     db.commit()
     return {"id": license.id, "is_active": license.is_active}
+
+
+# ── Admin Settings ────────────────────────────────────────────────────────────
+
+def _get_or_create_settings(db: Session) -> AdminSettings:
+    settings = db.query(AdminSettings).filter(AdminSettings.id == 1).first()
+    if not settings:
+        settings = AdminSettings(id=1)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+
+def _settings_out(s: AdminSettings) -> dict:
+    return {
+        "platform_name": s.platform_name,
+        "support_email": s.support_email,
+        "contact_phone": s.contact_phone,
+        "website_url": s.website_url,
+        "platform_description": s.platform_description,
+        "notify_new_store": s.notify_new_store,
+        "notify_payment_received": s.notify_payment_received,
+        "notify_payment_pending": s.notify_payment_pending,
+        "notify_subscription_expiring": s.notify_subscription_expiring,
+        "notify_support_tickets": s.notify_support_tickets,
+        "alert_system_errors": s.alert_system_errors,
+        "alert_high_traffic": s.alert_high_traffic,
+        "alert_failed_logins": s.alert_failed_logins,
+        "notification_email_primary": s.notification_email_primary,
+        "notification_email_secondary": s.notification_email_secondary,
+        "require_2fa_admins": s.require_2fa_admins,
+        "require_2fa_store_owners": s.require_2fa_store_owners,
+        "session_timeout_minutes": s.session_timeout_minutes,
+        "max_active_sessions": s.max_active_sessions,
+        "lemonsqueezy_api_key": ("*" * 12 + s.lemonsqueezy_api_key[-4:]) if s.lemonsqueezy_api_key and len(s.lemonsqueezy_api_key) > 4 else s.lemonsqueezy_api_key,
+        "lemonsqueezy_store_id": s.lemonsqueezy_store_id,
+        "lemonsqueezy_webhook_secret": ("*" * 12) if s.lemonsqueezy_webhook_secret else "",
+        "bank_transfer_enabled": s.bank_transfer_enabled,
+        "bank_name": s.bank_name,
+        "account_name": s.account_name,
+        "account_number": s.account_number,
+        "iban": s.iban,
+        "swift_code": s.swift_code,
+        "branch": s.branch,
+        "invoice_prefix": s.invoice_prefix,
+        "vat_number": s.vat_number,
+        "vat_rate_aed": s.vat_rate_aed,
+        "vat_rate_usd": s.vat_rate_usd,
+        "auto_generate_invoices": s.auto_generate_invoices,
+    }
+
+
+class SettingsUpdate(BaseModel):
+    platform_name: Optional[str] = None
+    support_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    website_url: Optional[str] = None
+    platform_description: Optional[str] = None
+    notify_new_store: Optional[bool] = None
+    notify_payment_received: Optional[bool] = None
+    notify_payment_pending: Optional[bool] = None
+    notify_subscription_expiring: Optional[bool] = None
+    notify_support_tickets: Optional[bool] = None
+    alert_system_errors: Optional[bool] = None
+    alert_high_traffic: Optional[bool] = None
+    alert_failed_logins: Optional[bool] = None
+    notification_email_primary: Optional[str] = None
+    notification_email_secondary: Optional[str] = None
+    require_2fa_admins: Optional[bool] = None
+    require_2fa_store_owners: Optional[bool] = None
+    session_timeout_minutes: Optional[int] = None
+    max_active_sessions: Optional[int] = None
+    lemonsqueezy_api_key: Optional[str] = None
+    lemonsqueezy_store_id: Optional[str] = None
+    lemonsqueezy_webhook_secret: Optional[str] = None
+    bank_transfer_enabled: Optional[bool] = None
+    bank_name: Optional[str] = None
+    account_name: Optional[str] = None
+    account_number: Optional[str] = None
+    iban: Optional[str] = None
+    swift_code: Optional[str] = None
+    branch: Optional[str] = None
+    invoice_prefix: Optional[str] = None
+    vat_number: Optional[str] = None
+    vat_rate_aed: Optional[float] = None
+    vat_rate_usd: Optional[float] = None
+    auto_generate_invoices: Optional[bool] = None
+
+
+@router.get("/admin/settings")
+def get_settings(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    return _settings_out(_get_or_create_settings(db))
+
+
+@router.put("/admin/settings")
+def update_settings(
+    data: SettingsUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    settings = _get_or_create_settings(db)
+    for field, value in data.model_dump(exclude_unset=True).items():
+        # Skip masked values (don't overwrite with asterisks)
+        if value and isinstance(value, str) and set(value) == {"*"}:
+            continue
+        setattr(settings, field, value)
+    db.commit()
+    db.refresh(settings)
+    return _settings_out(settings)
 
 
 @router.delete("/admin/nexcodes/{code_id}", status_code=204)

@@ -1,652 +1,267 @@
-﻿'use client';
+'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Settings,
-  Bell,
-  Shield,
-  Globe,
-  Mail,
-  CreditCard,
-  Database,
-  Save,
-  Eye,
-  EyeOff,
-  Check,
-  AlertCircle,
-  Smartphone,
-  Server,
+  Settings, Bell, Shield, CreditCard, Database,
+  Save, Check, Loader2, Eye, EyeOff,
 } from 'lucide-react';
+import { adminApi } from '@/lib/api';
 
-export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('general');
-  const [saved, setSaved] = useState(false);
+type S = Record<string, any>;
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
-
-  const tabs = [
-    { id: 'general', label: 'General', icon: <Settings className="w-4 h-4" /> },
-    { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
-    { id: 'security', label: 'Security', icon: <Shield className="w-4 h-4" /> },
-    { id: 'payment', label: 'Payment', icon: <CreditCard className="w-4 h-4" /> },
-    { id: 'api', label: 'API & Integrations', icon: <Database className="w-4 h-4" /> },
-  ];
-
-  return (
-    <div>
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Settings</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage platform configuration and preferences</p>
-        </div>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2.5 rounded-lg transition w-full sm:w-auto"
-        >
-          <Save className="w-5 h-5" />
-          Save Changes
-        </button>
-      </div>
-
-      {/* Success Alert */}
-      {saved && (
-        <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-6">
-          <div className="flex items-center gap-3">
-            <Check className="w-5 h-5 text-green-400" />
-            <p className="text-green-400 font-medium">Settings saved successfully!</p>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs Navigation */}
-      <div className="bg-[#151F32] rounded-xl border border-gray-800 p-2 mb-6 overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-[#6B3FD9] text-black'
-                  : 'text-gray-400 hover:text-white hover:bg-[#1A2540]'
-              }`}
-            >
-              {tab.icon}
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      <div className="space-y-6">
-        {activeTab === 'general' && <GeneralSettings />}
-        {activeTab === 'notifications' && <NotificationSettings />}
-        {activeTab === 'security' && <SecuritySettings />}
-        {activeTab === 'payment' && <PaymentSettings />}
-        {activeTab === 'api' && <APISettings />}
-      </div>
-    </div>
-  );
-}
-
-function GeneralSettings() {
-  return (
-    <div className="space-y-6">
-      {/* Platform Info */}
-      <SettingsSection title="Platform Information" icon={<Globe className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField label="Platform Name" defaultValue="ExiusCart" />
-          <InputField label="Support Email" defaultValue="support@exiuscart.com" type="email" />
-          <InputField label="Contact Phone" defaultValue="+971 4 123 4567" />
-          <InputField label="Website URL" defaultValue="https://exiuscart.com" />
-        </div>
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-400 mb-2">Platform Description</label>
-          <textarea
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition resize-none"
-            rows={3}
-            defaultValue="Multi-tenant SaaS platform for UAE mobile store businesses"
-          />
-        </div>
-      </SettingsSection>
-
-      {/* Regional Settings */}
-      <SettingsSection title="Regional Settings" icon={<Globe className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField
-            label="Default Currency"
-            options={[
-              { value: 'AED', label: 'AED - UAE Dirham' },
-              { value: 'USD', label: 'USD - US Dollar' },
-              { value: 'SAR', label: 'SAR - Saudi Riyal' },
-            ]}
-            defaultValue="AED"
-          />
-          <SelectField
-            label="Default Language"
-            options={[
-              { value: 'en', label: 'English' },
-              { value: 'ar', label: 'Arabic' },
-            ]}
-            defaultValue="en"
-          />
-          <SelectField
-            label="Timezone"
-            options={[
-              { value: 'Asia/Dubai', label: 'Dubai (GMT+4)' },
-              { value: 'Asia/Riyadh', label: 'Riyadh (GMT+3)' },
-            ]}
-            defaultValue="Asia/Dubai"
-          />
-          <SelectField
-            label="Date Format"
-            options={[
-              { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
-              { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
-              { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' },
-            ]}
-            defaultValue="DD/MM/YYYY"
-          />
-        </div>
-      </SettingsSection>
-
-      {/* Trial Settings */}
-      <SettingsSection title="Trial Settings" icon={<Smartphone className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField label="Trial Duration (days)" type="number" defaultValue="14" />
-          <InputField label="Trial Invoices Limit" type="number" defaultValue="50" />
-        </div>
-        <div className="mt-4">
-          <ToggleField
-            label="Enable Auto-Trial"
-            description="Automatically enable trial for new store registrations"
-            defaultChecked={true}
-          />
-        </div>
-      </SettingsSection>
-    </div>
-  );
-}
-
-function NotificationSettings() {
-  return (
-    <div className="space-y-6">
-      {/* Email Notifications */}
-      <SettingsSection title="Email Notifications" icon={<Mail className="w-5 h-5" />}>
-        <div className="space-y-4">
-          <ToggleField
-            label="New Store Registration"
-            description="Receive email when a new store registers"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Payment Received"
-            description="Receive email for successful payments"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Payment Pending Approval"
-            description="Receive email when bank transfer needs approval"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Subscription Expiring"
-            description="Receive email for subscriptions expiring in 7 days"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Support Tickets"
-            description="Receive email for new support tickets"
-            defaultChecked={false}
-          />
-        </div>
-      </SettingsSection>
-
-      {/* Admin Alerts */}
-      <SettingsSection title="Admin Alerts" icon={<AlertCircle className="w-5 h-5" />}>
-        <div className="space-y-4">
-          <ToggleField
-            label="System Errors"
-            description="Alert when system errors occur"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="High Traffic Warning"
-            description="Alert when traffic exceeds normal levels"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Failed Login Attempts"
-            description="Alert for multiple failed login attempts"
-            defaultChecked={true}
-          />
-        </div>
-      </SettingsSection>
-
-      {/* Notification Recipients */}
-      <SettingsSection title="Notification Recipients" icon={<Mail className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField label="Primary Email" defaultValue="admin@exiuscart.com" type="email" />
-          <InputField label="Secondary Email" defaultValue="" type="email" placeholder="Optional backup email" />
-        </div>
-      </SettingsSection>
-    </div>
-  );
-}
-
-function SecuritySettings() {
-  const [showPassword, setShowPassword] = useState(false);
-
-  return (
-    <div className="space-y-6">
-      {/* Password Policy */}
-      <SettingsSection title="Password Policy" icon={<Shield className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField label="Minimum Password Length" type="number" defaultValue="8" />
-          <InputField label="Password Expiry (days)" type="number" defaultValue="90" />
-        </div>
-        <div className="mt-4 space-y-4">
-          <ToggleField
-            label="Require Uppercase Letters"
-            description="Password must contain at least one uppercase letter"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Require Numbers"
-            description="Password must contain at least one number"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Require Special Characters"
-            description="Password must contain at least one special character"
-            defaultChecked={false}
-          />
-        </div>
-      </SettingsSection>
-
-      {/* Session Settings */}
-      <SettingsSection title="Session Settings" icon={<Server className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField label="Session Timeout (minutes)" type="number" defaultValue="30" />
-          <InputField label="Max Active Sessions" type="number" defaultValue="3" />
-        </div>
-        <div className="mt-4">
-          <ToggleField
-            label="Force Single Session"
-            description="Logout from other devices when logging in"
-            defaultChecked={false}
-          />
-        </div>
-      </SettingsSection>
-
-      {/* Two-Factor Authentication */}
-      <SettingsSection title="Two-Factor Authentication" icon={<Shield className="w-5 h-5" />}>
-        <div className="space-y-4">
-          <ToggleField
-            label="Require 2FA for Admins"
-            description="Force two-factor authentication for all admin users"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Require 2FA for Store Owners"
-            description="Force two-factor authentication for store owners"
-            defaultChecked={false}
-          />
-        </div>
-      </SettingsSection>
-
-      {/* Change Admin Password */}
-      <SettingsSection title="Change Admin Password" icon={<Shield className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-400 mb-2">Current Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition pr-12"
-                placeholder="Enter current password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-          <InputField label="New Password" type="password" placeholder="Enter new password" />
-        </div>
-      </SettingsSection>
-    </div>
-  );
-}
-
-function PaymentSettings() {
-  return (
-    <div className="space-y-6">
-      {/* Payment Methods */}
-      <SettingsSection title="Payment Methods" icon={<CreditCard className="w-5 h-5" />}>
-        <div className="space-y-4">
-          <ToggleField
-            label="Credit/Debit Cards"
-            description="Accept Visa, Mastercard, and other cards via Stripe"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Bank Transfer"
-            description="Accept manual bank transfers with proof upload"
-            defaultChecked={true}
-          />
-          <ToggleField
-            label="Apple Pay"
-            description="Accept Apple Pay payments"
-            defaultChecked={false}
-          />
-          <ToggleField
-            label="Google Pay"
-            description="Accept Google Pay payments"
-            defaultChecked={false}
-          />
-        </div>
-      </SettingsSection>
-
-      {/* Stripe Configuration */}
-      <SettingsSection title="Stripe Configuration" icon={<CreditCard className="w-5 h-5" />}>
-        <div className="space-y-4">
-          <InputField label="Publishable Key" defaultValue="pk_live_***************" />
-          <InputField label="Secret Key" type="password" defaultValue="sk_live_***************" />
-          <InputField label="Webhook Secret" type="password" defaultValue="whsec_***************" />
-        </div>
-        <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-          <p className="text-sm text-blue-400">
-            Make sure to configure your Stripe webhook endpoint to: <br />
-            <code className="text-xs bg-[#0B1121] px-2 py-1 rounded mt-2 inline-block">
-              https://api.exiuscart.com/webhooks/stripe
-            </code>
-          </p>
-        </div>
-      </SettingsSection>
-
-      {/* Bank Transfer Details */}
-      <SettingsSection title="Bank Transfer Details" icon={<CreditCard className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField label="Bank Name" defaultValue="Emirates NBD" />
-          <InputField label="Account Name" defaultValue="ExiusCart LLC" />
-          <InputField label="Account Number" defaultValue="1234567890123" />
-          <InputField label="IBAN" defaultValue="AE12 3456 7890 1234 5678 901" />
-          <InputField label="SWIFT Code" defaultValue="EABORAED" />
-          <InputField label="Branch" defaultValue="Dubai Main Branch" />
-        </div>
-      </SettingsSection>
-
-      {/* Invoice Settings */}
-      <SettingsSection title="Invoice Settings" icon={<CreditCard className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField label="Invoice Prefix" defaultValue="INV-" />
-          <InputField label="VAT Number" defaultValue="TRN123456789" />
-          <InputField label="VAT Rate (%)" type="number" defaultValue="5" />
-        </div>
-        <div className="mt-4">
-          <ToggleField
-            label="Auto-generate Invoices"
-            description="Automatically generate invoices for payments"
-            defaultChecked={true}
-          />
-        </div>
-      </SettingsSection>
-    </div>
-  );
-}
-
-function APISettings() {
-  const [showApiKey, setShowApiKey] = useState(false);
-
-  return (
-    <div className="space-y-6">
-      {/* API Keys */}
-      <SettingsSection title="API Keys" icon={<Database className="w-5 h-5" />}>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Production API Key</label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white font-mono text-sm focus:border-[#6B3FD9] focus:outline-none transition pr-12"
-                  defaultValue="exc_prod_abc123xyz789def456"
-                  readOnly
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                >
-                  {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              <button
-                type="button"
-                className="px-4 py-2.5 bg-[#151F32] border border-gray-700 hover:border-gray-600 text-white rounded-lg transition"
-              >
-                Regenerate
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-orange-400">
-              Keep your API keys secure. Never share them publicly or commit them to version control.
-            </p>
-          </div>
-        </div>
-      </SettingsSection>
-
-      {/* Rate Limiting */}
-      <SettingsSection title="Rate Limiting" icon={<Server className="w-5 h-5" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField label="Requests per Minute" type="number" defaultValue="60" />
-          <InputField label="Requests per Day" type="number" defaultValue="10000" />
-        </div>
-      </SettingsSection>
-
-      {/* Webhooks */}
-      <SettingsSection title="Webhook Configuration" icon={<Database className="w-5 h-5" />}>
-        <div className="space-y-4">
-          <InputField
-            label="Webhook URL"
-            defaultValue=""
-            placeholder="https://your-server.com/webhook"
-          />
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Webhook Events</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {[
-                'shop.created',
-                'shop.updated',
-                'subscription.created',
-                'subscription.cancelled',
-                'payment.completed',
-                'payment.failed',
-              ].map((event) => (
-                <label
-                  key={event}
-                  className="flex items-center gap-2 p-3 bg-[#0B1121] border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600"
-                >
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-gray-600 bg-[#0B1121] text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0"
-                    defaultChecked={event.includes('payment')}
-                  />
-                  <span className="text-sm text-gray-300 font-mono">{event}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-      </SettingsSection>
-
-      {/* Third-party Integrations */}
-      <SettingsSection title="Third-party Integrations" icon={<Database className="w-5 h-5" />}>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-[#0B1121] border border-gray-700 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#635BFF] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">S</span>
-              </div>
-              <div>
-                <p className="font-medium text-white">Stripe</p>
-                <p className="text-xs text-gray-500">Payment processing</p>
-              </div>
-            </div>
-            <span className="text-xs px-2.5 py-1 rounded-lg bg-green-500/10 text-green-400">Connected</span>
-          </div>
-          <div className="flex items-center justify-between p-4 bg-[#0B1121] border border-gray-700 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#00B67A] rounded-lg flex items-center justify-center">
-                <Mail className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="font-medium text-white">SendGrid</p>
-                <p className="text-xs text-gray-500">Email delivery</p>
-              </div>
-            </div>
-            <span className="text-xs px-2.5 py-1 rounded-lg bg-green-500/10 text-green-400">Connected</span>
-          </div>
-          <div className="flex items-center justify-between p-4 bg-[#0B1121] border border-gray-700 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
-                <Smartphone className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="font-medium text-white">Twilio</p>
-                <p className="text-xs text-gray-500">SMS notifications</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="text-xs px-3 py-1.5 rounded-lg bg-[#6B3FD9] text-black font-medium hover:bg-[#5A2EC9] transition"
-            >
-              Connect
-            </button>
-          </div>
-        </div>
-      </SettingsSection>
-    </div>
-  );
-}
-
-// Reusable Components
-function SettingsSection({
-  title,
-  icon,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
+function ToggleField({ label, description, checked, onChange }: {
+  label: string; description: string; checked: boolean; onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 md:p-6">
-      <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-800">
-        <div className="text-[#6B3FD9]">{icon}</div>
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function InputField({
-  label,
-  type = 'text',
-  defaultValue = '',
-  placeholder = '',
-}: {
-  label: string;
-  type?: string;
-  defaultValue?: string;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-400 mb-2">{label}</label>
-      <input
-        type={type}
-        className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-      />
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  options,
-  defaultValue,
-}: {
-  label: string;
-  options: { value: string; label: string }[];
-  defaultValue?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-400 mb-2">{label}</label>
-      <select
-        className="w-full px-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer"
-        defaultValue={defaultValue}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function ToggleField({
-  label,
-  description,
-  defaultChecked = false,
-}: {
-  label: string;
-  description: string;
-  defaultChecked?: boolean;
-}) {
-  const [checked, setChecked] = useState(defaultChecked);
-
-  return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex items-center justify-between py-3 border-b border-gray-800 last:border-0">
       <div>
-        <p className="font-medium text-white">{label}</p>
-        <p className="text-sm text-gray-500">{description}</p>
+        <p className="text-sm font-medium text-white">{label}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       </div>
-      <button
-        type="button"
-        onClick={() => setChecked(!checked)}
-        className={`relative w-11 h-6 rounded-full transition flex-shrink-0 ${
-          checked ? 'bg-[#6B3FD9]' : 'bg-gray-700'
-        }`}
-      >
-        <span
-          className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-            checked ? 'left-6' : 'left-1'
-          }`}
-        />
+      <button type="button" onClick={() => onChange(!checked)}
+        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-[#6B3FD9]' : 'bg-gray-700'}`}>
+        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
       </button>
     </div>
   );
 }
 
+function InputField({ label, value, onChange, type = 'text', placeholder = '' }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
+}) {
+  const [show, setShow] = useState(false);
+  const isSecret = type === 'password';
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-400 mb-2">{label}</label>
+      <div className="relative">
+        <input
+          type={isSecret && !show ? 'password' : 'text'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
+        />
+        {isSecret && (
+          <button type="button" onClick={() => setShow(!show)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+            {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 space-y-4">
+      <h2 className="text-base font-semibold text-white border-b border-gray-800 pb-3">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState('general');
+  const [s, setS] = useState<S>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    adminApi.getSettings().then((res) => { setS(res.data); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  const set = (key: string, value: any) => setS((prev) => ({ ...prev, [key]: value }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await adminApi.updateSettings(s);
+      setS(res.data);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {/* no-op */}
+    setSaving(false);
+  };
+
+  const tabs = [
+    { id: 'general',       label: 'General',           icon: <Settings className="w-4 h-4" /> },
+    { id: 'notifications', label: 'Notifications',     icon: <Bell className="w-4 h-4" /> },
+    { id: 'security',      label: 'Security',          icon: <Shield className="w-4 h-4" /> },
+    { id: 'payment',       label: 'Payment',           icon: <CreditCard className="w-4 h-4" /> },
+    { id: 'api',           label: 'API & Integrations',icon: <Database className="w-4 h-4" /> },
+  ];
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="w-8 h-8 text-[#6B3FD9] animate-spin" />
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Settings</h1>
+          <p className="text-gray-400 text-sm mt-1">Manage platform configuration and preferences</p>
+        </div>
+        <button type="button" onClick={handleSave} disabled={saving}
+          className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2.5 rounded-lg transition w-full sm:w-auto disabled:opacity-50">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+          {saved ? 'Saved!' : saving ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-[#151F32] border border-gray-800 rounded-xl p-1 mb-6 overflow-x-auto">
+        {tabs.map((tab) => (
+          <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
+              activeTab === tab.id ? 'bg-[#6B3FD9] text-black' : 'text-gray-400 hover:text-white'
+            }`}>
+            {tab.icon}{tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-6">
+        {/* ── General ── */}
+        {activeTab === 'general' && (
+          <>
+            <Section title="Platform Information">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Platform Name" value={s.platform_name ?? ''} onChange={(v) => set('platform_name', v)} />
+                <InputField label="Support Email" value={s.support_email ?? ''} onChange={(v) => set('support_email', v)} />
+                <InputField label="Contact Phone" value={s.contact_phone ?? ''} onChange={(v) => set('contact_phone', v)} />
+                <InputField label="Website URL" value={s.website_url ?? ''} onChange={(v) => set('website_url', v)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Platform Description</label>
+                <textarea
+                  value={s.platform_description ?? ''}
+                  onChange={(e) => set('platform_description', e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition resize-none"
+                />
+              </div>
+            </Section>
+          </>
+        )}
+
+        {/* ── Notifications ── */}
+        {activeTab === 'notifications' && (
+          <>
+            <Section title="Email Notifications">
+              <ToggleField label="New Store Registration" description="Receive email when a new store registers" checked={s.notify_new_store ?? true} onChange={(v) => set('notify_new_store', v)} />
+              <ToggleField label="Payment Received" description="Receive email for successful payments" checked={s.notify_payment_received ?? true} onChange={(v) => set('notify_payment_received', v)} />
+              <ToggleField label="Payment Pending Approval" description="Receive email when bank transfer needs approval" checked={s.notify_payment_pending ?? true} onChange={(v) => set('notify_payment_pending', v)} />
+              <ToggleField label="Subscription Expiring" description="Receive email for subscriptions expiring in 7 days" checked={s.notify_subscription_expiring ?? true} onChange={(v) => set('notify_subscription_expiring', v)} />
+              <ToggleField label="Support Tickets" description="Alert for new support tickets" checked={s.notify_support_tickets ?? false} onChange={(v) => set('notify_support_tickets', v)} />
+            </Section>
+            <Section title="Admin Alerts">
+              <ToggleField label="System Errors" description="Alert when system errors occur" checked={s.alert_system_errors ?? true} onChange={(v) => set('alert_system_errors', v)} />
+              <ToggleField label="High Traffic Warning" description="Alert when traffic exceeds normal levels" checked={s.alert_high_traffic ?? true} onChange={(v) => set('alert_high_traffic', v)} />
+              <ToggleField label="Failed Login Attempts" description="Alert for multiple failed login attempts" checked={s.alert_failed_logins ?? true} onChange={(v) => set('alert_failed_logins', v)} />
+            </Section>
+            <Section title="Notification Recipients">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Primary Email" value={s.notification_email_primary ?? ''} onChange={(v) => set('notification_email_primary', v)} />
+                <InputField label="Secondary Email (optional)" value={s.notification_email_secondary ?? ''} onChange={(v) => set('notification_email_secondary', v)} placeholder="Optional backup email" />
+              </div>
+            </Section>
+          </>
+        )}
+
+        {/* ── Security ── */}
+        {activeTab === 'security' && (
+          <>
+            <Section title="Session Settings">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Session Timeout (minutes)" value={String(s.session_timeout_minutes ?? 30)} onChange={(v) => set('session_timeout_minutes', parseInt(v) || 30)} />
+                <InputField label="Max Active Sessions" value={String(s.max_active_sessions ?? 3)} onChange={(v) => set('max_active_sessions', parseInt(v) || 3)} />
+              </div>
+            </Section>
+            <Section title="Two-Factor Authentication">
+              <ToggleField label="Require 2FA for Admins" description="Force two-factor authentication for all admin users" checked={s.require_2fa_admins ?? true} onChange={(v) => set('require_2fa_admins', v)} />
+              <ToggleField label="Require 2FA for Store Owners" description="Force two-factor authentication for store owners" checked={s.require_2fa_store_owners ?? false} onChange={(v) => set('require_2fa_store_owners', v)} />
+            </Section>
+          </>
+        )}
+
+        {/* ── Payment ── */}
+        {activeTab === 'payment' && (
+          <>
+            <Section title="Lemon Squeezy (Direct Seller Payments)">
+              <p className="text-xs text-gray-500 -mt-2">Used when ExiusCart direct sellers pay for their subscription. Worldwide payments, no company registration needed.</p>
+              <div className="space-y-4">
+                <InputField label="API Key" value={s.lemonsqueezy_api_key ?? ''} onChange={(v) => set('lemonsqueezy_api_key', v)} type="password" placeholder="eyJ0eXAiOiJKV1Qi..." />
+                <InputField label="Store ID" value={s.lemonsqueezy_store_id ?? ''} onChange={(v) => set('lemonsqueezy_store_id', v)} placeholder="12345" />
+                <InputField label="Webhook Secret" value={s.lemonsqueezy_webhook_secret ?? ''} onChange={(v) => set('lemonsqueezy_webhook_secret', v)} type="password" placeholder="whsec_..." />
+              </div>
+              <div className="mt-2 bg-[#0B1121] rounded-lg px-4 py-3 text-xs text-gray-400">
+                Set your webhook endpoint in Lemon Squeezy to:{' '}
+                <span className="text-[#6B3FD9] font-mono">https://api.exiuscart.com/api/v1/webhooks/lemonsqueezy</span>
+              </div>
+            </Section>
+
+            <Section title="Bank Transfer">
+              <ToggleField label="Accept Bank Transfers" description="Allow customers to pay via manual bank transfer" checked={s.bank_transfer_enabled ?? true} onChange={(v) => set('bank_transfer_enabled', v)} />
+              {s.bank_transfer_enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <InputField label="Bank Name" value={s.bank_name ?? ''} onChange={(v) => set('bank_name', v)} placeholder="e.g. Emirates NBD" />
+                  <InputField label="Account Name" value={s.account_name ?? ''} onChange={(v) => set('account_name', v)} placeholder="Your name / company name" />
+                  <InputField label="Account Number" value={s.account_number ?? ''} onChange={(v) => set('account_number', v)} />
+                  <InputField label="IBAN" value={s.iban ?? ''} onChange={(v) => set('iban', v)} placeholder="AExx xxxx xxxx xxxx xxxx xxx" />
+                  <InputField label="SWIFT / BIC Code" value={s.swift_code ?? ''} onChange={(v) => set('swift_code', v)} placeholder="e.g. EABORAED" />
+                  <InputField label="Branch" value={s.branch ?? ''} onChange={(v) => set('branch', v)} placeholder="e.g. Dubai Main Branch" />
+                </div>
+              )}
+            </Section>
+
+            <Section title="Invoice Settings">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Invoice Prefix" value={s.invoice_prefix ?? 'INV-'} onChange={(v) => set('invoice_prefix', v)} />
+                <InputField label="VAT / TRN Number" value={s.vat_number ?? ''} onChange={(v) => set('vat_number', v)} placeholder="TRN123456789" />
+                <InputField label="VAT Rate — AED orders (%)" value={String(s.vat_rate_aed ?? 5)} onChange={(v) => set('vat_rate_aed', parseFloat(v) || 0)} />
+                <InputField label="VAT Rate — USD orders (%)" value={String(s.vat_rate_usd ?? 0)} onChange={(v) => set('vat_rate_usd', parseFloat(v) || 0)} />
+              </div>
+              <ToggleField label="Auto-generate Invoices" description="Automatically generate invoices for payments" checked={s.auto_generate_invoices ?? true} onChange={(v) => set('auto_generate_invoices', v)} />
+              <div className="bg-[#0B1121] rounded-lg px-4 py-3 text-xs text-gray-400 mt-2">
+                AED invoices include {s.vat_rate_aed ?? 5}% VAT &nbsp;·&nbsp; USD invoices include {s.vat_rate_usd ?? 0}% VAT (export rule)
+              </div>
+            </Section>
+          </>
+        )}
+
+        {/* ── API & Integrations ── */}
+        {activeTab === 'api' && (
+          <>
+            <Section title="Partner Integrations">
+              <p className="text-sm text-gray-400">
+                External platforms like <span className="text-white font-medium">TheDersi</span> connect to ExiusCart via the Partner API.
+                Their sellers are provisioned automatically when they sign up on TheDersi.
+              </p>
+              <div className="bg-[#0B1121] rounded-lg px-4 py-3 space-y-2 text-xs font-mono text-gray-400">
+                <p><span className="text-[#6B3FD9]">POST</span> /api/v1/partner/thedersi/provision</p>
+                <p><span className="text-[#6B3FD9]">PUT</span>  /api/v1/partner/thedersi/upgrade</p>
+                <p><span className="text-[#6B3FD9]">GET</span>  /api/v1/partner/thedersi/status</p>
+              </div>
+              <p className="text-xs text-gray-500">Partner API key and HMAC secret are set in the server <span className="font-mono text-gray-400">.env</span> file on the droplet.</p>
+            </Section>
+
+            <Section title="External Store Connection (Coming Soon)">
+              <p className="text-sm text-gray-400">
+                Future feature: store owners on Shopify or custom platforms will be able to install an ExiusCart plugin to sync their products, orders, and inventory with ExiusCart.
+              </p>
+              <div className="inline-flex items-center gap-2 text-xs text-orange-400 bg-orange-500/10 px-3 py-2 rounded-lg">
+                Planned — not yet available
+              </div>
+            </Section>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

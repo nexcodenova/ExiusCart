@@ -104,4 +104,8 @@ export const adminApi = {
     api.put(`/admin/affiliates/${affiliateId}/commission-rate`, null, { params: { rate } }),
   payCommission: (commissionId: number) =>
     api.put(`/admin/commissions/${commissionId}/pay`),
+
+  // Settings
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (data: Record<string, any>) => api.put('/admin/settings', data),
 };

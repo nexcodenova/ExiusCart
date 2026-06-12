@@ -23,3 +23,4 @@ from app.models.channel_product_status import ChannelProductStatus
 from app.models.channel_category import ChannelCategory, ProductChannelCategory
 from app.models.product_variant import ProductVariant
 from app.models.thedersi_seller import TheDersiSeller
+from app.models.admin_settings import AdminSettings
