@@ -1,5 +1,7 @@
 import re
 import uuid
+import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError, jwt
@@ -9,9 +11,13 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
+from app.core.email import send_welcome_email, send_thedersi_welcome_email
 from app.models.user import User
 from app.models.shop import Shop
 from app.schemas.user import UserCreate, UserResponse, UserLogin, Token
+
+logger = logging.getLogger(__name__)
+_email_pool = ThreadPoolExecutor(max_workers=2)
 
 
 def _slugify(text: str) -> str:
@@ -57,6 +63,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(new_user)
+
+    _email_pool.submit(send_welcome_email, new_user.email, new_user.full_name or "")
 
     access_token = create_access_token(data={"sub": str(new_user.id)})
     return Token(
@@ -128,6 +136,8 @@ def setup_password(data: SetupPasswordIn, db: Session = Depends(get_db)):
     user.is_active = True
     db.commit()
     db.refresh(user)
+
+    _email_pool.submit(send_thedersi_welcome_email, user.email, user.full_name or "")
 
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token, user=UserResponse.model_validate(user))

@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import {
   Link2, Loader2, AlertTriangle, CheckCircle2, Clock,
-  Wallet, Tag, Calendar, Copy, Check, X, Plug,
+  Wallet, Tag, Calendar, Copy, Check, X, ExternalLink,
+  ShoppingBag, Globe, ShoppingCart, Package, Instagram,
 } from 'lucide-react';
-import { channelsApi } from '@/lib/api';
+import { channelsApi, shopifyApi } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -45,12 +47,8 @@ function CopyBox({ label, value }: { label: string; value: string }) {
         <code className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-xs text-foreground break-all font-mono">
           {value}
         </code>
-        <button
-          type="button"
-          onClick={copy}
-          className="shrink-0 p-2 rounded-lg border border-border hover:bg-muted transition"
-          title="Copy"
-        >
+        <button type="button" onClick={copy}
+          className="shrink-0 p-2 rounded-lg border border-border hover:bg-muted transition" title="Copy">
           {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
         </button>
       </div>
@@ -58,10 +56,10 @@ function CopyBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ConnectModal({ shopId, onConnected, onClose }: {
-  shopId: string;
-  onConnected: () => void;
-  onClose: () => void;
+// ── TheDersi connect modal ────────────────────────────────────────────────────
+
+function TheDersiConnectModal({ shopId, onConnected, onClose }: {
+  shopId: string; onConnected: () => void; onClose: () => void;
 }) {
   const [sellerId, setSellerId] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -82,9 +80,7 @@ function ConnectModal({ shopId, onConnected, onClose }: {
         channel_seller_id: sellerId.trim(),
       });
       const secret = r.data?.webhook_secret;
-      if (secret) {
-        setWebhookUrl(`https://api.exiuscart.com/api/v1/channels/webhook/${secret}`);
-      }
+      if (secret) setWebhookUrl(`https://api.exiuscart.com/api/v1/channels/webhook/${secret}`);
       onConnected();
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Connection failed. Check your Seller ID and API Key.');
@@ -106,20 +102,12 @@ function ConnectModal({ shopId, onConnected, onClose }: {
               <p className="text-xs text-muted-foreground">Copy your webhook URL and paste it into TheDersi</p>
             </div>
           </div>
-
-          <CopyBox
-            label="Your ExiusCart Webhook URL — paste this into thedersi.lk/seller/connect"
-            value={webhookUrl}
-          />
-
+          <CopyBox label="ExiusCart Webhook URL — paste into thedersi.lk/seller/connect" value={webhookUrl} />
           <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-            Go to <strong>thedersi.lk/seller/connect</strong>, paste this URL in the "ExiusCart Webhook URL" field, and save. Orders from TheDersi will then appear automatically in your ExiusCart dashboard.
+            Go to <strong>thedersi.lk/seller/connect</strong>, paste this URL in the "ExiusCart Webhook URL" field and save.
           </p>
-
-          <button
-            onClick={onClose}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition"
-          >
+          <button onClick={onClose}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
             Done
           </button>
         </div>
@@ -133,53 +121,35 @@ function ConnectModal({ shopId, onConnected, onClose }: {
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div>
             <p className="font-semibold text-foreground">Connect TheDersi</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Get your credentials from thedersi.lk/seller/connect</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Get credentials from thedersi.lk/seller/connect</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
             <X className="w-4 h-4" />
           </button>
         </div>
-
         <form onSubmit={connect} className="p-5 space-y-4">
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
               {error}
             </div>
           )}
-
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">TheDersi Seller ID *</label>
-            <input
-              type="text"
-              value={sellerId}
-              onChange={(e) => setSellerId(e.target.value)}
-              required
+            <input type="text" value={sellerId} onChange={(e) => setSellerId(e.target.value)} required
               placeholder="e.g. seller_abc123"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm"
-            />
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
           </div>
-
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">TheDersi API Key *</label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              required
+            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
               placeholder="Paste your API key from TheDersi"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm"
-            />
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
           </div>
-
           <p className="text-xs text-muted-foreground">
             Find these at <strong>thedersi.lk/seller/connect</strong> under API Credentials.
           </p>
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2"
-          >
+          <button type="submit" disabled={saving}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             {saving ? 'Connecting...' : 'Connect TheDersi'}
           </button>
@@ -189,11 +159,12 @@ function ConnectModal({ shopId, onConnected, onClose }: {
   );
 }
 
+// ── TheDersi connected card ───────────────────────────────────────────────────
+
 function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; shopId: string }) {
   const [info, setInfo] = useState<TheDersiInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   const webhookUrl = `https://api.exiuscart.com/api/v1/channels/webhook/${connection.webhook_secret}`;
 
   useEffect(() => {
@@ -219,35 +190,23 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
           <CheckCircle2 className="w-3 h-3" /> Connected
         </span>
       </div>
-
       <div className="p-5 space-y-5">
-        {/* Webhook URL — always visible so seller can re-copy */}
-        <CopyBox
-          label="Your ExiusCart Webhook URL (paste into thedersi.lk/seller/connect)"
-          value={webhookUrl}
-        />
-
-        {/* Earnings */}
+        <CopyBox label="ExiusCart Webhook URL (paste into thedersi.lk/seller/connect)" value={webhookUrl} />
         {loading && (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading earnings...
           </div>
         )}
-        {error && !loading && (
-          <p className="text-sm text-muted-foreground">{error}</p>
-        )}
+        {error && !loading && <p className="text-sm text-muted-foreground">{error}</p>}
         {info && !loading && (
           <div className="space-y-3">
             <div className="bg-muted/50 rounded-xl p-4 flex items-center gap-3">
               <Wallet className="w-5 h-5 text-primary" />
               <div>
                 <p className="text-xs text-muted-foreground">Pending Earnings</p>
-                <p className="text-xl font-bold text-foreground">
-                  {info.currency} {fmt(info.earnings_balance)}
-                </p>
+                <p className="text-xl font-bold text-foreground">{info.currency} {fmt(info.earnings_balance)}</p>
               </div>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-muted/40 rounded-lg p-3 flex items-start gap-2.5">
                 <Tag className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -286,20 +245,72 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
   );
 }
 
+// ── Channel tile for available-but-not-connected channels ─────────────────────
+
+interface ChannelDef {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  badge: 'live' | 'connect' | 'soon';
+  badgeLabel?: string;
+  onAction?: () => void;
+  actionLabel?: string;
+}
+
+function ChannelTile({ ch }: { ch: ChannelDef }) {
+  const badgeStyles: Record<string, string> = {
+    live: 'bg-green-500/10 text-green-500',
+    connect: 'bg-primary/10 text-primary',
+    soon: 'bg-muted text-muted-foreground',
+  };
+  const badgeLabels: Record<string, string> = {
+    live: 'Live',
+    connect: 'Available',
+    soon: 'Coming Soon',
+  };
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+          {ch.icon}
+        </div>
+        <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${badgeStyles[ch.badge]}`}>
+          {ch.badgeLabel ?? badgeLabels[ch.badge]}
+        </span>
+      </div>
+      <div className="flex-1">
+        <p className="font-semibold text-foreground text-sm">{ch.name}</p>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{ch.description}</p>
+      </div>
+      {ch.onAction && ch.badge !== 'soon' && (
+        <button type="button" onClick={ch.onAction}
+          className="w-full py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition flex items-center justify-center gap-1.5">
+          {ch.actionLabel ?? 'Connect'} <ExternalLink className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function ChannelsPage() {
+  const router = useRouter();
   const [shopId, setShopId] = useState('');
   const [connections, setConnections] = useState<ChannelConnection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showTheDersiModal, setShowTheDersiModal] = useState(false);
+  const [shopifyConnected, setShopifyConnected] = useState(false);
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
   const load = () => {
     if (!shopId) return;
-    channelsApi.getConnections(shopId)
-      .then((r) => setConnections(r.data ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      channelsApi.getConnections(shopId).then((r) => setConnections(r.data ?? [])),
+      shopifyApi.getStatus(shopId).then((r) => setShopifyConnected(r.data?.connected ?? false)).catch(() => {}),
+    ]).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [shopId]);
@@ -307,55 +318,100 @@ export default function ChannelsPage() {
   const theDersiConns = connections.filter((c) => c.channel_type === 'thedersi' && c.is_active);
   const hasTheDersi = theDersiConns.length > 0;
 
+  const availableChannels: ChannelDef[] = [
+    {
+      id: 'thedersi',
+      name: 'TheDersi',
+      description: "List products on Sri Lanka's #1 fashion marketplace. Orders sync automatically to your dashboard.",
+      icon: <Link2 className="w-5 h-5 text-primary" />,
+      badge: hasTheDersi ? 'live' : 'connect',
+      badgeLabel: hasTheDersi ? 'Connected' : 'Available',
+      onAction: hasTheDersi ? undefined : () => setShowTheDersiModal(true),
+      actionLabel: 'Connect TheDersi',
+    },
+    {
+      id: 'shopify',
+      name: 'Shopify',
+      description: 'Sync your Shopify store — products, orders, and inventory stay in sync automatically.',
+      icon: <ShoppingBag className="w-5 h-5 text-[#96BF48]" />,
+      badge: shopifyConnected ? 'live' : 'connect',
+      badgeLabel: shopifyConnected ? 'Connected' : 'Available',
+      onAction: () => router.push('/dashboard/shopify-integration'),
+      actionLabel: shopifyConnected ? 'Manage Shopify' : 'Connect Shopify',
+    },
+    {
+      id: 'custom_website',
+      name: 'Custom Website',
+      description: 'Connect any website using our API or webhook. Receive orders directly from your own storefront.',
+      icon: <Globe className="w-5 h-5 text-sky-400" />,
+      badge: 'soon',
+    },
+    {
+      id: 'woocommerce',
+      name: 'WooCommerce',
+      description: 'WordPress + WooCommerce integration. Install the ExiusCart plugin to start syncing.',
+      icon: <ShoppingCart className="w-5 h-5 text-[#7F54B3]" />,
+      badge: 'soon',
+    },
+    {
+      id: 'amazon',
+      name: 'Amazon',
+      description: 'List and manage your Amazon products and orders through ExiusCart.',
+      icon: <Package className="w-5 h-5 text-orange-400" />,
+      badge: 'soon',
+    },
+    {
+      id: 'instagram',
+      name: 'Instagram Shopping',
+      description: 'Tag products in your Instagram posts and stories. Orders sync to ExiusCart.',
+      icon: <Instagram className="w-5 h-5 text-pink-400" />,
+      badge: 'soon',
+    },
+  ];
+
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Connected Channels</h1>
-          <p className="text-sm text-muted-foreground mt-1">Marketplaces connected to your ExiusCart account.</p>
-        </div>
+    <div className="p-6 max-w-5xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Sales Channels</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Connect marketplaces and storefronts to sell everywhere from one dashboard.
+        </p>
       </div>
 
-      {loading && (
+      {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm">Loading channels...</span>
         </div>
-      )}
-
-      {/* TheDersi connected cards */}
-      {!loading && theDersiConns.map((conn) => (
-        <TheDersiCard key={conn.id} connection={conn} shopId={shopId} />
-      ))}
-
-      {/* Connect TheDersi banner — shown if not yet connected */}
-      {!loading && !hasTheDersi && (
-        <div className="border border-dashed border-border rounded-xl p-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <Plug className="w-5 h-5 text-primary" />
+      ) : (
+        <>
+          {/* Active TheDersi connections — show full card with earnings */}
+          {theDersiConns.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-sm font-medium text-foreground">Connected</h2>
+              {theDersiConns.map((conn) => (
+                <TheDersiCard key={conn.id} connection={conn} shopId={shopId} />
+              ))}
             </div>
-            <div>
-              <p className="font-medium text-foreground text-sm">TheDersi Marketplace</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                List your products on Sri Lanka's #1 fashion marketplace. Orders sync automatically.
-              </p>
+          )}
+
+          {/* All channels grid */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-medium text-foreground">All Channels</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {availableChannels.map((ch) => (
+                <ChannelTile key={ch.id} ch={ch} />
+              ))}
             </div>
           </div>
-          <button
-            onClick={() => setShowConnectModal(true)}
-            className="shrink-0 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition"
-          >
-            Connect
-          </button>
-        </div>
+        </>
       )}
 
-      {showConnectModal && (
-        <ConnectModal
+      {showTheDersiModal && (
+        <TheDersiConnectModal
           shopId={shopId}
-          onConnected={() => { load(); }}
-          onClose={() => { setShowConnectModal(false); load(); }}
+          onConnected={() => load()}
+          onClose={() => { setShowTheDersiModal(false); load(); }}
         />
       )}
     </div>

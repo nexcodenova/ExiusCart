@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 _SES_ENABLED = os.getenv("AWS_SES_ENABLED", "false").lower() == "true"
 _SES_REGION = os.getenv("AWS_SES_REGION", "us-east-1")
-_FROM_EMAIL = os.getenv("AWS_SES_FROM_EMAIL", "noreply@exiuscart.com")
+_FROM_EMAIL = os.getenv("AWS_SES_FROM_EMAIL", "billing@exiuscart.com")
 _FROM_NAME = os.getenv("AWS_SES_FROM_NAME", "ExiusCart")
 
 
@@ -57,6 +57,77 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
     except Exception as exc:
         logger.error(f"[EMAIL FAILED] To: {to} | {exc}")
         return False
+
+
+# ── Welcome email templates ───────────────────────────────────────────────────
+
+def _welcome_base(content: str) -> str:
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0B1121;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B1121;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#151F32;border-radius:16px;overflow:hidden;border:1px solid #1e2d47;">
+        <tr><td style="background:#0B1121;padding:24px 36px;border-bottom:1px solid #1e2d47;">
+          <span style="font-size:22px;font-weight:800;color:#fff;"><span style="color:#6B3FD9;">Exius</span>Cart</span>
+        </td></tr>
+        <tr><td style="padding:32px 36px;color:#e2e8f0;">{content}</td></tr>
+        <tr><td style="padding:20px 36px;border-top:1px solid #1e2d47;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#64748b;">
+            ExiusCart · UAE &nbsp;|&nbsp; <a href="mailto:support@exiuscart.com" style="color:#6B3FD9;text-decoration:none;">support@exiuscart.com</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+
+def send_welcome_email(to: str, full_name: str, plan_label: str = "Free Trial",
+                       login_url: str = "https://store.exiuscart.com/login") -> bool:
+    first = (full_name or "there").split()[0]
+    content = f"""
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Welcome to ExiusCart, {first}!</h2>
+      <p style="margin:0 0 20px;color:#94a3b8;line-height:1.7;">
+        Your ExiusCart store is live on the <strong style="color:#fff;">{plan_label}</strong> plan.
+        Manage products, orders, customers, and more — all in one place.
+      </p>
+      <a href="{login_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:600;font-size:14px;margin-bottom:20px;">
+        Open Dashboard →
+      </a>
+      <p style="margin:0;color:#64748b;font-size:12px;">
+        Questions? Reply to this email or visit <a href="https://exiuscart.com" style="color:#6B3FD9;">exiuscart.com</a>
+      </p>"""
+    return send_email(
+        to=to,
+        subject="Welcome to ExiusCart — Your store is ready!",
+        html_body=_welcome_base(content),
+        text_body=f"Welcome {first}! Your ExiusCart store ({plan_label}) is ready. Login at {login_url}",
+    )
+
+
+def send_thedersi_welcome_email(to: str, full_name: str,
+                                login_url: str = "https://store.exiuscart.com/login") -> bool:
+    first = (full_name or "there").split()[0]
+    content = f"""
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Welcome to ExiusCart, {first}!</h2>
+      <p style="margin:0 0 12px;color:#94a3b8;line-height:1.7;">
+        Your ExiusCart store is now active through <strong style="color:#fff;">TheDersi</strong>.
+        Orders from TheDersi sync automatically to your ExiusCart dashboard.
+      </p>
+      <a href="{login_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:600;font-size:14px;margin-bottom:20px;">
+        Open Dashboard →
+      </a>
+      <p style="margin:0;color:#64748b;font-size:12px;">
+        Need help? Email <a href="mailto:support@exiuscart.com" style="color:#6B3FD9;">support@exiuscart.com</a>
+      </p>"""
+    return send_email(
+        to=to,
+        subject="Your ExiusCart store is ready!",
+        html_body=_welcome_base(content),
+        text_body=f"Welcome {first}! Your ExiusCart store (via TheDersi) is active. Login at {login_url}",
+    )
 
 
 # ── Invoice HTML template ─────────────────────────────────────────────────────
