@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 _SES_ENABLED = os.getenv("AWS_SES_ENABLED", "false").lower() == "true"
 _SES_REGION = os.getenv("AWS_SES_REGION", "us-east-1")
-_FROM_EMAIL = os.getenv("AWS_SES_FROM_EMAIL", "billing@exiuscart.com")
+_FROM_NOREPLY = os.getenv("AWS_SES_FROM_NOREPLY", "noreply@exiuscart.com")   # welcome / transactional
+_FROM_BILLING = os.getenv("AWS_SES_FROM_BILLING", "billing@exiuscart.com")   # invoices / payment emails
 _FROM_NAME = os.getenv("AWS_SES_FROM_NAME", "ExiusCart")
 
 
@@ -28,7 +29,8 @@ def _get_ses_client():
         return None
 
 
-def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] = None) -> bool:
+def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] = None,
+               from_email: Optional[str] = None) -> bool:
     """Send an email via SES. Returns True if sent, False if skipped (SES disabled)."""
     if not _SES_ENABLED:
         logger.info(f"[EMAIL SKIPPED — SES disabled] To: {to} | Subject: {subject}")
@@ -39,13 +41,15 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
         logger.warning("boto3 not installed — cannot send email")
         return False
 
+    sender = from_email or _FROM_NOREPLY
+
     try:
         body: dict = {"Html": {"Charset": "UTF-8", "Data": html_body}}
         if text_body:
             body["Text"] = {"Charset": "UTF-8", "Data": text_body}
 
         client.send_email(
-            Source=f"{_FROM_NAME} <{_FROM_EMAIL}>",
+            Source=f"{_FROM_NAME} <{sender}>",
             Destination={"ToAddresses": [to]},
             Message={
                 "Subject": {"Charset": "UTF-8", "Data": subject},

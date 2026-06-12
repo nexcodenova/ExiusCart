@@ -14,7 +14,7 @@ from app.models.customer import Customer
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrderIn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
-from app.core.email import send_email, build_invoice_html
+from app.core.email import send_email, build_invoice_html, _FROM_BILLING
 
 router = APIRouter()
 
@@ -306,6 +306,7 @@ async def send_invoice(
         to=recipient,
         subject=f"Your Invoice — {order.order_number}",
         html_body=html,
+        from_email=_FROM_BILLING,
     )
 
     return {
