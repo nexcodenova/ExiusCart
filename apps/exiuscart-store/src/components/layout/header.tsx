@@ -8,7 +8,6 @@ import { useCurrency, type Currency } from '@/components/providers/currency-prov
 
 const REGIONS: { currency: Currency; flag: string; label: string; country: string }[] = [
   { currency: 'AED', flag: '🇦🇪', label: 'AED — UAE',           country: 'AE'    },
-  { currency: 'LKR', flag: '🇱🇰', label: 'LKR — Sri Lanka',    country: 'LK'    },
   { currency: 'USD', flag: '🌍',   label: 'USD — International', country: 'OTHER' },
 ];
 

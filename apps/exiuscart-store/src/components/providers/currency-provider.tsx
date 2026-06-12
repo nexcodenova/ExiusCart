@@ -2,14 +2,12 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
-export type Currency = 'AED' | 'LKR' | 'USD';
+export type Currency = 'AED' | 'USD';
 
 interface CurrencyContextValue {
   currency: Currency;
   setCurrency: (c: Currency) => void;
-  /** e.g. "AED 1,250.00" or "LKR 12,500" or "$340.00" */
   fmt: (amount: number, decimals?: number) => string;
-  /** Short symbol for inline use: "AED" / "LKR" / "$" */
   sym: string;
   flag: string;
 }
@@ -28,36 +26,31 @@ export function useCurrency() {
 
 function symFor(c: Currency) {
   if (c === 'AED') return 'AED';
-  if (c === 'LKR') return 'LKR';
   return 'USD';
 }
 function flagFor(c: Currency) {
   if (c === 'AED') return '🇦🇪';
-  if (c === 'LKR') return '🇱🇰';
   return '🌍';
 }
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrencyState] = useState<Currency>('USD');
 
-  // Read from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('billing_currency') as Currency | null;
-    if (saved && ['AED', 'LKR', 'USD'].includes(saved)) {
-      setCurrencyState(saved);
+    if (saved && ['AED', 'USD'].includes(saved)) {
+      setCurrencyState(saved as Currency);
     } else {
       const country = localStorage.getItem('user_country') || '';
       if (country === 'AE') setCurrencyState('AED');
-      else if (country === 'LK') setCurrencyState('LKR');
     }
   }, []);
 
-  // Listen for localStorage changes (header switcher, billing page switcher)
   useEffect(() => {
     function onStorage(e: StorageEvent) {
       if (e.key === 'billing_currency' && e.newValue) {
         const v = e.newValue as Currency;
-        if (['AED', 'LKR', 'USD'].includes(v)) setCurrencyState(v);
+        if (['AED', 'USD'].includes(v)) setCurrencyState(v as Currency);
       }
     }
     window.addEventListener('storage', onStorage);
@@ -67,9 +60,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const setCurrency = useCallback((c: Currency) => {
     setCurrencyState(c);
     localStorage.setItem('billing_currency', c);
-    const countryMap: Record<Currency, string> = { AED: 'AE', LKR: 'LK', USD: 'OTHER' };
+    const countryMap: Record<Currency, string> = { AED: 'AE', USD: 'OTHER' };
     localStorage.setItem('user_country', countryMap[c]);
-    // Broadcast so other tabs / components hear it
     window.dispatchEvent(new StorageEvent('storage', { key: 'billing_currency', newValue: c }));
   }, []);
 
@@ -79,7 +71,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       maximumFractionDigits: decimals,
     });
     if (currency === 'USD') return `$${n}`;
-    return `${currency} ${n}`;
+    return `AED ${n}`;
   }, [currency]);
 
   const value: CurrencyContextValue = {

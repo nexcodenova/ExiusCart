@@ -17,9 +17,15 @@ from app.api.v1.deps import get_current_user
 
 # Plan catalogue (source of truth)
 PLAN_CATALOGUE = {
-    "starter":    {"name": "Starter",    "price": 99,  "staff": 1},
-    "pro":        {"name": "Pro",        "price": 199, "staff": 2},
-    "enterprise": {"name": "Enterprise", "price": 399, "staff": 5},
+    # ExiusCart direct plans
+    "free_trial":      {"name": "Free Trial",  "price": 0,   "staff": 1},
+    "starter":         {"name": "Starter",     "price": 69,  "staff": 3},
+    "premium":         {"name": "Premium",     "price": 149, "staff": 0},  # unlimited staff
+    # TheDersi partner plans (billed through TheDersi, not ExiusCart)
+    "thedersi_basic":  {"name": "Free Forever (TheDersi)", "price": 0, "staff": 1},
+    # Legacy names — kept for backward compat
+    "pro":             {"name": "Pro",         "price": 199, "staff": 2},
+    "enterprise":      {"name": "Enterprise",  "price": 399, "staff": 5},
 }
 
 router = APIRouter()
@@ -162,8 +168,12 @@ def get_shop_subscription(
         now = datetime.now(timezone.utc)
         expires = sub.expires_at
         days_left = (expires.replace(tzinfo=timezone.utc) - now).days if expires else None
+        # Derive source: TheDersi-provisioned accounts have promo_code "partner_thedersi"
+        source = "thedersi" if sub.promo_code == "partner_thedersi" else "exiuscart"
         plan_info = {
-            "name": cat.get("name", sub.plan_type.capitalize()),
+            "plan_type": sub.plan_type,
+            "source": source,
+            "name": cat.get("name", sub.plan_type.replace("_", " ").title()),
             "price": cat.get("price", float(sub.amount_paid or 0)),
             "status": sub.status,
             "nextBilling": expires.isoformat() if expires else None,

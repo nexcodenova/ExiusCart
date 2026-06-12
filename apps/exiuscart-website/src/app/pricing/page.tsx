@@ -91,15 +91,15 @@ export default function PricingPage() {
               description="Test everything basic. No credit card needed."
               priceDisplay="Free"
               period=""
-              note="50 products · 1 user · 14 days only"
+              note="25 products · 50 orders · 1 user · 14 days only"
               features={[
-                { text: '50 products', ok: true },
+                { text: '25 products', ok: true },
                 { text: '50 orders / month', ok: true },
                 { text: '100 customers', ok: true },
                 { text: '1 user', ok: true },
                 { text: 'Basic POS & Invoicing', ok: true },
                 { text: 'VAT invoicing (5%)', ok: true },
-                { text: '50 emails / month', ok: true },
+                { text: '50 invoices / month', ok: true },
                 { text: 'Shopify sync', ok: false },
                 { text: 'Lead management', ok: false },
                 { text: 'Chat support', ok: false },
@@ -124,7 +124,7 @@ export default function PricingPage() {
                 { text: '3 users', ok: true },
                 { text: 'Full POS & Invoicing', ok: true },
                 { text: 'VAT invoicing (5%)', ok: true },
-                { text: '1,000 emails / month', ok: true },
+                { text: '500 invoices / month', ok: true },
                 { text: 'Shopify + store sync', ok: true },
                 { text: 'Lead management (500)', ok: true },
                 { text: 'Chat support', ok: true },
@@ -203,7 +203,7 @@ export default function PricingPage() {
               <tbody className="text-sm">
 
                 <SectionHeader title="Core Limits" />
-                <CompareRow f="Products"       t="50"      s="1,000"   p="Unlimited" />
+                <CompareRow f="Products"       t="25"      s="1,000"   p="Unlimited" />
                 <CompareRow f="Orders / month" t="50"      s="1,000"   p="Unlimited" />
                 <CompareRow f="Customers"      t="100"     s="5,000"   p="Unlimited" />
                 <CompareRow f="Team users"     t="1"       s="3"       p="Unlimited" />
@@ -214,7 +214,7 @@ export default function PricingPage() {
                 <CompareRow f="Point of Sale"            t="Basic"       s            p />
                 <CompareRow f="VAT invoicing (5%)"       t               s            p />
                 <CompareRow f="PDF invoice download"     t               s            p />
-                <CompareRow f="Invoice email sending"    t="50/month"    s="1,000/month" p="Unlimited" />
+                <CompareRow f="Invoice email sending"    t="50/month"    s="500/month"   p="Unlimited" />
                 <CompareRow f="Custom invoice branding"  t={false}       s="Basic logo"  p="Full branding" />
                 <CompareRow f="Send from own domain"     t={false}       s={false}    p />
                 <CompareRow f="Receipts"                 t               s            p />

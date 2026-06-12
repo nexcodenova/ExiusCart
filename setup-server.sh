@@ -35,6 +35,9 @@ fi
 cat > /var/www/ExiusCart/exiuscart-backend/.env << 'ENVEOF'
 DATABASE_URL=postgresql://exiuscart_user:ExiusCart%40DB2026!@159.223.47.168/exiuscart_db
 JWT_SECRET_KEY=nexcodenova-exiuscart-secret-key-2026-very-long-and-secure
+THEDERSI_PARTNER_KEY=REPLACE_WITH_PARTNER_KEY
+THEDERSI_HMAC_SECRET=REPLACE_WITH_HMAC_SECRET
+THEDERSI_WEBHOOK_URL=https://thedersi.lk/api/exiuscart/webhook
 ENVEOF
 
 # Backend Python setup

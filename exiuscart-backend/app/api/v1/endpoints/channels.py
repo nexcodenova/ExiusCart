@@ -18,11 +18,12 @@ import httpx
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Header
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db, SessionLocal
+from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -34,6 +35,8 @@ from app.models.channel_order_meta import ChannelOrderMeta
 from app.models.channel_product_status import ChannelProductStatus
 from app.models.channel_category import ChannelCategory, ProductChannelCategory
 from app.models.product_variant import ProductVariant
+from app.models.subscription import Subscription
+from app.models.thedersi_seller import TheDersiSeller
 
 router = APIRouter()
 
@@ -440,6 +443,49 @@ def receive_order_webhook(
     ).first()
     if not conn:
         raise HTTPException(status_code=404, detail="Invalid webhook URL")
+
+    # ── Monthly order limit check ─────────────────────────────────────────────
+    sub = db.query(Subscription).filter(Subscription.shop_id == conn.shop_id).first()
+    plan_type = sub.plan_type if sub else None
+    monthly_limit = MONTHLY_ORDER_LIMITS.get(plan_type, 50)  # default 50 if unknown plan
+
+    if monthly_limit is not None:
+        # Count channel orders created this calendar month
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        orders_this_month = (
+            db.query(Order)
+            .join(ChannelOrderMeta, ChannelOrderMeta.order_id == Order.id)
+            .filter(
+                Order.shop_id == conn.shop_id,
+                ChannelOrderMeta.channel_type == conn.channel_type,
+                Order.created_at >= month_start,
+            )
+            .count()
+        )
+
+        if orders_this_month >= monthly_limit:
+            # Notify TheDersi so they can show an upgrade prompt to the seller
+            thedersi_link = db.query(TheDersiSeller).filter(
+                TheDersiSeller.shop_id == conn.shop_id
+            ).first()
+            if thedersi_link and conn.channel_type == "thedersi":
+                notify_thedersi(
+                    thedersi_link.thedersi_seller_id,
+                    plan_type or "thedersi_basic",
+                    event="order_limit_reached",
+                )
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": "monthly_order_limit_reached",
+                    "limit": monthly_limit,
+                    "used": orders_this_month,
+                    "plan": plan_type,
+                    "message": f"Monthly order limit of {monthly_limit} reached. Upgrade your TheDersi plan to continue.",
+                },
+            )
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Get or create customer
     customer = None

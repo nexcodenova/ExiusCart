@@ -34,6 +34,8 @@ export const authApi = {
     api.post('/auth/login', { email, password }),
   register: (data: { email: string; password: string; full_name: string; phone?: string }) =>
     api.post('/auth/register', data),
+  setupPassword: (token: string, password: string) =>
+    api.post('/auth/setup-password', { token, password }),
 };
 
 // ── Shop ──────────────────────────────────────────────

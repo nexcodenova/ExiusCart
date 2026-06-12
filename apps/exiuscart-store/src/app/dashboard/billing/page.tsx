@@ -5,81 +5,85 @@ import {
   CreditCard, Check, Crown, Zap, Users, BarChart3,
   MessageCircle, Shield, AlertTriangle, Download,
   Receipt, Plus, Star, Loader2, Globe, ChevronDown,
-  Coins, Lock,
+  Coins, Lock, ShoppingBag, ExternalLink, Package,
+  GitBranch, Percent, Tag, Clock,
 } from 'lucide-react';
+import { useCurrency, type Currency } from '@/components/providers/currency-provider';
 
 // ── Pricing config ─────────────────────────────────────────────────────────────
-type Currency = 'AED' | 'LKR' | 'USD';
-
 const CURRENCY_META: Record<Currency, { symbol: string; flag: string; country: string; paymentNote: string }> = {
   AED: { symbol: 'AED', flag: '🇦🇪', country: 'United Arab Emirates', paymentNote: 'UAE bank cards only (Visa / Mastercard issued in UAE)' },
-  LKR: { symbol: 'LKR', flag: '🇱🇰', country: 'Sri Lanka',            paymentNote: 'Sri Lankan bank cards only (Visa / Mastercard issued in Sri Lanka)' },
   USD: { symbol: 'USD', flag: '🌍',   country: 'International',        paymentNote: 'International Visa / Mastercard accepted' },
 };
 
-const PLAN_PRICING: Record<Currency, { starter: number; pro: number; enterprise: number; extraStaff: number }> = {
-  AED: { starter: 99,    pro: 199,    enterprise: 399,    extraStaff: 59    },
-  LKR: { starter: 7900,  pro: 15900,  enterprise: 31900,  extraStaff: 4900  },
-  USD: { starter: 27,    pro: 54,     enterprise: 109,    extraStaff: 16    },
+const PLAN_PRICING: Record<Currency, { starter: number; premium: number; extraStaff: number }> = {
+  AED: { starter: 69,  premium: 149, extraStaff: 25 },
+  USD: { starter: 19,  premium: 39,  extraStaff: 7  },
 };
 
-function fmt(amount: number, currency: Currency) {
-  if (currency === 'LKR') return `LKR ${amount.toLocaleString()}`;
-  if (currency === 'AED') return `AED ${amount}`;
-  return `$${amount}`;
-}
-
-function getCurrencyFromCountry(countryCode: string): Currency {
-  if (countryCode === 'AE') return 'AED';
-  if (countryCode === 'LK') return 'LKR';
-  return 'USD';
-}
-
-const makePlans = (currency: Currency) => {
+const makePlans = (currency: Currency, fmt: (n: number) => string) => {
   const p = PLAN_PRICING[currency];
   return [
     {
-      id: 'starter', name: 'Starter', price: p.starter, period: 'month',
-      description: 'Perfect for small shops getting started',
+      id: 'free_trial',
+      name: 'Free Trial',
+      price: 0,
+      priceLabel: 'Free',
+      period: '14 days',
+      description: 'Explore ExiusCart risk-free',
+      badge: null,
       features: [
-        { text: '1 Staff Account', included: true },
-        { text: 'Up to 100 Products', included: true },
-        { text: 'Basic POS', included: true },
-        { text: 'Invoice Generation', included: true },
-        { text: 'Basic Reports', included: true },
-        { text: 'WhatsApp Integration', included: false },
-        { text: 'Multi-device Login', included: false },
-        { text: 'Priority Support', included: false },
+        { text: '1 Staff account',                    included: true  },
+        { text: 'Up to 25 products',                  included: true  },
+        { text: 'Basic POS',                          included: true  },
+        { text: '50 email invoices/month',            included: true  },
+        { text: 'TheDersi order sync (50 orders/mo)', included: true  },
+        { text: '1 branch / location',                included: true  },
+        { text: 'Custom invoice branding',            included: false },
+        { text: 'Priority support',                   included: false },
       ],
       popular: false,
     },
     {
-      id: 'pro', name: 'Pro', price: p.pro, period: 'month',
-      description: 'Best for growing businesses',
+      id: 'starter',
+      name: 'Starter',
+      price: p.starter,
+      priceLabel: fmt(p.starter),
+      period: 'month',
+      description: 'For growing shops ready to scale',
+      badge: 'Most Popular',
       features: [
-        { text: '2 Staff Accounts', included: true },
-        { text: 'Unlimited Products', included: true },
-        { text: 'Advanced POS', included: true },
-        { text: 'Invoice Generation', included: true },
-        { text: 'Advanced Reports & Analytics', included: true },
-        { text: 'WhatsApp Integration', included: true },
-        { text: '2 Device Login per User', included: true },
-        { text: 'Priority Support', included: false },
+        { text: '3 Staff accounts',                 included: true  },
+        { text: 'Up to 1,000 products',             included: true  },
+        { text: 'Full POS',                         included: true  },
+        { text: '500 email invoices/month + logo',  included: true  },
+        { text: 'Advanced analytics',               included: true  },
+        { text: '1 branch / location',              included: true  },
+        { text: 'TheDersi order sync (1,000 orders/mo)', included: true  },
+        { text: 'Custom invoice branding',          included: false },
+        { text: 'Priority email support',           included: true  },
       ],
       popular: true,
     },
     {
-      id: 'enterprise', name: 'Enterprise', price: p.enterprise, period: 'month',
-      description: 'For large operations with multiple staff',
+      id: 'premium',
+      name: 'Premium',
+      price: p.premium,
+      priceLabel: fmt(p.premium),
+      period: 'month',
+      description: 'Full power for serious operations',
+      badge: null,
       features: [
-        { text: '5 Staff Accounts', included: true },
-        { text: 'Unlimited Products', included: true },
-        { text: 'Advanced POS + Inventory', included: true },
-        { text: 'Custom Invoice Branding', included: true },
-        { text: 'Full Analytics Suite', included: true },
-        { text: 'WhatsApp Business API', included: true },
-        { text: 'Unlimited Device Login', included: true },
-        { text: '24/7 Priority Support', included: true },
+        { text: 'Unlimited staff accounts',     included: true  },
+        { text: 'Unlimited products',           included: true  },
+        { text: 'Full POS + inventory mgmt',    included: true  },
+        { text: 'Custom invoice branding',      included: true  },
+        { text: 'Full analytics suite',         included: true  },
+        { text: 'Multiple branches',            included: true  },
+        { text: 'TheDersi order sync (unlimited)', included: true  },
+        { text: 'Unlimited email invoices',     included: true  },
+        { text: 'Dedicated account manager',    included: true  },
+        { text: '24/7 priority support',        included: true  },
       ],
       popular: false,
     },
@@ -87,10 +91,8 @@ const makePlans = (currency: Currency) => {
 };
 
 // ── Component ──────────────────────────────────────────────────────────────────
-import { useCurrency } from '@/components/providers/currency-provider';
-
 export default function BillingPage() {
-  const { currency, setCurrency: setGlobalCurrency } = useCurrency();
+  const { currency, setCurrency: setGlobalCurrency, fmt } = useCurrency();
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -119,8 +121,13 @@ export default function BillingPage() {
     });
   }, [shopId]);
 
-  const plans = makePlans(currency);
+  const plans = makePlans(currency, fmt);
   const meta = CURRENCY_META[currency];
+
+  const isTheDersiSeller = currentPlan?.source === 'thedersi';
+  const theDersiPlanName = currentPlan?.name === 'free_forever' ? 'Free Forever' :
+                           currentPlan?.name === 'starter' ? 'Starter' :
+                           currentPlan?.name ?? 'Free Forever';
 
   function changeCurrency(c: Currency) {
     setGlobalCurrency(c);
@@ -137,14 +144,14 @@ export default function BillingPage() {
 
   const confirmUpgrade = async () => {
     if (!selectedPlan || !shopId) return;
-    if (selectedPayment === 'dkc') return; // Coming Soon — do nothing
+    if (selectedPayment === 'dkc') return;
     setUpgradeLoading(true);
     setUpgradeError('');
     try {
       const { subscriptionApi } = await import('@/lib/api');
       await subscriptionApi.requestUpgrade(shopId, selectedPlan);
       const plan = plans.find(p => p.id === selectedPlan);
-      setUpgradeSuccess(`Upgrade to ${plan?.name} requested! Our team will activate it shortly.`);
+      setUpgradeSuccess(`Upgrade to ${plan?.name} requested! Our team will activate it within 24 hours.`);
     } catch (err: any) {
       setUpgradeError(err.response?.data?.detail || 'Failed to submit upgrade request');
     } finally {
@@ -164,171 +171,289 @@ export default function BillingPage() {
           <p className="text-muted-foreground text-sm">Manage your plan and billing</p>
         </div>
 
-        {/* Currency Switcher */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowCurrencyPicker(!showCurrencyPicker)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl bg-card hover:bg-muted transition text-sm font-medium text-foreground"
-          >
-            <span className="text-lg">{meta.flag}</span>
-            <span>{currency}</span>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showCurrencyPicker ? 'rotate-180' : ''}`} />
-          </button>
+        {/* Currency Switcher — hidden for TheDersi sellers */}
+        {!isTheDersiSeller && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowCurrencyPicker(!showCurrencyPicker)}
+              className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl bg-card hover:bg-muted transition text-sm font-medium text-foreground"
+            >
+              <span className="text-lg">{meta.flag}</span>
+              <span>{currency}</span>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showCurrencyPicker ? 'rotate-180' : ''}`} />
+            </button>
 
-          {showCurrencyPicker && (
-            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-20 w-72 overflow-hidden">
-              <div className="p-3 border-b border-border">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Your Region</p>
+            {showCurrencyPicker && (
+              <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-20 w-72 overflow-hidden">
+                <div className="p-3 border-b border-border">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Your Region</p>
+                </div>
+                {(Object.entries(CURRENCY_META) as [Currency, typeof CURRENCY_META.AED][]).map(([code, m]) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => changeCurrency(code)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition text-left ${currency === code ? 'bg-primary/5' : ''}`}
+                  >
+                    <span className="text-2xl">{m.flag}</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">{m.country}</p>
+                      <p className="text-xs text-muted-foreground">{m.paymentNote}</p>
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${currency === code ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                      {code}
+                    </span>
+                  </button>
+                ))}
               </div>
-              {(Object.entries(CURRENCY_META) as [Currency, typeof CURRENCY_META.AED][]).map(([code, m]) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => changeCurrency(code)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition text-left ${currency === code ? 'bg-primary/5' : ''}`}
-                >
-                  <span className="text-2xl">{m.flag}</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">{m.country}</p>
-                    <p className="text-xs text-muted-foreground">{m.paymentNote}</p>
-                  </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${currency === code ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                    {code}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Payment method notice */}
-      <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
-        <Lock className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-medium text-foreground">Payment Method for {meta.country}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{meta.paymentNote}</p>
+      {/* ── TheDersi Seller Banner ───────────────────────────────────────────── */}
+      {isTheDersiSeller && (
+        <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-5">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center shrink-0">
+              <ShoppingBag className="w-6 h-6 text-indigo-500" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="font-semibold text-foreground">TheDersi Seller Account</h2>
+                <span className="text-xs bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-medium">
+                  {theDersiPlanName}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Your ExiusCart plan is managed by TheDersi. All TheDersi sellers get <strong className="text-foreground">automatic order sync</strong> from TheDersi into ExiusCart.
+                Free sellers are limited to <strong className="text-foreground">50 orders/month</strong> — hit the limit and upgrade your TheDersi plan to continue.
+                TheDersi Growth/Pro sellers enjoy the <strong className="text-foreground">Starter or Premium plan</strong> included at no extra cost.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2 items-center">
+                {currentPlan?.plan_type === 'thedersi_basic' && (
+                  <a
+                    href="https://thedersi.lk/seller/upgrade?plan=starter"
+                    target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Upgrade to Growth on TheDersi
+                  </a>
+                )}
+                {currentPlan?.plan_type === 'starter' && (
+                  <a
+                    href="https://thedersi.lk/seller/upgrade?plan=premium"
+                    target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Upgrade to Pro on TheDersi
+                  </a>
+                )}
+                {currentPlan?.plan_type === 'premium' && (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg text-sm font-medium">
+                    👑 You&apos;re on the top plan
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground self-center">
+                  Payments processed by TheDersi — ExiusCart updates automatically after payment.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* TheDersi plan mapping */}
+          <div className="mt-4 grid sm:grid-cols-3 gap-3">
+            {[
+              { dersi: 'TheDersi Free', exius: 'Free Forever', icon: '🆓', desc: 'Sync included · 25 products · 50 orders/mo' },
+              { dersi: 'TheDersi Growth', exius: 'Starter', icon: '⭐', desc: 'Sync included · 1,000 products · 1,000 orders/mo' },
+              { dersi: 'TheDersi Pro', exius: 'Premium', icon: '👑', desc: 'Sync included · Unlimited everything' },
+            ].map((row) => (
+              <div key={row.dersi} className="bg-card border border-border rounded-xl p-3 text-sm">
+                <p className="text-muted-foreground text-xs">{row.dersi}</p>
+                <p className="font-semibold text-foreground mt-0.5">{row.icon} ExiusCart {row.exius}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{row.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Payment method notice — ExiusCart direct only */}
+      {!isTheDersiSeller && (
+        <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
+          <Lock className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Payment Method for {meta.country}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{meta.paymentNote}</p>
+          </div>
+        </div>
+      )}
 
       {/* Trial Warning */}
-      {currentPlan?.daysLeft != null && currentPlan.daysLeft <= 7 && (
+      {currentPlan?.daysLeft != null && currentPlan.daysLeft <= 7 && !isTheDersiSeller && (
         <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
           <div>
             <h3 className="font-medium text-foreground">Trial Ending Soon</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Your trial ends in {currentPlan.daysLeft} days. Upgrade now to continue using all features.
+              Your trial ends in {currentPlan.daysLeft} day{currentPlan.daysLeft !== 1 ? 's' : ''}. Upgrade now to keep all features.
             </p>
           </div>
         </div>
       )}
 
       {/* Current Plan */}
-      <div className="bg-card rounded-xl border border-border p-6">
-        {loading ? (
-          <div className="h-20 bg-muted rounded-lg animate-pulse" />
-        ) : !currentPlan ? (
-          <div className="text-center py-6">
-            <p className="text-muted-foreground text-sm">No active subscription. Choose a plan below.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
-                <Crown className="w-7 h-7 text-primary" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-foreground">{currentPlan.name} Plan</h2>
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Current</span>
+      {!isTheDersiSeller && (
+        <div className="bg-card rounded-xl border border-border p-6">
+          {loading ? (
+            <div className="h-20 bg-muted rounded-lg animate-pulse" />
+          ) : !currentPlan ? (
+            <div className="text-center py-6">
+              <p className="text-muted-foreground text-sm">No active subscription. Choose a plan below.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
+                  <Crown className="w-7 h-7 text-primary" />
                 </div>
-                <p className="text-muted-foreground text-sm mt-1">
-                  {currentPlan.price} {currency}/month • Next billing: {formatDate(currentPlan.nextBilling)}
-                </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-foreground">{currentPlan.name} Plan</h2>
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Current</span>
+                  </div>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {currentPlan.price} {currency}/month • Next billing: {formatDate(currentPlan.nextBilling)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setShowAddStaffModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition">
+                  <Plus className="w-4 h-4" /> Add Staff
+                </button>
+                <button type="button" onClick={() => handleUpgrade('premium')}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition">
+                  <Zap className="w-4 h-4" /> Upgrade
+                </button>
               </div>
             </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => setShowAddStaffModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition">
-                <Plus className="w-4 h-4" /> Add Staff
-              </button>
-              <button type="button" onClick={() => handleUpgrade('enterprise')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition">
-                <Zap className="w-4 h-4" /> Upgrade
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
-      {/* Staff Pricing Info */}
-      <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-foreground">Need More Staff?</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add extra staff accounts for just{' '}
-              <span className="font-bold text-foreground">{fmt(PLAN_PRICING[currency].extraStaff, currency)}/month</span> each.
-              Each staff member gets their own login with up to 2 device access.
-            </p>
+      {/* Staff Pricing Info — not for TheDersi sellers */}
+      {!isTheDersiSeller && (
+        <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-foreground">Need More Staff?</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add extra staff accounts for just{' '}
+                <span className="font-bold text-foreground">{fmt(PLAN_PRICING[currency].extraStaff)}/month</span> each.
+                Each staff member gets their own login with up to 2-device access.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Plans */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Available Plans</h2>
-          <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-            <span className="text-lg">{meta.flag}</span> Prices in {currency}
-          </span>
+          <h2 className="text-lg font-semibold text-foreground">
+            {isTheDersiSeller ? 'ExiusCart Plan Tiers' : 'Available Plans'}
+          </h2>
+          {!isTheDersiSeller && (
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <span className="text-lg">{meta.flag}</span> Prices in {currency}
+            </span>
+          )}
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">
-          {plans.map((plan) => (
-            <div key={plan.id}
-              className={`bg-card rounded-xl border-2 p-6 relative ${plan.popular ? 'border-primary' : 'border-border'}`}>
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1">
-                    <Star className="w-3 h-3" /> Most Popular
-                  </span>
+          {plans.map((plan) => {
+            const isCurrent = plan.name === currentPlan?.name;
+            return (
+              <div key={plan.id}
+                className={`bg-card rounded-xl border-2 p-6 relative ${plan.popular ? 'border-primary' : 'border-border'}`}>
+                {plan.badge && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1">
+                      <Star className="w-3 h-3" /> {plan.badge}
+                    </span>
+                  </div>
+                )}
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-bold text-foreground">{plan.name}</h3>
+                  <div className="mt-2">
+                    {plan.price === 0 ? (
+                      <span className="text-3xl font-bold text-foreground">Free</span>
+                    ) : (
+                      <>
+                        <span className="text-3xl font-bold text-foreground">{plan.priceLabel}</span>
+                        <span className="text-muted-foreground text-sm">/{plan.period}</span>
+                      </>
+                    )}
+                  </div>
+                  {plan.id === 'free_trial' && (
+                    <p className="text-xs text-orange-500 font-medium mt-1">14-day trial</p>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-2">{plan.description}</p>
                 </div>
-              )}
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-bold text-foreground">{plan.name}</h3>
-                <div className="mt-2">
-                  <span className="text-3xl font-bold text-foreground">{plan.price.toLocaleString()}</span>
-                  <span className="text-muted-foreground text-sm"> {currency}/{plan.period}</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">{plan.description}</p>
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((f, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      {f.included
+                        ? <Check className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
+                        : <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />}
+                      <span className={f.included ? 'text-foreground' : 'text-muted-foreground'}>{f.text}</span>
+                    </li>
+                  ))}
+                </ul>
+                {isTheDersiSeller ? (
+                  <a
+                    href={
+                      plan.id === 'starter'
+                        ? 'https://thedersi.lk/seller/upgrade?plan=starter'
+                        : plan.id === 'premium'
+                        ? 'https://thedersi.lk/seller/upgrade?plan=premium'
+                        : undefined
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`w-full py-3 rounded-lg font-medium transition text-center block text-sm ${
+                      plan.popular
+                        ? 'bg-indigo-500 text-white hover:bg-indigo-600'
+                        : 'border border-border text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {plan.id === 'free_trial'
+                      ? 'Current (Free Forever)'
+                      : plan.id === 'starter'
+                      ? 'Upgrade to Growth on TheDersi'
+                      : 'Upgrade to Pro on TheDersi'}
+                  </a>
+                ) : (
+                  <button type="button" onClick={() => handleUpgrade(plan.id)}
+                    disabled={isCurrent}
+                    className={`w-full py-3 rounded-lg font-medium transition ${
+                      isCurrent
+                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                        : plan.popular
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'border border-border text-foreground hover:bg-muted'
+                    }`}>
+                    {isCurrent ? 'Current Plan' : plan.id === 'free_trial' ? 'Start Free Trial' : 'Select Plan'}
+                  </button>
+                )}
               </div>
-              <ul className="space-y-3 mb-6">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    {f.included
-                      ? <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                      : <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30" />}
-                    <span className={f.included ? 'text-foreground' : 'text-muted-foreground'}>{f.text}</span>
-                  </li>
-                ))}
-              </ul>
-              <button type="button" onClick={() => handleUpgrade(plan.id)}
-                disabled={plan.name === currentPlan?.name}
-                className={`w-full py-3 rounded-lg font-medium transition ${
-                  plan.name === currentPlan?.name
-                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                    : plan.popular
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'border border-border text-foreground hover:bg-muted'
-                }`}>
-                {plan.name === currentPlan?.name ? 'Current Plan' : 'Select Plan'}
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -408,7 +533,7 @@ export default function BillingPage() {
               <div className="bg-muted/50 rounded-lg p-4 text-center">
                 <p className="text-sm text-muted-foreground mb-1">Cost per extra staff</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {fmt(PLAN_PRICING[currency].extraStaff, currency)}
+                  {fmt(PLAN_PRICING[currency].extraStaff)}
                   <span className="text-sm font-normal text-muted-foreground">/month</span>
                 </p>
               </div>
@@ -425,7 +550,7 @@ export default function BillingPage() {
               <div className="bg-primary/5 rounded-lg p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Monthly cost</span>
-                  <span className="text-xl font-bold text-primary">{fmt(extraStaffCount * PLAN_PRICING[currency].extraStaff, currency)}</span>
+                  <span className="text-xl font-bold text-primary">{fmt(extraStaffCount * PLAN_PRICING[currency].extraStaff)}</span>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -461,23 +586,26 @@ export default function BillingPage() {
                 </div>
               ) : (
                 <div className="p-4 space-y-4">
-                  {/* Plan summary */}
                   <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
                     <div>
                       <p className="text-xs text-muted-foreground">Upgrading to</p>
                       <p className="text-xl font-bold text-foreground">{plan.name} Plan</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-primary">{plan.price.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">{currency}/month</p>
+                      {plan.price === 0 ? (
+                        <p className="text-2xl font-bold text-primary">Free</p>
+                      ) : (
+                        <>
+                          <p className="text-2xl font-bold text-primary">{plan.priceLabel}</p>
+                          <p className="text-xs text-muted-foreground">{currency}/month</p>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {/* Payment method */}
                   <div>
                     <p className="text-sm font-medium text-foreground mb-2">Payment Method</p>
                     <div className="space-y-2">
-                      {/* Card */}
                       <label className={`flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition ${selectedPayment === 'card' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}>
                         <input type="radio" name="payment" value="card" checked={selectedPayment === 'card'} onChange={() => setSelectedPayment('card')} className="accent-primary" />
                         <CreditCard className="w-5 h-5 text-muted-foreground" />
@@ -487,8 +615,7 @@ export default function BillingPage() {
                         </div>
                       </label>
 
-                      {/* DKC */}
-                      <label className={`flex items-center gap-3 p-3 border-2 rounded-xl cursor-not-allowed transition opacity-60 border-border`}>
+                      <label className="flex items-center gap-3 p-3 border-2 rounded-xl cursor-not-allowed transition opacity-60 border-border">
                         <input type="radio" name="payment" value="dkc" disabled className="accent-yellow-500" />
                         <Coins className="w-5 h-5 text-yellow-500" />
                         <div className="flex-1">
