@@ -92,7 +92,7 @@ export default function FeaturesPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 mt-6">
-                {['TheDersi', 'Shopify', 'Custom Store', 'Amazon (soon)', 'Instagram (soon)'].map((ch) => (
+                {['TheDersi', 'Shopify', 'WooCommerce', 'Custom Store', 'Amazon (soon)', 'Instagram (soon)'].map((ch) => (
                   <span key={ch} className="text-xs px-3 py-1 rounded-full bg-[#6B3FD9]/10 text-[#6B3FD9] font-medium">{ch}</span>
                 ))}
               </div>
@@ -195,6 +195,7 @@ export default function FeaturesPage() {
                 {[
                   { name: 'TheDersi', desc: 'Sri Lankan fashion marketplace — live now', color: 'bg-[#6B3FD9]/10 text-[#6B3FD9]', status: 'Live' },
                   { name: 'Shopify', desc: 'Sync products, orders and inventory', color: 'bg-emerald-500/10 text-emerald-400', status: 'Available' },
+                  { name: 'WooCommerce / WordPress', desc: 'Install the ExiusCart plugin to sync', color: 'bg-violet-500/10 text-violet-400', status: 'Soon' },
                   { name: 'Custom Website', desc: 'Webhook + API for any storefront', color: 'bg-sky-500/10 text-sky-400', status: 'Soon' },
                   { name: 'Amazon / Instagram', desc: 'Marketplace & social commerce', color: 'bg-orange-500/10 text-orange-400', status: 'Soon' },
                 ].map((ch) => (
