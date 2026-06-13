@@ -1,23 +1,144 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import {
-  ArrowRight, ShoppingBag, BarChart3, Users, FileText,
-  Package, Link2, Globe, Zap, ShieldCheck, RefreshCw, Layers,
+  ArrowRight, ShoppingCart, Package, FileText, ShoppingBag,
+  BarChart3, Users, Link2, Megaphone, Receipt, Truck,
+  HeadphonesIcon, CalendarCheck, Briefcase,
 } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
-  title: 'Features | ExiusCart — Multi-Channel Commerce Platform',
-  description: 'Manage orders from TheDersi, Shopify, and more in one dashboard. VAT-compliant invoicing, inventory, analytics, and customer management built for UAE sellers.',
+  title: 'Features | ExiusCart — Complete Business Management Platform',
+  description: 'POS, Inventory, Invoicing, Orders, Reports, HR & Payroll, Marketing, Expenses, Purchases, Helpdesk, and Appointments — everything in one platform for UAE businesses.',
   openGraph: {
-    title: 'ExiusCart Features',
-    description: 'Multi-channel order management, smart invoicing, inventory tracking, and sales analytics — all in one platform.',
+    title: 'ExiusCart Features — Everything Your Business Needs',
+    description: 'POS, inventory, invoicing, HR, marketing, helpdesk and more. One platform built for UAE sellers.',
     url: 'https://exiuscart.com/features',
     siteName: 'ExiusCart',
     type: 'website',
   },
 };
+
+const features = [
+  {
+    id: 'pos',
+    icon: <ShoppingCart className="w-6 h-6" />,
+    color: 'text-[#6B3FD9] bg-[#6B3FD9]/10',
+    label: 'Point of Sale',
+    headline: 'Sell in-store and online from one screen',
+    desc: 'Fast checkout, product search, discounts, and receipts. Works on any device — desktop, tablet, or phone. No dedicated hardware needed.',
+    points: ['Fast product search & scan', 'Discounts & custom prices', 'Multiple payment methods', 'Instant receipt generation', 'Daily sales summary'],
+  },
+  {
+    id: 'inventory',
+    icon: <Package className="w-6 h-6" />,
+    color: 'text-orange-400 bg-orange-500/10',
+    label: 'Inventory',
+    headline: 'Know your stock at all times',
+    desc: 'Real-time stock tracking across all channels. Get alerts before you run out. Manage variants, categories, and bulk imports in minutes.',
+    points: ['Real-time stock levels', 'Low stock alerts', 'Product variants & SKUs', 'Category management', 'Bulk CSV import/export'],
+  },
+  {
+    id: 'invoicing',
+    icon: <FileText className="w-6 h-6" />,
+    color: 'text-emerald-400 bg-emerald-500/10',
+    label: 'Invoicing',
+    headline: 'VAT-compliant invoices, automatically',
+    desc: 'AED orders carry 5% UAE VAT. USD orders are 0% (export rule). Invoices generate automatically — PDF-ready and FTA-compliant.',
+    points: ['Auto 5% VAT on AED orders', '0% VAT on USD (export rule)', 'FTA-compliant PDF invoices', 'Custom invoice prefix', 'Send to customer by email'],
+  },
+  {
+    id: 'orders',
+    icon: <ShoppingBag className="w-6 h-6" />,
+    color: 'text-sky-400 bg-sky-500/10',
+    label: 'Orders',
+    headline: 'Every channel. One dashboard.',
+    desc: 'Orders from TheDersi, Shopify, WooCommerce, or your own website all land in the same place with the same structure and statuses.',
+    points: ['Multi-channel order sync', 'TheDersi & Shopify live', 'Order status tracking', 'Customer order history', 'WooCommerce & more coming'],
+  },
+  {
+    id: 'reports',
+    icon: <BarChart3 className="w-6 h-6" />,
+    color: 'text-violet-400 bg-violet-500/10',
+    label: 'Reports',
+    headline: 'Data that tells you what to do next',
+    desc: 'Revenue trends, best-selling products, payment breakdowns, and channel performance. Filter by date, export to PDF or Excel.',
+    points: ['Revenue & profit reports', 'Product performance', 'Channel comparison', 'Payment breakdown', 'PDF & Excel export'],
+  },
+  {
+    id: 'hr',
+    icon: <Briefcase className="w-6 h-6" />,
+    color: 'text-pink-400 bg-pink-500/10',
+    label: 'HR & Payroll',
+    headline: 'Manage your team without spreadsheets',
+    desc: 'Employee records, payroll processing, leave requests, and attendance tracking — all in one place so you stop managing people with WhatsApp messages.',
+    points: ['Employee profiles & records', 'Payroll processing', 'Leave request management', 'Attendance tracking', 'Recruitment & job positions'],
+  },
+  {
+    id: 'marketing',
+    icon: <Megaphone className="w-6 h-6" />,
+    color: 'text-yellow-400 bg-yellow-500/10',
+    label: 'Marketing',
+    headline: 'Reach your customers where they are',
+    desc: 'Run email campaigns, SMS blasts, and events from your dashboard. Survey your customers. Track opens, clicks, and responses.',
+    points: ['Email campaigns', 'SMS campaigns', 'Event management', 'Customer surveys', 'Response tracking'],
+  },
+  {
+    id: 'expenses',
+    icon: <Receipt className="w-6 h-6" />,
+    color: 'text-red-400 bg-red-500/10',
+    label: 'Expenses',
+    headline: 'Track every dirham going out',
+    desc: 'Log business expenses, categorise them, and match against your revenue. Know your real profit — not just your sales.',
+    points: ['Expense logging', 'Category management', 'Receipt attachment', 'Profit vs expense view', 'Export for accounting'],
+  },
+  {
+    id: 'purchases',
+    icon: <Truck className="w-6 h-6" />,
+    color: 'text-teal-400 bg-teal-500/10',
+    label: 'Purchases',
+    headline: 'Supplier orders, tracked end to end',
+    desc: 'Create purchase orders, track delivery status, and update inventory automatically when stock arrives. Full supplier management included.',
+    points: ['Supplier database', 'Purchase order creation', 'Delivery tracking', 'Auto inventory update', 'Purchase history'],
+  },
+  {
+    id: 'helpdesk',
+    icon: <HeadphonesIcon className="w-6 h-6" />,
+    color: 'text-indigo-400 bg-indigo-500/10',
+    label: 'Helpdesk',
+    headline: 'Support tickets your whole team can manage',
+    desc: 'Log and track customer issues. Assign tickets to staff, set priorities, and close them with a full audit trail. No more lost support messages.',
+    points: ['Ticket creation & tracking', 'Staff assignment', 'Priority levels', 'Status updates', 'Full conversation history'],
+  },
+  {
+    id: 'appointments',
+    icon: <CalendarCheck className="w-6 h-6" />,
+    color: 'text-cyan-400 bg-cyan-500/10',
+    label: 'Appointments',
+    headline: 'Bookings without the back-and-forth',
+    desc: 'Let customers book appointments directly. Manage your calendar, confirm bookings, and send reminders — all from ExiusCart.',
+    points: ['Appointment scheduling', 'Calendar management', 'Booking confirmations', 'Staff allocation', 'Reminder notifications'],
+  },
+  {
+    id: 'channels',
+    icon: <Link2 className="w-6 h-6" />,
+    color: 'text-[#6B3FD9] bg-[#6B3FD9]/10',
+    label: 'Sales Channels',
+    headline: 'Connect your storefronts',
+    desc: 'Link TheDersi, Shopify, WooCommerce, or a custom website. Orders sync in real time — no manual importing, no missed sales.',
+    points: ['TheDersi (live)', 'Shopify (available)', 'WooCommerce (soon)', 'Custom website webhook', 'Amazon & Instagram (soon)'],
+  },
+  {
+    id: 'customers',
+    icon: <Users className="w-6 h-6" />,
+    color: 'text-sky-400 bg-sky-500/10',
+    label: 'Customer Management',
+    headline: 'Every customer, fully tracked',
+    desc: 'Full order history, total spend, and contact details for every customer across every channel. Build real relationships with real data.',
+    points: ['Customer profiles', 'Purchase history', 'Lifetime value tracking', 'Cross-channel records', 'Notes & preferences'],
+  },
+];
 
 export default function FeaturesPage() {
   return (
@@ -29,15 +150,15 @@ export default function FeaturesPage() {
         <div className="max-w-6xl mx-auto">
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#6B3FD9] bg-[#6B3FD9]/10 px-3 py-1.5 rounded-full mb-6">
-              PLATFORM FEATURES
+              13 FEATURES · ONE PLATFORM
             </span>
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight mb-6">
-              One dashboard.<br />
-              <span className="text-[#6B3FD9]">Every channel.</span>
+              Everything your<br />
+              <span className="text-[#6B3FD9]">business needs.</span>
             </h1>
             <p className="text-xl text-gray-400 leading-relaxed max-w-2xl mb-10">
-              ExiusCart connects your sales channels, automates your invoices,
-              and tracks every order — so you focus on selling, not managing software.
+              From your first sale to your tenth employee — ExiusCart grows with you.
+              POS, inventory, invoicing, HR, marketing, helpdesk, and more in one dashboard.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/register"
@@ -57,7 +178,7 @@ export default function FeaturesPage() {
       <section className="py-10 px-4 border-y border-gray-800">
         <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
-            { n: '5+', label: 'Sales channels' },
+            { n: '13', label: 'Built-in modules' },
             { n: '14 days', label: 'Free trial, no card' },
             { n: 'AED & USD', label: 'Multi-currency' },
             { n: '5% / 0%', label: 'Auto VAT (AED / USD)' },
@@ -70,274 +191,67 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* ── Bento feature grid ── */}
-      <section className="py-24 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">Built around how you actually sell</h2>
-            <p className="text-gray-400 max-w-xl">Every feature connects to the next. Orders flow into invoices, invoices update inventory, inventory feeds your reports.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Wide card */}
-            <div className="md:col-span-2 bg-[#151F32] border border-gray-800 rounded-2xl p-8 flex flex-col justify-between min-h-[280px]">
-              <div>
-                <div className="w-10 h-10 bg-[#6B3FD9]/15 rounded-xl flex items-center justify-center mb-5">
-                  <Link2 className="w-5 h-5 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Multi-Channel Order Management</h3>
-                <p className="text-gray-400 text-sm leading-relaxed max-w-md">
-                  Orders from TheDersi, Shopify, or your own store land in one unified dashboard.
-                  No more jumping between platforms to see what sold.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-6">
-                {['TheDersi', 'Shopify', 'WooCommerce', 'Custom Store', 'Amazon (soon)', 'Instagram (soon)'].map((ch) => (
-                  <span key={ch} className="text-xs px-3 py-1 rounded-full bg-[#6B3FD9]/10 text-[#6B3FD9] font-medium">{ch}</span>
-                ))}
-              </div>
-            </div>
-
-            {/* Tall card */}
-            <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-8 flex flex-col justify-between min-h-[280px]">
-              <div>
-                <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-5">
-                  <FileText className="w-5 h-5 text-emerald-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Auto VAT Invoicing</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  5% VAT on AED orders. 0% on USD (export rule). Invoices generate automatically — PDF-ready, FTA-compliant.
-                </p>
-              </div>
-              <div className="mt-6 bg-[#0B1121] rounded-xl p-4 text-xs font-mono space-y-1.5">
-                <div className="flex justify-between text-gray-400"><span>Subtotal</span><span>AED 1,000</span></div>
-                <div className="flex justify-between text-gray-400"><span>VAT 5%</span><span>AED 50</span></div>
-                <div className="flex justify-between text-white font-bold border-t border-gray-700 pt-1.5 mt-1.5"><span>Total</span><span>AED 1,050</span></div>
-              </div>
-            </div>
-
-            {/* Normal card */}
-            <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-8">
-              <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center mb-5">
-                <Package className="w-5 h-5 text-orange-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Product & Inventory</h3>
-              <p className="text-gray-400 text-sm leading-relaxed mb-5">
-                Unlimited products on Premium. Variants, categories, bulk import, and real-time stock tracking.
-              </p>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-[#6B3FD9] rounded-full" />Product variants & SKUs</li>
-                <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-[#6B3FD9] rounded-full" />Low stock alerts</li>
-                <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-[#6B3FD9] rounded-full" />Bulk CSV import</li>
-              </ul>
-            </div>
-
-            {/* Normal card */}
-            <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-8">
-              <div className="w-10 h-10 bg-sky-500/10 rounded-xl flex items-center justify-center mb-5">
-                <Users className="w-5 h-5 text-sky-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">Customer Records</h3>
-              <p className="text-gray-400 text-sm leading-relaxed mb-5">
-                Full order history, total spend, and contact details for every customer across all channels.
-              </p>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-sky-400 rounded-full" />Purchase history</li>
-                <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-sky-400 rounded-full" />Lifetime spend value</li>
-                <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 bg-sky-400 rounded-full" />Cross-channel tracking</li>
-              </ul>
-            </div>
-
-            {/* Wide card */}
-            <div className="md:col-span-2 bg-[#151F32] border border-gray-800 rounded-2xl p-8 flex flex-col justify-between min-h-[240px]">
-              <div>
-                <div className="w-10 h-10 bg-violet-500/10 rounded-xl flex items-center justify-center mb-5">
-                  <BarChart3 className="w-5 h-5 text-violet-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">Reports & Analytics</h3>
-                <p className="text-gray-400 text-sm leading-relaxed max-w-md">
-                  Revenue by channel, best-selling products, order trends, and payment breakdowns.
-                  Filter by date range, export to PDF or Excel.
-                </p>
-              </div>
-              <div className="mt-6 grid grid-cols-3 gap-3">
-                {[
-                  { label: 'Revenue', val: 'AED 24,500', color: 'text-white' },
-                  { label: 'Orders', val: '184', color: 'text-white' },
-                  { label: 'Avg. Order', val: 'AED 133', color: 'text-white' },
-                ].map((m) => (
-                  <div key={m.label} className="bg-[#0B1121] rounded-xl p-3">
-                    <p className="text-xs text-gray-500 mb-1">{m.label}</p>
-                    <p className={`text-base font-bold ${m.color}`}>{m.val}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+      {/* ── Feature nav pills ── */}
+      <section className="py-8 px-4 border-b border-gray-800 sticky top-0 bg-[#0B1121]/95 backdrop-blur z-10">
+        <div className="max-w-6xl mx-auto flex flex-wrap gap-2">
+          {features.map((f) => (
+            <a key={f.id} href={`#${f.id}`}
+              className="text-xs font-medium text-gray-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-[#151F32] border border-transparent hover:border-gray-700 transition-all">
+              {f.label}
+            </a>
+          ))}
         </div>
       </section>
 
-      {/* ── Channel deep-dive ── */}
-      <section className="py-24 px-4 bg-[#0D1526]">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div>
-              <span className="text-xs font-semibold text-[#6B3FD9] tracking-widest uppercase mb-4 block">Sales Channels</span>
-              <h2 className="text-4xl font-bold text-white leading-tight mb-6">
-                Connect once.<br />Sell everywhere.
-              </h2>
-              <p className="text-gray-400 leading-relaxed mb-8">
-                Link your TheDersi marketplace, Shopify store, or any custom website to ExiusCart.
-                Every order — regardless of source — appears in your dashboard with the same structure,
-                same statuses, same customer record.
-              </p>
-              <div className="space-y-4">
-                {[
-                  { name: 'TheDersi', desc: 'Sri Lankan fashion marketplace — live now', color: 'bg-[#6B3FD9]/10 text-[#6B3FD9]', status: 'Live' },
-                  { name: 'Shopify', desc: 'Sync products, orders and inventory', color: 'bg-emerald-500/10 text-emerald-400', status: 'Available' },
-                  { name: 'WooCommerce / WordPress', desc: 'Install the ExiusCart plugin to sync', color: 'bg-violet-500/10 text-violet-400', status: 'Soon' },
-                  { name: 'Custom Website', desc: 'Webhook + API for any storefront', color: 'bg-sky-500/10 text-sky-400', status: 'Soon' },
-                  { name: 'Amazon / Instagram', desc: 'Marketplace & social commerce', color: 'bg-orange-500/10 text-orange-400', status: 'Soon' },
-                ].map((ch) => (
-                  <div key={ch.name} className="flex items-center justify-between py-3 border-b border-gray-800 last:border-0">
-                    <div>
-                      <p className="text-white font-medium text-sm">{ch.name}</p>
-                      <p className="text-gray-500 text-xs mt-0.5">{ch.desc}</p>
-                    </div>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${ch.color}`}>{ch.status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 space-y-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Recent Orders</p>
-              {[
-                { id: '#4821', ch: 'TheDersi', item: 'Navy Linen Shirt', amt: 'AED 145', status: 'Delivered', sc: 'bg-emerald-500/10 text-emerald-400' },
-                { id: '#4820', ch: 'Shopify', item: 'Black Polo 2× ', amt: 'AED 290', status: 'Processing', sc: 'bg-blue-500/10 text-blue-400' },
-                { id: '#4819', ch: 'TheDersi', item: 'White Kurta', amt: 'AED 95', status: 'Delivered', sc: 'bg-emerald-500/10 text-emerald-400' },
-                { id: '#4818', ch: 'Direct', item: 'Slim Fit Chinos', amt: 'AED 220', status: 'Pending', sc: 'bg-orange-500/10 text-orange-400' },
-                { id: '#4817', ch: 'TheDersi', item: 'Casual Jacket', amt: 'AED 380', status: 'Delivered', sc: 'bg-emerald-500/10 text-emerald-400' },
-              ].map((o) => (
-                <div key={o.id} className="flex items-center justify-between py-2.5 border-b border-gray-800/60 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500 font-mono w-12">{o.id}</span>
-                    <div>
-                      <p className="text-sm text-white">{o.item}</p>
-                      <p className="text-xs text-gray-500">{o.ch}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-white">{o.amt}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${o.sc}`}>{o.status}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Invoicing deep-dive ── */}
-      <section className="py-24 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 order-2 lg:order-1">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <p className="text-white font-bold text-lg">Invoice #INV-2847</p>
-                  <p className="text-gray-500 text-xs mt-0.5">Auto-generated · Jun 13, 2026</p>
-                </div>
-                <span className="text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold">Paid</span>
-              </div>
-              <div className="space-y-2 mb-5">
-                {[
-                  { item: 'Navy Linen Shirt × 2', price: 'AED 290.00' },
-                  { item: 'Black Polo × 1', price: 'AED 145.00' },
-                ].map((r) => (
-                  <div key={r.item} className="flex justify-between text-sm">
-                    <span className="text-gray-400">{r.item}</span>
-                    <span className="text-white">{r.price}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-gray-800 pt-4 space-y-2">
-                <div className="flex justify-between text-sm text-gray-400"><span>Subtotal</span><span>AED 435.00</span></div>
-                <div className="flex justify-between text-sm text-gray-400"><span>VAT 5%</span><span>AED 21.75</span></div>
-                <div className="flex justify-between text-base font-bold text-white pt-1"><span>Total</span><span>AED 456.75</span></div>
-              </div>
-              <div className="mt-5 flex gap-2">
-                <button className="flex-1 py-2 text-xs font-semibold bg-[#6B3FD9] text-white rounded-lg">Download PDF</button>
-                <button className="flex-1 py-2 text-xs font-semibold bg-[#0B1121] text-gray-400 rounded-lg border border-gray-700">Send to Customer</button>
-              </div>
-            </div>
-            <div className="order-1 lg:order-2">
-              <span className="text-xs font-semibold text-emerald-400 tracking-widest uppercase mb-4 block">Smart Invoicing</span>
-              <h2 className="text-4xl font-bold text-white leading-tight mb-6">
-                VAT sorted.<br />Invoices automatic.
-              </h2>
-              <p className="text-gray-400 leading-relaxed mb-8">
-                AED orders carry 5% UAE VAT. USD orders are 0% (export rule).
-                ExiusCart applies the right rate automatically — no manual calculation,
-                no mistakes on your FTA filing.
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: 'AED orders', val: '5% VAT applied', icon: '🇦🇪' },
-                  { label: 'USD orders', val: '0% VAT (export)', icon: '🌍' },
-                  { label: 'Invoice format', val: 'FTA-compliant PDF', icon: '📄' },
-                  { label: 'Generation', val: 'Automatic on order', icon: '⚡' },
-                ].map((f) => (
-                  <div key={f.label} className="bg-[#151F32] border border-gray-800 rounded-xl p-4">
-                    <p className="text-xl mb-2">{f.icon}</p>
-                    <p className="text-xs text-gray-500 mb-0.5">{f.label}</p>
-                    <p className="text-sm font-semibold text-white">{f.val}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Secondary features grid ── */}
-      <section className="py-24 px-4 bg-[#0D1526]">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-white mb-3">Everything else you need</h2>
-            <p className="text-gray-400 max-w-xl mx-auto text-sm">The details that make the difference between a tool you use and one you love.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-800 rounded-2xl overflow-hidden border border-gray-800">
-            {[
-              { icon: <ShoppingBag className="w-5 h-5" />, title: 'Staff Accounts', desc: '3 staff on Starter, unlimited on Premium. Each with their own login and permissions.' },
-              { icon: <Globe className="w-5 h-5" />, title: 'Multi-Currency', desc: 'AED for UAE sellers, USD for international. Set per store, not per transaction.' },
-              { icon: <Zap className="w-5 h-5" />, title: 'Webhook Sync', desc: 'Real-time order sync from connected channels. No manual refresh, no polling.' },
-              { icon: <ShieldCheck className="w-5 h-5" />, title: 'Data Security', desc: 'SSL/TLS encryption in transit. Daily backups. Your data is yours — exportable anytime.' },
-              { icon: <RefreshCw className="w-5 h-5" />, title: 'Free Updates', desc: 'New features ship to all plans automatically. No upgrade fees for platform improvements.' },
-              { icon: <Layers className="w-5 h-5" />, title: 'Affiliate Program', desc: 'Refer other sellers and earn commission. Built-in tracking and payout management.' },
-            ].map((f) => (
-              <div key={f.title} className="bg-[#0D1526] p-8 hover:bg-[#111b2e] transition-colors">
-                <div className="w-9 h-9 bg-[#151F32] border border-gray-800 rounded-lg flex items-center justify-center text-[#6B3FD9] mb-4">
+      {/* ── Feature sections ── */}
+      {features.map((f, i) => (
+        <section
+          key={f.id}
+          id={f.id}
+          className={`py-24 px-4 ${i % 2 === 1 ? 'bg-[#0D1526]' : ''}`}
+        >
+          <div className="max-w-6xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              {/* Text — alternate sides */}
+              <div className={i % 2 === 1 ? 'order-1 lg:order-2' : ''}>
+                <div className={`inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full mb-5 ${f.color}`}>
                   {f.icon}
+                  <span className="uppercase tracking-wider">{f.label}</span>
                 </div>
-                <h3 className="text-white font-semibold mb-2">{f.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
+                <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-5">
+                  {f.headline}
+                </h2>
+                <p className="text-gray-400 leading-relaxed mb-8">{f.desc}</p>
+                <ul className="space-y-3">
+                  {f.points.map((p) => (
+                    <li key={p} className="flex items-center gap-3 text-sm text-gray-300">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${f.color.split(' ')[0].replace('text-', 'bg-')}`} />
+                      {p}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ))}
+
+              {/* Visual card */}
+              <div className={`${i % 2 === 1 ? 'order-2 lg:order-1' : ''}`}>
+                <FeatureVisual feature={f} />
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ))}
 
       {/* ── CTA ── */}
-      <section className="py-28 px-4">
+      <section className="py-28 px-4 bg-[#0D1526]">
         <div className="max-w-6xl mx-auto">
           <div className="bg-[#151F32] border border-gray-800 rounded-3xl p-12 md:p-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                Ready to see it in action?
+                All 13 modules. One subscription.
               </h2>
               <p className="text-gray-400 max-w-md">
                 14 days free. No credit card. Cancel anytime.
-                Your store is live in under 5 minutes.
+                Everything unlocked from day one.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 shrink-0">
@@ -355,6 +269,37 @@ export default function FeaturesPage() {
       </section>
 
       <Footer />
+    </div>
+  );
+}
+
+// ── Inline visual per feature ──────────────────────────────────────────────────
+
+function FeatureVisual({ feature }: { feature: typeof features[0] }) {
+  const accent = feature.color.split(' ')[0]; // e.g. "text-[#6B3FD9]"
+  const bg = feature.color.split(' ')[1];     // e.g. "bg-[#6B3FD9]/10"
+
+  return (
+    <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-6 space-y-3">
+      <div className="flex items-center gap-3 mb-5">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${bg} ${accent}`}>
+          {feature.icon}
+        </div>
+        <div>
+          <p className="text-white font-semibold text-sm">{feature.label}</p>
+          <p className="text-gray-500 text-xs">ExiusCart</p>
+        </div>
+        <span className={`ml-auto text-xs font-semibold px-2.5 py-1 rounded-full ${bg} ${accent}`}>Active</span>
+      </div>
+      {feature.points.map((p, i) => (
+        <div key={p} className="flex items-center gap-3 py-2.5 border-b border-gray-800/60 last:border-0">
+          <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${bg} ${accent} shrink-0`}>
+            {i + 1}
+          </div>
+          <span className="text-sm text-gray-300">{p}</span>
+          <div className={`ml-auto w-2 h-2 rounded-full ${bg.replace('/10', '')} opacity-70`} />
+        </div>
+      ))}
     </div>
   );
 }
