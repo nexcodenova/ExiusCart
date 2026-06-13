@@ -1,142 +1,91 @@
+import Image from 'next/image';
 import Link from 'next/link';
-import type { Metadata } from 'next';
-import {
-  ArrowRight, ShoppingCart, Package, FileText, ShoppingBag,
-  BarChart3, Users, Link2, Megaphone, Receipt, Truck,
-  HeadphonesIcon, CalendarCheck, Briefcase,
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 
-export const metadata: Metadata = {
-  title: 'Features | ExiusCart — Complete Business Management Platform',
-  description: 'POS, Inventory, Invoicing, Orders, Reports, HR & Payroll, Marketing, Expenses, Purchases, Helpdesk, and Appointments — everything in one platform for UAE businesses.',
-  openGraph: {
-    title: 'ExiusCart Features — Everything Your Business Needs',
-    description: 'POS, inventory, invoicing, HR, marketing, helpdesk and more. One platform built for UAE sellers.',
-    url: 'https://exiuscart.com/features',
-    siteName: 'ExiusCart',
-    type: 'website',
-  },
-};
+const CARD_BG = '#EDEBE6';
 
 const features = [
   {
     id: 'pos',
-    icon: <ShoppingCart className="w-6 h-6" />,
-    color: 'text-[#6B3FD9] bg-[#6B3FD9]/10',
     label: 'Point of Sale',
-    headline: 'Sell in-store and online from one screen',
-    desc: 'Fast checkout, product search, discounts, and receipts. Works on any device — desktop, tablet, or phone. No dedicated hardware needed.',
-    points: ['Fast product search & scan', 'Discounts & custom prices', 'Multiple payment methods', 'Instant receipt generation', 'Daily sales summary'],
+    headline: 'Sell in-store and online\nfrom one screen',
+    desc: 'Fast checkout, product search, discounts, and receipts. Works on any device — desktop, tablet, or phone.',
+    desktop: '/Features/Point%20of%20Sale-desktop.png',
+    mobile: '/Features/Point%20of%20Sale-mobile.png',
   },
   {
     id: 'inventory',
-    icon: <Package className="w-6 h-6" />,
-    color: 'text-orange-400 bg-orange-500/10',
-    label: 'Inventory',
-    headline: 'Know your stock at all times',
-    desc: 'Real-time stock tracking across all channels. Get alerts before you run out. Manage variants, categories, and bulk imports in minutes.',
-    points: ['Real-time stock levels', 'Low stock alerts', 'Product variants & SKUs', 'Category management', 'Bulk CSV import/export'],
+    label: 'Inventory Management',
+    headline: 'Know your stock\nat all times',
+    desc: 'Real-time stock tracking across all channels. Low stock alerts, variants, categories, and bulk imports.',
+    desktop: '/Features/Inventory%20Management-desktop.png',
+    mobile: '/Features/Inventory%20Management-mobile.png',
   },
   {
     id: 'invoicing',
-    icon: <FileText className="w-6 h-6" />,
-    color: 'text-emerald-400 bg-emerald-500/10',
     label: 'Invoicing',
-    headline: 'VAT-compliant invoices, automatically',
-    desc: 'AED orders carry 5% UAE VAT. USD orders are 0% (export rule). Invoices generate automatically — PDF-ready and FTA-compliant.',
-    points: ['Auto 5% VAT on AED orders', '0% VAT on USD (export rule)', 'FTA-compliant PDF invoices', 'Custom invoice prefix', 'Send to customer by email'],
+    headline: 'VAT-compliant invoices,\nautomatically',
+    desc: 'AED orders carry 5% UAE VAT. USD orders are 0% export. PDF-ready and FTA-compliant from day one.',
+    desktop: '/Features/Invoicing-desktop.png',
+    mobile: '/Features/Invoicing-mobile.png',
   },
   {
     id: 'orders',
-    icon: <ShoppingBag className="w-6 h-6" />,
-    color: 'text-sky-400 bg-sky-500/10',
     label: 'Orders',
-    headline: 'Every channel. One dashboard.',
-    desc: 'Orders from TheDersi, Shopify, WooCommerce, or your own website all land in the same place with the same structure and statuses.',
-    points: ['Multi-channel order sync', 'TheDersi & Shopify live', 'Order status tracking', 'Customer order history', 'WooCommerce & more coming'],
+    headline: 'Every channel.\nOne dashboard.',
+    desc: 'Orders from TheDersi, Shopify, WooCommerce, or your own website — same structure, same statuses.',
+    desktop: '/Features/Orders-desktop.png',
+    mobile: '/Features/Orders-mobile.png',
   },
   {
     id: 'reports',
-    icon: <BarChart3 className="w-6 h-6" />,
-    color: 'text-violet-400 bg-violet-500/10',
-    label: 'Reports',
-    headline: 'Data that tells you what to do next',
-    desc: 'Revenue trends, best-selling products, payment breakdowns, and channel performance. Filter by date, export to PDF or Excel.',
-    points: ['Revenue & profit reports', 'Product performance', 'Channel comparison', 'Payment breakdown', 'PDF & Excel export'],
+    label: 'Reports & Analytics',
+    headline: 'Data that tells you\nwhat to do next',
+    desc: 'Revenue trends, best-selling products, payment breakdowns, and channel performance.',
+    desktop: '/Features/Reportst-desktop.png',
+    mobile: '/Features/Reports-mobile.png',
   },
   {
     id: 'hr',
-    icon: <Briefcase className="w-6 h-6" />,
-    color: 'text-pink-400 bg-pink-500/10',
     label: 'HR & Payroll',
-    headline: 'Manage your team without spreadsheets',
-    desc: 'Employee records, payroll processing, leave requests, and attendance tracking — all in one place so you stop managing people with WhatsApp messages.',
-    points: ['Employee profiles & records', 'Payroll processing', 'Leave request management', 'Attendance tracking', 'Recruitment & job positions'],
+    headline: 'Manage your team\nwithout spreadsheets',
+    desc: 'Employee records, payroll processing, leave requests, and attendance — all in one place.',
+    desktop: '/Features/HR%20%26%20Payroll-desktop.png',
+    mobile: '/Features/HR%20%26%20Payroll-mobile.png',
   },
   {
     id: 'marketing',
-    icon: <Megaphone className="w-6 h-6" />,
-    color: 'text-yellow-400 bg-yellow-500/10',
     label: 'Marketing',
-    headline: 'Reach your customers where they are',
-    desc: 'Run email campaigns, SMS blasts, and events from your dashboard. Survey your customers. Track opens, clicks, and responses.',
-    points: ['Email campaigns', 'SMS campaigns', 'Event management', 'Customer surveys', 'Response tracking'],
+    headline: 'Reach your customers\nwhere they are',
+    desc: 'Email campaigns, SMS blasts, and events. Track opens, clicks, and responses from ExiusCart.',
+    desktop: '/Features/Marketing-desktop.png',
+    mobile: '/Features/Marketing-mobile.png',
   },
   {
     id: 'expenses',
-    icon: <Receipt className="w-6 h-6" />,
-    color: 'text-red-400 bg-red-500/10',
-    label: 'Expenses',
-    headline: 'Track every dirham going out',
-    desc: 'Log business expenses, categorise them, and match against your revenue. Know your real profit — not just your sales.',
-    points: ['Expense logging', 'Category management', 'Receipt attachment', 'Profit vs expense view', 'Export for accounting'],
-  },
-  {
-    id: 'purchases',
-    icon: <Truck className="w-6 h-6" />,
-    color: 'text-teal-400 bg-teal-500/10',
-    label: 'Purchases',
-    headline: 'Supplier orders, tracked end to end',
-    desc: 'Create purchase orders, track delivery status, and update inventory automatically when stock arrives. Full supplier management included.',
-    points: ['Supplier database', 'Purchase order creation', 'Delivery tracking', 'Auto inventory update', 'Purchase history'],
+    label: 'Expenses & Purchases',
+    headline: 'Track every dirham\ngoing in and out',
+    desc: 'Log expenses, manage purchase orders, match against revenue. Know your real profit.',
+    desktop: '/Features/Expenses%20and%20purchases-desktop.png',
+    mobile: '/Features/Expenses%20and%20purchases-mobile.png',
   },
   {
     id: 'helpdesk',
-    icon: <HeadphonesIcon className="w-6 h-6" />,
-    color: 'text-indigo-400 bg-indigo-500/10',
-    label: 'Helpdesk',
-    headline: 'Support tickets your whole team can manage',
-    desc: 'Log and track customer issues. Assign tickets to staff, set priorities, and close them with a full audit trail. No more lost support messages.',
-    points: ['Ticket creation & tracking', 'Staff assignment', 'Priority levels', 'Status updates', 'Full conversation history'],
-  },
-  {
-    id: 'appointments',
-    icon: <CalendarCheck className="w-6 h-6" />,
-    color: 'text-cyan-400 bg-cyan-500/10',
-    label: 'Appointments',
-    headline: 'Bookings without the back-and-forth',
-    desc: 'Let customers book appointments directly. Manage your calendar, confirm bookings, and send reminders — all from ExiusCart.',
-    points: ['Appointment scheduling', 'Calendar management', 'Booking confirmations', 'Staff allocation', 'Reminder notifications'],
+    label: 'Helpdesk & Appointments',
+    headline: 'Support and bookings,\nboth handled here',
+    desc: 'Log customer issues, assign to staff. Let customers book appointments. All tracked in one place.',
+    desktop: '/Features/Helpdesk%20and%20Appointments-desktop.png',
+    mobile: '/Features/Helpdesk%20and%20Appointments-mobile.png',
   },
   {
     id: 'channels',
-    icon: <Link2 className="w-6 h-6" />,
-    color: 'text-[#6B3FD9] bg-[#6B3FD9]/10',
     label: 'Sales Channels',
-    headline: 'Connect your storefronts',
-    desc: 'Link TheDersi, Shopify, WooCommerce, or a custom website. Orders sync in real time — no manual importing, no missed sales.',
-    points: ['TheDersi (live)', 'Shopify (available)', 'WooCommerce (soon)', 'Custom website webhook', 'Amazon & Instagram (soon)'],
-  },
-  {
-    id: 'customers',
-    icon: <Users className="w-6 h-6" />,
-    color: 'text-sky-400 bg-sky-500/10',
-    label: 'Customer Management',
-    headline: 'Every customer, fully tracked',
-    desc: 'Full order history, total spend, and contact details for every customer across every channel. Build real relationships with real data.',
-    points: ['Customer profiles', 'Purchase history', 'Lifetime value tracking', 'Cross-channel records', 'Notes & preferences'],
+    headline: 'Connect once.\nSell everywhere.',
+    desc: 'Link TheDersi, Shopify, WooCommerce, or a custom website. Orders sync in real time.',
+    desktop: '/Features/Sales%20Channels-desktop.png',
+    mobile: '/Features/Sales%20Channels-mobile.png',
   },
 ];
 
@@ -146,122 +95,194 @@ export default function FeaturesPage() {
       <Navbar />
 
       {/* ── Hero ── */}
-      <section className="pt-32 pb-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#6B3FD9] bg-[#6B3FD9]/10 px-3 py-1.5 rounded-full mb-6">
-              13 FEATURES · ONE PLATFORM
-            </span>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight mb-6">
-              Everything your<br />
-              <span className="text-[#6B3FD9]">business needs.</span>
-            </h1>
-            <p className="text-xl text-gray-400 leading-relaxed max-w-2xl mb-10">
-              From your first sale to your tenth employee — ExiusCart grows with you.
-              POS, inventory, invoicing, HR, marketing, helpdesk, and more in one dashboard.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Link href="/register"
-                className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-7 py-3.5 rounded-xl transition-all">
-                Start Free Trial <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link href="/pricing"
-                className="inline-flex items-center gap-2 text-gray-300 hover:text-white font-medium px-7 py-3.5 rounded-xl border border-gray-700 hover:border-gray-500 transition-all">
-                View Pricing
-              </Link>
-            </div>
+      <section className="pt-32 pb-24 px-6">
+        <div className="max-w-6xl mx-auto text-center">
+          <span className="inline-block text-xs font-semibold tracking-widest text-[#6B3FD9] bg-[#6B3FD9]/10 px-3 py-1.5 rounded-full mb-8 uppercase">
+            10 Feature Areas · One Platform
+          </span>
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight mb-6">
+            Everything your<br />
+            <span style={{ color: '#6B3FD9' }}>business needs.</span>
+          </h1>
+          <p className="text-base md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            From your first sale to your tenth employee — ExiusCart grows with you.
+          </p>
+          <div className="flex flex-wrap gap-4 justify-center">
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-xl transition-all"
+            >
+              Start Free Trial <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-2 text-gray-300 hover:text-white font-medium px-8 py-4 rounded-xl border border-gray-700 hover:border-gray-500 transition-all"
+            >
+              View Pricing
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Stats bar ── */}
-      <section className="py-10 px-4 border-y border-gray-800">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+      {/* ── Stats ── */}
+      <section className="py-10 px-6 border-y border-gray-800">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { n: '13', label: 'Built-in modules' },
+            { n: '10+', label: 'Built-in modules' },
             { n: '14 days', label: 'Free trial, no card' },
             { n: 'AED & USD', label: 'Multi-currency' },
-            { n: '5% / 0%', label: 'Auto VAT (AED / USD)' },
+            { n: '5% / 0%', label: 'Auto VAT' },
           ].map((s) => (
             <div key={s.label}>
-              <p className="text-3xl font-bold text-white mb-1">{s.n}</p>
-              <p className="text-sm text-gray-500">{s.label}</p>
+              <p className="text-2xl md:text-3xl font-bold text-white mb-1">{s.n}</p>
+              <p className="text-xs md:text-sm text-gray-500">{s.label}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Feature nav pills ── */}
-      <section className="py-8 px-4 border-b border-gray-800 sticky top-0 bg-[#0B1121]/95 backdrop-blur z-10">
-        <div className="max-w-6xl mx-auto flex flex-wrap gap-2">
-          {features.map((f) => (
-            <a key={f.id} href={`#${f.id}`}
-              className="text-xs font-medium text-gray-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-[#151F32] border border-transparent hover:border-gray-700 transition-all">
-              {f.label}
-            </a>
-          ))}
-        </div>
-      </section>
+      {/* ══════════════════════════════════════════════════════════
+          Paddle-style sticky card stack — works on ALL screen sizes
 
-      {/* ── Feature sections ── */}
-      {features.map((f, i) => (
-        <section
-          key={f.id}
-          id={f.id}
-          className={`py-24 px-4 ${i % 2 === 1 ? 'bg-[#0D1526]' : ''}`}
-        >
-          <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
-              {/* Text — alternate sides */}
-              <div className={i % 2 === 1 ? 'order-1 lg:order-2' : ''}>
-                <div className={`inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full mb-5 ${f.color}`}>
-                  {f.icon}
-                  <span className="uppercase tracking-wider">{f.label}</span>
-                </div>
-                <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-5">
-                  {f.headline}
+          CSS mechanism (zero JS):
+          • Each card: position sticky; top 0; height 100vh; z-index i+1
+          • Card N stays locked at top while Card N+1 RISES from below
+            and physically COVERS it — exactly like stacking papers
+          • Container = (N+1)×100vh so last card has full dwell time
+      ════════════════════════════════════════════════════════════ */}
+      <div style={{ height: `${(features.length + 1) * 100}vh` }}>
+        {features.map((feat, i) => (
+          <div
+            key={feat.id}
+            className="sticky top-0 h-screen px-3 sm:px-5 lg:px-8"
+            style={{
+              zIndex: i + 1,
+              paddingTop: '64px',
+              paddingBottom: '10px',
+            }}
+          >
+            {/* ── Cream card ── */}
+            <div
+              className="w-full h-full max-w-7xl mx-auto rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl
+                         flex flex-col lg:flex-row"
+              style={{ background: CARD_BG }}
+            >
+
+              {/* ── Text panel ──
+                  Mobile: fixed height strip at top
+                  Desktop: left column 38% wide */}
+              <div className="
+                shrink-0 flex flex-col justify-center
+                px-6 py-5 lg:p-10 xl:p-14
+                lg:w-[38%]
+              ">
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 mb-3 lg:mb-5">
+                  {String(i + 1).padStart(2, '0')}&nbsp;/&nbsp;{features.length}
+                  &nbsp;·&nbsp;{feat.label}
+                </span>
+
+                <h2 className="
+                  font-bold text-gray-900 leading-[1.15] mb-3 lg:mb-5 whitespace-pre-line
+                  text-xl sm:text-2xl lg:text-[2.1rem] xl:text-[2.5rem]
+                ">
+                  {feat.headline}
                 </h2>
-                <p className="text-gray-400 leading-relaxed mb-8">{f.desc}</p>
-                <ul className="space-y-3">
-                  {f.points.map((p) => (
-                    <li key={p} className="flex items-center gap-3 text-sm text-gray-300">
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${f.color.split(' ')[0].replace('text-', 'bg-')}`} />
-                      {p}
-                    </li>
+
+                <p className="text-[13px] lg:text-[15px] text-gray-600 leading-relaxed mb-4 lg:mb-8">
+                  {feat.desc}
+                </p>
+
+                {/* Progress dots */}
+                <div className="flex flex-wrap gap-[4px] mb-4 lg:mb-8">
+                  {features.map((_, j) => (
+                    <div
+                      key={j}
+                      className="h-[3px] rounded-full"
+                      style={{
+                        width: j === i ? '24px' : '5px',
+                        background: j === i ? '#111827' : '#ccc9c0',
+                      }}
+                    />
                   ))}
-                </ul>
+                </div>
+
+                <div>
+                  <Link
+                    href="/register"
+                    className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 font-semibold px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 transition-all text-xs lg:text-sm shadow-sm"
+                  >
+                    Discover {feat.label} <ArrowRight className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+                  </Link>
+                </div>
               </div>
 
-              {/* Visual card */}
-              <div className={`${i % 2 === 1 ? 'order-2 lg:order-1' : ''}`}>
-                <FeatureVisual feature={f} />
+              {/* ── Screenshot panel ──
+                  Mobile: fills remaining vertical space
+                  Desktop: right column, flex-1 */}
+              <div className="relative overflow-hidden flex-1">
+                {/* Desktop screenshot */}
+                <div className="absolute inset-0 top-4 left-4 lg:top-8 lg:left-6 right-0 rounded-tl-xl lg:rounded-tl-2xl overflow-hidden shadow-xl">
+                  <Image
+                    src={feat.desktop}
+                    alt={feat.label}
+                    fill
+                    className="object-cover object-left-top"
+                    sizes="(max-width: 1024px) 100vw, 62vw"
+                    priority={i < 2}
+                  />
+                </div>
+
+                {/* Mobile screenshot — hide on small phones, show on lg+ */}
+                <div
+                  className="hidden lg:block absolute bottom-0 left-0 rounded-t-2xl overflow-hidden shadow-xl"
+                  style={{
+                    width: '22%',
+                    aspectRatio: '9/19',
+                    border: `3px solid ${CARD_BG}`,
+                  }}
+                >
+                  <Image
+                    src={feat.mobile}
+                    alt={`${feat.label} mobile`}
+                    fill
+                    className="object-cover object-top"
+                    sizes="15vw"
+                  />
+                </div>
               </div>
+
             </div>
           </div>
-        </section>
-      ))}
+        ))}
+      </div>
 
-      {/* ── CTA ── */}
-      <section className="py-28 px-4 bg-[#0D1526]">
+      {/* ── CTA — Paddle homepage style ── */}
+      <section className="px-6 py-24 md:py-36" style={{ background: '#0f1117' }}>
         <div className="max-w-6xl mx-auto">
-          <div className="bg-[#151F32] border border-gray-800 rounded-3xl p-12 md:p-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                All 13 modules. One subscription.
-              </h2>
-              <p className="text-gray-400 max-w-md">
-                14 days free. No credit card. Cancel anytime.
-                Everything unlocked from day one.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-              <Link href="/register"
-                className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-xl transition-all whitespace-nowrap">
-                Start Free Trial <ArrowRight className="w-4 h-4" />
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold text-[#6B3FD9] uppercase tracking-widest mb-6">
+              Start for free
+            </p>
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight mb-6">
+              Take the hassle out of<br />
+              running your business.
+            </h2>
+            <p className="text-lg md:text-xl text-gray-500 leading-relaxed mb-10 max-w-xl">
+              ExiusCart handles your POS, inventory, invoicing, HR, and more —
+              so you can focus on selling. 14 days free, no credit card.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-2xl transition-all text-base"
+              >
+                Get started free <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link href="/pricing"
-                className="inline-flex items-center justify-center gap-2 text-gray-300 hover:text-white font-medium px-8 py-4 rounded-xl border border-gray-700 hover:border-gray-500 transition-all whitespace-nowrap">
-                View Pricing
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 text-gray-300 hover:text-white font-semibold px-8 py-4 rounded-2xl border border-gray-700 hover:border-gray-500 transition-all text-base"
+              >
+                View pricing
               </Link>
             </div>
           </div>
@@ -269,37 +290,6 @@ export default function FeaturesPage() {
       </section>
 
       <Footer />
-    </div>
-  );
-}
-
-// ── Inline visual per feature ──────────────────────────────────────────────────
-
-function FeatureVisual({ feature }: { feature: typeof features[0] }) {
-  const accent = feature.color.split(' ')[0]; // e.g. "text-[#6B3FD9]"
-  const bg = feature.color.split(' ')[1];     // e.g. "bg-[#6B3FD9]/10"
-
-  return (
-    <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-6 space-y-3">
-      <div className="flex items-center gap-3 mb-5">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${bg} ${accent}`}>
-          {feature.icon}
-        </div>
-        <div>
-          <p className="text-white font-semibold text-sm">{feature.label}</p>
-          <p className="text-gray-500 text-xs">ExiusCart</p>
-        </div>
-        <span className={`ml-auto text-xs font-semibold px-2.5 py-1 rounded-full ${bg} ${accent}`}>Active</span>
-      </div>
-      {feature.points.map((p, i) => (
-        <div key={p} className="flex items-center gap-3 py-2.5 border-b border-gray-800/60 last:border-0">
-          <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${bg} ${accent} shrink-0`}>
-            {i + 1}
-          </div>
-          <span className="text-sm text-gray-300">{p}</span>
-          <div className={`ml-auto w-2 h-2 rounded-full ${bg.replace('/10', '')} opacity-70`} />
-        </div>
-      ))}
     </div>
   );
 }
