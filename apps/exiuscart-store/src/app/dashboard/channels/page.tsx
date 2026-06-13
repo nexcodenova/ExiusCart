@@ -349,7 +349,7 @@ export default function ChannelsPage() {
     {
       id: 'woocommerce',
       name: 'WooCommerce',
-      description: 'WordPress + WooCommerce integration. Install the ExiusCart plugin to start syncing.',
+      description: 'WordPress + WooCommerce integration. Install the ExiusCart plugin to sync products and orders.',
       icon: <ShoppingCart className="w-5 h-5 text-[#7F54B3]" />,
       badge: 'soon',
     },

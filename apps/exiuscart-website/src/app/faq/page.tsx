@@ -20,7 +20,7 @@ const faqCategories = [
       },
       {
         question: 'Is there a free trial?',
-        answer: 'Yes! We offer a 7-day free trial with full access to all features. No credit card required. At the end of the trial, you can choose a plan that fits your business or continue with limited free features.',
+        answer: 'Yes! We offer a 14-day free trial with full access to all features. No credit card required. At the end of the trial, you can choose a Starter or Premium plan that fits your business.',
       },
       {
         question: 'Do I need to install any software?',
@@ -33,7 +33,7 @@ const faqCategories = [
     faqs: [
       {
         question: 'How much does ExiusCart cost?',
-        answer: 'We offer 4 plans: Starter (199 AED/year), Business (499 AED/year), Pro (799 AED/year), and Pro+ (1,499 AED/year). All prices are billed annually. Each plan includes different features and shop limits. Check our pricing page for detailed comparison.',
+        answer: 'We offer 3 plans: Free Trial (14 days free, no credit card needed), Starter (69 AED/month or $19 USD/month), and Premium (149 AED/month or $39 USD/month). All plans are billed monthly. Check our pricing page for a detailed feature comparison.',
       },
       {
         question: 'Can I change my plan later?',
@@ -55,10 +55,6 @@ const faqCategories = [
       {
         question: 'Does ExiusCart support VAT invoicing?',
         answer: 'Yes! ExiusCart generates UAE VAT-compliant invoices with automatic 5% VAT calculation. All invoices include your TRN (Tax Registration Number) and meet FTA requirements.',
-      },
-      {
-        question: 'How does WhatsApp ordering work?',
-        answer: 'You get a unique catalog link that you can share with customers. They browse your products, add items to cart, and tap "Order via WhatsApp". The order details are sent directly to your WhatsApp, where you can confirm and process it.',
       },
       {
         question: 'Can I use ExiusCart offline?',
@@ -100,11 +96,11 @@ const faqCategories = [
     faqs: [
       {
         question: 'How can I get support?',
-        answer: 'We offer multiple support channels: WhatsApp chat (fastest), email support, and phone support during business hours. Pro and Pro+ plans include priority support with faster response times.',
+        answer: 'We offer multiple support channels: WhatsApp chat (fastest), email support, and phone support during business hours. Premium plan includes priority support with faster response times.',
       },
       {
         question: 'Do you offer training?',
-        answer: 'Yes! We provide free onboarding training for all new users. This includes a video walkthrough and a live session if needed. Pro+ plans include dedicated training sessions.',
+        answer: 'Yes! We provide free onboarding training for all new users. This includes a video walkthrough and a live session if needed. Premium plan includes dedicated onboarding assistance.',
       },
       {
         question: 'What are your support hours?',
@@ -256,13 +252,13 @@ export default function FAQPage() {
             Ready to Get Started?
           </h2>
           <p className="text-gray-400 mb-8">
-            Try ExiusCart free for 7 days. No credit card required.
+            Try ExiusCart free for 14 days. No credit card required.
           </p>
           <Link
             href="/register"
             className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
           >
-            Start 7-Day Free Trial
+            Start 14-Day Free Trial
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>

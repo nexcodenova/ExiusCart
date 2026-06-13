@@ -6,14 +6,15 @@ import enum
 
 
 class PlanType(str, enum.Enum):
+    FREE_TRIAL = "free_trial"
+    THEDERSI_BASIC = "thedersi_basic"
     STARTER = "starter"
-    BUSINESS = "business"
-    PRO = "pro"
+    PREMIUM = "premium"
 
 
 class BillingType(str, enum.Enum):
-    ONE_TIME = "one_time"
     MONTHLY = "monthly"
+    YEARLY = "yearly"
 
 
 class SubscriptionStatus(str, enum.Enum):

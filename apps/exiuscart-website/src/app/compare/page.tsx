@@ -46,8 +46,8 @@ export default function ComparePage() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">80% More Affordable</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
-                One-time payment starting from AED 499 vs monthly subscriptions
-                that cost thousands per year with competitors.
+                Starting from just 69 AED/month — a fraction of what competitors
+                charge for the same features.
               </p>
             </div>
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 text-center">
@@ -106,10 +106,10 @@ export default function ComparePage() {
             <div className="px-6 py-3 bg-[#0D1526]">
               <span className="text-[#6B3FD9] text-xs font-semibold uppercase tracking-wider">Pricing</span>
             </div>
-            <CompareRow feature="One-time payment option" exius={true} typical={false} spreadsheet={true} />
-            <CompareRow feature="Affordable for small shops" exius={true} typical={false} spreadsheet={true} />
+            <CompareRow feature="Affordable monthly pricing" exius={true} typical={false} spreadsheet={true} />
             <CompareRow feature="Free updates included" exius={true} typical={false} spreadsheet={true} />
             <CompareRow feature="No hidden fees" exius={true} typical={false} spreadsheet={true} />
+            <CompareRow feature="Cancel anytime" exius={true} typical={false} spreadsheet={true} />
 
             {/* Features Section */}
             <div className="px-6 py-3 bg-[#0D1526]">
@@ -126,10 +126,8 @@ export default function ComparePage() {
             <div className="px-6 py-3 bg-[#0D1526]">
               <span className="text-[#6B3FD9] text-xs font-semibold uppercase tracking-wider">Unique to ExiusCart</span>
             </div>
-            <CompareRow feature="WhatsApp order management" exius={true} typical={false} spreadsheet={false} />
             <CompareRow feature="Arabic & English interface" exius={true} typical="Partial" spreadsheet={false} />
             <CompareRow feature="Works offline" exius={true} typical="Partial" spreadsheet={true} />
-            <CompareRow feature="WhatsApp receipts" exius={true} typical={false} spreadsheet={false} />
             <CompareRow feature="Multi-currency support" exius={true} typical="Partial" spreadsheet={false} />
 
             {/* Support Section */}

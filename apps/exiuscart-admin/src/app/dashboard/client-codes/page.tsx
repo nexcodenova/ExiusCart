@@ -23,7 +23,7 @@ interface NexCode {
   is_used_up: boolean;
 }
 
-const PLAN_OPTIONS = ['premium', 'starter', 'growth', 'enterprise', 'trial'];
+const PLAN_OPTIONS = ['premium', 'starter', 'free_trial', 'thedersi_basic'];
 
 function StatusBadge({ code }: { code: NexCode }) {
   if (!code.is_active) return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400">Deactivated</span>;
