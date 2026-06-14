@@ -22,9 +22,10 @@ THEDERSI_WEBHOOK_URL = os.getenv(
 THEDERSI_TIER_MAP: dict = {
     "free_forever": {"plan_type": "thedersi_basic"},
     "free":         {"plan_type": "thedersi_basic"},
-    "starter":      {"plan_type": "starter"},
-    "pro":          {"plan_type": "starter"},   # TheDersi Pro also gets ExiusCart Starter
-    "premium":      {"plan_type": "starter"},   # URL param TheDersi uses for Pro plan
+    "growth":       {"plan_type": "starter"},   # TheDersi Growth plan
+    "premium":      {"plan_type": "starter"},   # TheDersi Premium plan
+    "starter":      {"plan_type": "starter"},   # backward compat
+    "pro":          {"plan_type": "starter"},   # backward compat
     "standard":     {"plan_type": "starter"},   # backward compat
 }
 

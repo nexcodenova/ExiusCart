@@ -169,7 +169,7 @@ def get_shop_subscription(
         expires = sub.expires_at
         days_left = (expires.replace(tzinfo=timezone.utc) - now).days if expires else None
         # Derive source: TheDersi-provisioned accounts have promo_code "partner_thedersi"
-        source = "thedersi" if sub.promo_code == "partner_thedersi" else "exiuscart"
+        source = "thedersi" if sub.promo_code in ("partner_thedersi", "domain_thedersi") else "exiuscart"
         plan_info = {
             "plan_type": sub.plan_type,
             "source": source,

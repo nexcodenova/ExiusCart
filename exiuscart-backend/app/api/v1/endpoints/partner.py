@@ -10,8 +10,8 @@ Security model:
 
 TheDersi tier → ExiusCart plan:
   free_forever → thedersi_basic  (25 products, 50 orders/mo)
-  starter      → starter         (1,000 products, 1,000 orders/mo)
-  premium      → premium         (unlimited)
+  growth       → starter         (1,000 products, 1,000 orders/mo)
+  premium      → starter         (1,000 products, 1,000 orders/mo)
 """
 import re
 import secrets
@@ -164,11 +164,17 @@ def _do_provision(
     if tier not in THEDERSI_TIER_MAP:
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown tier '{tier}'. Valid: free_forever, starter, premium",
+            detail=f"Unknown tier '{tier}'. Valid: free_forever, growth, pro",
         )
 
-    plan_type    = THEDERSI_TIER_MAP[tier]["plan_type"]
     seller_email = seller_email.lower().strip()
+
+    # @thedersi.lk sellers always get Premium regardless of their TheDersi plan
+    if seller_email.endswith("@thedersi.lk"):
+        plan_type = "premium"
+        logger.info(f"[domain_thedersi] premium override for {seller_email}")
+    else:
+        plan_type = THEDERSI_TIER_MAP[tier]["plan_type"]
 
     # ── Idempotency: check by thedersi_seller_id first ────────────────────────
     # If this seller was already provisioned (e.g. network retry), return existing
