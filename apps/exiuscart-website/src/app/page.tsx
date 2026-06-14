@@ -162,134 +162,117 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Why ExiusCart — Premium Brand Section */}
-      <section className="py-28 px-4 relative overflow-hidden">
-        {/* BG glows */}
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full opacity-[0.07] blur-3xl pointer-events-none" style={{ background: '#7B4FE9' }} />
-        <div className="absolute -bottom-40 right-0 w-[400px] h-[400px] rounded-full opacity-[0.06] blur-3xl pointer-events-none" style={{ background: '#60A5FA' }} />
+      {/* ── Features — Paddle-style cream section ── */}
+      <section className="py-24 lg:py-32 px-6 bg-[#F5F3EF]">
+        <div className="max-w-7xl mx-auto">
 
-        <div className="max-w-7xl mx-auto relative z-10">
-
-          {/* Split: brand story left, bento right */}
-          <div className="grid lg:grid-cols-5 gap-12 items-start mb-16">
-
-            {/* Left — brand story (2 cols) */}
-            <div className="lg:col-span-2 flex flex-col justify-center">
-              <span className="inline-flex items-center gap-2 text-[#7B4FE9] text-xs font-bold tracking-widest uppercase mb-6 border border-[#7B4FE9]/30 bg-[#7B4FE9]/10 px-3 py-1.5 rounded-full w-fit">
-                <Star className="w-3 h-3 fill-[#7B4FE9]" /> Our Philosophy
-              </span>
-              <h2 className="text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6">
-                Why<br />
-                <span style={{ background: 'linear-gradient(100deg, #7B4FE9 0%, #60A5FA 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  "Exius
-                  <span style={{ WebkitTextFillColor: 'white', color: 'white' }}>Cart</span>
-                  "?
-                </span>
-              </h2>
-              {/* Accent line */}
-              <div className="w-16 h-1 rounded-full mb-6" style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)' }} />
-              <p className="text-gray-300 text-lg leading-relaxed mb-4">
-                Because everything your business needs lives in{' '}
-                <span className="text-white font-bold">one cart.</span>
+          {/* Split header: big title left · desc + CTA right */}
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10 mb-16">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6B3FD9] mb-5">
+                10+ built-in modules
               </p>
-              <p className="text-gray-500 text-base leading-relaxed mb-10">
-                Invoicing, inventory, orders, sales &amp; marketing, HR &amp; payroll — not scattered
-                across 10 tools. All in one place, built for real businesses.
+              <h2 className="text-5xl md:text-6xl lg:text-[4.5rem] font-black text-gray-900 leading-[1.03] tracking-tight">
+                Every tool your<br className="hidden sm:block" /> business needs.
+              </h2>
+            </div>
+            <div className="lg:max-w-sm">
+              <p className="text-gray-500 text-lg leading-relaxed mb-7">
+                Stop switching between 10 apps. ExiusCart handles your POS, invoicing,
+                HR, marketing, and more — all in one platform built for real businesses.
               </p>
               <Link
                 href="/features"
-                className="inline-flex items-center gap-3 text-white font-bold px-6 py-3.5 rounded-xl transition-all hover:scale-105 self-start"
-                style={{ background: 'linear-gradient(135deg, #7B4FE9, #5A2EC9)', boxShadow: '0 4px 24px rgba(123,79,233,0.35)' }}
+                className="inline-flex items-center gap-2 font-semibold text-gray-900 hover:text-[#6B3FD9] transition-colors group text-base"
               >
                 Explore all features
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
+          </div>
 
-            {/* Right — Bento grid (3 cols) */}
-            <div className="lg:col-span-3 grid grid-cols-2 gap-4">
-              {/* Card 1 — wide */}
-              <div className="col-span-2 group relative rounded-2xl p-6 overflow-hidden border border-gray-800/60 hover:border-[#EA580C]/40 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #0D1526 0%, #1a1020 100%)' }}>
-                <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 blur-2xl" style={{ background: '#EA580C' }} />
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: '#EA580C22', border: '1px solid #EA580C44' }}>
-                  <FileText className="w-5 h-5" style={{ color: '#EA580C' }} />
+          {/* 12-feature grid — gap-px divider style */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-200 rounded-3xl overflow-hidden shadow-sm">
+            {([
+              { Icon: ShoppingCart, color: '#6B3FD9', name: 'Point of Sale',        desc: 'Fast checkout on any device. Products, discounts, receipts in seconds.' },
+              { Icon: Boxes,        color: '#16A34A', name: 'Inventory',             desc: 'Real-time stock tracking, low-stock alerts, variants, and bulk import.' },
+              { Icon: FileText,     color: '#EA580C', name: 'Invoicing',             desc: 'VAT-compliant PDF invoices. AED 5% or USD 0% export — auto-applied.' },
+              { Icon: Package,      color: '#2563EB', name: 'Orders',                desc: 'All channels in one dashboard — Shopify, WooCommerce, or your own site.' },
+              { Icon: BarChart3,    color: '#0D9488', name: 'Reports & Analytics',   desc: 'Revenue trends, best sellers, payment breakdowns, channel performance.' },
+              { Icon: Calendar,     color: '#9333EA', name: 'Appointments',          desc: 'Let customers book slots. Full calendar view for your whole team.' },
+              { Icon: Users,        color: '#DB2777', name: 'HR & Payroll',          desc: 'Employee records, payroll, leave requests, attendance — no spreadsheets.' },
+              { Icon: Megaphone,    color: '#D97706', name: 'Marketing',             desc: 'Email campaigns, SMS blasts, Meta Ads lead capture and source tracking.' },
+              { Icon: Wallet,       color: '#7C3AED', name: 'Expenses',              desc: 'Log business expenses and purchase orders. Know your real profit.' },
+              { Icon: Headphones,   color: '#059669', name: 'Helpdesk',              desc: 'Log customer issues, assign to staff, set priorities, resolve fast.' },
+              { Icon: Truck,        color: '#0369A1', name: 'Sales Channels',        desc: 'TheDersi, Shopify, WooCommerce, or custom site — orders sync live.' },
+              { Icon: Shield,       color: '#6B3FD9', name: 'Multi-currency',        desc: 'AED and USD with automatic VAT handling and correct invoicing.' },
+            ] as const).map(({ Icon, color, name, desc }) => (
+              <div key={name} className="bg-[#F5F3EF] hover:bg-white p-8 transition-colors duration-200 group">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-5"
+                  style={{ background: color + '18', border: `1px solid ${color}30` }}
+                >
+                  <Icon className="w-5 h-5" style={{ color }} />
                 </div>
-                <h3 className="text-white font-bold text-lg mb-1">Smart Invoicing</h3>
-                <p className="text-gray-400 text-sm">VAT-compliant invoices in seconds. Track payments, send receipts, export reports.</p>
+                <h3 className="font-bold text-gray-900 text-base mb-2 group-hover:text-[#6B3FD9] transition-colors">
+                  {name}
+                </h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
               </div>
-
-              {/* Card 2 */}
-              <div className="group relative rounded-2xl p-6 overflow-hidden border border-gray-800/60 hover:border-[#16A34A]/40 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #0D1526 0%, #0d1a10 100%)' }}>
-                <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 blur-2xl" style={{ background: '#16A34A' }} />
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: '#16A34A22', border: '1px solid #16A34A44' }}>
-                  <Boxes className="w-5 h-5" style={{ color: '#16A34A' }} />
-                </div>
-                <h3 className="text-white font-bold mb-1">Inventory</h3>
-                <p className="text-gray-400 text-sm">Real-time stock, low-stock alerts, every movement tracked.</p>
-              </div>
-
-              {/* Card 3 */}
-              <div className="group relative rounded-2xl p-6 overflow-hidden border border-gray-800/60 hover:border-[#2563EB]/40 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #0D1526 0%, #0d1020 100%)' }}>
-                <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 blur-2xl" style={{ background: '#2563EB' }} />
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: '#2563EB22', border: '1px solid #2563EB44' }}>
-                  <Package className="w-5 h-5" style={{ color: '#2563EB' }} />
-                </div>
-                <h3 className="text-white font-bold mb-1">Orders</h3>
-                <p className="text-gray-400 text-sm">Track, process and manage orders from one dashboard.</p>
-              </div>
-
-              {/* Card 4 — wide */}
-              <div className="col-span-2 group relative rounded-2xl p-6 overflow-hidden border border-gray-800/60 hover:border-[#DB2777]/40 transition-all duration-300" style={{ background: 'linear-gradient(135deg, #0D1526 0%, #1a0d18 100%)' }}>
-                <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 blur-2xl" style={{ background: '#DB2777' }} />
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: '#DB277722', border: '1px solid #DB277744' }}>
-                    <Users className="w-5 h-5" style={{ color: '#DB2777' }} />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-lg mb-1">HR &amp; Payroll</h3>
-                    <p className="text-gray-400 text-sm">Manage your team, attendance, payroll, and recruitment — all inside ExiusCart.</p>
-                  </div>
-                  <div className="ml-auto flex-shrink-0 hidden sm:flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#D9770622', border: '1px solid #D9770644' }}>
-                      <Megaphone className="w-5 h-5" style={{ color: '#D97706' }} />
-                    </div>
-                    <div>
-                      <h3 className="text-white font-bold text-lg mb-1">Marketing</h3>
-                      <p className="text-gray-400 text-sm">Email, SMS campaigns, events and more.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
 
         </div>
       </section>
 
-      {/* Why ExiusCart */}
-      <section className="py-20 px-4 bg-[#0D1526]">
+      {/* ── Why ExiusCart — dark feature + pricing split ── */}
+      <section className="py-24 px-6 bg-[#0B1121]">
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-16 xl:gap-24 items-center">
+
+            {/* Left */}
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6B3FD9] mb-5">
                 Built for worldwide businesses
+              </p>
+              <h2 className="text-4xl md:text-5xl font-black text-white leading-[1.08] tracking-tight mb-5">
+                One platform.<br />Every business need.
               </h2>
-              <p className="text-gray-400 mb-10">
-                From small shops to growing enterprises — ExiusCart is designed
-                for real businesses. VAT-ready, multi-currency, and
-                international-ready features all in one platform.
+              <p className="text-gray-400 text-lg leading-relaxed mb-10 max-w-md">
+                From your first sale to your tenth employee — stop switching between apps.
+                ExiusCart replaces 10 separate tools with one connected platform.
               </p>
 
-              <div className="space-y-4">
-                <BenefitRow text="VAT compliant invoicing (5%)" />
-                <BenefitRow text="Connect any store or marketplace easily" />
-                <BenefitRow text="Email & notification integration" />
-                <BenefitRow text="Multi-currency & international-ready" />
-                <BenefitRow text="Free updates included" />
+              {/* 6 feature highlights — 2-col grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {([
+                  { Icon: ShoppingCart, color: '#6B3FD9', title: 'POS & Invoicing',      desc: 'VAT-compliant checkout on any device, AED or USD' },
+                  { Icon: Boxes,        color: '#16A34A', title: 'Inventory',             desc: 'Real-time stock, low-stock alerts, bulk import' },
+                  { Icon: Calendar,     color: '#9333EA', title: 'Appointments',          desc: 'Customer booking slots & full calendar for your team' },
+                  { Icon: Users,        color: '#DB2777', title: 'HR & Payroll',          desc: 'Team, attendance, leave and payroll in one place' },
+                  { Icon: Package,      color: '#2563EB', title: 'Sales Channels',        desc: 'Shopify, WooCommerce, TheDersi & custom sites' },
+                  { Icon: BarChart3,    color: '#0D9488', title: 'Reports & Analytics',   desc: 'Revenue, best sellers, channel performance & export' },
+                ] as const).map(({ Icon, color, title, desc }) => (
+                  <div
+                    key={title}
+                    className="flex items-start gap-3 p-4 rounded-xl border border-white/[0.06] bg-white/[0.025] hover:bg-white/[0.05] hover:border-white/10 transition-all duration-200"
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ background: color + '1a', border: `1px solid ${color}35` }}
+                    >
+                      <Icon className="w-4 h-4" style={{ color }} />
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm mb-0.5">{title}</p>
+                      <p className="text-gray-500 text-xs leading-relaxed">{desc}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Pricing Preview */}
+            {/* Right: Pricing Preview */}
             <PricingPreview />
           </div>
         </div>

@@ -10,6 +10,16 @@ import { pricing } from '@/config/pricing';
 
 type Period = 'monthly' | 'yearly';
 
+function AedSign({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 26 32" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 2L6 30L13 30C20 30 24 25 24 16C24 7 20 2 13 2Z" />
+      <line x1="1" y1="11" x2="8" y2="11" />
+      <line x1="1" y1="17" x2="8" y2="17" />
+    </svg>
+  );
+}
+
 const faqs = [
   {
     q: 'What happens after the 14-day free trial?',
@@ -59,7 +69,6 @@ export default function PricingPage() {
   }
 
   const prices = pricing[currency];
-  const fmt = (n: number) => currency === 'USD' ? `$${n}` : `AED ${n}`;
   const starterPrice = billing === 'monthly' ? prices.starter.monthly : prices.starter.yearly;
   const premiumPrice = billing === 'monthly' ? prices.premium.monthly : prices.premium.yearly;
   const period = billing === 'monthly' ? '/mo' : '/yr';
@@ -153,7 +162,7 @@ export default function PricingPage() {
                     {f}
                   </li>
                 ))}
-                {['Shopify integration', 'Multi-user access', 'Chat support'].map((f) => (
+                {['Shopify sync', 'WooCommerce / WordPress', 'Custom website sync', 'Multi-user access', 'Chat support'].map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm text-gray-300">
                     <span className="w-5 h-5 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                       <X className="w-3 h-3 text-gray-300" />
@@ -173,9 +182,14 @@ export default function PricingPage() {
               <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#6B3FD9]">
                 Starter
               </span>
-              <div className="mt-3 mb-1 flex items-baseline gap-1.5">
-                <span className="text-5xl font-black text-white tracking-tight">{fmt(starterPrice)}</span>
-                <span className="text-gray-500 text-sm">{period}</span>
+              <div className="mt-4 mb-2 flex items-start gap-2">
+                {currency === 'USD' ? (
+                  <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
+                ) : (
+                  <AedSign className="w-5 h-7 mt-3 text-gray-400 shrink-0" />
+                )}
+                <span className="text-[3.8rem] font-black text-white tracking-tight leading-none">{starterPrice}</span>
+                <span className="text-gray-500 text-sm self-end mb-1">{period}</span>
               </div>
               <p className="text-sm text-gray-500 mb-7">For small shops. Most businesses fit here.</p>
 
@@ -197,7 +211,9 @@ export default function PricingPage() {
                   '3 user accounts',
                   'Full POS & Invoicing',
                   'VAT invoicing (5%)',
-                  'Shopify + store sync',
+                  'Shopify sync',
+                  'WooCommerce / WordPress',
+                  'Custom website sync',
                   'Lead management (500)',
                   'Chat support',
                 ].map((f) => (
@@ -216,9 +232,14 @@ export default function PricingPage() {
               <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-400">
                 Premium
               </span>
-              <div className="mt-3 mb-1 flex items-baseline gap-1.5">
-                <span className="text-5xl font-black text-gray-900 tracking-tight">{fmt(premiumPrice)}</span>
-                <span className="text-gray-400 text-sm">{period}</span>
+              <div className="mt-4 mb-2 flex items-start gap-2">
+                {currency === 'USD' ? (
+                  <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
+                ) : (
+                  <AedSign className="w-5 h-7 mt-3 text-gray-400 shrink-0" />
+                )}
+                <span className="text-[3.8rem] font-black text-gray-900 tracking-tight leading-none">{premiumPrice}</span>
+                <span className="text-gray-400 text-sm self-end mb-1">{period}</span>
               </div>
               <p className="text-sm text-gray-400 mb-7">Unlimited everything. For growing businesses.</p>
 
@@ -271,77 +292,190 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── Full comparison table ── */}
-      <section className="py-20 px-6 bg-[#0B1121]">
+      {/* ── What's included ── */}
+      <section className="py-20 px-6 bg-[#F5F3EF] border-t border-gray-200">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-3">
-            Full plan comparison
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-14">
+            What&apos;s included?
           </h2>
-          <p className="text-gray-500 text-center mb-12">
-            See exactly what&apos;s included in each plan
-          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10">
+            {[
+              {
+                name: 'Point of Sale',
+                desc: 'Fast checkout, product search, discounts, and receipts. Works on any device — no dedicated hardware needed.',
+              },
+              {
+                name: 'Inventory Management',
+                desc: 'Real-time stock tracking with low-stock alerts, variant support, and bulk import across all your channels.',
+              },
+              {
+                name: 'VAT Invoicing',
+                desc: 'Auto 5% VAT on AED orders, 0% on USD exports. FTA-compliant PDF invoices generated automatically.',
+              },
+              {
+                name: 'Order Management',
+                desc: 'Orders from TheDersi, Shopify, WooCommerce, or your own website — one dashboard, same statuses.',
+              },
+              {
+                name: 'Reports & Analytics',
+                desc: 'Revenue trends, best-selling products, payment breakdowns, and channel performance. Export to Excel or PDF.',
+              },
+              {
+                name: 'HR & Payroll',
+                desc: 'Employee records, payroll processing, leave requests, and attendance tracking — no spreadsheets needed.',
+              },
+              {
+                name: 'Marketing & Campaigns',
+                desc: 'Email campaigns, SMS blasts, and events. Capture leads from Meta Ads. Track opens, clicks, and conversions.',
+              },
+              {
+                name: 'Expenses & Purchases',
+                desc: 'Log business expenses and supplier purchase orders. Match against revenue to see your real profit.',
+              },
+              {
+                name: 'Helpdesk & Appointments',
+                desc: 'Log customer issues, assign to staff, set priorities. Let customers book appointments directly.',
+              },
+              {
+                name: 'Sales Channels',
+                desc: 'Connect TheDersi, Shopify, WooCommerce, or a custom website. Orders sync in real time — no manual importing.',
+              },
+              {
+                name: 'Customer Management',
+                desc: 'Full order history, lifetime spend, and contact details for every customer across every channel.',
+              },
+              {
+                name: 'Multi-currency',
+                desc: 'Accept AED and USD with automatic currency handling. Prices and invoices shown in the right currency.',
+              },
+              {
+                name: 'Lead Management',
+                desc: 'Capture, track, and convert leads from Meta Ads, your website, or manual entry. Full source tracking.',
+              },
+              {
+                name: 'Data Export',
+                desc: 'Export your products, customers, invoices, and reports to Excel or PDF anytime — your data, always.',
+              },
+              {
+                name: 'Multi-location & Multi-store',
+                desc: 'Manage stock, orders, and staff across multiple branches or stores from one account. Premium plan.',
+              },
+            ].map((item) => (
+              <div key={item.name}>
+                <p className="font-bold text-gray-900 mb-2">{item.name}</p>
+                <p className="text-sm text-gray-500 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-          <div className="overflow-x-auto rounded-2xl border border-gray-800">
-            <table className="w-full min-w-[560px]">
-              <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="py-4 pl-6 text-left text-sm text-gray-500 font-medium w-[42%]">Feature</th>
-                  <th className="py-4 text-center text-sm text-gray-500 font-medium">Free Trial</th>
-                  <th className="py-4 text-center text-sm font-semibold text-[#6B3FD9]">Starter</th>
-                  <th className="py-4 pr-6 text-center text-sm text-gray-500 font-medium">Premium</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm divide-y divide-gray-800/50">
-                <CmpSection label="Core Limits" />
-                <CmpRow f="Products"         t="25"       s="1,000"     p="Unlimited" />
-                <CmpRow f="Orders / month"   t="50"       s="1,000"     p="Unlimited" />
-                <CmpRow f="Customers"        t="100"      s="5,000"     p="Unlimited" />
-                <CmpRow f="Team users"       t="1"        s="3"         p="Unlimited" />
-                <CmpRow f="Storage"          t="500 MB"   s="5 GB"      p="20 GB" />
-                <CmpRow f="Branches"         t="1"        s="1"         p="Multiple" />
+      {/* ── What's in each plan — 3 independent cards ── */}
+      <section className="py-16 px-6 bg-[#0B1121]">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl font-bold text-white text-center mb-2">What&apos;s in each plan?</h2>
+          <p className="text-gray-600 text-sm text-center mb-10">Pick the plan that fits your business</p>
 
-                <CmpSection label="POS & Invoicing" />
-                <CmpRow f="Point of Sale"            t="Basic"    s             p />
-                <CmpRow f="VAT invoicing (5%)"       t            s             p />
-                <CmpRow f="PDF invoice download"     t            s             p />
-                <CmpRow f="Invoice email sending"    t="50/mo"    s="500/mo"    p="Unlimited" />
-                <CmpRow f="Custom invoice branding"  t={false}    s="Basic"     p="Full" />
-                <CmpRow f="Send from own domain"     t={false}    s={false}     p />
-                <CmpRow f="Receipts"                 t            s             p />
+          <div className="grid md:grid-cols-3 gap-5 items-start">
 
-                <CmpSection label="Inventory" />
-                <CmpRow f="Stock tracking"        t="Basic"  s          p />
-                <CmpRow f="Low-stock alerts"      t={false}  s          p />
-                <CmpRow f="Auto stock deduction"  t          s          p />
-                <CmpRow f="Item movement history" t={false}  s          p />
-                <CmpRow f="Multi-location stock"  t={false}  s={false}  p />
+            {/* Free Trial */}
+            <div className="rounded-2xl border border-gray-800 bg-[#0D1526] p-6">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Free Trial</p>
+              <p className="text-xs text-gray-600 mb-5">14 days · no credit card needed</p>
+              <div className="space-y-1.5">
+                {[
+                  '25 products',
+                  '50 orders / month',
+                  '100 customers · 1 user',
+                  'Basic POS',
+                  'VAT invoicing (5%)',
+                  '50 invoice emails / mo',
+                  'Basic stock tracking',
+                  'Appointment booking',
+                  'Basic sales reports',
+                  'Email support',
+                ].map((f) => (
+                  <div key={f} className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                      <Check className="w-2.5 h-2.5 text-gray-400" />
+                    </div>
+                    <span className="text-gray-400 text-xs">{f}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/register" className="mt-6 block text-center text-xs font-semibold text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-xl py-2.5 transition-all">
+                Start free trial
+              </Link>
+            </div>
 
-                <CmpSection label="Store Integration" />
-                <CmpRow f="Shopify sync"         t={false}  s  p />
-                <CmpRow f="Custom store API"     t={false}  s  p />
-                <CmpRow f="Real-time order sync" t={false}  s  p />
-                <CmpRow f="Multi-store"          t={false}  s={false}  p />
+            {/* Starter */}
+            <div className="rounded-2xl border border-[#6B3FD9]/50 bg-[#0D1526] p-6 ring-1 ring-[#6B3FD9]/20 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#6B3FD9] text-white text-[10px] font-bold px-3 py-1 rounded-full">
+                Most Popular
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#6B3FD9] mb-1">Starter</p>
+              <p className="text-xs text-gray-600 mb-5">Everything in Free, plus:</p>
+              <div className="space-y-1.5">
+                {[
+                  '1,000 products',
+                  '1,000 orders / month',
+                  '5,000 customers · 3 users',
+                  'Full POS & invoicing',
+                  '500 invoice emails / mo',
+                  'Basic invoice branding',
+                  'Low-stock alerts',
+                  'HR & Payroll',
+                  'Shopify / WooCommerce sync',
+                  'Custom website sync',
+                  '500 leads · Meta Ads capture',
+                  'Basic email campaigns',
+                  'Advanced sales reports',
+                  'Data export (Excel / CSV)',
+                  'Chat support',
+                ].map((f) => (
+                  <div key={f} className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-[#6B3FD9]/20 border border-[#6B3FD9]/30 flex items-center justify-center shrink-0">
+                      <Check className="w-2.5 h-2.5 text-[#6B3FD9]" />
+                    </div>
+                    <span className="text-gray-300 text-xs">{f}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/register" className="mt-6 block text-center text-xs font-semibold text-white bg-[#6B3FD9] hover:bg-[#5A2EC9] rounded-xl py-2.5 transition-all">
+                Get Started
+              </Link>
+            </div>
 
-                <CmpSection label="Marketing & Leads" />
-                <CmpRow f="Lead management"       t={false}  s="500"   p="Unlimited" />
-                <CmpRow f="Meta Ads lead capture" t={false}  s         p />
-                <CmpRow f="Email campaigns"       t={false}  s="Basic" p />
-                <CmpRow f="Lead source tracking"  t={false}  s         p />
+            {/* Premium */}
+            <div className="rounded-2xl border border-gray-800 bg-[#0D1526] p-6">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Premium</p>
+              <p className="text-xs text-gray-600 mb-5">Everything in Starter, plus:</p>
+              <div className="space-y-1.5">
+                {[
+                  'Unlimited products & orders',
+                  'Unlimited customers & users',
+                  'Unlimited leads',
+                  'Full invoice branding',
+                  'Send from own domain',
+                  'Multi-location stock',
+                  'Multi-store management',
+                  'Unlimited email campaigns',
+                  'Advanced analytics',
+                  'Priority support + onboarding',
+                ].map((f) => (
+                  <div key={f} className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                      <Check className="w-2.5 h-2.5 text-gray-400" />
+                    </div>
+                    <span className="text-gray-400 text-xs">{f}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/register" className="mt-6 block text-center text-xs font-semibold text-white bg-gray-800 hover:bg-gray-700 rounded-xl py-2.5 transition-all">
+                Get Started
+              </Link>
+            </div>
 
-                <CmpSection label="Reports & Analytics" />
-                <CmpRow f="Sales reports"           t="Basic"  s="Advanced"  p="Advanced" />
-                <CmpRow f="Inventory reports"       t={false}  s             p />
-                <CmpRow f="VAT reports"             t          s             p />
-                <CmpRow f="Data export (Excel/CSV)" t={false}  s             p />
-                <CmpRow f="Custom reports"          t={false}  s={false}     p />
-
-                <CmpSection label="Support" />
-                <CmpRow f="Email support"     t  s  p />
-                <CmpRow f="Chat support"      t={false}  s  p />
-                <CmpRow f="Priority support"  t={false}  s={false}  p />
-                <CmpRow f="Onboarding help"   t={false}  s={false}  p />
-              </tbody>
-            </table>
           </div>
         </div>
       </section>
@@ -375,22 +509,34 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="py-24 px-6 bg-[#0B1121]">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Start your free trial today
-          </h2>
-          <p className="text-gray-400 mb-10 text-lg">
-            14 days free. No credit card. Cancel anytime.
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Link
-              href="/register"
-              className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-10 py-4 rounded-2xl transition-all text-base"
-            >
-              Get Started Free <ArrowRight className="w-4 h-4" />
-            </Link>
+      {/* ── CTA — Paddle-style left-aligned ── */}
+      <section className="py-28 md:py-36 px-6 bg-[#0B1121]">
+        <div className="max-w-6xl mx-auto">
+          <div className="max-w-3xl">
+            <p className="text-sm font-bold uppercase tracking-widest text-[#6B3FD9] mb-6">
+              Start for free
+            </p>
+            <h2 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white leading-[1.04] tracking-tight mb-6">
+              Ready to run your<br />business smarter?
+            </h2>
+            <p className="text-lg text-gray-500 leading-relaxed mb-10 max-w-lg">
+              14 days free. No credit card. Every feature unlocked from day one —
+              POS, invoicing, inventory, HR, appointments and more.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-2xl transition-all text-base"
+              >
+                Get started free <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/demo"
+                className="inline-flex items-center gap-2 text-gray-300 hover:text-white font-semibold px-8 py-4 rounded-2xl border border-gray-700 hover:border-gray-500 transition-all text-base"
+              >
+                Book a demo
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -400,38 +546,3 @@ export default function PricingPage() {
   );
 }
 
-/* ── Comparison table helpers ── */
-function CmpSection({ label }: { label: string }) {
-  return (
-    <tr>
-      <td colSpan={4} className="pt-6 pb-2 pl-6">
-        <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#6B3FD9]">
-          {label}
-        </span>
-      </td>
-    </tr>
-  );
-}
-
-function CmpRow({ f, t, s, p }: { f: string; t?: boolean | string; s?: boolean | string; p?: boolean | string }) {
-  const cell = (val?: boolean | string, isStarter = false) => {
-    if (val === undefined || val === false)
-      return <X className="w-4 h-4 text-gray-700 mx-auto" />;
-    if (val === true)
-      return <Check className={`w-4 h-4 mx-auto ${isStarter ? 'text-[#6B3FD9]' : 'text-gray-400'}`} />;
-    return (
-      <span className={`text-xs block text-center leading-tight ${isStarter ? 'text-[#6B3FD9] font-medium' : 'text-gray-400'}`}>
-        {val}
-      </span>
-    );
-  };
-
-  return (
-    <tr className="hover:bg-white/[0.02] transition-colors">
-      <td className="py-3 pl-6 text-gray-400">{f}</td>
-      <td className="py-3 text-center">{cell(t)}</td>
-      <td className="py-3 text-center">{cell(s, true)}</td>
-      <td className="py-3 pr-6 text-center">{cell(p)}</td>
-    </tr>
-  );
-}
