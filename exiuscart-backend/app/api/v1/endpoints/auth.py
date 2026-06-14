@@ -2,6 +2,7 @@ import re
 import uuid
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError, jwt
@@ -14,7 +15,10 @@ from app.core.security import verify_password, get_password_hash, create_access_
 from app.core.email import send_welcome_email, send_thedersi_welcome_email
 from app.models.user import User
 from app.models.shop import Shop
+from app.models.subscription import Subscription
 from app.schemas.user import UserCreate, UserResponse, UserLogin, Token
+
+THEDERSI_STAFF_DOMAIN = "@thedersi.lk"
 
 logger = logging.getLogger(__name__)
 _email_pool = ThreadPoolExecutor(max_workers=2)
@@ -36,6 +40,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         )
 
     display_name = user_data.owner_name or user_data.full_name or "Shop Owner"
+    is_thedersi_staff = user_data.email.lower().endswith(THEDERSI_STAFF_DOMAIN)
+
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
         email=user_data.email,
@@ -48,18 +54,39 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.flush()
 
-    # Auto-create shop if shop_name provided
-    if user_data.shop_name:
-        slug = f"{_slugify(user_data.shop_name)}-{uuid.uuid4().hex[:6]}"
-        currency = "AED" if user_data.country == "AE" else "USD"
+    # Auto-create shop:
+    # - always if shop_name provided
+    # - always if @thedersi.lk staff (auto-name from their full name)
+    if user_data.shop_name or is_thedersi_staff:
+        shop_name = user_data.shop_name or f"{display_name}'s Business"
+        slug = f"{_slugify(shop_name)}-{uuid.uuid4().hex[:6]}"
+        currency = "AED" if (user_data.country == "AE" or is_thedersi_staff) else "USD"
         shop = Shop(
-            name=user_data.shop_name,
+            name=shop_name,
             slug=slug,
             owner_id=new_user.id,
             currency=currency,
             country=user_data.country or "UAE",
         )
         db.add(shop)
+        db.flush()  # get shop.id before creating subscription
+
+        # @thedersi.lk staff → premium, active immediately, never expires
+        if is_thedersi_staff:
+            now = datetime.now(timezone.utc)
+            sub = Subscription(
+                shop_id=shop.id,
+                plan_type="premium",
+                billing_type="yearly",
+                status="active",
+                amount_paid=0,
+                currency=currency,
+                promo_code="domain_thedersi",  # marks source as domain-grant
+                starts_at=now,
+                expires_at=None,               # never expires
+            )
+            db.add(sub)
+            logger.info(f"[domain_thedersi] premium granted to {new_user.email}")
 
     db.commit()
     db.refresh(new_user)
