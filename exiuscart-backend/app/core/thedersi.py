@@ -10,8 +10,9 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-THEDERSI_KEY         = os.getenv("THEDERSI_PARTNER_KEY", "")
-THEDERSI_HMAC_SECRET = os.getenv("THEDERSI_HMAC_SECRET", "")   # shared secret for signing outgoing webhooks
+THEDERSI_KEY           = os.getenv("THEDERSI_PARTNER_KEY", "")
+THEDERSI_HMAC_SECRET   = os.getenv("THEDERSI_HMAC_SECRET", "")    # TheDersi signs their webhooks with this → we verify incoming
+THEDERSI_OUTGOING_SECRET = os.getenv("THEDERSI_OUTGOING_SECRET", "")  # we sign our outgoing notifications → TheDersi verifies
 THEDERSI_WEBHOOK_URL = os.getenv(
     "THEDERSI_WEBHOOK_URL",
     "https://thedersi.lk/api/exiuscart/webhook",
@@ -38,11 +39,12 @@ MONTHLY_ORDER_LIMITS: dict = {
 
 
 def _hmac_signature(body: str) -> str:
-    """HMAC-SHA256 signature of the JSON body using the shared secret."""
-    if not THEDERSI_HMAC_SECRET:
+    """HMAC-SHA256 signature for outgoing notifications to TheDersi (they verify with EXIUSCART_WEBHOOK_SECRET)."""
+    secret = THEDERSI_OUTGOING_SECRET or THEDERSI_HMAC_SECRET  # fallback for old single-secret setups
+    if not secret:
         return ""
     return "sha256=" + hmac.new(
-        THEDERSI_HMAC_SECRET.encode("utf-8"),
+        secret.encode("utf-8"),
         body.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
