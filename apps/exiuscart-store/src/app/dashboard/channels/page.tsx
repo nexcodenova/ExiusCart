@@ -16,8 +16,7 @@ interface ChannelConnection {
   id: number;
   channel_type: string;
   channel_seller_id?: string;
-  webhook_secret: string;
-  is_active: boolean;
+  webhook_url: string;
 }
 
 interface TheDersiInfo {
@@ -183,7 +182,7 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
   const [payoutSuccess, setPayoutSuccess] = useState('');
   const [payoutError, setPayoutError] = useState('');
   const [error, setError] = useState('');
-  const webhookUrl = `https://api.exiuscart.com/api/v1/channels/webhook/${connection.webhook_secret}`;
+  const webhookUrl = connection.webhook_url;
 
   const loadPayouts = () => {
     setPayoutsLoading(true);
@@ -483,7 +482,7 @@ export default function ChannelsPage() {
 
   useEffect(() => { load(); }, [shopId]);
 
-  const theDersiConns = connections.filter((c) => c.channel_type === 'thedersi' && c.is_active);
+  const theDersiConns = connections.filter((c) => c.channel_type === 'thedersi');
   const hasTheDersi = theDersiConns.length > 0;
 
   const availableChannels: ChannelDef[] = [
