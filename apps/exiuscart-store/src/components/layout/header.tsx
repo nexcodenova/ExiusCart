@@ -20,7 +20,15 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { currency, setCurrency, flag } = useCurrency();
   const [activeBranchName, setActiveBranchName] = useState<string | null>(null);
   const [showCurrencyDrop, setShowCurrencyDrop] = useState(false);
+  const [userName, setUserName] = useState('');
   const dropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      setUserName(u.full_name || u.email || '');
+    } catch {}
+  }, []);
 
   useEffect(() => {
     import('@/lib/api').then(({ shopApi }) => {
@@ -137,7 +145,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
             <User className="w-5 h-5 text-primary" />
           </div>
-          <span className="hidden md:block text-sm font-medium text-foreground">Ahmad</span>
+          {userName && <span className="hidden md:block text-sm font-medium text-foreground">{userName}</span>}
         </Link>
       </div>
     </header>

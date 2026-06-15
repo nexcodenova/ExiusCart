@@ -128,6 +128,15 @@ const GROUPS: MenuGroup[] = [
 // Flat list for mobile bottom nav / external use
 export const menuItems = GROUPS.flatMap(g => g.items);
 
+// HR/Fleet/Projects/Helpdesk → premium only
+// Finance/Marketing → starter+
+// Everything else → all plans
+function canShowGroup(groupId: string, plan: string): boolean {
+  if (groupId === 'hr' || groupId === 'services') return plan === 'premium';
+  if (groupId === 'finance' || groupId === 'marketing') return plan === 'premium' || plan === 'starter';
+  return true;
+}
+
 interface SidebarProps {
   collapsed: boolean;
   onCollapsedChange: (c: boolean) => void;
@@ -254,7 +263,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
         {/* Nav */}
         <nav className="overflow-y-auto" style={{ height: 'calc(100vh - 180px)' }}>
           <div className="p-2 space-y-0.5">
-            {GROUPS.map(group => {
+            {GROUPS.filter(group => canShowGroup(group.id, (shopData?.plan || '').toLowerCase())).map(group => {
               const groupActive = isGroupActive(group);
               const isOpen = openGroups.has(group.id) || collapsed;
 
