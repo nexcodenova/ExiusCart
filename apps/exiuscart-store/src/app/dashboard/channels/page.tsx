@@ -238,7 +238,7 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
       </div>
 
       <div className="p-5 space-y-5">
-        <CopyBox label="ExiusCart Webhook URL (paste into thedersi.lk/seller/connect)" value={webhookUrl} />
+        <CopyBox label="Your ExiusCart Webhook URL" value={webhookUrl} />
 
         {loading && (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
