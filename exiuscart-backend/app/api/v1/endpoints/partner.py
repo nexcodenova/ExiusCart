@@ -11,7 +11,7 @@ Security model:
 TheDersi tier → ExiusCart plan:
   free_forever → thedersi_basic  (25 products, 50 orders/mo)
   growth       → starter         (1,000 products, 1,000 orders/mo)
-  premium      → starter         (1,000 products, 1,000 orders/mo)
+  pro          → starter         (1,000 products, 1,000 orders/mo)
 """
 import re
 import secrets
@@ -172,6 +172,7 @@ def _do_provision(
     # @thedersi.lk sellers always get Premium regardless of their TheDersi plan
     if seller_email.endswith("@thedersi.lk"):
         plan_type = "premium"
+        tier = "pro"  # notify TheDersi back as "pro" so they know this seller is top-tier
         logger.info(f"[domain_thedersi] premium override for {seller_email}")
     else:
         plan_type = THEDERSI_TIER_MAP[tier]["plan_type"]
@@ -325,7 +326,7 @@ def thedersi_upgrade(data: UpgradeIn, db: Session = Depends(get_db)):
     if new_tier not in THEDERSI_TIER_MAP:
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown tier '{new_tier}'. Valid: free_forever, starter, premium",
+            detail=f"Unknown tier '{new_tier}'. Valid: free_forever, growth, pro",
         )
 
     # Look up by immutable seller ID first

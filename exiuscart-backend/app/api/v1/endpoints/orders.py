@@ -223,6 +223,8 @@ async def get_order_details(
             "items_detail": meta.items_detail,
         }
 
+    customer = db.query(Customer).filter(Customer.id == order.customer_id).first() if order.customer_id else None
+
     return {
         "id": order.id,
         "order_number": order.order_number,
@@ -242,6 +244,12 @@ async def get_order_details(
         "created_at": order.created_at,
         "items": enriched_items,
         "channel_meta": channel_meta,
+        "customer": {
+            "name": customer.name,
+            "email": customer.email,
+            "phone": customer.phone,
+            "address": customer.address,
+        } if customer else None,
     }
 
 

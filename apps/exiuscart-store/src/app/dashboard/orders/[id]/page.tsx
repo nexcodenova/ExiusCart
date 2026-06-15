@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, Package, Truck, DollarSign, Tag, ShoppingBag,
-  Clock, CheckCircle, XCircle, MapPin, FileText, Percent, Mail, Check,
+  ArrowLeft, Package, Truck, DollarSign, ShoppingBag,
+  FileText, Percent, Mail, Check, User, Phone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
@@ -33,6 +33,13 @@ interface ChannelMeta {
   items_detail: any[] | null;
 }
 
+interface Customer {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+}
+
 interface OrderDetails {
   id: number;
   order_number: string;
@@ -52,6 +59,7 @@ interface OrderDetails {
   created_at: string;
   items: EnrichedItem[];
   channel_meta: ChannelMeta | null;
+  customer: Customer | null;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -210,7 +218,7 @@ export default function OrderDetailsPage() {
         </h2>
         <InfoRow label="Subtotal" value={fmt(order.subtotal)} />
         {order.discount_amount > 0 && <InfoRow label="Discount" value={`-${fmt(order.discount_amount)}`} />}
-        <InfoRow label="VAT (5%)" value={fmt(order.tax_amount)} />
+        {!isTheDersi && order.tax_amount > 0 && <InfoRow label="VAT (5%)" value={fmt(order.tax_amount)} />
         <div className="flex items-center justify-between pt-2.5 mt-0.5">
           <span className="font-semibold text-foreground">Total</span>
           <span className="text-lg font-bold text-foreground">{fmt(order.total)}</span>
@@ -247,6 +255,31 @@ export default function OrderDetailsPage() {
           {order.channel_meta.delivery_note && (
             <p className="text-xs text-muted-foreground mt-3 bg-muted rounded-lg px-3 py-2">{order.channel_meta.delivery_note}</p>
           )}
+        </div>
+      )}
+
+      {/* Customer */}
+      {order.customer && (
+        <div className="bg-card border border-border rounded-2xl px-5 py-4">
+          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            <User className="w-5 h-5 text-muted-foreground" /> Customer
+          </h2>
+          {order.customer.name && <InfoRow label="Name" value={order.customer.name} />}
+          {order.customer.phone && (
+            <InfoRow label="Phone" value={
+              <a href={`tel:${order.customer.phone}`} className="text-primary hover:underline flex items-center gap-1">
+                <Phone className="w-3 h-3" />{order.customer.phone}
+              </a>
+            } />
+          )}
+          {order.customer.email && (
+            <InfoRow label="Email" value={
+              <a href={`mailto:${order.customer.email}`} className="text-primary hover:underline flex items-center gap-1">
+                <Mail className="w-3 h-3" />{order.customer.email}
+              </a>
+            } />
+          )}
+          {order.customer.address && <InfoRow label="Address" value={order.customer.address} />}
         </div>
       )}
 
