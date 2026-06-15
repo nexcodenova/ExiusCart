@@ -16,7 +16,7 @@ from app.api.v1.endpoints.channels import trigger_product_sync, trigger_product_
 
 PLAN_PRODUCT_LIMITS = {
     "free_trial": 25,
-    "thedersi_basic": 50,
+    "thedersi_basic": 25,
     "starter": 1000,
     "premium": -1,  # unlimited
 }

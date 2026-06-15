@@ -6,7 +6,7 @@ import {
   MessageCircle, Shield, AlertTriangle, Download,
   Receipt, Plus, Star, Loader2, Globe, ChevronDown,
   Coins, Lock, ShoppingBag, ExternalLink, Package,
-  GitBranch, Percent, Tag, Clock,
+  GitBranch, Percent, Tag, Clock, HardDrive,
 } from 'lucide-react';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
 
@@ -35,6 +35,7 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
       features: [
         { text: '1 Staff account',                    included: true  },
         { text: 'Up to 25 products',                  included: true  },
+        { text: '2 GB storage',                 included: true  },
         { text: 'Basic POS',                          included: true  },
         { text: '50 email invoices/month',            included: true  },
         { text: 'TheDersi order sync (50 orders/mo)', included: true  },
@@ -53,15 +54,16 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
       description: 'For growing shops ready to scale',
       badge: 'Most Popular',
       features: [
-        { text: '3 Staff accounts',                 included: true  },
-        { text: 'Up to 1,000 products',             included: true  },
-        { text: 'Full POS',                         included: true  },
-        { text: '500 email invoices/month + logo',  included: true  },
-        { text: 'Advanced analytics',               included: true  },
-        { text: '1 branch / location',              included: true  },
+        { text: '3 Staff accounts',                      included: true  },
+        { text: 'Up to 1,000 products',                  included: true  },
+        { text: '20 GB storage',                   included: true  },
+        { text: 'Full POS',                              included: true  },
+        { text: '500 email invoices/month + logo',       included: true  },
+        { text: 'Advanced analytics',                    included: true  },
+        { text: '1 branch / location',                   included: true  },
         { text: 'TheDersi order sync (1,000 orders/mo)', included: true  },
-        { text: 'Custom invoice branding',          included: false },
-        { text: 'Priority email support',           included: true  },
+        { text: 'Custom invoice branding',               included: false },
+        { text: 'Priority email support',                included: true  },
       ],
       popular: true,
     },
@@ -74,16 +76,17 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
       description: 'Full power for serious operations',
       badge: null,
       features: [
-        { text: 'Unlimited staff accounts',     included: true  },
-        { text: 'Unlimited products',           included: true  },
-        { text: 'Full POS + inventory mgmt',    included: true  },
-        { text: 'Custom invoice branding',      included: true  },
-        { text: 'Full analytics suite',         included: true  },
-        { text: 'Multiple branches',            included: true  },
+        { text: 'Unlimited staff accounts',        included: true  },
+        { text: 'Unlimited products',              included: true  },
+        { text: '75 GB storage',             included: true  },
+        { text: 'Full POS + inventory mgmt',       included: true  },
+        { text: 'Custom invoice branding',         included: true  },
+        { text: 'Full analytics suite',            included: true  },
+        { text: 'Multiple branches',               included: true  },
         { text: 'TheDersi order sync (unlimited)', included: true  },
-        { text: 'Unlimited email invoices',     included: true  },
-        { text: 'Dedicated account manager',    included: true  },
-        { text: '24/7 priority support',        included: true  },
+        { text: 'Unlimited email invoices',        included: true  },
+        { text: 'Dedicated account manager',       included: true  },
+        { text: '24/7 priority support',           included: true  },
       ],
       popular: false,
     },
@@ -281,9 +284,9 @@ export default function BillingPage() {
           {/* TheDersi plan mapping */}
           <div className="mt-4 grid sm:grid-cols-3 gap-3">
             {[
-              { dersi: 'TheDersi Free',    exius: 'Free Forever', icon: '🆓', desc: '25 products · 50 orders/mo' },
-              { dersi: 'TheDersi Growth',  exius: 'Starter',      icon: '⭐', desc: '1,000 products · 1,000 orders/mo' },
-              { dersi: 'TheDersi Premium', exius: 'Starter',      icon: '🚀', desc: '1,000 products · 1,000 orders/mo' },
+              { dersi: 'TheDersi Free',    exius: 'Free Forever', icon: '🆓', desc: '25 products · 50 orders/mo · 2GB storage' },
+              { dersi: 'TheDersi Growth',  exius: 'Starter',      icon: '⭐', desc: '1,000 products · 1,000 orders/mo · 20GB storage' },
+              { dersi: 'TheDersi Premium', exius: 'Starter',      icon: '🚀', desc: '1,000 products · 1,000 orders/mo · 20GB storage' },
             ].map((row) => (
               <div key={row.dersi} className="bg-card border border-border rounded-xl p-3 text-sm">
                 <p className="text-muted-foreground text-xs">{row.dersi}</p>
@@ -422,7 +425,9 @@ export default function BillingPage() {
                 <ul className="space-y-3 mb-6">
                   {plan.features.map((f, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm">
-                      {f.included
+                      {f.text.includes('storage')
+                        ? <HardDrive className="w-4 h-4 text-blue-500 shrink-0" />
+                        : f.included
                         ? <Check className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
                         : <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />}
                       <span className={f.included ? 'text-foreground' : 'text-muted-foreground'}>{f.text}</span>

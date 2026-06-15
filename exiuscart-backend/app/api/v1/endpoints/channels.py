@@ -144,6 +144,7 @@ def _product_payload(product: Product, currency: str, channel_type: str, channel
         "quantity": total_stock,
         "sku": product.sku or "",
         "image_url": product.image_url or "",
+        "image_urls": [img.url for img in (product.images or []) if img.url][:4] or ([product.image_url] if product.image_url else []),
         "category": category_name,
         "status": status,
         "variants": variants,

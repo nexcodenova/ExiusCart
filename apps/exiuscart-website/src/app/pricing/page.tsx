@@ -154,7 +154,7 @@ export default function PricingPage() {
                 Included
               </p>
               <ul className="space-y-3">
-                {['25 products', '50 orders / month', '100 customers', '1 user account', 'Basic POS & Invoicing', 'VAT invoicing (5%)'].map((f) => (
+                {['25 products', '2 GB storage', '50 orders / month', '100 customers', '1 user account', 'Basic POS & Invoicing', 'VAT invoicing (5%)'].map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm text-gray-600">
                     <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                       <Check className="w-3 h-3 text-gray-500" />
@@ -206,6 +206,7 @@ export default function PricingPage() {
               <ul className="space-y-3">
                 {[
                   '1,000 products',
+                  '20 GB storage',
                   '1,000 orders / month',
                   '5,000 customers',
                   '3 user accounts',
