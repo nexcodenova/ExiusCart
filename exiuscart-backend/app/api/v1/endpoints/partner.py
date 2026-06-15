@@ -16,8 +16,11 @@ TheDersi tier → ExiusCart plan:
 import re
 import secrets
 import uuid
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from jose import jwt
