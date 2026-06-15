@@ -406,4 +406,6 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/products/${productId}/channel-category`),
   getTheDersiInfo: (shopId: string, channelId: number) =>
     api.get(`/shops/${shopId}/channels/${channelId}/thedersi-info`),
+  getTheDersiPayouts: (shopId: string, channelId: number) =>
+    api.get(`/shops/${shopId}/channels/${channelId}/thedersi-payouts`),
 };

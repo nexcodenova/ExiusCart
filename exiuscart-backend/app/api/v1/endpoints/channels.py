@@ -696,6 +696,42 @@ def get_thedersi_seller_info(
         raise HTTPException(status_code=502, detail=f"Could not reach TheDersi: {e}")
 
 
+@router.get("/shops/{shop_id}/channels/{channel_id}/thedersi-payouts")
+def get_thedersi_payouts(
+    shop_id: int,
+    channel_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Proxy call to TheDersi GET /seller/payouts.
+    Returns payout history for the seller. API key never exposed to browser.
+    """
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id,
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.is_active == True,
+        ChannelConnection.channel_type == "thedersi",
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="TheDersi connection not found")
+
+    api_url = _channel_url(conn)
+    try:
+        with httpx.Client(timeout=10) as client:
+            r = client.get(
+                f"{api_url}/seller/payouts",
+                headers={"X-Api-Key": conn.channel_api_key},
+            )
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail="TheDersi returned an error")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not reach TheDersi: {e}")
+
+
 class SetProductChannelCategory(BaseModel):
     channel_connection_id: int
     channel_category_id: str
