@@ -218,7 +218,7 @@ export default function OrderDetailsPage() {
         </h2>
         <InfoRow label="Subtotal" value={fmt(order.subtotal)} />
         {order.discount_amount > 0 && <InfoRow label="Discount" value={`-${fmt(order.discount_amount)}`} />}
-        {!isTheDersi && order.tax_amount > 0 && <InfoRow label="VAT (5%)" value={fmt(order.tax_amount)} />
+        {!isTheDersi && order.tax_amount > 0 && <InfoRow label="VAT (5%)" value={fmt(order.tax_amount)} />}
         <div className="flex items-center justify-between pt-2.5 mt-0.5">
           <span className="font-semibold text-foreground">Total</span>
           <span className="text-lg font-bold text-foreground">{fmt(order.total)}</span>
