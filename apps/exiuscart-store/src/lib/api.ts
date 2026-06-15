@@ -408,4 +408,6 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/${channelId}/thedersi-info`),
   getTheDersiPayouts: (shopId: string, channelId: number) =>
     api.get(`/shops/${shopId}/channels/${channelId}/thedersi-payouts`),
+  requestTheDersiPayout: (shopId: string, channelId: number) =>
+    api.post(`/shops/${shopId}/channels/${channelId}/thedersi-request-payout`),
 };

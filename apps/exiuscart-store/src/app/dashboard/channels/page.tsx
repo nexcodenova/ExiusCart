@@ -179,20 +179,46 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
+  const [requesting, setRequesting] = useState(false);
+  const [payoutSuccess, setPayoutSuccess] = useState('');
+  const [payoutError, setPayoutError] = useState('');
   const [error, setError] = useState('');
   const webhookUrl = `https://api.exiuscart.com/api/v1/channels/webhook/${connection.webhook_secret}`;
+
+  const loadPayouts = () => {
+    setPayoutsLoading(true);
+    channelsApi.getTheDersiPayouts(shopId, connection.id)
+      .then((r) => setPayouts(r.data ?? []))
+      .catch(() => {})
+      .finally(() => setPayoutsLoading(false));
+  };
 
   useEffect(() => {
     channelsApi.getTheDersiInfo(shopId, connection.id)
       .then((r) => setInfo(r.data))
       .catch(() => setError('Could not load earnings data from TheDersi.'))
       .finally(() => setLoading(false));
-
-    channelsApi.getTheDersiPayouts(shopId, connection.id)
-      .then((r) => setPayouts(r.data ?? []))
-      .catch(() => {})
-      .finally(() => setPayoutsLoading(false));
+    loadPayouts();
   }, [shopId, connection.id]);
+
+  const handleRequestPayout = async () => {
+    setRequesting(true);
+    setPayoutError('');
+    setPayoutSuccess('');
+    try {
+      const r = await channelsApi.requestTheDersiPayout(shopId, connection.id);
+      const amount = r.data?.requested_amount;
+      const currency = r.data?.currency ?? info?.currency ?? 'LKR';
+      setPayoutSuccess(`Payout request submitted — ${currency} ${fmt(amount)}. TheDersi will process it on your next payout date.`);
+      loadPayouts();
+    } catch (err: any) {
+      setPayoutError(err?.response?.data?.detail ?? 'Could not submit payout request. Try again.');
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const hasPending = payouts.some((p) => p.status === 'pending');
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -263,6 +289,31 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
               </div>
             </div>
 
+            {/* Request Payout button */}
+            {payoutSuccess && (
+              <div className="bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />{payoutSuccess}
+              </div>
+            )}
+            {payoutError && (
+              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-xl px-4 py-3">
+                {payoutError}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleRequestPayout}
+              disabled={requesting || (info?.available_amount ?? 0) <= 0 || hasPending}
+              className="w-full py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {requesting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {hasPending
+                ? '⏳ Payout Request Pending'
+                : (info?.available_amount ?? 0) <= 0
+                ? 'No Balance Available'
+                : `Request Payout — ${info?.currency} ${fmt(info?.available_amount ?? 0)}`}
+            </button>
+
             {/* Plan / Schedule / Next payout */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-muted/40 rounded-lg p-3 flex items-start gap-2.5">
@@ -326,20 +377,26 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
                         <tr key={p.reference} className="hover:bg-muted/30 transition">
                           <td className="px-4 py-3 font-mono text-xs text-foreground">{p.reference}</td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">
-                            {new Date(p.period_start).toLocaleDateString('en-LK', { day: 'numeric', month: 'short' })}
-                            {' – '}
-                            {new Date(p.period_end).toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {p.period_start && p.period_end ? (
+                              <>
+                                {new Date(p.period_start).toLocaleDateString('en-LK', { day: 'numeric', month: 'short' })}
+                                {' – '}
+                                {new Date(p.period_end).toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </>
+                            ) : (
+                              new Date(p.date).toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' })
+                            )}
                           </td>
                           <td className="px-4 py-3 font-semibold text-foreground">
                             {info.currency} {fmt(p.amount)}
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                               p.status === 'paid'
                                 ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                                 : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                             }`}>
-                              {p.status}
+                              {p.status === 'paid' ? '✅ Paid' : '⏳ Processing'}
                             </span>
                           </td>
                         </tr>
