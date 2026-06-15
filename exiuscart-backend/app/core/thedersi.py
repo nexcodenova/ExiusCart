@@ -48,6 +48,24 @@ def _hmac_signature(body: str) -> str:
     ).hexdigest()
 
 
+def verify_thedersi_signature(body: bytes, x_signature: str) -> bool:
+    """
+    Verify the X-Signature header on incoming webhooks from TheDersi.
+    Returns True if valid, or if THEDERSI_HMAC_SECRET is not configured (dev mode).
+    Always use hmac.compare_digest to prevent timing attacks.
+    """
+    if not THEDERSI_HMAC_SECRET:
+        return True  # secret not configured — allow through (dev/staging)
+    if not x_signature or not x_signature.startswith("sha256="):
+        return False
+    expected = "sha256=" + hmac.new(
+        THEDERSI_HMAC_SECRET.encode("utf-8"),
+        body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, x_signature)
+
+
 def notify_thedersi(seller_id: str, plan: str, event: str = "plan_update") -> None:
     """
     Call TheDersi's webhook to notify them of a plan or limit event.

@@ -18,12 +18,12 @@ import httpx
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Header
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Header, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db, SessionLocal
-from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi
+from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -425,19 +425,30 @@ def manual_sync(
 # ── Webhook receiver — channels call this when orders are placed ──────────────
 
 @router.post("/channels/webhook/{webhook_secret}")
-def receive_order_webhook(
+async def receive_order_webhook(
     webhook_secret: str,
-    payload: ChannelOrderWebhook,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """
     Called by TheDersi (or any channel) when a buyer places an order.
     The webhook_secret in the URL identifies which shop and authenticates the call.
+    X-Signature (HMAC-SHA256) is verified if THEDERSI_HMAC_SECRET is configured.
     ExiusCart:
       1. Creates/finds the customer
       2. Creates the order
       3. Decreases inventory for each item
     """
+    body = await request.body()
+    x_sig = request.headers.get("X-Signature", "")
+    if not verify_thedersi_signature(body, x_sig):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        payload = ChannelOrderWebhook.model_validate_json(body)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Invalid webhook payload")
+
     conn = db.query(ChannelConnection).filter(
         ChannelConnection.webhook_secret == webhook_secret,
         ChannelConnection.is_active == True,
@@ -837,17 +848,27 @@ def _require_partner_key(x_partner_key: str = Header(..., alias="X-Partner-Key")
 
 
 @router.patch("/channels/product-status", dependencies=[Depends(_require_partner_key)])
-def update_product_channel_status(
-    payload: ProductStatusCallback,
+async def update_product_channel_status(
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """
     Called by TheDersi admin panel when a product is approved or rejected.
+    Verified by both X-Partner-Key header and HMAC-SHA256 X-Signature.
     Updates the product's channel status in ExiusCart so the seller can see:
       🟡 Pending review on TheDersi
       ✅ Live on TheDersi
       ❌ Rejected on TheDersi
     """
+    body = await request.body()
+    x_sig = request.headers.get("X-Signature", "")
+    if not verify_thedersi_signature(body, x_sig):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        payload = ProductStatusCallback.model_validate_json(body)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Invalid payload")
     if payload.status not in ("approved", "rejected"):
         raise HTTPException(status_code=400, detail="status must be 'approved' or 'rejected'")
 
