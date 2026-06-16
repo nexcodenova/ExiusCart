@@ -13,11 +13,11 @@ interface CurrencyContextValue {
 }
 
 const CurrencyContext = createContext<CurrencyContextValue>({
-  currency: 'USD',
+  currency: 'LKR',
   setCurrency: () => {},
-  fmt: (n) => `$${n}`,
-  sym: '$',
-  flag: '🌍',
+  fmt: (n) => `LKR ${n}`,
+  sym: 'LKR',
+  flag: 'LKR',
 });
 
 export function useCurrency() {
@@ -36,7 +36,7 @@ function flagFor(c: Currency) {
 }
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [currency, setCurrencyState] = useState<Currency>('USD');
+  const [currency, setCurrencyState] = useState<Currency>('LKR');
 
   useEffect(() => {
     const saved = localStorage.getItem('billing_currency') as Currency | null;
@@ -45,7 +45,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     } else {
       const country = localStorage.getItem('user_country') || '';
       if (country === 'AE') setCurrencyState('AED');
-      else if (country === 'LK') setCurrencyState('LKR');
+      else setCurrencyState('LKR'); // default for TheDersi sellers (Sri Lanka)
     }
   }, []);
 
