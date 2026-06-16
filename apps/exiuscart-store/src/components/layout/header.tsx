@@ -6,9 +6,10 @@ import { Bell, Search, Menu, User, Sun, Moon, GitBranch, ChevronDown } from 'luc
 import { useTheme } from '@/components/providers/theme-provider';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
 
-const REGIONS: { currency: Currency; flag: string; label: string; country: string }[] = [
-  { currency: 'AED', flag: '🇦🇪', label: 'AED — UAE',           country: 'AE'    },
-  { currency: 'USD', flag: '🌍',   label: 'USD — International', country: 'OTHER' },
+const REGIONS: { currency: Currency; flag: string }[] = [
+  { currency: 'LKR', flag: '🇱🇰' },
+  { currency: 'AED', flag: '🇦🇪' },
+  { currency: 'USD', flag: '🌍'   },
 ];
 
 interface HeaderProps {
@@ -92,7 +93,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Currency / Region Switcher */}
         <div ref={dropRef} className="relative">
           <button type="button" onClick={() => setShowCurrencyDrop(!showCurrencyDrop)}
-            title="Change pricing region"
+            title="Change currency"
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition">
             <span className="text-base leading-none">{flag}</span>
             <span>{currency}</span>
@@ -100,26 +101,19 @@ export function Header({ onMenuClick }: HeaderProps) {
           </button>
 
           {showCurrencyDrop && (
-            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 w-60 overflow-hidden">
+            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 w-40 overflow-hidden">
               <div className="px-3 py-2 border-b border-border">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pricing Region</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Changes prices across all pages</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Currency</p>
               </div>
               {REGIONS.map(r => (
                 <button key={r.currency} type="button"
                   onClick={() => { setCurrency(r.currency); setShowCurrencyDrop(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted transition text-left ${currency === r.currency ? 'text-primary font-medium bg-primary/5' : 'text-foreground'}`}>
-                  <span className="text-xl">{r.flag}</span>
-                  <span className="flex-1">{r.label}</span>
+                  <span className="text-lg">{r.flag}</span>
+                  <span className="flex-1 font-medium">{r.currency}</span>
                   {currency === r.currency && <span className="w-2 h-2 rounded-full bg-primary" />}
                 </button>
               ))}
-              <div className="px-3 py-2.5 border-t border-border bg-muted/30">
-                <Link href="/dashboard/billing" onClick={() => setShowCurrencyDrop(false)}
-                  className="text-xs text-primary hover:underline">
-                  View subscription plans →
-                </Link>
-              </div>
             </div>
           )}
         </div>

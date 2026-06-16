@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
-export type Currency = 'AED' | 'USD';
+export type Currency = 'AED' | 'USD' | 'LKR';
 
 interface CurrencyContextValue {
   currency: Currency;
@@ -26,10 +26,12 @@ export function useCurrency() {
 
 function symFor(c: Currency) {
   if (c === 'AED') return 'AED';
-  return 'USD';
+  if (c === 'LKR') return 'LKR';
+  return '$';
 }
 function flagFor(c: Currency) {
   if (c === 'AED') return '🇦🇪';
+  if (c === 'LKR') return '🇱🇰';
   return '🌍';
 }
 
@@ -38,11 +40,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('billing_currency') as Currency | null;
-    if (saved && ['AED', 'USD'].includes(saved)) {
+    if (saved && (['AED', 'USD', 'LKR'] as string[]).includes(saved)) {
       setCurrencyState(saved as Currency);
     } else {
       const country = localStorage.getItem('user_country') || '';
       if (country === 'AE') setCurrencyState('AED');
+      else if (country === 'LK') setCurrencyState('LKR');
     }
   }, []);
 
@@ -50,7 +53,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     function onStorage(e: StorageEvent) {
       if (e.key === 'billing_currency' && e.newValue) {
         const v = e.newValue as Currency;
-        if (['AED', 'USD'].includes(v)) setCurrencyState(v as Currency);
+        if ((['AED', 'USD', 'LKR'] as string[]).includes(v)) setCurrencyState(v as Currency);
       }
     }
     window.addEventListener('storage', onStorage);
@@ -60,7 +63,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const setCurrency = useCallback((c: Currency) => {
     setCurrencyState(c);
     localStorage.setItem('billing_currency', c);
-    const countryMap: Record<Currency, string> = { AED: 'AE', USD: 'OTHER' };
+    const countryMap: Record<Currency, string> = { AED: 'AE', USD: 'OTHER', LKR: 'LK' };
     localStorage.setItem('user_country', countryMap[c]);
     window.dispatchEvent(new StorageEvent('storage', { key: 'billing_currency', newValue: c }));
   }, []);
@@ -71,6 +74,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       maximumFractionDigits: decimals,
     });
     if (currency === 'USD') return `$${n}`;
+    if (currency === 'LKR') return `LKR ${n}`;
     return `AED ${n}`;
   }, [currency]);
 
