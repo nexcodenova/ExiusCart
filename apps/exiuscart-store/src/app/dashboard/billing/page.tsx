@@ -14,11 +14,17 @@ import { useCurrency, type Currency } from '@/components/providers/currency-prov
 const CURRENCY_META: Record<Currency, { symbol: string; flag: string; country: string; paymentNote: string }> = {
   AED: { symbol: 'AED', flag: '🇦🇪', country: 'United Arab Emirates', paymentNote: 'UAE bank cards only (Visa / Mastercard issued in UAE)' },
   USD: { symbol: 'USD', flag: '🌍',   country: 'International',        paymentNote: 'International Visa / Mastercard accepted' },
+  LKR: { symbol: 'LKR', flag: '🇱🇰', country: 'Sri Lanka',            paymentNote: 'Sri Lanka bank cards accepted' },
+  EUR: { symbol: 'EUR', flag: '🇪🇺', country: 'Europe',               paymentNote: 'European Visa / Mastercard accepted' },
+  INR: { symbol: 'INR', flag: '🇮🇳', country: 'India',                paymentNote: 'Indian Visa / Mastercard / UPI accepted' },
 };
 
 const PLAN_PRICING: Record<Currency, { starter: number; premium: number; extraStaff: number }> = {
-  AED: { starter: 69,  premium: 149, extraStaff: 25 },
-  USD: { starter: 19,  premium: 39,  extraStaff: 7  },
+  AED: { starter: 69,   premium: 149,  extraStaff: 25  },
+  USD: { starter: 19,   premium: 39,   extraStaff: 7   },
+  LKR: { starter: 5800, premium: 12500, extraStaff: 2100 },
+  EUR: { starter: 18,   premium: 36,   extraStaff: 6   },
+  INR: { starter: 1599, premium: 3299, extraStaff: 599 },
 };
 
 const makePlans = (currency: Currency, fmt: (n: number) => string) => {
