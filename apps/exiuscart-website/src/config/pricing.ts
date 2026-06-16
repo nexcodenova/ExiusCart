@@ -61,13 +61,13 @@ export const plans: Plan[] = [
 export const pricing: Record<CurrencyCode, Record<string, PlanPricing>> = {
   AED: {
     free_trial: { monthly: 0, yearly: 0 },
-    starter:    { monthly: 69,  yearly: 699  },
-    premium:    { monthly: 149, yearly: 1499 },
+    starter:    { monthly: 45,  yearly: 459  },
+    premium:    { monthly: 99,  yearly: 999  },
   },
   USD: {
     free_trial: { monthly: 0, yearly: 0 },
-    starter:    { monthly: 19, yearly: 190 },
-    premium:    { monthly: 39, yearly: 390 },
+    starter:    { monthly: 12, yearly: 120 },
+    premium:    { monthly: 29, yearly: 290 },
   },
 };
 

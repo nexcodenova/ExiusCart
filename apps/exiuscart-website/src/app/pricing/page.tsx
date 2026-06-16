@@ -39,7 +39,7 @@ const faqs = [
   },
   {
     q: 'Do UAE and international users pay different prices?',
-    a: 'Yes. UAE users pay in AED (Starter AED 69/mo, Premium AED 149/mo). International users pay in USD (Starter $19/mo, Premium $39/mo). Prices are shown automatically based on your location.',
+    a: 'Yes. UAE users pay in AED (Starter AED 45/mo, Premium AED 99/mo). International users pay in USD (Starter $12/mo, Premium $29/mo). Prices are shown automatically based on your location.',
   },
   {
     q: 'Is VAT invoicing available on the free trial?',
