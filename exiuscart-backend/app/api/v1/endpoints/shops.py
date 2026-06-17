@@ -167,8 +167,16 @@ def get_shop_subscription(
         cat = PLAN_CATALOGUE.get(sub.plan_type, {})
         now = datetime.now(timezone.utc)
         expires = sub.expires_at
-        days_left = (expires.replace(tzinfo=timezone.utc) - now).days if expires else None
-        # Derive source: TheDersi-provisioned accounts have promo_code "partner_thedersi"
+        days_left = None
+        if expires:
+            exp_utc = expires if expires.tzinfo else expires.replace(tzinfo=timezone.utc)
+            days_left = (exp_utc - now).days
+
+        # Auto-expire trial subscriptions when their time is up
+        if sub.status == "trial" and days_left is not None and days_left < 0:
+            sub.status = "expired"
+            db.commit()
+
         source = "thedersi" if sub.promo_code in ("partner_thedersi", "domain_thedersi") else "exiuscart"
         plan_info = {
             "plan_type": sub.plan_type,
@@ -176,12 +184,14 @@ def get_shop_subscription(
             "name": cat.get("name", sub.plan_type.replace("_", " ").title()),
             "price": cat.get("price", float(sub.amount_paid or 0)),
             "status": sub.status,
+            "is_trial": sub.plan_type == "free_trial" and sub.status == "trial",
+            "is_expired": sub.status == "expired",
             "nextBilling": expires.isoformat() if expires else None,
             "staffIncluded": cat.get("staff", 1),
             "extraStaff": 0,
             "extraStaffCost": 0,
             "staffUsed": 1,
-            "daysLeft": days_left,
+            "daysLeft": max(0, days_left) if days_left is not None else None,
         }
 
     # History: all subscriptions for this shop as billing events

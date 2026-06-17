@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ShopSidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
+import { TrialBanner } from '@/components/layout/trial-banner';
 import { CurrencyProvider } from '@/components/providers/currency-provider';
 
 export default function DashboardLayout({
@@ -43,6 +44,7 @@ export default function DashboardLayout({
           }`}
         >
           <Header onMenuClick={() => setMobileMenuOpen(true)} />
+          <TrialBanner />
           <main className="p-4 lg:p-6">{children}</main>
         </div>
         <MobileBottomNav />
