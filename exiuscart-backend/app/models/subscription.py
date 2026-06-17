@@ -8,6 +8,7 @@ import enum
 class PlanType(str, enum.Enum):
     FREE_TRIAL = "free_trial"
     THEDERSI_BASIC = "thedersi_basic"
+    THEDERSI_PRO = "thedersi_pro"
     STARTER = "starter"
     PREMIUM = "premium"
 

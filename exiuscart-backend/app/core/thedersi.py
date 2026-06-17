@@ -23,17 +23,18 @@ THEDERSI_WEBHOOK_URL = os.getenv(
 THEDERSI_TIER_MAP: dict = {
     "free_forever": {"plan_type": "thedersi_basic"},
     "free":         {"plan_type": "thedersi_basic"},
-    "growth":       {"plan_type": "starter"},   # TheDersi Growth plan
-    "premium":      {"plan_type": "starter"},   # TheDersi Premium plan
-    "starter":      {"plan_type": "starter"},   # backward compat
-    "pro":          {"plan_type": "starter"},   # backward compat
-    "standard":     {"plan_type": "starter"},   # backward compat
+    "growth":       {"plan_type": "starter"},      # TheDersi Growth plan
+    "premium":      {"plan_type": "starter"},      # TheDersi Premium plan
+    "starter":      {"plan_type": "starter"},      # backward compat
+    "pro":          {"plan_type": "thedersi_pro"}, # TheDersi Pro — starter features, unlimited orders
+    "standard":     {"plan_type": "starter"},      # backward compat
 }
 
 # Monthly order limits per plan (None = unlimited)
 MONTHLY_ORDER_LIMITS: dict = {
     "thedersi_basic": 50,
     "starter":        1000,
+    "thedersi_pro":   None,  # unlimited orders
     "premium":        None,
 }
 

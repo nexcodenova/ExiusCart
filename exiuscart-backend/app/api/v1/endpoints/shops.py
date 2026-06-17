@@ -23,6 +23,7 @@ PLAN_CATALOGUE = {
     "premium":         {"name": "Premium",     "price": 149, "staff": 0},  # unlimited staff
     # TheDersi partner plans (billed through TheDersi, not ExiusCart)
     "thedersi_basic":  {"name": "Free Forever (TheDersi)", "price": 0, "staff": 1},
+    "thedersi_pro":    {"name": "Pro (TheDersi)",          "price": 0, "staff": 3},  # starter features + unlimited orders
     # Legacy names — kept for backward compat
     "pro":             {"name": "Pro",         "price": 199, "staff": 2},
     "enterprise":      {"name": "Enterprise",  "price": 399, "staff": 5},

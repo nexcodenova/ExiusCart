@@ -15,10 +15,11 @@ from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_product_sync, trigger_product_delete
 
 PLAN_PRODUCT_LIMITS = {
-    "free_trial": 25,
+    "free_trial":     25,
     "thedersi_basic": 25,
-    "starter": 1000,
-    "premium": -1,  # unlimited
+    "starter":        1000,
+    "thedersi_pro":   1000,  # same as starter
+    "premium":        -1,    # unlimited
 }
 
 
