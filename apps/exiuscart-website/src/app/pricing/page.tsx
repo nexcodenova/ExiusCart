@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowRight, Check, X, ChevronDown } from 'lucide-react';
+import { ArrowRight, Check, X, ChevronDown, Store, Users2, Puzzle, Headphones } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { useCurrency } from '@/context/currency-context';
@@ -275,6 +275,51 @@ export default function PricingPage() {
               </ul>
             </div>
 
+          </div>
+
+          {/* Enterprise / Marketplace card — Paddle style */}
+          <div className="mt-4 rounded-3xl overflow-hidden" style={{ background: '#EDEBE6' }}>
+            <div className="p-10 md:p-14 grid md:grid-cols-2 gap-12 items-center">
+              {/* Left: heading + description + button */}
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-500 block mb-4">
+                  Marketplace &amp; Enterprise
+                </span>
+                <h3 className="text-4xl md:text-5xl font-bold text-gray-900 leading-[1.1] mb-5 tracking-tight">
+                  Custom pricing
+                </h3>
+                <p className="text-gray-600 text-base leading-relaxed mb-10">
+                  Running a marketplace with multiple vendors, or a large enterprise operation?
+                  We&apos;ll build a plan around your exact needs — vendors, volume, and integrations.
+                </p>
+                <Link
+                  href="/contact"
+                  className="inline-flex items-center gap-3 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-7 py-3.5 rounded-2xl transition-all text-sm"
+                >
+                  Contact us
+                  <span className="w-6 h-6 bg-[#6B3FD9] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <ArrowRight className="w-3.5 h-3.5 text-white" />
+                  </span>
+                </Link>
+              </div>
+
+              {/* Right: feature list 2-column */}
+              <div className="grid sm:grid-cols-2 gap-5">
+                {[
+                  { icon: Store,      text: 'Custom pricing for marketplace operators with multiple vendors' },
+                  { icon: Users2,     text: 'Dedicated onboarding, setup, and success management' },
+                  { icon: Puzzle,     text: 'Custom integrations tailored to your business model' },
+                  { icon: Headphones, text: 'Priority support with a dedicated account manager' },
+                ].map(({ icon: Icon, text }) => (
+                  <div key={text} className="flex items-start gap-3">
+                    <span className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0 mt-0.5 border border-black/6">
+                      <Icon className="w-4 h-4 text-gray-600" />
+                    </span>
+                    <p className="text-gray-600 text-sm leading-relaxed">{text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Trust row */}

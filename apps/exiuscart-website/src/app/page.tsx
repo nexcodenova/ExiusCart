@@ -50,10 +50,10 @@ export default function HomePage() {
 
         {/* Desktop gradient overlay */}
         <div className="absolute inset-0 hidden lg:block" style={{ background: 'linear-gradient(90deg, rgba(4,6,15,0.93) 36%, rgba(4,6,15,0.15) 65%, transparent 100%)' }} />
-        {/* Mobile gradient overlay — dark top for text, fades to reveal devices */}
+        {/* Mobile gradient overlay */}
         <div className="absolute inset-0 lg:hidden" style={{ background: 'linear-gradient(180deg, rgba(4,6,15,0.92) 45%, rgba(4,6,15,0.2) 75%, transparent 100%)' }} />
 
-        {/* Desktop text — left aligned, vertically centered */}
+        {/* Desktop text */}
         <div className="relative z-10 hidden lg:flex flex-col justify-center px-16 max-w-lg">
           <p className="text-white/50 text-sm font-medium tracking-widest uppercase mb-3">All-in-One</p>
           <h1 className="text-5xl xl:text-[3.25rem] font-bold leading-[1.1] mb-5">
@@ -83,15 +83,12 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Mobile hero — matches reference design */}
+        {/* Mobile hero */}
         <div className="relative z-10 lg:hidden flex flex-col w-full pt-6 px-5">
-          {/* Badge */}
           <div className="inline-flex items-center gap-2 self-start mb-6 px-4 py-2 rounded-full border border-[#7B4FE9]/50 bg-[#7B4FE9]/10">
             <span className="text-yellow-400 text-sm">★</span>
             <span className="text-white/80 text-sm font-medium">All-in-One Business Management</span>
           </div>
-
-          {/* Headline */}
           <h1 className="text-[2.6rem] font-extrabold leading-[1.05] mb-4">
             <span className="text-white">Everything</span>
             <br />
@@ -101,16 +98,10 @@ export default function HomePage() {
             <br />
             <span style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>In One Place.</span>
           </h1>
-
-          {/* Underline accent */}
           <div className="h-[3px] w-48 rounded-full mb-5" style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)' }} />
-
-          {/* Subtitle */}
           <p className="text-gray-400 text-base leading-relaxed mb-7">
             Manage invoicing, inventory, orders,<br />marketing &amp; more — all in one platform.
           </p>
-
-          {/* CTA Button */}
           <Link
             href="/register"
             className="flex items-center justify-between w-full text-white font-bold px-4 py-3.5 rounded-2xl mb-4 transition-all active:scale-95"
@@ -127,8 +118,6 @@ export default function HomePage() {
               <ArrowRight className="w-5 h-5" />
             </span>
           </Link>
-
-          {/* Trust line */}
           <div className="flex items-center gap-2 mb-8">
             <span className="w-6 h-6 rounded-full bg-[#7B4FE9]/20 border border-[#7B4FE9]/40 flex items-center justify-center text-xs">✓</span>
             <span className="text-gray-400 text-sm">No credit card required &nbsp;•&nbsp; Cancel anytime</span>
@@ -313,43 +302,41 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="relative overflow-hidden bg-[#080D19] py-28 px-4">
-        {/* Grid overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(107,63,217,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(107,63,217,0.04)_1px,transparent_1px)] bg-[size:64px_64px]" />
-        {/* Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6B3FD9]/10 rounded-full blur-[120px] pointer-events-none" />
-
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#6B3FD9]/10 border border-[#6B3FD9]/20 text-[#a78bfa] text-xs font-semibold px-4 py-1.5 rounded-full mb-8 tracking-wide uppercase">
-            Start for free — no credit card needed
+      {/* CTA Section — Paddle cream style */}
+      <section className="px-4 sm:px-8 py-6 bg-[#0B1121]">
+        <div
+          className="max-w-7xl mx-auto rounded-3xl px-10 py-20 lg:px-20 lg:py-24"
+          style={{ background: '#EDEBE6' }}
+        >
+          <div className="max-w-2xl">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#6B3FD9] mb-6 block">
+              Start for free
+            </span>
+            <h2 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-gray-900 leading-[1.08] tracking-tight mb-6">
+              Take the hassle out of<br />running your business.
+            </h2>
+            <p className="text-gray-500 text-lg leading-relaxed mb-10">
+              ExiusCart handles your POS, inventory, invoicing, HR, and more — so you
+              can focus on selling. 14 days free, no credit card.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-xl transition-all text-base"
+              >
+                Get started free <ArrowRight className="w-5 h-5" />
+              </Link>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-semibold px-8 py-4 rounded-xl border border-gray-300 hover:border-gray-400 transition-all text-base bg-transparent"
+              >
+                View pricing
+              </Link>
+            </div>
+            <p className="text-gray-400 text-sm mt-6">
+              14-day free trial · No credit card required · Cancel anytime
+            </p>
           </div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1] mb-6 tracking-tight">
-            Manage your business
-            <span className="block text-[#6B3FD9]">the smart way.</span>
-          </h2>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Join businesses across UAE and worldwide using ExiusCart to simplify operations,
-            track inventory, and grow faster — all in one place.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-xl transition-all text-base shadow-lg shadow-[#6B3FD9]/30"
-            >
-              Start Free Trial
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-            <Link
-              href="/demo"
-              className="inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold px-8 py-4 rounded-xl transition-all text-base"
-            >
-              Book a Demo
-            </Link>
-          </div>
-          <p className="text-gray-600 text-sm mt-6">
-            14-day free trial &nbsp;·&nbsp; No credit card required &nbsp;·&nbsp; Cancel anytime
-          </p>
         </div>
       </section>
 
