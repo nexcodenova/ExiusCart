@@ -8,11 +8,11 @@ import { PromoBanner } from '@/components/ui/promo-banner';
 import { LiveStats } from '@/components/ui/live-stats';
 
 export const metadata: Metadata = {
-  title: 'ExiusCart - Smart Business Management for Small Shops | POS, Invoicing & WhatsApp Orders',
-  description: 'All-in-one business solution for UAE shops. Create VAT invoices, track inventory, receive WhatsApp orders. Affordable one-time pricing starting from AED 499.',
+  title: 'ExiusCart - Smart Business Management for Small Shops | POS, Invoicing & Inventory',
+  description: 'All-in-one business solution for UAE shops. Create VAT invoices, track inventory, manage orders. Affordable pricing starting from AED 45/month.',
   openGraph: {
     title: 'ExiusCart - Smart Business Management for Small Shops',
-    description: 'All-in-one business solution for UAE shops. POS, invoicing, inventory & WhatsApp orders.',
+    description: 'All-in-one business solution for UAE shops. POS, invoicing, inventory & order management.',
     url: 'https://exiuscart.com',
     siteName: 'ExiusCart',
     type: 'website',
@@ -290,14 +290,21 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Featured: TheDersi */}
-          <div className="max-w-3xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
             <TestimonialCard
               name="TheDersi"
               business="Sri Lankan Fashion Marketplace"
               location="Sri Lanka · #1 Fashion Platform"
               rating={5}
               text="TheDersi is Sri Lanka's leading fashion marketplace. Our sellers rely on ExiusCart to manage their products, inventory, and orders — all in one place. It has made running a multi-seller marketplace seamless and efficient."
+              featured
+            />
+            <TestimonialCard
+              name="North Veltrix"
+              business="Premium Hoodie & Streetwear Brand"
+              location="Shopify Store · Trending Brand"
+              rating={5}
+              text="Switched to ExiusCart and our inventory management became a breeze. We track every hoodie drop, manage stock across variants, and process orders faster than ever. It's exactly what a growing streetwear brand needs."
               featured
             />
           </div>
@@ -307,23 +314,41 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 bg-[#0D1526]">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to simplify your business?
+      <section className="relative overflow-hidden bg-[#080D19] py-28 px-4">
+        {/* Grid overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(107,63,217,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(107,63,217,0.04)_1px,transparent_1px)] bg-[size:64px_64px]" />
+        {/* Glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6B3FD9]/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="relative max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-[#6B3FD9]/10 border border-[#6B3FD9]/20 text-[#a78bfa] text-xs font-semibold px-4 py-1.5 rounded-full mb-8 tracking-wide uppercase">
+            Start for free — no credit card needed
+          </div>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1] mb-6 tracking-tight">
+            Manage your business
+            <span className="block text-[#6B3FD9]">the smart way.</span>
           </h2>
-          <p className="text-gray-400 mb-10">
-            Join businesses across UAE and worldwide using ExiusCart to manage their daily operations.
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Join businesses across UAE and worldwide using ExiusCart to simplify operations,
+            track inventory, and grow faster — all in one place.
           </p>
-          <Link
-            href="/register"
-            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-10 py-4 rounded-lg transition-all text-lg"
-          >
-            Start Free Trial
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-          <p className="text-gray-600 text-sm mt-4">
-            14-day free trial · No credit card required
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/register"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-xl transition-all text-base shadow-lg shadow-[#6B3FD9]/30"
+            >
+              Start Free Trial
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+            <Link
+              href="/demo"
+              className="inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold px-8 py-4 rounded-xl transition-all text-base"
+            >
+              Book a Demo
+            </Link>
+          </div>
+          <p className="text-gray-600 text-sm mt-6">
+            14-day free trial &nbsp;·&nbsp; No credit card required &nbsp;·&nbsp; Cancel anytime
           </p>
         </div>
       </section>

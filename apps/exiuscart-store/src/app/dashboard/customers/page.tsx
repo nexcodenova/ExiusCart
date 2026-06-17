@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, User, Phone, Mail, MapPin, MessageCircle, Edit, Trash2, X, Users, ShoppingBag, Star } from 'lucide-react';
+import { Search, Plus, User, Phone, Mail, MapPin, Edit, Trash2, X, Users, ShoppingBag, Star } from 'lucide-react';
 import { customersApi } from '@/lib/api';
 
 interface Customer {
@@ -164,11 +164,6 @@ export default function CustomersPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {customer.phone && (
-                      <a href={`https://wa.me/${customer.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" aria-label="WhatsApp" className="p-2 hover:bg-green-500/10 rounded-lg text-muted-foreground hover:text-green-600 transition">
-                        <MessageCircle className="w-4 h-4" />
-                      </a>
-                    )}
                     <button type="button" onClick={() => { setEditingCustomer(customer); setShowAddModal(true); }} aria-label={`Edit ${customer.name}`} className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition">
                       <Edit className="w-4 h-4" />
                     </button>
@@ -234,7 +229,7 @@ function CustomerModal({ customer, onClose, onSave }: {
             <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Ahmad Ali" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
           </div>
           <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">Phone / WhatsApp</label>
+            <label className="text-sm text-muted-foreground mb-1.5 block">Phone</label>
             <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+971 50 123 4567" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
           </div>
           <div>

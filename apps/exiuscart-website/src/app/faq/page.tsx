@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, HelpCircle, MessageCircle, ArrowRight } from 'lucide-react';
+import { ChevronDown, HelpCircle, ArrowRight } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 
@@ -12,7 +12,7 @@ const faqCategories = [
     faqs: [
       {
         question: 'What is ExiusCart?',
-        answer: 'ExiusCart is an all-in-one business management platform designed for UAE small businesses. It combines point of sale (POS), inventory management, VAT-compliant invoicing, customer management, and WhatsApp ordering capabilities in one easy-to-use system.',
+        answer: 'ExiusCart is an all-in-one business management platform designed for UAE small businesses. It combines point of sale (POS), inventory management, VAT-compliant invoicing, customer management, and order management in one easy-to-use system.',
       },
       {
         question: 'How do I sign up for ExiusCart?',
@@ -96,7 +96,7 @@ const faqCategories = [
     faqs: [
       {
         question: 'How can I get support?',
-        answer: 'We offer multiple support channels: WhatsApp chat (fastest), email support, and phone support during business hours. Premium plan includes priority support with faster response times.',
+        answer: 'We offer multiple support channels: email support and phone support during business hours. Premium plan includes priority support with faster response times.',
       },
       {
         question: 'Do you offer training?',
@@ -104,7 +104,7 @@ const faqCategories = [
       },
       {
         question: 'What are your support hours?',
-        answer: 'Our support team is available Sunday to Thursday, 9 AM to 6 PM (UAE time). WhatsApp support typically responds within a few hours during business days.',
+        answer: 'Our support team is available Sunday to Thursday, 9 AM to 6 PM (UAE time). Email support typically responds within a few hours during business days.',
       },
       {
         question: 'Is there documentation available?',
@@ -222,18 +222,9 @@ export default function FAQPage() {
             Still Have Questions?
           </h2>
           <p className="text-gray-400 mb-8">
-            Our support team is here to help. Reach out via WhatsApp for the fastest response.
+            Our support team is here to help. Reach out via email for the fastest response.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-              href="https://wa.me/971562393573?text=Hi%2C%20I%20have%20a%20question%20about%20ExiusCart"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold px-8 py-4 rounded-lg transition-all"
-            >
-              <MessageCircle className="w-5 h-5" />
-              Chat on WhatsApp
-            </a>
             <Link
               href="/contact"
               className="inline-flex items-center justify-center gap-2 bg-transparent hover:bg-white/5 text-white font-semibold px-8 py-4 rounded-lg transition-all border border-gray-700"

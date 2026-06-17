@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link';
 import type { Metadata } from 'next';
-import { ArrowRight, CheckCircle, Clock, Rocket, Sparkles, Target, Calendar, MessageCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle, Clock, Rocket, Sparkles, Target, Calendar } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 
@@ -171,11 +171,6 @@ export default function RoadmapPage() {
               />
               <RoadmapItem
                 status="completed"
-                title="WhatsApp Order Management"
-                description="Receive and manage customer orders directly through WhatsApp."
-              />
-              <RoadmapItem
-                status="completed"
                 title="Advanced Reporting Dashboard"
                 description="New sales analytics with charts, graphs, and PDF/Excel export."
               />
@@ -202,15 +197,13 @@ export default function RoadmapPage() {
             Tell us what features would help your business the most.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-              href="https://wa.me/971562393573?text=Hi!%20I%20have%20a%20feature%20request%20for%20ExiusCart"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold px-8 py-4 rounded-lg transition-all"
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5a32b3] text-white font-semibold px-8 py-4 rounded-lg transition-all"
             >
-              <MessageCircle className="w-5 h-5" />
-              Request via WhatsApp
-            </a>
+              Send a Feature Request
+              <ArrowRight className="w-5 h-5" />
+            </Link>
             <Link
               href="/changelog"
               className="inline-flex items-center justify-center gap-2 bg-transparent hover:bg-white/5 text-white font-semibold px-8 py-4 rounded-lg transition-all border border-gray-700"

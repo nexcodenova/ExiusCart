@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, ShoppingCart, FileText, Users, Package, Boxes,
   Truck, Store, ClipboardList, BookOpen, Wallet, BarChart3,
-  Settings, LogOut, ChevronLeft, X, CreditCard, MessageCircle,
+  Settings, LogOut, ChevronLeft, X, CreditCard,
   UserCheck, Paintbrush, GitBranch, Shield, ChevronDown,
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
@@ -79,7 +79,6 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/dashboard/email-marketing',   label: 'Email Marketing', icon: Mail           },
       { href: '/dashboard/sms-marketing',    label: 'SMS Marketing',   icon: MessageSquare  },
-      { href: '/dashboard/whatsapp',         label: 'WhatsApp',        icon: MessageCircle  },
       { href: '/dashboard/events',           label: 'Events',          icon: Calendar       },
       { href: '/dashboard/surveys',          label: 'Surveys',         icon: ClipboardCheck },
       { href: '/dashboard/ai-seo',           label: 'AI SEO Tools',    icon: Sparkles       },

@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Percent,
-  Receipt, Printer, MessageCircle, Check, ShoppingCart, Package,
+  Receipt, Printer, Check, ShoppingCart, Package,
   User, Download, Scan, Zap, Loader2,
 } from 'lucide-react';
 import { generateInvoicePDF, generateThermalReceipt } from '@/lib/invoice-generator';
@@ -266,36 +266,6 @@ export default function POSPage() {
 
   const handlePrintReceipt = () => {
     generateThermalReceipt(getInvoiceData());
-  };
-
-  const handleShareWhatsApp = () => {
-    if (!customerPhone) {
-      alert('No customer phone number provided');
-      return;
-    }
-
-    const message = `
-🧾 *Invoice from ${shopData?.name || 'Our Shop'}*
-
-📋 Order #${orderNumber}
-📅 ${new Date().toLocaleDateString('en-AE')}
-
-*Items:*
-${cart.map((item) => `• ${item.name} x${item.quantity} - ${(item.price * item.quantity).toFixed(2)} ${currency}`).join('\n')}
-
-💰 Subtotal: ${subtotal.toFixed(2)} ${currency}
-${discountAmount > 0 ? `🏷️ Discount: -${discountAmount.toFixed(2)} ${currency}\n` : ''}📊 VAT (5%): ${vatAmount.toFixed(2)} ${currency}
-━━━━━━━━━━━━━━━
-*Total: ${total.toFixed(2)} ${currency}*
-━━━━━━━━━━━━━━━
-
-Paid via: ${paymentMethod === 'tamara' ? 'Tamara' : paymentMethod === 'tabby' ? 'Tabby' : paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}
-
-Thank you for shopping with us! 🙏
-    `.trim();
-
-    const whatsappUrl = `https://wa.me/${customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
   };
 
   const handleNewSale = () => {
@@ -806,14 +776,6 @@ Thank you for shopping with us! 🙏
                 >
                   <Printer className="w-5 h-5" />
                   <span className="text-sm font-medium">Thermal</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShareWhatsApp}
-                  className="flex items-center justify-center gap-2 py-3 px-4 bg-green-500/10 rounded-lg text-green-600 dark:text-green-400 hover:bg-green-500/20 transition"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  <span className="text-sm font-medium">WhatsApp</span>
                 </button>
               </div>
 

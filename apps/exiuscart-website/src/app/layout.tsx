@@ -18,8 +18,8 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   title: 'ExiusCart - Smart Multi-Shop Business System',
   description:
-    'UAE-focused POS + WhatsApp Orders + Inventory Management Platform',
-  keywords: ['POS', 'Point of Sale', 'UAE', 'WhatsApp Orders', 'Inventory'],
+    'UAE-focused POS + Inventory Management Platform for small businesses',
+  keywords: ['POS', 'Point of Sale', 'UAE', 'Inventory', 'Invoicing'],
 };
 
 export default function RootLayout({

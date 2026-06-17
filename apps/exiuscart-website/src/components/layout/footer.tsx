@@ -1,247 +1,158 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 import Image from 'next/image';
-import { MessageCircle, Instagram, Facebook, Linkedin, Mail, MapPin } from 'lucide-react';
+import { Instagram, Facebook, Linkedin, Twitter } from 'lucide-react';
+
+const NAV = [
+  {
+    heading: 'Product',
+    links: [
+      { label: 'Features',     href: '/features'     },
+      { label: 'Pricing',      href: '/pricing'      },
+      { label: 'Integrations', href: '/integrations' },
+      { label: 'Changelog',    href: '/changelog'    },
+      { label: 'Roadmap',      href: '/roadmap'      },
+    ],
+  },
+  {
+    heading: 'Solutions',
+    links: [
+      { label: 'Marketplace',           href: '/industries'    },
+      { label: 'Shopify & Custom Sites', href: '/integrations'},
+      { label: 'Physical Shops',        href: '/industries'   },
+      { label: 'POS & Invoicing',       href: '/features/pos' },
+      { label: 'Inventory',      href: '/features/inventory'  },
+      { label: 'Reports',        href: '/features/reports'    },
+      { label: 'All Industries', href: '/industries'          },
+    ],
+  },
+  {
+    heading: 'Resources',
+    links: [
+      { label: 'Blog',       href: '/blog'      },
+      { label: 'FAQ',        href: '/faq'       },
+      { label: 'Partners',   href: '/partners'  },
+      { label: 'Affiliates', href: '/affiliate' },
+    ],
+  },
+  {
+    heading: 'Support',
+    links: [
+      { label: 'Contact Us',            href: '/contact'                        },
+      { label: 'support@exiuscart.com', href: 'mailto:support@exiuscart.com'   },
+    ],
+  },
+  {
+    heading: 'Company',
+    links: [
+      { label: 'About',       href: '/about'                    },
+      { label: 'Careers',     href: '/careers'                  },
+      { label: 'NexCodeNova', href: 'https://nexcodenova.com'  },
+    ],
+  },
+  {
+    heading: 'Legal',
+    links: [
+      { label: 'Privacy Policy',   href: '/privacy'       },
+      { label: 'Terms of Service', href: '/terms'         },
+      { label: 'Refund Policy',    href: '/refund-policy' },
+    ],
+  },
+];
 
 export function Footer() {
   return (
-    <footer className="bg-[#080D19] border-t border-gray-800/50">
-      <div className="max-w-7xl mx-auto px-4 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-8 mb-12">
-          {/* Brand */}
-          <div className="col-span-2">
-            <Link href="/" className="inline-flex items-center gap-2 mb-4">
-              <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} />
-              <span className="text-xl font-bold text-white tracking-tight">
-                <span className="text-[#6B3FD9]">Exius</span>Cart
-              </span>
-            </Link>
-            <p className="text-gray-500 text-sm leading-relaxed max-w-xs mb-6">
-              All-in-one business management solution for UAE small businesses.
-              Invoicing, inventory, and WhatsApp orders made simple.
-            </p>
+    <footer className="bg-[#060A14] border-t border-white/5">
+      <div className="max-w-7xl mx-auto px-6">
 
-            {/* Social Links */}
-            <div className="flex items-center gap-3">
-              <a
-                href="https://wa.me/971562393573"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 bg-[#25D366]/10 hover:bg-[#25D366]/20 rounded-lg flex items-center justify-center transition"
-                aria-label="WhatsApp"
-              >
-                <MessageCircle className="w-4 h-4 text-[#25D366]" />
-              </a>
-              <a
-                href="https://instagram.com/exiuscart"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 bg-[#E4405F]/10 hover:bg-[#E4405F]/20 rounded-lg flex items-center justify-center transition"
-                aria-label="Instagram"
-              >
-                <Instagram className="w-4 h-4 text-[#E4405F]" />
-              </a>
-              <a
-                href="https://facebook.com/exiuscart"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 bg-[#1877F2]/10 hover:bg-[#1877F2]/20 rounded-lg flex items-center justify-center transition"
-                aria-label="Facebook"
-              >
-                <Facebook className="w-4 h-4 text-[#1877F2]" />
-              </a>
-              <a
-                href="https://linkedin.com/company/nexcodenova"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 bg-[#0A66C2]/10 hover:bg-[#0A66C2]/20 rounded-lg flex items-center justify-center transition"
-                aria-label="LinkedIn"
-              >
-                <Linkedin className="w-4 h-4 text-[#0A66C2]" />
-              </a>
+        {/* Nav columns — full width */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-10 py-14">
+          {NAV.map((col) => (
+            <div key={col.heading}>
+              <p className="text-white text-xs font-semibold uppercase tracking-widest mb-5">
+                {col.heading}
+              </p>
+              <ul className="space-y-3">
+                {col.links.map((l) => (
+                  <li key={l.label}>
+                    <Link
+                      href={l.href}
+                      className="text-gray-500 hover:text-gray-200 text-sm transition-colors"
+                    >
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-
-          {/* Product */}
-          <div>
-            <h4 className="text-white font-medium mb-4 text-sm">Product</h4>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/features" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Features
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link href="/demo" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Demo
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  FAQ
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Features */}
-          <div>
-            <h4 className="text-white font-medium mb-4 text-sm">Features</h4>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/features/pos" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  POS & Invoicing
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/inventory" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Inventory
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/whatsapp-orders" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  WhatsApp Orders
-                </Link>
-              </li>
-              <li>
-                <Link href="/features/reports" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Reports
-                </Link>
-              </li>
-              <li>
-                <Link href="/integrations" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Integrations
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h4 className="text-white font-medium mb-4 text-sm">Company</h4>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/about" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Contact
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="/careers" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Careers
-                </Link>
-              </li>
-              <li>
-                <Link href="/changelog" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Changelog
-                </Link>
-              </li>
-              <li>
-                <Link href="/roadmap" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Roadmap
-                </Link>
-              </li>
-              <li>
-                <Link href="/industries" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Industries
-                </Link>
-              </li>
-              <li>
-                <Link href="/partners" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Partner Program
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h4 className="text-white font-medium mb-4 text-sm">Legal</h4>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/privacy" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="/refund-policy" className="text-gray-500 hover:text-gray-300 text-sm transition">
-                  Refund Policy
-                </Link>
-              </li>
-            </ul>
-          </div>
+          ))}
         </div>
 
-        {/* Contact Info Bar */}
-        <div className="bg-[#0B1121] rounded-xl p-4 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-6 flex-wrap justify-center">
-            <a
-              href="mailto:support@exiuscart.com"
-              className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition"
-            >
-              <Mail className="w-4 h-4 text-[#6B3FD9]" />
-              support@exiuscart.com
-            </a>
-            <a
-              href="https://wa.me/971501234567"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-gray-400 hover:text-[#25D366] text-sm transition"
-            >
-              <MessageCircle className="w-4 h-4 text-[#25D366]" />
-              +971 562393573
-            </a>
-            <span className="flex items-center gap-2 text-gray-400 text-sm">
-              <MapPin className="w-4 h-4 text-[#6B3FD9]" />
-               Dubai| Sri Lanka
+        {/* Divider */}
+        <div className="border-t border-white/5" />
+
+        {/* Logo + Socials row */}
+        <div className="flex items-center justify-between py-8">
+          <Link href="/" className="inline-flex items-center gap-2">
+            <Image src="/logo.svg" alt="ExiusCart" width={26} height={26} />
+            <span className="text-lg font-bold text-white tracking-tight">
+              <span className="text-[#6B3FD9]">Exius</span>Cart
             </span>
-          </div>
-          <Link
-            href="/register"
-            className="bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-6 py-2 rounded-lg text-sm transition whitespace-nowrap"
-          >
-            Start 7-Day Free Trial
           </Link>
+
+          <div className="flex items-center gap-3">
+            <SocialIcon href="https://linkedin.com/company/nexcodenova" aria="LinkedIn">
+              <Linkedin className="w-4 h-4" />
+            </SocialIcon>
+            <SocialIcon href="https://twitter.com/exiuscart" aria="Twitter / X">
+              <Twitter className="w-4 h-4" />
+            </SocialIcon>
+            <SocialIcon href="https://instagram.com/exiuscart" aria="Instagram">
+              <Instagram className="w-4 h-4" />
+            </SocialIcon>
+            <SocialIcon href="https://facebook.com/exiuscart" aria="Facebook">
+              <Facebook className="w-4 h-4" />
+            </SocialIcon>
+          </div>
         </div>
 
-        {/* Bottom */}
-        <div className="pt-8 border-t border-gray-800/50 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-gray-600 text-sm">
-            &copy; {new Date().getFullYear()} ExiusCart. All rights reserved.
+        {/* Divider */}
+        <div className="border-t border-white/5" />
+
+        {/* Copyright row */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-6">
+          <p className="text-gray-600 text-xs">
+            &copy; {new Date().getFullYear()} ExiusCart — a brand of{' '}
+            <span className="text-gray-500">Fairam Private Limited</span>.
+            {' '}All rights reserved.
           </p>
-          <p className="text-gray-600 text-sm">
-            A product of{' '}
+          <p className="text-gray-600 text-xs">
+            Developed by{' '}
             <a
               href="https://nexcodenova.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#6B3FD9] hover:text-[#8B5CF6] transition"
+              className="text-[#6B3FD9] hover:text-[#a78bfa] transition-colors"
             >
               NexCodeNova
             </a>
-          
           </p>
         </div>
+
       </div>
     </footer>
   );
 }
 
+function SocialIcon({ href, aria, children }: { href: string; aria: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={aria}
+      className="w-8 h-8 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition"
+    >
+      {children}
+    </a>
+  );
+}

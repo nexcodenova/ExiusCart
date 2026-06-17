@@ -43,7 +43,7 @@ const posFeatures = [
   {
     icon: Receipt,
     title: 'Instant Receipts',
-    description: 'Generate professional receipts instantly. Print, share via WhatsApp, or email directly to customers.',
+    description: 'Generate professional receipts instantly. Print or email directly to customers.',
   },
   {
     icon: Calculator,
@@ -234,7 +234,7 @@ export default function POSFeaturePage() {
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Complete Sale</h3>
               <p className="text-gray-400">
-                Choose payment method, generate receipt, and send to customer via print or WhatsApp.
+                Choose payment method, generate receipt, and send to customer via print or email.
               </p>
             </div>
           </div>

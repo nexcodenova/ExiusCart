@@ -14,8 +14,6 @@ import {
   Plus,
   FileText,
   BarChart3,
-  MessageCircle,
-  Clock,
   CreditCard,
   Banknote,
 } from 'lucide-react';
@@ -32,7 +30,6 @@ interface DashboardStats {
   cash: number;
   card: number;
   lowStockAlerts: { name: string; stock: number; min: number }[];
-  whatsappOrders: { customer: string; phone: string; items: number; time: string }[];
   recentOrders: { id: string; customer: string; amount: string; status: 'new' | 'paid' | 'completed'; time: string }[];
 }
 
@@ -101,7 +98,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Alerts & WhatsApp Row */}
+      {/* Alerts & Customers Row */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Low Stock Alert */}
         <div className="bg-card rounded-xl border border-border p-5">
@@ -132,32 +129,17 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Pending WhatsApp Orders */}
+        {/* Recent Customers */}
         <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 rounded-lg bg-green-500/10">
-              <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <Users className="w-5 h-5 text-blue-500" />
             </div>
-            <h2 className="font-semibold text-foreground">WhatsApp Orders</h2>
-            {stats?.whatsappOrders?.length ? (
-              <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                {stats.whatsappOrders.length} pending
-              </span>
-            ) : null}
+            <h2 className="font-semibold text-foreground">Customers</h2>
           </div>
-          {loading ? (
-            <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-12 bg-muted rounded-lg animate-pulse" />)}</div>
-          ) : stats?.whatsappOrders?.length ? (
-            <div className="space-y-1">
-              {stats.whatsappOrders.map((o, i) => (
-                <WhatsAppOrderItem key={i} customer={o.customer} phone={o.phone} items={o.items} time={o.time} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">No pending WhatsApp orders</p>
-          )}
-          <Link href="/dashboard/whatsapp" className="mt-4 text-sm text-primary hover:underline inline-block">
-            View all WhatsApp orders →
+          <p className="text-sm text-muted-foreground text-center py-4">Manage your customer base</p>
+          <Link href="/dashboard/customers" className="mt-4 text-sm text-primary hover:underline inline-block">
+            View all customers →
           </Link>
         </div>
       </div>
@@ -236,20 +218,6 @@ function AlertItem({ name, stock, min, critical }: { name: string; stock: number
       <span className={`text-xs font-medium px-2 py-1 rounded-full ${critical ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-warning/10 text-warning'}`}>
         {stock} left (min: {min})
       </span>
-    </div>
-  );
-}
-
-function WhatsAppOrderItem({ customer, phone, items, time }: { customer: string; phone: string; items: number; time: string }) {
-  return (
-    <div className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
-      <div>
-        <p className="text-sm font-medium text-foreground">{customer}</p>
-        <p className="text-xs text-muted-foreground">{phone} • {items} item{items > 1 ? 's' : ''}</p>
-      </div>
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Clock className="w-3.5 h-3.5" />{time}
-      </div>
     </div>
   );
 }
