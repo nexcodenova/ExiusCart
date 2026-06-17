@@ -1,8 +1,9 @@
 import re
 import uuid
+import random
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError, jwt
@@ -12,10 +13,11 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
-from app.core.email import send_welcome_email, send_thedersi_welcome_email
+from app.core.email import send_welcome_email, send_thedersi_welcome_email, send_otp_email
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
+from app.models.email_otp import EmailOTP
 from app.schemas.user import UserCreate, UserResponse, UserLogin, Token
 
 THEDERSI_STAFF_DOMAIN = "@thedersi.lk"
@@ -30,7 +32,7 @@ def _slugify(text: str) -> str:
 router = APIRouter()
 
 
-@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
@@ -91,13 +93,86 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    _email_pool.submit(send_welcome_email, new_user.email, new_user.full_name or "")
+    # TheDersi staff: auto-verified, return token immediately
+    if is_thedersi_staff:
+        _email_pool.submit(send_thedersi_welcome_email, new_user.email, new_user.full_name or "")
+        access_token = create_access_token(data={"sub": str(new_user.id)})
+        return Token(access_token=access_token, user=UserResponse.model_validate(new_user))
 
-    access_token = create_access_token(data={"sub": str(new_user.id)})
-    return Token(
-        access_token=access_token,
-        user=UserResponse.model_validate(new_user)
+    # Regular users: send OTP, require verification
+    new_user.is_verified = False
+    otp_code = f"{random.randint(100000, 999999)}"
+    otp = EmailOTP(
+        user_id=new_user.id,
+        otp_code=otp_code,
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
     )
+    db.add(otp)
+    db.commit()
+
+    _email_pool.submit(send_otp_email, new_user.email, new_user.full_name or "", otp_code)
+
+    return {"status": "otp_sent", "email": new_user.email}
+
+
+class VerifyOTPIn(BaseModel):
+    email: str
+    otp_code: str
+
+
+@router.post("/verify-otp", response_model=Token)
+def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    now = datetime.now(timezone.utc)
+    otp = (
+        db.query(EmailOTP)
+        .filter(
+            EmailOTP.user_id == user.id,
+            EmailOTP.otp_code == data.otp_code,
+            EmailOTP.is_used == False,
+            EmailOTP.expires_at > now,
+        )
+        .order_by(EmailOTP.created_at.desc())
+        .first()
+    )
+    if not otp:
+        raise HTTPException(status_code=400, detail="Invalid or expired code. Please try again.")
+
+    otp.is_used = True
+    user.is_verified = True
+    db.commit()
+    db.refresh(user)
+
+    _email_pool.submit(send_welcome_email, user.email, user.full_name or "")
+
+    access_token = create_access_token(data={"sub": str(user.id)})
+    return Token(access_token=access_token, user=UserResponse.model_validate(user))
+
+
+class ResendOTPIn(BaseModel):
+    email: str
+
+
+@router.post("/resend-otp")
+def resend_otp(data: ResendOTPIn, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
+    if not user or user.is_verified:
+        raise HTTPException(status_code=400, detail="No pending verification for this email")
+
+    otp_code = f"{random.randint(100000, 999999)}"
+    otp = EmailOTP(
+        user_id=user.id,
+        otp_code=otp_code,
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+    )
+    db.add(otp)
+    db.commit()
+
+    _email_pool.submit(send_otp_email, user.email, user.full_name or "", otp_code)
+    return {"status": "otp_sent"}
 
 
 @router.post("/login", response_model=Token)
@@ -114,6 +189,12 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated"
+        )
+
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before logging in"
         )
 
     access_token = create_access_token(data={"sub": str(user.id)})

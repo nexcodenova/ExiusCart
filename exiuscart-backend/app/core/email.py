@@ -54,6 +54,50 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
         return False
 
 
+# ── OTP email ─────────────────────────────────────────────────────────────────
+
+def send_otp_email(to: str, full_name: str, otp_code: str) -> bool:
+    first = (full_name or "there").split()[0]
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0B1121;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B1121;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#151F32;border-radius:16px;overflow:hidden;border:1px solid #1e2d47;">
+        <tr><td style="background:#0B1121;padding:24px 36px;border-bottom:1px solid #1e2d47;">
+          <span style="font-size:22px;font-weight:800;color:#fff;"><span style="color:#6B3FD9;">Exius</span>Cart</span>
+        </td></tr>
+        <tr><td style="padding:36px;color:#e2e8f0;">
+          <h2 style="margin:0 0 8px;font-size:20px;color:#fff;">Verify your email, {first}</h2>
+          <p style="margin:0 0 28px;color:#94a3b8;line-height:1.7;">
+            Enter the code below to verify your email address and activate your ExiusCart account.
+            This code expires in <strong style="color:#fff;">10 minutes</strong>.
+          </p>
+          <div style="background:#0B1121;border:1px solid #1e2d47;border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
+            <span style="font-size:40px;font-weight:800;letter-spacing:12px;color:#6B3FD9;">{otp_code}</span>
+          </div>
+          <p style="margin:0;color:#64748b;font-size:13px;">
+            If you didn't create an ExiusCart account, you can safely ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="padding:20px 36px;border-top:1px solid #1e2d47;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#64748b;">
+            ExiusCart &nbsp;|&nbsp; <a href="mailto:support@exiuscart.com" style="color:#6B3FD9;text-decoration:none;">support@exiuscart.com</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+    return send_email(
+        to=to,
+        subject="Your ExiusCart verification code",
+        html_body=html,
+        text_body=f"Hi {first}, your ExiusCart verification code is: {otp_code}\nThis code expires in 10 minutes.",
+    )
+
+
 # ── Welcome email templates ───────────────────────────────────────────────────
 
 def _welcome_base(content: str) -> str:

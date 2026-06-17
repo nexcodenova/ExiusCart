@@ -14,6 +14,7 @@ class User(Base):
     phone = Column(String(20), nullable=True)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
+    is_verified = Column(Boolean, default=True, server_default='true', nullable=False)
     referred_by_code = Column(String(20), nullable=True)  # affiliate referral code used at signup
     country = Column(String(100), nullable=True)  # country selected at registration
     created_at = Column(DateTime(timezone=True), server_default=func.now())

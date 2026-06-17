@@ -8,6 +8,13 @@ import app.models  # noqa: F401 — ensure all models are registered before crea
 # Create any missing tables (safe for existing tables)
 Base.metadata.create_all(bind=engine)
 
+# Run safe column migrations for existing tables
+with engine.connect() as conn:
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE NOT NULL;"
+    ))
+    conn.commit()
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="ExiusCart - Smart Business Management API for Small Shops",

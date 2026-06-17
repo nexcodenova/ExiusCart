@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Eye, EyeOff, Loader2, ArrowLeft, Check, Store, Users, TrendingUp, Shield, Tag, Globe } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowLeft, Check, Store, Users, TrendingUp, Shield, Tag, Globe, Mail } from 'lucide-react';
 
 const COUNTRIES = [
   { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', currency: 'AED' },
@@ -64,6 +64,12 @@ function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -109,7 +115,7 @@ function RegisterForm() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.detail || 'Registration failed');
       }
-      // Save country to localStorage for billing currency
+      const body = await res.json();
       if (data.country) {
         const c = COUNTRIES.find(x => x.code === data.country);
         if (c) {
@@ -117,14 +123,107 @@ function RegisterForm() {
           localStorage.setItem('billing_currency', c.currency);
         }
       }
-      setSuccess(true);
-      setTimeout(() => router.push('/login?registered=1'), 1500);
+      if (body.status === 'otp_sent') {
+        setPendingEmail(body.email);
+      } else {
+        setSuccess(true);
+        setTimeout(() => router.push('/login?registered=1'), 1500);
+      }
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleVerifyOtp = async () => {
+    if (otpCode.length !== 6) return;
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: pendingEmail, otp_code: otpCode }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || 'Invalid code');
+      }
+      setSuccess(true);
+      setTimeout(() => router.push('/login?registered=1'), 1500);
+    } catch (err: any) {
+      setOtpError(err.message || 'Invalid or expired code');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setResendLoading(true);
+    setResendSent(false);
+    try {
+      await fetch(`${API_BASE}/api/v1/auth/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: pendingEmail }),
+      });
+      setResendSent(true);
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  if (pendingEmail && !success) {
+    return (
+      <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 text-center">
+        <div className="w-16 h-16 bg-[#6B3FD9]/10 rounded-full flex items-center justify-center mx-auto mb-5">
+          <Mail className="w-8 h-8 text-[#6B3FD9]" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Check your email</h2>
+        <p className="text-gray-400 text-sm mb-1">We sent a 6-digit code to</p>
+        <p className="text-white font-medium text-sm mb-6">{pendingEmail}</p>
+
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={6}
+          value={otpCode}
+          onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="000000"
+          className="w-full text-center text-3xl font-bold tracking-[0.5em] bg-[#0B1121] border border-gray-700 rounded-xl px-4 py-4 text-white placeholder-gray-600 focus:border-[#6B3FD9] focus:ring-1 focus:ring-[#6B3FD9] outline-none transition mb-4"
+        />
+
+        {otpError && (
+          <p className="text-red-400 text-sm mb-4">{otpError}</p>
+        )}
+
+        <button
+          onClick={handleVerifyOtp}
+          disabled={otpCode.length !== 6 || otpLoading}
+          className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] disabled:bg-[#6B3FD9]/40 text-white font-semibold py-3.5 rounded-xl transition flex items-center justify-center gap-2 mb-5"
+        >
+          {otpLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify Email'}
+        </button>
+
+        <p className="text-gray-500 text-sm">
+          Didn't receive it?{' '}
+          {resendSent ? (
+            <span className="text-green-400">Code resent!</span>
+          ) : (
+            <button
+              onClick={handleResendOtp}
+              disabled={resendLoading}
+              className="text-[#6B3FD9] hover:underline disabled:opacity-50"
+            >
+              {resendLoading ? 'Sending...' : 'Resend code'}
+            </button>
+          )}
+        </p>
+        <p className="text-gray-600 text-xs mt-3">Code expires in 10 minutes</p>
+      </div>
+    );
+  }
 
   if (success) {
     return (
