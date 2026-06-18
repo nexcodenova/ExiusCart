@@ -293,7 +293,7 @@ function SkipAdminPanel() {
 
       <div className="grid grid-cols-3 gap-4 my-8">
         <StatBox stat="4–6mo" label="Typical build time" sub="For a full admin panel" />
-        <StatBox stat="AED 45" label="ExiusCart Starter" sub="Per month — everything included" />
+        <StatBox stat="AED 45" label="ExiusCart Starter" sub="$12 USD · per month" />
         <StatBox stat="1 day" label="To connect your site" sub="API setup, not a project" />
       </div>
 
