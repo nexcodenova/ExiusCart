@@ -9,26 +9,79 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2, ArrowLeft, Check, Store, Users, TrendingUp, Shield, Tag, Globe, Mail } from 'lucide-react';
 
 const COUNTRIES = [
-  { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', currency: 'AED' },
-  { code: 'US', name: 'United States',        flag: '🇺🇸', currency: 'USD' },
-  { code: 'GB', name: 'United Kingdom',       flag: '🇬🇧', currency: 'USD' },
-  { code: 'SA', name: 'Saudi Arabia',         flag: '🇸🇦', currency: 'USD' },
-  { code: 'BH', name: 'Bahrain',              flag: '🇧🇭', currency: 'USD' },
-  { code: 'KW', name: 'Kuwait',               flag: '🇰🇼', currency: 'USD' },
-  { code: 'QA', name: 'Qatar',                flag: '🇶🇦', currency: 'USD' },
-  { code: 'OM', name: 'Oman',                 flag: '🇴🇲', currency: 'USD' },
-  { code: 'IN', name: 'India',                flag: '🇮🇳', currency: 'USD' },
-  { code: 'PK', name: 'Pakistan',             flag: '🇵🇰', currency: 'USD' },
-  { code: 'BD', name: 'Bangladesh',           flag: '🇧🇩', currency: 'USD' },
-  { code: 'MY', name: 'Malaysia',             flag: '🇲🇾', currency: 'USD' },
-  { code: 'SG', name: 'Singapore',            flag: '🇸🇬', currency: 'USD' },
-  { code: 'AU', name: 'Australia',            flag: '🇦🇺', currency: 'USD' },
-  { code: 'CA', name: 'Canada',               flag: '🇨🇦', currency: 'USD' },
-  { code: 'DE', name: 'Germany',              flag: '🇩🇪', currency: 'USD' },
-  { code: 'FR', name: 'France',               flag: '🇫🇷', currency: 'USD' },
-  { code: 'NG', name: 'Nigeria',              flag: '🇳🇬', currency: 'USD' },
-  { code: 'ZA', name: 'South Africa',         flag: '🇿🇦', currency: 'USD' },
-  { code: 'OTHER', name: 'Other Country',     flag: '🌍', currency: 'USD' },
+  // Middle East (top — primary market)
+  { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', currency: 'AED', dialCode: '+971' },
+  { code: 'SA', name: 'Saudi Arabia',         flag: '🇸🇦', currency: 'USD', dialCode: '+966' },
+  { code: 'KW', name: 'Kuwait',               flag: '🇰🇼', currency: 'USD', dialCode: '+965' },
+  { code: 'QA', name: 'Qatar',                flag: '🇶🇦', currency: 'USD', dialCode: '+974' },
+  { code: 'BH', name: 'Bahrain',              flag: '🇧🇭', currency: 'USD', dialCode: '+973' },
+  { code: 'OM', name: 'Oman',                 flag: '🇴🇲', currency: 'USD', dialCode: '+968' },
+  { code: 'JO', name: 'Jordan',               flag: '🇯🇴', currency: 'USD', dialCode: '+962' },
+  { code: 'LB', name: 'Lebanon',              flag: '🇱🇧', currency: 'USD', dialCode: '+961' },
+  { code: 'IQ', name: 'Iraq',                 flag: '🇮🇶', currency: 'USD', dialCode: '+964' },
+  { code: 'EG', name: 'Egypt',                flag: '🇪🇬', currency: 'USD', dialCode: '+20'  },
+  { code: 'YE', name: 'Yemen',                flag: '🇾🇪', currency: 'USD', dialCode: '+967' },
+  // South Asia
+  { code: 'IN', name: 'India',                flag: '🇮🇳', currency: 'USD', dialCode: '+91'  },
+  { code: 'PK', name: 'Pakistan',             flag: '🇵🇰', currency: 'USD', dialCode: '+92'  },
+  { code: 'BD', name: 'Bangladesh',           flag: '🇧🇩', currency: 'USD', dialCode: '+880' },
+  { code: 'LK', name: 'Sri Lanka',            flag: '🇱🇰', currency: 'USD', dialCode: '+94'  },
+  { code: 'NP', name: 'Nepal',                flag: '🇳🇵', currency: 'USD', dialCode: '+977' },
+  { code: 'AF', name: 'Afghanistan',          flag: '🇦🇫', currency: 'USD', dialCode: '+93'  },
+  // Southeast Asia
+  { code: 'MY', name: 'Malaysia',             flag: '🇲🇾', currency: 'USD', dialCode: '+60'  },
+  { code: 'SG', name: 'Singapore',            flag: '🇸🇬', currency: 'USD', dialCode: '+65'  },
+  { code: 'PH', name: 'Philippines',          flag: '🇵🇭', currency: 'USD', dialCode: '+63'  },
+  { code: 'ID', name: 'Indonesia',            flag: '🇮🇩', currency: 'USD', dialCode: '+62'  },
+  { code: 'TH', name: 'Thailand',             flag: '🇹🇭', currency: 'USD', dialCode: '+66'  },
+  { code: 'VN', name: 'Vietnam',              flag: '🇻🇳', currency: 'USD', dialCode: '+84'  },
+  // East Asia
+  { code: 'CN', name: 'China',                flag: '🇨🇳', currency: 'USD', dialCode: '+86'  },
+  { code: 'JP', name: 'Japan',                flag: '🇯🇵', currency: 'USD', dialCode: '+81'  },
+  { code: 'KR', name: 'South Korea',          flag: '🇰🇷', currency: 'USD', dialCode: '+82'  },
+  // Oceania
+  { code: 'AU', name: 'Australia',            flag: '🇦🇺', currency: 'USD', dialCode: '+61'  },
+  { code: 'NZ', name: 'New Zealand',          flag: '🇳🇿', currency: 'USD', dialCode: '+64'  },
+  // Europe
+  { code: 'GB', name: 'United Kingdom',       flag: '🇬🇧', currency: 'USD', dialCode: '+44'  },
+  { code: 'DE', name: 'Germany',              flag: '🇩🇪', currency: 'USD', dialCode: '+49'  },
+  { code: 'FR', name: 'France',               flag: '🇫🇷', currency: 'USD', dialCode: '+33'  },
+  { code: 'IT', name: 'Italy',                flag: '🇮🇹', currency: 'USD', dialCode: '+39'  },
+  { code: 'ES', name: 'Spain',                flag: '🇪🇸', currency: 'USD', dialCode: '+34'  },
+  { code: 'NL', name: 'Netherlands',          flag: '🇳🇱', currency: 'USD', dialCode: '+31'  },
+  { code: 'SE', name: 'Sweden',               flag: '🇸🇪', currency: 'USD', dialCode: '+46'  },
+  { code: 'NO', name: 'Norway',               flag: '🇳🇴', currency: 'USD', dialCode: '+47'  },
+  { code: 'DK', name: 'Denmark',              flag: '🇩🇰', currency: 'USD', dialCode: '+45'  },
+  { code: 'CH', name: 'Switzerland',          flag: '🇨🇭', currency: 'USD', dialCode: '+41'  },
+  { code: 'AT', name: 'Austria',              flag: '🇦🇹', currency: 'USD', dialCode: '+43'  },
+  { code: 'PL', name: 'Poland',               flag: '🇵🇱', currency: 'USD', dialCode: '+48'  },
+  { code: 'PT', name: 'Portugal',             flag: '🇵🇹', currency: 'USD', dialCode: '+351' },
+  { code: 'BE', name: 'Belgium',              flag: '🇧🇪', currency: 'USD', dialCode: '+32'  },
+  { code: 'GR', name: 'Greece',               flag: '🇬🇷', currency: 'USD', dialCode: '+30'  },
+  { code: 'CZ', name: 'Czech Republic',       flag: '🇨🇿', currency: 'USD', dialCode: '+420' },
+  { code: 'HU', name: 'Hungary',              flag: '🇭🇺', currency: 'USD', dialCode: '+36'  },
+  { code: 'RO', name: 'Romania',              flag: '🇷🇴', currency: 'USD', dialCode: '+40'  },
+  { code: 'RU', name: 'Russia',               flag: '🇷🇺', currency: 'USD', dialCode: '+7'   },
+  { code: 'TR', name: 'Turkey',               flag: '🇹🇷', currency: 'USD', dialCode: '+90'  },
+  // Americas
+  { code: 'US', name: 'United States',        flag: '🇺🇸', currency: 'USD', dialCode: '+1'   },
+  { code: 'CA', name: 'Canada',               flag: '🇨🇦', currency: 'USD', dialCode: '+1'   },
+  { code: 'BR', name: 'Brazil',               flag: '🇧🇷', currency: 'USD', dialCode: '+55'  },
+  { code: 'MX', name: 'Mexico',               flag: '🇲🇽', currency: 'USD', dialCode: '+52'  },
+  { code: 'AR', name: 'Argentina',            flag: '🇦🇷', currency: 'USD', dialCode: '+54'  },
+  { code: 'CL', name: 'Chile',                flag: '🇨🇱', currency: 'USD', dialCode: '+56'  },
+  { code: 'CO', name: 'Colombia',             flag: '🇨🇴', currency: 'USD', dialCode: '+57'  },
+  // Africa
+  { code: 'NG', name: 'Nigeria',              flag: '🇳🇬', currency: 'USD', dialCode: '+234' },
+  { code: 'ZA', name: 'South Africa',         flag: '🇿🇦', currency: 'USD', dialCode: '+27'  },
+  { code: 'GH', name: 'Ghana',                flag: '🇬🇭', currency: 'USD', dialCode: '+233' },
+  { code: 'KE', name: 'Kenya',                flag: '🇰🇪', currency: 'USD', dialCode: '+254' },
+  { code: 'ET', name: 'Ethiopia',             flag: '🇪🇹', currency: 'USD', dialCode: '+251' },
+  { code: 'TZ', name: 'Tanzania',             flag: '🇹🇿', currency: 'USD', dialCode: '+255' },
+  { code: 'UG', name: 'Uganda',               flag: '🇺🇬', currency: 'USD', dialCode: '+256' },
+  { code: 'MA', name: 'Morocco',              flag: '🇲🇦', currency: 'USD', dialCode: '+212' },
+  { code: 'TN', name: 'Tunisia',              flag: '🇹🇳', currency: 'USD', dialCode: '+216' },
+  { code: 'OTHER', name: 'Other Country',     flag: '🌍', currency: 'USD', dialCode: '+'    },
 ];
 
 const registerSchema = z
@@ -69,6 +122,7 @@ function RegisterForm() {
   const [otpError, setOtpError] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
+  const [phoneDialCode, setPhoneDialCode] = useState('+971');
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -93,6 +147,10 @@ function RegisterForm() {
   const selectedCountry = watch('country');
   const countryObj = COUNTRIES.find(c => c.code === selectedCountry);
 
+  useEffect(() => {
+    if (countryObj?.dialCode) setPhoneDialCode(countryObj.dialCode);
+  }, [countryObj]);
+
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
     setError('');
@@ -104,7 +162,7 @@ function RegisterForm() {
           shop_name: data.shopName,
           owner_name: data.ownerName,
           email: data.email,
-          phone: data.phone,
+          phone: `${phoneDialCode}${data.phone}`,
           password: data.password,
           ref_code: data.refCode || undefined,
           country: data.country || undefined,
@@ -275,7 +333,7 @@ function RegisterForm() {
             type="text"
             {...register('shopName')}
             className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
-            placeholder="e.g., My Mobile Store"
+            placeholder="e.g., Al Baraka Store"
           />
           {errors.shopName && (
             <p className="text-red-400 text-sm mt-1">{errors.shopName.message}</p>
@@ -319,13 +377,27 @@ function RegisterForm() {
             <label htmlFor="phone" className="block text-sm text-gray-400 mb-2">
               Phone Number
             </label>
-            <input
-              id="phone"
-              type="tel"
-              {...register('phone')}
-              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
-              placeholder="+971 50 123 4567"
-            />
+            <div className="flex">
+              <select
+                value={phoneDialCode}
+                onChange={(e) => setPhoneDialCode(e.target.value)}
+                className="bg-[#0B1121] border border-gray-700 border-r-0 rounded-l-lg px-2 py-3 text-white focus:border-[#6B3FD9] focus:outline-none transition text-sm appearance-none cursor-pointer"
+                style={{ minWidth: '80px' }}
+              >
+                {COUNTRIES.filter(c => c.code !== 'OTHER').map(c => (
+                  <option key={c.code} value={c.dialCode}>
+                    {c.flag} {c.dialCode}
+                  </option>
+                ))}
+              </select>
+              <input
+                id="phone"
+                type="tel"
+                {...register('phone')}
+                className="flex-1 px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-r-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+                placeholder="50 123 4567"
+              />
+            </div>
             {errors.phone && (
               <p className="text-red-400 text-sm mt-1">{errors.phone.message}</p>
             )}
