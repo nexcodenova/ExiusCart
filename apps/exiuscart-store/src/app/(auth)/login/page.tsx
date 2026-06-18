@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -11,6 +11,25 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#token=')) {
+      const token = hash.slice(7);
+      if (token) {
+        window.history.replaceState(null, '', window.location.pathname);
+        localStorage.setItem('access_token', token);
+        (async () => {
+          try {
+            const { shopApi } = await import('@/lib/api');
+            const shopRes = await shopApi.getMyShop();
+            if (shopRes.data?.id) localStorage.setItem('shop_id', String(shopRes.data.id));
+          } catch {}
+          window.location.href = '/dashboard';
+        })();
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

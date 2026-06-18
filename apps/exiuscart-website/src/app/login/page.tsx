@@ -1,12 +1,11 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2, ArrowLeft, Check, ShieldCheck, Zap, BarChart3 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowLeft, BarChart3, Zap, ShieldCheck, Package } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -15,9 +14,20 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
+const features = [
+  { icon: BarChart3, text: 'Real-time sales & analytics' },
+  { icon: Zap,       text: 'Fast & easy POS system' },
+  { icon: Package,   text: 'Inventory & order management' },
+  { icon: ShieldCheck, text: 'Secure & always reliable' },
+];
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
+const STORE_URL = process.env.NEXT_PUBLIC_STORE_URL || 'https://store.exiuscart.com';
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const {
     register,
@@ -29,11 +39,23 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     setIsLoading(true);
+    setError('');
     try {
-      // TODO: Implement login API call
-      console.log('Login data:', data);
-    } catch (error) {
-      console.error('Login error:', error);
+      const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || 'Invalid email or password.');
+      }
+      const body = await res.json();
+      const token = body.access_token;
+      // Pass token to store via hash fragment (never sent to server)
+      window.location.href = `${STORE_URL}/login#token=${token}`;
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password.');
     } finally {
       setIsLoading(false);
     }
@@ -41,99 +63,49 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0B1121] flex">
-      {/* Left Side - Branding & Image */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#0D1526] flex-col relative overflow-hidden">
-        {/* Content */}
-        <div className="flex-1 flex flex-col justify-center px-12 xl:px-16 pt-8">
-          {/* Logo */}
-          <Link href="/" className="mb-8">
-            <span className="text-3xl font-bold text-white tracking-tight">
+      {/* Left Side - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#151F32] to-[#0B1121] flex-col justify-center p-12 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-[#6B3FD9] rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#6B3FD9] rounded-full blur-3xl" />
+        </div>
+
+        <div className="relative z-10 max-w-md">
+          <Link href="/" className="inline-flex items-center gap-2 mb-12">
+            <span className="text-2xl font-bold text-white tracking-tight">
               <span className="text-[#6B3FD9]">Exius</span>Cart
             </span>
           </Link>
 
-          <h2 className="text-3xl xl:text-4xl font-bold text-white mb-4 leading-tight">
-            Manage your business
-            <span className="text-[#6B3FD9]"> smarter</span>
-          </h2>
-          <p className="text-gray-400 mb-8 text-lg leading-relaxed">
-            Access your dashboard to track sales, manage inventory, and grow your business.
+          <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
+            Welcome Back to<br />
+            <span className="text-[#6B3FD9]">Your Dashboard</span>
+          </h1>
+          <p className="text-gray-400 text-lg mb-10">
+            Sign in to manage your store, track orders, and grow your business.
           </p>
 
-          {/* Features List */}
-          <div className="space-y-4 mb-10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-[#6B3FD9]" />
+          <div className="space-y-5">
+            {features.map((feature, index) => (
+              <div key={index} className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <feature.icon className="w-5 h-5 text-[#6B3FD9]" />
+                </div>
+                <span className="text-gray-300 text-base">{feature.text}</span>
               </div>
-              <div>
-                <p className="text-white font-medium">Real-time Analytics</p>
-                <p className="text-gray-500 text-sm">Track sales and performance instantly</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
-                <Zap className="w-5 h-5 text-[#6B3FD9]" />
-              </div>
-              <div>
-                <p className="text-white font-medium">Fast & Easy POS</p>
-                <p className="text-gray-500 text-sm">Process sales in seconds</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5 text-[#6B3FD9]" />
-              </div>
-              <div>
-                <p className="text-white font-medium">Secure & Reliable</p>
-                <p className="text-gray-500 text-sm">Your data is always protected</p>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Dashboard Preview */}
-          <div className="relative">
-            <div className="bg-[#151F32] rounded-xl border border-gray-800 shadow-2xl overflow-hidden">
-              <div className="bg-[#1A2540] px-4 py-2 flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#FF5F56]"></div>
-                <div className="w-3 h-3 rounded-full bg-[#FFBD2E]"></div>
-                <div className="w-3 h-3 rounded-full bg-[#27CA40]"></div>
-              </div>
-              <Image
-                src="/images/dashboard-preview.png"
-                alt="ExiusCart Dashboard"
-                width={500}
-                height={300}
-                className="w-full h-auto"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Bar */}
-        <div className="px-12 xl:px-16 py-8 border-t border-gray-800">
-          <div className="flex items-center gap-8">
-            <div>
-              <p className="text-2xl font-bold text-[#6B3FD9]">50+</p>
-              <p className="text-gray-500 text-sm">Active Shops</p>
-            </div>
-            <div className="w-px h-10 bg-gray-800"></div>
-            <div>
-              <p className="text-2xl font-bold text-[#6B3FD9]">10K+</p>
-              <p className="text-gray-500 text-sm">Invoices Created</p>
-            </div>
-            <div className="w-px h-10 bg-gray-800"></div>
-            <div>
-              <p className="text-2xl font-bold text-[#6B3FD9]">99%</p>
-              <p className="text-gray-500 text-sm">Uptime</p>
-            </div>
+          <div className="mt-12 pt-8 border-t border-gray-800">
+            <p className="text-gray-500 text-sm">
+              New here? Start your 14-day free trial — no credit card needed.
+            </p>
           </div>
         </div>
       </div>
 
       {/* Right Side - Login Form */}
       <div className="w-full lg:w-1/2 flex flex-col">
-        {/* Header */}
         <header className="p-4 sm:p-6">
           <Link
             href="/"
@@ -144,22 +116,23 @@ export default function LoginPage() {
           </Link>
         </header>
 
-        {/* Form Container */}
-        <main className="flex-1 flex items-center justify-center px-4 sm:px-8 py-8">
+        <main className="flex-1 flex items-center justify-center px-4 py-8">
           <div className="w-full max-w-md">
-            {/* Logo - Mobile Only */}
             <Link href="/" className="lg:hidden flex items-center justify-center gap-2 mb-8">
               <span className="text-2xl font-bold text-white tracking-tight">
                 <span className="text-[#6B3FD9]">Exius</span>Cart
               </span>
             </Link>
 
-            {/* Card */}
             <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 sm:p-8">
-              <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">Welcome Back</h1>
-              <p className="text-gray-400 mb-8 text-sm sm:text-base">
-                Sign in to your account to continue
-              </p>
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Welcome Back</h2>
+              <p className="text-gray-400 text-sm mb-6">Sign in to your account to continue</p>
+
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg px-4 py-3 mb-5">
+                  {error}
+                </div>
+              )}
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                 <div>
@@ -170,7 +143,7 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     {...register('email')}
-                    className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition"
                     placeholder="you@example.com"
                   />
                   {errors.email && (
@@ -187,7 +160,7 @@ export default function LoginPage() {
                       id="password"
                       type={showPassword ? 'text' : 'password'}
                       {...register('password')}
-                      className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition pr-12 text-sm sm:text-base"
+                      className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition pr-12"
                       placeholder="Enter your password"
                     />
                     <button
@@ -196,11 +169,7 @@ export default function LoginPage() {
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                   {errors.password && (
@@ -208,7 +177,7 @@ export default function LoginPage() {
                   )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -227,23 +196,22 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold py-3 sm:py-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
-                  Sign In
+                  {isLoading ? 'Signing in...' : 'Sign In'}
                 </button>
               </form>
 
-              <p className="text-center mt-8 text-gray-400 text-sm sm:text-base">
+              <p className="text-center mt-6 text-gray-400 text-sm">
                 Don&apos;t have an account?{' '}
                 <Link href="/register" className="text-[#6B3FD9] font-semibold hover:text-[#8B5CF6] transition">
-                  Create one
+                  Start free trial
                 </Link>
               </p>
             </div>
 
-            {/* Trust Badge */}
-            <div className="mt-6 flex items-center justify-center gap-2 text-gray-500 text-sm">
+            <div className="mt-5 flex items-center justify-center gap-2 text-gray-600 text-xs">
               <ShieldCheck className="w-4 h-4" />
               <span>Secured with SSL encryption</span>
             </div>
@@ -253,4 +221,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
