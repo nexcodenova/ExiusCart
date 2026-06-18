@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link';
 import type { Metadata } from 'next';
-import { ArrowRight, Check, Star, Quote, ShoppingCart, Boxes, FileText, Package, BarChart3, Users, Megaphone, Wallet, Truck, Headphones, Calendar, Shield } from 'lucide-react';
+import { ArrowRight, Check, Star, Quote, ShoppingCart, Boxes, FileText, Package, BarChart3, Users, Megaphone, Wallet, Truck, Headphones, Calendar, Shield, Globe, Zap } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { PricingPreview } from '@/components/ui/pricing-preview';
@@ -209,6 +209,120 @@ export default function HomePage() {
                 <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
               </div>
             ))}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── Custom Website — Paddle-inspired SaaS section ── */}
+      <section className="py-24 lg:py-32 px-6 bg-[#F5F3EF]">
+        <div className="max-w-7xl mx-auto">
+
+          {/* Centered header */}
+          <div className="text-center mb-16 max-w-3xl mx-auto">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6B3FD9] mb-5">
+              Custom website integration
+            </p>
+            <h2 className="text-5xl md:text-6xl lg:text-[4rem] font-black text-gray-900 leading-[1.03] tracking-tight mb-6">
+              Already have a website?<br />ExiusCart is your backend.
+            </h2>
+            <p className="text-gray-500 text-lg leading-relaxed">
+              Connect your store in minutes. Orders, inventory, customers, invoicing — all handled. No separate admin panel to build.
+            </p>
+          </div>
+
+          {/* Big Paddle-style card with grid-line dividers */}
+          <div className="relative rounded-[2rem] overflow-hidden bg-[#0B1121] border border-gray-800/60 mb-6">
+            {/* Grid line cross dividers */}
+            <div className="absolute inset-0 pointer-events-none hidden lg:block">
+              <div className="absolute left-1/3 top-0 bottom-0 w-px bg-gray-800/60" />
+              <div className="absolute left-2/3 top-0 bottom-0 w-px bg-gray-800/60" />
+              <div className="absolute top-1/2 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent 0%, #7B4FE9 28%, #06B6D4 72%, transparent 100%)' }} />
+              <div className="absolute left-1/3 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_14px_#22d3ee]" />
+              <div className="absolute left-2/3 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_14px_#22d3ee]" />
+            </div>
+
+            <div className="relative grid lg:grid-cols-3 min-h-[300px]">
+              {/* Left: Their website */}
+              <div className="p-10 lg:p-12 flex flex-col justify-between border-b border-gray-800 lg:border-b-0">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-6">
+                    <Globe className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <h3 className="text-2xl font-black text-white mb-3">Your website</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Product listings, cart, checkout — your customer-facing storefront. Built however you like, on any stack.
+                  </p>
+                </div>
+                <span className="mt-8 text-[10px] font-bold uppercase tracking-widest text-gray-600">Frontend only</span>
+              </div>
+
+              {/* Middle: One click connector */}
+              <div className="px-10 pt-10 pb-20 lg:px-12 lg:pt-12 lg:pb-28 flex flex-col items-center justify-start text-center border-b border-gray-800 lg:border-b-0">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-400/10 border border-cyan-400/30 flex items-center justify-center mb-4">
+                  <Zap className="w-6 h-6 text-cyan-400" />
+                </div>
+                <p className="text-cyan-400 font-bold text-sm uppercase tracking-widest mb-2">One click connect</p>
+                <p className="text-gray-500 text-xs leading-relaxed max-w-[160px]">
+                  Set it up once. Every order syncs to ExiusCart automatically.
+                </p>
+              </div>
+
+              {/* Right: ExiusCart */}
+              <div className="p-10 lg:p-12 flex flex-col justify-between">
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-[#6B3FD9]/10 border border-[#6B3FD9]/20 flex items-center justify-center mb-6">
+                    <ShoppingCart className="w-5 h-5 text-[#6B3FD9]" />
+                  </div>
+                  <h3 className="text-2xl font-black text-white mb-3">ExiusCart handles everything else</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    Orders, inventory, customers, invoicing, reports, HR, payroll — built and ready. No backend to code.
+                  </p>
+                </div>
+                <span className="mt-8 text-[10px] font-bold uppercase tracking-widest text-[#6B3FD9]">Your admin panel</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 4 white feature cards — Paddle customer story card style */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+            {([
+              { Icon: Package,   color: '#2563EB', stat: 'Live',  label: 'order sync',    title: 'Orders sync live',         desc: 'Every order placed on your site appears instantly in ExiusCart.' },
+              { Icon: Boxes,     color: '#16A34A', stat: '0',     label: 'overselling',   title: 'Real-time inventory',      desc: 'Stock levels update automatically. Never sell what you don\'t have.' },
+              { Icon: BarChart3, color: '#0D9488', stat: '100%',  label: 'revenue visible', title: 'Full revenue reporting', desc: 'All sales in one dashboard — website, POS, marketplace combined.' },
+              { Icon: FileText,  color: '#EA580C', stat: 'Auto',  label: 'VAT invoicing', title: 'Invoices auto-generated',  desc: 'VAT-compliant PDF invoices created for every order, automatically.' },
+            ] as const).map(({ Icon, color, stat, label, title, desc }) => (
+              <div key={title} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 p-6 flex flex-col justify-between group">
+                <div>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-5"
+                    style={{ background: color + '15', border: `1px solid ${color}28` }}>
+                    <Icon className="w-[18px] h-[18px]" style={{ color }} />
+                  </div>
+                  <h4 className="font-bold text-gray-900 text-sm mb-2 group-hover:text-[#6B3FD9] transition-colors">{title}</h4>
+                  <p className="text-gray-400 text-xs leading-relaxed">{desc}</p>
+                </div>
+                <div className="mt-6 flex items-end justify-between">
+                  <span className="text-3xl font-black" style={{ color }}>{stat}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{label}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA row */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-7 py-3.5 rounded-xl transition-all text-sm"
+            >
+              Start free trial <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/contact"
+              className="text-sm text-gray-500 hover:text-gray-900 font-semibold transition-colors"
+            >
+              Talk to us about integration →
+            </Link>
           </div>
 
         </div>
