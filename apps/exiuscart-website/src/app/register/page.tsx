@@ -81,7 +81,6 @@ const COUNTRIES = [
   { code: 'UG', name: 'Uganda',               flag: '🇺🇬', currency: 'USD', dialCode: '+256' },
   { code: 'MA', name: 'Morocco',              flag: '🇲🇦', currency: 'USD', dialCode: '+212' },
   { code: 'TN', name: 'Tunisia',              flag: '🇹🇳', currency: 'USD', dialCode: '+216' },
-  { code: 'OTHER', name: 'Other Country',     flag: '🌍', currency: 'USD', dialCode: '+'    },
 ];
 
 const registerSchema = z
@@ -333,7 +332,7 @@ function RegisterForm() {
             type="text"
             {...register('shopName')}
             className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
-            placeholder="e.g., Al Baraka Store"
+            placeholder="Your store name"
           />
           {errors.shopName && (
             <p className="text-red-400 text-sm mt-1">{errors.shopName.message}</p>
@@ -381,10 +380,9 @@ function RegisterForm() {
               <select
                 value={phoneDialCode}
                 onChange={(e) => setPhoneDialCode(e.target.value)}
-                className="bg-[#0B1121] border border-gray-700 border-r-0 rounded-l-lg px-2 py-3 text-white focus:border-[#6B3FD9] focus:outline-none transition text-sm appearance-none cursor-pointer"
-                style={{ minWidth: '80px' }}
+                className="bg-[#0B1121] border border-gray-700 border-r-0 rounded-l-lg pl-3 pr-1 py-3 text-white focus:border-[#6B3FD9] focus:outline-none transition text-sm appearance-none cursor-pointer w-24 shrink-0"
               >
-                {COUNTRIES.filter(c => c.code !== 'OTHER').map(c => (
+                {COUNTRIES.map(c => (
                   <option key={c.code} value={c.dialCode}>
                     {c.flag} {c.dialCode}
                   </option>
@@ -394,7 +392,7 @@ function RegisterForm() {
                 id="phone"
                 type="tel"
                 {...register('phone')}
-                className="flex-1 px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-r-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+                className="flex-1 min-w-0 px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-r-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm"
                 placeholder="50 123 4567"
               />
             </div>
