@@ -676,6 +676,169 @@ function POSvsCashRegister() {
   );
 }
 
+function ScaleMultipleBranches() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        The first branch was chaos at first — then it worked. Revenue is solid. Customers are loyal. Someone suggests a second location and the idea sounds straightforward. It isn't. Every problem you had at branch one comes back, doubled, and you're trying to manage it from somewhere else.
+      </p>
+
+      <P>Expanding to multiple locations is one of the most exciting things a UAE business can do. It's also where a lot of businesses quietly start to unravel — not because of the location itself, but because the systems that worked for one shop simply don't scale to two.</P>
+      <P>This guide covers what actually changes when you open a second branch, the specific operational problems to plan for, and how to set up your management systems before things get messy.</P>
+
+      <H2 id="what-actually-changes">What Actually Changes at Branch Two</H2>
+      <P>One branch is personal. You're there. You see what's selling, you know the staff, you notice when something goes wrong. Everything that needs managing is in front of you.</P>
+      <P>Two branches means you're splitting your time. You're not there for half the day at each location — you're somewhere else entirely while the other branch runs without you. That changes everything about how you need to manage the business.</P>
+
+      <UL items={[
+        'You can no longer see stock levels — you have to be told, or pull a report',
+        'Staff performance is invisible unless you have transaction-level data',
+        'Revenue from two locations gets confused unless it is tracked separately',
+        'Customers who visit both branches expect a consistent experience',
+        'Supplier orders get complicated when two locations have different stock needs',
+        'End-of-day reconciliation takes twice as long if done manually',
+      ]} />
+
+      <Callout type="info">
+        The businesses that scale successfully to three, four, five branches didn't get better at managing complexity — they got systems that removed it. The ones that struggled tried to manage two branches the same way they managed one.
+      </Callout>
+
+      <H2 id="inventory-challenge">The Inventory Challenge Across Locations</H2>
+      <P>Inventory is the first thing that breaks when you expand. At one branch, you eyeball the shelf. At two branches, one of them is always running low on something you don't know about until a customer can't find it.</P>
+      <P>The typical workaround — a shared spreadsheet that both managers update — lasts about two weeks before someone forgets to update it after a busy Saturday.</P>
+      <P>What you actually need is a system where every sale at every branch decrements the stock count for that location automatically. When branch two sells the last unit of a product, you find out immediately — not when a customer asks for it and the shelf is empty.</P>
+
+      <H3>Transfers between branches</H3>
+      <P>One branch runs out of a product that the other has in excess. In a well-run multi-branch business, stock transfers happen regularly. You need to record these properly — otherwise your inventory counts drift and you lose visibility into what you actually have across the business.</P>
+
+      <Callout type="example">
+        <strong>A real scenario:</strong> Your Dubai branch has 40 units of a product. Your Abu Dhabi branch has 2. Instead of placing a new supplier order, you transfer 15 units from Dubai. Without a system tracking this, Dubai thinks it has 40, Abu Dhabi thinks it has 2, and neither number is accurate.
+      </Callout>
+
+      <H2 id="staff-across-locations">Managing Staff Across Locations</H2>
+      <P>At one branch, you know your team. You see who's working hard and who's spending too much time on their phone. At two branches, you're relying entirely on reports and your branch managers.</P>
+      <P>This is where staff account management matters. Each employee should log in to your POS system with their own credentials. Every transaction is recorded against their account. End of day, you can see exactly what each staff member sold, how many transactions they processed, and whether the cash drawer matches.</P>
+
+      <div className="grid grid-cols-3 gap-4 my-8">
+        <StatBox stat="Branch" label="Level reporting" sub="See each location separately" />
+        <StatBox stat="Staff" label="Level tracking" sub="Per-employee transaction logs" />
+        <StatBox stat="One" label="Dashboard" sub="All branches in one view" />
+      </div>
+
+      <H3>Role-based access</H3>
+      <P>Not everyone needs to see everything. A cashier at branch two doesn't need to see the payroll or the performance of branch one. A branch manager needs their location's reports but not the ability to change product prices. A proper multi-branch system lets you set exactly what each role can see and do.</P>
+
+      <H2 id="reporting-across-branches">Seeing the Full Financial Picture</H2>
+      <P>At one branch, revenue is a single number. At two branches, you need three numbers: branch one revenue, branch two revenue, and total business revenue. Plus the same breakdown for every metric that matters — costs, profit margins, best-selling products, slow movers.</P>
+      <P>Without the right system, you end up with two sets of spreadsheets that you try to combine at the end of the month. It takes hours and the numbers are never quite right because someone updated their spreadsheet on Monday and it was already stale by Wednesday.</P>
+
+      <UL items={[
+        'Total revenue across all branches — consolidated automatically',
+        'Per-branch revenue breakdown — so you know which location is performing',
+        'Best-selling products per branch — different areas often have different customer preferences',
+        'Staff performance per branch — who is your top seller at each location',
+        'Inventory value per branch — how much stock you are holding and where',
+        'Comparative reporting — how is branch two trending versus branch one at the same stage',
+      ]} />
+
+      <PullQuote>"You cannot manage what you cannot see. Multi-branch management is fundamentally a visibility problem."</PullQuote>
+
+      <H2 id="common-mistakes">Common Mistakes UAE Businesses Make When Expanding</H2>
+      <P>The same mistakes appear in almost every multi-branch expansion. Knowing them in advance is the only way to avoid them.</P>
+
+      <NumberedList items={[
+        {
+          title: 'Opening branch two before branch one systems are solid',
+          desc: 'If you are still managing branch one with spreadsheets and WhatsApp, adding a second location will multiply the chaos. Get your systems right before you expand, not after.',
+        },
+        {
+          title: 'Using different POS or inventory software at each branch',
+          desc: 'One branch on Excel, one on a separate POS app, reconciled manually at month end. This is the fastest route to losing track of your business completely.',
+        },
+        {
+          title: 'Giving branch managers too much financial access',
+          desc: 'Branch managers should see their branch performance. They should not have access to the full payroll, supplier pricing, or profit margins of the whole business unless you deliberately choose to share it.',
+        },
+        {
+          title: 'Not planning for stock transfers before they happen',
+          desc: 'The first time you need to move stock between branches, you need a process already in place. Improvising it under pressure leads to inventory errors that compound over months.',
+        },
+        {
+          title: 'Assuming what worked at branch one will work at branch two',
+          desc: 'A product that sells well in one location often performs differently in another area. Your best sellers, peak hours, and customer demographics may be completely different across branches.',
+        },
+      ]} />
+
+      <H2 id="setting-up-exiuscart">How ExiusCart Handles Multiple Branches</H2>
+      <P>ExiusCart Premium includes multi-branch management built in — not as an add-on, not an enterprise upsell. Every branch gets its own inventory, staff accounts, and POS. You see each branch separately and the whole business consolidated, from one dashboard.</P>
+
+      <UL items={[
+        'Add each branch as a separate location in your ExiusCart account',
+        'Staff are assigned to specific branches — they can only see and access their location',
+        'Inventory is tracked per branch — stock levels, low-stock alerts, and restock all per location',
+        'Sales reports show per-branch and consolidated views — switch between them instantly',
+        'Stock transfers between branches are recorded and both inventory counts update',
+        'Branch managers get their own login with access scoped to their location only',
+        'One subscription covers all branches — not a per-branch fee',
+      ]} />
+
+      <Callout type="tip">
+        Start with ExiusCart on your first branch before you open the second. By the time branch two is ready, you will already know the system, your staff will be trained, and adding a new location takes minutes rather than weeks of setup.
+      </Callout>
+
+      <div className="overflow-x-auto my-7">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-900 text-white">
+              <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Feature</th>
+              <th className="text-left px-4 py-3 font-semibold">Starter · AED 45/$12</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Premium · AED 99/$29</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { f: 'Branches / locations', s: '1',           p: 'Unlimited' },
+              { f: 'Staff accounts',       s: 'Up to 3',     p: 'Unlimited' },
+              { f: 'Inventory per branch', s: 'Single store', p: 'Per-branch + transfers' },
+              { f: 'Reporting',            s: 'Store-level',  p: 'Per-branch + consolidated' },
+              { f: 'Branch manager roles', s: '—',           p: 'Included' },
+              { f: 'Support',              s: 'Priority email', p: '24/7 + account manager' },
+            ].map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="px-4 py-3 font-medium text-gray-900 border-b border-gray-100">{row.f}</td>
+                <td className="px-4 py-3 text-gray-600 border-b border-gray-100">{row.s}</td>
+                <td className="px-4 py-3 text-[#6B3FD9] font-semibold border-b border-gray-100">{row.p}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <H2 id="when-youre-ready">Signs You Are Ready for Branch Two</H2>
+      <P>Expanding too early is as dangerous as waiting too long. Before signing a second lease, check these honestly:</P>
+
+      <UL items={[
+        'Branch one runs profitably without you being there every day',
+        'You have a branch manager you trust to make operational decisions',
+        'Your inventory and reporting systems are already digital and accurate',
+        'You have cash reserves to cover the build-out and 3 months of operating costs at the new location',
+        'Demand is genuinely there — customers from another area are already asking or travelling to your existing branch',
+        'Your supplier relationships can handle increased volume across two locations',
+      ]} />
+
+      <P>If most of these are true, the second location is a growth move. If several are not, the priority is getting branch one to that level first — then expanding from a position of strength.</P>
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">Ready to manage multiple branches?</p>
+        <p className="text-gray-400 text-sm mb-6">ExiusCart Premium includes unlimited branches, staff, and consolidated reporting from one dashboard.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 // ── Post registry ─────────────────────────────────────────────────────────────
 
 const POSTS: Record<string, {
@@ -778,14 +941,22 @@ const POSTS: Record<string, {
   'scale-uae-business-multiple-branches': {
     title: 'From One Store to Multiple Branches: How to Scale Your UAE Business',
     seoTitle: 'How to Manage Multiple Retail Branches in UAE — Complete Guide 2026 | ExiusCart',
-    seoDescription: 'How successful UAE retailers expand to multiple locations without losing control of inventory, staff, and sales reporting.',
+    seoDescription: 'How UAE retailers expand to multiple locations without losing control — inventory across branches, staff management, consolidated reporting, and common mistakes to avoid.',
     category: 'Growth',
     categoryColor: 'text-orange-600 bg-orange-50 border-orange-100',
     date: 'June 2026',
-    readTime: '5 min',
-    lead: "Opening a second branch is exciting. Managing it without the right tools is chaos. Here's how to do it properly.",
-    toc: [],
-    Content: () => <p className="text-gray-500 italic">Full article coming soon.</p>,
+    readTime: '7 min',
+    lead: "Every problem you had at branch one comes back doubled at branch two — unless you set up the right systems first. Here is exactly how to do it.",
+    toc: [
+      { id: 'what-actually-changes',      label: 'What changes at branch two' },
+      { id: 'inventory-challenge',         label: 'The inventory challenge' },
+      { id: 'staff-across-locations',      label: 'Staff across locations' },
+      { id: 'reporting-across-branches',   label: 'Consolidated reporting' },
+      { id: 'common-mistakes',             label: 'Common mistakes' },
+      { id: 'setting-up-exiuscart',        label: 'Multi-branch in ExiusCart' },
+      { id: 'when-youre-ready',            label: 'Signs you are ready' },
+    ],
+    Content: ScaleMultipleBranches,
   },
   'stop-using-spreadsheets-switch-exiuscart': {
     title: 'Why Growing Shops Stop Using Spreadsheets (And What They Use Instead)',
