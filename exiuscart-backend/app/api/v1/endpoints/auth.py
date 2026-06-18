@@ -36,6 +36,19 @@ router = APIRouter()
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
+        # If account exists but never verified → resend OTP so they can complete signup
+        if not existing_user.is_verified:
+            otp_code = f"{random.randint(100000, 999999)}"
+            db.query(EmailOTP).filter(EmailOTP.user_id == existing_user.id).delete()
+            otp = EmailOTP(
+                user_id=existing_user.id,
+                otp_code=otp_code,
+                expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+            )
+            db.add(otp)
+            db.commit()
+            _email_pool.submit(send_otp_email, existing_user.email, existing_user.full_name or "", otp_code)
+            return {"status": "otp_sent", "email": existing_user.email}
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
