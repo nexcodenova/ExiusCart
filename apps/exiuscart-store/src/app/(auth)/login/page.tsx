@@ -17,11 +17,18 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
     try {
-      const { authApi } = await import('@/lib/api');
+      const { authApi, shopApi } = await import('@/lib/api');
       const res = await authApi.login(email, password);
       const { access_token, user } = res.data;
       localStorage.setItem('access_token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
+      // Fetch and store shop_id so all dashboard pages work immediately
+      try {
+        const shopRes = await shopApi.getMyShop();
+        if (shopRes.data?.id) {
+          localStorage.setItem('shop_id', String(shopRes.data.id));
+        }
+      } catch {}
       window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Invalid email or password.');

@@ -52,7 +52,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 const features = [
   { icon: Store, text: 'Easy store setup in minutes' },
-  { icon: Users, text: 'Unlimited staff accounts' },
+  { icon: Users, text: 'Manage staff & teams' },
   { icon: TrendingUp, text: 'Real-time sales analytics' },
   { icon: Shield, text: 'Secure payment processing' },
 ];
@@ -151,7 +151,7 @@ function RegisterForm() {
         throw new Error(body.detail || 'Invalid code');
       }
       setSuccess(true);
-      setTimeout(() => router.push('/login?registered=1'), 1500);
+      setTimeout(() => { window.location.href = 'https://store.exiuscart.com/login'; }, 1500);
     } catch (err: any) {
       setOtpError(err.message || 'Invalid or expired code');
     } finally {
@@ -444,7 +444,7 @@ function RegisterForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold py-3 sm:py-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
+          className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-3 sm:py-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
         >
           {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
           Create Account
