@@ -945,6 +945,149 @@ function StopSpreadsheets() {
   );
 }
 
+function HRPayrollPost() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        End of the month. You message your four staff on WhatsApp asking for their hours. Two reply immediately, one sends a voice note, one goes quiet until Thursday. You add it all up on your phone calculator, cross-reference against your mental memory of who was off sick, and transfer the salaries. Two days later someone says the amount was wrong.
+      </p>
+
+      <P>This is how most small businesses handle payroll. Not because the owner is disorganised — but because no one told them there was a better way that didn't require hiring an HR manager.</P>
+      <P>HR for a small business is not complicated. Attendance, leave, payroll, records. Four things. This guide covers each one, including the UAE-specific rules that catch small business owners off guard, and how to handle all of it in about 15 minutes a month.</P>
+
+      <H2 id="what-hr-means-for-small-business">What HR Actually Means for a Small Business</H2>
+      <P>When people hear "HR," they picture a department with a dedicated manager, policies binders, and a complex HR information system. That is enterprise HR. For a business with 2 to 20 employees, HR is much simpler — but it still needs to be done properly.</P>
+      <P>The core of small business HR is four things:</P>
+
+      <UL items={[
+        'Knowing when each employee worked — accurate attendance records',
+        'Managing time off — annual leave, sick leave, public holidays',
+        'Calculating pay correctly — base salary, overtime, deductions, allowances',
+        'Keeping records — employment contracts, payslips, leave history',
+      ]} />
+
+      <P>None of these require a dedicated HR person. They do require a system — even a simple one — so that the information is accurate and you are not relying on memory and WhatsApp messages.</P>
+
+      <H2 id="attendance-tracking">Tracking Attendance Without the Drama</H2>
+      <P>The attendance problem has two parts: recording when staff arrive and leave, and knowing what to do with that information at the end of the month.</P>
+      <P>For very small teams, a simple clock-in system is enough. Staff log in when they start and log out when they finish. The system records the timestamps. At the end of the month, you have exact hours — no chasing, no estimating, no disputes.</P>
+
+      <Callout type="info">
+        Manual time sheets — paper or WhatsApp — create two problems. First, they are easy to falsify or simply misremember. Second, they require someone to manually total and verify the hours, which takes time you do not have at month end.
+      </Callout>
+
+      <P>ExiusCart lets staff clock in from their staff account. Every login is timestamped. You see a complete attendance log per employee without asking anyone for anything.</P>
+
+      <H2 id="leave-management">Managing Leave Requests Properly</H2>
+      <P>Leave management sounds formal but it comes down to two things: knowing who is off and when, and making sure people take what they are legally entitled to.</P>
+      <P>The second part matters more than most small business owners realise. Under UAE labour law, annual leave is not optional — it is a legal entitlement. If an employee leaves without having taken their leave, you owe them a payment for the unused days. If you have no records, you cannot dispute their claim about how many days they took.</P>
+
+      <div className="grid grid-cols-3 gap-4 my-8">
+        <StatBox stat="30 days" label="Annual leave entitlement" sub="After 1 year of service (UAE)" />
+        <StatBox stat="90 days" label="Sick leave per year" sub="Paid/unpaid under UAE law" />
+        <StatBox stat="6 months" label="Max probation period" sub="UAE Labour Law" />
+      </div>
+
+      <H3>Annual leave under UAE Labour Law</H3>
+      <P>Employees who have worked for less than one year are entitled to 2 days of leave per month. After one year, entitlement rises to 30 days per year. Public holidays are in addition to annual leave — not counted against it.</P>
+      <P>If you approve leave verbally and keep no records, you have no way to track what has been taken. An employee who claims they have 15 days of untaken leave when you believe it is 5 is a dispute you cannot resolve without records.</P>
+
+      <Callout type="warning">
+        End of service gratuity is calculated on the employee's last basic salary multiplied by years of service. The calculation is set by UAE Labour Law — it is not optional and not negotiable. Getting this wrong when an employee leaves creates a legal liability.
+      </Callout>
+
+      <H2 id="payroll-calculation">Calculating Payroll Correctly</H2>
+      <P>The basic payroll calculation is simple: base salary plus allowances, minus any agreed deductions. But there are variables that trip up most small business owners.</P>
+
+      <H3>Overtime</H3>
+      <P>UAE Labour Law requires overtime to be paid at 125% of the normal hourly rate for regular overtime, and 150% for overtime on rest days or public holidays. If you have hourly or part-time staff, this matters. If you have salaried staff who sometimes work extra hours, you need a clear policy on how this is handled — and records to support it.</P>
+
+      <H3>Deductions</H3>
+      <P>Legal deductions include absent days and agreed salary advances. Deducting for breakages, customer complaints, or other penalties requires the employee's written consent and is subject to limits under UAE law. Illegal deductions — even small ones — can become claims at the Ministry of Human Resources.</P>
+
+      <H3>WPS — Wage Protection System</H3>
+      <P>Most UAE employers are required to pay salaries through the WPS — a government system that records every salary payment made. Failure to pay on time through WPS triggers fines starting at AED 1,000 per employee per month and can result in your company being blocked from renewing trade licences.</P>
+
+      <Callout type="example">
+        <strong>WPS timeline:</strong> Salaries must be paid within 10 days of the agreed payment date. If you pay on the 1st of each month, the WPS record must show payment by the 11th at the latest. Most businesses set a standing transfer to ensure this never slips.
+      </Callout>
+
+      <H2 id="common-mistakes">Common Payroll Mistakes Small Businesses Make</H2>
+
+      <NumberedList items={[
+        {
+          title: 'Paying informally with no payslips',
+          desc: 'Every employee is entitled to a payslip showing their gross pay, deductions, and net pay. No payslip means no paper trail — and no defence if an employee claims they were underpaid.',
+        },
+        {
+          title: 'Missing the WPS deadline',
+          desc: 'A single late WPS payment triggers a fine. Multiple late payments can result in your company being flagged, which affects trade licence renewals and visa processing.',
+        },
+        {
+          title: 'Not tracking leave taken',
+          desc: 'Without records, you cannot calculate unused leave on exit. That leaves you exposed to claims from departing employees for leave they may or may not have taken.',
+        },
+        {
+          title: 'Calculating gratuity incorrectly',
+          desc: 'End of service gratuity is based on the last basic salary — not total package including allowances. Using the wrong base figure means you either overpay or face a claim for underpayment.',
+        },
+        {
+          title: 'No employment contracts',
+          desc: 'Verbal employment agreements are unenforceable. Every employee needs a signed contract specifying salary, role, start date, probation period, and leave entitlement. Without one, any dispute defaults to UAE Labour Law minimums — which may not match what you agreed.',
+        },
+      ]} />
+
+      <PullQuote>"HR problems do not announce themselves early. They arrive at resignation, and they come with paperwork."</PullQuote>
+
+      <H2 id="exiuscart-hr">How ExiusCart Handles HR for Small Teams</H2>
+      <P>ExiusCart includes HR and payroll tools built into every plan — attendance tracking, leave management, payroll calculation, and payslip generation. No separate HR software, no extra subscription, no consultant needed.</P>
+
+      <UL items={[
+        'Staff clock in and out via their ExiusCart account — attendance logged automatically',
+        'Leave requests submitted and approved through the system — running balance tracked per employee',
+        'Payroll calculated at month end based on attendance records — deductions and allowances configured once',
+        'Payslips generated automatically — downloadable PDF for each employee',
+        'Employee records stored securely — contracts, leave history, salary history in one place',
+        'Gratuity calculator built in — computes correct end of service amount when an employee leaves',
+      ]} />
+
+      <Callout type="tip">
+        Set up employee profiles before the month starts — salary, allowances, leave entitlement. Once configured, month-end payroll takes about 10 minutes: review the attendance log, approve or adjust anything unusual, generate payslips. That is it.
+      </Callout>
+
+      <H2 id="getting-started">Getting Your HR in Order This Week</H2>
+      <P>If your current system is WhatsApp messages and a mental tally, this week is a good time to change that — before someone leaves and asks questions you cannot answer with records.</P>
+
+      <NumberedList items={[
+        {
+          title: 'Add each employee to ExiusCart with their salary and start date',
+          desc: 'This creates their record and starts tracking leave entitlement from their start date.',
+        },
+        {
+          title: 'Configure leave entitlements per employee',
+          desc: 'Annual leave days, sick leave, any additional entitlements you have agreed.',
+        },
+        {
+          title: 'Set up clock-in for staff accounts',
+          desc: 'Staff log in at the start of their shift. Attendance records from this point forward are automatic.',
+        },
+        {
+          title: 'Run your first payroll at month end',
+          desc: 'Review the attendance log, approve payroll, download payslips. The system calculates everything — you just verify and approve.',
+        },
+      ]} />
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">Sort your HR in one afternoon</p>
+        <p className="text-gray-400 text-sm mb-6">Attendance, leave, payroll, and payslips — all included in ExiusCart. Free for 14 days.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 // ── Post registry ─────────────────────────────────────────────────────────────
 
 const POSTS: Record<string, {
@@ -1086,14 +1229,22 @@ const POSTS: Record<string, {
   'hr-payroll-small-business-no-hr-team': {
     title: 'How to Handle Employee Payroll Without an HR Department',
     seoTitle: 'Small Business HR & Payroll Management — No HR Team Needed | ExiusCart Blog',
-    seoDescription: 'How small business owners can manage employee attendance, leave, and payroll in minutes without hiring an HR team.',
+    seoDescription: 'UAE small business payroll guide — attendance tracking, leave management, WPS compliance, gratuity calculation, and how to do it all without an HR team.',
     category: 'HR & Payroll',
     categoryColor: 'text-pink-600 bg-pink-50 border-pink-100',
     date: 'June 2026',
-    readTime: '5 min',
-    lead: "You started a business, not an HR department. Here's how to handle payroll in minutes — not hours.",
-    toc: [],
-    Content: () => <p className="text-gray-500 italic">Full article coming soon.</p>,
+    readTime: '7 min',
+    lead: "Four staff, end of month, two reply on WhatsApp, one sends a voice note, one goes quiet. There is a better way — and it takes 15 minutes, not a whole afternoon.",
+    toc: [
+      { id: 'what-hr-means-for-small-business', label: 'What HR means for small teams' },
+      { id: 'attendance-tracking',               label: 'Tracking attendance' },
+      { id: 'leave-management',                  label: 'Managing leave properly' },
+      { id: 'payroll-calculation',               label: 'Calculating payroll correctly' },
+      { id: 'common-mistakes',                   label: 'Common payroll mistakes' },
+      { id: 'exiuscart-hr',                      label: 'HR in ExiusCart' },
+      { id: 'getting-started',                   label: 'Getting started this week' },
+    ],
+    Content: HRPayrollPost,
   },
   'shopify-woocommerce-sync-exiuscart': {
     title: 'Syncing Shopify & WooCommerce Orders into One Dashboard',
