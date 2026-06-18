@@ -1,7 +1,6 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -465,13 +464,13 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-[#0B1121] flex">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#151F32] to-[#0B1121] flex-col justify-between p-12 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#151F32] to-[#0B1121] flex-col justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5">
           <div className="absolute top-20 left-20 w-72 h-72 bg-[#6B3FD9] rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#6B3FD9] rounded-full blur-3xl" />
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 max-w-md">
           <Link href="/" className="inline-flex items-center gap-2 mb-12">
             <span className="text-2xl font-bold text-white tracking-tight">
               <span className="text-[#6B3FD9]">Exius</span>Cart
@@ -482,47 +481,25 @@ export default function RegisterPage() {
             Start Your Business<br />
             <span className="text-[#6B3FD9]">Journey Today</span>
           </h1>
-          <p className="text-gray-400 text-lg mb-8 max-w-md">
-            Join thousands of successful retailers using ExiusCart to manage and grow their business.
+          <p className="text-gray-400 text-lg mb-10">
+            Everything you need to run your shop — products, orders, customers, and more in one place.
           </p>
 
-          <div className="space-y-4 mb-8">
+          <div className="space-y-5">
             {features.map((feature, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
+              <div key={index} className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   <feature.icon className="w-5 h-5 text-[#6B3FD9]" />
                 </div>
-                <span className="text-gray-300">{feature.text}</span>
+                <span className="text-gray-300 text-base">{feature.text}</span>
               </div>
             ))}
           </div>
-        </div>
 
-        <div className="relative z-10">
-          <div className="bg-[#1A2540] rounded-xl border border-gray-800 p-3 shadow-2xl">
-            <Image
-              src="/images/dashboard-preview.png"
-              alt="ExiusCart Dashboard Preview"
-              width={600}
-              height={350}
-              className="rounded-lg w-full h-auto"
-              priority
-            />
-          </div>
-
-          <div className="mt-6 grid grid-cols-3 gap-4">
-            <div className="bg-[#1A2540]/50 rounded-lg p-4 border border-gray-800/50">
-              <p className="text-2xl font-bold text-white">5,000+</p>
-              <p className="text-gray-500 text-sm">Active Stores</p>
-            </div>
-            <div className="bg-[#1A2540]/50 rounded-lg p-4 border border-gray-800/50">
-              <p className="text-2xl font-bold text-[#6B3FD9]">99.9%</p>
-              <p className="text-gray-500 text-sm">Uptime</p>
-            </div>
-            <div className="bg-[#1A2540]/50 rounded-lg p-4 border border-gray-800/50">
-              <p className="text-2xl font-bold text-green-400">24/7</p>
-              <p className="text-gray-500 text-sm">Support</p>
-            </div>
+          <div className="mt-12 pt-8 border-t border-gray-800">
+            <p className="text-gray-500 text-sm">
+              14-day free trial · No credit card required · Cancel anytime
+            </p>
           </div>
         </div>
       </div>
@@ -550,21 +527,6 @@ export default function RegisterPage() {
             <Suspense fallback={null}>
               <RegisterForm />
             </Suspense>
-
-            <div className="lg:hidden mt-6 flex justify-center gap-6 text-center">
-              <div>
-                <p className="text-lg font-bold text-white">5,000+</p>
-                <p className="text-gray-500 text-xs">Stores</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-[#6B3FD9]">99.9%</p>
-                <p className="text-gray-500 text-xs">Uptime</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-green-400">24/7</p>
-                <p className="text-gray-500 text-xs">Support</p>
-              </div>
-            </div>
           </div>
         </main>
       </div>
