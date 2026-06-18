@@ -1088,6 +1088,165 @@ function HRPayrollPost() {
   );
 }
 
+function ShopifySyncPost() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        Monday morning. Shopify tab — 8 new orders. WooCommerce tab — 4 more. TheDersi tab — 11. Your own website — 3. That is 26 orders across four places, each with their own interface, their own fulfilment status, their own inventory. You have not even had coffee yet.
+      </p>
+
+      <P>Multi-channel selling is one of the best things you can do for revenue. Every additional platform you sell on is another audience you would not otherwise reach. The problem is the operations side — managing four separate dashboards, reconciling four inventory counts, and trying to build a complete picture of your business from four sets of data.</P>
+      <P>ExiusCart pulls all of it into one place. This guide covers how each integration works, what happens to inventory across channels, and how to get everything connected.</P>
+
+      <H2 id="the-multi-platform-problem">The Multi-Platform Problem</H2>
+      <P>Selling on multiple platforms creates a specific type of operational chaos that gets worse as volume grows. It is not that any single platform is hard to manage — it is the combination.</P>
+
+      <UL items={[
+        'Orders arrive across different systems at different times — you have to check all of them to know what needs to go out today',
+        'Inventory lives in separate places — overselling on one platform because another channel already sold the last unit',
+        'Revenue figures are split across platforms — you need to add them up manually to know your actual numbers',
+        'Customer records are fragmented — a buyer who shops on your website and on TheDersi appears as two separate people',
+        'Fulfilment gets complicated — is this order from Shopify or WooCommerce? Did I already mark it as dispatched?',
+        'Reporting is impossible — you cannot see your best-selling products across all channels without a spreadsheet',
+      ]} />
+
+      <Callout type="info">
+        The inventory problem is the most dangerous. If you sell 10 units of something across four channels and each channel thinks you have 10 in stock, you can technically oversell 30 units you do not have. Every oversell is a cancellation, a refund, and a disappointed customer.
+      </Callout>
+
+      <H2 id="how-shopify-sync-works">How Shopify Sync Works</H2>
+      <P>Connecting your Shopify store to ExiusCart takes a few minutes. You install the ExiusCart app from the Shopify app store, authorise the connection, and map your Shopify products to your ExiusCart catalog.</P>
+      <P>From that point, every Shopify order appears in your ExiusCart dashboard automatically — alongside orders from every other channel. You see the source clearly (tagged as Shopify), the customer details, the products ordered, and the payment status.</P>
+
+      <H3>What syncs from Shopify</H3>
+      <UL items={[
+        'All new orders — appearing in ExiusCart within seconds of placement',
+        'Customer name, email, phone, and shipping address',
+        'Product name, SKU, quantity, variant (size, colour, etc.)',
+        'Order value, discounts applied, and payment status',
+        'Fulfilment status — mark an order fulfilled in ExiusCart and it updates in Shopify',
+        'Inventory — every Shopify sale decrements your ExiusCart stock count',
+      ]} />
+
+      <Callout type="tip">
+        If you already have products in Shopify, you do not need to re-enter them in ExiusCart. The product mapping process pulls your Shopify catalog and lets you link each item to its ExiusCart equivalent, or import them directly if you are starting fresh.
+      </Callout>
+
+      <H2 id="how-woocommerce-sync-works">How WooCommerce Sync Works</H2>
+      <P>WooCommerce integration works the same way as Shopify — you install the ExiusCart plugin from the WordPress plugin directory, connect your store, and orders start flowing in automatically.</P>
+      <P>Because WooCommerce is self-hosted, the connection is slightly different under the hood — ExiusCart uses your WooCommerce REST API credentials rather than an app store authorisation. Your developer can set this up in about 10 minutes if you are not comfortable with API keys.</P>
+
+      <H3>What syncs from WooCommerce</H3>
+      <UL items={[
+        'All new orders from your WooCommerce store in real time',
+        'Full customer and shipping details per order',
+        'Product, SKU, quantity, and variant information',
+        'Order status updates bidirectionally — ExiusCart and WooCommerce stay in sync',
+        'Inventory counts update in ExiusCart with every WooCommerce sale',
+      ]} />
+
+      <Callout type="example">
+        <strong>A common setup:</strong> A UAE retailer runs a WooCommerce store for their main website, has a Shopify store for international customers, lists products on TheDersi for the UAE marketplace, and sells in-store via the ExiusCart POS. All four channels feed into one ExiusCart dashboard. One inventory count. One place to fulfil orders. One set of reports.
+      </Callout>
+
+      <H2 id="thedersi-and-custom-sites">TheDersi and Custom Websites</H2>
+      <P>TheDersi is natively integrated with ExiusCart — no plugin installation needed. Connect your TheDersi seller account in the ExiusCart integrations settings and orders start syncing immediately.</P>
+      <P>For custom-built websites — whether coded from scratch, built on Laravel, Next.js, or any other framework — ExiusCart provides a REST API. Your developer sends order data to ExiusCart when a purchase is made on your site. The setup is a few hours of development work, not a project.</P>
+
+      <div className="overflow-x-auto my-7">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-900 text-white">
+              <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Platform</th>
+              <th className="text-left px-4 py-3 font-semibold">How to connect</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Setup time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { p: 'Shopify',          h: 'Install ExiusCart app from Shopify App Store',           t: '5 minutes' },
+              { p: 'WooCommerce',      h: 'Install WordPress plugin + add API credentials',         t: '10–15 minutes' },
+              { p: 'TheDersi',         h: 'Connect seller account in ExiusCart Integrations',        t: '2 minutes' },
+              { p: 'Custom website',   h: 'Developer integrates via ExiusCart REST API',            t: 'Half a day (developer)' },
+              { p: 'Physical store',   h: 'Use ExiusCart POS — already built in',                   t: 'Immediate' },
+            ].map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="px-4 py-3 font-medium text-gray-900 border-b border-gray-100">{row.p}</td>
+                <td className="px-4 py-3 text-gray-600 border-b border-gray-100">{row.h}</td>
+                <td className="px-4 py-3 text-gray-700 border-b border-gray-100">{row.t}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <H2 id="unified-inventory">One Inventory Count for All Channels</H2>
+      <P>This is the feature that changes everything for multi-channel sellers. Instead of separate stock counts on Shopify, WooCommerce, and TheDersi — all drifting apart as sales happen — ExiusCart maintains one master inventory count. Every sale on any channel decrements the same number.</P>
+      <P>Sell a product on Shopify: ExiusCart updates. Sell the same product via the POS in your physical store: ExiusCart updates. Sell the last unit on TheDersi: ExiusCart updates all connected channels to show zero stock, preventing anyone from ordering something you cannot fulfil.</P>
+
+      <div className="grid grid-cols-3 gap-4 my-8">
+        <StatBox stat="1" label="Inventory count" sub="Shared across all channels" />
+        <StatBox stat="Real-time" label="Stock updates" sub="Every sale, every channel" />
+        <StatBox stat="0" label="Oversells" sub="When channels share one count" />
+      </div>
+
+      <PullQuote>"Every channel you add without centralising inventory is another way to accidentally sell something you do not have."</PullQuote>
+
+      <H2 id="single-reporting">One Set of Numbers for Your Whole Business</H2>
+      <P>When orders come from four platforms, the question "how did we do this month?" requires opening four dashboards, pulling four sets of numbers, and adding them up. ExiusCart answers it in one click.</P>
+      <P>Your ExiusCart reports show total revenue across all channels — with the ability to filter by source so you can see which platform is performing. You see your best-selling products ranked across every channel combined, not per-platform. You see which customers are buying repeatedly, regardless of which platform they use each time.</P>
+
+      <UL items={[
+        'Total orders today, this week, this month — across every connected channel',
+        'Revenue by channel — compare Shopify vs WooCommerce vs TheDersi vs in-store',
+        'Best-selling products ranked across all channels combined',
+        'Customer purchase history regardless of which platform they ordered from',
+        'Inventory value report — what you are holding and what it is worth',
+        'Fulfilment time report — from order placed to order dispatched',
+      ]} />
+
+      <H2 id="getting-connected">Getting Everything Connected</H2>
+      <P>The most common question is: where do I start? The answer is always the highest-volume channel first. Connect the platform that sends you the most orders, verify that everything is syncing correctly, then add the next channel.</P>
+      <P>Do not try to connect everything on day one. Add channels one at a time over the first week, testing each connection with a few orders before moving on. By the end of the week you will have full visibility across your entire business — and the Monday morning tab-switching will be a thing of the past.</P>
+
+      <NumberedList items={[
+        {
+          title: 'Start your ExiusCart free trial',
+          desc: 'All integrations are available during the 14-day trial — no credit card needed.',
+        },
+        {
+          title: 'Set up your product catalog',
+          desc: 'Import products from your primary channel or add them manually. This is the master catalog all channels map to.',
+        },
+        {
+          title: 'Connect your highest-volume channel first',
+          desc: 'Shopify, WooCommerce, or TheDersi — whichever sends you the most orders. Verify the sync with a few test orders.',
+        },
+        {
+          title: 'Add remaining channels one at a time',
+          desc: 'Each integration takes minutes. Test after each one before adding the next.',
+        },
+        {
+          title: 'Set low-stock thresholds',
+          desc: 'Configure alerts per product so ExiusCart notifies you before any channel runs out — before an oversell happens, not after.',
+        },
+      ]} />
+
+      <Callout type="tip">
+        On your first full week with all channels connected, check the inventory report at the end of each day. After 5 days you will have a clear picture of how stock moves across your channels — which platforms sell fastest, what your reorder rhythm should be, and where your bestsellers actually live.
+      </Callout>
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">Connect all your channels in one afternoon</p>
+        <p className="text-gray-400 text-sm mb-6">Shopify, WooCommerce, TheDersi, custom website, and in-store — one dashboard, one inventory, one set of reports.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 // ── Post registry ─────────────────────────────────────────────────────────────
 
 const POSTS: Record<string, {
@@ -1249,14 +1408,22 @@ const POSTS: Record<string, {
   'shopify-woocommerce-sync-exiuscart': {
     title: 'Syncing Shopify & WooCommerce Orders into One Dashboard',
     seoTitle: 'Manage Shopify, WooCommerce & TheDersi Orders in One Place | ExiusCart Blog',
-    seoDescription: 'How to sync Shopify, WooCommerce, TheDersi, and custom website orders into a single ExiusCart dashboard.',
+    seoDescription: 'How to sync Shopify, WooCommerce, TheDersi, and custom website orders into one ExiusCart dashboard — one inventory, one set of reports, zero oversells.',
     category: 'Integrations',
     categoryColor: 'text-blue-600 bg-blue-50 border-blue-100',
     date: 'June 2026',
-    readTime: '4 min',
-    lead: "Selling on three platforms means three dashboards to check — unless you centralise everything in ExiusCart.",
-    toc: [],
-    Content: () => <p className="text-gray-500 italic">Full article coming soon.</p>,
+    readTime: '6 min',
+    lead: "26 orders across four platforms before your first coffee. There is a better way to start the day.",
+    toc: [
+      { id: 'the-multi-platform-problem',  label: 'The multi-platform problem' },
+      { id: 'how-shopify-sync-works',      label: 'How Shopify sync works' },
+      { id: 'how-woocommerce-sync-works',  label: 'How WooCommerce sync works' },
+      { id: 'thedersi-and-custom-sites',   label: 'TheDersi & custom websites' },
+      { id: 'unified-inventory',           label: 'One inventory for all channels' },
+      { id: 'single-reporting',            label: 'Unified reporting' },
+      { id: 'getting-connected',           label: 'Getting connected' },
+    ],
+    Content: ShopifySyncPost,
   },
 };
 
