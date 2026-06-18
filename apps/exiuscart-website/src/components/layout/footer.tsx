@@ -9,7 +9,6 @@ const NAV = [
       { label: 'Features',     href: '/features'     },
       { label: 'Pricing',      href: '/pricing'      },
       { label: 'Integrations', href: '/integrations' },
-      { label: 'Roadmap',      href: '/roadmap'      },
     ],
   },
   {
@@ -18,9 +17,6 @@ const NAV = [
       { label: 'Marketplace',           href: '/industries'    },
       { label: 'Shopify & Custom Sites', href: '/integrations'},
       { label: 'Physical Shops',        href: '/industries'   },
-      { label: 'POS & Invoicing',       href: '/features/pos' },
-      { label: 'Inventory',      href: '/features/inventory'  },
-      { label: 'Reports',        href: '/features/reports'    },
       { label: 'All Industries', href: '/industries'          },
     ],
   },
