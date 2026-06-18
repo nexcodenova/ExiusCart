@@ -18,9 +18,9 @@ from app.api.v1.deps import get_current_user
 # Plan catalogue (source of truth)
 PLAN_CATALOGUE = {
     # ExiusCart direct plans
-    "free_trial":      {"name": "Free Trial",  "price": 0,   "staff": 1},
-    "starter":         {"name": "Starter",     "price": 69,  "staff": 3},
-    "premium":         {"name": "Premium",     "price": 149, "staff": 0},  # unlimited staff
+    "free_trial":      {"name": "Free Trial",  "price": 0,  "staff": 1},
+    "starter":         {"name": "Starter",     "price": 45, "staff": 3},
+    "premium":         {"name": "Premium",     "price": 99, "staff": 0},  # unlimited staff
     # TheDersi partner plans (billed through TheDersi, not ExiusCart)
     "thedersi_basic":  {"name": "Free Forever (TheDersi)", "price": 0, "staff": 1},
     "thedersi_pro":    {"name": "Pro (TheDersi)",          "price": 0, "staff": 3},  # starter features + unlimited orders

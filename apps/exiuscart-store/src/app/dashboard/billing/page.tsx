@@ -20,11 +20,11 @@ const CURRENCY_META: Record<Currency, { symbol: string; flag: string; country: s
 };
 
 const PLAN_PRICING: Record<Currency, { starter: number; premium: number; extraStaff: number }> = {
-  AED: { starter: 69,   premium: 149,  extraStaff: 25  },
-  USD: { starter: 19,   premium: 39,   extraStaff: 7   },
-  LKR: { starter: 5800, premium: 12500, extraStaff: 2100 },
-  EUR: { starter: 18,   premium: 36,   extraStaff: 6   },
-  INR: { starter: 1599, premium: 3299, extraStaff: 599 },
+  AED: { starter: 45,   premium: 99,   extraStaff: 15  },
+  USD: { starter: 12,   premium: 29,   extraStaff: 5   },
+  LKR: { starter: 3800, premium: 8900, extraStaff: 1400 },
+  EUR: { starter: 11,   premium: 27,   extraStaff: 4   },
+  INR: { starter: 999,  premium: 2399, extraStaff: 399 },
 };
 
 const makePlans = (currency: Currency, fmt: (n: number) => string) => {
