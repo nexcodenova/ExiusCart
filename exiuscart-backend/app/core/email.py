@@ -1,60 +1,53 @@
 """
-Email utility — sends via AWS SES API (boto3, HTTPS port 443).
-SMTP port 587 is blocked by DigitalOcean; boto3 uses HTTPS which is always open.
-Required env vars: AWS_SES_ACCESS_KEY, AWS_SES_SECRET_KEY, AWS_SES_REGION
+Email utility — sends via AWS SES SMTP on port 2587.
+Port 587 is blocked by DigitalOcean; port 2587 is AWS SES's alternate SMTP port that bypasses this.
 """
 import os
+import smtplib
 import logging
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_AWS_ACCESS_KEY = os.getenv("AWS_SES_ACCESS_KEY", os.getenv("SMTP_USERNAME", ""))
-_AWS_SECRET_KEY = os.getenv("AWS_SES_SECRET_KEY", os.getenv("SMTP_PASSWORD", ""))
-_AWS_REGION     = os.getenv("AWS_SES_REGION", "ap-southeast-1")
-_FROM_NOREPLY   = os.getenv("SMTP_FROM_NOREPLY", "noreply@exiuscart.com")
-_FROM_BILLING   = os.getenv("SMTP_FROM_BILLING", "billing@exiuscart.com")
-_FROM_NAME      = os.getenv("SMTP_FROM_NAME", "ExiusCart")
-_SES_ENABLED    = bool(_AWS_ACCESS_KEY and _AWS_SECRET_KEY)
+_SMTP_HOST     = os.getenv("SMTP_HOST", "email-smtp.ap-southeast-1.amazonaws.com")
+_SMTP_PORT     = int(os.getenv("SMTP_PORT", "2587"))  # 2587 = AWS SES alt port, open on DigitalOcean
+_SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+_SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+_SMTP_ENABLED  = os.getenv("SMTP_ENABLED", "true" if _SMTP_USERNAME else "false").lower() == "true"
+_FROM_NOREPLY  = os.getenv("SMTP_FROM_NOREPLY", "noreply@exiuscart.com")
+_FROM_BILLING  = os.getenv("SMTP_FROM_BILLING", "billing@exiuscart.com")
+_FROM_NAME     = os.getenv("SMTP_FROM_NAME", "ExiusCart")
 
 
 def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] = None,
                from_email: Optional[str] = None) -> bool:
-    """Send an email via AWS SES API (HTTPS). Returns True if sent, False if skipped."""
-    if not _SES_ENABLED:
-        logger.info(f"[EMAIL SKIPPED — no AWS credentials] To: {to} | Subject: {subject}")
+    """Send an email via SMTP on port 2587. Returns True if sent, False if skipped."""
+    if not _SMTP_ENABLED:
+        logger.info(f"[EMAIL SKIPPED — SMTP disabled] To: {to} | Subject: {subject}")
         return False
-
-    import boto3
-    from botocore.exceptions import ClientError
 
     sender_addr = from_email or _FROM_NOREPLY
     sender = f"{_FROM_NAME} <{sender_addr}>"
 
-    body: dict = {"Html": {"Charset": "UTF-8", "Data": html_body}}
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"]    = sender
+    msg["To"]      = to
+
     if text_body:
-        body["Text"] = {"Charset": "UTF-8", "Data": text_body}
+        msg.attach(MIMEText(text_body, "plain", "utf-8"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
-        client = boto3.client(
-            "ses",
-            region_name=_AWS_REGION,
-            aws_access_key_id=_AWS_ACCESS_KEY,
-            aws_secret_access_key=_AWS_SECRET_KEY,
-        )
-        client.send_email(
-            Source=sender,
-            Destination={"ToAddresses": [to]},
-            Message={
-                "Subject": {"Charset": "UTF-8", "Data": subject},
-                "Body": body,
-            },
-        )
+        with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(_SMTP_USERNAME, _SMTP_PASSWORD)
+            server.sendmail(sender_addr, [to], msg.as_string())
         logger.info(f"[EMAIL SENT] To: {to} | Subject: {subject}")
         return True
-    except ClientError as exc:
-        logger.error(f"[EMAIL FAILED] To: {to} | {exc.response['Error']['Message']}")
-        return False
     except Exception as exc:
         logger.error(f"[EMAIL FAILED] To: {to} | {exc}")
         return False
