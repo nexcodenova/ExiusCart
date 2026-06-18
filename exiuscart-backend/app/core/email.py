@@ -12,11 +12,12 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_SMTP_ENABLED  = os.getenv("SMTP_ENABLED", "false").lower() == "true"
 _SMTP_HOST     = os.getenv("SMTP_HOST", "email-smtp.ap-southeast-1.amazonaws.com")
-_SMTP_PORT     = int(os.getenv("SMTP_PORT", "2587"))
+_SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
 _SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
 _SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+# SMTP is enabled automatically when credentials are present; override with SMTP_ENABLED=false to disable
+_SMTP_ENABLED  = os.getenv("SMTP_ENABLED", "true" if _SMTP_USERNAME else "false").lower() == "true"
 _FROM_NOREPLY  = os.getenv("SMTP_FROM_NOREPLY", "noreply@exiuscart.com")
 _FROM_BILLING  = os.getenv("SMTP_FROM_BILLING", "billing@exiuscart.com")
 _FROM_NAME     = os.getenv("SMTP_FROM_NAME", "ExiusCart")
