@@ -169,8 +169,10 @@ export default function BillingPage() {
     }
   };
 
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   return (
     <div className="space-y-6">
@@ -315,6 +317,19 @@ export default function BillingPage() {
         </div>
       )}
 
+      {/* Pending upgrade notice */}
+      {currentPlan?.status === 'pending' && !isTheDersiSeller && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+          <Clock className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-foreground">Upgrade Request Received</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Your upgrade request is pending review. Our team will activate it within 24 hours after payment confirmation.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Trial Warning */}
       {currentPlan?.daysLeft != null && currentPlan.daysLeft <= 7 && !isTheDersiSeller && (
         <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex items-start gap-3">
@@ -349,7 +364,10 @@ export default function BillingPage() {
                     <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Current</span>
                   </div>
                   <p className="text-muted-foreground text-sm mt-1">
-                    {currentPlan.price} {currency}/month • Next billing: {formatDate(currentPlan.nextBilling)}
+                    {currentPlan.is_trial
+                      ? `Free trial${currentPlan.daysLeft != null ? ` · ${currentPlan.daysLeft} day${currentPlan.daysLeft !== 1 ? 's' : ''} left` : ''}`
+                      : `${currentPlan.price} ${currency}/month${currentPlan.nextBilling ? ` · Next billing: ${formatDate(currentPlan.nextBilling)}` : ''}`
+                    }
                   </p>
                 </div>
               </div>

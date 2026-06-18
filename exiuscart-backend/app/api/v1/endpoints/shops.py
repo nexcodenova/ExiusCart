@@ -159,9 +159,15 @@ def get_shop_subscription(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
-    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(
-        Subscription.created_at.desc()
-    ).first()
+    # Prefer active/trial — never surface a pending request as the "current" plan
+    sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id,
+        Subscription.status.in_(["active", "trial"]),
+    ).order_by(Subscription.created_at.desc()).first()
+    if not sub:
+        sub = db.query(Subscription).filter(
+            Subscription.shop_id == shop_id
+        ).order_by(Subscription.created_at.desc()).first()
 
     plan_info = None
     if sub:
