@@ -886,507 +886,358 @@ function ProductModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border w-full max-w-2xl max-h-[92vh] flex flex-col">
+      <div className="bg-card rounded-xl border border-border w-full max-w-5xl max-h-[94vh] flex flex-col">
+
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <h2 className="text-lg font-semibold text-foreground">{product ? 'Edit Product' : 'Add Product'}</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-4 space-y-5">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
+          <div className="grid lg:grid-cols-[1fr_300px] min-h-0">
 
-          {channelStatus?.status === 'rejected' && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-red-600 dark:text-red-400">❌ Rejected on TheDersi</p>
-                {channelStatus.rejection_reason && (
-                  <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">{channelStatus.rejection_reason}</p>
-                )}
-                <p className="text-xs text-red-500/80 mt-1">Fix the issue and save the product — it will be re-submitted for review.</p>
-              </div>
-            </div>
-          )}
+            {/* ── LEFT: Content ──────────────────────────────────────── */}
+            <div className="p-6 space-y-6 border-r border-border">
 
-          {/* ── Product Images ─────────────────────────────────────────── */}
-          <section>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-foreground">
-                Product Images
-                <span className="ml-1.5 text-xs text-muted-foreground font-normal">({totalImages}/{MAX_IMAGES})</span>
-              </label>
-              {totalImages < MAX_IMAGES && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition"
-                >
-                  <Upload className="w-3.5 h-3.5" /> Upload
-                </button>
+              {/* Alerts */}
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                  {error}
+                </div>
               )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              multiple
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {/* Saved images */}
-              {savedImages.map((img) => (
-                <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted">
-                  <img src={img.url} alt={img.alt_text ?? ''} className="w-full h-full object-cover" />
-                  {img.is_primary && (
-                    <div className="absolute top-1 left-1 bg-yellow-400 rounded-full p-0.5">
-                      <Star className="w-2.5 h-2.5 text-yellow-900 fill-yellow-900" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1">
-                    {!img.is_primary && (
-                      <button
-                        type="button"
-                        onClick={() => setPrimaryImage(img.id)}
-                        title="Set as primary"
-                        className="p-1 bg-yellow-400 rounded-full hover:bg-yellow-300 transition"
-                      >
-                        <Star className="w-3 h-3 text-yellow-900" />
-                      </button>
+              {channelStatus?.status === 'rejected' && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 flex gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-600 dark:text-red-400">Rejected on TheDersi</p>
+                    {channelStatus.rejection_reason && (
+                      <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">{channelStatus.rejection_reason}</p>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => deleteSavedImage(img.id)}
-                      disabled={deletingImageId === img.id}
-                      title="Delete image"
-                      className="p-1 bg-destructive rounded-full hover:bg-destructive/80 transition"
-                    >
-                      {deletingImageId === img.id
-                        ? <Loader2 className="w-3 h-3 text-white animate-spin" />
-                        : <X className="w-3 h-3 text-white" />}
-                    </button>
+                    <p className="text-xs text-red-500/80 mt-1">Fix the issue and save — it will be re-submitted for review.</p>
                   </div>
                 </div>
-              ))}
-
-              {/* Pending images (not yet uploaded) */}
-              {pendingImages.map((img, idx) => (
-                <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-primary/40 bg-muted">
-                  <img src={img.preview} alt="Preview" className="w-full h-full object-cover" />
-                  <div className="absolute top-1 right-1 bg-primary/80 rounded-full px-1 py-0.5">
-                    <span className="text-[10px] text-white font-medium">New</span>
-                  </div>
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={() => removePendingImage(idx)}
-                      title="Remove"
-                      className="p-1 bg-destructive rounded-full hover:bg-destructive/80 transition"
-                    >
-                      <X className="w-3 h-3 text-white" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {/* Add slot */}
-              {totalImages < MAX_IMAGES && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition"
-                >
-                  <ImageIcon className="w-5 h-5 mb-1" />
-                  <span className="text-xs">Add</span>
-                </button>
               )}
-            </div>
-            {totalImages === 0 && (
-              <p className="text-xs text-muted-foreground mt-1.5">Upload up to 6 images. First image will be set as primary.</p>
-            )}
-          </section>
 
-          {/* ── Basic Info ─────────────────────────────────────────────── */}
-          <section className="space-y-4">
-            <h3 className="text-sm font-medium text-foreground border-b border-border pb-2">Basic Information</h3>
-
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Product Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-                placeholder="e.g. iPhone 15 Pro Max"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                placeholder="Describe the product — material, style, occasion..."
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground resize-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+              {/* Product Name */}
               <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">SKU</label>
-                <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="IPH15PM-256" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Product Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                  placeholder="e.g. iPhone 15 Pro Max"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-base"
+                />
               </div>
+
+              {/* Description */}
               <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Barcode</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={formData.barcode}
-                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    placeholder="Scan or type"
-                    className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, barcode: generateBarcode() })}
-                    className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap"
-                    title="Auto-generate barcode"
-                  >
-                    Generate
-                  </button>
-                </div>
-                {formData.barcode && (
-                  <div className="mt-2 bg-white rounded-lg p-2 border border-border">
-                    <BarcodeDisplay value={formData.barcode} height={45} fontSize={11} />
-                  </div>
-                )}
+                <label className="text-sm text-muted-foreground mb-1.5 block">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                  placeholder="Describe the product — material, style, occasion..."
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground resize-none"
+                />
               </div>
-            </div>
 
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Category *</label>
-              <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} required className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground">
-                {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-            </div>
-          </section>
-
-          {/* ── Channel Listings ───────────────────────────────────────── */}
-          {theDersiConnection && (
-            <section className="space-y-4">
-              <h3 className="text-sm font-medium text-foreground border-b border-border pb-2">Channel Listings</h3>
+              {/* Images */}
               <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block flex items-center gap-2">
-                  TheDersi Category
-                  {loadingCategories && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                </label>
-                <select
-                  value={theDersiCategoryId}
-                  onChange={(e) => {
-                    const opt = theDersiCategories.find((c) => c.id === e.target.value);
-                    setTheDersiCategoryId(e.target.value);
-                    setTheDersiCategoryName(opt?.name ?? '');
-                  }}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                  disabled={loadingCategories}
-                >
-                  <option value="">-- Select TheDersi category --</option>
-                  {theDersiCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  Product will be listed under this category on TheDersi marketplace.
-                </p>
-              </div>
-            </section>
-          )}
-
-          {/* ── Pricing ────────────────────────────────────────────────── */}
-          <section className="space-y-4">
-            <h3 className="text-sm font-medium text-foreground border-b border-border pb-2">Pricing & Stock</h3>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Cost Price ({sym}) *</label>
-                <input type="number" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Selling Price ({sym}) *</label>
-                <input type="number" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-              </div>
-            </div>
-
-            {/* Original price before discount (offer price) */}
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">
-                Original Price ({sym})
-                <span className="ml-2 text-xs font-normal">(only fill if this product is on offer/discount)</span>
-              </label>
-              <input
-                type="number"
-                value={formData.compareAtPrice || ''}
-                onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })}
-                min="0"
-                placeholder={`e.g. ${formData.sellingPrice > 0 ? Math.round(formData.sellingPrice * 1.3) : '5000'}`}
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-              />
-            </div>
-
-            {/* Live preview: profit margin + discount badge */}
-            {formData.costPrice > 0 && formData.sellingPrice > 0 && (
-              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Profit Margin</span>
-                  <span className="font-medium text-green-600 dark:text-green-400">
-                    {formData.sellingPrice - formData.costPrice} {sym} ({Math.round(((formData.sellingPrice - formData.costPrice) / formData.costPrice) * 100)}%)
-                  </span>
-                </div>
-                {formData.compareAtPrice > formData.sellingPrice && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Discount shown to customer</span>
-                    <span className="font-semibold text-red-500">
-                      {Math.round((1 - formData.sellingPrice / formData.compareAtPrice) * 100)}% OFF
-                      &nbsp;·&nbsp;
-                      <span className="line-through text-muted-foreground font-normal">{formData.compareAtPrice} {sym}</span>
-                      &nbsp;→&nbsp;{formData.sellingPrice} {sym}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Stock Quantity</label>
-                <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Low Stock Alert</label>
-                <input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-              </div>
-            </div>
-          </section>
-
-          {/* ── Size & Color Variants ─────────────────────────────────── */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-2">
-              <div>
-                <h3 className="text-sm font-medium text-foreground">Sizes & Colors</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Add variants with individual stock counts. Customers on TheDersi will see these options.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setVariants((v) => [...v, emptyVariant()])}
-                className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition font-medium"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Variant
-              </button>
-            </div>
-
-            {variants.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-3 bg-muted/30 rounded-lg">
-                No variants added. Click "Add Variant" to add sizes and colors (e.g. Red / Size M — 5 in stock).
-              </p>
-            )}
-
-            {variants.map((v, i) => (
-              <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-3">
-                  {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Size</label>}
-                  <input
-                    type="text"
-                    value={v.size}
-                    onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, size: e.target.value } : r))}
-                    placeholder="S / M / XL"
-                    className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
-                  />
-                </div>
-                <div className="col-span-3">
-                  {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Color</label>}
-                  <input
-                    type="text"
-                    value={v.color}
-                    onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, color: e.target.value } : r))}
-                    placeholder="Red / Blue"
-                    className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
-                  />
-                </div>
-                <div className="col-span-2">
-                  {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Stock</label>}
-                  <input
-                    type="number"
-                    value={v.quantity}
-                    min={0}
-                    onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, quantity: Number(e.target.value) } : r))}
-                    className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
-                  />
-                </div>
-                <div className="col-span-3">
-                  {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Price (leave blank = default)</label>}
-                  <input
-                    type="number"
-                    value={v.price}
-                    min={0}
-                    onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, price: e.target.value } : r))}
-                    placeholder={String(formData.sellingPrice)}
-                    className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
-                  />
-                </div>
-                <div className="col-span-1 flex justify-end">
-                  {i === 0 && <div className="mb-1 h-4" />}
-                  <button
-                    type="button"
-                    onClick={() => setVariants((arr) => arr.filter((_, j) => j !== i))}
-                    className="p-2 text-muted-foreground hover:text-destructive transition rounded-lg hover:bg-destructive/10"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {variants.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Total stock across all variants: <strong>{variants.reduce((s, v) => s + v.quantity, 0)}</strong>
-              </p>
-            )}
-          </section>
-
-          {/* ── Custom Fields ──────────────────────────────────────────── */}
-          {customFields.length > 0 && (
-            <section className="space-y-4">
-              <h3 className="text-sm font-medium text-foreground border-b border-border pb-2">
-                Additional Details
-                <span className="ml-2 text-xs text-muted-foreground font-normal">Custom fields for your shop</span>
-              </h3>
-
-              {customFields.map((field) => (
-                <div key={field.field_key}>
-                  <label className="text-sm text-muted-foreground mb-1.5 flex items-center gap-1">
-                    {field.label}
-                    {field.is_required && <span className="text-destructive">*</span>}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm text-muted-foreground">
+                    Product Images
+                    <span className="ml-1.5 text-xs font-normal">({totalImages}/{MAX_IMAGES})</span>
                   </label>
-
-                  {field.field_type === 'text' && (
-                    <input
-                      type="text"
-                      value={attrValues[field.field_key] ?? ''}
-                      onChange={(e) => setAttr(field.field_key, e.target.value)}
-                      required={field.is_required}
-                      placeholder={field.label}
-                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                    />
+                  {totalImages < MAX_IMAGES && (
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition">
+                      <Upload className="w-3.5 h-3.5" /> Upload
+                    </button>
                   )}
-
-                  {field.field_type === 'number' && (
-                    <input
-                      type="number"
-                      value={attrValues[field.field_key] ?? ''}
-                      onChange={(e) => setAttr(field.field_key, e.target.value)}
-                      required={field.is_required}
-                      placeholder="0"
-                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                    />
-                  )}
-
-                  {field.field_type === 'date' && (
-                    <input
-                      type="date"
-                      value={attrValues[field.field_key] ?? ''}
-                      onChange={(e) => setAttr(field.field_key, e.target.value)}
-                      required={field.is_required}
-                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                    />
-                  )}
-
-                  {field.field_type === 'dropdown' && (
-                    <select
-                      value={attrValues[field.field_key] ?? ''}
-                      onChange={(e) => setAttr(field.field_key, e.target.value)}
-                      required={field.is_required}
-                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                    >
-                      <option value="">Select {field.label}...</option>
-                      {(field.options ?? []).map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  )}
-
-                  {field.field_type === 'multiselect' && (
-                    <div className="flex flex-wrap gap-2">
-                      {(field.options ?? []).map((opt) => {
-                        const selected = (attrValues[field.field_key] ?? '').split(',').filter(Boolean).includes(opt);
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => toggleMultiselect(field.field_key, opt)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${
-                              selected
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-muted text-foreground border-border hover:border-primary/50'
-                            }`}
-                          >
-                            {opt}
+                </div>
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={handleFileSelect} />
+                <div className="grid grid-cols-6 gap-2">
+                  {savedImages.map((img) => (
+                    <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted">
+                      <img src={img.url} alt={img.alt_text ?? ''} className="w-full h-full object-cover" />
+                      {img.is_primary && (
+                        <div className="absolute top-1 left-1 bg-yellow-400 rounded-full p-0.5">
+                          <Star className="w-2.5 h-2.5 text-yellow-900 fill-yellow-900" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1">
+                        {!img.is_primary && (
+                          <button type="button" onClick={() => setPrimaryImage(img.id)} title="Set as primary" className="p-1 bg-yellow-400 rounded-full hover:bg-yellow-300 transition">
+                            <Star className="w-3 h-3 text-yellow-900" />
                           </button>
-                        );
-                      })}
+                        )}
+                        <button type="button" onClick={() => deleteSavedImage(img.id)} disabled={deletingImageId === img.id} title="Delete" className="p-1 bg-destructive rounded-full hover:bg-destructive/80 transition">
+                          {deletingImageId === img.id ? <Loader2 className="w-3 h-3 text-white animate-spin" /> : <X className="w-3 h-3 text-white" />}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {pendingImages.map((img, idx) => (
+                    <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-primary/40 bg-muted">
+                      <img src={img.preview} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute top-1 right-1 bg-primary/80 rounded-full px-1 py-0.5">
+                        <span className="text-[10px] text-white font-medium">New</span>
+                      </div>
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                        <button type="button" onClick={() => removePendingImage(idx)} className="p-1 bg-destructive rounded-full hover:bg-destructive/80 transition">
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {totalImages < MAX_IMAGES && (
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition">
+                      <ImageIcon className="w-5 h-5 mb-1" />
+                      <span className="text-xs">Add</span>
+                    </button>
+                  )}
+                </div>
+                {totalImages === 0 && <p className="text-xs text-muted-foreground mt-1.5">Upload up to 6 images. First image is set as primary.</p>}
+              </div>
+
+              {/* SKU + Barcode */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">SKU</label>
+                  <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="IPH15PM-256" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">Barcode</label>
+                  <div className="flex gap-2">
+                    <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} placeholder="Scan or type" className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                    <button type="button" onClick={() => setFormData({ ...formData, barcode: generateBarcode() })} className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap">
+                      Generate
+                    </button>
+                  </div>
+                  {formData.barcode && (
+                    <div className="mt-2 bg-white rounded-lg p-2 border border-border">
+                      <BarcodeDisplay value={formData.barcode} height={45} fontSize={11} />
                     </div>
                   )}
-
-                  {field.field_type === 'toggle' && (
-                    <button
-                      type="button"
-                      onClick={() => setAttr(field.field_key, attrValues[field.field_key] === 'true' ? 'false' : 'true')}
-                      className="flex items-center gap-2 text-sm text-foreground"
-                    >
-                      {attrValues[field.field_key] === 'true'
-                        ? <ToggleRight className="w-8 h-8 text-primary" />
-                        : <ToggleLeft className="w-8 h-8 text-muted-foreground" />}
-                      <span>{attrValues[field.field_key] === 'true' ? 'Yes' : 'No'}</span>
-                    </button>
-                  )}
                 </div>
-              ))}
-            </section>
-          )}
+              </div>
 
-          {customFields.length === 0 && (
-            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-              No custom fields yet. Go to <strong>Settings → Product Fields</strong> to add fields specific to your business (e.g. Brand, Size, IMEI, Color).
-            </p>
-          )}
+              {/* Variants */}
+              <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Sizes & Colors</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Variants with individual stock counts</p>
+                  </div>
+                  <button type="button" onClick={() => setVariants((v) => [...v, emptyVariant()])} className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition font-medium">
+                    <Plus className="w-3.5 h-3.5" /> Add Variant
+                  </button>
+                </div>
+                {variants.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-3 bg-muted/30 rounded-lg">No variants — click "Add Variant" to add sizes and colors.</p>
+                ) : (
+                  <>
+                    {variants.map((v, i) => (
+                      <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-3">
+                          {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Size</label>}
+                          <input type="text" value={v.size} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, size: e.target.value } : r))} placeholder="S / M / XL" className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                        </div>
+                        <div className="col-span-3">
+                          {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Color</label>}
+                          <input type="text" value={v.color} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, color: e.target.value } : r))} placeholder="Red / Blue" className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                        </div>
+                        <div className="col-span-2">
+                          {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Stock</label>}
+                          <input type="number" value={v.quantity} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, quantity: Number(e.target.value) } : r))} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                        </div>
+                        <div className="col-span-3">
+                          {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Price (blank = default)</label>}
+                          <input type="number" value={v.price} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, price: e.target.value } : r))} placeholder={String(formData.sellingPrice)} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                        </div>
+                        <div className="col-span-1 flex justify-end">
+                          {i === 0 && <div className="mb-1 h-4" />}
+                          <button type="button" onClick={() => setVariants((arr) => arr.filter((_, j) => j !== i))} className="p-2 text-muted-foreground hover:text-destructive transition rounded-lg hover:bg-destructive/10">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-xs text-muted-foreground">Total stock: <strong>{variants.reduce((s, v) => s + v.quantity, 0)}</strong></p>
+                  </>
+                )}
+              </section>
 
-          {/* ── Actions ────────────────────────────────────────────────── */}
-          <div className="flex gap-3 pt-2 pb-1">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
-            >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {saving ? 'Saving...' : product ? 'Update Product' : 'Add Product'}
-            </button>
+              {/* Custom Fields */}
+              {customFields.length > 0 ? (
+                <section className="space-y-4">
+                  <p className="text-sm font-medium text-foreground">Additional Details</p>
+                  {customFields.map((field) => (
+                    <div key={field.field_key}>
+                      <label className="text-sm text-muted-foreground mb-1.5 flex items-center gap-1">
+                        {field.label}{field.is_required && <span className="text-destructive">*</span>}
+                      </label>
+                      {field.field_type === 'text' && <input type="text" value={attrValues[field.field_key] ?? ''} onChange={(e) => setAttr(field.field_key, e.target.value)} required={field.is_required} placeholder={field.label} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />}
+                      {field.field_type === 'number' && <input type="number" value={attrValues[field.field_key] ?? ''} onChange={(e) => setAttr(field.field_key, e.target.value)} required={field.is_required} placeholder="0" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />}
+                      {field.field_type === 'date' && <input type="date" value={attrValues[field.field_key] ?? ''} onChange={(e) => setAttr(field.field_key, e.target.value)} required={field.is_required} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />}
+                      {field.field_type === 'dropdown' && (
+                        <select value={attrValues[field.field_key] ?? ''} onChange={(e) => setAttr(field.field_key, e.target.value)} required={field.is_required} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground">
+                          <option value="">Select {field.label}...</option>
+                          {(field.options ?? []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      )}
+                      {field.field_type === 'multiselect' && (
+                        <div className="flex flex-wrap gap-2">
+                          {(field.options ?? []).map((opt) => {
+                            const selected = (attrValues[field.field_key] ?? '').split(',').filter(Boolean).includes(opt);
+                            return (
+                              <button key={opt} type="button" onClick={() => toggleMultiselect(field.field_key, opt)} className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${selected ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-foreground border-border hover:border-primary/50'}`}>
+                                {opt}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {field.field_type === 'toggle' && (
+                        <button type="button" onClick={() => setAttr(field.field_key, attrValues[field.field_key] === 'true' ? 'false' : 'true')} className="flex items-center gap-2 text-sm text-foreground">
+                          {attrValues[field.field_key] === 'true' ? <ToggleRight className="w-8 h-8 text-primary" /> : <ToggleLeft className="w-8 h-8 text-muted-foreground" />}
+                          <span>{attrValues[field.field_key] === 'true' ? 'Yes' : 'No'}</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </section>
+              ) : (
+                <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+                  No custom fields yet. Go to <strong>Settings → Product Fields</strong> to add fields like Brand, IMEI, Color.
+                </p>
+              )}
+            </div>
+
+            {/* ── RIGHT: Sidebar ─────────────────────────────────────── */}
+            <div className="p-6 space-y-6 bg-muted/20">
+
+              {/* Category */}
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Category *</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  required
+                  className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                >
+                  {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
+
+              {/* TheDersi Category */}
+              {theDersiConnection && (
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                    TheDersi Category
+                    {loadingCategories && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                  </label>
+                  <select
+                    value={theDersiCategoryId}
+                    onChange={(e) => {
+                      const opt = theDersiCategories.find((c) => c.id === e.target.value);
+                      setTheDersiCategoryId(e.target.value);
+                      setTheDersiCategoryName(opt?.name ?? '');
+                    }}
+                    className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                    disabled={loadingCategories}
+                  >
+                    <option value="">Select TheDersi category</option>
+                    {theDersiCategories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                  </select>
+                  <p className="text-xs text-muted-foreground mt-1.5">Listed under this category on TheDersi.</p>
+                </div>
+              )}
+
+              <div className="border-t border-border" />
+
+              {/* Pricing */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-foreground">Pricing</p>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Cost Price ({sym}) *</label>
+                  <input type="number" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Selling Price ({sym}) *</label>
+                  <input type="number" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    Original Price ({sym})
+                    <span className="ml-1 font-normal opacity-60">— if on offer</span>
+                  </label>
+                  <input type="number" value={formData.compareAtPrice || ''} onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })} min="0" placeholder={formData.sellingPrice > 0 ? String(Math.round(formData.sellingPrice * 1.3)) : ''} className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                </div>
+
+                {/* Profit preview */}
+                {formData.costPrice > 0 && formData.sellingPrice > 0 && (
+                  <div className="bg-muted rounded-lg p-3 space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Profit</span>
+                      <span className="font-semibold text-green-600 dark:text-green-400">
+                        {formData.sellingPrice - formData.costPrice} {sym} ({Math.round(((formData.sellingPrice - formData.costPrice) / formData.costPrice) * 100)}%)
+                      </span>
+                    </div>
+                    {formData.compareAtPrice > formData.sellingPrice && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Discount</span>
+                        <span className="font-semibold text-red-500">
+                          {Math.round((1 - formData.sellingPrice / formData.compareAtPrice) * 100)}% OFF
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border" />
+
+              {/* Stock */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-foreground">Inventory</p>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Stock Quantity</label>
+                  <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Low Stock Alert</label>
+                  <input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                </div>
+              </div>
+
+              <div className="border-t border-border" />
+
+              {/* Save */}
+              <div className="flex flex-col gap-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                >
+                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {saving ? 'Saving...' : product ? 'Update Product' : 'Add Product'}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={saving}
+                  className="w-full px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition disabled:opacity-50 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+
+            </div>
           </div>
         </form>
       </div>
