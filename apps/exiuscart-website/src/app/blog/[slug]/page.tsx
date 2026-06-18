@@ -524,6 +524,158 @@ function TheDersiPost() {
   );
 }
 
+function POSvsCashRegister() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        A customer pays by card. Your cash register beeps. You hand over a handwritten receipt. Later, an auditor asks for your sales records — and you have a drawer full of paper rolls and nothing else. That worked in 2010. In 2026, it creates real problems.
+      </p>
+
+      <P>Most UAE shop owners know a POS system is probably the right move. What stops them is the same question: is it actually worth it for the size of my shop? Or am I paying for features I'll never use?</P>
+      <P>This guide gives you a clear comparison — what each option does, what it costs, and when the switch from cash register to POS genuinely makes sense.</P>
+
+      <H2 id="what-a-cash-register-does">What a Cash Register Actually Does</H2>
+      <P>A cash register does one thing: it calculates the total and opens the drawer. That's it. The more advanced models add a receipt printer and basic category totals at the end of the day. But there's no software, no database, no reporting, and no integration with anything else.</P>
+      <P>You know what sold today by counting the cash in the drawer. You know what's in stock by walking to the shelf. You know your busiest hour by memory. When the FTA asks for your sales records, you hand them a shoebox of receipts.</P>
+
+      <Callout type="warning">
+        If your business is VAT-registered, a standard cash register receipt is not a valid tax document. FTA-compliant tax invoices require your TRN, a sequential invoice number, itemised VAT amounts, and your registered business name. A cash register print-out doesn't have any of this.
+      </Callout>
+
+      <P>Cash registers cost AED 200–800 to buy, have no monthly fees, and require no setup. For a very small operation — a single fruit stall, a neighbourhood shop doing under AED 100,000 a year — they work. Below the VAT registration threshold and not growing, a cash register is fine.</P>
+
+      <H2 id="what-a-pos-does">What a POS System Does</H2>
+      <P>A POS system is software. It runs on a tablet, a desktop, or a dedicated terminal. Instead of just opening a drawer, it records every transaction in a database — what was sold, when, at what price, by which staff member, to which customer.</P>
+      <P>That data is what makes the difference. At the end of the day you don't count a drawer — you read a report. At the end of the month you know exactly which products made you money and which sat on the shelf.</P>
+
+      <UL items={[
+        'Every sale recorded with product name, quantity, price, and time',
+        'Inventory updates automatically — no manual stock counts after every sale',
+        'Staff log in separately — you see who sold what and when',
+        'FTA-compliant VAT invoices generated on every transaction',
+        'Customer database — who bought what, how often, how much they spend',
+        'End-of-day reports, weekly trends, monthly revenue — all automatic',
+        'Multiple payment methods — cash, card, Apple Pay, split payments',
+        'Discount and coupon management per product or category',
+        'Low-stock alerts so you reorder before you run out',
+      ]} />
+
+      <H2 id="real-cost-comparison">The Real Cost of Each</H2>
+      <P>The upfront cost of a cash register is lower. The long-term cost is often much higher — in time spent doing things manually, mistakes that go unnoticed, and information you simply never have.</P>
+
+      <div className="overflow-x-auto my-7">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-900 text-white">
+              <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Cost factor</th>
+              <th className="text-left px-4 py-3 font-semibold">Cash register</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">POS system</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { f: 'Hardware',           cr: 'AED 200–800 (buy once)',     pos: 'Tablet you may already own' },
+              { f: 'Software',           cr: 'None',                        pos: 'AED 45–99/month (ExiusCart)' },
+              { f: 'Daily stock count',  cr: 'Manual — 30–60 min/day',     pos: 'Automatic — 0 min' },
+              { f: 'End-of-day reports', cr: 'Manual calculation',          pos: 'Instant, automatic' },
+              { f: 'VAT invoicing',      cr: 'Not compliant',               pos: 'FTA-compliant, automatic' },
+              { f: 'Theft detection',    cr: 'None',                        pos: 'Per-staff transaction log' },
+              { f: 'Inventory alerts',   cr: 'None — you find out when empty', pos: 'Alert before you run out' },
+              { f: 'Sales history',      cr: 'Paper receipts in a drawer',  pos: 'Searchable, exportable, forever' },
+            ].map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="px-4 py-3 font-medium text-gray-900 border-b border-gray-100">{row.f}</td>
+                <td className="px-4 py-3 text-gray-500 border-b border-gray-100">{row.cr}</td>
+                <td className="px-4 py-3 text-gray-700 border-b border-gray-100">{row.pos}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <PullQuote>"A cash register tells you the total. A POS tells you the story."</PullQuote>
+
+      <H2 id="uae-vat-compliance">VAT Compliance — This Is Where It Gets Serious</H2>
+      <P>Since January 2018, VAT-registered businesses in the UAE must issue FTA-compliant tax invoices. Not just any receipt — a tax invoice with specific required fields. A standard cash register receipt doesn't meet these requirements.</P>
+
+      <div className="grid grid-cols-2 gap-4 my-8">
+        <StatBox stat="AED 2,500" label="Penalty per non-compliant invoice" sub="FTA enforcement" />
+        <StatBox stat="5 years" label="Records must be kept" sub="FTA can audit any period" />
+      </div>
+
+      <P>If your annual turnover exceeds AED 375,000, you're required to be VAT-registered. At that point, issuing receipts from a cash register is not just inconvenient — it's a compliance risk.</P>
+
+      <Callout type="info">
+        A cloud POS like ExiusCart generates FTA-compliant tax invoices automatically on every transaction. Your TRN, sequential invoice number, itemised VAT, and business details are all included without you doing anything.
+      </Callout>
+
+      <H2 id="when-register-is-enough">When a Cash Register Is Still Fine</H2>
+      <P>Not every business needs a POS. A cash register is genuinely sufficient if:</P>
+
+      <UL items={[
+        'Your annual turnover is below AED 375,000 and you have no plans to grow past it',
+        'You sell a very small number of products (under 10) with stable pricing',
+        'You have one member of staff — yourself — and no theft risk',
+        'You have no need for customer records or marketing',
+        'You do zero online selling and never plan to',
+      ]} />
+
+      <P>If all five of those are true, a cash register will serve you fine. But if even one of them isn't — particularly the VAT threshold — it's worth making the switch now rather than when you're already overwhelmed.</P>
+
+      <H2 id="when-you-need-pos">When You Genuinely Need a POS</H2>
+      <P>There are specific moments when a cash register stops being adequate. Most shop owners can pinpoint exactly when it happened:</P>
+
+      <H3>You hired your first staff member</H3>
+      <P>The moment someone else is handling cash, you need transaction-level accountability. A POS logs every sale to a staff account. A cash register doesn't know who rang it up.</P>
+
+      <H3>You crossed AED 375,000 in annual revenue</H3>
+      <P>Now you're VAT-registered. Now every receipt needs to be a proper tax invoice. A cash register physically cannot produce one.</P>
+
+      <H3>You opened an online store alongside the physical one</H3>
+      <P>Selling in-store and online with separate inventory systems is a stock management nightmare. A POS that connects to your online channel keeps inventory in sync automatically.</P>
+
+      <H3>You stopped knowing what was actually selling</H3>
+      <P>If your product decisions are based on gut feeling because you have no data, a POS pays for itself on the first buying decision it informs.</P>
+
+      <H2 id="what-to-look-for">What to Look for in a UAE POS System</H2>
+      <P>Not all POS systems are built for UAE businesses. Before choosing one, check these specifically:</P>
+
+      <UL items={[
+        'UAE VAT support — FTA-compliant invoices with TRN, 5% VAT calculation, sequential numbering',
+        'Arabic receipt option — required for some B2B customers and government entities',
+        'AED as primary currency — obvious, but some international POS systems default to USD',
+        'Cloud-based — so your data is accessible from anywhere and backed up automatically',
+        'Works on tablet or existing hardware — no expensive proprietary terminal required',
+        'Inventory management built in — not a separate add-on with extra fees',
+        'Staff accounts with role-based access — manager, cashier, warehouse',
+        'Offline mode — UAE internet is reliable but a POS that stops working in an outage is a problem',
+      ]} />
+
+      <H2 id="exiuscart-pos">ExiusCart POS — Built for UAE Shops</H2>
+      <P>ExiusCart includes a full POS as part of every plan — not a separate product, not an add-on. It runs in any browser on any device. Tablet, laptop, or desktop.</P>
+      <P>Every sale generates an FTA-compliant VAT invoice automatically. Inventory updates in real time. Staff log in to their own accounts. End-of-day reports are instant. And because it's the same platform handling your online orders, TheDersi sync, invoicing, HR, and reports — everything is connected in one place.</P>
+
+      <div className="grid grid-cols-3 gap-4 my-8">
+        <StatBox stat="AED 45" label="Starter plan" sub="$12 USD · per month" />
+        <StatBox stat="14 days" label="Free trial" sub="All features unlocked" />
+        <StatBox stat="0" label="Hardware cost" sub="Works on any device" />
+      </div>
+
+      <Callout type="tip">
+        Start the free trial and run your POS on a tablet for 14 days. Compare what you know about your business at the end of that trial versus what you knew when you were using a cash register. The difference is usually the end of the conversation.
+      </Callout>
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">Try the ExiusCart POS free for 14 days</p>
+        <p className="text-gray-400 text-sm mb-6">Works on any tablet or laptop. VAT invoicing, inventory, staff accounts — all included.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 // ── Post registry ─────────────────────────────────────────────────────────────
 
 const POSTS: Record<string, {
@@ -605,14 +757,23 @@ const POSTS: Record<string, {
   'pos-vs-cash-register-uae-shops-2026': {
     title: 'POS vs Cash Register: What UAE Shop Owners Need to Know in 2026',
     seoTitle: 'POS System vs Cash Register for UAE Shops — Which Should You Choose in 2026? | ExiusCart',
-    seoDescription: 'Comparing modern POS systems against traditional cash registers for UAE shop owners. Features, cost, and what works for your business size.',
+    seoDescription: 'Cash register or POS? A clear comparison for UAE shop owners — features, cost, VAT compliance, and exactly when the switch is worth making.',
     category: 'Technology',
     categoryColor: 'text-cyan-600 bg-cyan-50 border-cyan-100',
     date: 'June 2026',
-    readTime: '6 min',
-    lead: "A cash register does one thing. A POS does twenty. But is the upgrade actually worth it for a small shop?",
-    toc: [],
-    Content: () => <p className="text-gray-500 italic">Full article coming soon.</p>,
+    readTime: '7 min',
+    lead: "A cash register costs AED 300 and does one thing. A POS costs AED 45/month and runs your entire business. Here is exactly when each makes sense.",
+    toc: [
+      { id: 'what-a-cash-register-does', label: 'What a cash register does' },
+      { id: 'what-a-pos-does',           label: 'What a POS does' },
+      { id: 'real-cost-comparison',      label: 'Real cost comparison' },
+      { id: 'uae-vat-compliance',        label: 'UAE VAT compliance' },
+      { id: 'when-register-is-enough',   label: 'When a register is enough' },
+      { id: 'when-you-need-pos',         label: 'When you need a POS' },
+      { id: 'what-to-look-for',          label: 'What to look for' },
+      { id: 'exiuscart-pos',             label: 'ExiusCart POS' },
+    ],
+    Content: POSvsCashRegister,
   },
   'scale-uae-business-multiple-branches': {
     title: 'From One Store to Multiple Branches: How to Scale Your UAE Business',
