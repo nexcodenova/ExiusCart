@@ -379,6 +379,151 @@ function SkipAdminPanel() {
   );
 }
 
+function TheDersiPost() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        Monday morning, 23 new orders on TheDersi. You open a spreadsheet, start copying them across one by one — customer name, product, quantity, address. By the time you're done, it's been 40 minutes and you still haven't checked if anything is actually in stock.
+      </p>
+
+      <P>If that sounds familiar, you're not alone. Most TheDersi sellers manage orders manually for longer than they should — because no one tells them there's a better way until they're completely overwhelmed.</P>
+      <P>ExiusCart is the official order management platform for TheDersi. Orders sync automatically. Inventory updates in real time. Invoices generate themselves. Here's how to use it properly.</P>
+
+      <H2 id="manual-problem">Why Manual Order Management Breaks Down</H2>
+      <P>Copying orders into a spreadsheet works when you have 5 a day. At 30, you're spending two hours on data entry alone. At 100, it's a full-time job — and mistakes start happening.</P>
+      <P>Wrong quantities get shipped. Stock runs out because the spreadsheet wasn't updated. A customer asks for an invoice and you spend 20 minutes in Word creating one. A return arrives and you have no record of the original order.</P>
+      <P>These aren't big-business problems. They happen to any seller who grows faster than their systems.</P>
+
+      <Callout type="info">
+        TheDersi's seller portal shows you orders — but it's not built for managing a business. It doesn't track stock, generate invoices, manage staff, or give you a sales report. That's what ExiusCart is for.
+      </Callout>
+
+      <H2 id="how-it-connects">How ExiusCart Connects to TheDersi</H2>
+      <P>The connection is built in — not a third-party workaround. ExiusCart and TheDersi are integrated at the platform level, which means setup takes minutes, not days.</P>
+
+      <NumberedList items={[
+        { title: 'Create your ExiusCart account', desc: 'Start a free trial — no credit card needed. All features are unlocked during your 14-day trial.' },
+        { title: 'Connect TheDersi in your settings', desc: 'Go to Integrations in your ExiusCart dashboard and link your TheDersi seller account. Takes about 2 minutes.' },
+        { title: 'Orders start syncing immediately', desc: 'All new TheDersi orders appear in your ExiusCart dashboard automatically. No exports, no manual imports.' },
+        { title: 'Set up your product catalog', desc: 'Map your TheDersi listings to ExiusCart products so inventory updates correctly with every order.' },
+      ]} />
+
+      <P>Historical orders don't sync back — only new orders from the point of connection. So it makes sense to connect early, before your order volume makes manual management painful.</P>
+
+      <H2 id="what-syncs">What Syncs Automatically</H2>
+      <P>When a customer places an order on TheDersi, ExiusCart receives it within seconds. Here's exactly what comes across:</P>
+
+      <UL items={[
+        'Order ID and TheDersi reference number',
+        'Customer name, address, and contact details',
+        'Product name, SKU, quantity, and variant (size, colour, etc.)',
+        'Order value and any discounts applied',
+        'Payment status (paid, pending, COD)',
+        'Delivery method and address',
+        'Order status updates — when TheDersi marks it shipped, ExiusCart updates too',
+      ]} />
+
+      <Callout type="tip">
+        You can also update the order status from ExiusCart and it reflects back in TheDersi. So your fulfilment team can work entirely in ExiusCart without touching the TheDersi seller portal at all.
+      </Callout>
+
+      <H2 id="inventory-sync">Keep Your Inventory Accurate</H2>
+      <P>This is the part that saves the most headaches. Every time an order syncs from TheDersi, ExiusCart decrements the stock count for that product automatically. No manual updating. No "checking the sheet."</P>
+      <P>If you sell the same products on TheDersi and on your own website (or in a physical store), ExiusCart manages stock across all of them from one place. Sell something in-store via POS and the TheDersi listing reflects the updated stock.</P>
+
+      <Callout type="warning">
+        Selling on multiple channels without centralised inventory is the fastest route to overselling — taking an order you can't fulfil. ExiusCart prevents this by keeping one stock count, not separate counts per channel.
+      </Callout>
+
+      <P>Low-stock alerts are built in. Set a threshold per product and ExiusCart notifies you when you're running low — before you run out completely and miss orders.</P>
+
+      <H2 id="invoicing">Invoices That Generate Themselves</H2>
+      <P>Every TheDersi order that syncs into ExiusCart can generate a VAT-compliant invoice automatically. Your logo, your TRN, the correct 5% VAT calculation, sequential numbering — all of it, without you touching anything.</P>
+      <P>Customers who request a VAT invoice for their records (B2B buyers especially) get a professional PDF that meets FTA requirements. That's something TheDersi's built-in receipt doesn't provide.</P>
+
+      <div className="grid grid-cols-2 gap-4 my-8">
+        <StatBox stat="500" label="Invoices per month" sub="Starter plan" />
+        <StatBox stat="∞" label="Invoices per month" sub="Premium plan" />
+      </div>
+
+      <H2 id="reports">Know Your TheDersi Numbers</H2>
+      <P>The TheDersi seller portal shows you orders and basic revenue. ExiusCart goes much deeper.</P>
+
+      <UL items={[
+        'Revenue by day, week, and month — with trend lines so you can spot slow periods early',
+        'Best-selling products — ranked by revenue and units sold',
+        'Average order value — and how it changes over time',
+        'Fulfilment times — how long from order to dispatch',
+        'Return rate per product — so you know which listings need attention',
+        'Customer lifetime value — repeat buyers vs one-time customers',
+      ]} />
+
+      <P>All of this is in your ExiusCart dashboard — no exporting data, no building your own charts in Excel.</P>
+
+      <PullQuote>"You can't grow what you can't measure. The sellers who scale on TheDersi are the ones who know their numbers."</PullQuote>
+
+      <H2 id="plans">Free vs Paid: Which Plan Do You Need?</H2>
+      <P>ExiusCart has a free tier specifically for TheDersi sellers who are just getting started. Here's how the plans compare:</P>
+
+      <div className="overflow-x-auto my-7">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-900 text-white">
+              <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Feature</th>
+              <th className="text-left px-4 py-3 font-semibold">Free Trial</th>
+              <th className="text-left px-4 py-3 font-semibold">Starter · AED 45/$12</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Premium · AED 99/$29</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { f: 'TheDersi order sync',   free: '50/month',     starter: '1,000/month',  premium: 'Unlimited' },
+              { f: 'Products',              free: '50',           starter: '1,000',         premium: 'Unlimited' },
+              { f: 'Staff accounts',        free: '1',            starter: '3',             premium: 'Unlimited' },
+              { f: 'Invoices',              free: '—',            starter: '500/month',     premium: 'Unlimited' },
+              { f: 'Inventory tracking',    free: 'Basic',        starter: 'Full',          premium: 'Full + multi-branch' },
+              { f: 'Analytics',             free: 'Basic',        starter: 'Advanced',      premium: 'Advanced' },
+              { f: 'Support',               free: 'Email',        starter: 'Priority email', premium: '24/7 + account manager' },
+            ].map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="px-4 py-3 font-medium text-gray-900 border-b border-gray-100">{row.f}</td>
+                <td className="px-4 py-3 text-gray-400 border-b border-gray-100">{row.free}</td>
+                <td className="px-4 py-3 text-gray-700 border-b border-gray-100">{row.starter}</td>
+                <td className="px-4 py-3 text-[#6B3FD9] font-semibold border-b border-gray-100">{row.premium}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Callout type="example">
+        <strong>When to upgrade:</strong> If your TheDersi store does more than 50 orders a month — even occasionally — the Starter plan at AED 45/month is worth it. At 100 orders a month, you're spending more time on manual management than the subscription costs. At 500+, Premium pays for itself in staff time alone.
+      </Callout>
+
+      <H2 id="get-started">Get Connected in 10 Minutes</H2>
+      <P>You don't need to migrate anything or change how your TheDersi store works. ExiusCart runs alongside it — your listings stay on TheDersi, your customers check out on TheDersi, and ExiusCart handles everything on the management side.</P>
+
+      <UL items={[
+        'Create your ExiusCart account (free, no card needed)',
+        'Connect your TheDersi account in the Integrations settings',
+        'Set up your product catalog so inventory tracks correctly',
+        'Place a test order on TheDersi and watch it appear in your dashboard',
+        'Turn on low-stock alerts and invoice auto-generation',
+      ]} />
+
+      <P>Most sellers are fully set up within the same day. The 14-day free trial gives you time to test everything properly before choosing a plan.</P>
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">Start managing TheDersi orders properly</p>
+        <p className="text-gray-400 text-sm mb-6">Connect your TheDersi store to ExiusCart — free for 14 days, all features included.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 // ── Post registry ─────────────────────────────────────────────────────────────
 
 const POSTS: Record<string, {
@@ -439,14 +584,23 @@ const POSTS: Record<string, {
   'thedersi-sellers-manage-orders-exiuscart': {
     title: 'How TheDersi Sellers Can Manage All Their Orders in One Place',
     seoTitle: 'TheDersi Order Management Made Easy with ExiusCart | ExiusCart Blog',
-    seoDescription: 'A step-by-step guide for TheDersi sellers on syncing orders, tracking inventory, and issuing invoices using ExiusCart.',
+    seoDescription: 'How TheDersi sellers can sync orders automatically, track inventory in real time, and generate VAT invoices — all from ExiusCart.',
     category: 'Guides',
     categoryColor: 'text-[#6B3FD9] bg-purple-50 border-purple-100',
     date: 'June 2026',
-    readTime: '4 min',
-    lead: "If you're selling on TheDersi, your orders are already syncing to ExiusCart. Here's how to make the most of it.",
-    toc: [],
-    Content: () => <p className="text-gray-500 italic">Full article coming soon.</p>,
+    readTime: '6 min',
+    lead: "Copying TheDersi orders into a spreadsheet works — until it doesn't. Here's how to manage everything automatically without changing how your store works.",
+    toc: [
+      { id: 'manual-problem',   label: 'Why manual management breaks' },
+      { id: 'how-it-connects',  label: 'How the connection works' },
+      { id: 'what-syncs',       label: 'What syncs automatically' },
+      { id: 'inventory-sync',   label: 'Keeping inventory accurate' },
+      { id: 'invoicing',        label: 'Auto-generated invoices' },
+      { id: 'reports',          label: 'Sales reports & analytics' },
+      { id: 'plans',            label: 'Free vs paid plans' },
+      { id: 'get-started',      label: 'Get connected' },
+    ],
+    Content: TheDersiPost,
   },
   'pos-vs-cash-register-uae-shops-2026': {
     title: 'POS vs Cash Register: What UAE Shop Owners Need to Know in 2026',
