@@ -204,13 +204,6 @@ export default function RoadmapPage() {
               Send a Feature Request
               <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link
-              href="/changelog"
-              className="inline-flex items-center justify-center gap-2 bg-transparent hover:bg-white/5 text-white font-semibold px-8 py-4 rounded-lg transition-all border border-gray-700"
-            >
-              View Changelog
-              <ArrowRight className="w-5 h-5" />
-            </Link>
           </div>
         </div>
       </section>
