@@ -839,6 +839,112 @@ function ScaleMultipleBranches() {
   );
 }
 
+function StopSpreadsheets() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        Somewhere on your laptop there is a spreadsheet with 12 tabs. One for orders. One for inventory. One for staff hours. A separate one for invoices that someone started and never finished. You open it every morning and spend 45 minutes updating numbers that were already out of date by the time you typed them.
+      </p>
+
+      <P>Spreadsheets are not the problem. They are genuinely useful tools — for analysis, for planning, for one-off calculations. The problem is using them to run a live business. The moment your business has more than a few moving parts, a spreadsheet stops being a tool and becomes a second job.</P>
+      <P>This is the point where growing shops make the switch. Not because spreadsheets stopped working overnight, but because the cost of maintaining them finally outweighed the cost of replacing them.</P>
+
+      <H2 id="why-spreadsheets-feel-safe">Why Spreadsheets Feel Safe</H2>
+      <P>Every business owner who runs on spreadsheets knows exactly why. They are free. They are flexible. You built them yourself so you understand every column. No one can change them without your permission. And there is no monthly fee, no contract, no salesperson calling you.</P>
+      <P>These are real advantages — and they explain why spreadsheets survive long after they should have been replaced. The pain of switching feels bigger than the pain of continuing. Until it suddenly doesn't.</P>
+
+      <Callout type="info">
+        The businesses that switch earliest are usually the ones that got a scare — a stock error that led to an oversell, a payroll mistake, a customer complaint about a wrong invoice. The switch happens before the disaster, or just after it.
+      </Callout>
+
+      <H2 id="what-they-cost-you">What Spreadsheets Actually Cost You</H2>
+      <P>The monthly fee for a spreadsheet is zero. The weekly cost in hours is not.</P>
+      <P>Think through a typical week. Updating stock counts after sales — 20 minutes daily. Reconciling the order list against what was dispatched — 30 minutes. Chasing staff for their hours to calculate payroll — 45 minutes. Creating invoices manually — 10 minutes per invoice, multiplied by however many you send. Pulling together a revenue summary at the end of the month — 2 hours if everything lines up, longer if it doesn't.</P>
+
+      <div className="grid grid-cols-3 gap-4 my-8">
+        <StatBox stat="8–12hrs" label="Lost per week" sub="Typical spreadsheet overhead" />
+        <StatBox stat="AED 45" label="ExiusCart Starter" sub="$12 USD · per month" />
+        <StatBox stat="0 hrs" label="Manual data entry" sub="Everything updates automatically" />
+      </div>
+
+      <P>At eight hours a week, that is over 400 hours a year. If your time is worth AED 50 an hour — a conservative estimate for a business owner — that is AED 20,000 a year in time spent maintaining a system that could be replaced for AED 45 a month.</P>
+      <P>And that calculation does not include the cost of mistakes.</P>
+
+      <H2 id="what-breaks-first">What Breaks First</H2>
+      <P>Spreadsheets do not fail all at once. They fail one column at a time, usually in the order things get busiest.</P>
+
+      <H3>Inventory</H3>
+      <P>The stock spreadsheet is the first to go wrong. Someone makes a sale and forgets to update it. A return comes in and no one adds the units back. You order more of something because the sheet says you are low, but the actual shelf has plenty — because the last three returns were never entered. You discover this when the supplier delivers and you have nowhere to put it.</P>
+
+      <H3>Orders</H3>
+      <P>Two people update the order list at the same time and one overwrites the other. An order gets marked dispatched in the spreadsheet but the physical product is still sitting in the stockroom. A customer calls to chase their order and you spend 10 minutes cross-referencing three tabs to work out what happened.</P>
+
+      <H3>Invoicing</H3>
+      <P>The invoice spreadsheet has sequential numbering — until someone duplicates a row and breaks the sequence. You send the wrong total to a client because the formula referenced an old version of the price. The FTA asks for your invoice records and you realise half of them were never saved properly.</P>
+
+      <H3>Payroll</H3>
+      <P>Staff hours are submitted on WhatsApp or paper. Someone types them into the spreadsheet wrong. You pay the wrong amount and spend two weeks sorting it out. One staff member disputes their hours and you have no log to reference.</P>
+
+      <PullQuote>"Spreadsheets show you what the business looked like when you last updated them. A proper system shows you what it looks like right now."</PullQuote>
+
+      <H2 id="five-signs">5 Signs You Have Outgrown Your Spreadsheets</H2>
+      <P>The moment is different for every business. But the signals are almost always the same:</P>
+
+      <NumberedList items={[
+        {
+          title: 'You have more than one person updating the same file',
+          desc: 'The moment a spreadsheet becomes collaborative, version conflicts become inevitable. Who saved last? Whose numbers are current? This question gets asked multiple times a week.',
+        },
+        {
+          title: 'You have made a stock error that cost you a sale',
+          desc: 'You sold something that wasn\'t actually in stock because the spreadsheet said it was. Or you ran out of something popular because the reorder trigger was never set. Either way, a customer was disappointed.',
+        },
+        {
+          title: 'End-of-month reporting takes more than 2 hours',
+          desc: 'If pulling together your monthly numbers requires consolidating multiple files, fixing formula errors, and manually checking totals — that process should be automatic, not a project.',
+        },
+        {
+          title: 'You cannot answer basic questions about your business on the spot',
+          desc: '"What is our best-selling product this month?" should take five seconds to answer. If it requires opening a spreadsheet, filtering columns, and calculating a sum, that is too slow for a growing business.',
+        },
+        {
+          title: 'You are afraid to take a day off',
+          desc: 'If the spreadsheets fall behind every time you are not there to maintain them, the business does not actually run without you. That is not a sustainable position.',
+        },
+      ]} />
+
+      <H2 id="what-the-switch-looks-like">What Switching Actually Looks Like</H2>
+      <P>The fear of switching is usually bigger than the switch itself. Most business owners imagine a painful migration, weeks of retraining staff, and a period where nothing works properly. In practice, it is much simpler than that.</P>
+      <P>With ExiusCart, you import your product list from a CSV file — the same format your spreadsheet exports. That takes about 10 minutes for most catalogs. You add your staff as users, set their roles, and they can start using the POS the same day. The learning curve is shorter than you expect because the system is designed for people who are not particularly technical.</P>
+
+      <UL items={[
+        'Import products via CSV — your existing spreadsheet exports directly',
+        'Staff accounts set up in minutes — role and branch access configured per person',
+        'VAT invoicing starts working immediately — no template to build',
+        'Inventory starts tracking from the first sale — no manual count entry required',
+        'Reports appear automatically — no formulas to build or maintain',
+      ]} />
+
+      <Callout type="tip">
+        Start the 14-day trial while your spreadsheets are still running. Enter your data into ExiusCart in parallel for the first week. By day seven, you will know whether you want to make the switch permanent — and your team will already know how to use it.
+      </Callout>
+
+      <H2 id="after-the-switch">What Changes in the First Month</H2>
+      <P>The first change most business owners notice is time. The hour and a half they used to spend on morning admin is gone. Stock levels are current without anyone updating them. The end-of-week summary takes 30 seconds to pull up, not 90 minutes to calculate.</P>
+      <P>The second change is confidence. Questions about the business get real answers instead of best guesses based on data that was last updated on Tuesday. You can tell a supplier exactly how much of a product you moved last month. You can spot a slow-selling product before you reorder it.</P>
+      <P>The spreadsheets do not disappear entirely — most business owners keep one for planning and forecasting, which is exactly what spreadsheets are good at. But the live operational data moves into a system that actually keeps up with the business.</P>
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">Replace your spreadsheets in one afternoon</p>
+        <p className="text-gray-400 text-sm mb-6">Import your products, add your staff, and start your free 14-day trial — no credit card needed.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 // ── Post registry ─────────────────────────────────────────────────────────────
 
 const POSTS: Record<string, {
@@ -961,14 +1067,21 @@ const POSTS: Record<string, {
   'stop-using-spreadsheets-switch-exiuscart': {
     title: 'Why Growing Shops Stop Using Spreadsheets (And What They Use Instead)',
     seoTitle: 'Stop Using Spreadsheets to Run Your Business — Switch to ExiusCart | ExiusCart Blog',
-    seoDescription: 'The real cost of managing a business on Excel spreadsheets, and how switching to ExiusCart saves hours every week.',
+    seoDescription: 'The hidden cost of running a business on Excel — lost hours, stock errors, invoice mistakes — and how switching to ExiusCart fixes all of it.',
     category: 'Productivity',
     categoryColor: 'text-rose-600 bg-rose-50 border-rose-100',
     date: 'June 2026',
-    readTime: '4 min',
-    lead: "Spreadsheets are free. Until you count the hours you spend on them every week.",
-    toc: [],
-    Content: () => <p className="text-gray-500 italic">Full article coming soon.</p>,
+    readTime: '6 min',
+    lead: "Eight hours a week on spreadsheet admin. That is AED 20,000 a year in your time — for a system you could replace for AED 45 a month.",
+    toc: [
+      { id: 'why-spreadsheets-feel-safe', label: 'Why spreadsheets feel safe' },
+      { id: 'what-they-cost-you',         label: 'What they actually cost' },
+      { id: 'what-breaks-first',          label: 'What breaks first' },
+      { id: 'five-signs',                 label: '5 signs you have outgrown them' },
+      { id: 'what-the-switch-looks-like', label: 'What switching looks like' },
+      { id: 'after-the-switch',           label: 'What changes after' },
+    ],
+    Content: StopSpreadsheets,
   },
   'hr-payroll-small-business-no-hr-team': {
     title: 'How to Handle Employee Payroll Without an HR Department',
