@@ -194,7 +194,7 @@ export default function PricingPage() {
               <p className="text-sm text-gray-500 mb-7">For small shops. Most businesses fit here.</p>
 
               <Link
-                href="/register"
+                href={`/checkout?plan=starter&billing=${billing}`}
                 className="block text-center bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-3 rounded-2xl text-sm transition-all mb-8"
               >
                 Get Started
@@ -245,7 +245,7 @@ export default function PricingPage() {
               <p className="text-sm text-gray-400 mb-7">Unlimited everything. For growing businesses.</p>
 
               <Link
-                href="/register"
+                href={`/checkout?plan=premium&billing=${billing}`}
                 className="block text-center bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 rounded-2xl text-sm transition-all mb-8"
               >
                 Get Started
@@ -487,7 +487,7 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
-              <Link href="/register" className="mt-6 block text-center text-xs font-semibold text-white bg-[#6B3FD9] hover:bg-[#5A2EC9] rounded-xl py-2.5 transition-all">
+              <Link href={`/checkout?plan=starter&billing=${billing}`} className="mt-6 block text-center text-xs font-semibold text-white bg-[#6B3FD9] hover:bg-[#5A2EC9] rounded-xl py-2.5 transition-all">
                 Get Started
               </Link>
             </div>
@@ -517,7 +517,7 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
-              <Link href="/register" className="mt-6 block text-center text-xs font-semibold text-white bg-gray-800 hover:bg-gray-700 rounded-xl py-2.5 transition-all">
+              <Link href={`/checkout?plan=premium&billing=${billing}`} className="mt-6 block text-center text-xs font-semibold text-white bg-gray-800 hover:bg-gray-700 rounded-xl py-2.5 transition-all">
                 Get Started
               </Link>
             </div>
