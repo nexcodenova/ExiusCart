@@ -1121,18 +1121,20 @@ function ProductModal({
             {/* ── RIGHT: Sidebar ─────────────────────────────────────── */}
             <div className="p-6 space-y-6 bg-muted/20">
 
-              {/* Category */}
-              <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Category *</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  required
-                  className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                >
-                  {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-              </div>
+              {/* Category — hidden for TheDersi sellers who use TheDersi categories instead */}
+              {!theDersiConnection && (
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Category *</label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    required
+                    className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                  >
+                    {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                  </select>
+                </div>
+              )}
 
               {/* TheDersi Category */}
               {theDersiConnection && (
