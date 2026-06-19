@@ -834,10 +834,10 @@ def set_product_channel_category(
 
 class ProductStatusCallback(BaseModel):
     exiuscart_product_id: int
-    seller_email: str
     status: str                          # "approved" | "rejected"
     channel: str = "thedersi"
     rejection_reason: Optional[str] = None
+    seller_email: Optional[str] = None  # optional, not used for lookup
 
 
 THEDERSI_KEY = os.getenv("THEDERSI_PARTNER_KEY", "")
