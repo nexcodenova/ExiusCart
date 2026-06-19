@@ -715,7 +715,7 @@ function ProductModal({
     // Auto-refresh TheDersi categories every time form opens
     channelsApi.getConnections(shopId)
       .then((res) => {
-        const dersi = (res.data ?? []).find((c: any) => c.channel_type === 'thedersi' && c.is_active);
+        const dersi = (res.data ?? []).find((c: any) => c.channel_type === 'thedersi');
         if (!dersi) return;
         setTheDersiConnection({ id: dersi.id });
         setLoadingCategories(true);
