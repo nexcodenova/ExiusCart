@@ -108,11 +108,11 @@ def _webhook_url(conn: ChannelConnection) -> str:
     return f"{EXIUSCART_BASE.rstrip('/')}/channels/webhook/{conn.webhook_secret}"
 
 
-def _product_payload(product: Product, currency: str, channel_type: str, channel_category_name: str = None) -> dict:
+def _product_payload(product: Product, currency: str, channel_type: str, channel_category_id: str = None) -> dict:
     status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
-    category_name = channel_category_name or (product.category.name if product.category else None)
+    # TheDersi wants the category slug/id (e.g. "festival-wear"), not the display name
+    category = channel_category_id or None
 
-    # Include size/color variants so TheDersi can show options to customers
     variants = [
         {
             "size": v.size,
@@ -123,31 +123,27 @@ def _product_payload(product: Product, currency: str, channel_type: str, channel
         }
         for v in (product.variants or [])
     ]
-    # Total stock = sum of variant quantities if variants exist, else product.quantity
     total_stock = sum(v["quantity"] for v in variants) if variants else product.quantity
 
-    # Discount calculation
     compare_at_price = float(product.compare_at_price) if product.compare_at_price else None
     selling_price = float(product.price)
-    discount_percent = None
-    if compare_at_price and compare_at_price > selling_price:
-        discount_percent = round((1 - selling_price / compare_at_price) * 100)
+
+    image_urls = [img.url for img in (product.images or []) if img.url][:4]
+    if not image_urls and product.image_url:
+        image_urls = [product.image_url]
 
     return {
         "exiuscart_product_id": product.id,
         "name": product.name,
         "description": product.description or "",
         "price": selling_price,
-        "compare_at_price": compare_at_price,   # original price — TheDersi shows crossed out
-        "discount_percent": discount_percent,    # e.g. 30 → TheDersi shows "30% OFF" badge
-        "currency": currency,
+        "compare_at_price": compare_at_price,
         "quantity": total_stock,
-        "sku": product.sku or "",
-        "image_url": product.image_url or "",
-        "image_urls": [img.url for img in (product.images or []) if img.url][:4] or ([product.image_url] if product.image_url else []),
-        "category": category_name,
-        "status": status,
+        "image_urls": image_urls,
+        "category": category,
         "variants": variants,
+        "is_featured": False,
+        "is_trending": False,
     }
 
 
@@ -192,7 +188,12 @@ def _bg_full_sync(shop_id: int, conn_id: int):
             Product.shop_id == shop_id, Product.is_active == True
         ).all()
         for p in products:
-            _push_one(_product_payload(p, shop.currency, conn.channel_type), conn)
+            pcc = db.query(ProductChannelCategory).filter(
+                ProductChannelCategory.product_id == p.id,
+                ProductChannelCategory.channel_connection_id == conn_id,
+            ).first()
+            cat_id = pcc.channel_category_id if pcc else None
+            _push_one(_product_payload(p, shop.currency, conn.channel_type, cat_id), conn)
         conn.last_synced_at = datetime.now(timezone.utc)
         db.commit()
     finally:
@@ -216,8 +217,8 @@ def _bg_push_product(product_id: int, shop_id: int):
                 ProductChannelCategory.product_id == product_id,
                 ProductChannelCategory.channel_connection_id == conn.id,
             ).first()
-            channel_cat = pcc.channel_category_name if pcc else None
-            _push_one(_product_payload(product, shop.currency, conn.channel_type, channel_cat), conn)
+            cat_id = pcc.channel_category_id if pcc else None
+            _push_one(_product_payload(product, shop.currency, conn.channel_type, cat_id), conn)
             # Track pending_review status for marketplace channels
             if conn.channel_type in MARKETPLACE_CHANNELS:
                 existing = db.query(ChannelProductStatus).filter(
