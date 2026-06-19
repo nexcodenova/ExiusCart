@@ -678,7 +678,7 @@ function ProductModal({
 
   // TheDersi channel category state
   const [theDersiConnection, setTheDersiConnection] = useState<{ id: number } | null>(null);
-  const [theDersiCategories, setTheDersiCategories] = useState<{ id: string; name: string }[]>([]);
+  const [theDersiCategories, setTheDersiCategories] = useState<{ id: string; name: string; parent_id?: string | null }[]>([]);
   const [theDersiCategoryId, setTheDersiCategoryId] = useState('');
   const [theDersiCategoryName, setTheDersiCategoryName] = useState('');
   const [loadingCategories, setLoadingCategories] = useState(false);
@@ -1152,7 +1152,22 @@ function ProductModal({
                     disabled={loadingCategories}
                   >
                     <option value="">Select TheDersi category</option>
-                    {theDersiCategories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                    {(() => {
+                      const parents = theDersiCategories.filter(c => !c.parent_id);
+                      const children = (parentId: string) => theDersiCategories.filter(c => c.parent_id === parentId);
+                      return parents.map(cat => {
+                        const subs = children(cat.id);
+                        if (subs.length > 0) {
+                          return (
+                            <optgroup key={cat.id} label={cat.name}>
+                              <option value={cat.id}>{cat.name} — All</option>
+                              {subs.map(sub => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
+                            </optgroup>
+                          );
+                        }
+                        return <option key={cat.id} value={cat.id}>{cat.name}</option>;
+                      });
+                    })()}
                   </select>
                   <p className="text-xs text-muted-foreground mt-1.5">Listed under this category on TheDersi.</p>
                 </div>
