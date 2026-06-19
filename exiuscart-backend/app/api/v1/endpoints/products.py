@@ -18,7 +18,7 @@ PLAN_PRODUCT_LIMITS = {
     "free_trial":     25,
     "thedersi_basic": 25,
     "starter":        1000,
-    "thedersi_pro":   1000,  # same as starter
+    "thedersi_pro":   1000,
     "premium":        -1,    # unlimited
 }
 
@@ -47,8 +47,9 @@ def generate_slug(name: str) -> str:
     return f"{base_slug}-{uuid.uuid4().hex[:6]}"
 
 
-# Categories
-@router.post("/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
+# ── Categories ─────────────────────────────────────────────────────────────────
+
+@router.post("/shops/{shop_id}/products/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_category(
     shop_id: int,
     category_data: CategoryCreate,
@@ -81,13 +82,12 @@ async def create_category(
     return new_category
 
 
-@router.get("/categories", response_model=List[CategoryResponse])
+@router.get("/shops/{shop_id}/products/categories", response_model=List[CategoryResponse])
 async def get_categories(
     shop_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Return only root categories — children are nested via relationship
     categories = db.query(Category).filter(
         Category.shop_id == shop_id,
         Category.parent_id == None
@@ -95,10 +95,10 @@ async def get_categories(
     return categories
 
 
-@router.delete("/categories/{category_id}", status_code=status.HTTP_200_OK)
+@router.delete("/shops/{shop_id}/products/categories/{category_id}", status_code=status.HTTP_200_OK)
 async def delete_category(
-    category_id: int,
     shop_id: int,
+    category_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -109,7 +109,6 @@ async def delete_category(
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    # Move products to uncategorised instead of blocking or orphaning
     db.query(Product).filter(
         Product.category_id == category_id,
         Product.shop_id == shop_id
@@ -120,143 +119,15 @@ async def delete_category(
     return {"message": "Category deleted. Products moved to uncategorised."}
 
 
-# Products
-@router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-async def create_product(
-    shop_id: int,
-    product_data: ProductCreate,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
-    if not shop:
-        raise HTTPException(status_code=404, detail="Shop not found")
+# ── Products ───────────────────────────────────────────────────────────────────
 
-    # Plan limit enforcement
-    subscription = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
-    if subscription:
-        plan_key = subscription.plan_type.lower()
-        limit = PLAN_PRODUCT_LIMITS.get(plan_key, 50)
-        if limit != -1:
-            current_count = db.query(Product).filter(Product.shop_id == shop_id).count()
-            if current_count >= limit:
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Product limit reached for your plan ({limit} products). Please upgrade."
-                )
-
-    new_product = Product(
-        **product_data.model_dump(),
-        slug=generate_slug(product_data.name),
-        shop_id=shop_id
-    )
-    db.add(new_product)
-    db.commit()
-    db.refresh(new_product)
-
-    # Push to all connected channels (TheDersi etc.) in background
-    trigger_product_sync(new_product.id, shop_id, background_tasks)
-    return new_product
-
-
-@router.get("/", response_model=List[ProductResponse])
-async def get_products(
-    shop_id: int,
-    category_id: Optional[int] = None,
-    search: Optional[str] = None,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    query = db.query(Product).filter(Product.shop_id == shop_id)
-
-    if category_id:
-        query = query.filter(Product.category_id == category_id)
-    if search:
-        query = query.filter(Product.name.ilike(f"%{search}%"))
-
-    products = query.offset(skip).limit(limit).all()
-    return products
-
-
-@router.get("/{product_id}", response_model=ProductResponse)
-async def get_product(
-    product_id: int,
-    shop_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    product = db.query(Product).filter(
-        Product.id == product_id,
-        Product.shop_id == shop_id
-    ).first()
-
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return product
-
-
-@router.put("/{product_id}", response_model=ProductResponse)
-async def update_product(
-    product_id: int,
-    shop_id: int,
-    product_data: ProductUpdate,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    product = db.query(Product).filter(
-        Product.id == product_id,
-        Product.shop_id == shop_id
-    ).first()
-
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    update_data = product_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(product, field, value)
-
-    db.commit()
-    db.refresh(product)
-
-    # Sync updated product to all connected channels
-    trigger_product_sync(product.id, shop_id, background_tasks)
-    return product
-
-
-@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_product(
-    product_id: int,
-    shop_id: int,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    product = db.query(Product).filter(
-        Product.id == product_id,
-        Product.shop_id == shop_id
-    ).first()
-
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    # Remove from all connected channels before deleting
-    trigger_product_delete(product_id, shop_id, background_tasks)
-    db.delete(product)
-    db.commit()
-
-
-@router.post("/bulk-import", response_model=BulkImportResult)
+@router.post("/shops/{shop_id}/products/bulk-import", response_model=BulkImportResult)
 async def bulk_import_products(
     shop_id: int,
     rows: List[BulkProductRow],
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Import multiple products from a parsed CSV payload."""
     shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
@@ -264,8 +135,6 @@ async def bulk_import_products(
     created = 0
     skipped = 0
     errors: list[str] = []
-
-    # Cache category name → id
     cat_cache: dict[str, int] = {}
 
     for i, row in enumerate(rows):
@@ -315,6 +184,136 @@ async def bulk_import_products(
     return BulkImportResult(created=created, skipped=skipped, errors=errors)
 
 
+@router.post("/shops/{shop_id}/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
+async def create_product(
+    shop_id: int,
+    product_data: ProductCreate,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    subscription = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
+    if subscription:
+        plan_key = subscription.plan_type.lower()
+        limit = PLAN_PRODUCT_LIMITS.get(plan_key, 50)
+        if limit != -1:
+            current_count = db.query(Product).filter(Product.shop_id == shop_id).count()
+            if current_count >= limit:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Product limit reached for your plan ({limit} products). Please upgrade."
+                )
+
+    new_product = Product(
+        **product_data.model_dump(),
+        slug=generate_slug(product_data.name),
+        shop_id=shop_id
+    )
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)
+
+    trigger_product_sync(new_product.id, shop_id, background_tasks)
+    return new_product
+
+
+@router.get("/shops/{shop_id}/products", response_model=List[ProductResponse])
+async def get_products(
+    shop_id: int,
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Product).filter(Product.shop_id == shop_id)
+
+    if category:
+        cat_obj = db.query(Category).filter(
+            Category.shop_id == shop_id,
+            Category.name == category
+        ).first()
+        if cat_obj:
+            query = query.filter(Product.category_id == cat_obj.id)
+
+    if search:
+        query = query.filter(Product.name.ilike(f"%{search}%"))
+
+    products = query.offset(skip).limit(limit).all()
+    return products
+
+
+@router.get("/shops/{shop_id}/products/{product_id}", response_model=ProductResponse)
+async def get_product(
+    shop_id: int,
+    product_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.shop_id == shop_id
+    ).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+
+@router.put("/shops/{shop_id}/products/{product_id}", response_model=ProductResponse)
+async def update_product(
+    shop_id: int,
+    product_id: int,
+    product_data: ProductUpdate,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.shop_id == shop_id
+    ).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    update_data = product_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(product, field, value)
+
+    db.commit()
+    db.refresh(product)
+
+    trigger_product_sync(product.id, shop_id, background_tasks)
+    return product
+
+
+@router.delete("/shops/{shop_id}/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_product(
+    shop_id: int,
+    product_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.shop_id == shop_id
+    ).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    trigger_product_delete(product_id, shop_id, background_tasks)
+    db.delete(product)
+    db.commit()
+
+
 # ── Product Variants ──────────────────────────────────────────────────────────
 
 class VariantIn(BaseModel):
@@ -337,10 +336,10 @@ class VariantOut(BaseModel):
         from_attributes = True
 
 
-@router.get("/{product_id}/variants", response_model=List[VariantOut])
+@router.get("/shops/{shop_id}/products/{product_id}/variants", response_model=List[VariantOut])
 def get_variants(
-    product_id: int,
     shop_id: int,
+    product_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -350,16 +349,15 @@ def get_variants(
     return product.variants
 
 
-@router.put("/{product_id}/variants", response_model=List[VariantOut])
+@router.put("/shops/{shop_id}/products/{product_id}/variants", response_model=List[VariantOut])
 def save_variants(
-    product_id: int,
     shop_id: int,
+    product_id: int,
     variants: List[VariantIn],
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Replace all variants for a product. Send the full updated list each time."""
     product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -381,6 +379,5 @@ def save_variants(
     for pv in new_variants:
         db.refresh(pv)
 
-    # Re-sync to channels so TheDersi gets updated variant info
     trigger_product_sync(product_id, shop_id, background_tasks)
     return new_variants
