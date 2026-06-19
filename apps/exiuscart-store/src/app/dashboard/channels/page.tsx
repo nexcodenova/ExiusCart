@@ -184,10 +184,6 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
   const [error, setError] = useState('');
   const webhookUrl = connection.webhook_url;
 
-  const [dersiCategories, setDersiCategories] = useState<{ id: string; name: string }[]>([]);
-  const [newCatName, setNewCatName] = useState('');
-  const [addingCat, setAddingCat] = useState(false);
-
   const loadPayouts = () => {
     setPayoutsLoading(true);
     channelsApi.getTheDersiPayouts(shopId, connection.id)
@@ -201,10 +197,6 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
       .then((r) => setInfo(r.data))
       .catch(() => setError('Could not load earnings data from TheDersi.'))
       .finally(() => setLoading(false));
-
-    channelsApi.getCategories(shopId, connection.id)
-      .then((r) => setDersiCategories(r.data ?? []))
-      .catch(() => {});
     loadPayouts();
   }, [shopId, connection.id]);
 
@@ -226,26 +218,6 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
   };
 
   const hasPending = payouts.some((p) => p.status === 'pending');
-
-  const handleAddCat = async () => {
-    const name = newCatName.trim();
-    if (!name || addingCat) return;
-    setAddingCat(true);
-    try {
-      const r = await channelsApi.addCategory(shopId, connection.id, name);
-      setDersiCategories((prev) => [...prev, r.data]);
-      setNewCatName('');
-    } catch { /* no-op */ } finally {
-      setAddingCat(false);
-    }
-  };
-
-  const handleRemoveCat = async (catId: string) => {
-    try {
-      await channelsApi.removeCategory(shopId, connection.id, catId);
-      setDersiCategories((prev) => prev.filter((c) => c.id !== catId));
-    } catch { /* no-op */ }
-  };
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -435,52 +407,6 @@ function TheDersiCard({ connection, shopId }: { connection: ChannelConnection; s
             </div>
           </div>
         )}
-
-        {/* Product Categories — manual management */}
-        <div className="border-t border-border pt-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Tag className="w-4 h-4 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">Product Categories</p>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Categories available when listing products on TheDersi.
-          </p>
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              value={newCatName}
-              onChange={(e) => setNewCatName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddCat()}
-              placeholder="e.g. Festival Wear"
-              className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none text-foreground"
-            />
-            <button
-              type="button"
-              onClick={handleAddCat}
-              disabled={!newCatName.trim() || addingCat}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center gap-1.5"
-            >
-              {addingCat && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              Add
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {dersiCategories.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No categories yet. Add your first one above.</p>
-            ) : dersiCategories.map((cat) => (
-              <span key={cat.id} className="inline-flex items-center gap-1.5 bg-muted border border-border rounded-full px-3 py-1.5 text-sm text-foreground">
-                {cat.name}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveCat(cat.id)}
-                  className="text-muted-foreground hover:text-destructive transition"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

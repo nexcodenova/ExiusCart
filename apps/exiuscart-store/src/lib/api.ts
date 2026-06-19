@@ -393,10 +393,6 @@ export const channelsApi = {
     api.post(`/shops/${shopId}/channels/${channelId}/sync-categories`),
   getCategories: (shopId: string, channelId: number) =>
     api.get(`/shops/${shopId}/channels/${channelId}/categories`),
-  addCategory: (shopId: string, channelId: number, name: string) =>
-    api.post(`/shops/${shopId}/channels/${channelId}/categories`, { name }),
-  removeCategory: (shopId: string, channelId: number, categoryId: string) =>
-    api.delete(`/shops/${shopId}/channels/${channelId}/categories/${encodeURIComponent(categoryId)}`),
   setProductCategory: (shopId: string, productId: string, data: {
     channel_connection_id: number;
     channel_category_id: string;
