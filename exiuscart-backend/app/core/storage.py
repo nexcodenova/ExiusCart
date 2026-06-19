@@ -20,6 +20,7 @@ _R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "").rstrip("/")
 
 _LOCAL_UPLOAD_DIR = "uploads/products"
 _LOCAL_STATIC_PREFIX = "/static/products"
+_API_BASE_URL = os.getenv("API_BASE_URL", "https://api.exiuscart.com")
 
 
 def _get_r2_client():
@@ -70,7 +71,7 @@ def upload_image(contents: bytes, shop_id: int, product_id: int, ext: str, conte
     with open(filepath, "wb") as f:
         f.write(contents)
 
-    url = f"{_LOCAL_STATIC_PREFIX}/{shop_id}/{product_id}/{filename}"
+    url = f"{_API_BASE_URL}{_LOCAL_STATIC_PREFIX}/{shop_id}/{product_id}/{filename}"
     logger.info(f"[LOCAL UPLOAD] {url}")
     return url
 

@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.router import api_router
 import app.models  # noqa: F401 — ensure all models are registered before create_all
+import os
 
 # Create any missing tables (safe for existing tables)
 Base.metadata.create_all(bind=engine)
@@ -46,6 +48,11 @@ app.add_middleware(
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+# Serve locally-uploaded product images (fallback when R2 is not used)
+_uploads_dir = "uploads/products"
+os.makedirs(_uploads_dir, exist_ok=True)
+app.mount("/static/products", StaticFiles(directory=_uploads_dir), name="static-products")
 
 
 @app.get("/")
