@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 _R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "")
 _R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
 _R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
-_R2_BUCKET = os.getenv("R2_BUCKET_NAME", "exiuscart-images")
+_R2_BUCKET = os.getenv("R2_BUCKET_NAME", "exiuscart-image")
 _R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "").rstrip("/")
 
 
