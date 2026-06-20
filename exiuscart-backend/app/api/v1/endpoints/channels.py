@@ -14,9 +14,12 @@ Supported channels:
 import os
 import secrets
 import uuid
+import logging
 import httpx
 from datetime import datetime, timezone
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Header, Request
 from sqlalchemy.orm import Session
@@ -151,28 +154,34 @@ def _push_one(payload: dict, conn: ChannelConnection):
     """HTTP call to push/update a product on the connected channel."""
     api_url = _channel_url(conn)
     if not api_url:
+        logger.warning(f"[CHANNEL PUSH] No API URL for channel {conn.channel_type} conn={conn.id}")
         return
     headers = {"X-Api-Key": conn.channel_api_key, "Content-Type": "application/json"}
     pid = payload["exiuscart_product_id"]
     try:
         with httpx.Client(timeout=10) as client:
             r = client.put(f"{api_url}/exiuscart/products/{pid}", json=payload, headers=headers)
+            logger.info(f"[CHANNEL PUSH] PUT {api_url}/exiuscart/products/{pid} → {r.status_code}")
             if r.status_code == 404:
-                client.post(f"{api_url}/exiuscart/products", json=payload, headers=headers)
-    except Exception:
-        pass
+                r2 = client.post(f"{api_url}/exiuscart/products", json=payload, headers=headers)
+                logger.info(f"[CHANNEL PUSH] POST {api_url}/exiuscart/products → {r2.status_code}")
+    except Exception as exc:
+        logger.error(f"[CHANNEL PUSH] {api_url} product={pid} error: {exc}")
 
 
 def _delete_one(product_id: int, conn: ChannelConnection):
     api_url = _channel_url(conn)
     if not api_url:
+        logger.warning(f"[CHANNEL DELETE] No API URL for channel {conn.channel_type} conn={conn.id}")
         return
     headers = {"X-Api-Key": conn.channel_api_key}
+    url = f"{api_url}/exiuscart/products/{product_id}"
     try:
         with httpx.Client(timeout=10) as client:
-            client.delete(f"{api_url}/exiuscart/products/{product_id}", headers=headers)
-    except Exception:
-        pass
+            r = client.delete(url, headers=headers)
+            logger.info(f"[CHANNEL DELETE] DELETE {url} → {r.status_code}")
+    except Exception as exc:
+        logger.error(f"[CHANNEL DELETE] {url} error: {exc}")
 
 
 # ── Background tasks (use fresh DB session) ───────────────────────────────────
