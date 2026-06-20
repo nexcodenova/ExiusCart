@@ -1,9 +1,6 @@
 """
 Custom product fields per shop + product image upload.
 """
-import os
-import uuid
-import shutil
 from typing import List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
@@ -278,7 +275,10 @@ async def upload_image(
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
     ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
-    url = storage_upload(contents, shop_id, product_id, ext, content_type=file.content_type or "image/jpeg")
+    try:
+        url = storage_upload(contents, shop_id, product_id, ext, content_type=file.content_type or "image/jpeg")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Image upload failed: {exc}")
     is_primary = count == 0  # first image is primary
 
     image = ProductImage(
