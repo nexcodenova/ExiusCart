@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   title: 'Shop Dashboard | ExiusCart',
   description: 'Manage your shop with ExiusCart - POS, Inventory, Orders',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
