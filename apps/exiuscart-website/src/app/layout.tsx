@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   description:
     'UAE-focused POS + Inventory Management Platform for small businesses',
   keywords: ['POS', 'Point of Sale', 'UAE', 'Inventory', 'Invoicing'],
+  icons: {
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
+  },
 };
 
 export default function RootLayout({
