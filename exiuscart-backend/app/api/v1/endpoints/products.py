@@ -10,6 +10,8 @@ from app.models.shop import Shop
 from app.models.product import Product, Category
 from app.models.product_variant import ProductVariant
 from app.models.subscription import Subscription
+from app.models.channel_product_status import ChannelProductStatus
+from app.models.channel_category import ProductChannelCategory
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, CategoryCreate, CategoryResponse
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_product_sync, trigger_product_delete
@@ -310,6 +312,12 @@ async def delete_product(
         raise HTTPException(status_code=404, detail="Product not found")
 
     trigger_product_delete(product_id, shop_id, background_tasks)
+
+    # Remove channel records that don't cascade automatically
+    db.query(ChannelProductStatus).filter(ChannelProductStatus.product_id == product_id).delete()
+    db.query(ProductChannelCategory).filter(ProductChannelCategory.product_id == product_id).delete()
+    db.flush()
+
     db.delete(product)
     db.commit()
 
