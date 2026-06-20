@@ -652,7 +652,11 @@ def sync_channel_categories(
             r.raise_for_status()
             categories = r.json()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Could not fetch categories from channel: {e}")
+        logger.warning(f"[SYNC CATEGORIES] Could not reach {api_url}: {e} — returning cached")
+        cached = db.query(ChannelCategory).filter(
+            ChannelCategory.channel_connection_id == channel_id
+        ).all()
+        return {"synced": 0, "cached": True, "categories": [c.name for c in cached]}
 
     # Clear old cached categories and re-save
     db.query(ChannelCategory).filter(
