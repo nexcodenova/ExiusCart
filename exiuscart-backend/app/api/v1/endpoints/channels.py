@@ -216,19 +216,19 @@ def _bg_push_product(product_id: int, shop_id: int):
         product = db.query(Product).filter(Product.id == product_id).first()
         shop = db.query(Shop).filter(Shop.id == shop_id).first()
         if not product or not shop:
+            logger.warning(f"[BG PUSH] product={product_id} shop={shop_id} not found — skipping")
             return
         connections = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id, ChannelConnection.is_active == True
         ).all()
+        logger.info(f"[BG PUSH] product={product_id} shop={shop_id} → {len(connections)} connection(s)")
         for conn in connections:
-            # Look up seller's assigned channel category for this product
             pcc = db.query(ProductChannelCategory).filter(
                 ProductChannelCategory.product_id == product_id,
                 ProductChannelCategory.channel_connection_id == conn.id,
             ).first()
             cat_id = pcc.channel_category_id if pcc else None
             _push_one(_product_payload(product, shop.currency, conn.channel_type, cat_id), conn)
-            # Track pending_review status for marketplace channels
             if conn.channel_type in MARKETPLACE_CHANNELS:
                 existing = db.query(ChannelProductStatus).filter(
                     ChannelProductStatus.product_id == product_id,
@@ -245,18 +245,24 @@ def _bg_push_product(product_id: int, shop_id: int):
                         status="pending_review",
                     ))
         db.commit()
+    except Exception as exc:
+        logger.error(f"[BG PUSH] product={product_id} shop={shop_id} FAILED: {exc}")
     finally:
         db.close()
 
 
-def _bg_delete_product(product_id: int, shop_id: int):
+def _bg_delete_product_and_notify(product_id: int, shop_id: int):
+    """Delete product from all channels — separate from DB delete so it survives process restarts."""
     db = SessionLocal()
     try:
         connections = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id, ChannelConnection.is_active == True
         ).all()
+        logger.info(f"[BG DELETE] product={product_id} shop={shop_id} → {len(connections)} connection(s)")
         for conn in connections:
             _delete_one(product_id, conn)
+    except Exception as exc:
+        logger.error(f"[BG DELETE] product={product_id} shop={shop_id} FAILED: {exc}")
     finally:
         db.close()
 
@@ -268,7 +274,7 @@ def trigger_product_sync(product_id: int, shop_id: int, background_tasks: Backgr
 
 
 def trigger_product_delete(product_id: int, shop_id: int, background_tasks: BackgroundTasks):
-    background_tasks.add_task(_bg_delete_product, product_id, shop_id)
+    background_tasks.add_task(_bg_delete_product_and_notify, product_id, shop_id)
 
 
 def _bg_push_stock(product_id: int, shop_id: int):
