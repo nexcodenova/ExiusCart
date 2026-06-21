@@ -6,7 +6,8 @@ import {
   MessageCircle, Shield, AlertTriangle, Download,
   Receipt, Plus, Star, Loader2, Globe, ChevronDown,
   Coins, Lock, ShoppingBag, ExternalLink, Package,
-  GitBranch, Percent, Tag, Clock, HardDrive,
+  GitBranch, Percent, Tag, Clock, HardDrive, Sparkles,
+  TrendingUp, BadgeCheck, ArrowRight, Infinity,
 } from 'lucide-react';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
 
@@ -41,7 +42,7 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
       features: [
         { text: '1 Staff account',                    included: true  },
         { text: 'Up to 25 products',                  included: true  },
-        { text: '2 GB storage',                 included: true  },
+        { text: '2 GB storage',                       included: true  },
         { text: 'Basic POS',                          included: true  },
         { text: '50 email invoices/month',            included: true  },
         { text: 'TheDersi order sync (50 orders/mo)', included: true  },
@@ -62,7 +63,7 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
       features: [
         { text: '3 Staff accounts',                      included: true  },
         { text: 'Up to 1,000 products',                  included: true  },
-        { text: '20 GB storage',                   included: true  },
+        { text: '20 GB storage',                         included: true  },
         { text: 'Full POS',                              included: true  },
         { text: '500 email invoices/month + logo',       included: true  },
         { text: 'Advanced analytics',                    included: true  },
@@ -84,7 +85,7 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
       features: [
         { text: 'Unlimited staff accounts',        included: true  },
         { text: 'Unlimited products',              included: true  },
-        { text: '75 GB storage',             included: true  },
+        { text: '75 GB storage',                   included: true  },
         { text: 'Full POS + inventory mgmt',       included: true  },
         { text: 'Custom invoice branding',         included: true  },
         { text: 'Full analytics suite',            included: true  },
@@ -98,6 +99,86 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
     },
   ];
 };
+
+// ── TheDersi plans ─────────────────────────────────────────────────────────────
+const THEDERSI_PLANS = [
+  {
+    id: 'free',
+    name: 'Free Forever',
+    badge: null,
+    color: 'border-border',
+    btnColor: 'border border-border text-foreground hover:bg-muted',
+    exiusEquivalent: 'Free Forever',
+    upgradeSlug: null,
+    features: [
+      { text: '25 products on TheDersi',         ok: true  },
+      { text: '50 orders / month sync',           ok: true  },
+      { text: '2 GB product storage',             ok: true  },
+      { text: 'Basic POS & inventory',            ok: true  },
+      { text: '50 email invoices / month',        ok: true  },
+      { text: 'Advanced analytics',               ok: false },
+      { text: 'Custom invoice branding',          ok: false },
+      { text: 'Multiple staff logins',            ok: false },
+    ],
+  },
+  {
+    id: 'growth',
+    name: 'Growth',
+    badge: 'Popular',
+    color: 'border-indigo-500',
+    btnColor: 'bg-indigo-600 text-white hover:bg-indigo-700',
+    exiusEquivalent: 'Starter',
+    upgradeSlug: 'growth',
+    features: [
+      { text: '1,000 products on TheDersi',       ok: true  },
+      { text: '1,000 orders / month sync',        ok: true  },
+      { text: '20 GB product storage',            ok: true  },
+      { text: 'Full POS & inventory mgmt',        ok: true  },
+      { text: '500 invoices / month + logo',      ok: true  },
+      { text: 'Advanced analytics',               ok: true  },
+      { text: 'Custom invoice branding',          ok: false },
+      { text: '3 staff logins',                   ok: true  },
+    ],
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    badge: null,
+    color: 'border-purple-500',
+    btnColor: 'bg-purple-600 text-white hover:bg-purple-700',
+    exiusEquivalent: 'Starter',
+    upgradeSlug: 'premium',
+    features: [
+      { text: '1,000 products on TheDersi',       ok: true  },
+      { text: '1,000 orders / month sync',        ok: true  },
+      { text: '20 GB product storage',            ok: true  },
+      { text: 'Full POS & inventory mgmt',        ok: true  },
+      { text: 'Unlimited invoices + logo',        ok: true  },
+      { text: 'Advanced analytics',               ok: true  },
+      { text: 'Custom invoice branding',          ok: true  },
+      { text: '3 staff logins',                   ok: true  },
+    ],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    badge: 'Best Value',
+    color: 'border-yellow-500',
+    btnColor: 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:opacity-90',
+    exiusEquivalent: 'Premium',
+    upgradeSlug: 'pro',
+    features: [
+      { text: 'Unlimited products on TheDersi',   ok: true  },
+      { text: 'Unlimited orders / month',         ok: true  },
+      { text: '75 GB product storage',            ok: true  },
+      { text: 'Full POS + multi-branch',          ok: true  },
+      { text: 'Unlimited invoices + branding',    ok: true  },
+      { text: 'Full analytics suite',             ok: true  },
+      { text: 'Custom invoice branding',          ok: true  },
+      { text: 'Unlimited staff logins',           ok: true  },
+    ],
+  },
+];
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function BillingPage() {
@@ -114,12 +195,13 @@ export default function BillingPage() {
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeSuccess, setUpgradeSuccess] = useState('');
   const [upgradeError, setUpgradeError] = useState('');
+  const [isTheDersiShop, setIsTheDersiShop] = useState(false);
 
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
   useEffect(() => {
     if (!shopId) { setLoading(false); return; }
-    import('@/lib/api').then(({ subscriptionApi }) => {
+    import('@/lib/api').then(({ subscriptionApi, channelsApi }) => {
       subscriptionApi.getCurrent(shopId)
         .then((res) => {
           setCurrentPlan(res.data?.plan ?? null);
@@ -127,17 +209,24 @@ export default function BillingPage() {
         })
         .catch(() => {})
         .finally(() => setLoading(false));
+
+      channelsApi.getConnections(shopId)
+        .then((res) => {
+          setIsTheDersiShop(res.data?.some((c: any) => c.channel_type === 'thedersi') ?? false);
+        })
+        .catch(() => {});
     });
   }, [shopId]);
 
   const plans = makePlans(currency, fmt);
   const meta = CURRENCY_META[currency];
 
-  const isTheDersiSeller = currentPlan?.source === 'thedersi';
-  const theDersiPlanName = currentPlan?.plan_type === 'thedersi_basic' ? 'Free Forever' :
-                           currentPlan?.plan_type === 'starter' ? 'Starter' :
-                           currentPlan?.plan_type === 'premium' ? 'Premium' :
-                           'Free Forever';
+  const theDersiPlanType = currentPlan?.plan_type ?? 'thedersi_basic';
+  const theDersiCurrentId =
+    theDersiPlanType === 'thedersi_pro' ? 'pro' :
+    theDersiPlanType === 'premium'      ? 'pro' :
+    theDersiPlanType === 'starter'      ? 'growth' :
+    'free';
 
   function changeCurrency(c: Currency) {
     setGlobalCurrency(c);
@@ -174,6 +263,183 @@ export default function BillingPage() {
     return new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  // ── TheDersi seller experience ─────────────────────────────────────────────
+  if (isTheDersiShop) {
+    const currentTd = THEDERSI_PLANS.find(p => p.id === theDersiCurrentId) ?? THEDERSI_PLANS[0];
+
+    return (
+      <div className="space-y-6">
+        {/* Hero Banner */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-[1px]">
+          <div className="relative rounded-2xl bg-gradient-to-br from-indigo-950/90 via-purple-950/90 to-pink-950/90 p-6 md:p-8 overflow-hidden">
+            {/* Background glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-pink-500/10 pointer-events-none" />
+            <div className="absolute -top-16 -right-16 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative flex flex-col md:flex-row md:items-center gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/20 shrink-0">
+                  <ShoppingBag className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-medium backdrop-blur-sm">
+                      🇱🇰 TheDersi Seller
+                    </span>
+                    <span className="text-xs bg-green-400/20 text-green-300 border border-green-400/30 px-2 py-0.5 rounded-full font-medium">
+                      Active
+                    </span>
+                  </div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-white">Your Seller Dashboard</h1>
+                  <p className="text-indigo-200 text-sm mt-1">Powered by ExiusCart · Billing managed by TheDersi</p>
+                </div>
+              </div>
+
+              <div className="md:ml-auto flex flex-col sm:flex-row gap-3">
+                <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-5 py-3 text-center">
+                  <p className="text-xs text-indigo-200 mb-0.5">Current Plan</p>
+                  <p className="text-lg font-bold text-white">{currentTd.name}</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-5 py-3 text-center">
+                  <p className="text-xs text-indigo-200 mb-0.5">Billing Currency</p>
+                  <p className="text-lg font-bold text-white">🇱🇰 LKR</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* LKR Advantage Strip */}
+        <div className="grid sm:grid-cols-3 gap-3">
+          {[
+            { icon: <BadgeCheck className="w-5 h-5 text-green-500" />, title: 'LKR Pricing', desc: 'Pay in Sri Lankan Rupees — no foreign exchange fees ever', bg: 'bg-green-500/5 border-green-500/20' },
+            { icon: <Zap className="w-5 h-5 text-indigo-500" />,       title: 'Auto Order Sync', desc: 'TheDersi orders appear in ExiusCart instantly when paid', bg: 'bg-indigo-500/5 border-indigo-500/20' },
+            { icon: <TrendingUp className="w-5 h-5 text-purple-500" />, title: 'Grow Together', desc: 'Upgrade your TheDersi plan to unlock more ExiusCart power', bg: 'bg-purple-500/5 border-purple-500/20' },
+          ].map(item => (
+            <div key={item.title} className={`rounded-xl border p-4 flex items-start gap-3 ${item.bg}`}>
+              <div className="shrink-0 mt-0.5">{item.icon}</div>
+              <div>
+                <p className="font-semibold text-foreground text-sm">{item.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Plan Cards */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-foreground">TheDersi Seller Plans</h2>
+              <p className="text-sm text-muted-foreground">All plans billed in LKR through TheDersi — upgrade directly on their website</p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {THEDERSI_PLANS.map((plan) => {
+              const isCurrent = plan.id === theDersiCurrentId;
+              return (
+                <div key={plan.id}
+                  className={`relative bg-card rounded-2xl border-2 p-5 flex flex-col transition-shadow hover:shadow-lg ${isCurrent ? 'border-indigo-500 shadow-indigo-500/10 shadow-lg' : plan.color}`}>
+
+                  {/* Badges */}
+                  <div className="flex items-center justify-between mb-4">
+                    {plan.badge ? (
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                        plan.badge === 'Best Value' ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' : 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
+                      }`}>
+                        {plan.badge === 'Best Value' ? '⭐ ' : ''}{plan.badge}
+                      </span>
+                    ) : <span />}
+                    {isCurrent && (
+                      <span className="text-xs bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/30 px-2.5 py-1 rounded-full font-semibold">
+                        ✓ Your Plan
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="text-xl font-bold text-foreground mb-1">{plan.name}</h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    ExiusCart <span className="font-semibold text-foreground">{plan.exiusEquivalent}</span> tier included
+                  </p>
+
+                  <ul className="space-y-2.5 flex-1 mb-5">
+                    {plan.features.map((f, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm">
+                        {f.ok
+                          ? <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                          : <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/25 shrink-0 mt-0.5" />}
+                        <span className={f.ok ? 'text-foreground' : 'text-muted-foreground/60'}>{f.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {isCurrent ? (
+                    <div className="w-full py-2.5 rounded-xl bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold text-center border border-green-500/20">
+                      ✓ Current Plan
+                    </div>
+                  ) : plan.upgradeSlug ? (
+                    <a
+                      href={`https://thedersi.lk/seller/upgrade?plan=${plan.upgradeSlug}&ref=exiuscart`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`w-full py-2.5 rounded-xl text-sm font-semibold text-center transition flex items-center justify-center gap-2 ${plan.btnColor}`}
+                    >
+                      Upgrade on TheDersi <ArrowRight className="w-4 h-4" />
+                    </a>
+                  ) : (
+                    <div className="w-full py-2.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium text-center">
+                      Free Forever
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ExiusCart Standalone Pricing Link */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700 p-6">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-4 flex-1">
+              <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center shrink-0 border border-indigo-500/30">
+                <Globe className="w-6 h-6 text-indigo-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-base">Want ExiusCart for your own store?</h3>
+                <p className="text-slate-400 text-sm mt-0.5">
+                  Use ExiusCart independently with AED, USD, EUR, INR or LKR billing — full pricing on our website.
+                </p>
+              </div>
+            </div>
+            <a
+              href="https://exiuscart.com/pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition shrink-0"
+            >
+              View Pricing <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+
+        {/* Billing note */}
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+          <Shield className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">Billing is handled entirely by TheDersi.</span>{' '}
+            When you upgrade your TheDersi plan, ExiusCart features unlock automatically within minutes.
+            For billing questions or invoices, contact TheDersi support at{' '}
+            <a href="https://thedersi.lk" target="_blank" rel="noopener noreferrer" className="text-amber-600 dark:text-amber-400 hover:underline">thedersi.lk</a>.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Standard ExiusCart billing experience ──────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -183,142 +449,55 @@ export default function BillingPage() {
           <p className="text-muted-foreground text-sm">Manage your plan and billing</p>
         </div>
 
-        {/* Currency Switcher — hidden for TheDersi sellers */}
-        {!isTheDersiSeller && (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowCurrencyPicker(!showCurrencyPicker)}
-              className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl bg-card hover:bg-muted transition text-sm font-medium text-foreground"
-            >
-              <span className="text-lg">{meta.flag}</span>
-              <span>{currency}</span>
-              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showCurrencyPicker ? 'rotate-180' : ''}`} />
-            </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowCurrencyPicker(!showCurrencyPicker)}
+            className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl bg-card hover:bg-muted transition text-sm font-medium text-foreground"
+          >
+            <span className="text-lg">{meta.flag}</span>
+            <span>{currency}</span>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showCurrencyPicker ? 'rotate-180' : ''}`} />
+          </button>
 
-            {showCurrencyPicker && (
-              <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-20 w-72 overflow-hidden">
-                <div className="p-3 border-b border-border">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Your Region</p>
-                </div>
-                {(Object.entries(CURRENCY_META) as [Currency, typeof CURRENCY_META.AED][]).map(([code, m]) => (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => changeCurrency(code)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition text-left ${currency === code ? 'bg-primary/5' : ''}`}
-                  >
-                    <span className="text-2xl">{m.flag}</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{m.country}</p>
-                      <p className="text-xs text-muted-foreground">{m.paymentNote}</p>
-                    </div>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${currency === code ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                      {code}
-                    </span>
-                  </button>
-                ))}
+          {showCurrencyPicker && (
+            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-20 w-72 overflow-hidden">
+              <div className="p-3 border-b border-border">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Your Region</p>
               </div>
-            )}
-          </div>
-        )}
+              {(Object.entries(CURRENCY_META) as [Currency, typeof CURRENCY_META.AED][]).map(([code, m]) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => changeCurrency(code)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition text-left ${currency === code ? 'bg-primary/5' : ''}`}
+                >
+                  <span className="text-2xl">{m.flag}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">{m.country}</p>
+                    <p className="text-xs text-muted-foreground">{m.paymentNote}</p>
+                  </div>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${currency === code ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                    {code}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ── TheDersi Seller Banner ───────────────────────────────────────────── */}
-      {isTheDersiSeller && (
-        <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-5">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center shrink-0">
-              <ShoppingBag className="w-6 h-6 text-indigo-500" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="font-semibold text-foreground">TheDersi Seller Account</h2>
-                <span className="text-xs bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-medium">
-                  {theDersiPlanName}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Your ExiusCart plan is managed by TheDersi. All TheDersi sellers get <strong className="text-foreground">automatic order sync</strong> from TheDersi into ExiusCart.
-                Free sellers are limited to <strong className="text-foreground">50 orders/month</strong> — upgrade your TheDersi plan to unlock 1,000 orders/month.
-                TheDersi Growth &amp; Premium sellers get <strong className="text-foreground">ExiusCart Starter</strong> included at no extra cost.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2 items-center">
-                {/* Free Forever — show both TheDersi paid plans */}
-                {currentPlan?.plan_type === 'thedersi_basic' && (
-                  <>
-                    <a
-                      href="https://thedersi.lk/seller/upgrade?plan=growth"
-                      target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      TheDersi Growth
-                    </a>
-                    <a
-                      href="https://thedersi.lk/seller/upgrade?plan=pro"
-                      target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition"
-                    >
-                      <Crown className="w-4 h-4" />
-                      TheDersi Premium
-                    </a>
-                  </>
-                )}
-                {/* Starter — show Pro upgrade */}
-                {currentPlan?.plan_type === 'starter' && (
-                  <a
-                    href="https://thedersi.lk/seller/upgrade?plan=pro"
-                    target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition"
-                  >
-                    <Crown className="w-4 h-4" />
-                    Upgrade to TheDersi Premium
-                  </a>
-                )}
-                {/* Both Starter & Pro are top tier for TheDersi sellers */}
-                {currentPlan?.plan_type === 'premium' && (
-                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg text-sm font-medium">
-                    🚀 You&apos;re on the top TheDersi plan
-                  </span>
-                )}
-                <span className="text-xs text-muted-foreground self-center">
-                  Payments processed by TheDersi — ExiusCart updates automatically after payment.
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TheDersi plan mapping */}
-          <div className="mt-4 grid sm:grid-cols-3 gap-3">
-            {[
-              { dersi: 'TheDersi Free',    exius: 'Free Forever', icon: '🆓', desc: '25 products · 50 orders/mo · 2GB storage' },
-              { dersi: 'TheDersi Growth',  exius: 'Starter',      icon: '⭐', desc: '1,000 products · 1,000 orders/mo · 20GB storage' },
-              { dersi: 'TheDersi Premium', exius: 'Starter',      icon: '🚀', desc: '1,000 products · 1,000 orders/mo · 20GB storage' },
-            ].map((row) => (
-              <div key={row.dersi} className="bg-card border border-border rounded-xl p-3 text-sm">
-                <p className="text-muted-foreground text-xs">{row.dersi}</p>
-                <p className="font-semibold text-foreground mt-0.5">{row.icon} ExiusCart {row.exius}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{row.desc}</p>
-              </div>
-            ))}
-          </div>
+      {/* Payment method notice */}
+      <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
+        <Lock className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="text-sm font-medium text-foreground">Payment Method for {meta.country}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{meta.paymentNote}</p>
         </div>
-      )}
-
-      {/* Payment method notice — ExiusCart direct only */}
-      {!isTheDersiSeller && (
-        <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
-          <Lock className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Payment Method for {meta.country}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{meta.paymentNote}</p>
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Pending upgrade notice */}
-      {currentPlan?.status === 'pending' && !isTheDersiSeller && (
+      {currentPlan?.status === 'pending' && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
           <Clock className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div>
@@ -331,7 +510,7 @@ export default function BillingPage() {
       )}
 
       {/* Trial Warning */}
-      {currentPlan?.daysLeft != null && currentPlan.daysLeft <= 7 && !isTheDersiSeller && (
+      {currentPlan?.daysLeft != null && currentPlan.daysLeft <= 7 && (
         <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
           <div>
@@ -344,76 +523,68 @@ export default function BillingPage() {
       )}
 
       {/* Current Plan */}
-      {!isTheDersiSeller && (
-        <div className="bg-card rounded-xl border border-border p-6">
-          {loading ? (
-            <div className="h-20 bg-muted rounded-lg animate-pulse" />
-          ) : !currentPlan ? (
-            <div className="text-center py-6">
-              <p className="text-muted-foreground text-sm">No active subscription. Choose a plan below.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
-                  <Crown className="w-7 h-7 text-primary" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold text-foreground">{currentPlan.name} Plan</h2>
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Current</span>
-                  </div>
-                  <p className="text-muted-foreground text-sm mt-1">
-                    {currentPlan.is_trial
-                      ? `Free trial${currentPlan.daysLeft != null ? ` · ${currentPlan.daysLeft} day${currentPlan.daysLeft !== 1 ? 's' : ''} left` : ''}`
-                      : `${currentPlan.price} ${currency}/month${currentPlan.nextBilling ? ` · Next billing: ${formatDate(currentPlan.nextBilling)}` : ''}`
-                    }
-                  </p>
-                </div>
+      <div className="bg-card rounded-xl border border-border p-6">
+        {loading ? (
+          <div className="h-20 bg-muted rounded-lg animate-pulse" />
+        ) : !currentPlan ? (
+          <div className="text-center py-6">
+            <p className="text-muted-foreground text-sm">No active subscription. Choose a plan below.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
+                <Crown className="w-7 h-7 text-primary" />
               </div>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setShowAddStaffModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition">
-                  <Plus className="w-4 h-4" /> Add Staff
-                </button>
-                <button type="button" onClick={() => handleUpgrade('premium')}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition">
-                  <Zap className="w-4 h-4" /> Upgrade
-                </button>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-foreground">{currentPlan.name} Plan</h2>
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Current</span>
+                </div>
+                <p className="text-muted-foreground text-sm mt-1">
+                  {currentPlan.is_trial
+                    ? `Free trial${currentPlan.daysLeft != null ? ` · ${currentPlan.daysLeft} day${currentPlan.daysLeft !== 1 ? 's' : ''} left` : ''}`
+                    : `${currentPlan.price} ${currency}/month${currentPlan.nextBilling ? ` · Next billing: ${formatDate(currentPlan.nextBilling)}` : ''}`
+                  }
+                </p>
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Staff Pricing Info — not for TheDersi sellers */}
-      {!isTheDersiSeller && (
-        <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-foreground">Need More Staff?</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Add extra staff accounts for just{' '}
-                <span className="font-bold text-foreground">{fmt(PLAN_PRICING[currency].extraStaff)}/month</span> each.
-                Each staff member gets their own login with up to 2-device access.
-              </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowAddStaffModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition">
+                <Plus className="w-4 h-4" /> Add Staff
+              </button>
+              <button type="button" onClick={() => handleUpgrade('premium')}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition">
+                <Zap className="w-4 h-4" /> Upgrade
+              </button>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Staff Pricing Info */}
+      <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-foreground">Need More Staff?</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Add extra staff accounts for just{' '}
+              <span className="font-bold text-foreground">{fmt(PLAN_PRICING[currency].extraStaff)}/month</span> each.
+              Each staff member gets their own login with up to 2-device access.
+            </p>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Plans */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            {isTheDersiSeller ? 'ExiusCart Plan Tiers' : 'Available Plans'}
-          </h2>
-          {!isTheDersiSeller && (
-            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <span className="text-lg">{meta.flag}</span> Prices in {currency}
-            </span>
-          )}
+          <h2 className="text-lg font-semibold text-foreground">Available Plans</h2>
+          <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+            <span className="text-lg">{meta.flag}</span> Prices in {currency}
+          </span>
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">
@@ -458,40 +629,17 @@ export default function BillingPage() {
                     </li>
                   ))}
                 </ul>
-                {isTheDersiSeller ? (
-                  <a
-                    href={
-                      plan.id === 'starter'
-                        ? 'https://thedersi.lk/seller/upgrade?plan=starter'
-                        : plan.id === 'premium'
-                        ? 'https://thedersi.lk/seller/upgrade?plan=pro'
-                        : undefined
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`w-full py-3 rounded-lg font-medium transition text-center block text-sm ${
-                      plan.popular
-                        ? 'bg-indigo-500 text-white hover:bg-indigo-600'
-                        : 'border border-border text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {plan.id === 'free_trial'
-                      ? 'Current (Free Forever)'
-                      : 'Upgrade on TheDersi'}
-                  </a>
-                ) : (
-                  <button type="button" onClick={() => handleUpgrade(plan.id)}
-                    disabled={isCurrent}
-                    className={`w-full py-3 rounded-lg font-medium transition ${
-                      isCurrent
-                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                        : plan.popular
-                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                        : 'border border-border text-foreground hover:bg-muted'
-                    }`}>
-                    {isCurrent ? 'Current Plan' : plan.id === 'free_trial' ? 'Start Free Trial' : 'Select Plan'}
-                  </button>
-                )}
+                <button type="button" onClick={() => handleUpgrade(plan.id)}
+                  disabled={isCurrent}
+                  className={`w-full py-3 rounded-lg font-medium transition ${
+                    isCurrent
+                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                      : plan.popular
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'border border-border text-foreground hover:bg-muted'
+                  }`}>
+                  {isCurrent ? 'Current Plan' : plan.id === 'free_trial' ? 'Start Free Trial' : 'Select Plan'}
+                </button>
               </div>
             );
           })}
