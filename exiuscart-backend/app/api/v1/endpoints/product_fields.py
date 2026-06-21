@@ -288,6 +288,11 @@ async def upload_image(
         is_primary=is_primary,
     )
     db.add(image)
+
+    if is_primary:
+        product_obj = get_product_or_404(product_id, shop_id, db)
+        product_obj.image_url = url
+
     db.commit()
     db.refresh(image)
     return image
@@ -309,10 +314,23 @@ def delete_image(
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    # Delete from storage (R2 or local disk)
+    was_primary = image.is_primary
     storage_delete(image.url)
-
     db.delete(image)
+    db.flush()
+
+    if was_primary:
+        next_img = db.query(ProductImage).filter(
+            ProductImage.product_id == product_id
+        ).order_by(ProductImage.sort_order).first()
+        product_obj = db.query(Product).filter(Product.id == product_id).first()
+        if next_img:
+            next_img.is_primary = True
+            if product_obj:
+                product_obj.image_url = next_img.url
+        elif product_obj:
+            product_obj.image_url = None
+
     db.commit()
 
 
@@ -331,5 +349,12 @@ def set_primary_image(
     db.query(ProductImage).filter(ProductImage.product_id == product_id).update({"is_primary": False})
     # Set new primary
     db.query(ProductImage).filter(ProductImage.id == image_id).update({"is_primary": True})
+
+    new_primary = db.query(ProductImage).filter(ProductImage.id == image_id).first()
+    if new_primary:
+        product_obj = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
+        if product_obj:
+            product_obj.image_url = new_primary.url
+
     db.commit()
     return {"message": "Primary image updated"}
