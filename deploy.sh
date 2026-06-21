@@ -22,6 +22,7 @@ deactivate
 echo "--- Admin ---"
 cd "$PROJECT_DIR/apps/exiuscart-admin"
 npm install --silent
+rm -rf .next
 NEXT_PUBLIC_API_URL=$API_URL npm run build
 pm2 restart exiuscart-admin
 
@@ -29,6 +30,7 @@ pm2 restart exiuscart-admin
 echo "--- Store ---"
 cd "$PROJECT_DIR/apps/exiuscart-store"
 npm install --silent
+rm -rf .next
 NEXT_PUBLIC_API_URL=$API_URL npm run build
 pm2 restart exiuscart-store
 
@@ -36,6 +38,7 @@ pm2 restart exiuscart-store
 echo "--- Affiliates ---"
 cd "$PROJECT_DIR/apps/exiuscart-affiliates"
 npm install --silent
+rm -rf .next
 NEXT_PUBLIC_API_URL=$API_URL npm run build
 pm2 restart exiuscart-affiliates
 
