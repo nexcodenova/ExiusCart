@@ -127,8 +127,10 @@ const GROUPS: MenuGroup[] = [
 // Flat list for mobile bottom nav / external use
 export const menuItems = GROUPS.flatMap(g => g.items);
 
-function canShowGroup(_groupId: string, _plan: string): boolean {
-  return true;
+const PREMIUM_GROUPS = new Set(['hr', 'services']);
+
+function isPremiumGroup(groupId: string): boolean {
+  return PREMIUM_GROUPS.has(groupId);
 }
 
 interface SidebarProps {
@@ -142,6 +144,7 @@ const STORAGE_KEY = 'sidebar_open_groups';
 
 export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [shopData, setShopData] = useState<{ name: string; plan: string; daysLeft: number | null } | null>(null);
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     new Set(GROUPS.map(g => g.id)) // all open by default
@@ -257,12 +260,13 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
         {/* Nav */}
         <nav className="overflow-y-auto" style={{ height: 'calc(100vh - 180px)' }}>
           <div className="p-2 space-y-0.5">
-            {GROUPS.filter(group => canShowGroup(group.id, (shopData?.plan || '').toLowerCase())).map(group => {
+            {GROUPS.map(group => {
+              const plan = (shopData?.plan || '').toLowerCase();
+              const locked = isPremiumGroup(group.id) && plan !== 'premium';
               const groupActive = isGroupActive(group);
               const isOpen = openGroups.has(group.id) || collapsed;
 
               if (group.label === null) {
-                // Standalone items (Dashboard)
                 return group.items.map(item => {
                   const Icon = item.icon;
                   const active = isItemActive(item);
@@ -283,7 +287,6 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
 
               return (
                 <div key={group.id} className="pt-1">
-                  {/* Group header — hidden when icon-only */}
                   {!collapsed && (
                     <button type="button" onClick={() => toggleGroup(group.id)}
                       className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-left ${
@@ -291,23 +294,33 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                       }`}>
                       <GroupIcon className={`w-4 h-4 flex-shrink-0 ${group.accent || ''}`} />
                       <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
+                      {locked && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">PRO</span>}
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
                     </button>
                   )}
 
-                  {/* Group items */}
                   {(isOpen || collapsed) && (
                     <div className={collapsed ? 'space-y-0.5 mt-0.5' : 'ml-2 mt-0.5 space-y-0.5'}>
                       {group.items.map(item => {
                         const Icon = item.icon;
                         const active = isItemActive(item);
+                        if (locked) {
+                          return (
+                            <button key={item.href} type="button"
+                              onClick={() => setShowUpgradeModal(true)}
+                              title={collapsed ? item.label : undefined}
+                              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm w-full text-left text-muted-foreground/50 hover:bg-muted/50 cursor-pointer">
+                              <Icon className={`w-4 h-4 flex-shrink-0 ${collapsed ? 'mx-auto w-5 h-5' : ''}`} />
+                              {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
+                              {!collapsed && <Shield className="w-3 h-3 text-amber-400 flex-shrink-0" />}
+                            </button>
+                          );
+                        }
                         return (
                           <Link key={item.href} href={item.href} onClick={onMobileClose}
                             title={collapsed ? item.label : undefined}
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm ${
-                              active
-                                ? 'bg-primary text-primary-foreground'
-                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                             }`}>
                             <Icon className={`w-4 h-4 flex-shrink-0 ${collapsed ? 'mx-auto w-5 h-5' : ''}`} />
                             {!collapsed && <span className="font-medium">{item.label}</span>}
@@ -341,6 +354,31 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
           </div>
         </div>
       </aside>
+
+      {/* Upgrade modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowUpgradeModal(false)}>
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/15 mb-4 mx-auto">
+              <Shield className="w-6 h-6 text-amber-400" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground text-center mb-2">Premium Feature</h3>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              HR, Payroll, Fleet, Projects, Helpdesk and Appointments are available on the <span className="text-amber-400 font-semibold">Premium</span> plan.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowUpgradeModal(false)}
+                className="flex-1 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
+                Cancel
+              </button>
+              <Link href="/dashboard/billing" onClick={() => setShowUpgradeModal(false)}
+                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold text-center transition">
+                Upgrade Now
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
