@@ -127,10 +127,7 @@ const GROUPS: MenuGroup[] = [
 // Flat list for mobile bottom nav / external use
 export const menuItems = GROUPS.flatMap(g => g.items);
 
-// HR/Services → premium only
-// Everything else → all plans
-function canShowGroup(groupId: string, plan: string): boolean {
-  if (groupId === 'hr' || groupId === 'services') return plan === 'premium';
+function canShowGroup(_groupId: string, _plan: string): boolean {
   return true;
 }
 
