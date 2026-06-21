@@ -69,13 +69,11 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.flush()
 
-    # Auto-create shop:
-    # - always if shop_name provided
-    # - always if @thedersi.lk staff (auto-name from their full name)
-    if user_data.shop_name or is_thedersi_staff:
-        shop_name = user_data.shop_name or f"{display_name}'s Business"
+    # Auto-create shop for every new user
+    if True:
+        shop_name = user_data.shop_name or f"{display_name}'s Shop"
         slug = f"{_slugify(shop_name)}-{uuid.uuid4().hex[:6]}"
-        currency = "AED" if (user_data.country == "AE" or is_thedersi_staff) else "USD"
+        currency = "LKR" if is_thedersi_staff else ("AED" if user_data.country == "AE" else "USD")
         shop = Shop(
             name=shop_name,
             slug=slug,

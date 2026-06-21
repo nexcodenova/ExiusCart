@@ -7,6 +7,7 @@ import { useTheme } from '@/components/providers/theme-provider';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
 
 const CURRENCIES: Currency[] = ['USD', 'AED', 'LKR', 'EUR', 'INR'];
+const LKR_ONLY_CURRENCIES: Currency[] = ['LKR'];
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -18,6 +19,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [activeBranchName, setActiveBranchName] = useState<string | null>(null);
   const [showCurrencyDrop, setShowCurrencyDrop] = useState(false);
   const [userName, setUserName] = useState('');
+  const [isTheDersiShop, setIsTheDersiShop] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,14 +30,20 @@ export function Header({ onMenuClick }: HeaderProps) {
   }, []);
 
   useEffect(() => {
-    import('@/lib/api').then(({ shopApi }) => {
+    import('@/lib/api').then(({ shopApi, channelsApi }) => {
+      const shopId = localStorage.getItem('shop_id');
       shopApi.getAllBranches().then((res) => {
-        const shopId = localStorage.getItem('shop_id');
         if (shopId) {
           const active = res.data?.find((b: any) => String(b.id) === shopId);
           if (active) setActiveBranchName(active.name);
         }
       }).catch(() => {});
+      if (shopId) {
+        channelsApi.getConnections(shopId).then((res) => {
+          const hasTheDersi = res.data?.some((c: any) => c.channel_type === 'thedersi');
+          setIsTheDersiShop(!!hasTheDersi);
+        }).catch(() => {});
+      }
     });
   }, []);
 
@@ -88,14 +96,14 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         {/* Currency / Region Switcher */}
         <div ref={dropRef} className="relative">
-          <button type="button" onClick={() => setShowCurrencyDrop(!showCurrencyDrop)}
-            title="Change currency"
+          <button type="button" onClick={() => !isTheDersiShop && setShowCurrencyDrop(!showCurrencyDrop)}
+            title={isTheDersiShop ? 'LKR — TheDersi marketplace' : 'Change currency'}
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition">
             <span>{currency}</span>
-            <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showCurrencyDrop ? 'rotate-180' : ''}`} />
+            {!isTheDersiShop && <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showCurrencyDrop ? 'rotate-180' : ''}`} />}
           </button>
 
-          {showCurrencyDrop && (
+          {showCurrencyDrop && !isTheDersiShop && (
             <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 w-32 overflow-hidden">
               <div className="px-3 py-2 border-b border-border">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Currency</p>
