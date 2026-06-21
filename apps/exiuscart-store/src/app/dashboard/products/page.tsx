@@ -647,18 +647,19 @@ function ProductModal({
   const { sym } = useCurrency();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const p = product as any;
   const [formData, setFormData] = useState({
-    name: product?.name ?? '',
-    sku: product?.sku ?? '',
-    barcode: product?.barcode ?? '',
-    description: (product as any)?.description ?? '',
-    category: product?.category ?? categories[0] ?? '',
-    costPrice: product?.costPrice ?? 0,
-    sellingPrice: product?.sellingPrice ?? 0,
-    compareAtPrice: (product as any)?.compareAtPrice ?? 0,
-    stock: product?.stock ?? 0,
-    lowStockAlert: product?.lowStockAlert ?? 5,
-    vatPercent: product?.vatPercent ?? 5,
+    name: p?.name ?? '',
+    sku: p?.sku ?? '',
+    barcode: p?.barcode ?? '',
+    description: p?.description ?? '',
+    category: p?.category?.name ?? (typeof p?.category === 'string' ? p?.category : '') ?? categories[0] ?? '',
+    costPrice: p?.cost_price ?? p?.costPrice ?? 0,
+    sellingPrice: p?.price ?? p?.sellingPrice ?? 0,
+    compareAtPrice: p?.compare_at_price ?? p?.compareAtPrice ?? 0,
+    stock: p?.quantity ?? p?.stock ?? 0,
+    lowStockAlert: p?.low_stock_threshold ?? p?.lowStockAlert ?? 5,
+    vatPercent: p?.vat_percent ?? p?.vatPercent ?? 5,
   });
 
   // Custom fields state
