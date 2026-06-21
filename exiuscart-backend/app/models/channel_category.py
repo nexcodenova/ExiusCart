@@ -24,8 +24,10 @@ class ProductChannelCategory(Base):
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     channel_connection_id = Column(Integer, ForeignKey("channel_connections.id"), nullable=False)
-    channel_category_id = Column(String(100), nullable=False)  # TheDersi category ID
-    channel_category_name = Column(String(255), nullable=False) # "Festival Wear"
+    channel_category_id = Column(String(100), nullable=False)         # TheDersi category ID
+    channel_category_name = Column(String(255), nullable=False)        # "Festival Wear"
+    channel_sub_category_id = Column(String(100), nullable=True)       # TheDersi sub-category ID
+    channel_sub_category_name = Column(String(255), nullable=True)     # "Summer Dresses"
 
     __table_args__ = (
         UniqueConstraint("product_id", "channel_connection_id", name="uq_product_conn_cat"),

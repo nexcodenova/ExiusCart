@@ -15,8 +15,17 @@ from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrder
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
 from app.core.email import send_email, build_invoice_html, _FROM_BILLING
+from app.core.thedersi import notify_thedersi_order_status
 
 router = APIRouter()
+
+_VALID_STATUSES = {"pending", "confirmed", "packing", "processing", "shipped", "in_transit", "delivered", "cancelled"}
+
+
+def _notify_channel_order(order_id: int, status: str, db: Session, tracking_number: str = None, tracking_courier: str = None) -> None:
+    meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order_id).first()
+    if meta and meta.channel_order_id:
+        notify_thedersi_order_status(meta.channel_order_id, status, tracking_number, tracking_courier)
 
 
 def generate_order_number() -> str:
@@ -177,6 +186,38 @@ async def ship_order(
 
     db.commit()
     db.refresh(order)
+
+    _notify_channel_order(order_id, "shipped", db, tracking_number=data.tracking_number, tracking_courier=data.carrier)
+
+    return order
+
+
+class UpdateStatusIn(BaseModel):
+    status: str
+
+
+@router.patch("/{order_id}/status", response_model=OrderResponse)
+async def update_order_status(
+    order_id: int,
+    shop_id: int,
+    data: UpdateStatusIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update order status and notify TheDersi if it came from a channel."""
+    if data.status not in _VALID_STATUSES:
+        raise HTTPException(status_code=422, detail=f"Invalid status. Valid values: {sorted(_VALID_STATUSES)}")
+
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order.status = data.status
+    db.commit()
+    db.refresh(order)
+
+    _notify_channel_order(order_id, data.status, db)
+
     return order
 
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, ChevronRight } from 'lucide-react';
+import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, ChevronRight, CheckCircle2, PackageCheck, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
@@ -39,14 +39,16 @@ interface Order {
 const STATUS_STYLES: Record<string, string> = {
   pending: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
   confirmed: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  packing: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
   processing: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
   shipped: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+  in_transit: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
   delivered: 'bg-green-500/10 text-green-600 dark:text-green-400',
   completed: 'bg-green-500/10 text-green-600 dark:text-green-400',
   cancelled: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
 
-const CARRIERS = ['DHL', 'FedEx', 'Aramex', 'Emirates Post', 'Smsa', 'Other'];
+const CARRIERS = ['Lanka Speed Couriers', 'Kapruka', 'Pronto', 'DHL', 'FedEx', 'Aramex', 'Emirates Post', 'Smsa', 'Other'];
 
 interface ShipModalProps {
   order: Order;
@@ -150,6 +152,7 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [shipTarget, setShipTarget] = useState<Order | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const { fmt } = useCurrency();
 
@@ -176,7 +179,19 @@ export default function OrdersPage() {
     setShipTarget(null);
   };
 
-  const canShip = (status: string) => ['pending', 'confirmed', 'processing'].includes(status);
+  const handleStatusUpdate = async (order: Order, newStatus: string) => {
+    setUpdatingId(order.id);
+    try {
+      const res = await ordersApi.updateStatus(shopId, String(order.id), newStatus);
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: res.data.status } : o));
+    } catch {
+      // silent — let user retry
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const canShip = (o: Order) => (o.source === 'thedersi' ? ['packing', 'processing'] : ['pending', 'confirmed', 'processing']).includes(o.status);
 
   return (
     <div className="space-y-6">
@@ -225,8 +240,10 @@ export default function OrdersPage() {
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
+            <option value="packing">Packing</option>
             <option value="processing">Processing</option>
             <option value="shipped">Shipped</option>
+            <option value="in_transit">In Transit</option>
             <option value="delivered">Delivered</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
@@ -303,17 +320,55 @@ export default function OrdersPage() {
                           {order.status}
                         </span>
                       </td>
-                      <td className="p-4 text-center">
-                        {canShip(order.status) && (
-                          <button
-                            onClick={() => setShipTarget(order)}
-                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 rounded-lg transition font-medium"
-                          >
-                            <Truck className="w-3.5 h-3.5" /> Ship
-                          </button>
-                        )}
-                        {order.status === 'shipped' && order.tracking_number && (
-                          <span className="text-xs text-muted-foreground">Tracking ↓</span>
+                      <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
+                        {updatingId === order.id ? (
+                          <span className="text-xs text-muted-foreground">Updating…</span>
+                        ) : order.source === 'thedersi' ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            {order.status === 'pending' && (
+                              <button onClick={() => handleStatusUpdate(order, 'confirmed')}
+                                className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-lg transition font-medium">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Confirm
+                              </button>
+                            )}
+                            {order.status === 'confirmed' && (
+                              <button onClick={() => handleStatusUpdate(order, 'packing')}
+                                className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 rounded-lg transition font-medium">
+                                <Package className="w-3.5 h-3.5" /> Packing
+                              </button>
+                            )}
+                            {canShip(order) && (
+                              <button onClick={() => setShipTarget(order)}
+                                className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 rounded-lg transition font-medium">
+                                <Truck className="w-3.5 h-3.5" /> Ship
+                              </button>
+                            )}
+                            {order.status === 'shipped' && (
+                              <button onClick={() => handleStatusUpdate(order, 'delivered')}
+                                className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 rounded-lg transition font-medium">
+                                <PackageCheck className="w-3.5 h-3.5" /> Delivered
+                              </button>
+                            )}
+                            {!['delivered', 'cancelled'].includes(order.status) && (
+                              <button onClick={() => handleStatusUpdate(order, 'cancelled')}
+                                title="Cancel order"
+                                className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition">
+                                <XCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            {canShip(order) && (
+                              <button onClick={() => setShipTarget(order)}
+                                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 rounded-lg transition font-medium">
+                                <Truck className="w-3.5 h-3.5" /> Ship
+                              </button>
+                            )}
+                            {order.status === 'shipped' && order.tracking_number && (
+                              <span className="text-xs text-muted-foreground">Tracking ↓</span>
+                            )}
+                          </>
                         )}
                       </td>
                     </tr>

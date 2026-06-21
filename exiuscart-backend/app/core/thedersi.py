@@ -17,6 +17,10 @@ THEDERSI_WEBHOOK_URL = os.getenv(
     "THEDERSI_WEBHOOK_URL",
     "https://thedersi.lk/api/exiuscart/webhook",
 )
+THEDERSI_ORDER_STATUS_URL = os.getenv(
+    "THEDERSI_ORDER_STATUS_URL",
+    "https://thedersi.lk/api/v1/exiuscart/order-status",
+)
 
 # Tier names TheDersi sends → ExiusCart plan_type
 # Accepts both new names (confirmed 2026-06) and old names (backward compat)
@@ -100,3 +104,34 @@ def notify_thedersi(seller_id: str, plan: str, event: str = "plan_update") -> No
             logger.info(f"[TheDersi webhook] {event} seller={seller_id} → {r.status_code}")
     except Exception as exc:
         logger.warning(f"[TheDersi webhook] failed seller={seller_id}: {exc}")
+
+
+def notify_thedersi_order_status(
+    channel_order_id: str,
+    status: str,
+    tracking_number: str | None = None,
+    tracking_courier: str | None = None,
+) -> None:
+    """POST order status update to TheDersi when a seller updates their order. Fire-and-forget."""
+    if not channel_order_id:
+        return
+
+    payload: dict = {"channel_order_id": channel_order_id, "status": status}
+    if tracking_number:
+        payload["tracking_number"] = tracking_number
+    if tracking_courier:
+        payload["tracking_courier"] = tracking_courier
+
+    body = json.dumps(payload, separators=(",", ":"))
+    sig = _hmac_signature(body)
+
+    headers: dict = {"Content-Type": "application/json", "X-Partner-Key": THEDERSI_KEY}
+    if sig:
+        headers["X-Signature"] = sig
+
+    try:
+        with httpx.Client(timeout=8) as client:
+            r = client.post(THEDERSI_ORDER_STATUS_URL, content=body, headers=headers)
+            logger.info(f"[TheDersi order-status] {channel_order_id} → {status} | HTTP {r.status_code}")
+    except Exception as exc:
+        logger.warning(f"[TheDersi order-status] failed {channel_order_id}: {exc}")

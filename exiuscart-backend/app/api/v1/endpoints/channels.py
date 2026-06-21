@@ -111,10 +111,16 @@ def _webhook_url(conn: ChannelConnection) -> str:
     return f"{EXIUSCART_BASE.rstrip('/')}/channels/webhook/{conn.webhook_secret}"
 
 
-def _product_payload(product: Product, currency: str, channel_type: str, channel_category_id: str = None) -> dict:
+def _product_payload(
+    product: Product,
+    currency: str,
+    channel_type: str,
+    channel_category_id: str = None,
+    channel_sub_category_id: str = None,
+) -> dict:
     status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
-    # TheDersi wants the category slug/id (e.g. "festival-wear"), not the display name
     category = channel_category_id or None
+    sub_category = channel_sub_category_id or None
 
     variants = [
         {
@@ -144,6 +150,7 @@ def _product_payload(product: Product, currency: str, channel_type: str, channel
         "quantity": total_stock,
         "image_urls": image_urls,
         "category": category,
+        "sub_category": sub_category,
         "variants": variants,
         "is_featured": False,
         "is_trending": False,
@@ -202,7 +209,8 @@ def _bg_full_sync(shop_id: int, conn_id: int):
                 ProductChannelCategory.channel_connection_id == conn_id,
             ).first()
             cat_id = pcc.channel_category_id if pcc else None
-            _push_one(_product_payload(p, shop.currency, conn.channel_type, cat_id), conn)
+            sub_cat_id = pcc.channel_sub_category_id if pcc else None
+            _push_one(_product_payload(p, shop.currency, conn.channel_type, cat_id, sub_cat_id), conn)
         conn.last_synced_at = datetime.now(timezone.utc)
         db.commit()
     finally:
@@ -228,7 +236,8 @@ def _bg_push_product(product_id: int, shop_id: int):
                 ProductChannelCategory.channel_connection_id == conn.id,
             ).first()
             cat_id = pcc.channel_category_id if pcc else None
-            _push_one(_product_payload(product, shop.currency, conn.channel_type, cat_id), conn)
+            sub_cat_id = pcc.channel_sub_category_id if pcc else None
+            _push_one(_product_payload(product, shop.currency, conn.channel_type, cat_id, sub_cat_id), conn)
             if conn.channel_type in MARKETPLACE_CHANNELS:
                 existing = db.query(ChannelProductStatus).filter(
                     ChannelProductStatus.product_id == product_id,
@@ -547,7 +556,7 @@ async def receive_order_webhook(
         order_number=order_number,
         status="pending",
         payment_status="pending",
-        source="online",
+        source=conn.channel_type,
         subtotal=payload.subtotal,
         tax_amount=0,
         discount_amount=0,
