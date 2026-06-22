@@ -64,7 +64,7 @@ class ChannelConnectIn(BaseModel):
 
 
 class OrderItemIn(BaseModel):
-    exiuscart_product_id: int
+    exiuscart_product_id: Optional[str] = None  # accept int or string — coerced below
     product_name: Optional[str] = None
     quantity: int
     unit_price: float
@@ -72,10 +72,20 @@ class OrderItemIn(BaseModel):
     size: Optional[str] = None
     color: Optional[str] = None
 
+    def parsed_product_id(self) -> Optional[int]:
+        """Return integer product id, stripping any non-numeric prefix like 'prod_'."""
+        if self.exiuscart_product_id is None:
+            return None
+        try:
+            return int(self.exiuscart_product_id)
+        except (ValueError, TypeError):
+            stripped = ''.join(filter(str.isdigit, str(self.exiuscart_product_id)))
+            return int(stripped) if stripped else None
+
 
 class ChannelOrderWebhook(BaseModel):
     channel_order_id: str
-    buyer_name: str
+    buyer_name: Optional[str] = None
     buyer_email: Optional[str] = None
     buyer_phone: Optional[str] = None
     shipping_address: Optional[str] = None
@@ -83,6 +93,7 @@ class ChannelOrderWebhook(BaseModel):
     subtotal: float
     total: float
     currency: str = "LKR"
+    payment_status: Optional[str] = None        # "paid" | "pending" — TheDersi sends "paid"
     # Delivery info (TheDersi specific)
     delivery_fee: Optional[float] = None
     delivery_paid_by: Optional[str] = None      # "customer" | "seller"
@@ -471,8 +482,9 @@ async def receive_order_webhook(
 
     try:
         payload = ChannelOrderWebhook.model_validate_json(body)
-    except Exception:
-        raise HTTPException(status_code=422, detail="Invalid webhook payload")
+    except Exception as e:
+        logger.error(f"[WEBHOOK] payload parse failed: {e} | body={body[:500]}")
+        raise HTTPException(status_code=422, detail=f"Invalid webhook payload: {e}")
 
     conn = db.query(ChannelConnection).filter(
         ChannelConnection.webhook_secret == webhook_secret,
@@ -554,8 +566,8 @@ async def receive_order_webhook(
         shop_id=conn.shop_id,
         customer_id=customer.id if customer else None,
         order_number=order_number,
-        status="pending",
-        payment_status="pending",
+        status="confirmed",
+        payment_status=payload.payment_status or "paid",
         source=conn.channel_type,
         subtotal=payload.subtotal,
         tax_amount=0,
@@ -570,12 +582,11 @@ async def receive_order_webhook(
     # Create order items + decrease stock
     stock_changed_product_ids: set = set()
     for item in payload.items:
+        pid = item.parsed_product_id()
         product = db.query(Product).filter(
-            Product.id == item.exiuscart_product_id,
+            Product.id == pid,
             Product.shop_id == conn.shop_id,
-        ).first()
-        if not product:
-            continue
+        ).first() if pid else None
 
         db.add(OrderItem(
             order_id=order.id,

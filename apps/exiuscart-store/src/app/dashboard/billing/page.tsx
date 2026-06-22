@@ -104,78 +104,65 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
 const THEDERSI_PLANS = [
   {
     id: 'free',
-    name: 'Free Forever',
+    name: 'Free',
+    price: 'LKR 0',
+    priceSub: '10% commission per sale',
     badge: null,
     color: 'border-border',
     btnColor: 'border border-border text-foreground hover:bg-muted',
-    exiusEquivalent: 'Free Forever',
     upgradeSlug: null,
     features: [
-      { text: '25 products on TheDersi',         ok: true  },
-      { text: '50 orders / month sync',           ok: true  },
-      { text: '2 GB product storage',             ok: true  },
-      { text: 'Basic POS & inventory',            ok: true  },
-      { text: '50 email invoices / month',        ok: true  },
-      { text: 'Advanced analytics',               ok: false },
-      { text: 'Custom invoice branding',          ok: false },
-      { text: 'Multiple staff logins',            ok: false },
+      { text: 'Up to 25 product listings',        ok: true  },
+      { text: '50 orders / month',                ok: true  },
+      { text: '50 marketing emails / month',      ok: true  },
+      { text: 'Your own storefront page',         ok: true  },
+      { text: 'Sales dashboard',                  ok: true  },
+      { text: '24hr approval',                    ok: true  },
+      { text: 'Bi-weekly payout',                 ok: true  },
+      { text: 'Priority approval',                ok: false },
+      { text: 'Verified seller badge',            ok: false },
     ],
   },
   {
     id: 'growth',
     name: 'Growth',
+    price: 'LKR 799',
+    priceSub: '8% commission + LKR 799/mo',
     badge: 'Popular',
     color: 'border-indigo-500',
     btnColor: 'bg-indigo-600 text-white hover:bg-indigo-700',
-    exiusEquivalent: 'Starter',
     upgradeSlug: 'growth',
     features: [
-      { text: '1,000 products on TheDersi',       ok: true  },
-      { text: '1,000 orders / month sync',        ok: true  },
-      { text: '20 GB product storage',            ok: true  },
-      { text: 'Full POS & inventory mgmt',        ok: true  },
-      { text: '500 invoices / month + logo',      ok: true  },
-      { text: 'Advanced analytics',               ok: true  },
-      { text: 'Custom invoice branding',          ok: false },
-      { text: '3 staff logins',                   ok: true  },
-    ],
-  },
-  {
-    id: 'premium',
-    name: 'Premium',
-    badge: null,
-    color: 'border-purple-500',
-    btnColor: 'bg-purple-600 text-white hover:bg-purple-700',
-    exiusEquivalent: 'Starter',
-    upgradeSlug: 'premium',
-    features: [
-      { text: '1,000 products on TheDersi',       ok: true  },
-      { text: '1,000 orders / month sync',        ok: true  },
-      { text: '20 GB product storage',            ok: true  },
-      { text: 'Full POS & inventory mgmt',        ok: true  },
-      { text: 'Unlimited invoices + logo',        ok: true  },
-      { text: 'Advanced analytics',               ok: true  },
-      { text: 'Custom invoice branding',          ok: true  },
-      { text: '3 staff logins',                   ok: true  },
+      { text: 'Up to 1,000 product listings',     ok: true  },
+      { text: '1,000 orders / month',             ok: true  },
+      { text: '500 marketing emails / month',     ok: true  },
+      { text: 'Your own storefront page',         ok: true  },
+      { text: 'Sales dashboard',                  ok: true  },
+      { text: 'Priority approval',                ok: true  },
+      { text: 'Verified seller badge',            ok: true  },
+      { text: 'Bi-weekly payout',                 ok: true  },
+      { text: 'Priority placement in search',     ok: false },
     ],
   },
   {
     id: 'pro',
     name: 'Pro',
+    price: 'LKR 1,699',
+    priceSub: '5% commission + LKR 1,699/mo',
     badge: 'Best Value',
     color: 'border-yellow-500',
     btnColor: 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:opacity-90',
-    exiusEquivalent: 'Premium',
     upgradeSlug: 'pro',
     features: [
-      { text: 'Unlimited products on TheDersi',   ok: true  },
+      { text: 'Up to 1,000 product listings',     ok: true  },
       { text: 'Unlimited orders / month',         ok: true  },
-      { text: '75 GB product storage',            ok: true  },
-      { text: 'Full POS + multi-branch',          ok: true  },
-      { text: 'Unlimited invoices + branding',    ok: true  },
-      { text: 'Full analytics suite',             ok: true  },
-      { text: 'Custom invoice branding',          ok: true  },
-      { text: 'Unlimited staff logins',           ok: true  },
+      { text: '500 marketing emails / month',     ok: true  },
+      { text: 'Your own storefront page',         ok: true  },
+      { text: 'Sales dashboard',                  ok: true  },
+      { text: 'Priority approval',                ok: true  },
+      { text: 'Verified seller badge',            ok: true  },
+      { text: 'Payout every Monday',              ok: true  },
+      { text: 'Priority placement in search',     ok: true  },
     ],
   },
 ];
@@ -223,9 +210,8 @@ export default function BillingPage() {
 
   const theDersiPlanType = currentPlan?.plan_type ?? 'thedersi_basic';
   const theDersiCurrentId =
-    theDersiPlanType === 'thedersi_pro' ? 'pro' :
-    theDersiPlanType === 'premium'      ? 'pro' :
-    theDersiPlanType === 'starter'      ? 'growth' :
+    theDersiPlanType === 'thedersi_pro' || theDersiPlanType === 'pro' ? 'pro' :
+    theDersiPlanType === 'thedersi_growth' || theDersiPlanType === 'starter' || theDersiPlanType === 'growth' ? 'growth' :
     'free';
 
   function changeCurrency(c: Currency) {
@@ -336,7 +322,7 @@ export default function BillingPage() {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {THEDERSI_PLANS.map((plan) => {
               const isCurrent = plan.id === theDersiCurrentId;
               return (
@@ -360,9 +346,10 @@ export default function BillingPage() {
                   </div>
 
                   <h3 className="text-xl font-bold text-foreground mb-1">{plan.name}</h3>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    ExiusCart <span className="font-semibold text-foreground">{plan.exiusEquivalent}</span> tier included
-                  </p>
+                  <div className="mb-4">
+                    <span className="text-lg font-bold text-foreground">{plan.price}</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">{plan.priceSub}</p>
+                  </div>
 
                   <ul className="space-y-2.5 flex-1 mb-5">
                     {plan.features.map((f, i) => (
@@ -390,7 +377,7 @@ export default function BillingPage() {
                     </a>
                   ) : (
                     <div className="w-full py-2.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium text-center">
-                      Free Forever
+                      Start Free
                     </div>
                   )}
                 </div>
