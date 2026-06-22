@@ -588,6 +588,10 @@ async def receive_order_webhook(
             Product.shop_id == conn.shop_id,
         ).first() if pid else None
 
+        if not product:
+            logger.warning(f"[WEBHOOK] product id={pid} not found in shop {conn.shop_id}, skipping item")
+            continue
+
         db.add(OrderItem(
             order_id=order.id,
             product_id=product.id,
