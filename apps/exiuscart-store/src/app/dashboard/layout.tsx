@@ -24,6 +24,13 @@ export default function DashboardLayout({
       router.replace('/login');
     } else {
       setAuthed(true);
+      // Always sync shop_id from the API so stale localStorage values (e.g. from a
+      // previous user session or a setup-link login) are corrected immediately.
+      import('@/lib/api').then(({ shopApi }) => {
+        shopApi.getMyShop().then((res) => {
+          if (res.data?.id) localStorage.setItem('shop_id', String(res.data.id));
+        }).catch(() => {});
+      });
     }
   }, [router]);
 
