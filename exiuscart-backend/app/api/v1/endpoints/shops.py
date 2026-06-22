@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date
 from typing import List, Optional
@@ -451,6 +451,7 @@ def get_low_stock(
 def adjust_inventory(
     shop_id: int,
     body: dict,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -467,6 +468,10 @@ def adjust_inventory(
 
     product.quantity = max(0, product.quantity + quantity)
     db.commit()
+
+    from app.api.v1.endpoints.channels import trigger_stock_sync
+    trigger_stock_sync(product_id, shop_id, background_tasks)
+
     return {"id": product.id, "name": product.name, "quantity": product.quantity}
 
 

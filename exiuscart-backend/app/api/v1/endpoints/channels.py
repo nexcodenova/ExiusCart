@@ -888,11 +888,11 @@ class ProductStatusCallback(BaseModel):
     seller_email: Optional[str] = None  # optional, not used for lookup
 
 
-THEDERSI_KEY = os.getenv("THEDERSI_PARTNER_KEY", "")
+_THEDERSI_INBOUND_KEY = os.getenv("THEDERSI_INBOUND_KEY", "") or os.getenv("THEDERSI_PARTNER_KEY", "")
 
 
 def _require_partner_key(x_partner_key: str = Header(..., alias="X-Partner-Key")):
-    if not THEDERSI_KEY or x_partner_key != THEDERSI_KEY:
+    if not _THEDERSI_INBOUND_KEY or x_partner_key != _THEDERSI_INBOUND_KEY:
         raise HTTPException(status_code=401, detail="Invalid partner key")
 
 
