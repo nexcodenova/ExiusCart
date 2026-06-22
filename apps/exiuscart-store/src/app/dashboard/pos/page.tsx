@@ -52,7 +52,7 @@ export default function POSPage() {
   const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
   const [showCheckout, setShowCheckout] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'tamara' | 'tabby'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
@@ -635,38 +635,6 @@ export default function POSPage() {
                     <CreditCard className={`w-8 h-8 ${paymentMethod === 'card' ? 'text-primary' : 'text-muted-foreground'}`} />
                     <span className={`text-sm font-medium ${paymentMethod === 'card' ? 'text-primary' : 'text-foreground'}`}>Card</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('tamara')}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
-                      paymentMethod === 'tamara'
-                        ? 'border-[#3BFFC1] bg-[#3BFFC1]/10'
-                        : 'border-border hover:border-[#3BFFC1]/50'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                      paymentMethod === 'tamara' ? 'bg-[#3BFFC1] text-black' : 'bg-[#3BFFC1]/20 text-[#3BFFC1]'
-                    }`}>
-                      T
-                    </div>
-                    <span className={`text-sm font-medium ${paymentMethod === 'tamara' ? 'text-[#3BFFC1]' : 'text-foreground'}`}>Tamara</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('tabby')}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
-                      paymentMethod === 'tabby'
-                        ? 'border-[#3BFAC5] bg-[#3BFAC5]/10'
-                        : 'border-border hover:border-[#3BFAC5]/50'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                      paymentMethod === 'tabby' ? 'bg-[#3BFAC5] text-black' : 'bg-[#3BFAC5]/20 text-[#3BFAC5]'
-                    }`}>
-                      T
-                    </div>
-                    <span className={`text-sm font-medium ${paymentMethod === 'tabby' ? 'text-[#3BFAC5]' : 'text-foreground'}`}>Tabby</span>
-                  </button>
                 </div>
               </div>
 
@@ -762,7 +730,7 @@ export default function POSPage() {
               <div className="text-center">
                 <p className="text-3xl font-bold text-primary">{total.toFixed(2)} {sym}</p>
                 <p className="text-sm text-muted-foreground">
-                  Paid via {paymentMethod === 'tamara' ? 'Tamara' : paymentMethod === 'tabby' ? 'Tabby' : paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}
+                  Paid via {paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}
                 </p>
               </div>
 

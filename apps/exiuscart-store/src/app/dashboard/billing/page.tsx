@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   CreditCard, Check, Crown, Zap, Users, BarChart3,
   MessageCircle, Shield, AlertTriangle, Download,
-  Receipt, Plus, Star, Loader2, Globe, ChevronDown,
+  Receipt, Plus, Star, Loader2, Globe,
   Coins, Lock, ShoppingBag, ExternalLink, Package,
   GitBranch, Percent, Tag, Clock, HardDrive, Sparkles,
   TrendingUp, BadgeCheck, ArrowRight, Infinity,
@@ -169,8 +169,7 @@ const THEDERSI_PLANS = [
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function BillingPage() {
-  const { currency, setCurrency: setGlobalCurrency, fmt } = useCurrency();
-  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const { currency, fmt } = useCurrency();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'card' | 'dkc'>('card');
@@ -214,10 +213,6 @@ export default function BillingPage() {
     theDersiPlanType === 'thedersi_growth' || theDersiPlanType === 'starter' || theDersiPlanType === 'growth' ? 'growth' :
     'free';
 
-  function changeCurrency(c: Currency) {
-    setGlobalCurrency(c);
-    setShowCurrencyPicker(false);
-  }
 
   const handleUpgrade = (planId: string) => {
     setSelectedPlan(planId);
@@ -436,41 +431,9 @@ export default function BillingPage() {
           <p className="text-muted-foreground text-sm">Manage your plan and billing</p>
         </div>
 
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowCurrencyPicker(!showCurrencyPicker)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl bg-card hover:bg-muted transition text-sm font-medium text-foreground"
-          >
-            <span className="text-lg">{meta.flag}</span>
-            <span>{currency}</span>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showCurrencyPicker ? 'rotate-180' : ''}`} />
-          </button>
-
-          {showCurrencyPicker && (
-            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-20 w-72 overflow-hidden">
-              <div className="p-3 border-b border-border">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Your Region</p>
-              </div>
-              {(Object.entries(CURRENCY_META) as [Currency, typeof CURRENCY_META.AED][]).map(([code, m]) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => changeCurrency(code)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition text-left ${currency === code ? 'bg-primary/5' : ''}`}
-                >
-                  <span className="text-2xl">{m.flag}</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">{m.country}</p>
-                    <p className="text-xs text-muted-foreground">{m.paymentNote}</p>
-                  </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${currency === code ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                    {code}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl bg-card text-sm font-medium text-foreground">
+          <span className="text-lg">{meta.flag}</span>
+          <span>{currency}</span>
         </div>
       </div>
 
