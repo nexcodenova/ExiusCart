@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_password_hash
-from app.core.thedersi import THEDERSI_KEY, THEDERSI_TIER_MAP, notify_thedersi
+from app.core.thedersi import THEDERSI_KEY, THEDERSI_INBOUND_KEY, THEDERSI_TIER_MAP, notify_thedersi
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
@@ -47,9 +47,10 @@ SETUP_LINK_EXPIRE_HOURS = 48
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 def require_thedersi_key(x_partner_key: str = Header(..., alias="X-Partner-Key")):
-    if not THEDERSI_KEY:
+    expected = THEDERSI_INBOUND_KEY or THEDERSI_KEY
+    if not expected:
         raise HTTPException(status_code=503, detail="Partner integration not configured")
-    if x_partner_key != THEDERSI_KEY:
+    if x_partner_key != expected:
         raise HTTPException(status_code=401, detail="Invalid partner key")
 
 

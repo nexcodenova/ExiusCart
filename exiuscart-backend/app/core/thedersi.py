@@ -10,9 +10,10 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-THEDERSI_KEY           = os.getenv("THEDERSI_PARTNER_KEY", "")
-THEDERSI_HMAC_SECRET   = os.getenv("THEDERSI_HMAC_SECRET", "")    # TheDersi signs their webhooks with this → we verify incoming
-THEDERSI_OUTGOING_SECRET = os.getenv("THEDERSI_OUTGOING_SECRET", "")  # we sign our outgoing notifications → TheDersi verifies
+THEDERSI_KEY           = os.getenv("THEDERSI_PARTNER_KEY", "")       # we send this TO TheDersi
+THEDERSI_INBOUND_KEY   = os.getenv("THEDERSI_INBOUND_KEY", "")       # TheDersi sends this TO us (they call it their partner key for ExiusCart)
+THEDERSI_HMAC_SECRET   = os.getenv("THEDERSI_HMAC_SECRET", "")       # TheDersi signs their webhooks with this → we verify incoming
+THEDERSI_OUTGOING_SECRET = os.getenv("THEDERSI_OUTGOING_SECRET", "") # we sign our outgoing notifications → TheDersi verifies
 THEDERSI_WEBHOOK_URL = os.getenv(
     "THEDERSI_WEBHOOK_URL",
     "https://thedersi.lk/api/exiuscart/webhook",
