@@ -56,6 +56,28 @@ def upload_image(contents: bytes, shop_id: int, product_id: int, ext: str, conte
     return url
 
 
+def upload_shop_image(contents: bytes, shop_id: int, image_type: str, ext: str, content_type: str = "image/jpeg") -> str:
+    """Upload a shop profile image (logo/banner) to R2 and return the public CDN URL."""
+    if not _R2_ACCOUNT_ID or not _R2_ACCESS_KEY_ID or not _R2_SECRET_ACCESS_KEY:
+        raise RuntimeError("R2 credentials not configured.")
+
+    filename = f"{uuid.uuid4()}.{ext}"
+    key = f"shops/{shop_id}/{image_type}/{filename}"
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=_R2_BUCKET,
+        Key=key,
+        Body=contents,
+        ContentType=content_type,
+        CacheControl="public, max-age=31536000",
+    )
+
+    url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    logger.info(f"[R2 UPLOAD] {url}")
+    return url
+
+
 def delete_image(url: str) -> None:
     """Delete image from Cloudflare R2 by its public URL."""
     if not url or not _R2_ACCOUNT_ID:

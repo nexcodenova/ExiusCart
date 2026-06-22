@@ -397,3 +397,25 @@ def thedersi_status(
         "status": sub.status if sub else None,
         "webhook_url": _webhook_url(conn.webhook_secret) if conn else None,
     }
+
+
+# ── Seller profile (Option B: TheDersi can pull logo/banner) ──────────────────
+
+@router.get("/partner/thedersi/seller-profile", dependencies=[Depends(require_thedersi_key)])
+def thedersi_seller_profile(
+    thedersi_seller_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Return the current logo_url and banner_url for a seller.
+    TheDersi can call this to pull the latest profile images at any time.
+    Also available via push: ExiusCart POSTs profile_updated events automatically.
+    """
+    shop = _find_shop_by_seller_id(thedersi_seller_id, db)
+    if not shop:
+        raise HTTPException(status_code=404, detail="Seller not found")
+    return {
+        "thedersi_seller_id": thedersi_seller_id,
+        "logo_url": shop.logo_url,
+        "banner_url": shop.banner_url,
+    }

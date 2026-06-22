@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   Paintbrush, Receipt, Palette, Upload, Type, AlignLeft,
   CheckCircle, ChevronRight, Store, Phone, Mail, Globe,
-  Image as ImageIcon, FileText, Sliders,
+  Image as ImageIcon, FileText, Sliders, Loader2, X,
 } from 'lucide-react';
 import { shopApi } from '@/lib/api';
 
@@ -27,12 +27,18 @@ const FONT_OPTIONS = ['Inter', 'Roboto', 'Poppins', 'Nunito', 'Open Sans', 'Lato
 export default function CustomizationPage() {
   const [tab, setTab] = useState<Tab>('branding');
   const [saved, setSaved] = useState(false);
+  const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
   // Branding
   const [shopName, setShopName] = useState('');
   const [tagline, setTagline] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
   const [faviconUrl, setFaviconUrl] = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   // Theme
   const [selectedPreset, setSelectedPreset] = useState(0);
@@ -63,11 +69,36 @@ export default function CustomizationPage() {
       setShopName(s.name || '');
       setTagline(s.tagline || '');
       setLogoUrl(s.logo_url || '');
+      setBannerUrl(s.banner_url || '');
       setReceiptPhone(s.phone || '');
       setReceiptEmail(s.email || '');
       setReceiptWebsite(s.website || '');
     }).catch(() => {});
   }, []);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !shopId) return;
+    setLogoUploading(true);
+    try {
+      const res = await shopApi.uploadLogo(shopId, file);
+      setLogoUrl(res.data.logo_url);
+    } catch {}
+    setLogoUploading(false);
+    if (logoInputRef.current) logoInputRef.current.value = '';
+  }
+
+  async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !shopId) return;
+    setBannerUploading(true);
+    try {
+      const res = await shopApi.uploadBanner(shopId, file);
+      setBannerUrl(res.data.banner_url);
+    } catch {}
+    setBannerUploading(false);
+    if (bannerInputRef.current) bannerInputRef.current.value = '';
+  }
 
   function applyPreset(idx: number) {
     setSelectedPreset(idx);
@@ -153,21 +184,61 @@ export default function CustomizationPage() {
 
                 {/* Logo */}
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Logo URL</label>
-                  <div className="flex gap-3 items-start">
-                    <input value={logoUrl} onChange={e => setLogoUrl(e.target.value)}
-                      placeholder="https://yourdomain.com/logo.png"
-                      className="flex-1 max-w-md px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground" />
-                    {logoUrl && (
-                      <img src={logoUrl} alt="Logo preview" className="w-12 h-12 object-contain border border-border rounded-lg bg-muted" />
-                    )}
-                    {!logoUrl && (
-                      <div className="w-12 h-12 border border-dashed border-border rounded-lg flex items-center justify-center bg-muted">
-                        <ImageIcon className="w-5 h-5 text-muted-foreground/40" />
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Store Logo</label>
+                  <div className="flex gap-3 items-center">
+                    {logoUrl ? (
+                      <div className="relative">
+                        <img src={logoUrl} alt="Logo" className="w-16 h-16 object-contain border border-border rounded-xl bg-muted" />
+                        <button onClick={() => setLogoUrl('')}
+                          className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center">
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 border-2 border-dashed border-border rounded-xl flex items-center justify-center bg-muted">
+                        <ImageIcon className="w-6 h-6 text-muted-foreground/40" />
                       </div>
                     )}
+                    <div>
+                      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                      <button onClick={() => logoInputRef.current?.click()} disabled={logoUploading}
+                        className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm font-medium bg-background hover:bg-muted transition disabled:opacity-60">
+                        {logoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        {logoUploading ? 'Uploading…' : logoUrl ? 'Replace Logo' : 'Upload Logo'}
+                      </button>
+                      <p className="text-xs text-muted-foreground mt-1">PNG, SVG, WebP · max 5 MB · recommended 200×200 px</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Provide a URL to your logo image (PNG, SVG recommended)</p>
+                </div>
+
+                {/* Banner */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Store Banner</label>
+                  <div className="space-y-2">
+                    {bannerUrl ? (
+                      <div className="relative max-w-md">
+                        <img src={bannerUrl} alt="Banner" className="w-full h-28 object-cover border border-border rounded-xl bg-muted" />
+                        <button onClick={() => setBannerUrl('')}
+                          className="absolute top-1.5 right-1.5 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="max-w-md h-24 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center bg-muted gap-1">
+                        <ImageIcon className="w-6 h-6 text-muted-foreground/40" />
+                        <p className="text-xs text-muted-foreground">No banner uploaded</p>
+                      </div>
+                    )}
+                    <div>
+                      <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+                      <button onClick={() => bannerInputRef.current?.click()} disabled={bannerUploading}
+                        className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm font-medium bg-background hover:bg-muted transition disabled:opacity-60">
+                        {bannerUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        {bannerUploading ? 'Uploading…' : bannerUrl ? 'Replace Banner' : 'Upload Banner'}
+                      </button>
+                      <p className="text-xs text-muted-foreground mt-1">PNG, WebP, JPG · max 5 MB · recommended 1200×300 px</p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Favicon */}

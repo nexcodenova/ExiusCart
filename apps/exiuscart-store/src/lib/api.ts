@@ -46,6 +46,16 @@ export const shopApi = {
   createBranch: (data: any) => api.post('/shops/', data),
   updateBranch: (shopId: number, data: any) => api.put(`/shops/${shopId}`, data),
   deleteBranch: (shopId: number) => api.delete(`/shops/${shopId}`),
+  uploadLogo: (shopId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post(`/shops/${shopId}/upload-logo`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  uploadBanner: (shopId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post(`/shops/${shopId}/upload-banner`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── Dashboard ─────────────────────────────────────────

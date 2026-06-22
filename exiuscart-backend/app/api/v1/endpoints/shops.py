@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, status, Query, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date
 from typing import List, Optional
@@ -143,6 +143,77 @@ async def update_shop(
             )
 
     return shop
+
+
+_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"}
+
+
+@router.post("/{shop_id}/upload-logo")
+async def upload_shop_logo(
+    shop_id: int,
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    if file.content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF, SVG allowed")
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File must be under 5 MB")
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    from app.core.storage import upload_shop_image
+    try:
+        url = upload_shop_image(contents, shop_id, "logo", ext, content_type=file.content_type or "image/jpeg")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {exc}")
+    shop.logo_url = url
+    db.commit()
+    _fire_thedersi_profile(shop_id, shop, background_tasks, db)
+    return {"logo_url": url}
+
+
+@router.post("/{shop_id}/upload-banner")
+async def upload_shop_banner(
+    shop_id: int,
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    if file.content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, GIF, SVG allowed")
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File must be under 5 MB")
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    from app.core.storage import upload_shop_image
+    try:
+        url = upload_shop_image(contents, shop_id, "banner", ext, content_type=file.content_type or "image/jpeg")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {exc}")
+    shop.banner_url = url
+    db.commit()
+    _fire_thedersi_profile(shop_id, shop, background_tasks, db)
+    return {"banner_url": url}
+
+
+def _fire_thedersi_profile(shop_id: int, shop: Shop, background_tasks: BackgroundTasks, db: Session) -> None:
+    from app.models.channel import ChannelConnection
+    from app.core.thedersi import notify_thedersi_profile_updated
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "thedersi",
+        ChannelConnection.is_active == True,
+    ).first()
+    if conn and conn.channel_seller_id:
+        background_tasks.add_task(notify_thedersi_profile_updated, conn.channel_seller_id, shop.logo_url, shop.banner_url)
 
 
 @router.delete("/{shop_id}", status_code=status.HTTP_204_NO_CONTENT)
