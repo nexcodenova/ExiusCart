@@ -615,11 +615,16 @@ async def receive_order_webhook(
             product.quantity = max(0, product.quantity - item.quantity)
         stock_changed_product_ids.add(product.id)
 
+    # Normalize channel_order_id — TheDersi sometimes sends double "TD-TD-" prefix
+    raw_chan_id = payload.channel_order_id or ""
+    while raw_chan_id.startswith("TD-TD-"):
+        raw_chan_id = raw_chan_id[3:]
+
     # Save channel-specific meta (commission, delivery, variants)
     db.add(ChannelOrderMeta(
         order_id=order.id,
         channel_type=conn.channel_type,
-        channel_order_id=payload.channel_order_id,
+        channel_order_id=raw_chan_id,
         seller_plan=payload.seller_plan,
         commission_rate=payload.commission_rate,
         commission_amount=payload.commission_amount,
