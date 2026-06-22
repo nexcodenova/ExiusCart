@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, ClipboardList, X } from 'lucide-react';
 import { quotationsApi } from '@/lib/api';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 interface Quotation {
   id: string;
@@ -28,6 +29,7 @@ export default function QuotationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
+  const { sym } = useCurrency();
 
   useEffect(() => {
     if (!shopId) return;
@@ -113,7 +115,7 @@ export default function QuotationsPage() {
                       <p className="text-xs text-muted-foreground">{q.phone}</p>
                     </td>
                     <td className="p-4 text-center"><span className="text-sm text-muted-foreground">{q.items}</span></td>
-                    <td className="p-4 text-right"><span className="text-sm font-semibold text-foreground">{q.total.toLocaleString()} AED</span></td>
+                    <td className="p-4 text-right"><span className="text-sm font-semibold text-foreground">{q.total.toLocaleString()} {sym}</span></td>
                     <td className="p-4 text-center"><span className="text-sm text-muted-foreground">{q.validUntil}</span></td>
                     <td className="p-4 text-center">
                       <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${STATUS_STYLES[q.status] ?? 'bg-muted text-muted-foreground'}`}>{q.status}</span>

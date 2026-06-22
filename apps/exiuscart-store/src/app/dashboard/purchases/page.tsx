@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Truck, X, Check, Clock, Loader2, Trash2, ChevronDown } from 'lucide-react';
 import { purchasesApi, suppliersApi, productsApi } from '@/lib/api';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 interface PurchaseOrder {
   id: number;
@@ -47,6 +48,7 @@ export default function PurchasesPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
+  const { sym } = useCurrency();
 
   // New PO form
   const [poForm, setPoForm] = useState({ supplier_id: '', notes: '' });
@@ -161,7 +163,7 @@ export default function PurchasesPage() {
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">Total Value</p>
-          <p className="text-2xl font-bold text-foreground">{loading ? '—' : `${totalValue.toLocaleString()} AED`}</p>
+          <p className="text-2xl font-bold text-foreground">{loading ? '—' : `${totalValue.toLocaleString()} ${sym}`}</p>
         </div>
       </div>
 
@@ -199,7 +201,7 @@ export default function PurchasesPage() {
                   <span className="font-mono text-sm font-semibold text-foreground min-w-[100px]">{po.po_number}</span>
                   <span className="flex-1 text-sm text-foreground">{po.supplier}</span>
                   <span className="text-sm text-muted-foreground hidden sm:block">{po.items} items</span>
-                  <span className="text-sm font-semibold text-foreground hidden sm:block">{po.total.toLocaleString()} AED</span>
+                  <span className="text-sm font-semibold text-foreground hidden sm:block">{po.total.toLocaleString()} {sym}</span>
                   <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${STATUS_STYLES[po.status] ?? 'bg-muted text-muted-foreground'}`}>{po.status}</span>
                   <span className="text-xs text-muted-foreground hidden md:block">
                     {new Date(po.date).toLocaleDateString('en-AE', { day: 'numeric', month: 'short' })}
@@ -224,7 +226,7 @@ export default function PurchasesPage() {
                             <td className="py-2 pr-4 text-foreground">{item.product_name}</td>
                             <td className="py-2 px-2 text-center text-muted-foreground">{item.quantity_ordered}</td>
                             <td className="py-2 px-2 text-center text-muted-foreground">{item.quantity_received}</td>
-                            <td className="py-2 text-right text-foreground">{item.total_cost.toLocaleString()} AED</td>
+                            <td className="py-2 text-right text-foreground">{item.total_cost.toLocaleString()} {sym}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -316,7 +318,7 @@ export default function PurchasesPage() {
                       </div>
                       {/* Cost */}
                       <div className={item.product_id ? 'col-span-4' : 'col-span-2'}>
-                        {i === 0 && <p className="text-xs text-muted-foreground mb-1">Unit Cost (AED)</p>}
+                        {i === 0 && <p className="text-xs text-muted-foreground mb-1">Unit Cost ({sym})</p>}
                         <input type="number" min={0} step="0.01" value={item.unit_cost} onChange={(e) => updatePoItem(i, 'unit_cost', parseFloat(e.target.value) || 0)}
                           className="w-full px-2 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
                       </div>
@@ -344,7 +346,7 @@ export default function PurchasesPage() {
               {/* Total */}
               <div className="bg-muted/50 rounded-lg p-3 flex justify-between items-center">
                 <span className="text-muted-foreground text-sm">Order Total</span>
-                <span className="text-xl font-bold text-foreground">{poTotal.toLocaleString()} AED</span>
+                <span className="text-xl font-bold text-foreground">{poTotal.toLocaleString()} {sym}</span>
               </div>
             </div>
             <div className="p-4 border-t border-border flex gap-3">
