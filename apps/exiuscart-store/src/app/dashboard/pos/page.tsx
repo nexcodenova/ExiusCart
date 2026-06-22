@@ -19,6 +19,7 @@ interface POSProduct {
   category: string;
   barcode?: string;
   sku: string;
+  image?: string;
 }
 
 interface CartItem {
@@ -94,11 +95,12 @@ export default function POSPage() {
         const rawProducts: POSProduct[] = (productsRes.data || []).map((p: any) => ({
           id: String(p.id),
           name: p.name,
-          sellingPrice: p.selling_price ?? p.price ?? 0,
-          stock: p.stock ?? 0,
-          category: p.category || 'General',
+          sellingPrice: p.selling_price ?? Number(p.price) ?? 0,
+          stock: p.quantity ?? p.stock ?? 0,
+          category: p.category?.name || p.category || 'General',
           barcode: p.barcode || undefined,
           sku: p.sku || String(p.id),
+          image: p.image_url || undefined,
         }));
         setProducts(rawProducts);
         const cats = ['All', ...Array.from(new Set(rawProducts.map((p) => p.category)))];
@@ -362,8 +364,15 @@ export default function POSPage() {
                     product.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
-                  <div className="w-full aspect-square bg-muted rounded-lg flex items-center justify-center mb-2">
-                    <Package className="w-8 h-8 text-muted-foreground" />
+                  <div className="w-full aspect-square bg-muted rounded-lg overflow-hidden mb-2">
+                    {product.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
                   <h3 className="font-medium text-foreground text-sm line-clamp-2 mb-1">{product.name}</h3>
                   <p className="text-xs text-muted-foreground mb-1 truncate">{product.sku}</p>
