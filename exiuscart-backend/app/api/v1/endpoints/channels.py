@@ -17,7 +17,7 @@ import uuid
 import logging
 import httpx
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class ChannelConnectIn(BaseModel):
 
 
 class OrderItemIn(BaseModel):
-    exiuscart_product_id: Optional[str] = None  # accept int or string — coerced below
+    exiuscart_product_id: Optional[Union[int, str]] = None  # TheDersi sends int, future may send str
     product_name: Optional[str] = None
     quantity: int
     unit_price: float
