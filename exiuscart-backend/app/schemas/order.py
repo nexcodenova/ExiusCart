@@ -46,6 +46,8 @@ class OrderResponse(BaseModel):
     order_number: str
     shop_id: int
     customer_id: Optional[int] = None
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
     status: str
     payment_status: str
     source: str

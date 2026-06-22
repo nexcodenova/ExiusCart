@@ -19,6 +19,8 @@ interface Order {
   order_number: string;
   shop_id: number;
   customer_id: number | null;
+  customer_name: string | null;
+  customer_phone: string | null;
   status: string;
   payment_status: string;
   source: string;
@@ -303,7 +305,18 @@ export default function OrdersPage() {
                         </div>
                       </td>
                       <td className="p-4 hidden sm:table-cell">
-                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground capitalize">{order.source}</span>
+                        {order.source === 'pos' ? (
+                          <div>
+                            <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">POS</span>
+                            {order.notes && (() => { const m = order.notes.match(/Payment:\s*(\w+)/i); return m ? <p className="text-xs text-muted-foreground mt-1 capitalize">{m[1]}</p> : null; })()}
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-xs px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 capitalize">{order.source}</span>
+                            {order.customer_name && <p className="text-xs text-foreground mt-1 font-medium">{order.customer_name}</p>}
+                            {order.customer_phone && <p className="text-xs text-muted-foreground">{order.customer_phone}</p>}
+                          </div>
+                        )}
                       </td>
                       <td className="p-4">
                         <p className="text-sm text-foreground">{new Date(order.created_at).toLocaleDateString('en-AE')}</p>

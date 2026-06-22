@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Package, AlertTriangle, Plus, Minus, X, ChevronDown } from 'lucide-react';
 import { productsApi, inventoryApi } from '@/lib/api';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 interface InventoryItem {
   id: string;
@@ -27,6 +28,7 @@ export default function InventoryPage() {
   const [adjustQty, setAdjustQty] = useState(0);
   const [adjustReason, setAdjustReason] = useState('');
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
+  const { sym } = useCurrency();
 
   const fetchInventory = useCallback(async () => {
     if (!shopId) return;
@@ -99,7 +101,7 @@ export default function InventoryPage() {
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-muted-foreground text-xs mb-1">Inventory Value</p>
-          <p className="text-2xl font-bold text-foreground">{loading ? '—' : `${inventoryValue.toLocaleString()} AED`}</p>
+          <p className="text-2xl font-bold text-foreground">{loading ? '—' : `${inventoryValue.toLocaleString()} ${sym}`}</p>
         </div>
       </div>
 

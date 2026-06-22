@@ -122,6 +122,16 @@ async def get_orders(
         query = query.filter(Order.source == source)
 
     orders = query.order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
+
+    # Attach customer name/phone without N+1: batch fetch customers referenced by these orders
+    customer_ids = list({o.customer_id for o in orders if o.customer_id})
+    if customer_ids:
+        customers = {c.id: c for c in db.query(Customer).filter(Customer.id.in_(customer_ids)).all()}
+        for o in orders:
+            if o.customer_id and o.customer_id in customers:
+                c = customers[o.customer_id]
+                o.customer_name = c.name
+                o.customer_phone = c.phone
     return orders
 
 

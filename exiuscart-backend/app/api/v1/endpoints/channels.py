@@ -567,7 +567,7 @@ async def receive_order_webhook(
         customer_id=customer.id if customer else None,
         order_number=order_number,
         status="confirmed",
-        payment_status=payload.payment_status or "paid",
+        payment_status=payload.payment_status or "pending",
         source=conn.channel_type,
         subtotal=payload.subtotal,
         tax_amount=0,
