@@ -34,7 +34,7 @@ def generate_order_number() -> str:
     return f"ORD-{timestamp}-{unique}"
 
 
-@router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/shops/{shop_id}/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     shop_id: int,
     order_data: OrderCreate,
@@ -102,7 +102,7 @@ async def create_order(
     return new_order
 
 
-@router.get("/", response_model=List[OrderResponse])
+@router.get("/shops/{shop_id}/orders", response_model=List[OrderResponse])
 async def get_orders(
     shop_id: int,
     status: Optional[str] = None,
@@ -123,7 +123,7 @@ async def get_orders(
     return orders
 
 
-@router.get("/{order_id}", response_model=OrderResponse)
+@router.get("/shops/{shop_id}/orders/{order_id}", response_model=OrderResponse)
 async def get_order(
     order_id: int,
     shop_id: int,
@@ -140,7 +140,7 @@ async def get_order(
     return order
 
 
-@router.put("/{order_id}", response_model=OrderResponse)
+@router.put("/shops/{shop_id}/orders/{order_id}", response_model=OrderResponse)
 async def update_order(
     order_id: int,
     shop_id: int,
@@ -165,7 +165,7 @@ async def update_order(
     return order
 
 
-@router.post("/{order_id}/ship", response_model=OrderResponse)
+@router.post("/shops/{shop_id}/orders/{order_id}/ship", response_model=OrderResponse)
 async def ship_order(
     order_id: int,
     shop_id: int,
@@ -196,7 +196,7 @@ class UpdateStatusIn(BaseModel):
     status: str
 
 
-@router.patch("/{order_id}/status", response_model=OrderResponse)
+@router.patch("/shops/{shop_id}/orders/{order_id}/status", response_model=OrderResponse)
 async def update_order_status(
     order_id: int,
     shop_id: int,
@@ -221,7 +221,7 @@ async def update_order_status(
     return order
 
 
-@router.get("/{order_id}/details")
+@router.get("/shops/{shop_id}/orders/{order_id}/details")
 async def get_order_details(
     order_id: int,
     shop_id: int,
@@ -298,7 +298,7 @@ class SendInvoiceIn(BaseModel):
     customer_email: Optional[str] = None  # override if not stored on customer
 
 
-@router.post("/{order_id}/send-invoice")
+@router.post("/shops/{shop_id}/orders/{order_id}/send-invoice")
 async def send_invoice(
     order_id: int,
     shop_id: int,
@@ -366,7 +366,7 @@ async def send_invoice(
     }
 
 
-@router.get("/{order_id}/tracking")
+@router.get("/shops/{shop_id}/orders/{order_id}/tracking")
 async def get_tracking(
     order_id: int,
     shop_id: int,
