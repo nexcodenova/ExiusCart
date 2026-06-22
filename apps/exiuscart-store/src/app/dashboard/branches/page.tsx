@@ -240,10 +240,10 @@ export default function BranchesPage() {
             </div>
             <div className="p-4 space-y-3">
               {[
-                { key: 'name' as const, label: 'Branch Name *', placeholder: 'e.g., Main Branch - Dubai Mall' },
-                { key: 'city' as const, label: 'City', placeholder: 'Dubai' },
+                { key: 'name' as const, label: 'Branch Name *', placeholder: 'e.g., Main Branch - City Center' },
+                { key: 'city' as const, label: 'City', placeholder: 'e.g., Colombo' },
                 { key: 'address' as const, label: 'Address', placeholder: 'Shop 101, Level 1...' },
-                { key: 'phone' as const, label: 'Phone', placeholder: '+971 4 000 0000' },
+                { key: 'phone' as const, label: 'Phone', placeholder: '+XX X XXX XXXX' },
               ].map(({ key, label, placeholder }) => (
                 <div key={key}>
                   <label className="text-sm text-muted-foreground mb-1 block">{label}</label>

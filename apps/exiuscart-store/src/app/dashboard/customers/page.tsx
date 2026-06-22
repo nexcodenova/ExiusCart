@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, User, Phone, Mail, MapPin, Edit, Trash2, X, Users, ShoppingBag, Star } from 'lucide-react';
 import { customersApi } from '@/lib/api';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 interface Customer {
   id: string;
@@ -62,6 +63,7 @@ export default function CustomersPage() {
     setEditingCustomer(null);
   };
 
+  const { sym } = useCurrency();
   const vipCount = customers.filter((c) => c.isVip).length;
   const totalRevenue = customers.reduce((sum, c) => sum + c.totalSpent, 0);
 
@@ -93,11 +95,11 @@ export default function CustomersPage() {
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-muted-foreground text-xs mb-1">Total Revenue</p>
-          <p className="text-2xl font-bold text-foreground">{loading ? '—' : `${totalRevenue.toLocaleString()} AED`}</p>
+          <p className="text-2xl font-bold text-foreground">{loading ? '—' : `${totalRevenue.toLocaleString()} ${sym}`}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-muted-foreground text-xs mb-1">Avg. Spent</p>
-          <p className="text-2xl font-bold text-foreground">{loading || customers.length === 0 ? '—' : `${Math.round(totalRevenue / customers.length).toLocaleString()} AED`}</p>
+          <p className="text-2xl font-bold text-foreground">{loading || customers.length === 0 ? '—' : `${Math.round(totalRevenue / customers.length).toLocaleString()} ${sym}`}</p>
         </div>
       </div>
 
@@ -160,7 +162,7 @@ export default function CustomersPage() {
                     </div>
                     <div className="flex gap-4 mt-2">
                       <span className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{customer.totalOrders}</span> orders</span>
-                      <span className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{customer.totalSpent.toLocaleString()} AED</span> spent</span>
+                      <span className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{customer.totalSpent.toLocaleString()} {sym}</span> spent</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -230,7 +232,7 @@ function CustomerModal({ customer, onClose, onSave }: {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">Phone</label>
-            <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+971 50 123 4567" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+            <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+XX XXX XXXX XXXX" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">Email</label>
@@ -238,7 +240,7 @@ function CustomerModal({ customer, onClose, onSave }: {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">Address</label>
-            <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="e.g. Dubai Marina, Dubai" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+            <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="e.g. City, Province" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>

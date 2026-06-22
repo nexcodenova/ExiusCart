@@ -195,7 +195,7 @@ export default function SuppliersPage() {
               {([
                 { key: 'name', label: 'Supplier Name *', placeholder: 'e.g., Tech Supply Co.' },
                 { key: 'contact_name', label: 'Contact Person', placeholder: 'Name of your contact' },
-                { key: 'phone', label: 'Phone', placeholder: '+971 50 000 0000' },
+                { key: 'phone', label: 'Phone', placeholder: '+XX XX XXX XXXX' },
                 { key: 'email', label: 'Email', placeholder: 'supplier@example.com' },
                 { key: 'address', label: 'Address', placeholder: 'Business address' },
               ] as const).map(({ key, label, placeholder }) => (

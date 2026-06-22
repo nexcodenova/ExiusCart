@@ -243,7 +243,7 @@ export default function RecruitmentPage() {
               {[
                 { label: 'Job Title *', key: 'title', placeholder: 'Software Engineer' },
                 { label: 'Department', key: 'department', placeholder: 'Engineering' },
-                { label: 'Location', key: 'location', placeholder: 'Dubai, UAE' },
+                { label: 'Location', key: 'location', placeholder: 'City, Country' },
               ].map(f => (
                 <div key={f.key}>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{f.label}</label>
@@ -302,7 +302,7 @@ export default function RecruitmentPage() {
               {[
                 { label: 'Full Name *', key: 'full_name', placeholder: 'John Doe' },
                 { label: 'Email', key: 'email', placeholder: 'john@example.com' },
-                { label: 'Phone', key: 'phone', placeholder: '+971 50 000 0000' },
+                { label: 'Phone', key: 'phone', placeholder: '+XX XX XXX XXXX' },
               ].map(f => (
                 <div key={f.key}>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{f.label}</label>

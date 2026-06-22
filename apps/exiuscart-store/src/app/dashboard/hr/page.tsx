@@ -511,7 +511,7 @@ export default function HRPage() {
                   { key: 'position', label: 'Position', placeholder: 'Sales Manager' },
                   { key: 'department', label: 'Department', placeholder: 'Sales' },
                   { key: 'email', label: 'Email', placeholder: 'jane@example.com' },
-                  { key: 'phone', label: 'Phone', placeholder: '+971 50 000 0000' },
+                  { key: 'phone', label: 'Phone', placeholder: '+XX XX XXX XXXX' },
                 ].map(({ key, label, placeholder }) => (
                   <div key={key}>
                     <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>

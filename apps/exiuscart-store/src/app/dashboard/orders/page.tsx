@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, ChevronRight, CheckCircle2, PackageCheck, XCircle } from 'lucide-react';
+import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, ChevronRight, CheckCircle2, PackageCheck, XCircle, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
@@ -145,6 +145,19 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
         </form>
       </div>
     </div>
+  );
+}
+
+function CopyBtn({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+      title="Copy tracking number"
+      className="ml-1 p-1 rounded hover:bg-muted/80 transition"
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+    </button>
   );
 }
 
@@ -312,15 +325,17 @@ export default function OrdersPage() {
                           </div>
                         ) : (
                           <div>
-                            <span className="text-xs px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 capitalize">{order.source}</span>
+                            <span className="text-xs px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                              {order.source === 'thedersi' ? 'TheDersi' : order.source.charAt(0).toUpperCase() + order.source.slice(1)}
+                            </span>
                             {order.customer_name && <p className="text-xs text-foreground mt-1 font-medium">{order.customer_name}</p>}
                             {order.customer_phone && <p className="text-xs text-muted-foreground">{order.customer_phone}</p>}
                           </div>
                         )}
                       </td>
                       <td className="p-4">
-                        <p className="text-sm text-foreground">{new Date(order.created_at).toLocaleDateString('en-AE')}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleTimeString('en-AE', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-sm text-foreground">{new Date(order.created_at).toLocaleDateString('en-GB')}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
                       </td>
                       <td className="p-4 text-right">
                         <span className="text-sm font-semibold text-foreground">{fmt(order.total)}</span>
@@ -400,11 +415,12 @@ export default function OrdersPage() {
                               <Package className="w-3.5 h-3.5 text-cyan-500" />
                               <span className="text-muted-foreground">Tracking:</span>
                               <span className="font-mono font-medium text-foreground">{order.tracking_number}</span>
+                              <CopyBtn value={order.tracking_number!} />
                             </div>
                             {order.shipped_at && (
                               <div>
                                 <span className="text-muted-foreground">Shipped:</span>
-                                <span className="ml-1 text-foreground">{new Date(order.shipped_at).toLocaleDateString('en-AE')}</span>
+                                <span className="ml-1 text-foreground">{new Date(order.shipped_at).toLocaleDateString('en-GB')}</span>
                               </div>
                             )}
                             {order.estimated_delivery && (

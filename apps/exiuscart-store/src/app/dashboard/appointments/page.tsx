@@ -203,7 +203,7 @@ export default function AppointmentsPage() {
               </div>
               {[
                 { label: 'Customer Name', key: 'customer_name', placeholder: 'John Doe', icon: User },
-                { label: 'Customer Phone', key: 'customer_phone', placeholder: '+971 50 000 0000', icon: Phone },
+                { label: 'Customer Phone', key: 'customer_phone', placeholder: '+XX XX XXX XXXX', icon: Phone },
                 { label: 'Customer Email', key: 'customer_email', placeholder: 'john@example.com', icon: Mail },
                 { label: 'Assigned To', key: 'assigned_to', placeholder: 'Staff member', icon: User },
               ].map(f => (

@@ -387,7 +387,7 @@ export default function CustomizationPage() {
                     <Phone className="w-3.5 h-3.5" /> Phone
                   </label>
                   <input value={receiptPhone} onChange={e => setReceiptPhone(e.target.value)}
-                    placeholder="+971 4 000 0000"
+                    placeholder="+XX X XXX XXXX"
                     className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground" />
                 </div>
                 <div>

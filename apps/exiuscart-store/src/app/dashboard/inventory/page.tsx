@@ -183,7 +183,7 @@ export default function InventoryPage() {
                         </span>
                       </td>
                       <td className="p-4 text-center"><span className="text-sm text-muted-foreground">{item.minStock}</span></td>
-                      <td className="p-4 text-right"><span className="text-sm text-foreground">{(item.cost * item.stock).toLocaleString()} AED</span></td>
+                      <td className="p-4 text-right"><span className="text-sm text-foreground">{(item.cost * item.stock).toLocaleString()} {sym}</span></td>
                       <td className="p-4 text-right">
                         <button
                           type="button"

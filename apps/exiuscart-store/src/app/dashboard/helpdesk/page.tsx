@@ -178,7 +178,7 @@ export default function HelpdeskPage() {
                 {[
                   { label: 'Customer Name', key: 'customer_name', placeholder: 'John Doe' },
                   { label: 'Customer Email', key: 'customer_email', placeholder: 'john@example.com' },
-                  { label: 'Customer Phone', key: 'customer_phone', placeholder: '+971 50 000 0000' },
+                  { label: 'Customer Phone', key: 'customer_phone', placeholder: '+XX XX XXX XXXX' },
                   { label: 'Assigned To', key: 'assigned_to', placeholder: 'Support agent name' },
                 ].map(f => (
                   <div key={f.key}>

@@ -27,6 +27,7 @@ interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  maxStock: number;
 }
 
 interface ShopData {
@@ -143,14 +144,16 @@ export default function POSPage() {
   });
 
   const addToCart = (product: POSProduct) => {
+    if (product.stock === 0) return;
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
+        if (existing.quantity >= product.stock) return prev;
         return prev.map((item) =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prev, { id: product.id, name: product.name, price: product.sellingPrice, quantity: 1 }];
+      return [...prev, { id: product.id, name: product.name, price: product.sellingPrice, quantity: 1, maxStock: product.stock }];
     });
   };
 
@@ -158,7 +161,7 @@ export default function POSPage() {
     setCart((prev) =>
       prev
         .map((item) =>
-          item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item
+          item.id === id ? { ...item, quantity: Math.min(item.maxStock, Math.max(0, item.quantity + delta)) } : item
         )
         .filter((item) => item.quantity > 0)
     );
@@ -374,8 +377,7 @@ export default function POSPage() {
                       </div>
                     )}
                   </div>
-                  <h3 className="font-medium text-foreground text-sm line-clamp-2 mb-1">{product.name}</h3>
-                  <p className="text-xs text-muted-foreground mb-1 truncate">{product.sku}</p>
+                  <h3 className="font-medium text-foreground text-sm line-clamp-2 mb-2">{product.name}</h3>
                   <div className="flex items-center justify-between">
                     <span className="text-primary font-bold">{product.sellingPrice} {sym}</span>
                     <span className={`text-xs px-1.5 py-0.5 rounded ${
@@ -446,7 +448,8 @@ export default function POSPage() {
                     type="button"
                     onClick={() => updateQuantity(item.id, 1)}
                     aria-label={`Increase quantity of ${item.name}`}
-                    className="w-8 h-8 flex items-center justify-center bg-muted rounded-lg text-foreground hover:bg-muted/80 transition"
+                    disabled={item.quantity >= item.maxStock}
+                    className="w-8 h-8 flex items-center justify-center bg-muted rounded-lg text-foreground hover:bg-muted/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Plus className="w-4 h-4" />
                   </button>

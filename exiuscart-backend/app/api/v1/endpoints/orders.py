@@ -74,12 +74,17 @@ async def create_order(
     tax_amount = subtotal * Decimal('0.05')
     total = subtotal + tax_amount
 
+    # POS sales are immediate — mark as delivered and paid on creation
+    is_pos = order_data.source == "pos"
+
     # Create order
     new_order = Order(
         order_number=generate_order_number(),
         shop_id=shop_id,
         customer_id=order_data.customer_id,
         source=order_data.source,
+        status="delivered" if is_pos else "pending",
+        payment_status="paid" if is_pos else "pending",
         subtotal=subtotal,
         tax_amount=tax_amount,
         total=total,
