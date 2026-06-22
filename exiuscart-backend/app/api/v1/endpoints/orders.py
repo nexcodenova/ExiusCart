@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Background
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+from decimal import Decimal
 from pydantic import BaseModel
 import uuid
 from app.core.database import get_db
@@ -24,6 +25,7 @@ _VALID_STATUSES = {"pending", "confirmed", "packing", "processing", "shipped", "
 
 def _notify_channel_order(order_id: int, status: str, db: Session, tracking_number: str = None, tracking_courier: str = None) -> None:
     meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order_id).first()
+    print(f"[NOTIFY] order_id={order_id} status={status} meta={'found chan_id=' + str(meta.channel_order_id) if meta else 'MISSING'}", flush=True)
     if meta and meta.channel_order_id:
         notify_thedersi_order_status(meta.channel_order_id, status, tracking_number, tracking_courier)
 
@@ -69,7 +71,7 @@ async def create_order(
         product.quantity = max(0, product.quantity - item.quantity)
 
     # Calculate tax (5% VAT for UAE)
-    tax_amount = subtotal * 0.05
+    tax_amount = subtotal * Decimal('0.05')
     total = subtotal + tax_amount
 
     # Create order

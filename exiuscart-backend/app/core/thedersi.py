@@ -135,6 +135,8 @@ def notify_thedersi_order_status(
     try:
         with httpx.Client(timeout=8) as client:
             r = client.post(THEDERSI_ORDER_STATUS_URL, content=body, headers=headers)
+            print(f"[TheDersi order-status] {channel_order_id} → {status} | HTTP {r.status_code} | {r.text[:200]}", flush=True)
             logger.info(f"[TheDersi order-status] {channel_order_id} → {status} | HTTP {r.status_code}")
     except Exception as exc:
+        print(f"[TheDersi order-status] FAILED {channel_order_id}: {exc}", flush=True)
         logger.warning(f"[TheDersi order-status] failed {channel_order_id}: {exc}")
