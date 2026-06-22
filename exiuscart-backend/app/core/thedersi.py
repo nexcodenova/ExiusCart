@@ -127,8 +127,14 @@ def notify_thedersi_order_status(
 
     body = json.dumps(payload, separators=(",", ":"))
 
-    # TheDersi order-status endpoint only requires X-Partner-Key — no X-Signature
     headers: dict = {"Content-Type": "application/json", "X-Partner-Key": THEDERSI_KEY}
+    if THEDERSI_HMAC_SECRET:
+        sig = "sha256=" + hmac.new(
+            THEDERSI_HMAC_SECRET.encode("utf-8"),
+            body.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        headers["X-Signature"] = sig
 
     try:
         with httpx.Client(timeout=8) as client:
