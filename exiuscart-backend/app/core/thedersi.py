@@ -16,7 +16,7 @@ THEDERSI_HMAC_SECRET   = os.getenv("THEDERSI_HMAC_SECRET", "")       # TheDersi 
 THEDERSI_OUTGOING_SECRET = os.getenv("THEDERSI_OUTGOING_SECRET", "") # we sign our outgoing notifications → TheDersi verifies
 THEDERSI_WEBHOOK_URL = os.getenv(
     "THEDERSI_WEBHOOK_URL",
-    "https://thedersi.lk/api/v1/exiuscart/webhook",
+    "https://thedersi.lk/api/exiuscart/webhook",
 )
 THEDERSI_ORDER_STATUS_URL = os.getenv(
     "THEDERSI_ORDER_STATUS_URL",
