@@ -12,6 +12,7 @@ class Shop(Base):
     slug = Column(String(255), unique=True, index=True, nullable=False)
     description = Column(Text, nullable=True)
     logo_url = Column(String(500), nullable=True)
+    banner_url = Column(String(500), nullable=True)
     phone = Column(String(20), nullable=True)
     whatsapp = Column(String(20), nullable=True)
     email = Column(String(255), nullable=True)

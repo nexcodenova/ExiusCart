@@ -110,6 +110,38 @@ def notify_thedersi(seller_id: str, plan: str, event: str = "plan_update") -> No
         logger.warning(f"[TheDersi webhook] failed seller={seller_id}: {exc}")
 
 
+def notify_thedersi_profile_updated(
+    thedersi_seller_id: str,
+    logo_url: str | None,
+    banner_url: str | None,
+) -> None:
+    """POST profile_updated event to TheDersi when seller changes logo/banner. Fire-and-forget."""
+    if not THEDERSI_WEBHOOK_URL or not thedersi_seller_id:
+        return
+
+    payload: dict = {
+        "event": "profile_updated",
+        "thedersi_seller_id": thedersi_seller_id,
+    }
+    if logo_url:
+        payload["logo_url"] = logo_url
+    if banner_url:
+        payload["banner_url"] = banner_url
+
+    body = json.dumps(payload, separators=(",", ":"))
+    sig = _hmac_signature(body)
+    headers = {"Content-Type": "application/json", "X-Partner-Key": THEDERSI_KEY}
+    if sig:
+        headers["X-Signature"] = sig
+
+    try:
+        with httpx.Client(timeout=5) as client:
+            r = client.post(THEDERSI_WEBHOOK_URL, content=body, headers=headers)
+            logger.info(f"[TheDersi webhook] profile_updated seller={thedersi_seller_id} → {r.status_code}")
+    except Exception as exc:
+        logger.warning(f"[TheDersi webhook] profile_updated failed seller={thedersi_seller_id}: {exc}")
+
+
 def notify_thedersi_order_status(
     channel_order_id: str,
     status: str,

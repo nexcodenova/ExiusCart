@@ -101,6 +101,7 @@ async def get_shop(
 async def update_shop(
     shop_id: int,
     shop_data: ShopUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -116,11 +117,31 @@ async def update_shop(
         )
 
     update_data = shop_data.model_dump(exclude_unset=True)
+    profile_changed = bool(update_data.keys() & {"logo_url", "banner_url"})
+
     for field, value in update_data.items():
         setattr(shop, field, value)
 
     db.commit()
     db.refresh(shop)
+
+    # Notify TheDersi if logo or banner changed and shop has an active TheDersi connection
+    if profile_changed:
+        from app.models.channel import ChannelConnection
+        from app.core.thedersi import notify_thedersi_profile_updated
+        conn = db.query(ChannelConnection).filter(
+            ChannelConnection.shop_id == shop_id,
+            ChannelConnection.channel_type == "thedersi",
+            ChannelConnection.is_active == True,
+        ).first()
+        if conn and conn.channel_seller_id:
+            background_tasks.add_task(
+                notify_thedersi_profile_updated,
+                conn.channel_seller_id,
+                shop.logo_url,
+                shop.banner_url,
+            )
+
     return shop
 
 

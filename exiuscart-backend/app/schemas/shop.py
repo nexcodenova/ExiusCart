@@ -30,12 +30,14 @@ class ShopUpdate(BaseModel):
     city: Optional[str] = None
     tax_number: Optional[str] = None
     logo_url: Optional[str] = None
+    banner_url: Optional[str] = None
 
 
 class ShopResponse(ShopBase):
     id: int
     slug: str
     logo_url: Optional[str] = None
+    banner_url: Optional[str] = None
     is_active: bool
     owner_id: int
     created_at: datetime
