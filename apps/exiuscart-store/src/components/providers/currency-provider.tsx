@@ -36,7 +36,7 @@ function flagFor(c: Currency) {
 }
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [currency, setCurrencyState] = useState<Currency>('LKR');
+  const [currency, setCurrencyState] = useState<Currency>('USD');
 
   useEffect(() => {
     const saved = localStorage.getItem('billing_currency') as Currency | null;
@@ -45,7 +45,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     } else {
       const country = localStorage.getItem('user_country') || '';
       if (country === 'AE') setCurrencyState('AED');
-      else setCurrencyState('LKR'); // default for TheDersi sellers (Sri Lanka)
+      else if (country === 'LK') setCurrencyState('LKR');
+      else setCurrencyState('USD');
     }
   }, []);
 

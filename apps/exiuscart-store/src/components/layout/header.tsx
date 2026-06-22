@@ -40,8 +40,11 @@ export function Header({ onMenuClick }: HeaderProps) {
       }).catch(() => {});
       if (shopId) {
         channelsApi.getConnections(shopId).then((res) => {
-          const hasTheDersi = res.data?.some((c: any) => c.channel_type === 'thedersi');
-          setIsTheDersiShop(!!hasTheDersi);
+          const hasTheDersi = res.data?.some((c: any) => c.channel_type === 'thedersi') ?? false;
+          setIsTheDersiShop(hasTheDersi);
+          if (hasTheDersi) {
+            setCurrency('LKR');
+          }
         }).catch(() => {});
       }
     });
