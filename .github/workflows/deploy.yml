@@ -19,4 +19,6 @@ jobs:
           command_timeout: 30m
           script: |
             cd /var/www/ExiusCart
+            git checkout -- . 2>/dev/null || true
+            git pull origin main
             bash deploy.sh
