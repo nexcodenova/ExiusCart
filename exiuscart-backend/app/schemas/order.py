@@ -42,6 +42,7 @@ class ShipOrderIn(BaseModel):
     tracking_number: Optional[str] = None
     carrier: Optional[str] = None
     estimated_delivery: Optional[str] = None
+    delivery_charge: Optional[float] = None  # what the customer pays for delivery (orders < 10,000)
 
 
 class OrderResponse(BaseModel):
@@ -62,6 +63,7 @@ class OrderResponse(BaseModel):
     shipping_address: Optional[str] = None
     tracking_number: Optional[str] = None
     carrier: Optional[str] = None
+    delivery_charge: Optional[Decimal] = None
     shipped_at: Optional[datetime] = None
     estimated_delivery: Optional[str] = None
     items: List[OrderItemResponse] = []

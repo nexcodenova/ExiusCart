@@ -205,9 +205,30 @@ def build_invoice_html(
     total: float,
     currency: str = "LKR",
     notes: Optional[str] = None,
+    delivery_charge: float = 0,
+    free_delivery_label: Optional[str] = None,
 ) -> str:
     def fmt(v: float) -> str:
         return f"{currency} {v:,.2f}"
+
+    # Delivery line + grand total. Free-delivery shows a gift note and adds nothing;
+    # otherwise a positive charge is added to the amount the customer pays.
+    grand_total = total
+    if free_delivery_label:
+        delivery_row = f"""
+        <tr>
+          <td colspan="3" style="padding:6px 16px;text-align:right;color:#888;">Delivery</td>
+          <td style="padding:6px 16px;text-align:right;color:#10b981;font-weight:600;">{free_delivery_label}</td>
+        </tr>"""
+    elif delivery_charge and delivery_charge > 0:
+        grand_total = total + delivery_charge
+        delivery_row = f"""
+        <tr>
+          <td colspan="3" style="padding:6px 16px;text-align:right;color:#888;">Delivery</td>
+          <td style="padding:6px 16px;text-align:right;">{fmt(delivery_charge)}</td>
+        </tr>"""
+    else:
+        delivery_row = ""
 
     rows = ""
     for item in items:
@@ -292,12 +313,13 @@ def build_invoice_html(
               </tr>
               {discount_row}
               {tax_row}
+              {delivery_row}
               <tr>
                 <td colspan="4" style="padding:4px 16px;"><hr style="border:none;border-top:2px solid #f0f0f0;margin:4px 0;"></td>
               </tr>
               <tr>
                 <td colspan="3" style="padding:8px 16px;text-align:right;font-weight:700;font-size:16px;color:#1a1a1a;">Total Due</td>
-                <td style="padding:8px 16px;text-align:right;font-weight:800;font-size:18px;color:#6B3FD9;">{fmt(total)}</td>
+                <td style="padding:8px 16px;text-align:right;font-weight:800;font-size:18px;color:#6B3FD9;">{fmt(grand_total)}</td>
               </tr>
             </table>
             {notes_block}

@@ -59,12 +59,17 @@ interface ShipModalProps {
   shopId: string;
 }
 
+const FREE_DELIVERY_THRESHOLD = 10000;
+
 function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [carrier, setCarrier] = useState('');
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
+  const [deliveryCharge, setDeliveryCharge] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const isFreeDelivery = Number(order.total) >= FREE_DELIVERY_THRESHOLD;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +80,7 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
         tracking_number: trackingNumber.trim() || undefined,
         carrier: carrier || undefined,
         estimated_delivery: estimatedDelivery || undefined,
+        delivery_charge: isFreeDelivery ? 0 : (deliveryCharge !== '' ? Number(deliveryCharge) : undefined),
       });
       onShipped(res.data);
     } catch {
@@ -122,6 +128,29 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
               {CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+
+          {/* Delivery charge — orders of 10,000+ get free delivery */}
+          {isFreeDelivery ? (
+            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2.5">
+              <span className="text-lg">🎁</span>
+              <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                Free delivery — a gift from TheDersi <span className="font-normal text-muted-foreground">(order is {FREE_DELIVERY_THRESHOLD.toLocaleString()}+)</span>
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Delivery Charge <span className="text-muted-foreground font-normal">(customer pays)</span></label>
+              <input
+                type="number"
+                min={0}
+                value={deliveryCharge}
+                onChange={e => setDeliveryCharge(e.target.value)}
+                placeholder="0.00"
+                className="w-full px-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Order is under {FREE_DELIVERY_THRESHOLD.toLocaleString()} — enter the delivery fee the customer pays. It's added to their invoice.</p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Estimated Delivery</label>

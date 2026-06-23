@@ -225,6 +225,8 @@ async def ship_order(
     order.tracking_number = data.tracking_number
     order.carrier = data.carrier
     order.estimated_delivery = data.estimated_delivery
+    if data.delivery_charge is not None:
+        order.delivery_charge = data.delivery_charge
     order.status = "shipped"
     order.shipped_at = datetime.now(tz=None)
 
@@ -403,6 +405,15 @@ async def send_invoice(
             "total": float(item.total_price),
         })
 
+    # Delivery: orders of 10,000+ get free delivery as a gift from TheDersi;
+    # smaller orders show the delivery charge the seller set at ship time.
+    FREE_DELIVERY_THRESHOLD = 10000
+    delivery_charge = float(order.delivery_charge or 0)
+    free_delivery_label = None
+    if float(order.total) >= FREE_DELIVERY_THRESHOLD:
+        free_delivery_label = "Free — a gift from TheDersi 🎁"
+        delivery_charge = 0
+
     html = build_invoice_html(
         order_number=order.order_number,
         order_date=order.created_at.strftime("%d %b %Y") if order.created_at else "",
@@ -416,6 +427,8 @@ async def send_invoice(
         total=float(order.total),
         currency=shop.currency if shop else "AED",
         notes=order.notes,
+        delivery_charge=delivery_charge,
+        free_delivery_label=free_delivery_label,
     )
 
     sent = send_email(

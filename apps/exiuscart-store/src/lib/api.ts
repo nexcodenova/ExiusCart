@@ -93,6 +93,7 @@ export const ordersApi = {
     tracking_number?: string;
     carrier?: string;
     estimated_delivery?: string;
+    delivery_charge?: number;
   }) => api.post(`/shops/${shopId}/orders/${orderId}/ship`, data),
   getTracking: (shopId: string, orderId: string) =>
     api.get(`/shops/${shopId}/orders/${orderId}/tracking`),
