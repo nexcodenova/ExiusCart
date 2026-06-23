@@ -950,8 +950,20 @@ class ProductStatusCallback(BaseModel):
 _THEDERSI_INBOUND_KEY = os.getenv("THEDERSI_INBOUND_KEY", "") or os.getenv("THEDERSI_PARTNER_KEY", "")
 
 
+def _mask_key(k: str) -> str:
+    if not k:
+        return "<empty>"
+    if len(k) <= 12:
+        return f"<short len={len(k)}>"
+    return f"{k[:6]}...{k[-4:]} (len={len(k)})"
+
+
 def _require_partner_key(x_partner_key: str = Header(..., alias="X-Partner-Key")):
     if not _THEDERSI_INBOUND_KEY or x_partner_key != _THEDERSI_INBOUND_KEY:
+        logger.warning(
+            f"[PRODUCT-STATUS AUTH] 401 partner-key mismatch — "
+            f"received={_mask_key(x_partner_key)} expected={_mask_key(_THEDERSI_INBOUND_KEY)}"
+        )
         raise HTTPException(status_code=401, detail="Invalid partner key")
 
 
@@ -971,7 +983,9 @@ async def update_product_channel_status(
     body = await request.body()
     x_sig = request.headers.get("X-Signature", "")
     if not verify_thedersi_signature(body, x_sig):
+        logger.warning(f"[PRODUCT-STATUS AUTH] 401 signature mismatch — x_signature_present={bool(x_sig)}")
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    logger.info(f"[PRODUCT-STATUS] auth OK, body={body[:200]}")
 
     try:
         payload = ProductStatusCallback.model_validate_json(body)
