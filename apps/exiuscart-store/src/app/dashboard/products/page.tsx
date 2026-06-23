@@ -108,8 +108,10 @@ export default function ProductsPage() {
     try {
       await productsApi.delete(shopId, productId);
       setProducts((prev) => prev.filter((p) => p.id !== productId));
-    } catch {/* no-op */}
-    setShowDeleteConfirm(null);
+      setShowDeleteConfirm(null);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail ?? 'Failed to delete product. Please try again.');
+    }
   };
 
   const downloadTemplate = () => {

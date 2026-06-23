@@ -9,6 +9,8 @@ from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product, Category
 from app.models.product_variant import ProductVariant
+from app.models.product_fields import ProductImage, ProductAttribute
+from app.models.supplier import PurchaseOrderItem
 from app.models.subscription import Subscription
 from app.models.channel_product_status import ChannelProductStatus
 from app.models.channel_category import ProductChannelCategory
@@ -313,9 +315,13 @@ async def delete_product(
 
     trigger_product_delete(product_id, shop_id, background_tasks)
 
-    # Remove channel records that don't cascade automatically
+    # Delete all related records that don't cascade automatically
+    db.query(ProductImage).filter(ProductImage.product_id == product_id).delete()
+    db.query(ProductAttribute).filter(ProductAttribute.product_id == product_id).delete()
+    db.query(ProductVariant).filter(ProductVariant.product_id == product_id).delete()
     db.query(ChannelProductStatus).filter(ChannelProductStatus.product_id == product_id).delete()
     db.query(ProductChannelCategory).filter(ProductChannelCategory.product_id == product_id).delete()
+    db.query(PurchaseOrderItem).filter(PurchaseOrderItem.product_id == product_id).update({"product_id": None})
     db.flush()
 
     db.delete(product)
