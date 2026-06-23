@@ -68,12 +68,11 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trackingNumber.trim()) { setError('Tracking number is required'); return; }
     setSaving(true);
     setError('');
     try {
       const res = await ordersApi.ship(shopId, String(order.id), {
-        tracking_number: trackingNumber.trim(),
+        tracking_number: trackingNumber.trim() || undefined,
         carrier: carrier || undefined,
         estimated_delivery: estimatedDelivery || undefined,
       });
@@ -101,14 +100,15 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Tracking Number <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Tracking Number <span className="text-muted-foreground font-normal">(optional)</span></label>
             <input
               type="text"
               value={trackingNumber}
               onChange={e => setTrackingNumber(e.target.value)}
-              placeholder="e.g. 1Z999AA10123456784"
+              placeholder="Courier tracking no. — leave blank if self-delivery"
               className="w-full px-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
             />
+            <p className="text-xs text-muted-foreground mt-1">Only needed if you use a courier with tracking. Hand-delivering? Just leave it blank.</p>
           </div>
 
           <div>

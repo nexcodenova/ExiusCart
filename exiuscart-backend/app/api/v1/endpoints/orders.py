@@ -256,9 +256,29 @@ async def update_order_status(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
+    previous_status = order.status
+
+    # Restore stock when an order is cancelled (stock was reserved at order creation).
+    # Guard: only restore if it wasn't already cancelled, to avoid double-restocking.
+    restocked_ids: set = set()
+    if data.status == "cancelled" and previous_status != "cancelled":
+        for item in order.items:
+            product = db.query(Product).filter(Product.id == item.product_id).first()
+            if product:
+                product.quantity = (product.quantity or 0) + item.quantity
+                restocked_ids.add(product.id)
+
     order.status = data.status
     db.commit()
     db.refresh(order)
+
+    # Push restored stock back to TheDersi so the marketplace count matches
+    from app.api.v1.endpoints.channels import _bg_push_stock
+    for pid in restocked_ids:
+        try:
+            _bg_push_stock(pid, shop_id)
+        except Exception:
+            pass
 
     _notify_channel_order(order_id, data.status, db)
 

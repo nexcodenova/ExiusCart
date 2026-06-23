@@ -39,7 +39,7 @@ class OrderUpdate(BaseModel):
 
 
 class ShipOrderIn(BaseModel):
-    tracking_number: str
+    tracking_number: Optional[str] = None
     carrier: Optional[str] = None
     estimated_delivery: Optional[str] = None
 
