@@ -493,6 +493,37 @@ async def receive_order_webhook(
     if not conn:
         raise HTTPException(status_code=404, detail="Invalid webhook URL")
 
+    # ── Idempotency: dedupe by channel_order_id ───────────────────────────────
+    # TheDersi sends the same order twice: payment_status "pending" first, then
+    # "paid" once confirmed. Both carry the same channel_order_id. On the second
+    # (and any later) notification we update the existing order instead of
+    # creating a duplicate and decrementing stock again.
+    incoming_chan_id = payload.channel_order_id or ""
+    while incoming_chan_id.startswith("TD-TD-"):
+        incoming_chan_id = incoming_chan_id[3:]
+
+    if incoming_chan_id:
+        existing_meta = db.query(ChannelOrderMeta).filter(
+            ChannelOrderMeta.channel_type == conn.channel_type,
+            ChannelOrderMeta.channel_order_id == incoming_chan_id,
+        ).first()
+        if existing_meta:
+            existing_order = db.query(Order).filter(Order.id == existing_meta.order_id).first()
+            if existing_order:
+                if payload.payment_status:
+                    existing_order.payment_status = payload.payment_status
+                db.commit()
+                logger.info(
+                    f"[WEBHOOK] dedupe: {existing_order.order_number} → "
+                    f"payment_status={payload.payment_status} (channel_order_id={incoming_chan_id})"
+                )
+                return {
+                    "success": True,
+                    "exiuscart_order_id": existing_order.id,
+                    "order_number": existing_order.order_number,
+                    "updated": True,
+                }
+
     # ── Monthly order limit check ─────────────────────────────────────────────
     sub = db.query(Subscription).filter(Subscription.shop_id == conn.shop_id).first()
     plan_type = sub.plan_type if sub else None
@@ -615,16 +646,12 @@ async def receive_order_webhook(
             product.quantity = max(0, product.quantity - item.quantity)
         stock_changed_product_ids.add(product.id)
 
-    # Normalize channel_order_id — TheDersi sometimes sends double "TD-TD-" prefix
-    raw_chan_id = payload.channel_order_id or ""
-    while raw_chan_id.startswith("TD-TD-"):
-        raw_chan_id = raw_chan_id[3:]
-
     # Save channel-specific meta (commission, delivery, variants)
+    # channel_order_id already normalized above (incoming_chan_id)
     db.add(ChannelOrderMeta(
         order_id=order.id,
         channel_type=conn.channel_type,
-        channel_order_id=raw_chan_id,
+        channel_order_id=incoming_chan_id,
         seller_plan=payload.seller_plan,
         commission_rate=payload.commission_rate,
         commission_amount=payload.commission_amount,
