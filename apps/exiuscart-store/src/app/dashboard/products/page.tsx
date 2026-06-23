@@ -81,7 +81,13 @@ export default function ProductsPage() {
         search: searchQuery || undefined,
         category: selectedCategory !== 'All' ? selectedCategory : undefined,
       });
-      setProducts(res.data);
+      setProducts(res.data.map((p: any) => ({
+        ...p,
+        costPrice: p.cost_price ?? p.costPrice ?? 0,
+        sellingPrice: p.price ?? p.sellingPrice ?? 0,
+        stock: p.quantity ?? p.stock ?? 0,
+        lowStockAlert: p.low_stock_threshold ?? p.lowStockAlert ?? 5,
+      })));
     } catch {
       setProducts([]);
     } finally {

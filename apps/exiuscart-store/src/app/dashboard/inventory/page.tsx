@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Package, AlertTriangle, Plus, Minus, X, ChevronDown } from 'lucide-react';
+import { Search, Package, AlertTriangle, Plus, Minus, X, ChevronDown, Loader2 } from 'lucide-react';
 import { productsApi, inventoryApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -27,6 +27,8 @@ export default function InventoryPage() {
   const [adjustingItem, setAdjustingItem] = useState<InventoryItem | null>(null);
   const [adjustQty, setAdjustQty] = useState(0);
   const [adjustReason, setAdjustReason] = useState('');
+  const [newPrice, setNewPrice] = useState<string>('');
+  const [savingPrice, setSavingPrice] = useState(false);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const { sym } = useCurrency();
 
@@ -53,14 +55,23 @@ export default function InventoryPage() {
   useEffect(() => { fetchInventory(); }, [fetchInventory]);
 
   const handleAdjust = async () => {
-    if (!adjustingItem || adjustQty === 0) return;
+    if (!adjustingItem) return;
+    setSavingPrice(true);
     try {
-      await inventoryApi.adjustStock(shopId, adjustingItem.id, adjustQty, adjustReason);
+      if (adjustQty !== 0) {
+        await inventoryApi.adjustStock(shopId, adjustingItem.id, adjustQty, adjustReason);
+      }
+      const priceNum = parseFloat(newPrice);
+      if (newPrice !== '' && !isNaN(priceNum) && priceNum !== adjustingItem.price) {
+        await productsApi.update(shopId, adjustingItem.id, { price: priceNum });
+      }
       fetchInventory();
     } catch {}
+    setSavingPrice(false);
     setAdjustingItem(null);
     setAdjustQty(0);
     setAdjustReason('');
+    setNewPrice('');
   };
 
   const filtered = items.filter((item) => {
@@ -76,7 +87,7 @@ export default function InventoryPage() {
 
   const outOfStock = items.filter(i => i.stock === 0).length;
   const lowStock = items.filter(i => i.stock > 0 && i.stock <= i.minStock).length;
-  const inventoryValue = items.reduce((sum, i) => sum + i.cost * i.stock, 0);
+  const inventoryValue = items.reduce((sum, i) => sum + i.price * i.stock, 0);
 
   return (
     <div className="space-y-6">
@@ -159,7 +170,8 @@ export default function InventoryPage() {
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">Category</th>
                   <th className="text-center p-4 text-sm font-medium text-muted-foreground">Stock</th>
                   <th className="text-center p-4 text-sm font-medium text-muted-foreground">Min</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Value</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Price</th>
+                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total Value</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground">Adjust</th>
                 </tr>
               </thead>
@@ -183,11 +195,12 @@ export default function InventoryPage() {
                         </span>
                       </td>
                       <td className="p-4 text-center"><span className="text-sm text-muted-foreground">{item.minStock}</span></td>
-                      <td className="p-4 text-right"><span className="text-sm text-foreground">{(item.cost * item.stock).toLocaleString()} {sym}</span></td>
+                      <td className="p-4 text-right"><span className="text-sm font-medium text-foreground">{item.price.toLocaleString()} {sym}</span></td>
+                      <td className="p-4 text-right"><span className="text-sm text-foreground">{(item.price * item.stock).toLocaleString()} {sym}</span></td>
                       <td className="p-4 text-right">
                         <button
                           type="button"
-                          onClick={() => { setAdjustingItem(item); setAdjustQty(0); setAdjustReason(''); }}
+                          onClick={() => { setAdjustingItem(item); setAdjustQty(0); setAdjustReason(''); setNewPrice(''); }}
                           className="text-xs px-3 py-1.5 bg-muted rounded-lg text-foreground hover:bg-muted/80 transition"
                         >
                           Adjust
@@ -213,7 +226,7 @@ export default function InventoryPage() {
             <div className="p-4 space-y-4">
               <div>
                 <p className="font-medium text-foreground">{adjustingItem.name}</p>
-                <p className="text-sm text-muted-foreground">Current stock: <span className="font-medium text-foreground">{adjustingItem.stock}</span></p>
+                <p className="text-sm text-muted-foreground">Current stock: <span className="font-medium text-foreground">{adjustingItem.stock}</span> · Current price: <span className="font-medium text-foreground">{adjustingItem.price.toLocaleString()} {sym}</span></p>
               </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">Quantity Change</label>
@@ -225,12 +238,19 @@ export default function InventoryPage() {
                 <p className="text-xs text-muted-foreground mt-2 text-center">New stock: <span className={`font-medium ${adjustingItem.stock + adjustQty < 0 ? 'text-red-500' : 'text-foreground'}`}>{Math.max(0, adjustingItem.stock + adjustQty)}</span></p>
               </div>
               <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Update Selling Price ({sym}) <span className="opacity-60 font-normal">— leave blank to keep current</span></label>
+                <input type="number" value={newPrice} min={0} onChange={(e) => setNewPrice(e.target.value)} placeholder={String(adjustingItem.price)} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+              </div>
+              <div>
                 <label className="text-sm text-muted-foreground mb-1.5 block">Reason</label>
-                <input type="text" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="e.g. Stock count, damaged goods..." className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                <input type="text" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="e.g. Stock count, price update..." className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
               </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setAdjustingItem(null)} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>
-                <button type="button" onClick={handleAdjust} disabled={adjustQty === 0} className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium disabled:opacity-50">Save Adjustment</button>
+                <button type="button" onClick={handleAdjust} disabled={savingPrice || (adjustQty === 0 && newPrice === '')} className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                  {savingPrice && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Save
+                </button>
               </div>
             </div>
           </div>
