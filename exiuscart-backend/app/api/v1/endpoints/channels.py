@@ -510,12 +510,34 @@ async def receive_order_webhook(
         if existing_meta:
             existing_order = db.query(Order).filter(Order.id == existing_meta.order_id).first()
             if existing_order:
-                if payload.payment_status:
-                    existing_order.payment_status = payload.payment_status
+                old_payment = (existing_order.payment_status or "").lower()
+                new_payment = (payload.payment_status or existing_order.payment_status or "").lower()
+                changed_pids: set = set()
+
+                # Stock follows payment: decrement when entering "paid", restore when leaving it.
+                if new_payment == "paid" and old_payment != "paid":
+                    for it in existing_order.items:
+                        prod = db.query(Product).filter(Product.id == it.product_id).first()
+                        if prod:
+                            prod.quantity = max(0, (prod.quantity or 0) - it.quantity)
+                            changed_pids.add(prod.id)
+                elif old_payment == "paid" and new_payment != "paid":
+                    for it in existing_order.items:
+                        prod = db.query(Product).filter(Product.id == it.product_id).first()
+                        if prod:
+                            prod.quantity = (prod.quantity or 0) + it.quantity
+                            changed_pids.add(prod.id)
+
+                existing_order.payment_status = new_payment or existing_order.payment_status
                 db.commit()
+
+                for pid in changed_pids:
+                    _bg_push_stock(pid, conn.shop_id)
+
                 logger.info(
                     f"[WEBHOOK] dedupe: {existing_order.order_number} → "
-                    f"payment_status={payload.payment_status} (channel_order_id={incoming_chan_id})"
+                    f"payment {old_payment}→{new_payment}, stock_changed={list(changed_pids)} "
+                    f"(channel_order_id={incoming_chan_id})"
                 )
                 return {
                     "success": True,
@@ -610,7 +632,11 @@ async def receive_order_webhook(
     db.add(order)
     db.flush()
 
-    # Create order items + decrease stock
+    # Create order items. Stock is only decremented when the order is PAID
+    # (ExiusCart = single source of truth; TheDersi no longer decrements). A
+    # pending order reserves nothing — the decrement happens on the paid
+    # follow-up notification handled in the dedupe path above.
+    order_is_paid = (payload.payment_status or "").lower() == "paid"
     stock_changed_product_ids: set = set()
     for item in payload.items:
         pid = item.parsed_product_id()
@@ -631,20 +657,21 @@ async def receive_order_webhook(
             total_price=item.item_total or (item.unit_price * item.quantity),
         ))
 
-        # Reduce variant stock if size/color specified, otherwise reduce product-level stock
-        if item.size or item.color:
-            variant = db.query(ProductVariant).filter(
-                ProductVariant.product_id == product.id,
-                ProductVariant.size == item.size,
-                ProductVariant.color == item.color,
-            ).first()
-            if variant:
-                variant.quantity = max(0, variant.quantity - item.quantity)
+        if order_is_paid:
+            # Reduce variant stock if size/color specified, otherwise product-level
+            if item.size or item.color:
+                variant = db.query(ProductVariant).filter(
+                    ProductVariant.product_id == product.id,
+                    ProductVariant.size == item.size,
+                    ProductVariant.color == item.color,
+                ).first()
+                if variant:
+                    variant.quantity = max(0, variant.quantity - item.quantity)
+                else:
+                    product.quantity = max(0, product.quantity - item.quantity)
             else:
                 product.quantity = max(0, product.quantity - item.quantity)
-        else:
-            product.quantity = max(0, product.quantity - item.quantity)
-        stock_changed_product_ids.add(product.id)
+            stock_changed_product_ids.add(product.id)
 
     # Save channel-specific meta (commission, delivery, variants)
     # channel_order_id already normalized above (incoming_chan_id)
