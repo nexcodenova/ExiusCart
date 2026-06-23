@@ -2,7 +2,7 @@
 Custom product fields per shop + product image upload.
 """
 from typing import List, Optional, Any
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -253,6 +253,7 @@ def get_images(
 async def upload_image(
     shop_id: int,
     product_id: int,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -295,6 +296,12 @@ async def upload_image(
 
     db.commit()
     db.refresh(image)
+
+    # Re-sync to connected channels so the product reaches them WITH its image.
+    # (Initial product create syncs before images exist; this fills them in.)
+    from app.api.v1.endpoints.channels import trigger_product_sync
+    trigger_product_sync(product_id, shop_id, background_tasks)
+
     return image
 
 
