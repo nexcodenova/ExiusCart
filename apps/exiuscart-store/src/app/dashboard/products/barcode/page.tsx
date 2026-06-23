@@ -13,7 +13,10 @@ interface LabelData {
   price: string;
 }
 
-function BarcodeLabel({ label, copies }: { label: LabelData; copies: number }) {
+// One self-contained label with its own barcode. Each copy is its own component
+// so every label gets its own ref + rendered barcode (previously a single shared
+// ref meant only one copy ever drew the barcode).
+function SingleLabel({ label }: { label: LabelData }) {
   const ref = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -22,33 +25,30 @@ function BarcodeLabel({ label, copies }: { label: LabelData; copies: number }) {
       JsBarcode(ref.current, label.barcode, {
         format: 'CODE128',
         width: 2,
-        height: 50,
-        fontSize: 11,
+        height: 45,
+        fontSize: 12,
         displayValue: true,
-        margin: 6,
+        margin: 4,
         background: '#ffffff',
         lineColor: '#000000',
       });
-    } catch { /* invalid value */ }
+    } catch { /* invalid value — skip */ }
   }, [label.barcode]);
 
   return (
-    <>
-      {Array.from({ length: copies }).map((_, i) => (
-        <div
-          key={i}
-          className="border border-gray-300 rounded p-2 flex flex-col items-center justify-center bg-white"
-          style={{ width: '200px', minHeight: '100px', pageBreakInside: 'avoid' }}
-        >
-          <p className="text-xs font-semibold text-center truncate w-full text-center" style={{ maxWidth: '180px' }}>
-            {label.name}
-          </p>
-          {label.sku && <p className="text-xs text-gray-500">{label.sku}</p>}
-          <svg ref={ref} style={{ width: '180px' }} />
-          {label.price && <p className="text-sm font-bold mt-1">{label.price}</p>}
-        </div>
-      ))}
-    </>
+    <div
+      className="border border-gray-300 rounded flex flex-col items-center justify-center bg-white text-black p-2"
+      style={{ width: '220px', minHeight: '120px', pageBreakInside: 'avoid' }}
+    >
+      <p className="text-xs font-semibold text-center leading-tight text-black w-full px-1" style={{ maxWidth: '210px' }}>
+        {label.name}
+      </p>
+      {label.sku && <p className="text-[10px] text-gray-600">{label.sku}</p>}
+      {label.barcode
+        ? <svg ref={ref} style={{ width: '200px' }} />
+        : <p className="text-[11px] text-gray-400 my-3">No barcode set</p>}
+      {label.price && <p className="text-base font-extrabold text-black -mt-0.5">{label.price}</p>}
+    </div>
   );
 }
 
@@ -65,6 +65,11 @@ export default function BarcodePrintPage() {
       else labels.push(parsed);
     }
   } catch { /* invalid data */ }
+
+  // Flatten: every label repeated `copies` times, each its own rendered tag
+  const allLabels: LabelData[] = labels.flatMap((l) =>
+    Array.from({ length: copies }, () => l)
+  );
 
   const handlePrint = () => window.print();
 
@@ -87,8 +92,8 @@ export default function BarcodePrintPage() {
               min={1}
               max={100}
               value={copies}
-              onChange={(e) => setCopies(Math.max(1, Number(e.target.value)))}
-              className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-center"
+              onChange={(e) => setCopies(Math.max(1, Math.min(100, Number(e.target.value))))}
+              className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-center text-black"
             />
           </div>
           <button
@@ -102,7 +107,7 @@ export default function BarcodePrintPage() {
 
       {/* Label grid */}
       <div className="p-6 print:p-0">
-        {labels.length === 0 ? (
+        {allLabels.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
             <p>No barcode data provided.</p>
             <p className="text-sm mt-1">Open this page from the Products list by clicking Print Barcode.</p>
@@ -110,10 +115,10 @@ export default function BarcodePrintPage() {
         ) : (
           <div
             className="flex flex-wrap gap-3 print:gap-2"
-            style={{ maxWidth: '900px', margin: '0 auto' }}
+            style={{ maxWidth: '960px', margin: '0 auto' }}
           >
-            {labels.map((label, i) => (
-              <BarcodeLabel key={i} label={label} copies={copies} />
+            {allLabels.map((label, i) => (
+              <SingleLabel key={i} label={label} />
             ))}
           </div>
         )}
