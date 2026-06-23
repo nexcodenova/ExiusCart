@@ -17,6 +17,22 @@ cd "$PROJECT_DIR"
 # run: git checkout -- . && git pull origin main && bash deploy.sh
 CHANGED=$(git diff HEAD~1 --name-only 2>/dev/null || echo "all")
 
+# Build a Next.js app on a clean .next, retrying once if the build hits a
+# transient failure (e.g. Next's intermittent 500.html export race, or a flaky
+# Google-Fonts fetch). A retry on a fresh .next clears it almost every time.
+build_app() {
+  local dir="$1" name="$2"
+  cd "$dir"
+  rm -rf .next
+  npm install --silent
+  if ! NEXT_PUBLIC_API_URL=$API_URL npm run build; then
+    echo "[$name] build failed — clearing .next and retrying once..."
+    rm -rf .next
+    NEXT_PUBLIC_API_URL=$API_URL npm run build
+  fi
+  pm2 restart "$name"
+}
+
 # Backend — always restart, only pip install if requirements changed
 echo "--- Backend ---"
 cd "$PROJECT_DIR/exiuscart-backend"
@@ -31,11 +47,7 @@ deactivate
 # Admin
 if echo "$CHANGED" | grep -qE "apps/exiuscart-admin/|packages/"; then
   echo "--- Admin (changed) ---"
-  cd "$PROJECT_DIR/apps/exiuscart-admin"
-  rm -rf .next
-  npm install --silent
-  NEXT_PUBLIC_API_URL=$API_URL npm run build
-  pm2 restart exiuscart-admin
+  build_app "$PROJECT_DIR/apps/exiuscart-admin" exiuscart-admin
 else
   echo "--- Admin (no changes, skipped) ---"
 fi
@@ -43,11 +55,7 @@ fi
 # Store
 if echo "$CHANGED" | grep -qE "apps/exiuscart-store/|packages/"; then
   echo "--- Store (changed) ---"
-  cd "$PROJECT_DIR/apps/exiuscart-store"
-  rm -rf .next
-  npm install --silent
-  NEXT_PUBLIC_API_URL=$API_URL npm run build
-  pm2 restart exiuscart-store
+  build_app "$PROJECT_DIR/apps/exiuscart-store" exiuscart-store
 else
   echo "--- Store (no changes, skipped) ---"
 fi
@@ -55,11 +63,7 @@ fi
 # Affiliates
 if echo "$CHANGED" | grep -qE "apps/exiuscart-affiliates/|packages/"; then
   echo "--- Affiliates (changed) ---"
-  cd "$PROJECT_DIR/apps/exiuscart-affiliates"
-  rm -rf .next
-  npm install --silent
-  NEXT_PUBLIC_API_URL=$API_URL npm run build
-  pm2 restart exiuscart-affiliates
+  build_app "$PROJECT_DIR/apps/exiuscart-affiliates" exiuscart-affiliates
 else
   echo "--- Affiliates (no changes, skipped) ---"
 fi
