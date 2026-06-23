@@ -293,7 +293,12 @@ async def update_product(
     db.commit()
     db.refresh(product)
 
-    trigger_product_sync(product.id, shop_id, background_tasks)
+    # Listed → sync the update to channels. Turned OFF → unlist it from channels
+    # (it stays in ExiusCart for POS). The sync/stock guards also enforce this.
+    if product.list_on_marketplace:
+        trigger_product_sync(product.id, shop_id, background_tasks)
+    else:
+        trigger_product_delete(product.id, shop_id, background_tasks)
     return product
 
 

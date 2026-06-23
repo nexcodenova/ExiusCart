@@ -41,6 +41,7 @@ class ProductBase(BaseModel):
     quantity: int = 0
     low_stock_threshold: int = 5
     category_id: Optional[int] = None
+    list_on_marketplace: bool = True  # off = product stays in POS/inventory only, never sent to TheDersi
 
 
 class ProductCreate(ProductBase):
@@ -63,6 +64,7 @@ class ProductUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_featured: Optional[bool] = None
     is_trending: Optional[bool] = None
+    list_on_marketplace: Optional[bool] = None
 
 
 class ProductResponse(ProductBase):

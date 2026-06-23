@@ -237,6 +237,9 @@ def _bg_push_product(product_id: int, shop_id: int):
         if not product or not shop:
             logger.warning(f"[BG PUSH] product={product_id} shop={shop_id} not found — skipping")
             return
+        if not product.list_on_marketplace:
+            logger.info(f"[BG PUSH] product={product_id} is POS-only (list_on_marketplace=False) — not pushing to channels")
+            return
         connections = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id, ChannelConnection.is_active == True
         ).all()
@@ -313,6 +316,8 @@ def _bg_push_stock(product_id: int, shop_id: int):
         product = db.query(Product).filter(Product.id == product_id).first()
         if not product:
             return
+        if not product.list_on_marketplace:
+            return  # POS-only product — never on the marketplace, nothing to sync
         connections = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id,
             ChannelConnection.is_active == True,

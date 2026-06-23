@@ -668,6 +668,7 @@ function ProductModal({
     stock: p?.quantity ?? p?.stock ?? 0,
     lowStockAlert: p?.low_stock_threshold ?? p?.lowStockAlert ?? 5,
     vatPercent: p?.vat_percent ?? p?.vatPercent ?? 5,
+    listOnMarketplace: p?.list_on_marketplace ?? true,
   });
 
   // Custom fields state
@@ -836,6 +837,7 @@ function ProductModal({
         cost_price: formData.costPrice > 0 ? formData.costPrice : null,
         quantity: formData.stock,
         low_stock_threshold: formData.lowStockAlert,
+        list_on_marketplace: formData.listOnMarketplace,
       };
 
       if (product?.id) {
@@ -880,8 +882,8 @@ function ProductModal({
         }))).catch(() => {}));
       }
 
-      // Save TheDersi category if selected
-      if (theDersiConnection && theDersiCategoryId) {
+      // Save TheDersi category if selected and the product is listed
+      if (theDersiConnection && theDersiCategoryId && formData.listOnMarketplace) {
         tasks.push(channelsApi.setProductCategory(shopId, productId, {
           channel_connection_id: theDersiConnection.id,
           channel_category_id: theDersiCategoryId,
@@ -1149,8 +1151,27 @@ function ProductModal({
                 </div>
               )}
 
-              {/* TheDersi Category */}
+              {/* Sell on TheDersi toggle */}
               {theDersiConnection && (
+                <div className="bg-card border border-border rounded-lg p-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, listOnMarketplace: !formData.listOnMarketplace })}
+                    className="w-full flex items-center justify-between gap-3"
+                  >
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-foreground">Sell on TheDersi</p>
+                      <p className="text-xs text-muted-foreground">{formData.listOnMarketplace ? 'Listed on the marketplace' : 'POS / in-store only'}</p>
+                    </div>
+                    {formData.listOnMarketplace
+                      ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
+                      : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
+                  </button>
+                </div>
+              )}
+
+              {/* TheDersi Category — only when listed */}
+              {theDersiConnection && formData.listOnMarketplace && (
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
                     TheDersi Category

@@ -853,6 +853,7 @@ def mark_purchase_received(
     shop_id: int,
     po_id: int,
     body: dict,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -869,6 +870,7 @@ def mark_purchase_received(
 
     received_qtys: dict = body.get("received_qtys", {})  # item_id -> qty
 
+    restocked_product_ids: set = set()
     for item in po.items:
         qty = int(received_qtys.get(str(item.id), item.quantity_ordered))
         item.quantity_received = qty
@@ -878,8 +880,15 @@ def mark_purchase_received(
                 product.quantity = product.quantity + qty
                 if item.unit_cost:
                     product.cost_price = item.unit_cost
+                restocked_product_ids.add(product.id)
 
     po.status = "received"
     po.received_at = datetime.now(timezone.utc)
     db.commit()
+
+    # Keep the marketplace stock count in sync after restocking (guard skips POS-only products)
+    from app.api.v1.endpoints.channels import trigger_stock_sync
+    for pid in restocked_product_ids:
+        trigger_stock_sync(pid, shop_id, background_tasks)
+
     return _po_out(po)
