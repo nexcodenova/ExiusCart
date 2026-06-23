@@ -26,6 +26,7 @@ deactivate
 if echo "$CHANGED" | grep -qE "apps/exiuscart-admin/|packages/"; then
   echo "--- Admin (changed) ---"
   cd "$PROJECT_DIR/apps/exiuscart-admin"
+  rm -rf .next
   npm install --silent
   NEXT_PUBLIC_API_URL=$API_URL npm run build
   pm2 restart exiuscart-admin
@@ -37,6 +38,7 @@ fi
 if echo "$CHANGED" | grep -qE "apps/exiuscart-store/|packages/"; then
   echo "--- Store (changed) ---"
   cd "$PROJECT_DIR/apps/exiuscart-store"
+  rm -rf .next
   npm install --silent
   NEXT_PUBLIC_API_URL=$API_URL npm run build
   pm2 restart exiuscart-store
@@ -48,6 +50,7 @@ fi
 if echo "$CHANGED" | grep -qE "apps/exiuscart-affiliates/|packages/"; then
   echo "--- Affiliates (changed) ---"
   cd "$PROJECT_DIR/apps/exiuscart-affiliates"
+  rm -rf .next
   npm install --silent
   NEXT_PUBLIC_API_URL=$API_URL npm run build
   pm2 restart exiuscart-affiliates
