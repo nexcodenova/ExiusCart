@@ -77,11 +77,38 @@ async def create_order(
     # POS sales are immediate — mark as delivered and paid on creation
     is_pos = order_data.source == "pos"
 
+    # Resolve customer: use explicit id, else find-or-create from name/phone/email
+    customer_id = order_data.customer_id
+    if not customer_id and (order_data.customer_name or order_data.customer_phone or order_data.customer_email):
+        existing = None
+        if order_data.customer_phone:
+            existing = db.query(Customer).filter(
+                Customer.shop_id == shop_id,
+                Customer.phone == order_data.customer_phone,
+            ).first()
+        if not existing and order_data.customer_email:
+            existing = db.query(Customer).filter(
+                Customer.shop_id == shop_id,
+                Customer.email == order_data.customer_email,
+            ).first()
+        if existing:
+            customer_id = existing.id
+        else:
+            new_customer = Customer(
+                shop_id=shop_id,
+                name=order_data.customer_name or "Walk-in Customer",
+                phone=order_data.customer_phone,
+                email=order_data.customer_email,
+            )
+            db.add(new_customer)
+            db.flush()
+            customer_id = new_customer.id
+
     # Create order
     new_order = Order(
         order_number=generate_order_number(),
         shop_id=shop_id,
-        customer_id=order_data.customer_id,
+        customer_id=customer_id,
         source=order_data.source,
         status="delivered" if is_pos else "pending",
         payment_status="paid" if is_pos else "pending",

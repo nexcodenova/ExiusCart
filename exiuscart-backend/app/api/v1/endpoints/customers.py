@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from app.core.database import get_db
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.customer import Customer
+from app.models.order import Order
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
 from app.api.v1.deps import get_current_user
 
@@ -32,7 +34,7 @@ async def create_customer(
     return new_customer
 
 
-@router.get("/", response_model=List[CustomerResponse])
+@router.get("/")
 async def get_customers(
     shop_id: int,
     search: Optional[str] = None,
@@ -51,7 +53,45 @@ async def get_customers(
         )
 
     customers = query.offset(skip).limit(limit).all()
-    return customers
+    if not customers:
+        return []
+
+    # Aggregate order stats per customer in one query (exclude cancelled orders)
+    customer_ids = [c.id for c in customers]
+    stats_rows = (
+        db.query(
+            Order.customer_id,
+            func.count(Order.id).label("total_orders"),
+            func.coalesce(func.sum(Order.total), 0).label("total_spent"),
+            func.max(Order.created_at).label("last_order"),
+        )
+        .filter(
+            Order.customer_id.in_(customer_ids),
+            Order.status != "cancelled",
+        )
+        .group_by(Order.customer_id)
+        .all()
+    )
+    stats = {r.customer_id: r for r in stats_rows}
+
+    VIP_THRESHOLD = 50000  # spend above this = VIP
+    result = []
+    for c in customers:
+        s = stats.get(c.id)
+        total_spent = float(s.total_spent) if s else 0.0
+        result.append({
+            "id": c.id,
+            "name": c.name,
+            "phone": c.phone or "",
+            "email": c.email,
+            "address": c.address,
+            "totalOrders": s.total_orders if s else 0,
+            "totalSpent": total_spent,
+            "lastOrder": s.last_order.isoformat() if s and s.last_order else None,
+            "joinedDate": c.created_at.isoformat() if c.created_at else None,
+            "isVip": total_spent >= VIP_THRESHOLD,
+        })
+    return result
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)

@@ -23,6 +23,9 @@ class OrderItemResponse(BaseModel):
 
 class OrderCreate(BaseModel):
     customer_id: Optional[int] = None
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_email: Optional[str] = None
     items: List[OrderItemCreate]
     notes: Optional[str] = None
     shipping_address: Optional[str] = None

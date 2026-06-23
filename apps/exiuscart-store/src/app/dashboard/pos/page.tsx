@@ -226,6 +226,8 @@ export default function POSPage() {
     try {
       await ordersApi.create(shopId, {
         source: 'pos',
+        customer_name: customerName || undefined,
+        customer_phone: customerPhone || undefined,
         notes: paymentMethod ? `Payment: ${paymentMethod}` : undefined,
         items: cart.map((item) => ({
           product_id: Number(item.id),
