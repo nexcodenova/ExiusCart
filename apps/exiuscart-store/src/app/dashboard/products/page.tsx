@@ -846,48 +846,50 @@ function ProductModal({
         productId = res.data.id ?? String(res.data.id);
       }
 
-      // Upload pending images
-      for (const pending of pendingImages) {
-        try {
-          await imagesApi.upload(shopId, productId, pending.file);
-        } catch {/* skip failed uploads */}
+      // Everything below only needs productId and is independent — run in parallel
+      const tasks: Promise<any>[] = [];
+
+      // Images: first one sequential (claims "primary"), the rest in parallel
+      if (pendingImages.length > 0) {
+        tasks.push((async () => {
+          try { await imagesApi.upload(shopId, productId, pendingImages[0].file); } catch {/* skip */}
+          await Promise.all(
+            pendingImages.slice(1).map((p) =>
+              imagesApi.upload(shopId, productId, p.file).catch(() => {})
+            )
+          );
+        })());
       }
 
       // Save custom attributes
       const attrsPayload = Object.entries(attrValues)
         .filter(([, v]) => v !== '' && v !== undefined)
         .map(([field_key, value]) => ({ field_key, value }));
-
       if (attrsPayload.length > 0 || customFields.length > 0) {
-        try {
-          await attributesApi.save(shopId, productId, attrsPayload);
-        } catch {/* no-op */}
+        tasks.push(attributesApi.save(shopId, productId, attrsPayload).catch(() => {}));
       }
 
       // Save variants if any are defined
       if (variants.length > 0) {
-        try {
-          await variantsApi.save(shopId, productId, variants.map((v) => ({
-            size: v.size || undefined,
-            color: v.color || undefined,
-            sku: v.sku || undefined,
-            quantity: v.quantity,
-            price: v.price !== '' ? Number(v.price) : undefined,
-          })));
-        } catch {/* no-op */}
+        tasks.push(variantsApi.save(shopId, productId, variants.map((v) => ({
+          size: v.size || undefined,
+          color: v.color || undefined,
+          sku: v.sku || undefined,
+          quantity: v.quantity,
+          price: v.price !== '' ? Number(v.price) : undefined,
+        }))).catch(() => {}));
       }
 
       // Save TheDersi category if selected
       if (theDersiConnection && theDersiCategoryId) {
-        try {
-          await channelsApi.setProductCategory(shopId, productId, {
-            channel_connection_id: theDersiConnection.id,
-            channel_category_id: theDersiCategoryId,
-            channel_category_name: theDersiCategoryName,
-          });
-        } catch {/* no-op — product still saved */}
+        tasks.push(channelsApi.setProductCategory(shopId, productId, {
+          channel_connection_id: theDersiConnection.id,
+          channel_category_id: theDersiCategoryId,
+          channel_category_name: theDersiCategoryName,
+        }).catch(() => {}));
       }
 
+      await Promise.all(tasks);
       onSaved();
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Failed to save product. Please try again.');
