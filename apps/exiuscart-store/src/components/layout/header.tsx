@@ -74,9 +74,9 @@ export function Header({ onMenuClick }: HeaderProps) {
       {/* Search */}
       <div className="hidden md:flex items-center flex-1 max-w-md ml-4">
         <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" placeholder="Search products, orders..."
-            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground placeholder:text-muted-foreground" />
+            className="w-full pl-11 pr-4 py-2.5 bg-muted/60 border border-transparent rounded-xl focus:bg-background focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none text-foreground placeholder:text-muted-foreground transition" />
         </div>
       </div>
 
@@ -91,7 +91,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Active Branch */}
         {activeBranchName && (
           <Link href="/dashboard/branches"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-medium hover:bg-primary/20 transition">
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 rounded-xl text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition">
             <GitBranch className="w-3.5 h-3.5" />
             <span className="max-w-[120px] truncate">{activeBranchName}</span>
           </Link>
@@ -140,9 +140,11 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         {/* Profile */}
         <Link href="/dashboard/profile" aria-label="Profile" title="Profile"
-          className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg transition">
-          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-            <User className="w-5 h-5 text-primary" />
+          className="flex items-center gap-2 p-1.5 pr-3 hover:bg-muted rounded-xl transition">
+          <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full flex items-center justify-center shadow-sm shadow-indigo-500/30">
+            {userName
+              ? <span className="text-xs font-bold text-white">{userName.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+              : <User className="w-4 h-4 text-white" />}
           </div>
           {userName && <span className="hidden md:block text-sm font-medium text-foreground">{userName}</span>}
         </Link>
