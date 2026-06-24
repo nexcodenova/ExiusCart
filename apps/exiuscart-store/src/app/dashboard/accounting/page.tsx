@@ -87,7 +87,7 @@ export default function AccountingPage() {
         <div className="flex gap-1 overflow-x-auto">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => setTab(id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition ${tab === id ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25' : 'text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10'}`}>
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${tab === id ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
               <Icon className="w-4 h-4" />{label}
             </button>
           ))}
@@ -369,7 +369,7 @@ export default function AccountingPage() {
                 </div>
                 <div className="flex gap-3 pt-2">
                   <Link href="/dashboard/reports/vat"
-                    className="flex-1 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl font-medium text-center text-sm shadow-md shadow-indigo-500/25 hover:shadow-lg transition-all">
+                    className="flex-1 py-2.5 bg-foreground text-background rounded-lg font-medium text-center text-sm transition hover:opacity-90">
                     Full VAT Report
                   </Link>
                   <button type="button"
