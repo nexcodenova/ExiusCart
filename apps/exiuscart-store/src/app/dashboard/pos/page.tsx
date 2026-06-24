@@ -334,10 +334,10 @@ export default function POSPage() {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                   selectedCategory === cat
-                    ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25'
-                    : 'bg-muted text-muted-foreground hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400'
+                    ? 'bg-foreground text-background'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                 }`}
               >
                 {cat}
@@ -558,7 +558,7 @@ export default function POSPage() {
             type="button"
             onClick={handleCheckout}
             disabled={cart.length === 0}
-            className="w-full py-4 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl font-semibold text-lg shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
+            className="w-full py-4 bg-foreground text-background rounded-xl font-semibold text-lg transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Receipt className="w-5 h-5" />
             Checkout
@@ -743,7 +743,7 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={handleDownloadInvoice}
-                className="w-full py-3 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-foreground text-background rounded-xl font-semibold transition hover:opacity-90 flex items-center justify-center gap-2"
               >
                 <Download className="w-5 h-5" />
                 Download A4 Invoice (PDF)

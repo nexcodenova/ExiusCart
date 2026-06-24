@@ -300,7 +300,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                   )}
 
                   {(isOpen || collapsed) && (
-                    <div className={collapsed ? 'space-y-0.5 mt-0.5' : 'ml-2 mt-0.5 space-y-0.5'}>
+                    <div className={collapsed ? 'space-y-0.5 mt-0.5' : 'ml-[15px] mt-1 space-y-0.5 border-l border-border pl-2.5'}>
                       {group.items.map(item => {
                         const Icon = item.icon;
                         const active = isItemActive(item);
