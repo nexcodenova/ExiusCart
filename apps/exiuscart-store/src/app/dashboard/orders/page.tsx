@@ -240,26 +240,26 @@ export default function OrdersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Orders</h1>
-        <p className="text-muted-foreground text-sm">Track and manage all your orders</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Orders</h1>
+        <p className="text-sm text-muted-foreground">Track and manage all your orders</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {['Total', 'Pending', 'Shipped', 'Completed'].map((label, i) => {
-          const counts = [
-            orders.length,
-            orders.filter(o => o.status === 'pending').length,
-            orders.filter(o => o.status === 'shipped').length,
-            orders.filter(o => o.status === 'completed' || o.status === 'delivered').length,
-          ];
-          return (
-            <div key={label} className="bg-card rounded-xl border border-border p-4">
-              <p className="text-muted-foreground text-xs mb-1">{label} Orders</p>
-              <p className="text-2xl font-bold text-foreground">{loading ? '—' : counts[i]}</p>
+        {[
+          { label: 'Total orders', icon: FileText, value: orders.length },
+          { label: 'Pending', icon: Package, value: orders.filter(o => o.status === 'pending').length },
+          { label: 'Shipped', icon: Truck, value: orders.filter(o => o.status === 'shipped').length },
+          { label: 'Completed', icon: CheckCircle2, value: orders.filter(o => o.status === 'completed' || o.status === 'delivered').length },
+        ].map(({ label, icon: Icon, value }) => (
+          <div key={label} className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+              <Icon className="h-5 w-5 text-foreground/70" />
             </div>
-          );
-        })}
+            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+            <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums text-foreground">{loading ? '—' : value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Filters */}
