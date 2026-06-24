@@ -273,8 +273,8 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                   return (
                     <Link key={item.href} href={item.href} onClick={onMobileClose}
                       title={collapsed ? item.label : undefined}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                        active ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                        active ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25 font-semibold' : 'text-muted-foreground hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400'
                       }`}>
                       <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
                       {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
@@ -319,8 +319,8 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                         return (
                           <Link key={item.href} href={item.href} onClick={onMobileClose}
                             title={collapsed ? item.label : undefined}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm ${
-                              active ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-sm ${
+                              active ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25 font-semibold' : 'text-muted-foreground hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400'
                             }`}>
                             <Icon className={`w-4 h-4 flex-shrink-0 ${collapsed ? 'mx-auto w-5 h-5' : ''}`} />
                             {!collapsed && <span className="font-medium">{item.label}</span>}
