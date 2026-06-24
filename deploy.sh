@@ -23,10 +23,16 @@ CHANGED=$(git diff HEAD~1 --name-only 2>/dev/null || echo "all")
 build_app() {
   local dir="$1" name="$2"
   cd "$dir"
-  rm -rf .next
-  npm install --silent
+  # Only reinstall deps when the lockfile/package.json actually changed (or node_modules
+  # is missing). Saves ~30-60s every deploy.
+  if echo "$CHANGED" | grep -qE 'package(-lock)?\.json' || [ ! -d "$PROJECT_DIR/node_modules" ]; then
+    echo "[$name] installing dependencies..."
+    npm install --silent
+  fi
+  # Keep .next/cache for fast incremental builds (zombies are gone + flock prevents
+  # concurrent builds, so the cache is safe). Only wipe .next on a retry.
   if ! NEXT_PUBLIC_API_URL=$API_URL npm run build; then
-    echo "[$name] build failed — clearing .next and retrying once..."
+    echo "[$name] build failed — clearing .next and retrying clean..."
     rm -rf .next
     NEXT_PUBLIC_API_URL=$API_URL npm run build
   fi
