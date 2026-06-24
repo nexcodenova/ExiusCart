@@ -334,10 +334,10 @@ export default function POSPage() {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition ${
                   selectedCategory === cat
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                    ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25'
+                    : 'bg-muted text-muted-foreground hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400'
                 }`}
               >
                 {cat}
@@ -365,11 +365,11 @@ export default function POSPage() {
                   type="button"
                   onClick={() => addToCart(product)}
                   disabled={product.stock === 0}
-                  className={`bg-card border border-border rounded-xl p-3 text-left hover:border-primary hover:shadow-md transition ${
+                  className={`group bg-card border border-border rounded-2xl p-3 text-left shadow-sm transition-all duration-200 hover:border-indigo-300 hover:shadow-lg hover:-translate-y-0.5 dark:hover:border-indigo-500/40 ${
                     product.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
-                  <div className="w-full aspect-square bg-muted rounded-lg overflow-hidden mb-2">
+                  <div className="w-full aspect-square bg-muted rounded-xl overflow-hidden mb-2">
                     {product.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
@@ -381,7 +381,7 @@ export default function POSPage() {
                   </div>
                   <h3 className="font-medium text-foreground text-sm line-clamp-2 mb-2">{product.name}</h3>
                   <div className="flex items-center justify-between">
-                    <span className="text-primary font-bold">{product.sellingPrice} {sym}</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-bold">{product.sellingPrice} {sym}</span>
                     <span className={`text-xs px-1.5 py-0.5 rounded ${
                       product.stock === 0
                         ? 'bg-red-500/10 text-red-600 dark:text-red-400'
@@ -404,9 +404,9 @@ export default function POSPage() {
         {/* Cart Header */}
         <div className="p-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-primary" />
+            <ShoppingCart className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <h2 className="font-semibold text-foreground">Cart</h2>
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 px-2 py-0.5 rounded-full font-medium">
               {cart.reduce((sum, item) => sum + item.quantity, 0)} items
             </span>
           </div>
@@ -431,10 +431,10 @@ export default function POSPage() {
             </div>
           ) : (
             cart.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 bg-muted/50 rounded-lg p-3">
+              <div key={item.id} className="flex items-center gap-3 bg-muted/50 rounded-xl p-3">
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-foreground text-sm truncate">{item.name}</h4>
-                  <p className="text-sm text-primary font-semibold">{item.price} {sym}</p>
+                  <p className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold">{item.price} {sym}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -522,7 +522,7 @@ export default function POSPage() {
               )}
               <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
                 <span className="text-foreground">Total</span>
-                <span className="text-primary">{total.toFixed(2)} {sym}</span>
+                <span className="text-indigo-600 dark:text-indigo-400">{total.toFixed(2)} {sym}</span>
               </div>
             </>
           ) : (
@@ -546,7 +546,7 @@ export default function POSPage() {
               )}
               <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
                 <span className="text-foreground">Total</span>
-                <span className="text-primary">{total.toFixed(2)} {sym}</span>
+                <span className="text-indigo-600 dark:text-indigo-400">{total.toFixed(2)} {sym}</span>
               </div>
             </>
           )}
@@ -558,7 +558,7 @@ export default function POSPage() {
             type="button"
             onClick={handleCheckout}
             disabled={cart.length === 0}
-            className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-lg hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-4 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl font-semibold text-lg shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
           >
             <Receipt className="w-5 h-5" />
             Checkout
@@ -621,24 +621,24 @@ export default function POSPage() {
                     onClick={() => setPaymentMethod('cash')}
                     className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
                       paymentMethod === 'cash'
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
+                        : 'border-border hover:border-indigo-300'
                     }`}
                   >
-                    <Banknote className={`w-8 h-8 ${paymentMethod === 'cash' ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <span className={`text-sm font-medium ${paymentMethod === 'cash' ? 'text-primary' : 'text-foreground'}`}>Cash</span>
+                    <Banknote className={`w-8 h-8 ${paymentMethod === 'cash' ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'}`} />
+                    <span className={`text-sm font-medium ${paymentMethod === 'cash' ? 'text-indigo-600 dark:text-indigo-400' : 'text-foreground'}`}>Cash</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('card')}
                     className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
                       paymentMethod === 'card'
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
+                        : 'border-border hover:border-indigo-300'
                     }`}
                   >
-                    <CreditCard className={`w-8 h-8 ${paymentMethod === 'card' ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <span className={`text-sm font-medium ${paymentMethod === 'card' ? 'text-primary' : 'text-foreground'}`}>Card</span>
+                    <CreditCard className={`w-8 h-8 ${paymentMethod === 'card' ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'}`} />
+                    <span className={`text-sm font-medium ${paymentMethod === 'card' ? 'text-indigo-600 dark:text-indigo-400' : 'text-foreground'}`}>Card</span>
                   </button>
                 </div>
               </div>
@@ -697,7 +697,7 @@ export default function POSPage() {
                     )}
                     <div className="flex justify-between font-bold text-base pt-2 border-t border-border mt-2">
                       <span className="text-foreground">Total</span>
-                      <span className="text-primary">{total.toFixed(2)} {sym}</span>
+                      <span className="text-indigo-600 dark:text-indigo-400">{total.toFixed(2)} {sym}</span>
                     </div>
                   </div>
                 </div>
@@ -733,7 +733,7 @@ export default function POSPage() {
             {/* Receipt Details */}
             <div className="p-6 space-y-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-primary">{total.toFixed(2)} {sym}</p>
+                <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{total.toFixed(2)} {sym}</p>
                 <p className="text-sm text-muted-foreground">
                   Paid via {paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}
                 </p>
@@ -743,7 +743,7 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={handleDownloadInvoice}
-                className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all flex items-center justify-center gap-2"
               >
                 <Download className="w-5 h-5" />
                 Download A4 Invoice (PDF)
