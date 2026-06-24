@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
 
+# Only the latest deploy matters. If new commits are pushed while a deploy is
+# running/queued, cancel the older ones instead of stacking them up behind the lock.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: SSH & Deploy
