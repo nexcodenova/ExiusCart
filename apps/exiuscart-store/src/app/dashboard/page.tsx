@@ -3,156 +3,221 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  ShoppingBag, Package, Users, ArrowUpRight, ArrowDownRight, AlertTriangle,
-  ShoppingCart, Plus, FileText, BarChart3, DollarSign,
+  ShoppingBag, Package, Users, ArrowUp, ArrowDown, AlertTriangle,
+  ShoppingCart, Plus, FileText, BarChart3, Wallet, MoreHorizontal,
 } from 'lucide-react';
-import { dashboardApi } from '@/lib/api';
+import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell,
+} from 'recharts';
+import { dashboardApi, reportsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface DashboardStats {
-  sales: number;
-  salesChange: number;
-  orders: number;
-  ordersChange: number;
-  products: number;
-  customers: number;
-  cash: number;
-  card: number;
+  sales: number; salesChange: number; orders: number; ordersChange: number;
+  products: number; customers: number; cash: number; card: number;
   lowStockAlerts: { name: string; stock: number; min: number }[];
   recentOrders: { id: string; customer: string; amount: string; status: 'new' | 'paid' | 'completed'; time: string }[];
 }
 
 function greeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [series, setSeries] = useState<{ label: string; sales: number; orders: number }[]>([]);
+  const [range, setRange] = useState<'week' | 'month' | 'year'>('month');
   const [loading, setLoading] = useState(true);
   const { fmt } = useCurrency();
 
   useEffect(() => {
     const shopId = localStorage.getItem('shop_id');
     if (!shopId) { setLoading(false); return; }
-    dashboardApi.getStats(shopId)
-      .then((res) => setStats(res.data))
-      .catch(() => setStats(null))
-      .finally(() => setLoading(false));
+    dashboardApi.getStats(shopId).then((r) => setStats(r.data)).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const shopId = localStorage.getItem('shop_id');
+    if (!shopId) return;
+    const now = new Date(); const from = new Date();
+    if (range === 'week') from.setDate(now.getDate() - 7);
+    else if (range === 'month') from.setMonth(now.getMonth() - 1);
+    else from.setFullYear(now.getFullYear() - 1);
+    reportsApi.getSalesReport(shopId, { from: from.toISOString().split('T')[0], to: now.toISOString().split('T')[0] })
+      .then((r) => setSeries((r.data ?? []).map((d: any) => ({
+        label: new Date(d.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+        sales: Math.round(d.sales ?? 0), orders: d.orders ?? 0,
+      }))))
+      .catch(() => setSeries([]));
+  }, [range]);
+
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const rangeTotal = series.reduce((s, d) => s + d.sales, 0);
+  const payTotal = (stats?.cash ?? 0) + (stats?.card ?? 0);
+  const pie = [
+    { name: 'Cash', value: Math.round(stats?.cash ?? 0) },
+    { name: 'Card', value: Math.round(stats?.card ?? 0) },
+  ];
+  const PIE = ['#0f172a', '#6366f1'];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight text-foreground">{greeting()}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{greeting()}, here&apos;s your store</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">{today}</p>
         </div>
-        <Link
-          href="/dashboard/pos"
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          New sale
+        <Link href="/dashboard/pos"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90">
+          <ShoppingCart className="h-4 w-4" /> New sale
         </Link>
       </div>
 
-      {/* Stat row */}
-      <div className="grid grid-cols-2 divide-y divide-border rounded-xl border border-border bg-card sm:grid-cols-4 sm:divide-y-0 sm:divide-x">
-        <Stat label="Today's sales" value={loading ? '—' : fmt(stats?.sales ?? 0)} change={stats?.salesChange} icon={DollarSign} />
-        <Stat label="Orders" value={loading ? '—' : String(stats?.orders ?? 0)} change={stats?.ordersChange} icon={ShoppingBag} />
-        <Stat label="Products" value={loading ? '—' : String(stats?.products ?? 0)} icon={Package} />
-        <Stat label="Customers" value={loading ? '—' : String(stats?.customers ?? 0)} icon={Users} />
+      {/* Metric cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric icon={Wallet} label="Today's sales" value={loading ? '—' : fmt(stats?.sales ?? 0)} delta={stats?.salesChange} />
+        <Metric icon={ShoppingBag} label="Orders today" value={loading ? '—' : String(stats?.orders ?? 0)} delta={stats?.ordersChange} />
+        <Metric icon={Package} label="Active products" value={loading ? '—' : String(stats?.products ?? 0)} />
+        <Metric icon={Users} label="Customers" value={loading ? '—' : String(stats?.customers ?? 0)} />
       </div>
 
-      {/* Orders + payments */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section className="lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Recent orders</h2>
-            <Link href="/dashboard/orders" className="text-sm text-muted-foreground hover:text-foreground">View all</Link>
+      {/* Chart + payments */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Sales wave */}
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-foreground">Sales overview</h2>
+              <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">{fmt(rangeTotal, 0)}</p>
+            </div>
+            <div className="flex rounded-lg border border-border bg-muted/40 p-0.5">
+              {(['week', 'month', 'year'] as const).map((r) => (
+                <button key={r} onClick={() => setRange(r)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition ${range === r ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
-            {loading ? (
-              <div className="divide-y divide-border">{[1, 2, 3, 4].map(i => <div key={i} className="h-[60px] animate-pulse bg-muted/40" />)}</div>
-            ) : stats?.recentOrders?.length ? (
-              <div className="divide-y divide-border">
-                {stats.recentOrders.map((o) => <OrderRow key={o.id} {...o} />)}
-              </div>
+          <div className="h-72">
+            {series.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No sales in this period yet</div>
             ) : (
-              <div className="px-6 py-14 text-center">
-                <p className="text-sm font-medium text-foreground">No orders yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">Your sales will show up here.</p>
-                <Link href="/dashboard/pos" className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:underline">
-                  <ShoppingCart className="h-4 w-4" /> Open point of sale
-                </Link>
-              </div>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={series} margin={{ top: 6, right: 6, left: -18, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke="#94a3b8" strokeOpacity={0.18} vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} minTickGap={24} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={56} />
+                  <Tooltip content={<TipBox fmt={fmt} />} />
+                  <Area type="monotone" dataKey="sales" stroke="#6366f1" strokeWidth={2.5} fill="url(#g1)" dot={false} activeDot={{ r: 4 }} />
+                </AreaChart>
+              </ResponsiveContainer>
             )}
           </div>
-        </section>
+        </div>
 
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Payments today</h2>
-          <div className="rounded-xl border border-border bg-card p-5">
-            <PaymentSplit cash={stats?.cash ?? 0} card={stats?.card ?? 0} loading={loading} fmt={fmt} />
+        {/* Payments */}
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-semibold text-foreground">Payments today</h2>
+            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
           </div>
-        </section>
+          {payTotal === 0 ? (
+            <div className="flex h-56 flex-col items-center justify-center text-center">
+              <p className="text-2xl font-bold text-foreground">{fmt(0)}</p>
+              <p className="text-sm text-muted-foreground">No payments yet today</p>
+            </div>
+          ) : (
+            <>
+              <div className="relative mx-auto h-44 w-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pie} dataKey="value" innerRadius={58} outerRadius={78} paddingAngle={2} stroke="none">
+                      {pie.map((_, i) => <Cell key={i} fill={PIE[i]} />)}
+                    </Pie>
+                    <Tooltip content={<TipBox fmt={fmt} />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-xs text-muted-foreground">Total</span>
+                  <span className="text-lg font-bold text-foreground">{fmt(payTotal, 0)}</span>
+                </div>
+              </div>
+              <div className="mt-5 space-y-3">
+                <PayRow color="#0f172a" label="Cash" value={fmt(stats?.cash ?? 0)} pct={payTotal ? Math.round((stats!.cash / payTotal) * 100) : 0} />
+                <PayRow color="#6366f1" label="Card" value={fmt(stats?.card ?? 0)} pct={payTotal ? Math.round((stats!.card / payTotal) * 100) : 0} />
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Low stock + quick actions */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section>
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-            <AlertTriangle className="h-4 w-4 text-amber-500" /> Low stock
-          </h2>
-          <div className="rounded-xl border border-border bg-card p-5">
-            {loading ? (
-              <div className="space-y-4">{[1, 2, 3].map(i => <div key={i} className="h-8 animate-pulse rounded bg-muted/40" />)}</div>
-            ) : stats?.lowStockAlerts?.length ? (
-              <ul className="space-y-4">
-                {stats.lowStockAlerts.slice(0, 5).map((it) => <StockRow key={it.name} {...it} />)}
-              </ul>
-            ) : (
-              <p className="py-4 text-center text-sm text-muted-foreground">Everything is well stocked.</p>
-            )}
-            <Link href="/dashboard/inventory" className="mt-4 inline-block text-sm text-muted-foreground hover:text-foreground">Manage inventory →</Link>
+      {/* Recent orders + low stock */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4 sm:px-6">
+            <h2 className="font-semibold text-foreground">Recent orders</h2>
+            <Link href="/dashboard/orders" className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">View all</Link>
           </div>
-        </section>
+          {loading ? (
+            <div className="divide-y divide-border">{[1, 2, 3, 4].map(i => <div key={i} className="h-[62px] animate-pulse bg-muted/30" />)}</div>
+          ) : stats?.recentOrders?.length ? (
+            <div className="divide-y divide-border">{stats.recentOrders.map(o => <OrderRow key={o.id} {...o} />)}</div>
+          ) : (
+            <div className="px-6 py-16 text-center">
+              <p className="text-sm font-medium text-foreground">No orders yet</p>
+              <Link href="/dashboard/pos" className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+                <ShoppingCart className="h-4 w-4" /> Open point of sale
+              </Link>
+            </div>
+          )}
+        </div>
 
-        <section className="lg:col-span-2">
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Shortcuts</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Shortcut href="/dashboard/pos" label="New sale" icon={ShoppingCart} />
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><AlertTriangle className="h-4 w-4 text-amber-500" /> Low stock</h2>
+          {loading ? (
+            <div className="space-y-4">{[1, 2, 3].map(i => <div key={i} className="h-9 animate-pulse rounded bg-muted/30" />)}</div>
+          ) : stats?.lowStockAlerts?.length ? (
+            <ul className="space-y-4">{stats.lowStockAlerts.slice(0, 5).map(it => <StockRow key={it.name} {...it} />)}</ul>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">Everything is well stocked.</p>
+          )}
+          <div className="mt-5 grid grid-cols-2 gap-2">
             <Shortcut href="/dashboard/products" label="Add product" icon={Plus} />
-            <Shortcut href="/dashboard/orders" label="Orders" icon={FileText} />
             <Shortcut href="/dashboard/reports" label="Reports" icon={BarChart3} />
           </div>
-        </section>
+        </div>
       </div>
     </div>
   );
 }
 
-/* Stat — clean cell, number is the hero, delta only if meaningful */
-function Stat({ label, value, change, icon: Icon }: { label: string; value: string; change?: number; icon: React.ElementType }) {
-  const has = change !== undefined && change !== 0;
-  const pos = (change ?? 0) >= 0;
+/* Metric card — icon chip + value + delta badge (TailAdmin grade) */
+function Metric({ icon: Icon, label, value, delta }: { icon: React.ElementType; label: string; value: string; delta?: number }) {
+  const has = delta !== undefined && delta !== 0;
+  const pos = (delta ?? 0) >= 0;
   return (
-    <div className="p-5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-        <Icon className="h-4 w-4 text-muted-foreground/60" />
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted">
+        <Icon className="h-5 w-5 text-foreground/70" />
       </div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">{value}</span>
+      <div className="mt-4 flex items-end justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
+        </div>
         {has && (
-          <span className={`inline-flex items-center text-xs font-medium ${pos ? 'text-emerald-600' : 'text-red-600'}`}>
-            {pos ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}{Math.abs(change!)}%
+          <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-1 text-xs font-semibold ${pos ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400'}`}>
+            {pos ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}{Math.abs(delta!)}%
           </span>
         )}
       </div>
@@ -160,39 +225,17 @@ function Stat({ label, value, change, icon: Icon }: { label: string; value: stri
   );
 }
 
-/* Payment split — slim horizontal bar + figures, two restrained tones */
-function PaymentSplit({ cash, card, loading, fmt }: { cash: number; card: number; loading?: boolean; fmt: (n: number) => string }) {
-  const total = cash + card;
-  const cashPct = total > 0 ? (cash / total) * 100 : 0;
-  const cardPct = total > 0 ? (card / total) * 100 : 0;
-  if (loading) return <div className="h-24 animate-pulse rounded bg-muted/40" />;
-  return (
-    <div>
-      <p className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">{fmt(total)}</p>
-      <p className="text-xs text-muted-foreground">collected today</p>
-      <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-muted">
-        <div className="h-full bg-foreground" style={{ width: `${cashPct}%` }} />
-        <div className="h-full bg-indigo-500" style={{ width: `${cardPct}%` }} />
-      </div>
-      <div className="mt-4 space-y-2.5">
-        <Row dot="bg-foreground" label="Cash" value={fmt(cash)} pct={cashPct} />
-        <Row dot="bg-indigo-500" label="Card" value={fmt(card)} pct={cardPct} />
-      </div>
-    </div>
-  );
-}
-function Row({ dot, label, value, pct }: { dot: string; label: string; value: string; pct: number }) {
+function PayRow({ color, label, value, pct }: { color: string; label: string; value: string; pct: number }) {
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span className={`h-2 w-2 rounded-full ${dot}`} />
+      <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
       <span className="text-muted-foreground">{label}</span>
-      <span className="ml-auto tabular-nums font-medium text-foreground">{value}</span>
-      <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">{Math.round(pct)}%</span>
+      <span className="ml-auto font-medium tabular-nums text-foreground">{value}</span>
+      <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">{pct}%</span>
     </div>
   );
 }
 
-/* Low-stock row — neutral, single thin bar */
 function StockRow({ name, stock, min }: { name: string; stock: number; min: number }) {
   const pct = Math.min(100, Math.max(6, min > 0 ? (stock / (min * 2)) * 100 : stock * 10));
   const critical = stock <= 2;
@@ -200,40 +243,51 @@ function StockRow({ name, stock, min }: { name: string; stock: number; min: numb
     <li>
       <div className="flex items-baseline justify-between text-sm">
         <span className="truncate pr-2 text-foreground">{name}</span>
-        <span className={`shrink-0 tabular-nums ${critical ? 'text-red-600' : 'text-muted-foreground'}`}>{stock} left</span>
+        <span className={`shrink-0 tabular-nums ${critical ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{stock} left</span>
       </div>
-      <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div className={`h-full rounded-full ${critical ? 'bg-red-500' : 'bg-amber-500'}`} style={{ width: `${pct}%` }} />
       </div>
     </li>
   );
 }
 
-/* Order row — quiet, status as a small dot + word */
 function OrderRow({ id, customer, amount, status, time }: { id: string; customer: string; amount: string; status: 'new' | 'paid' | 'completed'; time: string }) {
-  const dot = { new: 'bg-amber-500', paid: 'bg-emerald-500', completed: 'bg-muted-foreground' }[status];
+  const badge = {
+    new: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',
+    paid: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400',
+    completed: 'bg-muted text-muted-foreground',
+  }[status];
   const initials = (customer || 'C').trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
   return (
-    <div className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-muted/40">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground">{initials}</div>
+    <div className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-muted/30 sm:px-6">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">{initials}</div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{id}</p>
         <p className="truncate text-xs text-muted-foreground">{customer} · {time}</p>
       </div>
-      <span className="tabular-nums text-sm font-medium text-foreground">{amount}</span>
-      <span className="flex w-20 items-center justify-end gap-1.5 text-xs text-muted-foreground">
-        <span className={`h-1.5 w-1.5 rounded-full ${dot}`} /><span className="capitalize">{status}</span>
-      </span>
+      <span className="tabular-nums text-sm font-semibold text-foreground">{amount}</span>
+      <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${badge}`}>{status}</span>
     </div>
   );
 }
 
-/* Shortcut — plain bordered tile, accent only on hover */
 function Shortcut({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) {
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40">
-      <Icon className="h-4 w-4 text-muted-foreground" />
-      {label}
+    <Link href={href} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted/40">
+      <Icon className="h-4 w-4 text-muted-foreground" /> {label}
     </Link>
+  );
+}
+
+function TipBox({ active, payload, label, fmt }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md">
+      {label && <p className="mb-1 text-xs font-medium text-foreground">{label}</p>}
+      {payload.map((p: any, i: number) => (
+        <p key={i} className="text-xs text-muted-foreground">{p.name === 'sales' ? 'Sales' : p.name}: <span className="font-semibold text-foreground">{fmt(p.value, 0)}</span></p>
+      ))}
+    </div>
   );
 }
