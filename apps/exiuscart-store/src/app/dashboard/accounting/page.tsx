@@ -7,8 +7,26 @@ import {
   Download, Loader2, BarChart3, ArrowUpRight, ArrowDownRight,
   Receipt, Scale, Calculator,
 } from 'lucide-react';
+import {
+  ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+} from 'recharts';
 import { reportsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+
+function AcctTooltip({ active, payload, label, fmt }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-border bg-card px-3 py-2 shadow-lg">
+      {label && <p className="mb-1 text-xs font-medium text-foreground">{label}</p>}
+      {payload.map((p: any, i: number) => (
+        <p key={i} className="text-xs text-muted-foreground">
+          {p.name}: <span className="font-semibold text-foreground">{fmt(p.value, 0)}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
 
 type Tab = 'overview' | 'pl' | 'balance' | 'tax';
 
@@ -36,6 +54,11 @@ export default function AccountingPage() {
   const totalRevenue = salesData.reduce((s, d) => s + (d.sales ?? 0), 0);
   const totalOrders  = salesData.reduce((s, d) => s + (d.orders ?? 0), 0);
   const avgOrder     = totalOrders ? totalRevenue / totalOrders : 0;
+  const outputVat    = totalRevenue * 0.05 / 1.05;
+  const netRevenue   = totalRevenue - outputVat;
+  const acctChart = salesData.map((d) => ({ label: new Date(d.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), revenue: Math.round(d.sales ?? 0) }));
+  const vatPie = [{ name: 'Net Revenue', value: Math.round(netRevenue) }, { name: 'VAT', value: Math.round(outputVat) }];
+  const VAT_COLORS = ['#6366f1', '#f59e0b'];
 
   const { fmt: fmtCurrency, sym } = useCurrency();
   const fmt = (n: number) => fmtCurrency(n);
@@ -64,7 +87,7 @@ export default function AccountingPage() {
         <div className="flex gap-1 overflow-x-auto">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => setTab(id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${tab === id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition ${tab === id ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25' : 'text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10'}`}>
               <Icon className="w-4 h-4" />{label}
             </button>
           ))}
@@ -94,6 +117,56 @@ export default function AccountingPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Charts: revenue trend + VAT split */}
+              {salesData.length > 0 && (
+                <div className="grid lg:grid-cols-3 gap-5">
+                  <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 shadow-sm">
+                    <h2 className="mb-1 font-semibold text-foreground">Revenue Trend</h2>
+                    <p className="mb-4 text-xs text-muted-foreground">Daily revenue this month</p>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={acctChart} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="acctRev" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.4} vertical={false} />
+                          <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                          <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={56} />
+                          <Tooltip content={<AcctTooltip fmt={fmtCurrency} />} />
+                          <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fill="url(#acctRev)" dot={false} activeDot={{ r: 5, fill: '#10b981' }} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                    <h2 className="mb-1 font-semibold text-foreground">Revenue vs VAT</h2>
+                    <p className="mb-2 text-xs text-muted-foreground">Net revenue and VAT owed</p>
+                    <div className="h-40">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={vatPie} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={66} paddingAngle={2} stroke="none">
+                            {vatPie.map((_, i) => <Cell key={i} fill={VAT_COLORS[i]} />)}
+                          </Pie>
+                          <Tooltip content={<AcctTooltip fmt={fmtCurrency} />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-2 space-y-1.5">
+                      {vatPie.map((p, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs">
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: VAT_COLORS[i] }} />
+                          <span className="flex-1 truncate text-muted-foreground">{p.name}</span>
+                          <span className="font-medium text-foreground">{fmtCurrency(p.value, 0)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Daily revenue table */}
               <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -184,9 +257,9 @@ export default function AccountingPage() {
                   </div>
 
                   {/* Net Profit */}
-                  <div className="flex justify-between py-3 bg-primary/5 rounded-lg px-3 border border-primary/20 mt-3">
+                  <div className="flex justify-between py-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl px-3 border border-indigo-200 dark:border-indigo-500/20 mt-3">
                     <span className="font-bold text-lg text-foreground">Net Profit</span>
-                    <span className="font-bold text-lg text-primary">{fmt(totalRevenue - (totalRevenue * 0.05 / 1.05))} {sym}</span>
+                    <span className="font-bold text-lg text-indigo-600 dark:text-indigo-400">{fmt(totalRevenue - (totalRevenue * 0.05 / 1.05))} {sym}</span>
                   </div>
                 </div>
               </div>
@@ -296,7 +369,7 @@ export default function AccountingPage() {
                 </div>
                 <div className="flex gap-3 pt-2">
                   <Link href="/dashboard/reports/vat"
-                    className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-center text-sm hover:bg-primary/90 transition">
+                    className="flex-1 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl font-medium text-center text-sm shadow-md shadow-indigo-500/25 hover:shadow-lg transition-all">
                     Full VAT Report
                   </Link>
                   <button type="button"
