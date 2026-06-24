@@ -221,7 +221,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
             <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} className="flex-shrink-0" />
             {!collapsed && (
               <span className="text-xl font-bold tracking-tight">
-                <span className="bg-gradient-to-r from-indigo-500 to-violet-600 bg-clip-text text-transparent">Exius</span><span className="text-foreground">Cart</span>
+                <span className="text-indigo-600 dark:text-indigo-400">Exius</span><span className="text-foreground">Cart</span>
               </span>
             )}
           </Link>
@@ -241,8 +241,8 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
           <Link href="/dashboard/profile" onClick={onMobileClose}
             className="block px-4 py-3 border-b border-border hover:bg-muted/50 transition">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm shadow-indigo-500/30">
-                <Store className="w-4 h-4 text-white" />
+              <div className="w-9 h-9 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-center justify-center shrink-0">
+                <Store className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{shopData?.name || '...'}</p>
@@ -274,7 +274,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                     <Link key={item.href} href={item.href} onClick={onMobileClose}
                       title={collapsed ? item.label : undefined}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                        active ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25 font-semibold' : 'text-muted-foreground hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400'
+                        active ? 'bg-indigo-50 text-indigo-600 font-semibold dark:bg-indigo-500/10 dark:text-indigo-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}>
                       <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
                       {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
@@ -320,7 +320,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                           <Link key={item.href} href={item.href} onClick={onMobileClose}
                             title={collapsed ? item.label : undefined}
                             className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-sm ${
-                              active ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/25 font-semibold' : 'text-muted-foreground hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400'
+                              active ? 'bg-indigo-50 text-indigo-600 font-semibold dark:bg-indigo-500/10 dark:text-indigo-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                             }`}>
                             <Icon className={`w-4 h-4 flex-shrink-0 ${collapsed ? 'mx-auto w-5 h-5' : ''}`} />
                             {!collapsed && <span className="font-medium">{item.label}</span>}
