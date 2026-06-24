@@ -29,14 +29,22 @@ build_app() {
     echo "[$name] installing dependencies..."
     npm install --silent
   fi
-  # Keep .next/cache for fast incremental builds (zombies are gone + flock prevents
-  # concurrent builds, so the cache is safe). Only wipe .next on a retry.
-  if ! NEXT_PUBLIC_API_URL=$API_URL npm run build; then
-    echo "[$name] build failed — clearing .next and retrying clean..."
-    rm -rf .next
-    NEXT_PUBLIC_API_URL=$API_URL npm run build
+  # Zero-downtime build: compile into a staging dir (.next-staging) so the LIVE app keeps
+  # serving its current .next untouched. Reuse last build's cache for speed.
+  rm -rf .next-staging
+  [ -d .next/cache ] && mkdir -p .next-staging && cp -a .next/cache .next-staging/cache 2>/dev/null || true
+  if ! NEXT_PUBLIC_API_URL=$API_URL NEXT_DIST_DIR=.next-staging npm run build; then
+    echo "[$name] build failed — retrying clean..."
+    rm -rf .next-staging
+    NEXT_PUBLIC_API_URL=$API_URL NEXT_DIST_DIR=.next-staging npm run build
   fi
-  pm2 restart "$name"
+  # Atomic swap: move the freshly built output into place, then restart. The old
+  # process keeps serving from the renamed dir until pm2 restart picks up the new one.
+  rm -rf .next-old
+  [ -d .next ] && mv .next .next-old
+  mv .next-staging .next
+  pm2 restart "$name" --update-env
+  rm -rf .next-old
 }
 
 # Backend — always restart, only pip install if requirements changed
