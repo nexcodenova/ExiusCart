@@ -90,10 +90,10 @@ export default function AffiliatePage() {
             </div>
           </div>
 
-          {/* Video — frameless, blends into the page (mix-blend hides a white video background) */}
-          <div className="relative flex items-center justify-center">
+          {/* Video — clean rounded media frame (the mp4 has its own background baked in) */}
+          <div className="relative">
             <video
-              className="w-full max-w-xl mix-blend-multiply"
+              className="w-full rounded-2xl object-cover shadow-xl ring-1 ring-slate-900/5"
               src="/affiliate/exiuscart-affiliate-video.mp4"
               autoPlay muted loop playsInline
             />
