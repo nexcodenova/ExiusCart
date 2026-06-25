@@ -69,15 +69,19 @@ export const adminApi = {
   updateLead: (leadId: number, data: any) => api.put(`/admin/leads/${leadId}`, data),
   deleteLead: (leadId: number) => api.delete(`/admin/leads/${leadId}`),
 
-  // Shopping products
-  getShoppingProducts: (params?: { search?: string; shop_id?: number }) =>
+  // Shopping / dropshipping products
+  getShoppingProducts: (params?: { search?: string }) =>
     api.get('/admin/shopping/products', { params }),
   createShoppingProduct: (data: any) => api.post('/admin/shopping/products', data),
   updateShoppingProduct: (id: number, data: any) => api.put(`/admin/shopping/products/${id}`, data),
   deleteShoppingProduct: (id: number) => api.delete(`/admin/shopping/products/${id}`),
-  getShopsForProduct: () => api.get('/admin/shopping/shops'),
-  getCategoriesForShop: (shopId?: number) =>
-    api.get('/admin/shopping/categories', { params: shopId ? { shop_id: shopId } : {} }),
+  uploadShoppingImage: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/admin/shopping/upload-image', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 
   // NexCode Codes
   getNexCodes: () => api.get('/admin/nexcodes'),

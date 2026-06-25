@@ -15,12 +15,19 @@ router = APIRouter()
 
 
 def _product_out(p: Product) -> dict:
+    selling = float(p.price)
+    buying = float(p.cost_price) if p.cost_price else None
+    discount_pct = None
+    if buying and selling and buying > 0 and selling < buying:
+        discount_pct = round((1 - selling / buying) * 100)
     return {
         "id": p.id,
         "name": p.name,
         "description": p.description,
-        "price": float(p.price),
-        "currency": p.shop.currency if p.shop else "USD",
+        "price": selling,
+        "cost_price": buying,
+        "discount_pct": discount_pct,
+        "currency": p.shop.currency if p.shop else "AED",
         "image_url": p.image_url,
         "video_url": getattr(p, "video_url", None),
         "is_trending": p.is_trending,

@@ -1,14 +1,11 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ffffff;
-  --card: #111111;
-  --card-border: #222222;
-  --accent: #6B3FD9;
-  --muted: #999999;
+  --background: #f3f3f3;
+  --foreground: #1a1a1a;
+  --accent: #FF6000;
 }
 
 * {
@@ -30,22 +27,11 @@ a {
   text-decoration: none;
 }
 
-/* Custom scrollbar for dark theme */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Hide scrollbar for category strip */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-
-::-webkit-scrollbar-track {
-  background: #111;
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
-
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-

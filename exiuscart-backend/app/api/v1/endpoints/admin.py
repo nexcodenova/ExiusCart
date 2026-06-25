@@ -3,7 +3,7 @@ Super-admin endpoints — all routes require is_superuser.
 """
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from pydantic import BaseModel
@@ -869,7 +869,8 @@ def _shopping_product_out(p: Product) -> dict:
         "name": p.name,
         "description": p.description,
         "price": float(p.price),
-        "currency": p.shop.currency if p.shop else "USD",
+        "cost_price": float(p.cost_price) if p.cost_price else None,
+        "currency": p.shop.currency if p.shop else "AED",
         "image_url": p.image_url,
         "video_url": p.video_url,
         "is_active": p.is_active,
@@ -888,13 +889,12 @@ def _shopping_product_out(p: Product) -> dict:
 class ShoppingProductCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    price: float
+    price: float                          # selling price shown to customers
+    cost_price: Optional[float] = None   # buying/supplier price
     sku: Optional[str] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None
-    stock: int = 0
-    category_id: Optional[int] = None
-    shop_id: int
+    category_name: Optional[str] = None  # free-text, auto-creates category in admin shop
     is_featured: bool = False
     is_trending: bool = False
     is_active: bool = True
@@ -904,11 +904,11 @@ class ShoppingProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     price: Optional[float] = None
+    cost_price: Optional[float] = None
     sku: Optional[str] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None
-    stock: Optional[int] = None
-    category_id: Optional[int] = None
+    category_name: Optional[str] = None
     is_featured: Optional[bool] = None
     is_trending: Optional[bool] = None
     is_active: Optional[bool] = None
@@ -934,35 +934,66 @@ def admin_list_shopping_products(
     return [_shopping_product_out(p) for p in query.limit(200).all()]
 
 
+def _get_or_create_category(db: Session, shop_id: int, name: str):
+    from app.models.product import Category
+    cat_slug = slugify(name)
+    cat = db.query(Category).filter(Category.shop_id == shop_id, Category.slug == cat_slug).first()
+    if not cat:
+        cat = Category(name=name.strip().title(), slug=cat_slug, shop_id=shop_id)
+        db.add(cat)
+        db.flush()
+    return cat
+
+
+@router.post("/admin/shopping/upload-image")
+async def admin_upload_shopping_image(
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    """Upload a product image to R2 and return the public URL."""
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File must be under 10 MB")
+    ext = (file.filename or "img").rsplit(".", 1)[-1].lower()
+    from app.core.storage import upload_shop_image
+    url = upload_shop_image(contents, 0, "catalog", ext, content_type=file.content_type or "image/jpeg")
+    return {"url": url}
+
+
 @router.post("/admin/shopping/products", status_code=201)
 def admin_create_shopping_product(
     data: ShoppingProductCreate,
     db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
-    shop = db.query(Shop).filter(Shop.id == data.shop_id).first()
+    # Auto-assign to the first active shop (ExiusCart admin shop)
+    shop = db.query(Shop).filter(Shop.is_active == True).order_by(Shop.id.asc()).first()
     if not shop:
-        raise HTTPException(status_code=404, detail="Shop not found")
+        raise HTTPException(status_code=400, detail="No active shop available for product assignment")
+
+    cat_id = None
+    if data.category_name:
+        cat_id = _get_or_create_category(db, shop.id, data.category_name).id
+
     product = Product(
         name=data.name,
         slug=_slugify_unique(data.name),
         description=data.description,
         price=data.price,
+        cost_price=data.cost_price,
         sku=data.sku,
         image_url=data.image_url,
         video_url=data.video_url,
-        quantity=data.stock,
-        category_id=data.category_id,
-        shop_id=data.shop_id,
+        quantity=0,
+        category_id=cat_id,
+        shop_id=shop.id,
         is_featured=data.is_featured,
         is_trending=data.is_trending,
         is_active=data.is_active,
     )
     db.add(product)
     db.commit()
-    db.refresh(product)
-    # reload with relationships
-    db.refresh(product)
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
     ).filter(Product.id == product.id).first()
@@ -980,8 +1011,11 @@ def admin_update_shopping_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     for field, value in data.model_dump(exclude_unset=True).items():
-        if field == "stock":
-            product.quantity = value
+        if field == "category_name":
+            if value:
+                product.category_id = _get_or_create_category(db, product.shop_id, value).id
+            else:
+                product.category_id = None
         else:
             setattr(product, field, value)
     db.commit()

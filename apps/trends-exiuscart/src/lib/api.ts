@@ -9,14 +9,18 @@ export interface Product {
   id: number;
   name: string;
   price: number;
+  cost_price?: number | null;
+  discount_pct?: number | null;
   currency: string;
   image_url?: string;
   video_url?: string;
   is_trending: boolean;
   is_featured: boolean;
   category_name?: string;
+  category_slug?: string;
   stock: number;
   description?: string;
+  sku?: string;
 }
 
 export interface Category {
