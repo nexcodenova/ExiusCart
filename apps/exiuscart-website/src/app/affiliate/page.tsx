@@ -65,10 +65,9 @@ export default function AffiliatePage() {
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
+      {/* Hero — background matches the video's beige so the clip blends seamlessly */}
+      <section className="relative overflow-hidden bg-[#E4DBD1]">
         <div className="pointer-events-none absolute -right-32 -top-24 h-72 w-72 rounded-full bg-[#6B3FD9]/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-amber-200/30 blur-3xl" />
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:py-24">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-[#6B3FD9]/20 bg-[#6B3FD9]/5 px-4 py-1.5 text-sm font-medium text-[#6B3FD9]">
@@ -90,10 +89,10 @@ export default function AffiliatePage() {
             </div>
           </div>
 
-          {/* Video — clean rounded media frame (the mp4 has its own background baked in) */}
+          {/* Video — frameless; its beige background == the hero background, so it blends */}
           <div className="relative">
             <video
-              className="w-full rounded-2xl object-cover shadow-xl ring-1 ring-slate-900/5"
+              className="w-full"
               src="/affiliate/exiuscart-affiliate-video.mp4"
               autoPlay muted loop playsInline
             />
