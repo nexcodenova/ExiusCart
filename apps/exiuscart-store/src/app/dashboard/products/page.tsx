@@ -5,6 +5,7 @@ import {
   Plus, Search, Edit, Trash2, Package, X, ChevronDown,
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
+  Printer, Lock,
 } from 'lucide-react';
 import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi } from '@/lib/api';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
@@ -183,6 +184,42 @@ export default function ProductsPage() {
   const outOfStockCount = products.filter((p) => p.stock === 0).length;
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
+  const [planType, setPlanType] = useState<string>('');
+
+  useEffect(() => {
+    if (!shopId) return;
+    import('@/lib/api').then(({ subscriptionApi }) => {
+      subscriptionApi.getCurrent(shopId)
+        .then((res) => setPlanType(res.data?.plan?.plan_type ?? ''))
+        .catch(() => {});
+    });
+  }, [shopId]);
+
+  const isTheDersiBasic = planType === 'thedersi_basic';
+
+  const togglePrintSelect = (id: string) => {
+    setSelectedForPrint(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkPrint = () => {
+    const items = displayedProducts
+      .filter(p => selectedForPrint.has(p.id) && (p as any).barcode)
+      .map(p => ({
+        name: p.name,
+        sku: p.sku,
+        barcode: (p as any).barcode,
+        price: `${p.sellingPrice} ${sym}`,
+      }));
+    if (!items.length) return;
+    const data = encodeURIComponent(JSON.stringify(items));
+    window.open(`/dashboard/products/barcode?data=${data}`, '_blank');
+    setSelectedForPrint(new Set());
+  };
 
   const displayedProducts = stockFilter === 'low'
     ? products.filter(p => p.stock > 0 && p.stock <= p.lowStockAlert)
@@ -198,7 +235,24 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold text-foreground">Products</h1>
           <p className="text-muted-foreground text-sm">Manage your product catalog</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {selectedForPrint.size > 0 && (
+            isTheDersiBasic ? (
+              <div className="inline-flex items-center gap-2 border border-border text-muted-foreground px-4 py-2.5 rounded-lg text-sm cursor-not-allowed select-none" title="Upgrade to TheDersi Pro to bulk print">
+                <Lock className="w-4 h-4" />
+                Bulk Print ({selectedForPrint.size}) — Pro only
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleBulkPrint}
+                className="inline-flex items-center gap-2 border border-primary text-primary px-4 py-2.5 rounded-lg font-medium hover:bg-primary/10 transition text-sm"
+              >
+                <Printer className="w-4 h-4" />
+                Print {selectedForPrint.size} Barcode{selectedForPrint.size !== 1 ? 's' : ''}
+              </button>
+            )
+          )}
           <button
             type="button"
             onClick={() => { setCsvRows([]); setCsvError(''); setCsvResult(null); setShowCsvModal(true); }}
@@ -352,6 +406,27 @@ export default function ProductsPage() {
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
+                    <th className="p-4 w-10">
+                      {(() => {
+                        const withBarcode = displayedProducts.filter(p => (p as any).barcode);
+                        const allSelected = withBarcode.length > 0 && withBarcode.every(p => selectedForPrint.has(p.id));
+                        return (
+                          <input
+                            type="checkbox"
+                            title="Select all with barcodes"
+                            checked={allSelected}
+                            onChange={() => {
+                              if (allSelected) {
+                                setSelectedForPrint(new Set());
+                              } else {
+                                setSelectedForPrint(new Set(withBarcode.map(p => p.id)));
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                          />
+                        );
+                      })()}
+                    </th>
                     <th className="text-left p-4 text-sm font-medium text-muted-foreground">Product</th>
                     <th className="text-left p-4 text-sm font-medium text-muted-foreground">SKU</th>
                     <th className="text-left p-4 text-sm font-medium text-muted-foreground">Category</th>
@@ -363,7 +438,19 @@ export default function ProductsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {displayedProducts.map((product) => (
-                    <tr key={product.id} className="hover:bg-muted/30 transition">
+                    <tr key={product.id} className={`hover:bg-muted/30 transition ${selectedForPrint.has(product.id) ? 'bg-primary/5' : ''}`}>
+                      <td className="p-4 w-10">
+                        {(product as any).barcode ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedForPrint.has(product.id)}
+                            onChange={() => togglePrintSelect(product.id)}
+                            className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                          />
+                        ) : (
+                          <span className="w-4 h-4 block" />
+                        )}
+                      </td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
