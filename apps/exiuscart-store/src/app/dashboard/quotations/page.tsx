@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, ClipboardList, X } from 'lucide-react';
+import { Search, Plus, ClipboardList, X, Clock, CheckCircle2, FileText } from 'lucide-react';
 import { quotationsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -52,33 +52,32 @@ export default function QuotationsPage() {
           <p className="text-muted-foreground text-sm">Create and manage price quotes for customers</p>
         </div>
         <button type="button" onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition">
+          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm">
           <Plus className="w-4 h-4" /> New Quotation
         </button>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total', value: quotations.length, color: 'text-foreground' },
-          { label: 'Pending', value: quotations.filter(q=>q.status==='pending').length, color: 'text-yellow-500' },
-          { label: 'Accepted', value: quotations.filter(q=>q.status==='accepted').length, color: 'text-green-500' },
-        ].map(s => (
-          <div key={s.label} className="bg-card rounded-xl border border-border p-4">
-            <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-            <p className={`text-2xl font-bold ${s.color}`}>{loading ? '—' : s.value}</p>
+          { label: 'Total quotes', icon: FileText, value: quotations.length, color: '' },
+          { label: 'Pending', icon: Clock, value: quotations.filter(q=>q.status==='pending').length, color: 'text-yellow-600 dark:text-yellow-400' },
+          { label: 'Accepted', icon: CheckCircle2, value: quotations.filter(q=>q.status==='accepted').length, color: 'text-green-600 dark:text-green-400' },
+        ].map(({ label, icon: Icon, value, color }) => (
+          <div key={label} className="bg-card rounded-2xl border border-border p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Icon className="h-5 w-5 text-foreground/70" /></div>
+            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+            <p className={`mt-0.5 text-2xl font-bold tracking-tight tabular-nums ${color || 'text-foreground'}`}>{loading ? '—' : value}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <input type="text" placeholder="Search quotations..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground" />
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input type="text" placeholder="Search quotations..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-11 pr-4 py-2.5 bg-card border border-border rounded-xl focus:ring-2 focus:ring-foreground/10 outline-none text-foreground placeholder:text-muted-foreground" />
       </div>
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
         {loading ? (
           <div className="p-8 space-y-3">{[1,2,3].map(i => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}</div>
         ) : filtered.length === 0 ? (
@@ -88,7 +87,7 @@ export default function QuotationsPage() {
             <p className="text-sm text-muted-foreground mb-5">{searchQuery ? 'Try a different search' : 'Create your first quotation to send price quotes to customers'}</p>
             {!searchQuery && (
               <button type="button" onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+                className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition">
                 <Plus className="w-4 h-4" /> New Quotation
               </button>
             )}

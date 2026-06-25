@@ -209,7 +209,7 @@ export default function ProductsPage() {
           <button
             type="button"
             onClick={() => { setEditingProduct(null); setShowAddModal(true); }}
-            className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition"
+            className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm"
           >
             <Plus className="w-5 h-5" /> Add Product
           </button>
@@ -218,22 +218,18 @@ export default function ProductsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Total Products</p>
-          <p className="text-2xl font-bold text-foreground">{loading ? '—' : products.length}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Categories</p>
-          <p className="text-2xl font-bold text-foreground">{categories.length}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Low Stock</p>
-          <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{loading ? '—' : lowStockCount}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Out of Stock</p>
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{loading ? '—' : outOfStockCount}</p>
-        </div>
+        {[
+          { label: 'Total products', icon: Package, value: loading ? '—' : String(products.length), color: '' },
+          { label: 'Categories', icon: Star, value: String(categories.length), color: '' },
+          { label: 'Low stock', icon: AlertCircle, value: loading ? '—' : String(lowStockCount), color: lowStockCount > 0 ? 'text-orange-600 dark:text-orange-400' : '' },
+          { label: 'Out of stock', icon: AlertCircle, value: loading ? '—' : String(outOfStockCount), color: outOfStockCount > 0 ? 'text-red-600 dark:text-red-400' : '' },
+        ].map(({ label, icon: Icon, value, color }) => (
+          <div key={label} className="bg-card rounded-2xl border border-border p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Icon className="h-5 w-5 text-foreground/70" /></div>
+            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+            <p className={`mt-0.5 text-2xl font-bold tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Low stock alert banner */}
@@ -279,7 +275,7 @@ export default function ProductsPage() {
               placeholder="Search by name, SKU, or barcode..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground placeholder:text-muted-foreground"
+              className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground placeholder:text-muted-foreground"
             />
           </div>
           <div className="relative">
@@ -287,7 +283,7 @@ export default function ProductsPage() {
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               aria-label="Filter by category"
-              className="appearance-none w-full sm:w-48 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+              className="appearance-none w-full sm:w-48 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
             >
               <option value="All">All Categories</option>
               {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
@@ -298,7 +294,7 @@ export default function ProductsPage() {
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setStockFilter('all')}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground border-border hover:border-primary hover:text-primary'}`}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'all' ? 'bg-foreground text-background border-foreground' : 'bg-muted text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground'}`}
             >All</button>
             {outOfStockCount > 0 && (
               <button
@@ -343,7 +339,7 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => { setEditingProduct(null); setShowAddModal(true); }}
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition"
+                className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
               >
                 <Plus className="w-4 h-4" /> Add First Product
               </button>
@@ -543,7 +539,7 @@ export default function ProductsPage() {
               {!csvResult && (
                 <div
                   onClick={() => csvInputRef.current?.click()}
-                  className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary transition"
+                  className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-foreground/40 transition"
                 >
                   <FileSpreadsheet className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
                   <p className="text-foreground font-medium">Click to upload CSV file</p>
@@ -621,7 +617,7 @@ export default function ProductsPage() {
                   type="button"
                   onClick={handleCsvImport}
                   disabled={csvImporting}
-                  className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 bg-foreground text-background rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {csvImporting && <Loader2 className="w-4 h-4 animate-spin" />}
                   Import {csvRows.length} Products
@@ -1110,7 +1106,7 @@ function ProductModal({
                           {(field.options ?? []).map((opt) => {
                             const selected = (attrValues[field.field_key] ?? '').split(',').filter(Boolean).includes(opt);
                             return (
-                              <button key={opt} type="button" onClick={() => toggleMultiselect(field.field_key, opt)} className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${selected ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-foreground border-border hover:border-primary/50'}`}>
+                              <button key={opt} type="button" onClick={() => toggleMultiselect(field.field_key, opt)} className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${selected ? 'bg-foreground text-background border-foreground' : 'bg-muted text-foreground border-border hover:border-foreground/30'}`}>
                                 {opt}
                               </button>
                             );
@@ -1273,7 +1269,7 @@ function ProductModal({
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2.5 bg-foreground text-background rounded-lg hover:opacity-90 transition font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {saving ? 'Saving...' : product ? 'Update Product' : 'Add Product'}

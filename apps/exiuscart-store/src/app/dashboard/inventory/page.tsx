@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Package, AlertTriangle, Plus, Minus, X, ChevronDown, Loader2 } from 'lucide-react';
+import { Search, Package, AlertTriangle, Plus, Minus, X, ChevronDown, Loader2, DollarSign, PackageX } from 'lucide-react';
 import { productsApi, inventoryApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -98,34 +98,30 @@ export default function InventoryPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Total SKUs</p>
-          <p className="text-2xl font-bold text-foreground">{loading ? '—' : items.length}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Low Stock</p>
-          <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{loading ? '—' : lowStock}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Out of Stock</p>
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{loading ? '—' : outOfStock}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Inventory Value</p>
-          <p className="text-2xl font-bold text-foreground">{loading ? '—' : `${inventoryValue.toLocaleString()} ${sym}`}</p>
-        </div>
+        {[
+          { label: 'Total SKUs', icon: Package, value: loading ? '—' : String(items.length), color: '' },
+          { label: 'Low Stock', icon: AlertTriangle, value: loading ? '—' : String(lowStock), color: 'text-orange-600 dark:text-orange-400' },
+          { label: 'Out of Stock', icon: PackageX, value: loading ? '—' : String(outOfStock), color: 'text-red-600 dark:text-red-400' },
+          { label: 'Inventory Value', icon: DollarSign, value: loading ? '—' : `${inventoryValue.toLocaleString()} ${sym}`, color: '' },
+        ].map(({ label, icon: Icon, value, color }) => (
+          <div key={label} className="bg-card rounded-2xl border border-border p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Icon className="h-5 w-5 text-foreground/70" /></div>
+            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+            <p className={`mt-0.5 text-2xl font-bold tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-card rounded-xl border border-border p-4 flex flex-col sm:flex-row gap-4">
+      <div className="bg-card rounded-2xl border border-border p-4 flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search by name or SKU..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
+            className="w-full pl-11 pr-4 py-2.5 bg-muted border border-border rounded-xl focus:ring-2 focus:ring-foreground/10 outline-none text-foreground placeholder:text-muted-foreground"
           />
         </div>
         <div className="relative">
@@ -133,7 +129,7 @@ export default function InventoryPage() {
             value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value as StockFilter)}
             aria-label="Filter by stock level"
-            className="appearance-none w-full sm:w-44 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+            className="appearance-none w-full sm:w-44 px-4 py-2.5 pr-10 bg-muted border border-border rounded-xl focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
           >
             <option value="all">All Items</option>
             <option value="low">Low Stock</option>
@@ -145,7 +141,7 @@ export default function InventoryPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
         {loading ? (
           <div className="p-8 space-y-3">
             {[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}
@@ -239,15 +235,15 @@ export default function InventoryPage() {
               </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-1.5 block">Update Selling Price ({sym}) <span className="opacity-60 font-normal">— leave blank to keep current</span></label>
-                <input type="number" value={newPrice} min={0} onChange={(e) => setNewPrice(e.target.value)} placeholder={String(adjustingItem.price)} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                <input type="number" value={newPrice} min={0} onChange={(e) => setNewPrice(e.target.value)} placeholder={String(adjustingItem.price)} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground" />
               </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-1.5 block">Reason</label>
-                <input type="text" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="e.g. Stock count, price update..." className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                <input type="text" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="e.g. Stock count, price update..." className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground" />
               </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setAdjustingItem(null)} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>
-                <button type="button" onClick={handleAdjust} disabled={savingPrice || (adjustQty === 0 && newPrice === '')} className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                <button type="button" onClick={handleAdjust} disabled={savingPrice || (adjustQty === 0 && newPrice === '')} className="flex-1 px-4 py-2.5 bg-foreground text-background rounded-lg hover:opacity-90 transition font-medium disabled:opacity-50 flex items-center justify-center gap-2">
                   {savingPrice && <Loader2 className="w-4 h-4 animate-spin" />}
                   Save
                 </button>
