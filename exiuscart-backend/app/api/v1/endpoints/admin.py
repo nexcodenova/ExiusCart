@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.api.v1.deps import get_current_user
+from app.core.email import send_dashboard_live_email
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
@@ -276,13 +277,23 @@ def approve_subscription(
     ).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
-    sub.status = "active"
     now = datetime.now(timezone.utc)
     sub.starts_at = now
-    if sub.billing_type == "monthly":
-        sub.expires_at = now + timedelta(days=30)
+
+    if sub.plan_type == "free_trial":
+        # Free trial approval: start the 14-day countdown now
+        sub.status = "trial"
+        sub.trial_ends_at = now + timedelta(days=14)
+        sub.expires_at = now + timedelta(days=14)
     else:
-        sub.expires_at = None  # Lifetime / one-time
+        # Paid plan approval: activate immediately
+        sub.status = "active"
+        if sub.billing_type == "monthly":
+            sub.expires_at = now + timedelta(days=30)
+        elif sub.billing_type == "yearly":
+            sub.expires_at = now + timedelta(days=365)
+        else:
+            sub.expires_at = None  # Lifetime / one-time
 
     # ── Auto-commission: check if shop owner was referred by an affiliate ──────
     if sub.shop and sub.amount_paid and float(sub.amount_paid) > 0:
@@ -322,6 +333,20 @@ def approve_subscription(
                     db.add(commission)
 
     db.commit()
+
+    # Send "dashboard is live" email to shop owner
+    if sub.shop:
+        owner = db.query(User).filter(User.id == sub.shop.owner_id).first()
+        if owner:
+            from concurrent.futures import ThreadPoolExecutor
+            _pool = ThreadPoolExecutor(max_workers=1)
+            _pool.submit(
+                send_dashboard_live_email,
+                owner.email,
+                owner.full_name or "",
+                sub.shop.name or "Your Shop",
+            )
+
     return {"message": "Subscription approved", "id": sub_id}
 
 
@@ -346,10 +371,10 @@ def pending_subscriptions(
     db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
-    """Trial subscriptions awaiting manual approval (shown on dashboard)."""
+    """Accounts awaiting manual admin approval (pending_approval = new registrations, trial = legacy)."""
     subs = db.query(Subscription).options(joinedload(Subscription.shop)).filter(
-        Subscription.status == "trial"
-    ).order_by(Subscription.created_at.desc()).limit(10).all()
+        Subscription.status.in_(["pending_approval", "trial"])
+    ).order_by(Subscription.created_at.desc()).limit(50).all()
 
     return [
         {

@@ -168,6 +168,36 @@ def send_thedersi_welcome_email(to: str, full_name: str,
     )
 
 
+def send_dashboard_live_email(to: str, full_name: str, shop_name: str,
+                              login_url: str = "https://store.exiuscart.com/login") -> bool:
+    first = (full_name or "there").split()[0]
+    content = f"""
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Your dashboard is live, {first}!</h2>
+      <p style="margin:0 0 12px;color:#94a3b8;line-height:1.7;">
+        Great news — your ExiusCart account for <strong style="color:#fff;">{shop_name}</strong> has been approved.
+        Your <strong style="color:#fff;">14-day free trial</strong> has started. You now have full access to
+        manage products, inventory, orders, invoices, and more.
+      </p>
+      <div style="background:#1a2540;border:1px solid #2a3a5c;border-radius:12px;padding:20px;margin:0 0 20px;">
+        <p style="margin:0 0 6px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Your trial period</p>
+        <p style="margin:0;font-size:18px;font-weight:700;color:#6B3FD9;">14 days free access</p>
+        <p style="margin:4px 0 0;font-size:13px;color:#94a3b8;">All features included. No credit card required during trial.</p>
+      </div>
+      <a href="{login_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:15px;margin-bottom:20px;">
+        Open Your Dashboard &rarr;
+      </a>
+      <p style="margin:0;color:#64748b;font-size:12px;">
+        Need help getting started? Email <a href="mailto:support@exiuscart.com" style="color:#6B3FD9;">support@exiuscart.com</a>
+        or visit <a href="https://exiuscart.com" style="color:#6B3FD9;">exiuscart.com</a>
+      </p>"""
+    return send_email(
+        to=to,
+        subject=f"Your ExiusCart dashboard is live — 14-day trial started!",
+        html_body=_welcome_base(content),
+        text_body=f"Hi {first}! Your ExiusCart account ({shop_name}) has been approved. Your 14-day free trial has started. Login at {login_url}",
+    )
+
+
 def send_password_setup_email(to: str, full_name: str, setup_url: str) -> bool:
     first = (full_name or "there").split()[0]
     content = f"""

@@ -155,29 +155,26 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
     otp.is_used = True
     user.is_verified = True
 
-    # Create free trial subscription for the user's shop (14 days)
+    # Create pending_approval subscription — trial countdown starts only after admin approves
     shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
     if shop:
         existing_sub = db.query(Subscription).filter(Subscription.shop_id == shop.id).first()
         if not existing_sub:
-            trial_start = now
             trial_sub = Subscription(
                 shop_id=shop.id,
                 plan_type="free_trial",
                 billing_type="monthly",
-                status="trial",
+                status="pending_approval",
                 amount_paid=0,
                 currency=shop.currency or "AED",
-                starts_at=trial_start,
-                trial_ends_at=trial_start + timedelta(days=14),
-                expires_at=trial_start + timedelta(days=14),
             )
             db.add(trial_sub)
 
     db.commit()
     db.refresh(user)
 
-    _email_pool.submit(send_welcome_email, user.email, user.full_name or "")
+    _email_pool.submit(send_welcome_email, user.email, user.full_name or "",
+                       "Free Trial (Pending Approval)")
 
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token, user=UserResponse.model_validate(user))

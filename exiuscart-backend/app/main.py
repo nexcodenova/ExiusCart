@@ -13,11 +13,10 @@ with engine.connect() as conn:
     conn.execute(__import__('sqlalchemy').text(
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE NOT NULL;"
     ))
-    # Back-fill: create free_trial subscriptions for verified shops that have none
+    # Back-fill: create pending_approval subscriptions for verified shops that have none
     conn.execute(__import__('sqlalchemy').text("""
-        INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, starts_at, trial_ends_at, expires_at, created_at)
-        SELECT s.id, 'free_trial', 'monthly', 'trial', 0, COALESCE(s.currency, 'AED'),
-               NOW(), NOW() + INTERVAL '14 days', NOW() + INTERVAL '14 days', NOW()
+        INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
+        SELECT s.id, 'free_trial', 'monthly', 'pending_approval', 0, COALESCE(s.currency, 'AED'), NOW()
         FROM shops s
         JOIN users u ON u.id = s.owner_id
         WHERE u.is_verified = TRUE

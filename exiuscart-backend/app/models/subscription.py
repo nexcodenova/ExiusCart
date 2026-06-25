@@ -23,6 +23,7 @@ class SubscriptionStatus(str, enum.Enum):
     EXPIRED = "expired"
     CANCELLED = "cancelled"
     TRIAL = "trial"
+    PENDING_APPROVAL = "pending_approval"
 
 
 class Plan(Base):

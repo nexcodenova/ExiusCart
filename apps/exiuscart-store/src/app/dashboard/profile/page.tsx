@@ -13,6 +13,8 @@ import {
   Save,
   Building2,
   Receipt,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 
 const EMPTY_SHOP = {
@@ -21,8 +23,61 @@ const EMPTY_SHOP = {
   logo: null as string | null,
 };
 
+type SubPlan = {
+  status: string;
+  name: string;
+  daysLeft: number | null;
+  is_trial: boolean;
+  is_pending_approval: boolean;
+  is_expired: boolean;
+} | null;
+
+function PlanBadge({ plan }: { plan: SubPlan }) {
+  if (!plan) return null;
+
+  if (plan.is_pending_approval) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full font-medium">
+        <Clock className="w-3 h-3" />
+        Pending Admin Approval
+      </span>
+    );
+  }
+  if (plan.is_expired || plan.status === 'expired') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs bg-red-500/10 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-full font-medium">
+        <AlertCircle className="w-3 h-3" />
+        Trial Expired
+      </span>
+    );
+  }
+  if (plan.is_trial) {
+    const days = plan.daysLeft ?? 0;
+    return (
+      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+        days <= 3
+          ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+          : days <= 7
+          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+          : 'bg-primary/10 text-primary'
+      }`}>
+        Free Trial &bull; {days} day{days !== 1 ? 's' : ''} left
+      </span>
+    );
+  }
+  if (plan.status === 'active') {
+    return (
+      <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
+        {plan.name}
+      </span>
+    );
+  }
+  return null;
+}
+
 export default function ShopProfilePage() {
   const [shopData, setShopData] = useState(EMPTY_SHOP);
+  const [subPlan, setSubPlan] = useState<SubPlan>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -30,25 +85,29 @@ export default function ShopProfilePage() {
 
   useEffect(() => {
     if (!shopId) { setLoading(false); return; }
-    import('@/lib/api').then(({ shopApi }) => {
-      shopApi.getMyShop()
-        .then((res) => {
-          const d = res.data;
-          setShopData({
-            name: d.name ?? '',
-            tradeLicense: d.trade_license ?? '',
-            vatNumber: d.tax_number ?? '',
-            address: d.address ?? '',
-            phone: d.phone ?? '',
-            email: d.email ?? '',
-            website: d.website ?? '',
-            whatsapp: d.whatsapp ?? '',
-            description: d.description ?? '',
-            logo: d.logo ?? null,
-          });
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
+    import('@/lib/api').then(({ shopApi, subscriptionApi }) => {
+      const shopReq = shopApi.getMyShop().then((res) => {
+        const d = res.data;
+        setShopData({
+          name: d.name ?? '',
+          tradeLicense: d.trade_license ?? '',
+          vatNumber: d.tax_number ?? '',
+          address: d.address ?? '',
+          phone: d.phone ?? '',
+          email: d.email ?? '',
+          website: d.website ?? '',
+          whatsapp: d.whatsapp ?? '',
+          description: d.description ?? '',
+          logo: d.logo ?? null,
+        });
+      });
+
+      const subReq = subscriptionApi.getCurrent(shopId).then((res) => {
+        const p = res.data?.plan;
+        if (p) setSubPlan(p);
+      }).catch(() => {});
+
+      Promise.allSettled([shopReq, subReq]).finally(() => setLoading(false));
     });
   }, [shopId]);
 
@@ -148,12 +207,12 @@ export default function ShopProfilePage() {
               <h2 className="text-2xl font-bold text-foreground">{shopData.name}</h2>
             )}
             <div className="flex flex-wrap items-center gap-3 mt-2">
-              <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
-                Active
-              </span>
-              <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
-                Pro Trial • 5 days left
-              </span>
+              {subPlan && (subPlan.status === 'active' || subPlan.is_trial) && (
+                <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2.5 py-1 rounded-full font-medium">
+                  Active
+                </span>
+              )}
+              <PlanBadge plan={subPlan} />
             </div>
           </div>
         </div>
@@ -180,7 +239,6 @@ export default function ShopProfilePage() {
             value={shopData.vatNumber}
             onChange={(value) => setShopData({ ...shopData, vatNumber: value })}
             isEditing={isEditing}
-            readOnly
           />
         </div>
       </div>

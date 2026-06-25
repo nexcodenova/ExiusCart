@@ -251,10 +251,10 @@ def get_shop_subscription(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
-    # Prefer active/trial — never surface a pending request as the "current" plan
+    # Priority: active > trial > pending_approval > any other
     sub = db.query(Subscription).filter(
         Subscription.shop_id == shop_id,
-        Subscription.status.in_(["active", "trial"]),
+        Subscription.status.in_(["active", "trial", "pending_approval"]),
     ).order_by(Subscription.created_at.desc()).first()
     if not sub:
         sub = db.query(Subscription).filter(
@@ -284,8 +284,10 @@ def get_shop_subscription(
             "price": cat.get("price", float(sub.amount_paid or 0)),
             "status": sub.status,
             "is_trial": sub.plan_type == "free_trial" and sub.status == "trial",
+            "is_pending_approval": sub.status == "pending_approval",
             "is_expired": sub.status == "expired",
             "nextBilling": expires.isoformat() if expires else None,
+            "trialEndsAt": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
             "staffIncluded": cat.get("staff", 1),
             "extraStaff": 0,
             "extraStaffCost": 0,
