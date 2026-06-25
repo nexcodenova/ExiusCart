@@ -43,7 +43,12 @@ build_app() {
   rm -rf .next-old
   [ -d .next ] && mv .next .next-old
   mv .next-staging .next
-  pm2 restart "$name" --update-env
+  if pm2 describe "$name" > /dev/null 2>&1; then
+    pm2 restart "$name" --update-env
+  else
+    echo "[$name] not in PM2, starting fresh on $(grep -oP '(?<=-p )\d+' package.json 2>/dev/null || echo 'default port')..."
+    pm2 start "npm start" --name "$name" --cwd "$dir"
+  fi
   rm -rf .next-old
 }
 
@@ -55,7 +60,13 @@ if echo "$CHANGED" | grep -q "exiuscart-backend/requirements.txt"; then
   pip install -r requirements.txt -q
   echo "requirements updated"
 fi
-pm2 restart exiuscart-backend --update-env
+# Resilient restart: if the named process exists restart it, otherwise start fresh
+if pm2 describe exiuscart-backend > /dev/null 2>&1; then
+  pm2 restart exiuscart-backend --update-env
+else
+  echo "[exiuscart-backend] not in PM2, starting fresh..."
+  pm2 start "$PROJECT_DIR/exiuscart-backend/start.sh" --name exiuscart-backend
+fi
 deactivate
 
 # Admin
@@ -82,5 +93,14 @@ else
   echo "--- Affiliates (no changes, skipped) ---"
 fi
 
+# Trends storefront
+if echo "$CHANGED" | grep -qE "apps/trends-exiuscart/|packages/"; then
+  echo "--- Trends (changed) ---"
+  build_app "$PROJECT_DIR/apps/trends-exiuscart" trends-exiuscart
+else
+  echo "--- Trends (no changes, skipped) ---"
+fi
+
 echo "=== Deploy Complete ==="
+pm2 save
 pm2 status
