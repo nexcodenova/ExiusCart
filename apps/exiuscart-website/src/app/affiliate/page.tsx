@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import {
   DollarSign, Users, Check, Loader2, ArrowLeft, ArrowRight, Store, Zap,
-  Sparkles, Clock, Wallet, BadgeCheck, Play,
+  Sparkles, Clock, Wallet, BadgeCheck, Play, Copy, Quote, TrendingUp, MousePointerClick,
 } from 'lucide-react';
 
 const HOW_IT_WORKS = [
@@ -133,6 +133,66 @@ export default function AffiliatePage() {
         </div>
       </section>
 
+      {/* Showcase: dashboard mockup + stats */}
+      <section className="mx-auto max-w-6xl px-6 pb-4">
+        <div className="grid items-center gap-12 lg:grid-cols-2">
+          {/* Dashboard mockup */}
+          <div className="relative">
+            <div className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-[#6B3FD9]/10 blur-2xl" />
+            <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5">
+              <div className="flex items-center gap-6 border-b border-slate-100 text-sm">
+                <span className="-mb-px border-b-2 border-[#6B3FD9] pb-3 font-semibold text-[#6B3FD9]">Summary</span>
+                <span className="pb-3 text-slate-400">Reports</span>
+                <span className="pb-3 text-slate-400">Payments</span>
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-4">
+                <div className="rounded-xl bg-[#FBF8F3] p-4">
+                  <p className="text-2xl font-bold tracking-tight text-slate-900">$0.00</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Commissions earned</p>
+                </div>
+                <div className="rounded-xl bg-[#FBF8F3] p-4">
+                  <p className="text-2xl font-bold tracking-tight text-slate-900">$0.00</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Commissions cleared</p>
+                </div>
+              </div>
+              <div className="mt-5">
+                <p className="mb-1.5 text-xs font-medium text-slate-500">Your referral link</p>
+                <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-1.5 pl-3">
+                  <span className="flex-1 truncate text-sm text-slate-600">exiuscart.com/r/A1B2C3</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#6B3FD9] px-3 py-1.5 text-xs font-semibold text-white"><Copy className="h-3.5 w-3.5" /> Copy</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Stats */}
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Watch your earnings grow</h2>
+            <p className="mt-3 text-slate-600">Every referral, click and payout in one simple dashboard — updated in real time.</p>
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              <BigStat icon={DollarSign} value="Up to 40%" label="Recurring commission, every month they stay" />
+              <BigStat icon={Wallet} value="Monthly" label="Payouts, straight to your account" />
+              <BigStat icon={MousePointerClick} value="Real-time" label="Click & referral tracking" />
+              <BigStat icon={TrendingUp} value="No cap" label="Earn from unlimited referrals" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonial — PLACEHOLDER: replace with a real affiliate quote */}
+      <section className="mx-auto max-w-3xl px-6 py-16 text-center">
+        <Quote className="mx-auto h-8 w-8 text-[#6B3FD9]/30" />
+        <p className="mt-4 text-xl font-medium leading-relaxed text-slate-800 sm:text-2xl">
+          &ldquo;I shared ExiusCart with shop owners in my network, and the monthly commissions now cover far more than I expected — it just keeps coming.&rdquo;
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#6B3FD9]/10 font-bold text-[#6B3FD9]">SJ</div>
+          <div className="text-left">
+            <p className="font-semibold text-slate-900">Sarah J.</p>
+            <p className="text-sm text-slate-500">Founder, Creative Flow Co.</p>
+          </div>
+        </div>
+      </section>
+
       {/* Commission tiers */}
       <section className="bg-white py-20">
         <div className="mx-auto max-w-5xl px-6">
@@ -235,6 +295,16 @@ const inputCls = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div><label className="mb-1 block text-sm text-slate-600">{label}</label>{children}</div>;
+}
+
+function BigStat({ icon: Icon, value, label }: { icon: React.ElementType; value: string; label: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-[#6B3FD9]/10"><Icon className="h-4 w-4 text-[#6B3FD9]" /></div>
+      <p className="text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+      <p className="mt-1 text-sm text-slate-600">{label}</p>
+    </div>
+  );
 }
 
 function Tier({ label, tier, value, color }: { label: string; tier: string; value: string; color: string }) {
