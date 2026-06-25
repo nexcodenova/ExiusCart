@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, User, Phone, Mail, MapPin, Edit, Trash2, X, Users, ShoppingBag, Star } from 'lucide-react';
+import { Search, Plus, Phone, Mail, MapPin, Edit, Trash2, X, Users, Star, Wallet, TrendingUp } from 'lucide-react';
 import { customersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -71,54 +71,48 @@ export default function CustomersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Customers</h1>
-          <p className="text-muted-foreground text-sm">Manage your customer database</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Customers</h1>
+          <p className="text-sm text-muted-foreground">Manage your customer database</p>
         </div>
         <button
           type="button"
           onClick={() => { setEditingCustomer(null); setShowAddModal(true); }}
-          className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90"
         >
-          <Plus className="w-5 h-5" /> Add Customer
+          <Plus className="h-4 w-4" /> Add customer
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Total Customers</p>
-          <p className="text-2xl font-bold text-foreground">{loading ? '—' : customers.length}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">VIP Customers</p>
-          <p className="text-2xl font-bold text-yellow-500">{loading ? '—' : vipCount}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Total Revenue</p>
-          <p className="text-2xl font-bold text-foreground">{loading ? '—' : `${totalRevenue.toLocaleString()} ${sym}`}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-muted-foreground text-xs mb-1">Avg. Spent</p>
-          <p className="text-2xl font-bold text-foreground">{loading || customers.length === 0 ? '—' : `${Math.round(totalRevenue / customers.length).toLocaleString()} ${sym}`}</p>
-        </div>
+        {[
+          { label: 'Total customers', icon: Users, value: loading ? '—' : String(customers.length) },
+          { label: 'VIP customers', icon: Star, value: loading ? '—' : String(vipCount) },
+          { label: 'Total revenue', icon: Wallet, value: loading ? '—' : `${totalRevenue.toLocaleString()} ${sym}` },
+          { label: 'Avg. spent', icon: TrendingUp, value: loading || customers.length === 0 ? '—' : `${Math.round(totalRevenue / customers.length).toLocaleString()} ${sym}` },
+        ].map(({ label, icon: Icon, value }) => (
+          <div key={label} className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Icon className="h-5 w-5 text-foreground/70" /></div>
+            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+            <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Search */}
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by name, phone, or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
-          />
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search by name, phone, or email..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full rounded-xl border border-border bg-card py-2.5 pl-11 pr-4 text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-foreground/10"
+        />
       </div>
 
       {/* List */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
         {loading ? (
           <div className="p-8 space-y-3">
             {[1,2,3,4].map(i => <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />)}
@@ -136,7 +130,7 @@ export default function CustomersPage() {
               <button
                 type="button"
                 onClick={() => { setEditingCustomer(null); setShowAddModal(true); }}
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition"
+                className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition"
               >
                 <Plus className="w-4 h-4" /> Add First Customer
               </button>
@@ -147,8 +141,8 @@ export default function CustomersPage() {
             {customers.map((customer) => (
               <div key={customer.id} className="p-4 hover:bg-muted/30 transition">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-lg font-bold text-primary">{customer.name.charAt(0).toUpperCase()}</span>
+                  <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-semibold text-foreground">{customer.name.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -228,23 +222,23 @@ function CustomerModal({ customer, onClose, onSave }: {
         <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }} className="p-4 space-y-4">
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">Full Name *</label>
-            <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Ahmad Ali" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+            <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Ahmad Ali" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground" />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">Phone</label>
-            <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+XX XXX XXXX XXXX" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+            <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+XX XXX XXXX XXXX" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground" />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">Email</label>
-            <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+            <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground" />
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">Address</label>
-            <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="e.g. City, Province" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+            <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="e.g. City, Province" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground" />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>
-            <button type="submit" className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium">{customer ? 'Update' : 'Add Customer'}</button>
+            <button type="submit" className="flex-1 px-4 py-2.5 bg-foreground text-background rounded-lg hover:opacity-90 transition font-medium">{customer ? 'Update' : 'Add Customer'}</button>
           </div>
         </form>
       </div>
