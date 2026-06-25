@@ -181,6 +181,20 @@ export const quotationsApi = {
   create: (shopId: string, data: any) => api.post(`/shops/${shopId}/quotations`, data),
 };
 
+// ── Reservations ──────────────────────────────────────
+export const reservationsApi = {
+  getAll: (shopId: string, status?: string) =>
+    api.get(`/shops/${shopId}/reservations`, { params: status ? { status } : {} }),
+  getSummary: (shopId: string) =>
+    api.get(`/shops/${shopId}/reservations/summary`),
+  create: (shopId: string, data: any) =>
+    api.post(`/shops/${shopId}/reservations`, data),
+  update: (shopId: string, id: number, data: any) =>
+    api.patch(`/shops/${shopId}/reservations/${id}`, data),
+  delete: (shopId: string, id: number) =>
+    api.delete(`/shops/${shopId}/reservations/${id}`),
+};
+
 // ── Staff ─────────────────────────────────────────────
 export const staffApi = {
   getAll: (shopId: string) => api.get(`/shops/${shopId}/staff`),

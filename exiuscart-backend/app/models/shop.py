@@ -36,3 +36,4 @@ class Shop(Base):
     customers = relationship("Customer", back_populates="shop")
     subscription = relationship("Subscription", back_populates="shop", uselist=False)
     fields = relationship("ShopField", back_populates="shop", cascade="all, delete-orphan", order_by="ShopField.sort_order")
+    reservations = relationship("Reservation", back_populates="shop", cascade="all, delete-orphan")

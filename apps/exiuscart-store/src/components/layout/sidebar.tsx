@@ -11,7 +11,7 @@ import {
   UserCheck, Paintbrush, GitBranch, Shield, ChevronDown,
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
-  DollarSign, Target, Sparkles, Link2,
+  DollarSign, Target, Sparkles, Link2, BookmarkCheck,
 } from 'lucide-react';
 import { shopApi } from '@/lib/api';
 
@@ -42,10 +42,11 @@ const GROUPS: MenuGroup[] = [
     icon: ShoppingCart,
     accent: 'text-blue-500',
     items: [
-      { href: '/dashboard/pos',        label: 'Point of Sale', icon: ShoppingCart },
-      { href: '/dashboard/orders',     label: 'Orders',        icon: FileText      },
-      { href: '/dashboard/customers',  label: 'Customers',     icon: Users         },
-      { href: '/dashboard/quotations', label: 'Quotations',    icon: ClipboardList },
+      { href: '/dashboard/pos',          label: 'Point of Sale', icon: ShoppingCart  },
+      { href: '/dashboard/orders',       label: 'Orders',        icon: FileText      },
+      { href: '/dashboard/customers',    label: 'Customers',     icon: Users         },
+      { href: '/dashboard/quotations',   label: 'Quotations',    icon: ClipboardList },
+      { href: '/dashboard/reservations', label: 'Reservations',  icon: BookmarkCheck },
     ],
   },
   {
