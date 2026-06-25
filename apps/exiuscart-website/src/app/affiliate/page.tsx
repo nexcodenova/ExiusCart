@@ -89,10 +89,11 @@ export default function AffiliatePage() {
             </div>
           </div>
 
-          {/* Video — frameless; its beige background == the hero background, so it blends */}
-          <div className="relative">
+          {/* Video — frameless; bg matches the hero. Scale+clip trims the outer edge
+              pixels (compression artifacts) so no faint border shows. */}
+          <div className="relative overflow-hidden">
             <video
-              className="w-full"
+              className="w-full scale-[1.04]"
               src="/affiliate/exiuscart-affiliate-video.mp4"
               autoPlay muted loop playsInline
             />
