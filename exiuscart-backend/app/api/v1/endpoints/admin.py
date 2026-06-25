@@ -948,7 +948,6 @@ def _get_or_create_category(db: Session, shop_id: int, name: str):
 @router.post("/admin/shopping/upload-image")
 async def admin_upload_shopping_image(
     file: UploadFile,
-    db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
     """Upload a product image to R2 and return the public URL."""
@@ -961,16 +960,29 @@ async def admin_upload_shopping_image(
     return {"url": url}
 
 
+def _get_or_create_system_shop(db: Session, admin_user: User) -> Shop:
+    """Get or create the dedicated ExiusCart Dropshipping system shop."""
+    shop = db.query(Shop).filter(Shop.slug == "exiuscart-dropshipping-system").first()
+    if not shop:
+        shop = Shop(
+            name="ExiusCart Dropshipping",
+            slug="exiuscart-dropshipping-system",
+            owner_id=admin_user.id,
+            currency="AED",
+            is_active=True,
+        )
+        db.add(shop)
+        db.flush()
+    return shop
+
+
 @router.post("/admin/shopping/products", status_code=201)
 def admin_create_shopping_product(
     data: ShoppingProductCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    current_admin: User = Depends(require_superuser),
 ):
-    # Auto-assign to the first active shop (ExiusCart admin shop)
-    shop = db.query(Shop).filter(Shop.is_active == True).order_by(Shop.id.asc()).first()
-    if not shop:
-        raise HTTPException(status_code=400, detail="No active shop available for product assignment")
+    shop = _get_or_create_system_shop(db, current_admin)
 
     cat_id = None
     if data.category_name:

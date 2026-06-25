@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import engine, Base, SessionLocal
 from app.api.v1.router import api_router
 import app.models  # noqa: F401 — ensure all models are registered before create_all
 
@@ -25,6 +25,9 @@ with engine.connect() as conn:
           );
     """))
     conn.commit()
+
+
+
 
 app = FastAPI(
     title=settings.APP_NAME,
