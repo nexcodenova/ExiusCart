@@ -27,16 +27,16 @@ def _product_out(p: Product) -> dict:
         "price": selling,
         "cost_price": buying,
         "discount_pct": discount_pct,
-        "currency": p.shop.currency if p.shop else "AED",
+        "currency": "USD",
         "image_url": p.image_url,
         "video_url": getattr(p, "video_url", None),
+        "source_url": getattr(p, "source_url", None),
         "is_trending": p.is_trending,
         "is_featured": p.is_featured,
         "stock": p.quantity,
         "sku": p.sku,
         "category_name": p.category.name if p.category else None,
         "category_slug": p.category.slug if p.category else None,
-        "shop_name": p.shop.name if p.shop else None,
     }
 
 

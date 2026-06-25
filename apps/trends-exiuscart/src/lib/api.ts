@@ -14,6 +14,7 @@ export interface Product {
   currency: string;
   image_url?: string;
   video_url?: string;
+  source_url?: string | null;
   is_trending: boolean;
   is_featured: boolean;
   category_name?: string;

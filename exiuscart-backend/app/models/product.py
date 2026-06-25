@@ -43,6 +43,7 @@ class Product(Base):
     low_stock_threshold = Column(Integer, default=5)
     image_url = Column(String(500), nullable=True)
     video_url = Column(String(500), nullable=True)   # short product video (TikTok-style)
+    source_url = Column(String(1000), nullable=True) # supplier source link (AliExpress, CJ, etc.)
     is_active = Column(Boolean, default=True)
     is_featured = Column(Boolean, default=False)
     is_trending = Column(Boolean, default=False)     # pinned to "Trending" section

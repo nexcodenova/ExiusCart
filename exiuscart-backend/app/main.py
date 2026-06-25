@@ -13,6 +13,9 @@ with engine.connect() as conn:
     conn.execute(__import__('sqlalchemy').text(
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE NOT NULL;"
     ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE products ADD COLUMN IF NOT EXISTS source_url VARCHAR(1000);"
+    ))
     # Back-fill: create pending_approval subscriptions for verified shops that have none
     conn.execute(__import__('sqlalchemy').text("""
         INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)

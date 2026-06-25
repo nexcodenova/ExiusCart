@@ -870,9 +870,10 @@ def _shopping_product_out(p: Product) -> dict:
         "description": p.description,
         "price": float(p.price),
         "cost_price": float(p.cost_price) if p.cost_price else None,
-        "currency": p.shop.currency if p.shop else "AED",
+        "currency": "USD",
         "image_url": p.image_url,
         "video_url": p.video_url,
+        "source_url": getattr(p, "source_url", None),
         "is_active": p.is_active,
         "is_featured": p.is_featured,
         "is_trending": p.is_trending,
@@ -889,11 +890,12 @@ def _shopping_product_out(p: Product) -> dict:
 class ShoppingProductCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    price: float                          # selling price shown to customers
-    cost_price: Optional[float] = None   # buying/supplier price
+    price: float                          # selling price in USD shown to dropshippers
+    cost_price: Optional[float] = None   # buying/supplier price in USD
     sku: Optional[str] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None
+    source_url: Optional[str] = None     # supplier page (AliExpress, CJ, etc.)
     category_name: Optional[str] = None  # free-text, auto-creates category in admin shop
     is_featured: bool = False
     is_trending: bool = False
@@ -908,6 +910,7 @@ class ShoppingProductUpdate(BaseModel):
     sku: Optional[str] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None
+    source_url: Optional[str] = None
     category_name: Optional[str] = None
     is_featured: Optional[bool] = None
     is_trending: Optional[bool] = None
@@ -968,7 +971,7 @@ def _get_or_create_system_shop(db: Session, admin_user: User) -> Shop:
             name="ExiusCart Dropshipping",
             slug="exiuscart-dropshipping-system",
             owner_id=admin_user.id,
-            currency="AED",
+            currency="USD",
             is_active=True,
         )
         db.add(shop)
@@ -997,6 +1000,7 @@ def admin_create_shopping_product(
         sku=data.sku,
         image_url=data.image_url,
         video_url=data.video_url,
+        source_url=data.source_url,
         quantity=0,
         category_id=cat_id,
         shop_id=shop.id,
@@ -1028,7 +1032,9 @@ def admin_update_shopping_product(
                 product.category_id = _get_or_create_category(db, product.shop_id, value).id
             else:
                 product.category_id = None
-        else:
+        elif field in ("name", "description", "price", "cost_price", "sku",
+                       "image_url", "video_url", "source_url",
+                       "is_featured", "is_trending", "is_active"):
             setattr(product, field, value)
     db.commit()
     product = db.query(Product).options(

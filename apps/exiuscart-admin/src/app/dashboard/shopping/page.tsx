@@ -14,11 +14,12 @@ interface ShoppingProduct {
   id: number;
   name: string;
   description: string | null;
-  price: number;           // selling price
-  cost_price: number | null; // buying price
+  price: number;
+  cost_price: number | null;
   currency: string;
   image_url: string | null;
   video_url: string | null;
+  source_url: string | null;
   is_active: boolean;
   is_featured: boolean;
   is_trending: boolean;
@@ -30,11 +31,12 @@ interface ShoppingProduct {
 const emptyForm = {
   name: '',
   description: '',
-  cost_price: '',   // buying price
-  price: '',        // selling price
+  cost_price: '',
+  price: '',
   sku: '',
   image_url: '',
   video_url: '',
+  source_url: '',
   category_name: '',
   is_featured: false,
   is_trending: false,
@@ -157,6 +159,7 @@ export default function TrendingDropshippingPage() {
       sku: p.sku || '',
       image_url: p.image_url || '',
       video_url: p.video_url || '',
+      source_url: p.source_url || '',
       category_name: p.category_name || '',
       is_featured: p.is_featured,
       is_trending: p.is_trending,
@@ -210,6 +213,7 @@ export default function TrendingDropshippingPage() {
         sku: form.sku.trim() || null,
         image_url: imageUrl,
         video_url: form.video_url.trim() || null,
+        source_url: form.source_url.trim() || null,
         category_name: form.category_name.trim() || null,
         is_featured: form.is_featured,
         is_trending: form.is_trending,
@@ -624,34 +628,38 @@ export default function TrendingDropshippingPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm text-gray-400 mb-1 block">
-                    Buying Price
-                    <span className="ml-1 text-xs text-gray-600">(your cost)</span>
+                    Buying Price <span className="text-xs text-gray-600">(USD · your cost)</span>
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.cost_price}
-                    onChange={(e) => setForm((f) => ({ ...f, cost_price: e.target.value }))}
-                    placeholder="0.00"
-                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.cost_price}
+                      onChange={(e) => setForm((f) => ({ ...f, cost_price: e.target.value }))}
+                      placeholder="0.00"
+                      className="w-full pl-7 pr-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm text-gray-400 mb-1 block">
-                    Selling Price *
-                    <span className="ml-1 text-xs text-gray-600">(shown to buyers)</span>
+                    Selling Price * <span className="text-xs text-gray-600">(USD · shown publicly)</span>
                   </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={form.price}
-                    onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                    placeholder="0.00"
-                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.01"
+                      value={form.price}
+                      onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                      placeholder="0.00"
+                      className="w-full pl-7 pr-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -698,13 +706,28 @@ export default function TrendingDropshippingPage() {
               <div>
                 <label className="text-sm text-gray-400 mb-1 block">
                   Video URL
-                  <span className="ml-2 text-xs text-gray-600">optional · short product promo video</span>
+                  <span className="ml-2 text-xs text-gray-600">optional · product promo video</span>
                 </label>
                 <input
                   type="url"
                   value={form.video_url}
                   onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
                   placeholder="https://... (MP4, YouTube, TikTok)"
+                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                />
+              </div>
+
+              {/* Source / Supplier Link */}
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">
+                  Supplier / Source Link
+                  <span className="ml-2 text-xs text-gray-600">where dropshippers can find &amp; order this product</span>
+                </label>
+                <input
+                  type="url"
+                  value={form.source_url}
+                  onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
+                  placeholder="https://aliexpress.com/... or CJ, Temu, etc."
                   className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                 />
               </div>
