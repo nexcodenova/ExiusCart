@@ -25,7 +25,6 @@ const NAV = [
     links: [
       { label: 'Blog',       href: '/blog'      },
       { label: 'FAQ',        href: '/faq'       },
-      { label: 'Partners',   href: '/partners'  },
       { label: 'Affiliates', href: '/affiliate' },
     ],
   },
