@@ -191,6 +191,8 @@ export const reservationsApi = {
     api.post(`/shops/${shopId}/reservations`, data),
   update: (shopId: string, id: number, data: any) =>
     api.patch(`/shops/${shopId}/reservations/${id}`, data),
+  fulfill: (shopId: string, id: number, unit_price?: number) =>
+    api.post(`/shops/${shopId}/reservations/${id}/fulfill`, { unit_price: unit_price ?? null }),
   delete: (shopId: string, id: number) =>
     api.delete(`/shops/${shopId}/reservations/${id}`),
 };

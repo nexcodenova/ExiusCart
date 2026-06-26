@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   BookmarkCheck, Plus, Clock, Lock, CheckCircle2, XCircle, AlertTriangle,
-  X, Edit, Trash2, ArrowRight, Search, Package,
+  X, Edit, Trash2, ArrowRight, Search, Package, ShoppingCart,
 } from 'lucide-react';
 import { reservationsApi, productsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
@@ -66,6 +67,7 @@ function hoursLeft(expires_at?: string): string {
 }
 
 export default function ReservationsPage() {
+  const router = useRouter();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,6 +76,7 @@ export default function ReservationsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [fulfillTarget, setFulfillTarget] = useState<Reservation | null>(null);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const { sym } = useCurrency();
 
@@ -109,11 +112,8 @@ export default function ReservationsPage() {
     } catch {}
   };
 
-  const handleFulfill = async (r: Reservation) => {
-    try {
-      await reservationsApi.update(shopId, r.id, { status: 'fulfilled' });
-      fetchAll();
-    } catch {}
+  const handleFulfill = (r: Reservation) => {
+    setFulfillTarget(r);
   };
 
   const handleCancel = async (r: Reservation) => {
@@ -317,6 +317,21 @@ export default function ReservationsPage() {
         )}
       </div>
 
+      {/* Fulfill Modal */}
+      {fulfillTarget && (
+        <FulfillModal
+          shopId={shopId}
+          reservation={fulfillTarget}
+          sym={sym}
+          onClose={() => setFulfillTarget(null)}
+          onFulfilled={(orderId) => {
+            setFulfillTarget(null);
+            fetchAll();
+            router.push(`/dashboard/orders/${orderId}`);
+          }}
+        />
+      )}
+
       {/* Create / Edit Modal */}
       {showModal && (
         <ReservationModal
@@ -343,6 +358,127 @@ export default function ReservationsPage() {
     </div>
   );
 }
+
+// ── Fulfill Modal ─────────────────────────────────────────────────────────────
+
+function FulfillModal({ shopId, reservation: r, sym, onClose, onFulfilled }: {
+  shopId: string;
+  reservation: Reservation;
+  sym: string;
+  onClose: () => void;
+  onFulfilled: (orderId: number) => void;
+}) {
+  const [unitPrice, setUnitPrice] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const total = unitPrice ? (Number(unitPrice) * r.quantity).toFixed(2) : '—';
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await reservationsApi.fulfill(shopId, r.id, unitPrice ? Number(unitPrice) : undefined);
+      onFulfilled(res.data.order_id);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || 'Failed to fulfill. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-card rounded-xl border border-border w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-green-600" />
+            <h2 className="text-lg font-semibold text-foreground">Fulfill Reservation</h2>
+          </div>
+          <button type="button" onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Summary */}
+          <div className="rounded-xl bg-muted/50 border border-border p-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Customer</span>
+              <span className="font-medium text-foreground">{r.customer_name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Product</span>
+              <span className="font-medium text-foreground">{r.product_name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Quantity</span>
+              <span className="font-medium text-foreground">{r.quantity}</span>
+            </div>
+            {r.lpo_number && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">LPO</span>
+                <span className="font-medium text-foreground">{r.lpo_number}</span>
+              </div>
+            )}
+            {r.advance_amount != null && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Advance paid</span>
+                <span className="font-medium text-foreground">{r.advance_amount} {sym}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Unit price */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">
+              Unit price ({sym}) <span className="text-xs opacity-60">— leave blank to use product's current price</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={unitPrice}
+              onChange={e => setUnitPrice(e.target.value)}
+              placeholder="Auto from product price"
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground"
+            />
+          </div>
+
+          {unitPrice && (
+            <div className="flex justify-between text-sm font-semibold text-foreground px-1">
+              <span>Order total</span>
+              <span>{total} {sym}</span>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
+
+          <div className="rounded-xl bg-green-500/5 border border-green-500/20 px-4 py-3 text-xs text-green-700 dark:text-green-400">
+            This will create a POS order, reduce stock, and open the invoice.
+            {!r.product_id && ' (No product linked — stock will not change.)'}
+          </div>
+        </div>
+
+        <div className="flex gap-3 p-5 pt-0">
+          <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? 'Creating order...' : <><CheckCircle2 className="w-4 h-4" /> Confirm & Create Order</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ── Create / Edit Modal ───────────────────────────────────────────────────────
 

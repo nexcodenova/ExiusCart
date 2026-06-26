@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,6 +9,8 @@ from app.core.database import get_db
 from app.api.v1.deps import get_current_user
 from app.models.reservation import Reservation
 from app.models.product import Product
+from app.models.order import Order, OrderItem
+from app.models.customer import Customer
 
 router = APIRouter()
 
@@ -200,6 +203,109 @@ def update_reservation(
     db.commit()
     db.refresh(r)
     return _serialize(r)
+
+
+class FulfillBody(BaseModel):
+    unit_price: Optional[float] = None  # if omitted, product.price is used
+
+
+@router.post("/shops/{shop_id}/reservations/{reservation_id}/fulfill")
+def fulfill_reservation(
+    shop_id: int,
+    reservation_id: int,
+    body: FulfillBody,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Convert an active reservation into a POS order, reduce stock, and mark it fulfilled."""
+    r = db.query(Reservation).filter(
+        Reservation.id == reservation_id, Reservation.shop_id == shop_id
+    ).first()
+    if not r:
+        raise HTTPException(404, "Reservation not found")
+    if r.status != "active":
+        raise HTTPException(400, "Only active reservations can be fulfilled")
+
+    # Resolve product and unit price
+    product = None
+    if r.product_id:
+        product = db.query(Product).filter(
+            Product.id == r.product_id, Product.shop_id == shop_id
+        ).first()
+
+    unit_price = body.unit_price if body.unit_price is not None else (
+        float(product.price) if product else 0.0
+    )
+    subtotal = unit_price * r.quantity
+
+    # Get or create customer
+    customer_id = None
+    if r.customer_phone or r.customer_email or r.customer_name:
+        existing = None
+        if r.customer_phone:
+            existing = db.query(Customer).filter(
+                Customer.shop_id == shop_id,
+                Customer.phone == r.customer_phone,
+            ).first()
+        if not existing and r.customer_email:
+            existing = db.query(Customer).filter(
+                Customer.shop_id == shop_id,
+                Customer.email == r.customer_email,
+            ).first()
+        if existing:
+            customer_id = existing.id
+        else:
+            new_customer = Customer(
+                shop_id=shop_id,
+                name=r.customer_name or "Walk-in Customer",
+                phone=r.customer_phone,
+                email=r.customer_email,
+            )
+            db.add(new_customer)
+            db.flush()
+            customer_id = new_customer.id
+
+    # Create POS order (delivered + paid immediately)
+    timestamp = datetime.now().strftime("%Y%m%d%H%M")
+    order_number = f"ORD-{timestamp}-{uuid.uuid4().hex[:4].upper()}"
+    notes = f"Fulfilled from reservation #{r.id}"
+    if r.lpo_number:
+        notes += f" | LPO: {r.lpo_number}"
+    if r.advance_amount:
+        notes += f" | Advance received: {r.advance_amount}"
+
+    order = Order(
+        order_number=order_number,
+        shop_id=shop_id,
+        customer_id=customer_id,
+        source="pos",
+        status="delivered",
+        payment_status="paid",
+        subtotal=subtotal,
+        tax_amount=0,
+        discount_amount=0,
+        total=subtotal,
+        notes=notes,
+    )
+    db.add(order)
+    db.flush()
+
+    # Create order item and reduce stock (only when product is linked)
+    if product:
+        db.add(OrderItem(
+            order_id=order.id,
+            product_id=product.id,
+            quantity=r.quantity,
+            unit_price=unit_price,
+            total_price=unit_price * r.quantity,
+        ))
+        product.quantity = max(0, (product.quantity or 0) - r.quantity)
+
+    # Mark reservation fulfilled
+    r.status = "fulfilled"
+    db.commit()
+
+    return {"order_id": order.id, "order_number": order_number}
 
 
 @router.delete("/shops/{shop_id}/reservations/{reservation_id}", status_code=204)

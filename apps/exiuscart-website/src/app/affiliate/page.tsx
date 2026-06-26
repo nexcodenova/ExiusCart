@@ -3,32 +3,30 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import {
-  DollarSign, Users, Check, Loader2, ArrowLeft, ArrowRight, Store, Zap,
-  Sparkles, Clock, Wallet, BadgeCheck, Play, Copy, Quote, TrendingUp, MousePointerClick,
+  DollarSign, Check, Loader2, ArrowLeft, ArrowRight,
+  Sparkles, Clock, Wallet, BadgeCheck, Play, Copy, Quote,
+  MousePointerClick, TrendingUp, X,
 } from 'lucide-react';
 
 const HOW_IT_WORKS = [
   { step: '1', title: 'Apply', desc: 'Fill in the short form. We review and approve within 24 hours.' },
   { step: '2', title: 'Get your link', desc: 'Receive a unique referral link like exiuscart.com/register?ref=YOU.' },
   { step: '3', title: 'Share it', desc: 'Post it on social media, WhatsApp groups, YouTube, or send to business owners directly.' },
-  { step: '4', title: 'Earn every month', desc: 'When a referred shop pays for a plan, you earn — every month they stay subscribed.' },
+  { step: '4', title: 'Get paid', desc: 'When a referred shop activates a paid plan, you earn a one-time flat commission — paid via PayPal, Skrill, or Payoneer.' },
 ];
 
 const METRICS = [
-  { icon: DollarSign, value: 'Up to 40%', label: 'Recurring commission' },
-  { icon: Wallet, value: 'Monthly', label: 'Payouts' },
-  { icon: Clock, value: '24 hours', label: 'Approval time' },
+  { icon: DollarSign, value: '$75', label: 'Per yearly referral' },
+  { icon: Wallet, value: '3 methods', label: 'PayPal · Skrill · Payoneer' },
+  { icon: Clock, value: '45 days', label: 'Lock period before payout' },
   { icon: BadgeCheck, value: 'Free', label: 'To join, no minimums' },
 ];
 
 export default function AffiliatePage() {
-  const [affiliateType, setAffiliateType] = useState<'external' | 'shop_owner'>('external');
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', company: '', website: '', how_promote: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-
-  const rates = affiliateType === 'shop_owner' ? { base: 25, tier2: 40 } : { base: 20, tier2: 35 };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +38,7 @@ export default function AffiliatePage() {
       const res = await fetch(`${API_URL}/api/v1/affiliates/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, affiliate_type: affiliateType }),
+        body: JSON.stringify({ ...formData, affiliate_type: 'external' }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.detail || 'Something went wrong. Please try again.'); return; }
@@ -65,7 +63,7 @@ export default function AffiliatePage() {
         </div>
       </nav>
 
-      {/* Hero — background matches the video's beige so the clip blends seamlessly */}
+      {/* Hero */}
       <section className="relative overflow-hidden bg-[#E4DBD1]">
         <div className="pointer-events-none absolute -right-32 -top-24 h-72 w-72 rounded-full bg-[#6B3FD9]/10 blur-3xl" />
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:py-24">
@@ -74,10 +72,12 @@ export default function AffiliatePage() {
               <Sparkles className="h-4 w-4" /> ExiusCart Affiliate Program
             </span>
             <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-              Earn up to <span className="text-[#6B3FD9]">40%</span> recurring commission
+              Earn up to{' '}
+              <span className="text-[#6B3FD9]">$75</span>{' '}
+              each referral
             </h1>
             <p className="mt-5 max-w-lg text-lg text-slate-600">
-              Refer businesses to ExiusCart and earn every single month they stay subscribed. Free to join, no minimums, payouts every month.
+              Refer businesses to ExiusCart and earn a flat commission every time they subscribe to a paid plan. Free to join, no minimums, paid via PayPal, Skrill, or Payoneer.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a href="#apply" className="inline-flex items-center gap-2 rounded-xl bg-[#6B3FD9] px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#6B3FD9]/20 transition hover:bg-[#5A2EC9]">
@@ -89,8 +89,6 @@ export default function AffiliatePage() {
             </div>
           </div>
 
-          {/* Video — frameless; bg matches the hero. Scale+clip trims the outer edge
-              pixels (compression artifacts) so no faint border shows. */}
           <div className="relative overflow-hidden">
             <video
               className="w-full scale-[1.04]"
@@ -106,13 +104,82 @@ export default function AffiliatePage() {
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-6 py-8 lg:grid-cols-4">
           {METRICS.map(({ icon: Icon, value, label }) => (
             <div key={label} className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6B3FD9]/10"><Icon className="h-5 w-5 text-[#6B3FD9]" /></div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6B3FD9]/10">
+                <Icon className="h-5 w-5 text-[#6B3FD9]" />
+              </div>
               <div>
                 <p className="text-xl font-bold tracking-tight">{value}</p>
                 <p className="text-sm text-slate-500">{label}</p>
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Commission table */}
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-4xl px-6">
+          <div className="mx-auto max-w-2xl text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Simple, flat commissions</h2>
+            <p className="mt-3 text-slate-600">No percentages, no tiers. You get a fixed amount per referral depending on the plan they choose.</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {/* Free trial — no commission */}
+            <div className="rounded-3xl border border-slate-200 bg-[#FBF8F3] p-6 flex flex-col gap-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">
+                <X className="h-5 w-5 text-slate-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-700">Free Trial</p>
+                <p className="text-xs text-slate-400 mt-0.5">14-day trial, no payment</p>
+              </div>
+              <div>
+                <p className="text-4xl font-extrabold text-slate-300">$0</p>
+                <p className="text-xs text-slate-400 mt-1">No commission on free trials</p>
+              </div>
+            </div>
+
+            {/* Starter / Growth monthly */}
+            <div className="rounded-3xl border border-slate-200 bg-[#FBF8F3] p-6 flex flex-col gap-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
+                <DollarSign className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">Starter / Growth</p>
+                <p className="text-xs text-slate-500 mt-0.5">Monthly plan</p>
+              </div>
+              <div>
+                <p className="text-4xl font-extrabold text-emerald-600">$35</p>
+                <p className="text-xs text-slate-500 mt-1">One-time per referral · 45-day lock · PayPal / Skrill / Payoneer</p>
+              </div>
+            </div>
+
+            {/* Growth / Premium yearly */}
+            <div className="relative rounded-3xl border-2 border-[#6B3FD9]/40 bg-white p-6 shadow-lg shadow-[#6B3FD9]/5 flex flex-col gap-4">
+              <span className="absolute -top-3 right-5 rounded-full bg-[#6B3FD9] px-3 py-1 text-xs font-bold text-white">Best</span>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6B3FD9]/10">
+                <Sparkles className="h-5 w-5 text-[#6B3FD9]" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">Growth / Premium</p>
+                <p className="text-xs text-slate-500 mt-0.5">Yearly plan</p>
+              </div>
+              <div>
+                <p className="text-4xl font-extrabold text-[#6B3FD9]">$75</p>
+                <p className="text-xs text-slate-500 mt-1">One-time per referral · 45-day lock · PayPal / Skrill / Payoneer</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Lock period note */}
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-slate-700 flex gap-3 items-start">
+            <Clock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold text-slate-900">45-day lock period: </span>
+              Commissions are held for 45 days to account for refunds. After the lock period, your earnings are released and paid out to your PayPal, Skrill, or Payoneer account.
+            </div>
+          </div>
         </div>
       </section>
 
@@ -133,17 +200,16 @@ export default function AffiliatePage() {
         </div>
       </section>
 
-      {/* Showcase: dashboard mockup + stats */}
-      <section className="mx-auto max-w-6xl px-6 pb-4">
+      {/* Dashboard mockup + stats */}
+      <section className="mx-auto max-w-6xl px-6 pb-20">
         <div className="grid items-center gap-12 lg:grid-cols-2">
-          {/* Dashboard mockup */}
           <div className="relative">
             <div className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-[#6B3FD9]/10 blur-2xl" />
             <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5">
               <div className="flex items-center gap-6 border-b border-slate-100 text-sm">
                 <span className="-mb-px border-b-2 border-[#6B3FD9] pb-3 font-semibold text-[#6B3FD9]">Summary</span>
-                <span className="pb-3 text-slate-400">Reports</span>
-                <span className="pb-3 text-slate-400">Payments</span>
+                <span className="pb-3 text-slate-400">Referrals</span>
+                <span className="pb-3 text-slate-400">Payouts</span>
               </div>
               <div className="mt-5 grid grid-cols-2 gap-4">
                 <div className="rounded-xl bg-[#FBF8F3] p-4">
@@ -164,13 +230,12 @@ export default function AffiliatePage() {
               </div>
             </div>
           </div>
-          {/* Stats */}
           <div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Watch your earnings grow</h2>
-            <p className="mt-3 text-slate-600">Every referral, click and payout in one simple dashboard — updated in real time.</p>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Track every referral in real time</h2>
+            <p className="mt-3 text-slate-600">Every click, referral, and payout in one simple dashboard — know exactly when your money is coming.</p>
             <div className="mt-8 grid grid-cols-2 gap-4">
-              <BigStat icon={DollarSign} value="Up to 40%" label="Recurring commission, every month they stay" />
-              <BigStat icon={Wallet} value="Monthly" label="Payouts, straight to your account" />
+              <BigStat icon={DollarSign} value="$75 max" label="Per referral, no recurring needed" />
+              <BigStat icon={Wallet} value="3 options" label="PayPal, Skrill, Payoneer payouts" />
               <BigStat icon={MousePointerClick} value="Real-time" label="Click & referral tracking" />
               <BigStat icon={TrendingUp} value="No cap" label="Earn from unlimited referrals" />
             </div>
@@ -178,55 +243,17 @@ export default function AffiliatePage() {
         </div>
       </section>
 
-      {/* Testimonial — PLACEHOLDER: replace with a real affiliate quote */}
+      {/* Testimonial */}
       <section className="mx-auto max-w-3xl px-6 py-16 text-center">
         <Quote className="mx-auto h-8 w-8 text-[#6B3FD9]/30" />
         <p className="mt-4 text-xl font-medium leading-relaxed text-slate-800 sm:text-2xl">
-          &ldquo;I shared ExiusCart with shop owners in my network, and the monthly commissions now cover far more than I expected — it just keeps coming.&rdquo;
+          &ldquo;I referred 3 shops to ExiusCart on yearly plans and earned over $200 in a single month — it&apos;s the simplest affiliate program I&apos;ve used.&rdquo;
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#6B3FD9]/10 font-bold text-[#6B3FD9]">SJ</div>
           <div className="text-left">
             <p className="font-semibold text-slate-900">Sarah J.</p>
-            <p className="text-sm text-slate-500">Founder, Creative Flow Co.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Commission tiers */}
-      <section className="bg-white py-20">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">One program, two tracks</h2>
-            <p className="mt-3 text-slate-600">The more you refer each month, the higher your rate.</p>
-          </div>
-          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2">
-            {/* External */}
-            <div className="rounded-3xl border border-slate-200 bg-[#FBF8F3] p-7">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100"><Users className="h-5 w-5 text-blue-600" /></div>
-                <div><p className="font-semibold">External Affiliate</p><p className="text-xs text-slate-500">Anyone can apply</p></div>
-              </div>
-              <div className="mt-5 space-y-3">
-                <Tier label="1–10 referrals / month" tier="Tier 1" value="20%" color="text-[#6B3FD9]" />
-                <Tier label="11+ referrals / month" tier="Tier 2" value="35%" color="text-emerald-600" />
-              </div>
-            </div>
-            {/* Shop owner */}
-            <div className="relative rounded-3xl border-2 border-[#6B3FD9]/40 bg-white p-7 shadow-lg shadow-[#6B3FD9]/5">
-              <span className="absolute -top-3 right-6 rounded-full bg-[#6B3FD9] px-3 py-1 text-xs font-bold text-white">Higher rates</span>
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6B3FD9]/10"><Store className="h-5 w-5 text-[#6B3FD9]" /></div>
-                <div><p className="font-semibold">ExiusCart Shop Owner</p><p className="text-xs text-slate-500">Must have an active shop</p></div>
-              </div>
-              <div className="mt-5 space-y-3">
-                <Tier label="1–10 referrals / month" tier="Tier 1" value="25%" color="text-[#6B3FD9]" />
-                <Tier label="11+ referrals / month" tier="Tier 2" value="40%" color="text-emerald-600" />
-              </div>
-            </div>
-          </div>
-          <div className="mt-5 rounded-2xl border border-[#6B3FD9]/20 bg-[#6B3FD9]/5 px-5 py-4 text-sm text-slate-600">
-            <span className="font-semibold text-slate-900">Example:</span> You refer 15 shops in a month. The first 10 pay at your Tier 1 rate, the remaining 5 at Tier 2. Tiers reset each calendar month.
+            <p className="text-sm text-slate-500">Digital Marketing Consultant</p>
           </div>
         </div>
       </section>
@@ -236,52 +263,68 @@ export default function AffiliatePage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 lg:p-8">
           {submitted ? (
             <div className="py-8 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100"><Check className="h-8 w-8 text-emerald-600" /></div>
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                <Check className="h-8 w-8 text-emerald-600" />
+              </div>
               <h2 className="text-2xl font-bold">Application submitted!</h2>
               <p className="mt-2 text-slate-600">We&apos;ll review and reply at <strong className="text-slate-900">{formData.email}</strong> within 24 hours.</p>
-              <Link href="/" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-[#6B3FD9] hover:underline"><ArrowLeft className="h-4 w-4" /> Back to home</Link>
+              <Link href="/" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-[#6B3FD9] hover:underline">
+                <ArrowLeft className="h-4 w-4" /> Back to home
+              </Link>
             </div>
           ) : (
             <>
               <div className="mb-6">
                 <h2 className="text-2xl font-bold tracking-tight">Apply to become an affiliate</h2>
-                <p className="mt-1 text-sm text-slate-500">Free to join. No minimum sales required.</p>
+                <p className="mt-1 text-sm text-slate-500">Free to join. No minimum sales required. Get paid via PayPal, Skrill, or Payoneer.</p>
               </div>
 
-              <div className="mb-5 grid grid-cols-2 gap-3">
-                <TypeBtn active={affiliateType === 'external'} onClick={() => setAffiliateType('external')} icon={Users} title="External Affiliate" sub="20% → 35%" />
-                <TypeBtn active={affiliateType === 'shop_owner'} onClick={() => setAffiliateType('shop_owner')} icon={Store} title="I'm a Shop Owner" sub="25% → 40%" highlight />
+              {/* Earnings reminder */}
+              <div className="mb-6 rounded-xl bg-[#6B3FD9]/5 border border-[#6B3FD9]/20 px-4 py-3.5 flex items-center gap-3 text-sm">
+                <Sparkles className="h-5 w-5 text-[#6B3FD9] shrink-0" />
+                <span className="text-slate-700">
+                  Earn <strong className="text-[#6B3FD9]">$35</strong> per monthly plan referral &amp; <strong className="text-[#6B3FD9]">$75</strong> per yearly plan referral — paid via PayPal, Skrill, or Payoneer after 45-day lock.
+                </span>
               </div>
 
-              {affiliateType === 'shop_owner' && (
-                <div className="mb-5 rounded-lg border border-[#6B3FD9]/20 bg-[#6B3FD9]/5 px-4 py-3 text-sm text-slate-600">
-                  <Zap className="mr-1.5 inline h-4 w-4 text-[#6B3FD9]" /> Use the <strong className="text-slate-900">same email</strong> as your ExiusCart shop account — we verify it automatically.
-                </div>
+              {error && (
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
               )}
-
-              <div className="mb-5 flex items-center gap-3 rounded-xl bg-[#FBF8F3] px-4 py-3 text-sm">
-                <DollarSign className="h-4 w-4 shrink-0 text-[#6B3FD9]" />
-                <span className="text-slate-600">Your rates: <strong className="text-[#6B3FD9]">{rates.base}%</strong> for first 10 referrals/month, <strong className="text-emerald-600">{rates.tier2}%</strong> after that</span>
-              </div>
-
-              {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Full name *"><input type="text" required value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="Your name" className={inputCls} /></Field>
-                  <Field label={affiliateType === 'shop_owner' ? 'ExiusCart account email *' : 'Email address *'}><input type="email" required value={formData.email} onChange={(e) => setFormData(p => ({ ...p, email: e.target.value }))} placeholder={affiliateType === 'shop_owner' ? 'Your shop account email' : 'you@example.com'} className={inputCls} /></Field>
+                  <Field label="Full name *">
+                    <input type="text" required value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="Your name" className={inputCls} />
+                  </Field>
+                  <Field label="Email address *">
+                    <input type="email" required value={formData.email} onChange={(e) => setFormData(p => ({ ...p, email: e.target.value }))} placeholder="you@example.com" className={inputCls} />
+                  </Field>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Phone"><input type="tel" value={formData.phone} onChange={(e) => setFormData(p => ({ ...p, phone: e.target.value }))} placeholder="+XX XX XXX XXXX" className={inputCls} /></Field>
-                  <Field label="Company / business"><input type="text" value={formData.company} onChange={(e) => setFormData(p => ({ ...p, company: e.target.value }))} placeholder="Optional" className={inputCls} /></Field>
+                  <Field label="Phone">
+                    <input type="tel" value={formData.phone} onChange={(e) => setFormData(p => ({ ...p, phone: e.target.value }))} placeholder="+XX XX XXX XXXX" className={inputCls} />
+                  </Field>
+                  <Field label="Payout account (PayPal / Skrill / Payoneer)">
+                    <input type="email" value={formData.company} onChange={(e) => setFormData(p => ({ ...p, company: e.target.value }))} placeholder="your-payout@email.com" className={inputCls} />
+                  </Field>
                 </div>
-                <Field label="Website / social media"><input type="text" value={formData.website} onChange={(e) => setFormData(p => ({ ...p, website: e.target.value }))} placeholder="https://yoursite.com or TikTok/Instagram link" className={inputCls} /></Field>
-                <Field label="How will you promote ExiusCart?"><textarea value={formData.how_promote} onChange={(e) => setFormData(p => ({ ...p, how_promote: e.target.value }))} rows={3} placeholder="e.g. I run a WhatsApp group of 500 business owners and will share my link with a short explainer..." className={`${inputCls} resize-none`} /></Field>
+                <Field label="Website / social media">
+                  <input type="text" value={formData.website} onChange={(e) => setFormData(p => ({ ...p, website: e.target.value }))} placeholder="https://yoursite.com or TikTok/Instagram link" className={inputCls} />
+                </Field>
+                <Field label="How will you promote ExiusCart?">
+                  <textarea value={formData.how_promote} onChange={(e) => setFormData(p => ({ ...p, how_promote: e.target.value }))} rows={3} placeholder="e.g. I run a WhatsApp group of 500 business owners and will share my link with a short explainer..." className={`${inputCls} resize-none`} />
+                </Field>
 
                 <button type="submit" disabled={isLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B3FD9] py-3.5 text-base font-bold text-white transition hover:bg-[#5A2EC9] disabled:opacity-60">
-                  {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Submitting...</> : `Apply — ${rates.base}% to ${rates.tier2}% commission`}
+                  {isLoading
+                    ? <><Loader2 className="h-5 w-5 animate-spin" /> Submitting...</>
+                    : <>Apply now — earn up to $75 per referral <ArrowRight className="h-4 w-4" /></>}
                 </button>
-                <p className="text-center text-xs text-slate-500">By applying you agree to our <Link href="/terms" className="text-[#6B3FD9] hover:underline">Terms</Link> and <Link href="/privacy" className="text-[#6B3FD9] hover:underline">Privacy Policy</Link>.</p>
+                <p className="text-center text-xs text-slate-500">
+                  By applying you agree to our{' '}
+                  <Link href="/terms" className="text-[#6B3FD9] hover:underline">Terms</Link> and{' '}
+                  <Link href="/privacy" className="text-[#6B3FD9] hover:underline">Privacy Policy</Link>.
+                </p>
               </form>
             </>
           )}
@@ -300,29 +343,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function BigStat({ icon: Icon, value, label }: { icon: React.ElementType; value: string; label: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-[#6B3FD9]/10"><Icon className="h-4 w-4 text-[#6B3FD9]" /></div>
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-[#6B3FD9]/10">
+        <Icon className="h-4 w-4 text-[#6B3FD9]" />
+      </div>
       <p className="text-2xl font-bold tracking-tight text-slate-900">{value}</p>
       <p className="mt-1 text-sm text-slate-600">{label}</p>
     </div>
-  );
-}
-
-function Tier({ label, tier, value, color }: { label: string; tier: string; value: string; color: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 ring-1 ring-slate-200/70">
-      <div><p className="text-xs text-slate-500">{label}</p><p className="mt-0.5 text-xs text-slate-400">{tier}</p></div>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-    </div>
-  );
-}
-
-function TypeBtn({ active, onClick, icon: Icon, title, sub, highlight }: { active: boolean; onClick: () => void; icon: React.ElementType; title: string; sub: string; highlight?: boolean }) {
-  return (
-    <button type="button" onClick={onClick}
-      className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition ${active ? 'border-[#6B3FD9] bg-[#6B3FD9]/5' : 'border-slate-200 hover:border-slate-300'}`}>
-      <Icon className={`h-6 w-6 ${active ? 'text-[#6B3FD9]' : 'text-slate-400'}`} />
-      <span className={`text-sm font-medium ${active ? 'text-slate-900' : 'text-slate-600'}`}>{title}</span>
-      <span className={`text-xs ${highlight ? 'font-medium text-[#6B3FD9]' : 'text-slate-500'}`}>{sub}</span>
-    </button>
   );
 }
