@@ -46,14 +46,16 @@ export default function SubscriptionsPage() {
 
   const filtered = subs.filter((s) => {
     const matchSearch = s.shop_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchTab = activeTab === 'subscriptions' || (activeTab === 'pending' && s.status === 'trial');
+    const isPending = s.status === 'trial' || s.status === 'pending_approval';
+    const matchTab = activeTab === 'subscriptions' || (activeTab === 'pending' && isPending);
     return matchSearch && matchTab;
   });
 
   const approve = async (sub: Subscription) => {
     try {
       await adminApi.approveSubscription(sub.id);
-      setSubs((prev) => prev.map((s) => s.id === sub.id ? { ...s, status: 'active' } : s));
+      const newStatus = sub.plan_type === 'free_trial' ? 'trial' : 'active';
+      setSubs((prev) => prev.map((s) => s.id === sub.id ? { ...s, status: newStatus } : s));
     } catch {/* no-op */}
   };
 
@@ -73,12 +75,13 @@ export default function SubscriptionsPage() {
   const statusStyles: Record<string, string> = {
     active: 'bg-green-500/10 text-green-400',
     trial: 'bg-blue-500/10 text-blue-400',
+    pending_approval: 'bg-yellow-500/10 text-yellow-400',
     expiring: 'bg-orange-500/10 text-orange-400',
     expired: 'bg-red-500/10 text-red-400',
     cancelled: 'bg-gray-500/10 text-gray-400',
   };
 
-  const pendingCount = subs.filter((s) => s.status === 'trial').length;
+  const pendingCount = subs.filter((s) => s.status === 'trial' || s.status === 'pending_approval').length;
 
   return (
     <div>
@@ -208,7 +211,7 @@ export default function SubscriptionsPage() {
                       {sub.expires_at ? new Date(sub.expires_at).toLocaleDateString() : 'Lifetime'}
                     </td>
                     <td className="px-6 py-4">
-                      {sub.status === 'trial' && (
+                      {(sub.status === 'trial' || sub.status === 'pending_approval') && (
                         <div className="flex items-center gap-2">
                           <button type="button" onClick={() => approve(sub)} title="Approve"
                             className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition">
@@ -245,7 +248,7 @@ export default function SubscriptionsPage() {
                   <span className="text-gray-400">{sub.expires_at ? new Date(sub.expires_at).toLocaleDateString() : 'Lifetime'}</span>
                   <span className="text-white font-medium">{sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'}</span>
                 </div>
-                {sub.status === 'trial' && (
+                {(sub.status === 'trial' || sub.status === 'pending_approval') && (
                   <div className="flex gap-2 mt-3">
                     <button type="button" onClick={() => approve(sub)}
                       className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition text-sm font-medium">

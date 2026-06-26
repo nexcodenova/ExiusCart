@@ -50,7 +50,12 @@ export default function LoginPage() {
       } catch {}
       window.location.href = '/dashboard';
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'Invalid email or password.');
+      const detail = err?.response?.data?.detail;
+      if (detail === 'pending_approval') {
+        setError('Your account is pending admin approval. You will receive an email once approved.');
+      } else {
+        setError(detail ?? 'Invalid email or password.');
+      }
     } finally {
       setIsLoading(false);
     }

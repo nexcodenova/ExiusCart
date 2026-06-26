@@ -3,17 +3,41 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: wire to backend auth
-    window.location.href = '/dashboard';
+    setIsLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/affiliates/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || 'Invalid email or access code');
+      }
+      const body = await res.json();
+      localStorage.setItem('affiliate_token', body.access_token);
+      localStorage.setItem('affiliate_id', String(body.affiliate_id));
+      localStorage.setItem('affiliate_name', body.name || '');
+      localStorage.setItem('affiliate_code', body.referral_code || '');
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -33,6 +57,12 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-8">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg px-4 py-3 mb-5">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
 
             <div>
@@ -51,45 +81,37 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-300 mb-1.5 block">Password</label>
+              <label className="text-sm font-medium text-gray-300 mb-1.5 block">
+                Access Code
+                <span className="ml-2 text-xs text-gray-500 font-normal">(your affiliate referral code)</span>
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  type="text"
+                  value={code}
+                  onChange={e => setCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. JOHN8F2A"
                   required
-                  className="w-full bg-[#0D1526] border border-gray-700 rounded-xl pl-10 pr-10 py-3 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#7B4FE9] transition-colors"
+                  className="w-full bg-[#0D1526] border border-gray-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-600 text-sm font-mono focus:outline-none focus:border-[#7B4FE9] transition-colors"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
-            </div>
-
-            <div className="flex items-center justify-end">
-              <Link href="/forgot-password" className="text-xs text-[#7B4FE9] hover:underline">
-                Forgot password?
-              </Link>
+              <p className="text-xs text-gray-600 mt-1.5">Your access code was emailed when your application was approved.</p>
             </div>
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-[#7B4FE9] hover:bg-[#5A2EC9] text-white font-semibold py-3 rounded-xl transition-all text-sm"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 bg-[#7B4FE9] hover:bg-[#5A2EC9] disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-all text-sm mt-2"
             >
-              Sign In
-              <ArrowRight className="w-4 h-4" />
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
           <p className="text-center text-gray-500 text-xs mt-6">
             Not an affiliate yet?{' '}
-            <Link href="https://exiuscart.com/affiliates" className="text-[#7B4FE9] hover:underline">
+            <Link href="https://exiuscart.com/affiliate" className="text-[#7B4FE9] hover:underline">
               Apply here
             </Link>
           </p>

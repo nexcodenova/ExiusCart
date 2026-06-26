@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
@@ -13,7 +13,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   { href: '/dashboard',           label: 'Overview',   icon: LayoutDashboard },
@@ -25,7 +25,20 @@ const navItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('affiliate_token');
+    if (!token) {
+      router.replace('/login');
+    } else {
+      setAuthChecked(true);
+    }
+  }, [router]);
+
+  if (!authChecked) return null;
 
   return (
     <div className="min-h-screen bg-[#0B1121] flex">
@@ -117,7 +130,16 @@ function SidebarContent({
 
       {/* Bottom */}
       <div className="px-3 py-4 border-t border-gray-800">
-        <button className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all w-full">
+        <button
+          onClick={() => {
+            localStorage.removeItem('affiliate_token');
+            localStorage.removeItem('affiliate_id');
+            localStorage.removeItem('affiliate_name');
+            localStorage.removeItem('affiliate_code');
+            window.location.href = '/login';
+          }}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all w-full"
+        >
           <LogOut className="w-4 h-4" />
           Sign Out
         </button>

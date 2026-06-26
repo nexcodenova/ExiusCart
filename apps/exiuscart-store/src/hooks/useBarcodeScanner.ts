@@ -18,7 +18,7 @@ interface BarcodeScannerOptions {
 export function useBarcodeScanner({
   onScan,
   minLength = 3,
-  maxDelay = 50,
+  maxDelay = 100,
   enabled = true,
 }: BarcodeScannerOptions) {
   const bufferRef = useRef<string>('');

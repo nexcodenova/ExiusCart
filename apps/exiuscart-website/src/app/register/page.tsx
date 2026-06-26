@@ -121,6 +121,7 @@ function RegisterForm() {
   const [otpError, setOtpError] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
   const [phoneDialCode, setPhoneDialCode] = useState('+971');
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -206,6 +207,11 @@ function RegisterForm() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.detail || 'Invalid code');
       }
+      const body = await res.json().catch(() => ({}));
+      if (body.status === 'pending_approval') {
+        setPendingApproval(true);
+        return;
+      }
       setSuccess(true);
       setTimeout(() => { window.location.href = 'https://store.exiuscart.com/login'; }, 1500);
     } catch (err: any) {
@@ -277,6 +283,21 @@ function RegisterForm() {
           )}
         </p>
         <p className="text-gray-600 text-xs mt-3">Code expires in 10 minutes</p>
+      </div>
+    );
+  }
+
+  if (pendingApproval) {
+    return (
+      <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 text-center">
+        <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Shield className="w-8 h-8 text-yellow-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Account Pending Approval</h2>
+        <p className="text-gray-400 text-sm mb-4">
+          Your email has been verified. Our team will review your account and send you an email once it&apos;s approved.
+        </p>
+        <p className="text-gray-500 text-xs">You&apos;ll receive a confirmation email at <span className="text-white">{pendingEmail}</span></p>
       </div>
     );
   }

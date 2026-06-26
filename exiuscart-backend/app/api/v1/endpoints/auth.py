@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -156,6 +157,7 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
     user.is_verified = True
 
     # Create pending_approval subscription — trial countdown starts only after admin approves
+    is_pending = False
     shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
     if shop:
         existing_sub = db.query(Subscription).filter(Subscription.shop_id == shop.id).first()
@@ -169,12 +171,16 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
                 currency=shop.currency or "AED",
             )
             db.add(trial_sub)
+            is_pending = True
 
     db.commit()
     db.refresh(user)
 
     _email_pool.submit(send_welcome_email, user.email, user.full_name or "",
                        "Free Trial (Pending Approval)")
+
+    if is_pending:
+        return JSONResponse(content={"status": "pending_approval", "email": user.email})
 
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token, user=UserResponse.model_validate(user))
@@ -224,6 +230,18 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Please verify your email before logging in"
         )
+
+    # Block login if account is pending admin approval
+    login_shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
+    if login_shop:
+        login_sub = db.query(Subscription).filter(
+            Subscription.shop_id == login_shop.id
+        ).order_by(Subscription.id.desc()).first()
+        if login_sub and login_sub.status == "pending_approval":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="pending_approval"
+            )
 
     access_token = create_access_token(data={"sub": str(user.id)})
 
