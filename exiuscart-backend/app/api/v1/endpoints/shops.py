@@ -6,6 +6,7 @@ from slugify import slugify
 import uuid
 from datetime import datetime, timezone, timedelta, date
 from app.core.database import get_db
+from app.core.thedersi import MONTHLY_ORDER_LIMITS
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
@@ -277,6 +278,18 @@ def get_shop_subscription(
             db.commit()
 
         source = "thedersi" if sub.promo_code in ("partner_thedersi", "domain_thedersi") else "exiuscart"
+
+        # For limited plans, include this month's order count (POS + channel combined)
+        order_limit = MONTHLY_ORDER_LIMITS.get(sub.plan_type)
+        orders_used = None
+        if order_limit is not None:
+            now_utc = datetime.now(timezone.utc)
+            month_start = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            orders_used = db.query(Order).filter(
+                Order.shop_id == shop_id,
+                Order.created_at >= month_start,
+            ).count()
+
         plan_info = {
             "plan_type": sub.plan_type,
             "source": source,
@@ -293,6 +306,8 @@ def get_shop_subscription(
             "extraStaffCost": 0,
             "staffUsed": 1,
             "daysLeft": max(0, days_left) if days_left is not None else None,
+            "orders_limit": order_limit,
+            "orders_used": orders_used,
         }
 
     # History: all subscriptions for this shop as billing events

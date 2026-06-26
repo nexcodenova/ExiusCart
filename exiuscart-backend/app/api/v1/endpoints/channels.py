@@ -556,21 +556,19 @@ async def receive_order_webhook(
                     "updated": True,
                 }
 
-    # ── Monthly order limit check ─────────────────────────────────────────────
+    # ── Monthly order limit check (all sources: POS + channel combined) ───────
     sub = db.query(Subscription).filter(Subscription.shop_id == conn.shop_id).first()
     plan_type = sub.plan_type if sub else None
-    monthly_limit = MONTHLY_ORDER_LIMITS.get(plan_type, 50)  # default 50 if unknown plan
+    monthly_limit = MONTHLY_ORDER_LIMITS.get(plan_type)  # None = unlimited
 
     if monthly_limit is not None:
-        # Count channel orders created this calendar month
+        # Count ALL orders this calendar month (POS + every connected channel)
         now = datetime.now(timezone.utc)
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         orders_this_month = (
             db.query(Order)
-            .join(ChannelOrderMeta, ChannelOrderMeta.order_id == Order.id)
             .filter(
                 Order.shop_id == conn.shop_id,
-                ChannelOrderMeta.channel_type == conn.channel_type,
                 Order.created_at >= month_start,
             )
             .count()
@@ -590,7 +588,7 @@ async def receive_order_webhook(
             raise HTTPException(
                 status_code=429,
                 detail={
-                    "error": "monthly_order_limit_reached",
+                    "error": "order_limit_reached",
                     "limit": monthly_limit,
                     "used": orders_this_month,
                     "plan": plan_type,

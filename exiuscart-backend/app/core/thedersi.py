@@ -36,12 +36,16 @@ THEDERSI_TIER_MAP: dict = {
 }
 
 # Monthly order limits per plan (None = unlimited)
+# Counts ALL orders from any source (POS + TheDersi channel combined)
 MONTHLY_ORDER_LIMITS: dict = {
     "thedersi_basic": 50,
-    "starter":        1000,
-    "thedersi_pro":   None,  # unlimited orders
+    "starter":        None,
+    "thedersi_pro":   None,
     "premium":        None,
 }
+
+# Alias used in shops.py
+TOTAL_ORDER_LIMITS = MONTHLY_ORDER_LIMITS
 
 
 def _hmac_signature(body: str) -> str:

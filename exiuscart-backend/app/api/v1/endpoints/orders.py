@@ -16,7 +16,9 @@ from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrder
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
 from app.core.email import send_email, build_invoice_html, _FROM_BILLING
-from app.core.thedersi import notify_thedersi_order_status
+from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
+from app.models.subscription import Subscription
+from datetime import timezone
 
 router = APIRouter()
 
@@ -47,6 +49,31 @@ async def create_order(
     shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
+
+    # ── Monthly order limit check for free-tier TheDersi sellers ─────────────
+    # Counts ALL orders this month (POS + TheDersi channel combined)
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    plan_type = sub.plan_type if sub else None
+    monthly_limit = MONTHLY_ORDER_LIMITS.get(plan_type)  # None = unlimited
+    if monthly_limit is not None:
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        orders_this_month = db.query(Order).filter(
+            Order.shop_id == shop_id,
+            Order.created_at >= month_start,
+        ).count()
+        if orders_this_month >= monthly_limit:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": "order_limit_reached",
+                    "limit": monthly_limit,
+                    "used": orders_this_month,
+                    "plan": plan_type,
+                    "message": f"Monthly order limit of {monthly_limit} reached. Upgrade your TheDersi plan to continue.",
+                },
+            )
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Calculate totals
     subtotal = 0

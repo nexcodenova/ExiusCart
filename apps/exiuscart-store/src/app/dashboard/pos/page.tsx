@@ -9,7 +9,7 @@ import {
 import { generateInvoicePDF, generateThermalReceipt } from '@/lib/invoice-generator';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { CameraScanner } from '@/components/ui/camera-scanner';
-import { productsApi, shopApi, ordersApi } from '@/lib/api';
+import { productsApi, shopApi, ordersApi, subscriptionApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface POSProduct {
@@ -61,6 +61,9 @@ export default function POSPage() {
   const [barcodeFlash, setBarcodeFlash] = useState<string | null>(null);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<POSProduct | null>(null);
+  const [orderLimitError, setOrderLimitError] = useState<{ used: number; limit: number } | null>(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [orderUsage, setOrderUsage] = useState<{ used: number; limit: number } | null>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   const [products, setProducts] = useState<POSProduct[]>([]);
@@ -109,6 +112,15 @@ export default function POSPage() {
         setProducts(rawProducts);
         const cats = ['All', ...Array.from(new Set(rawProducts.map((p) => p.category)))];
         setCategories(cats);
+
+        // Check order usage for free-tier sellers
+        try {
+          const subRes = await subscriptionApi.getCurrent(String(shop.id));
+          const plan = subRes.data?.plan;
+          if (plan?.orders_limit != null && plan?.orders_used != null) {
+            setOrderUsage({ used: plan.orders_used, limit: plan.orders_limit });
+          }
+        } catch { /* subscription fetch is non-critical */ }
       } catch (err) {
         console.error('Failed to load POS data:', err);
       } finally {
@@ -222,12 +234,7 @@ export default function POSPage() {
     const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
     if (!shopId) return;
 
-    const newOrderNumber = `ORD-${Date.now().toString().slice(-6)}`;
-    setOrderNumber(newOrderNumber);
-    setShowCheckout(false);
-    setShowReceipt(true);
-
-    // Create order in backend → decreases stock → triggers TheDersi stock sync
+    setProcessingPayment(true);
     try {
       await ordersApi.create(shopId, {
         source: 'pos',
@@ -241,14 +248,29 @@ export default function POSPage() {
         })),
       });
 
-      // Update local POS product stock so seller sees correct count without refresh
+      // Success — show receipt and update local stock
+      const newOrderNumber = `ORD-${Date.now().toString().slice(-6)}`;
+      setOrderNumber(newOrderNumber);
+      setShowCheckout(false);
+      setShowReceipt(true);
+
       setProducts((prev) => prev.map((p) => {
         const cartItem = cart.find((c) => c.id === p.id);
         if (!cartItem) return p;
         return { ...p, stock: Math.max(0, p.stock - cartItem.quantity) };
       }));
-    } catch {
-      // Sale receipt already shown — order will sync on next page load
+
+      // Increment local order counter for free-tier sellers
+      setOrderUsage((prev) => prev ? { ...prev, used: prev.used + 1 } : prev);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      if (detail?.error === 'order_limit_reached') {
+        setShowCheckout(false);
+        setOrderLimitError({ used: detail.used ?? 25, limit: detail.limit ?? 25 });
+      }
+      // Other errors: silent (POS offline tolerance)
+    } finally {
+      setProcessingPayment(false);
     }
   };
 
@@ -295,6 +317,31 @@ export default function POSPage() {
       />
     )}
 
+    {/* Order limit reached modal */}
+    {orderLimitError && (
+      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
+          <div className="w-14 h-14 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center mx-auto mb-4">
+            <ShoppingCart className="w-7 h-7 text-orange-400" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Monthly Order Limit Reached</h2>
+          <p className="text-muted-foreground text-sm mb-1">
+            You have used <span className="text-foreground font-bold">{orderLimitError.used}</span> of your{' '}
+            <span className="text-foreground font-bold">{orderLimitError.limit}</span> orders this month.
+          </p>
+          <p className="text-muted-foreground text-sm mb-5">
+            Upgrade to <span className="text-primary font-semibold">Premium</span> through your TheDersi account to get unlimited orders per month.
+          </p>
+          <button
+            onClick={() => setOrderLimitError(null)}
+            className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition"
+          >
+            OK, Got it
+          </button>
+        </div>
+      </div>
+    )}
+
     {/* Scanned product popup */}
     {scannedProduct && (
       <ScannedProductModal
@@ -310,6 +357,26 @@ export default function POSPage() {
       <div className="flex-1 flex flex-col min-h-0">
         {/* Search & Filter */}
         <div className="bg-card rounded-xl border border-border p-3 mb-4">
+          {/* Monthly order usage counter (free-tier sellers only) */}
+          {orderUsage && (
+            <div className={`mb-3 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-between gap-2 ${
+              orderUsage.used >= orderUsage.limit
+                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                : orderUsage.used >= orderUsage.limit - 10
+                ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+            }`}>
+              <span>
+                {orderUsage.used >= orderUsage.limit
+                  ? `Monthly order limit reached (${orderUsage.used}/${orderUsage.limit}). Upgrade to Premium for unlimited orders.`
+                  : `Free plan: ${orderUsage.used}/${orderUsage.limit} orders this month`}
+              </span>
+              {orderUsage.used >= orderUsage.limit && (
+                <span className="text-xs font-semibold whitespace-nowrap opacity-80">Upgrade via TheDersi</span>
+              )}
+            </div>
+          )}
+
           {/* Barcode Scanner Status Banner */}
           {barcodeFlash && (
             <div className={`mb-3 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${
@@ -740,10 +807,14 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={handlePayment}
-                className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold text-lg transition flex items-center justify-center gap-2"
+                disabled={processingPayment}
+                className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-lg transition flex items-center justify-center gap-2"
               >
-                <Check className="w-5 h-5" />
-                Confirm Payment - {total.toFixed(2)} {sym}
+                {processingPayment ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" />Processing...</>
+                ) : (
+                  <><Check className="w-5 h-5" />Confirm Payment - {total.toFixed(2)} {sym}</>
+                )}
               </button>
             </div>
           </div>
