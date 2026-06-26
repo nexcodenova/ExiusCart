@@ -23,7 +23,7 @@ const METRICS = [
 ];
 
 export default function AffiliatePage() {
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', company: '', website: '', how_promote: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', website: '', platform: '', audience: '', country: '', experience: '', how_promote: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +38,20 @@ export default function AffiliatePage() {
       const res = await fetch(`${API_URL}/api/v1/affiliates/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, affiliate_type: 'external' }),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          website: formData.website,
+          affiliate_type: 'external',
+          how_promote: [
+            formData.platform && `Platform: ${formData.platform}`,
+            formData.audience && `Audience size: ${formData.audience}`,
+            formData.country && `Target region: ${formData.country}`,
+            formData.experience && `Experience: ${formData.experience}`,
+            formData.how_promote && `Details: ${formData.how_promote}`,
+          ].filter(Boolean).join(' | '),
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.detail || 'Something went wrong. Please try again.'); return; }
@@ -292,6 +305,7 @@ export default function AffiliatePage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Basic info */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="Full name *">
                     <input type="text" required value={formData.name} onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="Your name" className={inputCls} />
@@ -304,16 +318,60 @@ export default function AffiliatePage() {
                   <Field label="Phone">
                     <input type="tel" value={formData.phone} onChange={(e) => setFormData(p => ({ ...p, phone: e.target.value }))} placeholder="+XX XX XXX XXXX" className={inputCls} />
                   </Field>
-                  <Field label="Payout account (PayPal / Skrill / Payoneer)">
-                    <input type="email" value={formData.company} onChange={(e) => setFormData(p => ({ ...p, company: e.target.value }))} placeholder="your-payout@email.com" className={inputCls} />
+                  <Field label="Your website or social profile">
+                    <input type="text" value={formData.website} onChange={(e) => setFormData(p => ({ ...p, website: e.target.value }))} placeholder="https:// or @handle" className={inputCls} />
                   </Field>
                 </div>
-                <Field label="Website / social media">
-                  <input type="text" value={formData.website} onChange={(e) => setFormData(p => ({ ...p, website: e.target.value }))} placeholder="https://yoursite.com or TikTok/Instagram link" className={inputCls} />
-                </Field>
-                <Field label="How will you promote ExiusCart?">
-                  <textarea value={formData.how_promote} onChange={(e) => setFormData(p => ({ ...p, how_promote: e.target.value }))} rows={3} placeholder="e.g. I run a WhatsApp group of 500 business owners and will share my link with a short explainer..." className={`${inputCls} resize-none`} />
-                </Field>
+
+                {/* Promotion questions */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tell us how you'll promote</p>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field label="Primary promotion channel *">
+                      <select required value={formData.platform} onChange={(e) => setFormData(p => ({ ...p, platform: e.target.value }))} className={inputCls}>
+                        <option value="">Select a channel...</option>
+                        <option>WhatsApp groups</option>
+                        <option>Facebook / Instagram</option>
+                        <option>TikTok</option>
+                        <option>YouTube</option>
+                        <option>Blog / Website</option>
+                        <option>Email newsletter</option>
+                        <option>Direct outreach (B2B)</option>
+                        <option>Other</option>
+                      </select>
+                    </Field>
+                    <Field label="Estimated audience / reach *">
+                      <select required value={formData.audience} onChange={(e) => setFormData(p => ({ ...p, audience: e.target.value }))} className={inputCls}>
+                        <option value="">Select range...</option>
+                        <option>Under 500</option>
+                        <option>500 – 2,000</option>
+                        <option>2,000 – 10,000</option>
+                        <option>10,000 – 50,000</option>
+                        <option>50,000+</option>
+                      </select>
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field label="Country / region you'll target *">
+                      <input type="text" required value={formData.country} onChange={(e) => setFormData(p => ({ ...p, country: e.target.value }))} placeholder="e.g. UAE, Sri Lanka, Saudi Arabia" className={inputCls} />
+                    </Field>
+                    <Field label="Affiliate marketing experience">
+                      <select value={formData.experience} onChange={(e) => setFormData(p => ({ ...p, experience: e.target.value }))} className={inputCls}>
+                        <option value="">Select...</option>
+                        <option>First time</option>
+                        <option>Some experience (1–2 programs)</option>
+                        <option>Experienced (3+ programs)</option>
+                        <option>Professional affiliate marketer</option>
+                      </select>
+                    </Field>
+                  </div>
+
+                  <Field label="Describe your promotion plan">
+                    <textarea value={formData.how_promote} onChange={(e) => setFormData(p => ({ ...p, how_promote: e.target.value }))} rows={3} placeholder="e.g. I manage a WhatsApp group of 800 garment shop owners in Colombo. I'll share ExiusCart with a short explainer video and my referral link every time a new member joins..." className={`${inputCls} resize-none`} />
+                  </Field>
+                </div>
 
                 <button type="submit" disabled={isLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B3FD9] py-3.5 text-base font-bold text-white transition hover:bg-[#5A2EC9] disabled:opacity-60">
                   {isLoading
