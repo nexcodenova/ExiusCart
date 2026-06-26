@@ -43,6 +43,16 @@ export default function MarketingPage() {
         <p className="text-gray-400 text-sm mt-1">Your referral link and ready-to-share content</p>
       </div>
 
+      {/* Content policy */}
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 mb-6">
+        <p className="text-amber-400 font-semibold text-sm mb-2">Promotion Policy — Please read</p>
+        <ul className="text-gray-300 text-sm space-y-1.5">
+          <li>✅ <span className="font-medium">Paid ads allowed</span> — Google, Meta, TikTok, any platform. No restrictions.</li>
+          <li>⚠️ <span className="font-medium">Do not share a bare link</span> — you must pair your referral link with content: a landing page, blog post, social post, or video.</li>
+          <li>🏷️ <span className="font-medium">Label required</span> — display <span className="text-amber-300 font-mono">&quot;Affiliate partner of ExiusCart by NexCodeNova&quot;</span> on your profile or site. This must be done before payouts are enabled.</li>
+        </ul>
+      </div>
+
       {/* Referral link */}
       <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-6 mb-6">
         <div className="flex items-center gap-2 mb-3">

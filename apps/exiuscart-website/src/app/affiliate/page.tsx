@@ -18,7 +18,7 @@ const HOW_IT_WORKS = [
 const METRICS = [
   { icon: DollarSign, value: '$75', label: 'Per yearly referral' },
   { icon: Wallet, value: '3 methods', label: 'PayPal · Skrill · Payoneer' },
-  { icon: Clock, value: '45 days', label: 'Lock period before payout' },
+  { icon: Clock, value: 'T&C Apply', label: 'Payout conditions & lock period' },
   { icon: BadgeCheck, value: 'Free', label: 'To join, no minimums' },
 ];
 
@@ -164,7 +164,7 @@ export default function AffiliatePage() {
               </div>
               <div>
                 <p className="text-4xl font-extrabold text-emerald-600">$35</p>
-                <p className="text-xs text-slate-500 mt-1">One-time per referral · 45-day lock · PayPal / Skrill / Payoneer</p>
+                <p className="text-xs text-slate-500 mt-1">One-time per referral · PayPal / Skrill / Payoneer</p>
               </div>
             </div>
 
@@ -180,17 +180,17 @@ export default function AffiliatePage() {
               </div>
               <div>
                 <p className="text-4xl font-extrabold text-[#6B3FD9]">$75</p>
-                <p className="text-xs text-slate-500 mt-1">One-time per referral · 45-day lock · PayPal / Skrill / Payoneer</p>
+                <p className="text-xs text-slate-500 mt-1">One-time per referral · PayPal / Skrill / Payoneer</p>
               </div>
             </div>
           </div>
 
-          {/* Lock period note */}
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-slate-700 flex gap-3 items-start">
-            <Clock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          {/* T&C note */}
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-600 flex gap-3 items-start">
+            <BadgeCheck className="h-5 w-5 text-[#6B3FD9] shrink-0 mt-0.5" />
             <div>
-              <span className="font-semibold text-slate-900">45-day lock period: </span>
-              Commissions are held for 45 days to account for refunds. After the lock period, your earnings are released and paid out to your PayPal, Skrill, or Payoneer account.
+              Commissions are subject to a lock period and minimum payout threshold. Full details including payout conditions, lock periods, and eligibility rules are outlined in our{' '}
+              <Link href="/terms" className="text-[#6B3FD9] font-medium hover:underline">Terms & Conditions</Link>.
             </div>
           </div>
         </div>
@@ -371,6 +371,15 @@ export default function AffiliatePage() {
                   <Field label="Describe your promotion plan">
                     <textarea value={formData.how_promote} onChange={(e) => setFormData(p => ({ ...p, how_promote: e.target.value }))} rows={3} placeholder="e.g. I manage a WhatsApp group of 800 garment shop owners in Colombo. I'll share ExiusCart with a short explainer video and my referral link every time a new member joins..." className={`${inputCls} resize-none`} />
                   </Field>
+                </div>
+
+                {/* Content creation & ads policy */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 space-y-2.5 text-xs text-slate-600">
+                  <p className="font-semibold text-slate-800 text-sm">Before you apply — please note:</p>
+                  <p>✅ <span className="font-medium text-slate-800">Paid ads are allowed</span> with no restrictions — you can run Google, Meta, TikTok, or any ad platform.</p>
+                  <p>⚠️ <span className="font-medium text-slate-800">You must create content</span> around your referral link — a landing page, blog post, social post, or video. Directly sharing a bare link without any supporting content is not permitted.</p>
+                  <p>🏷️ <span className="font-medium text-slate-800">Partnership label required</span> — once approved, you must display <em>&quot;Affiliate partner of ExiusCart by NexCodeNova&quot;</em> on your social profiles or website to activate payouts.</p>
+                  <p>Full terms including payout conditions are in our <Link href="/terms" className="text-[#6B3FD9] hover:underline font-medium">Terms & Conditions</Link>.</p>
                 </div>
 
                 <button type="submit" disabled={isLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B3FD9] py-3.5 text-base font-bold text-white transition hover:bg-[#5A2EC9] disabled:opacity-60">
