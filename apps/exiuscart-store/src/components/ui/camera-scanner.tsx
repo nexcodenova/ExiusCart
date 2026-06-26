@@ -32,7 +32,8 @@ export function CameraScanner({ onScan, onClose }: CameraScannerProps) {
     stopCamera();
 
     try {
-      const { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } = await import('@zxing/browser');
+      const { BrowserMultiFormatReader } = await import('@zxing/browser');
+      const { DecodeHintType, BarcodeFormat } = await import('@zxing/library');
 
       const hints = new Map();
       hints.set(DecodeHintType.POSSIBLE_FORMATS, [
