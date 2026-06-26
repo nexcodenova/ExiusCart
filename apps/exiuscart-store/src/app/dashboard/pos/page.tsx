@@ -60,6 +60,7 @@ export default function POSPage() {
   const [orderNumber, setOrderNumber] = useState('');
   const [barcodeFlash, setBarcodeFlash] = useState<string | null>(null);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
+  const [scannedProduct, setScannedProduct] = useState<POSProduct | null>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   const [products, setProducts] = useState<POSProduct[]>([]);
@@ -117,18 +118,20 @@ export default function POSPage() {
     fetchData();
   }, []);
 
-  // Handle barcode scan — search by barcode or SKU then add to cart
-  const handleBarcodeScan = useCallback((barcode: string) => {
+  // Handle barcode scan — extract code from QR URL if needed, then show product popup
+  const handleBarcodeScan = useCallback((raw: string) => {
+    // If QR code was scanned (contains a URL), extract the barcode from /p/{code}
+    const urlMatch = raw.match(/\/p\/([A-Za-z0-9]+)/);
+    const barcode = urlMatch ? urlMatch[1] : raw.trim();
+
     const product = products.find(
       (p) => p.barcode === barcode || p.sku.toLowerCase() === barcode.toLowerCase()
     );
     if (product) {
-      addToCart(product);
-      setBarcodeFlash(`Added: ${product.name}`);
-      setTimeout(() => setBarcodeFlash(null), 2000);
+      setScannedProduct(product);
     } else {
       setBarcodeFlash(`Not found: ${barcode}`);
-      setTimeout(() => setBarcodeFlash(null), 2000);
+      setTimeout(() => setBarcodeFlash(null), 2500);
     }
   }, [products]);
 
@@ -287,10 +290,21 @@ export default function POSPage() {
     <>
     {showCameraScanner && (
       <CameraScanner
-        onScan={(barcode) => { handleBarcodeScan(barcode); }}
+        onScan={(barcode) => { setShowCameraScanner(false); handleBarcodeScan(barcode); }}
         onClose={() => setShowCameraScanner(false)}
       />
     )}
+
+    {/* Scanned product popup */}
+    {scannedProduct && (
+      <ScannedProductModal
+        product={scannedProduct}
+        sym={sym}
+        onAddToCart={() => { addToCart(scannedProduct); setBarcodeFlash(`Added: ${scannedProduct.name}`); setTimeout(() => setBarcodeFlash(null), 2000); setScannedProduct(null); }}
+        onClose={() => setScannedProduct(null)}
+      />
+    )}
+
     <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-5rem)] flex flex-col lg:flex-row gap-4">
       {/* Products Section */}
       <div className="flex-1 flex flex-col min-h-0">
@@ -793,5 +807,105 @@ export default function POSPage() {
       )}
     </div>
     </>
+  );
+}
+
+// ── Scanned product popup ─────────────────────────────────────────────────────
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
+
+interface LiveInfo { stock: number; reserved: number; available: number; }
+
+function ScannedProductModal({
+  product,
+  sym,
+  onAddToCart,
+  onClose,
+}: {
+  product: POSProduct;
+  sym: string;
+  onAddToCart: () => void;
+  onClose: () => void;
+}) {
+  const [live, setLive] = useState<LiveInfo | null>(null);
+
+  useEffect(() => {
+    if (!product.barcode) {
+      setLive({ stock: product.stock, reserved: 0, available: product.stock });
+      return;
+    }
+    fetch(`${API_BASE}/api/v1/public/product/${product.barcode}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) setLive({ stock: data.stock, reserved: data.reserved, available: data.available });
+        else setLive({ stock: product.stock, reserved: 0, available: product.stock });
+      })
+      .catch(() => setLive({ stock: product.stock, reserved: 0, available: product.stock }));
+  }, [product]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Scan className="w-4 h-4 text-primary" />
+            <span className="font-semibold text-foreground text-sm">Scanned Product</span>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Product info */}
+        <div className="p-5">
+          {product.image && (
+            <img src={product.image} alt={product.name} className="w-full h-32 object-contain rounded-xl bg-muted mb-4" />
+          )}
+          <p className="text-xs text-muted-foreground mb-0.5">{product.category}</p>
+          <h2 className="text-lg font-bold text-foreground mb-1">{product.name}</h2>
+          <p className="text-2xl font-black text-primary mb-4">{sym}{product.sellingPrice.toFixed(2)}</p>
+
+          {/* Stock live data */}
+          {live ? (
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              <div className="bg-muted rounded-xl p-3 text-center">
+                <p className="text-xl font-black text-foreground">{live.stock}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Total Stock</p>
+              </div>
+              <div className="bg-muted rounded-xl p-3 text-center">
+                <p className="text-xl font-black text-yellow-500">{live.reserved}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Reserved</p>
+              </div>
+              <div className="bg-muted rounded-xl p-3 text-center">
+                <p className={`text-xl font-black ${live.available > 0 ? 'text-green-500' : 'text-red-500'}`}>{live.available}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Available</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-16 mb-5">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onAddToCart}
+              disabled={live ? live.available === 0 : false}
+              className="flex-1 py-3 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 transition"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

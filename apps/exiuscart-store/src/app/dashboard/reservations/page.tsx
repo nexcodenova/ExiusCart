@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BookmarkCheck, Plus, Clock, Lock, CheckCircle2, XCircle, AlertTriangle,
-  X, Edit, Trash2, ArrowRight, Search, Package, ShoppingCart,
+  X, Edit, Trash2, ArrowRight, Search, Package, ShoppingCart, QrCode,
 } from 'lucide-react';
 import { reservationsApi, productsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
@@ -77,6 +77,7 @@ export default function ReservationsPage() {
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [fulfillTarget, setFulfillTarget] = useState<Reservation | null>(null);
+  const [qrTarget, setQrTarget] = useState<Reservation | null>(null);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const { sym } = useCurrency();
 
@@ -303,6 +304,14 @@ export default function ReservationsPage() {
                       )}
                       <button
                         type="button"
+                        onClick={() => setQrTarget(r)}
+                        title="Print QR label"
+                        className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
+                      >
+                        <QrCode className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setConfirmDelete(r.id)}
                         className="p-2 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive transition"
                       >
@@ -330,6 +339,10 @@ export default function ReservationsPage() {
             router.push(`/dashboard/orders/${orderId}`);
           }}
         />
+      )}
+
+      {qrTarget && (
+        <ReservationQRModal reservation={qrTarget} onClose={() => setQrTarget(null)} />
       )}
 
       {/* Create / Edit Modal */}
@@ -661,6 +674,56 @@ function ReservationModal({ shopId, reservation, onClose, onSaved }: {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Reservation QR Label Modal ────────────────────────────────────────────────
+function ReservationQRModal({ reservation: r, onClose }: { reservation: Reservation; onClose: () => void }) {
+  const { QRCodeSVG } = require('qrcode.react');
+  const qrUrl = `https://exiuscart.com/r/${r.id}`;
+  const typeLabel = r.reservation_type === 'confirmed' ? 'Confirmed Reservation' : 'Soft Hold';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-xs shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <QrCode className="w-4 h-4 text-primary" />
+            <span className="font-semibold text-sm text-foreground">Reservation QR Label</span>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Printable label */}
+        <div id="reservation-qr-label" className="p-5 flex flex-col items-center gap-3">
+          <div className="w-full border border-gray-300 rounded-xl bg-white text-black p-4 flex flex-col items-center gap-2">
+            <p className="text-xs font-bold text-center text-black leading-tight">{r.product_name}</p>
+            <p className="text-[10px] text-gray-600">Qty: {r.quantity} · {typeLabel}</p>
+            <QRCodeSVG value={qrUrl} size={120} bgColor="#ffffff" fgColor="#000000" level="M" />
+            <p className="text-[10px] text-gray-500 text-center font-medium">{r.customer_name}</p>
+            <p className="text-[9px] text-gray-400">Scan to view reservation details</p>
+          </div>
+
+          <p className="text-xs text-muted-foreground text-center">
+            Anyone who scans this QR sees live reservation details — no app needed.
+          </p>
+
+          <div className="flex gap-2 w-full">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted-foreground hover:bg-muted transition">
+              Close
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition"
+            >
+              <QrCode className="w-4 h-4" /> Print
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

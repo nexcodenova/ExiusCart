@@ -5,6 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { Printer, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import JsBarcode from 'jsbarcode';
+import { QRCodeSVG } from 'qrcode.react';
+
+const PUBLIC_BASE = 'https://exiuscart.com';
 
 interface LabelData {
   name: string;
@@ -13,22 +16,20 @@ interface LabelData {
   price: string;
 }
 
-// One self-contained label with its own barcode. Each copy is its own component
-// so every label gets its own ref + rendered barcode (previously a single shared
-// ref meant only one copy ever drew the barcode).
 function SingleLabel({ label }: { label: LabelData }) {
   const ref = useRef<SVGSVGElement>(null);
+  const qrUrl = `${PUBLIC_BASE}/p/${label.barcode}`;
 
   useEffect(() => {
     if (!ref.current || !label.barcode) return;
     try {
       JsBarcode(ref.current, label.barcode, {
         format: 'CODE128',
-        width: 2,
-        height: 45,
-        fontSize: 12,
+        width: 1.8,
+        height: 36,
+        fontSize: 10,
         displayValue: true,
-        margin: 4,
+        margin: 3,
         background: '#ffffff',
         lineColor: '#000000',
       });
@@ -37,17 +38,45 @@ function SingleLabel({ label }: { label: LabelData }) {
 
   return (
     <div
-      className="border border-gray-300 rounded flex flex-col items-center justify-center bg-white text-black p-2"
-      style={{ width: '220px', minHeight: '120px', pageBreakInside: 'avoid' }}
+      className="border border-gray-300 rounded flex flex-col items-center bg-white text-black p-2 gap-1"
+      style={{ width: '240px', minHeight: '140px', pageBreakInside: 'avoid' }}
     >
-      <p className="text-xs font-semibold text-center leading-tight text-black w-full px-1" style={{ maxWidth: '210px' }}>
+      {/* Product name */}
+      <p className="text-xs font-semibold text-center leading-tight text-black w-full px-1 line-clamp-2" style={{ maxWidth: '230px' }}>
         {label.name}
       </p>
-      {label.sku && <p className="text-[10px] text-gray-600">{label.sku}</p>}
-      {label.barcode
-        ? <svg ref={ref} style={{ width: '200px' }} />
-        : <p className="text-[11px] text-gray-400 my-3">No barcode set</p>}
-      {label.price && <p className="text-base font-extrabold text-black -mt-0.5">{label.price}</p>}
+      {label.sku && <p className="text-[9px] text-gray-500">SKU: {label.sku}</p>}
+
+      {/* Price */}
+      {label.price && (
+        <p className="text-base font-extrabold text-black leading-none">{label.price}</p>
+      )}
+
+      {/* CODE128 barcode (for POS scanner) */}
+      {label.barcode ? (
+        <svg ref={ref} style={{ width: '200px' }} />
+      ) : (
+        <p className="text-[11px] text-gray-400 my-2">No barcode set</p>
+      )}
+
+      {/* Divider + QR section */}
+      {label.barcode && (
+        <div className="w-full border-t border-gray-200 pt-1.5 flex items-center gap-2 justify-center">
+          <QRCodeSVG
+            value={qrUrl}
+            size={52}
+            bgColor="#ffffff"
+            fgColor="#000000"
+            level="M"
+          />
+          <div className="text-left">
+            <p className="text-[8px] text-gray-500 leading-tight">Scan QR to view</p>
+            <p className="text-[8px] text-gray-500 leading-tight">stock & details</p>
+            <p className="text-[8px] text-gray-400 font-mono leading-tight mt-0.5">exiuscart.com/p/</p>
+            <p className="text-[8px] text-gray-400 font-mono leading-tight">{label.barcode.slice(-6)}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -66,16 +95,12 @@ export default function BarcodePrintPage() {
     }
   } catch { /* invalid data */ }
 
-  // Flatten: every label repeated `copies` times, each its own rendered tag
   const allLabels: LabelData[] = labels.flatMap((l) =>
     Array.from({ length: copies }, () => l)
   );
 
-  const handlePrint = () => window.print();
-
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Controls — hidden when printing */}
       <div className="print:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between gap-4">
         <Link
           href="/dashboard/products"
@@ -97,7 +122,7 @@ export default function BarcodePrintPage() {
             />
           </div>
           <button
-            onClick={handlePrint}
+            onClick={() => window.print()}
             className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition"
           >
             <Printer className="w-4 h-4" /> Print Labels
@@ -105,7 +130,6 @@ export default function BarcodePrintPage() {
         </div>
       </div>
 
-      {/* Label grid */}
       <div className="p-6 print:p-0">
         {allLabels.length === 0 ? (
           <div className="text-center py-16 text-gray-500">
@@ -113,10 +137,7 @@ export default function BarcodePrintPage() {
             <p className="text-sm mt-1">Open this page from the Products list by clicking Print Barcode.</p>
           </div>
         ) : (
-          <div
-            className="flex flex-wrap gap-3 print:gap-2"
-            style={{ maxWidth: '960px', margin: '0 auto' }}
-          >
+          <div className="flex flex-wrap gap-3 print:gap-2" style={{ maxWidth: '960px', margin: '0 auto' }}>
             {allLabels.map((label, i) => (
               <SingleLabel key={i} label={label} />
             ))}
