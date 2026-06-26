@@ -197,6 +197,8 @@ export default function ProductsPage() {
   }, [shopId]);
 
   const isTheDersiBasic = planType === 'thedersi_basic';
+  const canBulkUpload = planType === 'premium' || planType === 'thedersi_pro';
+  const isTheDersiBasicUser = planType === 'thedersi_basic';
 
   const togglePrintSelect = (id: string) => {
     setSelectedForPrint(prev => {
@@ -253,13 +255,30 @@ export default function ProductsPage() {
               </button>
             )
           )}
-          <button
-            type="button"
-            onClick={() => { setCsvRows([]); setCsvError(''); setCsvResult(null); setShowCsvModal(true); }}
-            className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-muted transition"
-          >
-            <FileSpreadsheet className="w-5 h-5" /> Import CSV
-          </button>
+          {canBulkUpload ? (
+            <button
+              type="button"
+              onClick={() => { setCsvRows([]); setCsvError(''); setCsvResult(null); setShowCsvModal(true); }}
+              className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-muted transition"
+            >
+              <FileSpreadsheet className="w-5 h-5" /> Bulk Upload
+            </button>
+          ) : (
+            <div className="relative group/bulk">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 border border-border text-muted-foreground/50 px-4 py-2.5 rounded-lg font-medium cursor-not-allowed select-none"
+              >
+                <Lock className="w-4 h-4" />
+                <FileSpreadsheet className="w-5 h-5" /> Bulk Upload
+              </button>
+              <div className="absolute right-0 top-full mt-1.5 z-20 hidden group-hover/bulk:block pointer-events-none">
+                <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
+                  {isTheDersiBasicUser ? 'Only for TheDersi Pro' : 'Only for Premium plan'}
+                </div>
+              </div>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => { setEditingProduct(null); setShowAddModal(true); }}

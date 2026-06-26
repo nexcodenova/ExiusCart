@@ -146,6 +146,8 @@ const STORAGE_KEY = 'sidebar_open_groups';
 export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showTheDersiModal, setShowTheDersiModal] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
   const [shopData, setShopData] = useState<{ name: string; plan: string; daysLeft: number | null } | null>(null);
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     new Set(GROUPS.map(g => g.id)) // all open by default
@@ -180,6 +182,13 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
       });
     }).catch(() => {});
   }, []);
+
+  // Auto-dismiss coming soon banner after 3 s
+  useEffect(() => {
+    if (!showComingSoon) return;
+    const t = setTimeout(() => setShowComingSoon(false), 3000);
+    return () => clearTimeout(t);
+  }, [showComingSoon]);
 
   function toggleGroup(id: string) {
     setOpenGroups(prev => {
@@ -263,7 +272,11 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
           <div className="p-2 space-y-0.5">
             {GROUPS.map(group => {
               const plan = (shopData?.plan || '').toLowerCase();
-              const locked = isPremiumGroup(group.id) && plan !== 'premium';
+              const canAccessPremium = plan === 'premium' || plan === 'thedersi_pro';
+              const isTheDersiBasicPlan = plan === 'thedersi_basic';
+              const locked = isPremiumGroup(group.id) && !canAccessPremium;
+              // Premium/TheDersi Pro users see HR & Services as "Coming Soon"
+              const isComingSoonGroup = isPremiumGroup(group.id) && canAccessPremium;
               const groupActive = isGroupActive(group);
               const isOpen = openGroups.has(group.id) || collapsed;
 
@@ -307,13 +320,37 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                         const active = isItemActive(item);
                         if (locked) {
                           return (
+                            <div key={item.href} className="relative group/lock">
+                              <button type="button"
+                                onClick={() => isTheDersiBasicPlan ? setShowTheDersiModal(true) : setShowUpgradeModal(true)}
+                                title={collapsed ? item.label : undefined}
+                                className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm w-full text-left text-muted-foreground/50 hover:bg-muted/50 cursor-pointer">
+                                <Icon className={`w-4 h-4 flex-shrink-0 ${collapsed ? 'mx-auto w-5 h-5' : ''}`} />
+                                {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
+                                {!collapsed && <Shield className="w-3 h-3 text-amber-400 flex-shrink-0" />}
+                              </button>
+                              {/* Hover tooltip */}
+                              {!collapsed && (
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-[60] hidden group-hover/lock:block pointer-events-none">
+                                  <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
+                                    {isTheDersiBasicPlan ? 'Only for TheDersi Pro' : 'Only for Premium plan'}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                        if (isComingSoonGroup) {
+                          return (
                             <button key={item.href} type="button"
-                              onClick={() => setShowUpgradeModal(true)}
+                              onClick={() => { setShowComingSoon(true); onMobileClose(); }}
                               title={collapsed ? item.label : undefined}
-                              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm w-full text-left text-muted-foreground/50 hover:bg-muted/50 cursor-pointer">
+                              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-sm w-full text-left ${
+                                active ? 'bg-indigo-50 text-indigo-600 font-semibold dark:bg-indigo-500/10 dark:text-indigo-400' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              }`}>
                               <Icon className={`w-4 h-4 flex-shrink-0 ${collapsed ? 'mx-auto w-5 h-5' : ''}`} />
                               {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
-                              {!collapsed && <Shield className="w-3 h-3 text-amber-400 flex-shrink-0" />}
+                              {!collapsed && <Sparkles className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
                             </button>
                           );
                         }
@@ -356,7 +393,23 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
         </div>
       </aside>
 
-      {/* Upgrade modal */}
+      {/* Coming Soon top banner — for premium/thedersi_pro clicking HR & Services */}
+      {showComingSoon && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] w-max max-w-[calc(100vw-2rem)]">
+          <div className="flex items-center gap-3 bg-foreground text-background px-5 py-3 rounded-xl shadow-2xl animate-in slide-in-from-top-2 duration-200">
+            <Sparkles className="w-4 h-4 flex-shrink-0 text-indigo-400" />
+            <div>
+              <p className="font-semibold text-sm">Coming Soon</p>
+              <p className="text-xs opacity-60">This feature is currently in development</p>
+            </div>
+            <button onClick={() => setShowComingSoon(false)} className="ml-2 p-1 hover:opacity-60 transition rounded">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade modal — for free_trial / starter users */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowUpgradeModal(false)}>
           <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -375,6 +428,31 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
               <Link href="/dashboard/billing" onClick={() => setShowUpgradeModal(false)}
                 className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold text-center transition">
                 Upgrade Now
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TheDersi upgrade modal — for thedersi_basic users */}
+      {showTheDersiModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowTheDersiModal(false)}>
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/15 mb-4 mx-auto">
+              <Shield className="w-6 h-6 text-indigo-400" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground text-center mb-2">TheDersi Pro Feature</h3>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              HR, Payroll, Fleet, Projects, Helpdesk and Appointments are only available on <span className="text-indigo-400 font-semibold">TheDersi Pro</span>.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowTheDersiModal(false)}
+                className="flex-1 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
+                Cancel
+              </button>
+              <Link href="/dashboard/billing" onClick={() => setShowTheDersiModal(false)}
+                className="flex-1 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold text-center transition">
+                Upgrade to Pro
               </Link>
             </div>
           </div>
