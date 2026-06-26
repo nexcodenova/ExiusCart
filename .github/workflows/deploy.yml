@@ -4,16 +4,47 @@ on:
   push:
     branches: [main]
 
-# Only the latest deploy matters. If new commits are pushed while a deploy is
-# running/queued, cancel the older ones instead of stacking them up behind the lock.
+# Cancel older queued deploys when a new commit arrives
 concurrency:
   group: deploy-production
   cancel-in-progress: true
 
 jobs:
+  # ── Job 1: TypeScript + syntax check (runs in GitHub, free, fast) ────────────
+  # If this fails the deploy job never starts — server is NEVER touched.
+  build-test:
+    name: Build Test (TypeScript check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript — store
+        run: npx tsc --noEmit -p apps/exiuscart-store/tsconfig.json
+
+      - name: TypeScript — admin
+        run: npx tsc --noEmit -p apps/exiuscart-admin/tsconfig.json
+
+      - name: TypeScript — affiliates
+        run: npx tsc --noEmit -p apps/exiuscart-affiliates/tsconfig.json
+
+      - name: Python syntax — backend
+        run: |
+          find exiuscart-backend/app -name "*.py" | xargs python3 -m py_compile
+          echo "Backend syntax OK"
+
+  # ── Job 2: Deploy to server (only runs if build-test passes) ─────────────────
   deploy:
     name: SSH & Deploy
     runs-on: ubuntu-latest
+    needs: build-test
 
     steps:
       - name: Deploy via SSH
