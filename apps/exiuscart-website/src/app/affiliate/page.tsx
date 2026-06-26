@@ -16,7 +16,7 @@ const HOW_IT_WORKS = [
 ];
 
 const METRICS = [
-  { icon: DollarSign, value: '$75', label: 'Per yearly referral' },
+  { icon: DollarSign, value: '$75', label: 'Per referral' },
   { icon: Wallet, value: '3 methods', label: 'PayPal · Skrill · Payoneer' },
   { icon: Clock, value: 'T&C Apply', label: 'Payout conditions & lock period' },
   { icon: BadgeCheck, value: 'Free', label: 'To join, no minimums' },
@@ -70,7 +70,7 @@ export default function AffiliatePage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="text-xl font-bold"><span className="text-[#6B3FD9]">Exius</span>Cart</Link>
           <div className="flex items-center gap-4 text-sm">
-            <Link href="/login" className="text-slate-600 hover:text-slate-900 transition">Sign in</Link>
+            <a href="https://store.exiuscart.com/login" className="text-slate-600 hover:text-slate-900 transition">Sign in</a>
             <a href="#apply" className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">Become an affiliate</a>
           </div>
         </div>
@@ -90,7 +90,7 @@ export default function AffiliatePage() {
               each referral
             </h1>
             <p className="mt-5 max-w-lg text-lg text-slate-600">
-              Refer businesses to ExiusCart and earn a flat commission every time they subscribe to a paid plan. Free to join, no minimums, paid via PayPal, Skrill, or Payoneer.
+              Refer businesses to ExiusCart and earn a flat commission for each referral. Free to join, no minimums, paid via PayPal, Skrill, or Payoneer.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a href="#apply" className="inline-flex items-center gap-2 rounded-xl bg-[#6B3FD9] px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#6B3FD9]/20 transition hover:bg-[#5A2EC9]">
@@ -134,10 +134,10 @@ export default function AffiliatePage() {
         <div className="mx-auto max-w-4xl px-6">
           <div className="mx-auto max-w-2xl text-center mb-12">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Simple, flat commissions</h2>
-            <p className="mt-3 text-slate-600">No percentages, no tiers. You get a fixed amount per referral depending on the plan they choose.</p>
+            <p className="mt-3 text-slate-600">No percentages, no tiers. A fixed commission for every paying referral.</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 max-w-xl mx-auto">
             {/* Free trial — no commission */}
             <div className="rounded-3xl border border-slate-200 bg-[#FBF8F3] p-6 flex flex-col gap-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">
@@ -153,44 +153,29 @@ export default function AffiliatePage() {
               </div>
             </div>
 
-            {/* Starter / Growth monthly */}
-            <div className="rounded-3xl border border-slate-200 bg-[#FBF8F3] p-6 flex flex-col gap-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
-                <DollarSign className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-slate-900">Starter / Growth</p>
-                <p className="text-xs text-slate-500 mt-0.5">Monthly plan</p>
-              </div>
-              <div>
-                <p className="text-4xl font-extrabold text-emerald-600">$35</p>
-                <p className="text-xs text-slate-500 mt-1">One-time per referral · PayPal / Skrill / Payoneer</p>
-              </div>
-            </div>
-
-            {/* Growth / Premium yearly */}
+            {/* Paid plan */}
             <div className="relative rounded-3xl border-2 border-[#6B3FD9]/40 bg-white p-6 shadow-lg shadow-[#6B3FD9]/5 flex flex-col gap-4">
               <span className="absolute -top-3 right-5 rounded-full bg-[#6B3FD9] px-3 py-1 text-xs font-bold text-white">Best</span>
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6B3FD9]/10">
                 <Sparkles className="h-5 w-5 text-[#6B3FD9]" />
               </div>
               <div>
-                <p className="font-semibold text-slate-900">Growth / Premium</p>
-                <p className="text-xs text-slate-500 mt-0.5">Yearly plan</p>
+                <p className="font-semibold text-slate-900">Any Paid Plan</p>
+                <p className="text-xs text-slate-500 mt-0.5">Per referral</p>
               </div>
               <div>
                 <p className="text-4xl font-extrabold text-[#6B3FD9]">$75</p>
-                <p className="text-xs text-slate-500 mt-1">One-time per referral · PayPal / Skrill / Payoneer</p>
+                <p className="text-xs text-slate-500 mt-1">One-time · PayPal / Skrill / Payoneer</p>
               </div>
             </div>
           </div>
 
           {/* T&C note */}
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-600 flex gap-3 items-start">
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-600 flex gap-3 items-start max-w-xl mx-auto">
             <BadgeCheck className="h-5 w-5 text-[#6B3FD9] shrink-0 mt-0.5" />
             <div>
-              Commissions are subject to a lock period and minimum payout threshold. Full details including payout conditions, lock periods, and eligibility rules are outlined in our{' '}
-              <Link href="/terms" className="text-[#6B3FD9] font-medium hover:underline">Terms & Conditions</Link>.
+              Commissions are subject to a lock period and eligibility rules.{' '}
+              <Link href="/affiliate/terms" className="text-[#6B3FD9] font-medium hover:underline">Read full affiliate terms →</Link>
             </div>
           </div>
         </div>
@@ -247,7 +232,7 @@ export default function AffiliatePage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Track every referral in real time</h2>
             <p className="mt-3 text-slate-600">Every click, referral, and payout in one simple dashboard — know exactly when your money is coming.</p>
             <div className="mt-8 grid grid-cols-2 gap-4">
-              <BigStat icon={DollarSign} value="$75 max" label="Per referral, no recurring needed" />
+              <BigStat icon={DollarSign} value="$75" label="Per referral, flat commission" />
               <BigStat icon={Wallet} value="3 options" label="PayPal, Skrill, Payoneer payouts" />
               <BigStat icon={MousePointerClick} value="Real-time" label="Click & referral tracking" />
               <BigStat icon={TrendingUp} value="No cap" label="Earn from unlimited referrals" />
@@ -260,7 +245,7 @@ export default function AffiliatePage() {
       <section className="mx-auto max-w-3xl px-6 py-16 text-center">
         <Quote className="mx-auto h-8 w-8 text-[#6B3FD9]/30" />
         <p className="mt-4 text-xl font-medium leading-relaxed text-slate-800 sm:text-2xl">
-          &ldquo;I referred 3 shops to ExiusCart on yearly plans and earned over $200 in a single month — it&apos;s the simplest affiliate program I&apos;ve used.&rdquo;
+          &ldquo;I referred 3 shops to ExiusCart and earned over $200 — it&apos;s the simplest affiliate program I&apos;ve used.&rdquo;
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#6B3FD9]/10 font-bold text-[#6B3FD9]">SJ</div>
@@ -296,7 +281,7 @@ export default function AffiliatePage() {
               <div className="mb-6 rounded-xl bg-[#6B3FD9]/5 border border-[#6B3FD9]/20 px-4 py-3.5 flex items-center gap-3 text-sm">
                 <Sparkles className="h-5 w-5 text-[#6B3FD9] shrink-0" />
                 <span className="text-slate-700">
-                  Earn <strong className="text-[#6B3FD9]">$35</strong> per monthly plan referral &amp; <strong className="text-[#6B3FD9]">$75</strong> per yearly plan referral — paid via PayPal, Skrill, or Payoneer after 45-day lock.
+                  Earn <strong className="text-[#6B3FD9]">$75</strong> for each referral that subscribes to a paid plan.
                 </span>
               </div>
 
@@ -373,15 +358,6 @@ export default function AffiliatePage() {
                   </Field>
                 </div>
 
-                {/* Content creation & ads policy */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 space-y-2.5 text-xs text-slate-600">
-                  <p className="font-semibold text-slate-800 text-sm">Before you apply — please note:</p>
-                  <p>✅ <span className="font-medium text-slate-800">Paid ads are allowed</span> with no restrictions — you can run Google, Meta, TikTok, or any ad platform.</p>
-                  <p>⚠️ <span className="font-medium text-slate-800">You must create content</span> around your referral link — a landing page, blog post, social post, or video. Directly sharing a bare link without any supporting content is not permitted.</p>
-                  <p>🏷️ <span className="font-medium text-slate-800">Partnership label required</span> — once approved, you must display <em>&quot;Affiliate partner of ExiusCart by NexCodeNova&quot;</em> on your social profiles or website to activate payouts.</p>
-                  <p>Full terms including payout conditions are in our <Link href="/terms" className="text-[#6B3FD9] hover:underline font-medium">Terms & Conditions</Link>.</p>
-                </div>
-
                 <button type="submit" disabled={isLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B3FD9] py-3.5 text-base font-bold text-white transition hover:bg-[#5A2EC9] disabled:opacity-60">
                   {isLoading
                     ? <><Loader2 className="h-5 w-5 animate-spin" /> Submitting...</>
@@ -389,7 +365,7 @@ export default function AffiliatePage() {
                 </button>
                 <p className="text-center text-xs text-slate-500">
                   By applying you agree to our{' '}
-                  <Link href="/terms" className="text-[#6B3FD9] hover:underline">Terms</Link> and{' '}
+                  <Link href="/affiliate/terms" className="text-[#6B3FD9] hover:underline">Affiliate Terms</Link> and{' '}
                   <Link href="/privacy" className="text-[#6B3FD9] hover:underline">Privacy Policy</Link>.
                 </p>
               </form>
