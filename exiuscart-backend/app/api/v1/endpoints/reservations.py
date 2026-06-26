@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -11,6 +11,7 @@ from app.models.reservation import Reservation
 from app.models.product import Product
 from app.models.order import Order, OrderItem
 from app.models.customer import Customer
+from app.api.v1.endpoints.channels import _bg_push_stock
 
 router = APIRouter()
 
@@ -214,6 +215,7 @@ def fulfill_reservation(
     shop_id: int,
     reservation_id: int,
     body: FulfillBody,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -304,6 +306,10 @@ def fulfill_reservation(
     # Mark reservation fulfilled
     r.status = "fulfilled"
     db.commit()
+
+    # Push updated stock to TheDersi (and any other connected channels)
+    if product:
+        background_tasks.add_task(_bg_push_stock, product.id, shop_id)
 
     return {"order_id": order.id, "order_number": order_number}
 
