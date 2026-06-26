@@ -4,10 +4,11 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Percent,
   Receipt, Printer, Check, ShoppingCart, Package,
-  User, Download, Scan, Zap, Loader2,
+  User, Download, Scan, Zap, Loader2, Camera,
 } from 'lucide-react';
 import { generateInvoicePDF, generateThermalReceipt } from '@/lib/invoice-generator';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { CameraScanner } from '@/components/ui/camera-scanner';
 import { productsApi, shopApi, ordersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -58,6 +59,7 @@ export default function POSPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
   const [barcodeFlash, setBarcodeFlash] = useState<string | null>(null);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   const [products, setProducts] = useState<POSProduct[]>([]);
@@ -282,6 +284,13 @@ export default function POSPage() {
   };
 
   return (
+    <>
+    {showCameraScanner && (
+      <CameraScanner
+        onScan={(barcode) => { handleBarcodeScan(barcode); }}
+        onClose={() => setShowCameraScanner(false)}
+      />
+    )}
     <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-5rem)] flex flex-col lg:flex-row gap-4">
       {/* Products Section */}
       <div className="flex-1 flex flex-col min-h-0">
@@ -309,22 +318,32 @@ export default function POSPage() {
                 className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground placeholder:text-muted-foreground text-base"
               />
             </div>
-            {/* Barcode manual input */}
-            <div className="relative sm:w-52">
-              <Scan className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input
-                ref={barcodeInputRef}
-                type="text"
-                data-barcode-input
-                placeholder="Scan barcode..."
-                className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground placeholder:text-muted-foreground text-base"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const val = (e.target as HTMLInputElement).value.trim();
-                    if (val) { handleBarcodeScan(val); (e.target as HTMLInputElement).value = ''; }
-                  }
-                }}
-              />
+            {/* Barcode manual input + camera button */}
+            <div className="flex gap-2 sm:w-60">
+              <div className="relative flex-1">
+                <Scan className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <input
+                  ref={barcodeInputRef}
+                  type="text"
+                  data-barcode-input
+                  placeholder="Scan barcode..."
+                  className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground placeholder:text-muted-foreground text-base"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val) { handleBarcodeScan(val); (e.target as HTMLInputElement).value = ''; }
+                    }
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCameraScanner(true)}
+                title="Scan with camera"
+                className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition"
+              >
+                <Camera className="w-5 h-5" />
+              </button>
             </div>
           </div>
           {/* Category Pills */}
@@ -773,5 +792,6 @@ export default function POSPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
