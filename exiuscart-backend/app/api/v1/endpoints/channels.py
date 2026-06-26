@@ -592,7 +592,7 @@ async def receive_order_webhook(
                     "limit": monthly_limit,
                     "used": orders_this_month,
                     "plan": plan_type,
-                    "message": f"Monthly order limit of {monthly_limit} reached. Upgrade your TheDersi plan to continue.",
+                    "message": f"Monthly order limit of {monthly_limit} reached. Upgrade your plan to continue.",
                 },
             )
     # ─────────────────────────────────────────────────────────────────────────

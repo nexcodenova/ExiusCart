@@ -330,7 +330,7 @@ export default function POSPage() {
             <span className="text-foreground font-bold">{orderLimitError.limit}</span> orders this month.
           </p>
           <p className="text-muted-foreground text-sm mb-5">
-            Upgrade to <span className="text-primary font-semibold">Premium</span> through your TheDersi account to get unlimited orders per month.
+            Upgrade your plan to get more orders per month. Contact support or visit the Pricing page.
           </p>
           <button
             onClick={() => setOrderLimitError(null)}

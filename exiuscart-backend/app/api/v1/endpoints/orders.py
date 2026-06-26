@@ -50,8 +50,7 @@ async def create_order(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
-    # ── Monthly order limit check for free-tier TheDersi sellers ─────────────
-    # Counts ALL orders this month (POS + TheDersi channel combined)
+    # ── Monthly order limit check (all plans with a cap, all order sources) ──
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else None
     monthly_limit = MONTHLY_ORDER_LIMITS.get(plan_type)  # None = unlimited
@@ -70,7 +69,7 @@ async def create_order(
                     "limit": monthly_limit,
                     "used": orders_this_month,
                     "plan": plan_type,
-                    "message": f"Monthly order limit of {monthly_limit} reached. Upgrade your TheDersi plan to continue.",
+                    "message": f"Monthly order limit of {monthly_limit} reached. Upgrade your plan to continue.",
                 },
             )
     # ─────────────────────────────────────────────────────────────────────────
