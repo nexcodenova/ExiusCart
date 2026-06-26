@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, X, ChevronRight } from 'lucide-react';
+import { Search, X, Tag, LayoutGrid } from 'lucide-react';
 import { shoppingApi, Product, Category } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 
@@ -74,13 +74,13 @@ export default function HomePage() {
   const trending = products.filter(p => p.is_trending);
   const rest = products.filter(p => !p.is_trending);
   const isFiltered = !!(debouncedSearch || activeCategory !== 'all');
+  const activeCategoryName = categories.find(c => c.slug === activeCategory)?.name;
 
   return (
     <div className="min-h-screen bg-[#f3f3f3]">
-      {/* ── Top Navigation Bar ────────────────────────────────────────── */}
+      {/* ── Header ────────────────────────────────────────────────────── */}
       <header className="bg-[#FF6000] shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          {/* Logo */}
           <Link href="/" className="flex-shrink-0 flex items-center gap-2 mr-2">
             <Image src="/logo.svg" alt="ExiusCart" width={30} height={30} />
             <div className="leading-none">
@@ -93,7 +93,6 @@ export default function HomePage() {
             </div>
           </Link>
 
-          {/* Search bar */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -114,24 +113,22 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Category tabs */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 flex gap-0 overflow-x-auto scrollbar-none">
-            <CategoryTab
-              label="All Products"
-              active={activeCategory === 'all'}
-              onClick={() => setActiveCategory('all')}
-            />
-            {categories.map(cat => (
-              <CategoryTab
-                key={cat.id}
-                label={cat.name}
-                active={activeCategory === cat.slug}
-                onClick={() => setActiveCategory(cat.slug)}
-              />
-            ))}
+        {/* Mobile category scroll — hidden on desktop (sidebar handles it) */}
+        {categories.length > 0 && (
+          <div className="lg:hidden bg-white border-b border-gray-200">
+            <div className="max-w-7xl mx-auto px-4 flex gap-0 overflow-x-auto scrollbar-none">
+              <MobileCategoryTab label="All" active={activeCategory === 'all'} onClick={() => setActiveCategory('all')} />
+              {categories.map(cat => (
+                <MobileCategoryTab
+                  key={cat.id}
+                  label={cat.name}
+                  active={activeCategory === cat.slug}
+                  onClick={() => setActiveCategory(cat.slug)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       {/* ── Hero Banner ───────────────────────────────────────────────── */}
@@ -153,53 +150,122 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── Main content ─────────────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-8">
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center">
-            {error}
-          </div>
-        )}
+      {/* ── Layout: Sidebar + Main ─────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex gap-6 items-start">
 
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-            {Array.from({ length: 10 }).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : products.length === 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-            <EmptyState hasSearch={isFiltered} />
-          </div>
-        ) : isFiltered ? (
-          <section>
-            <p className="text-sm text-gray-500 mb-4">
-              {products.length} product{products.length !== 1 ? 's' : ''} found
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-              {products.map(p => <ProductCard key={p.id} product={p} />)}
+          {/* ── Left Sidebar — desktop only ───────────────────────── */}
+          <aside className="hidden lg:flex flex-col gap-3 w-52 flex-shrink-0 sticky top-[72px]">
+            {/* Categories card */}
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4 text-[#FF6000]" />
+                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Categories</span>
+              </div>
+              <div className="p-2">
+                <SidebarCategoryItem
+                  label="All Products"
+                  active={activeCategory === 'all'}
+                  onClick={() => setActiveCategory('all')}
+                />
+                {categories.map(cat => (
+                  <SidebarCategoryItem
+                    key={cat.id}
+                    label={cat.name}
+                    active={activeCategory === cat.slug}
+                    onClick={() => setActiveCategory(cat.slug)}
+                  />
+                ))}
+                {categories.length === 0 && (
+                  <p className="text-xs text-gray-400 px-3 py-2">No categories yet</p>
+                )}
+              </div>
             </div>
-          </section>
-        ) : (
-          <>
-            {trending.length > 0 && (
-              <section>
-                <SectionHeader title="🔥 Trending Now" />
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-                  {trending.map(p => <ProductCard key={p.id} product={p} />)}
-                </div>
-              </section>
+
+            {/* Dropshipper tip card */}
+            <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Tag className="w-4 h-4 text-[#FF6000]" />
+                <span className="text-xs font-bold text-gray-700">Dropship Tips</span>
+              </div>
+              <ul className="text-xs text-gray-500 space-y-1.5">
+                <li>✓ Download product images</li>
+                <li>✓ Copy supplier links</li>
+                <li>✓ List on your ExiusCart store</li>
+                <li>✓ Start selling today</li>
+              </ul>
+              <a
+                href="https://store.exiuscart.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 block text-center text-xs font-bold text-white bg-[#FF6000] hover:bg-[#e05500] px-3 py-2 rounded-lg transition"
+              >
+                Open My Store →
+              </a>
+            </div>
+          </aside>
+
+          {/* ── Main Content ──────────────────────────────────────── */}
+          <main className="flex-1 min-w-0 space-y-8">
+            {/* Active filter breadcrumb */}
+            {isFiltered && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-gray-500">
+                  {products.length} product{products.length !== 1 ? 's' : ''}
+                  {activeCategoryName ? ` in "${activeCategoryName}"` : ''}
+                  {debouncedSearch ? ` for "${debouncedSearch}"` : ''}
+                </span>
+                <button
+                  onClick={() => { setActiveCategory('all'); setSearch(''); }}
+                  className="flex items-center gap-1 text-xs text-[#FF6000] hover:underline"
+                >
+                  <X className="w-3 h-3" /> Clear filter
+                </button>
+              </div>
             )}
 
-            {rest.length > 0 && (
-              <section>
-                <SectionHeader title="All Products" />
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-                  {rest.map(p => <ProductCard key={p.id} product={p} />)}
-                </div>
-              </section>
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center">
+                {error}
+              </div>
             )}
-          </>
-        )}
-      </main>
+
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : products.length === 0 ? (
+              <div className="grid grid-cols-1">
+                <EmptyState hasSearch={isFiltered} />
+              </div>
+            ) : isFiltered ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                {products.map(p => <ProductCard key={p.id} product={p} />)}
+              </div>
+            ) : (
+              <>
+                {trending.length > 0 && (
+                  <section>
+                    <SectionHeader title="🔥 Trending Now" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                      {trending.map(p => <ProductCard key={p.id} product={p} />)}
+                    </div>
+                  </section>
+                )}
+
+                {rest.length > 0 && (
+                  <section>
+                    <SectionHeader title="All Products" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                      {rest.map(p => <ProductCard key={p.id} product={p} />)}
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+          </main>
+        </div>
+      </div>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
       <footer className="bg-white border-t border-gray-200 mt-16">
@@ -215,7 +281,22 @@ export default function HomePage() {
   );
 }
 
-function CategoryTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function SidebarCategoryItem({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+        active
+          ? 'bg-[#FF6000] text-white font-semibold'
+          : 'text-gray-600 hover:bg-orange-50 hover:text-[#FF6000]'
+      }`}
+    >
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+function MobileCategoryTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -234,9 +315,6 @@ function SectionHeader({ title }: { title: string }) {
   return (
     <div className="flex items-center justify-between mb-4">
       <h2 className="text-lg font-bold text-gray-800">{title}</h2>
-      <span className="flex items-center gap-1 text-xs text-[#FF6000] font-medium">
-        View all <ChevronRight className="w-3.5 h-3.5" />
-      </span>
     </div>
   );
 }
