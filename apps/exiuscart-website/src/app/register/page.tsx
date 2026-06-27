@@ -382,51 +382,49 @@ function RegisterForm() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="email" className="block text-sm text-gray-400 mb-2">
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              {...register('email')}
-              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
-              placeholder="you@example.com"
-            />
-            {errors.email && (
-              <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>
-            )}
-          </div>
+        <div>
+          <label htmlFor="email" className="block text-sm text-gray-400 mb-2">
+            Email Address
+          </label>
+          <input
+            id="email"
+            type="email"
+            {...register('email')}
+            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+            placeholder="you@example.com"
+          />
+          {errors.email && (
+            <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>
+          )}
+        </div>
 
-          <div>
-            <label htmlFor="phone" className="block text-sm text-gray-400 mb-2">
-              Phone Number
-            </label>
-            <div className="flex">
-              <select
-                value={phoneDialCode}
-                onChange={(e) => setPhoneDialCode(e.target.value)}
-                className="bg-[#0B1121] border border-gray-700 border-r-0 rounded-l-lg pl-3 pr-1 py-3 text-white focus:border-[#6B3FD9] focus:outline-none transition text-sm appearance-none cursor-pointer w-24 shrink-0"
-              >
-                {COUNTRIES.map(c => (
-                  <option key={c.code} value={c.dialCode}>
-                    {c.flag} {c.dialCode}
-                  </option>
-                ))}
-              </select>
-              <input
-                id="phone"
-                type="tel"
-                {...register('phone')}
-                className="flex-1 min-w-0 px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-r-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm"
-                placeholder="50 123 4567"
-              />
-            </div>
-            {errors.phone && (
-              <p className="text-red-400 text-sm mt-1">{errors.phone.message}</p>
-            )}
+        <div>
+          <label htmlFor="phone" className="block text-sm text-gray-400 mb-2">
+            Phone Number
+          </label>
+          <div className="flex">
+            <select
+              value={phoneDialCode}
+              onChange={(e) => setPhoneDialCode(e.target.value)}
+              className="bg-[#0B1121] border border-gray-700 border-r-0 rounded-l-lg pl-3 pr-1 py-3 text-white focus:border-[#6B3FD9] focus:outline-none transition text-sm appearance-none cursor-pointer w-28 shrink-0"
+            >
+              {COUNTRIES.map(c => (
+                <option key={c.code} value={c.dialCode}>
+                  {c.flag} {c.dialCode}
+                </option>
+              ))}
+            </select>
+            <input
+              id="phone"
+              type="tel"
+              {...register('phone')}
+              className="flex-1 min-w-0 px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-r-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+              placeholder="50 123 4567"
+            />
           </div>
+          {errors.phone && (
+            <p className="text-red-400 text-sm mt-1">{errors.phone.message}</p>
+          )}
         </div>
 
         {/* Country */}
