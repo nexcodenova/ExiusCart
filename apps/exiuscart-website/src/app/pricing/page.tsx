@@ -261,9 +261,12 @@ export default function PricingPage() {
                   'Unlimited products & orders',
                   'Unlimited customers · 3 users',
                   'Full invoice branding',
+                  'Send from own domain',
                   'Multi-store & multi-location',
                   'Unlimited leads',
                   'Unlimited email campaigns',
+                  'HR & Payroll',
+                  'Helpdesk & Appointments',
                   'Advanced analytics',
                   'Priority support + onboarding',
                 ].map((f) => (
@@ -370,7 +373,7 @@ export default function PricingPage() {
               },
               {
                 name: 'HR & Payroll',
-                desc: 'Employee records, payroll processing, leave requests, and attendance tracking. Available on Enterprise plan.',
+                desc: 'Employee records, payroll processing, leave requests, and attendance tracking — no spreadsheets needed.',
               },
               {
                 name: 'Marketing & Campaigns',
@@ -382,7 +385,7 @@ export default function PricingPage() {
               },
               {
                 name: 'Helpdesk & Appointments',
-                desc: 'Log customer issues, assign to staff, set priorities. Let customers book appointments directly. Available on Enterprise plan.',
+                desc: 'Log customer issues, assign to staff, set priorities. Let customers book appointments directly.',
               },
               {
                 name: 'Sales Channels',
@@ -504,9 +507,12 @@ export default function PricingPage() {
                   'Unlimited customers · 3 users',
                   'Unlimited leads',
                   'Full invoice branding',
+                  'Send from own domain',
                   'Multi-location stock',
                   'Multi-store management',
                   'Unlimited email campaigns',
+                  'HR & Payroll',
+                  'Helpdesk & Appointments',
                   'Advanced analytics',
                   'Priority support + onboarding',
                 ].map((f) => (
