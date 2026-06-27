@@ -699,9 +699,8 @@ def _affiliate_out(affiliate: Affiliate, db: Session) -> dict:
         "referral_link": f"https://exiuscart.com/register?ref={affiliate.referral_code}",
         "affiliate_type": affiliate.affiliate_type,
         "status": affiliate.status,
-        "commission_rate": float(affiliate.commission_rate),
-        "commission_rate_tier2": float(affiliate.commission_rate_tier2),
-        "tier_threshold": affiliate.tier_threshold,
+        "commission_monthly": 25.0,
+        "commission_yearly": 75.0,
         "total_earned": float(total_earned),
         "pending_amount": float(pending_amount),
         "referral_count": referral_count,
@@ -795,23 +794,6 @@ def update_affiliate_status(
             pass
 
     return {"status": affiliate.status}
-
-
-@router.put("/admin/affiliates/{affiliate_id}/commission-rate")
-def update_commission_rate(
-    affiliate_id: int,
-    rate: float,
-    db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
-):
-    affiliate = db.query(Affiliate).filter(Affiliate.id == affiliate_id).first()
-    if not affiliate:
-        raise HTTPException(status_code=404, detail="Affiliate not found")
-    if rate < 0 or rate > 100:
-        raise HTTPException(status_code=400, detail="Rate must be between 0 and 100")
-    affiliate.commission_rate = rate
-    db.commit()
-    return {"commission_rate": rate}
 
 
 @router.put("/admin/commissions/{commission_id}/pay")
@@ -924,8 +906,8 @@ def apply_as_affiliate(
         "message": "Your affiliate application has been submitted! We'll review it and get back to you within 24 hours.",
         "referral_code": referral_code,
         "affiliate_type": data.affiliate_type,
-        "commission_rate": base_rate,
-        "commission_rate_tier2": tier2_rate,
+        "commission_monthly": 25.0,
+        "commission_yearly": 75.0,
     }
 
 

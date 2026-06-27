@@ -30,9 +30,8 @@ interface Affiliate {
   referral_link: string;
   affiliate_type: 'external' | 'shop_owner';
   status: 'pending' | 'active' | 'suspended';
-  commission_rate: number;
-  commission_rate_tier2: number;
-  tier_threshold: number;
+  commission_monthly: number;
+  commission_yearly: number;
   total_earned: number;
   pending_amount: number;
   referral_count: number;
@@ -252,7 +251,7 @@ export default function AffiliatesPage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Commission</p>
-                        <p className="text-sm font-semibold text-[#6B3FD9]">$25 <span className="text-gray-500 font-normal text-xs">/ $75</span></p>
+                        <p className="text-sm font-semibold text-[#6B3FD9]">${affiliate.commission_monthly} <span className="text-gray-500 font-normal text-xs">/ ${affiliate.commission_yearly}</span></p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Earned</p>
