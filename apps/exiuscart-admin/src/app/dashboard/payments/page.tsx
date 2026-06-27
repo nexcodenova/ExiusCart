@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import {
@@ -25,6 +25,8 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'pending'>('all');
+  const [actionId, setActionId] = useState<number | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     adminApi.getSubscriptions()
@@ -35,48 +37,69 @@ export default function PaymentsPage() {
 
   const filtered = subs.filter((s) => {
     const matchSearch = s.shop_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchTab = activeTab === 'all' || (activeTab === 'pending' && s.status === 'trial');
+    const matchTab = activeTab === 'all' || (activeTab === 'pending' && s.status === 'pending_approval');
     return matchSearch && matchTab;
   });
 
   const approve = async (sub: Subscription) => {
+    setActionId(sub.id);
+    setError('');
     try {
       await adminApi.approveSubscription(sub.id);
-      setSubs((prev) => prev.map((s) => s.id === sub.id ? { ...s, status: 'active' } : s));
-    } catch {/* no-op */}
+      const newStatus = sub.plan_type === 'free_trial' ? 'trial' : 'active';
+      setSubs((prev) => prev.map((s) => s.id === sub.id ? { ...s, status: newStatus } : s));
+    } catch {
+      setError('Approval failed — please try again.');
+    } finally {
+      setActionId(null);
+    }
   };
 
   const reject = async (sub: Subscription) => {
+    setActionId(sub.id);
+    setError('');
     try {
       await adminApi.rejectSubscription(sub.id);
       setSubs((prev) => prev.map((s) => s.id === sub.id ? { ...s, status: 'cancelled' } : s));
-    } catch {/* no-op */}
+    } catch {
+      setError('Rejection failed — please try again.');
+    } finally {
+      setActionId(null);
+    }
   };
 
-  const pendingCount = subs.filter((s) => s.status === 'trial').length;
+  const pendingCount = subs.filter((s) => s.status === 'pending_approval').length;
   const totalRevenue = subs.filter((s) => s.status === 'active').reduce((sum, s) => sum + s.amount_paid, 0);
 
   const statusStyles: Record<string, string> = {
-    active: 'bg-green-500/10 text-green-400',
-    trial: 'bg-orange-500/10 text-orange-400',
-    expiring: 'bg-orange-500/10 text-orange-400',
-    expired: 'bg-red-500/10 text-red-400',
-    cancelled: 'bg-gray-500/10 text-gray-400',
+    active:           'bg-green-500/10 text-green-400',
+    trial:            'bg-blue-500/10 text-blue-400',
+    pending_approval: 'bg-orange-500/10 text-orange-400',
+    expiring:         'bg-orange-500/10 text-orange-400',
+    expired:          'bg-red-500/10 text-red-400',
+    cancelled:        'bg-gray-500/10 text-gray-400',
+  };
+
+  const statusLabel: Record<string, string> = {
+    pending_approval: 'Pending',
+    trial:            'Trial',
+    active:           'Active',
+    expiring:         'Expiring',
+    expired:          'Expired',
+    cancelled:        'Cancelled',
   };
 
   const planStyles: Record<string, string> = {
-    starter: 'text-gray-400',
-    business: 'text-blue-400',
-    pro: 'text-[#6B3FD9]',
+    starter:    'text-gray-400',
+    premium:    'text-[#6B3FD9]',
+    free_trial: 'text-blue-400',
   };
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Payments</h1>
-          <p className="text-gray-400 text-sm mt-1">Subscription payments and approvals</p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Payments</h1>
+        <p className="text-gray-400 text-sm mt-1">Subscription payments and approvals</p>
       </div>
 
       {/* Stats */}
@@ -119,6 +142,12 @@ export default function PaymentsPage() {
               View
             </button>
           </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 text-red-400 text-sm">
+          {error}
         </div>
       )}
 
@@ -183,28 +212,30 @@ export default function PaymentsPage() {
                   {filtered.map((sub) => (
                     <tr key={sub.id} className="border-b border-gray-800 last:border-0 hover:bg-[#1A2540] transition">
                       <td className="px-6 py-4 font-medium text-white">{sub.shop_name}</td>
-                      <td className={`px-6 py-4 font-medium capitalize ${planStyles[sub.plan_type] ?? 'text-gray-400'}`}>{sub.plan_type}</td>
+                      <td className={`px-6 py-4 font-medium capitalize ${planStyles[sub.plan_type] ?? 'text-gray-400'}`}>
+                        {sub.plan_type === 'free_trial' ? 'Free Trial' : sub.plan_type}
+                      </td>
                       <td className="px-6 py-4 text-gray-400 capitalize">{sub.billing_type?.replace('_', '-')}</td>
                       <td className="px-6 py-4 font-semibold text-white">
                         {sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`text-xs px-2.5 py-1 rounded-lg capitalize ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
-                          {sub.status === 'trial' ? 'pending' : sub.status}
+                        <span className={`text-xs px-2.5 py-1 rounded-lg ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
+                          {statusLabel[sub.status] ?? sub.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-gray-400 text-sm">
                         {sub.created_at ? new Date(sub.created_at).toLocaleDateString() : '—'}
                       </td>
                       <td className="px-6 py-4">
-                        {sub.status === 'trial' && (
+                        {sub.status === 'pending_approval' && (
                           <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => approve(sub)} title="Approve"
-                              className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition">
-                              <Check className="w-4 h-4" />
+                            <button type="button" onClick={() => approve(sub)} disabled={actionId === sub.id} title="Approve"
+                              className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition disabled:opacity-50">
+                              {actionId === sub.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                             </button>
-                            <button type="button" onClick={() => reject(sub)} title="Reject"
-                              className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition">
+                            <button type="button" onClick={() => reject(sub)} disabled={actionId === sub.id} title="Reject"
+                              className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition disabled:opacity-50">
                               <X className="w-4 h-4" />
                             </button>
                           </div>
@@ -223,22 +254,24 @@ export default function PaymentsPage() {
               <div key={sub.id} className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
                 <div className="flex items-start justify-between mb-3">
                   <p className="font-medium text-white">{sub.shop_name}</p>
-                  <span className={`text-xs px-2.5 py-1 rounded-lg capitalize ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
-                    {sub.status === 'trial' ? 'pending' : sub.status}
+                  <span className={`text-xs px-2.5 py-1 rounded-lg ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
+                    {statusLabel[sub.status] ?? sub.status}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm mb-3">
-                  <span className={`capitalize font-medium ${planStyles[sub.plan_type] ?? 'text-gray-400'}`}>{sub.plan_type}</span>
+                  <span className={`font-medium ${planStyles[sub.plan_type] ?? 'text-gray-400'}`}>
+                    {sub.plan_type === 'free_trial' ? 'Free Trial' : sub.plan_type}
+                  </span>
                   <span className="font-semibold text-white">{sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'}</span>
                 </div>
-                {sub.status === 'trial' && (
+                {sub.status === 'pending_approval' && (
                   <div className="flex gap-2 pt-3 border-t border-gray-800">
-                    <button type="button" onClick={() => approve(sub)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition font-medium text-sm">
-                      <Check className="w-4 h-4" /> Approve
+                    <button type="button" onClick={() => approve(sub)} disabled={actionId === sub.id}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition font-medium text-sm disabled:opacity-50">
+                      {actionId === sub.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Approve
                     </button>
-                    <button type="button" onClick={() => reject(sub)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition font-medium text-sm">
+                    <button type="button" onClick={() => reject(sub)} disabled={actionId === sub.id}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition font-medium text-sm disabled:opacity-50">
                       <X className="w-4 h-4" /> Reject
                     </button>
                   </div>
@@ -251,4 +284,3 @@ export default function PaymentsPage() {
     </div>
   );
 }
-
