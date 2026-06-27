@@ -360,7 +360,8 @@ def approve_subscription(
             sub.expires_at = None  # Lifetime / one-time
 
     # ── Auto-commission: check if shop owner was referred by an affiliate ──────
-    if sub.shop and sub.amount_paid and float(sub.amount_paid) > 0:
+    # Flat commission: $75 yearly, $25 monthly (USD) — no commission on free trials
+    if sub.shop and sub.plan_type != "free_trial":
         shop_owner = db.query(User).filter(User.id == sub.shop.owner_id).first()
         if shop_owner and shop_owner.referred_by_code:
             affiliate = db.query(Affiliate).filter(
@@ -368,30 +369,17 @@ def approve_subscription(
                 Affiliate.status == "active",
             ).first()
             if affiliate:
-                # Only create commission if one doesn't already exist for this subscription
                 existing = db.query(Commission).filter(
                     Commission.subscription_id == sub.id
                 ).first()
                 if not existing:
-                    # Count paid commissions for this affiliate in the current calendar month
-                    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                    month_count = db.query(func.count(Commission.id)).filter(
-                        Commission.affiliate_id == affiliate.id,
-                        Commission.created_at >= month_start,
-                    ).scalar() or 0
-                    # Tier 2 kicks in after tier_threshold referrals this month
-                    threshold = affiliate.tier_threshold or 10
-                    if month_count >= threshold:
-                        rate = float(affiliate.commission_rate_tier2)
-                    else:
-                        rate = float(affiliate.commission_rate)
-                    commission_amount = float(sub.amount_paid) * rate / 100
+                    commission_amount = 75.0 if sub.billing_type == "yearly" else 25.0
                     commission = Commission(
                         affiliate_id=affiliate.id,
                         shop_id=sub.shop_id,
                         subscription_id=sub.id,
-                        amount=round(commission_amount, 2),
-                        currency=sub.currency or "AED",
+                        amount=commission_amount,
+                        currency="USD",
                         status="pending",
                     )
                     db.add(commission)

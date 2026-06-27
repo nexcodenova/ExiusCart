@@ -16,7 +16,7 @@ const HOW_IT_WORKS = [
 ];
 
 const METRICS = [
-  { icon: DollarSign, value: '$75', label: 'Per referral' },
+  { icon: DollarSign, value: '$25–$75', label: 'Per referral (monthly/yearly)' },
   { icon: Wallet, value: '3 methods', label: 'PayPal · Skrill · Payoneer' },
   { icon: Clock, value: 'T&C Apply', label: 'Payout conditions & lock period' },
   { icon: BadgeCheck, value: 'Free', label: 'To join, no minimums' },
@@ -85,12 +85,12 @@ export default function AffiliatePage() {
               <Sparkles className="h-4 w-4" /> ExiusCart Affiliate Program
             </span>
             <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-              Earn up to{' '}
-              <span className="text-[#6B3FD9]">$75</span>{' '}
-              each referral
+              Earn{' '}
+              <span className="text-[#6B3FD9]">$25–$75</span>{' '}
+              per referral
             </h1>
             <p className="mt-5 max-w-lg text-lg text-slate-600">
-              Refer businesses to ExiusCart and earn a flat commission for each referral. Free to join, no minimums, paid via PayPal, Skrill, or Payoneer.
+              Refer businesses to ExiusCart and earn a flat commission for each paid referral — $25 for monthly plans, $75 for yearly. Free to join, paid via PayPal, Skrill, or Payoneer.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a href="#apply" className="inline-flex items-center gap-2 rounded-xl bg-[#6B3FD9] px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#6B3FD9]/20 transition hover:bg-[#5A2EC9]">
@@ -137,7 +137,7 @@ export default function AffiliatePage() {
             <p className="mt-3 text-slate-600">No percentages, no tiers. A fixed commission for every paying referral.</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 max-w-xl mx-auto">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 max-w-2xl mx-auto">
             {/* Free trial — no commission */}
             <div className="rounded-3xl border border-slate-200 bg-[#FBF8F3] p-6 flex flex-col gap-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">
@@ -153,19 +153,34 @@ export default function AffiliatePage() {
               </div>
             </div>
 
-            {/* Paid plan */}
+            {/* Monthly plan */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col gap-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50">
+                <DollarSign className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">Monthly Plan</p>
+                <p className="text-xs text-slate-500 mt-0.5">Per referral, one-time</p>
+              </div>
+              <div>
+                <p className="text-4xl font-extrabold text-emerald-600">$25</p>
+                <p className="text-xs text-slate-500 mt-1">PayPal / Skrill / Payoneer</p>
+              </div>
+            </div>
+
+            {/* Yearly plan */}
             <div className="relative rounded-3xl border-2 border-[#6B3FD9]/40 bg-white p-6 shadow-lg shadow-[#6B3FD9]/5 flex flex-col gap-4">
               <span className="absolute -top-3 right-5 rounded-full bg-[#6B3FD9] px-3 py-1 text-xs font-bold text-white">Best</span>
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6B3FD9]/10">
                 <Sparkles className="h-5 w-5 text-[#6B3FD9]" />
               </div>
               <div>
-                <p className="font-semibold text-slate-900">Any Paid Plan</p>
-                <p className="text-xs text-slate-500 mt-0.5">Per referral</p>
+                <p className="font-semibold text-slate-900">Yearly Plan</p>
+                <p className="text-xs text-slate-500 mt-0.5">Per referral, one-time</p>
               </div>
               <div>
                 <p className="text-4xl font-extrabold text-[#6B3FD9]">$75</p>
-                <p className="text-xs text-slate-500 mt-1">One-time · PayPal / Skrill / Payoneer</p>
+                <p className="text-xs text-slate-500 mt-1">PayPal / Skrill / Payoneer</p>
               </div>
             </div>
           </div>
@@ -232,7 +247,7 @@ export default function AffiliatePage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Track every referral in real time</h2>
             <p className="mt-3 text-slate-600">Every click, referral, and payout in one simple dashboard — know exactly when your money is coming.</p>
             <div className="mt-8 grid grid-cols-2 gap-4">
-              <BigStat icon={DollarSign} value="$75" label="Per referral, flat commission" />
+              <BigStat icon={DollarSign} value="$25–$75" label="Per referral (monthly/yearly)" />
               <BigStat icon={Wallet} value="3 options" label="PayPal, Skrill, Payoneer payouts" />
               <BigStat icon={MousePointerClick} value="Real-time" label="Click & referral tracking" />
               <BigStat icon={TrendingUp} value="No cap" label="Earn from unlimited referrals" />
@@ -281,7 +296,7 @@ export default function AffiliatePage() {
               <div className="mb-6 rounded-xl bg-[#6B3FD9]/5 border border-[#6B3FD9]/20 px-4 py-3.5 flex items-center gap-3 text-sm">
                 <Sparkles className="h-5 w-5 text-[#6B3FD9] shrink-0" />
                 <span className="text-slate-700">
-                  Earn <strong className="text-[#6B3FD9]">$75</strong> for each referral that subscribes to a paid plan.
+                  Earn <strong className="text-[#6B3FD9]">$25</strong> (monthly) or <strong className="text-[#6B3FD9]">$75</strong> (yearly) for each referral that subscribes to a paid plan.
                 </span>
               </div>
 
