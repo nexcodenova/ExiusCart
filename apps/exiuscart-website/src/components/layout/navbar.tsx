@@ -45,7 +45,7 @@ export function Navbar() {
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
             <Link
-              href="/login"
+              href="https://store.exiuscart.com/login"
               className="text-gray-400 hover:text-white transition-colors text-sm"
             >
               Login
@@ -85,7 +85,7 @@ export function Navbar() {
             ))}
             <div className="pt-4 mt-4 border-t border-gray-800 space-y-3">
               <Link
-                href="/login"
+                href="https://store.exiuscart.com/login"
                 onClick={() => setIsOpen(false)}
                 className="block text-gray-400 hover:text-white transition-colors py-2"
               >
