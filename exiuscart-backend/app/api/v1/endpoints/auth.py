@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
-from app.core.email import send_welcome_email, send_thedersi_welcome_email, send_otp_email
+from app.core.email import send_welcome_email, send_thedersi_welcome_email, send_otp_email, send_new_signup_notification
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
@@ -180,6 +180,13 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
                        "Free Trial (Pending Approval)")
 
     if is_pending:
+        _email_pool.submit(
+            send_new_signup_notification,
+            user.full_name or "",
+            user.email,
+            shop.name if shop else "",
+            "Free Trial",
+        )
         return JSONResponse(content={"status": "pending_approval", "email": user.email})
 
     access_token = create_access_token(data={"sub": str(user.id)})
