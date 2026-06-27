@@ -298,22 +298,53 @@ export default function AffiliatesPage() {
                         </div>
                       ) : detail ? (
                         <div className="space-y-4">
-                          {/* Info */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                            {detail.how_promote && (
-                              <div className="sm:col-span-2">
-                                <p className="text-gray-500 text-xs mb-1">How they plan to promote</p>
-                                <p className="text-gray-300">{detail.how_promote}</p>
-                              </div>
-                            )}
-                            {detail.website && (
-                              <div>
-                                <p className="text-gray-500 text-xs mb-1">Website</p>
-                                <a href={detail.website} target="_blank" rel="noreferrer" className="text-[#6B3FD9] flex items-center gap-1 hover:underline">
-                                  {detail.website} <ExternalLink className="w-3 h-3" />
-                                </a>
-                              </div>
-                            )}
+                          {/* Application Details */}
+                          <div>
+                            <p className="text-gray-400 text-sm font-medium mb-3">Application Details</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              <AppField label="Applied" value={new Date(detail.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} />
+                              {detail.phone && <AppField label="Phone" value={detail.phone} />}
+                              {detail.website && (
+                                <div className="bg-[#151F32] rounded-lg px-4 py-3">
+                                  <p className="text-gray-500 text-xs mb-1">Website / Profile</p>
+                                  <a href={detail.website} target="_blank" rel="noreferrer" className="text-[#6B3FD9] text-sm flex items-center gap-1 hover:underline truncate">
+                                    {detail.website} <ExternalLink className="w-3 h-3 shrink-0" />
+                                  </a>
+                                </div>
+                              )}
+                              {detail.how_promote && (() => {
+                                // Parse "Platform: X | Audience size: Y | Target region: Z | Experience: W | Details: ..."
+                                const parseField = (key: string) => {
+                                  const match = detail.how_promote!.match(new RegExp(`${key}:\\s*([^|]+)`));
+                                  return match ? match[1].trim() : null;
+                                };
+                                const platform   = parseField('Platform');
+                                const audience   = parseField('Audience size');
+                                const region     = parseField('Target region');
+                                const experience = parseField('Experience');
+                                const desc       = parseField('Details');
+                                return (
+                                  <>
+                                    {platform   && <AppField label="Promotion Channel" value={platform} />}
+                                    {audience   && <AppField label="Audience / Reach" value={audience} />}
+                                    {region     && <AppField label="Target Region" value={region} />}
+                                    {experience && <AppField label="Experience" value={experience} />}
+                                    {desc && (
+                                      <div className="sm:col-span-2 lg:col-span-3 bg-[#151F32] rounded-lg px-4 py-3">
+                                        <p className="text-gray-500 text-xs mb-1">Promotion Plan</p>
+                                        <p className="text-gray-300 text-sm leading-relaxed">{desc}</p>
+                                      </div>
+                                    )}
+                                    {!platform && !audience && !region && !experience && !desc && (
+                                      <div className="sm:col-span-2 lg:col-span-3 bg-[#151F32] rounded-lg px-4 py-3">
+                                        <p className="text-gray-500 text-xs mb-1">Promotion Plan</p>
+                                        <p className="text-gray-300 text-sm">{detail.how_promote}</p>
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
                           </div>
 
                           {/* Referral Link */}
@@ -389,6 +420,15 @@ export default function AffiliatesPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function AppField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-[#151F32] rounded-lg px-4 py-3">
+      <p className="text-gray-500 text-xs mb-1">{label}</p>
+      <p className="text-gray-200 text-sm font-medium">{value}</p>
     </div>
   );
 }

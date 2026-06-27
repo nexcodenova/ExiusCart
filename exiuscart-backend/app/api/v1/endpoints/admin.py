@@ -10,7 +10,11 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.api.v1.deps import get_current_user
-from app.core.email import send_dashboard_live_email
+from app.core.email import (
+    send_dashboard_live_email,
+    send_affiliate_pending_email,
+    send_affiliate_approved_email,
+)
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
@@ -716,6 +720,7 @@ def update_affiliate_status(
     affiliate = db.query(Affiliate).filter(Affiliate.id == affiliate_id).first()
     if not affiliate:
         raise HTTPException(status_code=404, detail="Affiliate not found")
+    was_pending = affiliate.status == "pending"
     if affiliate.status == "pending":
         affiliate.status = "active"
         affiliate.approved_at = datetime.now(timezone.utc)
@@ -724,6 +729,18 @@ def update_affiliate_status(
     else:
         affiliate.status = "active"
     db.commit()
+
+    # Send approval email only when transitioning from pending → active
+    if was_pending:
+        try:
+            send_affiliate_approved_email(
+                to=affiliate.email,
+                full_name=affiliate.name,
+                referral_code=affiliate.referral_code,
+            )
+        except Exception:
+            pass
+
     return {"status": affiliate.status}
 
 
@@ -843,6 +860,13 @@ def apply_as_affiliate(
     db.add(affiliate)
     db.commit()
     db.refresh(affiliate)
+
+    # Send pending-review confirmation email (fire-and-forget, don't fail if email fails)
+    try:
+        send_affiliate_pending_email(to=data.email, full_name=data.name)
+    except Exception:
+        pass
+
     return {
         "message": "Your affiliate application has been submitted! We'll review it and get back to you within 24 hours.",
         "referral_code": referral_code,
