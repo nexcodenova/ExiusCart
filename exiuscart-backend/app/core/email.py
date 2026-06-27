@@ -247,56 +247,80 @@ def send_affiliate_pending_email(to: str, full_name: str) -> bool:
     )
 
 
-def send_affiliate_approved_email(to: str, full_name: str, referral_code: str) -> bool:
+def send_affiliate_approved_email(to: str, full_name: str, setup_url: str) -> bool:
+    first = (full_name or "there").split()[0]
+    content = f"""
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">You're approved, {first}!</h2>
+      <p style="margin:0 0 20px;color:#94a3b8;line-height:1.7;">
+        Congratulations! Your <strong style="color:#fff;">ExiusCart Affiliate</strong> application has been approved.
+        Earn up to <strong style="color:#6B3FD9;">$75 per referral</strong> — start by setting up your password below.
+      </p>
+
+      <div style="background:#1a2540;border:1px solid #6B3FD9;border-radius:12px;padding:24px;margin:0 0 24px;text-align:center;">
+        <p style="margin:0 0 8px;font-size:14px;color:#94a3b8;">Click the button to create your password and access your dashboard</p>
+        <a href="{setup_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:14px 36px;border-radius:10px;font-weight:700;font-size:16px;margin-top:8px;">
+          Set Up My Password &rarr;
+        </a>
+        <p style="margin:12px 0 0;font-size:12px;color:#64748b;">This link expires in <strong style="color:#fff;">72 hours</strong></p>
+      </div>
+
+      <p style="margin:0 0 8px;font-size:13px;color:#64748b;">
+        If the button doesn't work, copy and paste this link into your browser:
+      </p>
+      <p style="margin:0 0 20px;font-size:12px;color:#6B3FD9;word-break:break-all;">{setup_url}</p>
+
+      <p style="margin:0;color:#64748b;font-size:12px;">
+        Full terms at <a href="https://exiuscart.com/affiliate/terms" style="color:#6B3FD9;">exiuscart.com/affiliate/terms</a>
+        &nbsp;·&nbsp; Questions? <a href="mailto:affiliates@exiuscart.com" style="color:#6B3FD9;">affiliates@exiuscart.com</a>
+      </p>"""
+    return send_email(
+        to=to,
+        subject="You're approved — set up your ExiusCart affiliate account",
+        html_body=_welcome_base(content),
+        text_body=(
+            f"Hi {first}! Your ExiusCart affiliate application is approved.\n\n"
+            f"Earn up to $75 per referral. Set up your password to get started:\n{setup_url}\n\n"
+            f"This link expires in 72 hours. Questions? affiliates@exiuscart.com"
+        ),
+    )
+
+
+def send_affiliate_dashboard_ready_email(to: str, full_name: str, referral_code: str) -> bool:
     first = (full_name or "there").split()[0]
     referral_link = f"https://exiuscart.com/register?ref={referral_code}"
     dashboard_url = "https://affiliates.exiuscart.com/login"
     content = f"""
-      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">You're approved, {first}! 🎉</h2>
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Your dashboard is ready, {first}!</h2>
       <p style="margin:0 0 20px;color:#94a3b8;line-height:1.7;">
-        Congratulations! Your <strong style="color:#fff;">ExiusCart Affiliate</strong> application has been approved.
-        Start sharing your referral link and earn <strong style="color:#6B3FD9;">$75 for every yearly plan signup</strong>.
+        Your password has been set. You can now log in to your affiliate dashboard and start earning
+        <strong style="color:#6B3FD9;">$75 per referral</strong>.
       </p>
 
-      <div style="background:#1a2540;border:1px solid #6B3FD9;border-radius:12px;padding:20px;margin:0 0 20px;">
-        <p style="margin:0 0 6px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Your Referral Code</p>
-        <p style="margin:0 0 16px;font-size:28px;font-weight:800;letter-spacing:4px;color:#6B3FD9;font-family:monospace;">{referral_code}</p>
+      <div style="background:#1a2540;border:1px solid #2a3a5c;border-radius:12px;padding:20px;margin:0 0 20px;">
+        <p style="margin:0 0 6px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Your Login</p>
+        <p style="margin:0 0 4px;font-size:13px;color:#94a3b8;">Email: <strong style="color:#fff;">{to}</strong></p>
+        <p style="margin:0 0 16px;font-size:13px;color:#94a3b8;">Password: the one you just set</p>
         <p style="margin:0 0 6px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Your Referral Link</p>
-        <p style="margin:0;font-size:13px;color:#94a3b8;word-break:break-all;">{referral_link}</p>
-      </div>
-
-      <div style="background:#0f1e35;border:1px solid #1e2d47;border-radius:12px;padding:20px;margin:0 0 24px;">
-        <p style="margin:0 0 12px;font-size:14px;font-weight:600;color:#fff;">How to log in to your dashboard</p>
-        <p style="margin:0 0 6px;font-size:13px;color:#94a3b8;">1. Go to <a href="{dashboard_url}" style="color:#6B3FD9;">{dashboard_url}</a></p>
-        <p style="margin:0 0 6px;font-size:13px;color:#94a3b8;">2. Enter your email: <strong style="color:#fff;">{to}</strong></p>
-        <p style="margin:0;font-size:13px;color:#94a3b8;">3. Enter your access code: <strong style="color:#6B3FD9;font-family:monospace;">{referral_code}</strong></p>
+        <p style="margin:0;font-size:13px;color:#6B3FD9;word-break:break-all;">{referral_link}</p>
       </div>
 
       <a href="{dashboard_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:15px;margin-bottom:20px;">
         Open Affiliate Dashboard &rarr;
       </a>
 
-      <div style="margin-top:20px;padding:16px;background:#1a2540;border-radius:10px;">
-        <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#fff;">Commission rates</p>
-        <p style="margin:0 0 4px;font-size:13px;color:#94a3b8;">Free Trial referrals &nbsp;→ &nbsp;<strong style="color:#fff;">$0</strong></p>
-        <p style="margin:0 0 4px;font-size:13px;color:#94a3b8;">Monthly plan referrals &nbsp;→ &nbsp;<strong style="color:#fff;">$25</strong></p>
-        <p style="margin:0;font-size:13px;color:#94a3b8;">Yearly plan referrals &nbsp;→ &nbsp;<strong style="color:#6B3FD9;">$75</strong></p>
-      </div>
-
       <p style="margin:20px 0 0;color:#64748b;font-size:12px;">
-        Full terms at <a href="https://exiuscart.com/affiliate/terms" style="color:#6B3FD9;">exiuscart.com/affiliate/terms</a>
-        &nbsp;·&nbsp; Questions? <a href="mailto:affiliates@exiuscart.com" style="color:#6B3FD9;">affiliates@exiuscart.com</a>
+        Questions? <a href="mailto:affiliates@exiuscart.com" style="color:#6B3FD9;">affiliates@exiuscart.com</a>
       </p>"""
     return send_email(
         to=to,
-        subject="You're approved — welcome to the ExiusCart Affiliate Program!",
+        subject="Your ExiusCart affiliate dashboard is ready!",
         html_body=_welcome_base(content),
         text_body=(
-            f"Hi {first}! Your ExiusCart affiliate application is approved.\n\n"
-            f"Referral code: {referral_code}\n"
-            f"Referral link: {referral_link}\n\n"
-            f"Login at {dashboard_url} using your email ({to}) and access code ({referral_code}).\n\n"
-            f"Commission: Free Trial=$0, Monthly=$25, Yearly=$75 per referral."
+            f"Hi {first}! Your affiliate dashboard is ready.\n\n"
+            f"Login at {dashboard_url}\n"
+            f"Email: {to}\n"
+            f"Password: the one you just set\n\n"
+            f"Your referral link: {referral_link}"
         ),
     )
 

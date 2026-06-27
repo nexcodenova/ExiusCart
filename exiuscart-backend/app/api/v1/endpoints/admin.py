@@ -15,6 +15,7 @@ from app.core.email import (
     send_affiliate_pending_email,
     send_affiliate_approved_email,
 )
+from app.core.security import create_access_token
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
@@ -730,13 +731,18 @@ def update_affiliate_status(
         affiliate.status = "active"
     db.commit()
 
-    # Send approval email only when transitioning from pending → active
+    # Send approval email with password setup link only when transitioning from pending → active
     if was_pending:
         try:
+            setup_token = create_access_token(
+                data={"sub": str(affiliate.id), "purpose": "affiliate_setup"},
+                expires_delta=timedelta(hours=72),
+            )
+            setup_url = f"https://affiliates.exiuscart.com/setup-password?token={setup_token}"
             send_affiliate_approved_email(
                 to=affiliate.email,
                 full_name=affiliate.name,
-                referral_code=affiliate.referral_code,
+                setup_url=setup_url,
             )
         except Exception:
             pass

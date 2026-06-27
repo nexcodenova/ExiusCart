@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,11 +22,11 @@ export default function LoginPage() {
       const res = await fetch(`${API_BASE}/api/v1/affiliates/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || 'Invalid email or access code');
+        throw new Error(body.detail || 'Invalid email or password');
       }
       const body = await res.json();
       localStorage.setItem('affiliate_token', body.access_token);
@@ -52,7 +53,7 @@ export default function LoginPage() {
             <span className="text-[#7B4FE9] text-xs font-semibold border border-[#7B4FE9]/40 px-2 py-0.5 rounded-full">Affiliates</span>
           </div>
           <h1 className="text-2xl font-bold text-white">Affiliate Portal</h1>
-          <p className="text-gray-400 text-sm mt-1">Sign in to track your earnings & referrals</p>
+          <p className="text-gray-400 text-sm mt-1">Sign in to track your earnings &amp; referrals</p>
         </div>
 
         {/* Card */}
@@ -81,22 +82,25 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-300 mb-1.5 block">
-                Access Code
-                <span className="ml-2 text-xs text-gray-500 font-normal">(your affiliate referral code)</span>
-              </label>
+              <label className="text-sm font-medium text-gray-300 mb-1.5 block">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
-                  type="text"
-                  value={code}
-                  onChange={e => setCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. JOHN8F2A"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Your password"
                   required
-                  className="w-full bg-[#0D1526] border border-gray-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-600 text-sm font-mono focus:outline-none focus:border-[#7B4FE9] transition-colors"
+                  className="w-full bg-[#0D1526] border border-gray-700 rounded-xl pl-10 pr-12 py-3 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#7B4FE9] transition-colors"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
-              <p className="text-xs text-gray-600 mt-1.5">Your access code was emailed when your application was approved.</p>
             </div>
 
             <button

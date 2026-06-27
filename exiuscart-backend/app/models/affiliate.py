@@ -24,6 +24,7 @@ class Affiliate(Base):
     commission_rate_tier2 = Column(Numeric(5, 2), default=35.00)
     # How many paid referrals per month before tier 2 kicks in (default 10)
     tier_threshold = Column(Integer, default=10)
+    password_hash = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)  # admin notes
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     approved_at = Column(DateTime(timezone=True), nullable=True)
