@@ -231,17 +231,18 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Please verify your email before logging in"
         )
 
-    # Block login if account is pending admin approval
-    login_shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
-    if login_shop:
-        login_sub = db.query(Subscription).filter(
-            Subscription.shop_id == login_shop.id
-        ).order_by(Subscription.id.desc()).first()
-        if login_sub and login_sub.status == "pending_approval":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="pending_approval"
-            )
+    # Block login if account is pending admin approval (superusers bypass this)
+    if not user.is_superuser:
+        login_shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
+        if login_shop:
+            login_sub = db.query(Subscription).filter(
+                Subscription.shop_id == login_shop.id
+            ).order_by(Subscription.id.desc()).first()
+            if login_sub and login_sub.status == "pending_approval":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="pending_approval"
+                )
 
     access_token = create_access_token(data={"sub": str(user.id)})
 
