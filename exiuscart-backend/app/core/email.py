@@ -350,6 +350,152 @@ def send_affiliate_dashboard_ready_email(to: str, full_name: str, referral_code:
     )
 
 
+# ── New order notification to seller ─────────────────────────────────────────
+
+def send_new_order_email(
+    seller_email: str,
+    seller_name: str,
+    shop_name: str,
+    order_number: str,
+    source: str,
+    customer_name: str,
+    customer_phone: Optional[str],
+    items: list,          # list of dicts: {name, quantity, unit_price, total_price}
+    subtotal: float,
+    tax_amount: float,
+    total: float,
+    currency: str = "AED",
+) -> bool:
+    source_label = {"pos": "POS (In-store)", "whatsapp": "WhatsApp", "online": "Online Store"}.get(source, source.title())
+    source_color = {"pos": "#10b981", "whatsapp": "#25D366", "online": "#6B3FD9"}.get(source, "#6B3FD9")
+
+    items_rows = "".join(
+        f"""<tr>
+          <td style="padding:10px 16px;border-bottom:1px solid #1e2d47;color:#e2e8f0;">{i['name']}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #1e2d47;color:#94a3b8;text-align:center;">{i['quantity']}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #1e2d47;color:#e2e8f0;text-align:right;">{currency} {float(i['total_price']):,.2f}</td>
+        </tr>"""
+        for i in items
+    )
+
+    customer_line = customer_name or "Walk-in Customer"
+    if customer_phone:
+        customer_line += f" &nbsp;·&nbsp; {customer_phone}"
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0B1121;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B1121;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#151F32;border-radius:16px;overflow:hidden;border:1px solid #1e2d47;">
+
+        <!-- Header -->
+        <tr><td style="background:#0B1121;padding:22px 32px;border-bottom:1px solid #1e2d47;">
+          <span style="font-size:22px;font-weight:800;color:#fff;"><span style="color:#6B3FD9;">Exius</span>Cart</span>
+        </td></tr>
+
+        <!-- Alert banner -->
+        <tr><td style="background:#6B3FD9;padding:18px 32px;">
+          <p style="margin:0;font-size:18px;font-weight:700;color:#fff;">New Order Received!</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#c4b5fd;">{shop_name}</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:28px 32px;">
+
+          <!-- Order meta -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+            <tr>
+              <td style="width:50%;padding-right:8px;">
+                <div style="background:#0B1121;border:1px solid #1e2d47;border-radius:10px;padding:14px 16px;">
+                  <p style="margin:0 0 4px;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Order Number</p>
+                  <p style="margin:0;font-size:15px;font-weight:700;color:#fff;">{order_number}</p>
+                </div>
+              </td>
+              <td style="width:50%;padding-left:8px;">
+                <div style="background:#0B1121;border:1px solid #1e2d47;border-radius:10px;padding:14px 16px;">
+                  <p style="margin:0 0 4px;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Channel</p>
+                  <p style="margin:0;font-size:15px;font-weight:700;color:{source_color};">{source_label}</p>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Customer -->
+          <div style="background:#0B1121;border:1px solid #1e2d47;border-radius:10px;padding:14px 16px;margin-bottom:24px;">
+            <p style="margin:0 0 4px;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Customer</p>
+            <p style="margin:0;font-size:14px;color:#e2e8f0;">{customer_line}</p>
+          </div>
+
+          <!-- Items table -->
+          <p style="margin:0 0 10px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Items Ordered</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1e2d47;border-radius:10px;overflow:hidden;margin-bottom:20px;">
+            <thead>
+              <tr style="background:#0B1121;">
+                <th style="padding:10px 16px;text-align:left;font-size:12px;color:#64748b;font-weight:600;">Product</th>
+                <th style="padding:10px 16px;text-align:center;font-size:12px;color:#64748b;font-weight:600;">Qty</th>
+                <th style="padding:10px 16px;text-align:right;font-size:12px;color:#64748b;font-weight:600;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>{items_rows}</tbody>
+          </table>
+
+          <!-- Totals -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+            <tr>
+              <td style="padding:5px 0;color:#94a3b8;font-size:13px;">Subtotal</td>
+              <td style="padding:5px 0;text-align:right;color:#e2e8f0;font-size:13px;">{currency} {float(subtotal):,.2f}</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 0;color:#94a3b8;font-size:13px;">VAT (5%)</td>
+              <td style="padding:5px 0;text-align:right;color:#e2e8f0;font-size:13px;">{currency} {float(tax_amount):,.2f}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 0 0;color:#fff;font-size:16px;font-weight:700;border-top:1px solid #1e2d47;">Total</td>
+              <td style="padding:10px 0 0;text-align:right;color:#6B3FD9;font-size:16px;font-weight:700;border-top:1px solid #1e2d47;">{currency} {float(total):,.2f}</td>
+            </tr>
+          </table>
+
+          <!-- CTA -->
+          <div style="text-align:center;">
+            <a href="https://store.exiuscart.com/dashboard/orders"
+               style="display:inline-block;background:#6B3FD9;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px;">
+              View Order in Dashboard
+            </a>
+          </div>
+
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 32px;border-top:1px solid #1e2d47;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#475569;">This notification was sent to <strong style="color:#94a3b8;">{seller_email}</strong></p>
+          <p style="margin:6px 0 0;font-size:11px;color:#334155;">Powered by <strong style="color:#6B3FD9;">ExiusCart</strong></p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    return send_email(
+        to=seller_email,
+        subject=f"New Order {order_number} — {shop_name}",
+        html_body=html,
+        text_body=(
+            f"New order received!\n\n"
+            f"Order: {order_number}\n"
+            f"Shop: {shop_name}\n"
+            f"Channel: {source_label}\n"
+            f"Customer: {customer_line}\n"
+            f"Total: {currency} {float(total):,.2f}\n\n"
+            f"View at: https://store.exiuscart.com/dashboard/orders"
+        ),
+        from_email=_FROM_NOREPLY,
+    )
+
+
 # ── Invoice HTML template ─────────────────────────────────────────────────────
 
 def build_invoice_html(

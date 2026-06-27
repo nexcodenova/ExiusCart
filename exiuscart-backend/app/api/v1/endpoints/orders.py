@@ -15,7 +15,7 @@ from app.models.customer import Customer
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrderIn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
-from app.core.email import send_email, build_invoice_html, _FROM_BILLING
+from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_new_order_email
 from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
 from app.models.subscription import Subscription
 from datetime import timezone
@@ -88,6 +88,7 @@ async def create_order(
 
         order_items.append({
             "product_id": item.product_id,
+            "name": product.name,
             "quantity": item.quantity,
             "unit_price": item.unit_price,
             "total_price": item_total
@@ -158,6 +159,23 @@ async def create_order(
     # Push updated stock to TheDersi for every product sold via POS
     for item in order_data.items:
         trigger_stock_sync(item.product_id, shop_id, background_tasks)
+
+    # Notify seller by email
+    background_tasks.add_task(
+        send_new_order_email,
+        seller_email=current_user.email,
+        seller_name=current_user.full_name,
+        shop_name=shop.name,
+        order_number=new_order.order_number,
+        source=new_order.source,
+        customer_name=order_data.customer_name or "Walk-in Customer",
+        customer_phone=order_data.customer_phone,
+        items=order_items,
+        subtotal=float(subtotal),
+        tax_amount=float(tax_amount),
+        total=float(total),
+        currency="AED",
+    )
 
     return new_order
 
