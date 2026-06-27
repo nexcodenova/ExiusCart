@@ -251,10 +251,8 @@ export default function AffiliatesPage() {
                         <p className="text-sm font-semibold text-white">{affiliate.referral_count}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Rate (T1 / T2)</p>
-                        <p className="text-sm font-semibold text-[#6B3FD9]">
-                          {affiliate.commission_rate}%<span className="text-gray-500 font-normal"> / </span><span className="text-gray-400">{affiliate.commission_rate_tier2}%</span>
-                        </p>
+                        <p className="text-xs text-gray-500">Commission</p>
+                        <p className="text-sm font-semibold text-[#6B3FD9]">$25 <span className="text-gray-500 font-normal text-xs">/ $75</span></p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Earned</p>
