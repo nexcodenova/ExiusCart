@@ -155,9 +155,12 @@ def list_shops(
             "owner_email": shop.owner.email,
             "is_active": shop.is_active,
             "created_at": shop.created_at.isoformat() if shop.created_at else None,
+            "subscription_id": sub.id if sub else None,
             "plan": sub.plan_type if sub else "none",
             "subscription_status": sub.status if sub else "none",
             "billing_type": sub.billing_type if sub else None,
+            "starts_at": sub.starts_at.isoformat() if sub and sub.starts_at else None,
+            "expires_at": sub.expires_at.isoformat() if sub and sub.expires_at else None,
         })
     return result
 
@@ -174,6 +177,62 @@ def toggle_shop_status(
     shop.is_active = not shop.is_active
     db.commit()
     return {"id": shop.id, "is_active": shop.is_active}
+
+
+class ChangePlanIn(BaseModel):
+    plan_type: str
+    billing_type: str = "monthly"
+
+
+@router.put("/admin/shops/{shop_id}/plan")
+def change_shop_plan(
+    shop_id: int,
+    data: ChangePlanIn,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    now = datetime.now(timezone.utc)
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    if sub:
+        sub.plan_type = data.plan_type
+        sub.billing_type = data.billing_type
+        sub.status = "active"
+        sub.starts_at = now
+        sub.expires_at = now + timedelta(days=365 if data.billing_type == "yearly" else 30)
+    else:
+        sub = Subscription(
+            shop_id=shop_id,
+            plan_type=data.plan_type,
+            billing_type=data.billing_type,
+            status="active",
+            amount_paid=0,
+            currency="AED",
+            starts_at=now,
+            expires_at=now + timedelta(days=30),
+        )
+        db.add(sub)
+    db.commit()
+    return {"message": "Plan updated", "plan_type": data.plan_type}
+
+
+@router.delete("/admin/shops/{shop_id}")
+def delete_shop(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    shop.is_active = False
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
+    if sub:
+        sub.status = "cancelled"
+    db.commit()
+    return {"message": "Shop deactivated"}
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────

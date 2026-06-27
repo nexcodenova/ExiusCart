@@ -47,6 +47,10 @@ export const adminApi = {
     api.get('/admin/shops', { params }),
   toggleShopStatus: (shopId: number) =>
     api.put(`/admin/shops/${shopId}/status`),
+  changeShopPlan: (shopId: number, plan_type: string, billing_type: string) =>
+    api.put(`/admin/shops/${shopId}/plan`, { plan_type, billing_type }),
+  deleteShop: (shopId: number) =>
+    api.delete(`/admin/shops/${shopId}`),
 
   // Users
   getUsers: (params?: { search?: string }) =>
