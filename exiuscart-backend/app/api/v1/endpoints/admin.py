@@ -268,6 +268,7 @@ def list_users(
             "plan_type": sub.plan_type if sub else None,
             "plan_status": sub.status if sub else None,
             "source": source,
+            "referred_by_code": user.referred_by_code or None,
         })
     return result
 

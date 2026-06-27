@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Eye, EyeOff, Loader2, ArrowLeft, Check, Store, Users, TrendingUp, Shield, Tag, Globe, Mail } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowLeft, Check, Store, Users, TrendingUp, Shield, Tag, Globe, Mail, Lock } from 'lucide-react';
 
 const COUNTRIES = [
   // Middle East (top — primary market)
@@ -123,6 +123,7 @@ function RegisterForm() {
   const [resendSent, setResendSent] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(false);
   const [phoneDialCode, setPhoneDialCode] = useState('+971');
+  const [isRefLocked, setIsRefLocked] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -143,9 +144,13 @@ function RegisterForm() {
     if (refFromUrl) {
       document.cookie = `exiuscart_ref=${refFromUrl}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Lax`;
       setValue('refCode', refFromUrl);
+      setIsRefLocked(true);
     } else {
       const cookieMatch = document.cookie.match(/exiuscart_ref=([^;]+)/);
-      if (cookieMatch?.[1]) setValue('refCode', cookieMatch[1]);
+      if (cookieMatch?.[1]) {
+        setValue('refCode', cookieMatch[1]);
+        setIsRefLocked(true);
+      }
     }
   }, [refFromUrl, setValue]);
 
@@ -504,16 +509,30 @@ function RegisterForm() {
 
         {/* Referral Code Field */}
         <div>
-          <label htmlFor="refCode" className="block text-sm text-gray-400 mb-2">
-            Referral Code <span className="text-gray-600">(optional)</span>
+          <label htmlFor="refCode" className="block text-sm text-gray-400 mb-2 flex items-center gap-1.5">
+            Referral Code
+            {isRefLocked
+              ? <span className="text-[#6B3FD9] text-xs font-medium">(applied)</span>
+              : <span className="text-gray-600">(optional)</span>
+            }
           </label>
-          <input
-            id="refCode"
-            type="text"
-            {...register('refCode')}
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base uppercase"
-            placeholder="e.g., JOHN8F2A"
-          />
+          <div className="relative">
+            <input
+              id="refCode"
+              type="text"
+              {...register('refCode')}
+              readOnly={isRefLocked}
+              className={`w-full px-4 py-3 pr-10 rounded-lg text-white placeholder-gray-500 focus:outline-none transition text-sm sm:text-base uppercase ${
+                isRefLocked
+                  ? 'bg-[#6B3FD9]/5 border border-[#6B3FD9]/30 cursor-not-allowed text-[#9B6FFF]'
+                  : 'bg-[#0B1121] border border-gray-700 focus:border-[#6B3FD9]'
+              }`}
+              placeholder="e.g., JOHN8F2A"
+            />
+            {isRefLocked && (
+              <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B3FD9]" />
+            )}
+          </div>
         </div>
 
         <div className="flex items-start gap-3 pt-2">

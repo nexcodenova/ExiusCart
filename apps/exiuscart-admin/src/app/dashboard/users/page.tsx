@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, User, Store, CheckCircle, Ban, Loader2 } from 'lucide-react';
+import { Search, Filter, User, Store, CheckCircle, Ban, Loader2, Tag } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
 interface AdminUser {
@@ -16,6 +16,7 @@ interface AdminUser {
   plan_type: string | null;
   plan_status: string | null;
   source: 'thedersi' | 'exiuscart';
+  referred_by_code: string | null;
 }
 
 const PLAN_LABEL: Record<string, string> = {
@@ -143,6 +144,7 @@ export default function UsersPage() {
                     <th className="px-6 py-4 font-medium">Store</th>
                     <th className="px-6 py-4 font-medium">Plan</th>
                     <th className="px-6 py-4 font-medium">Source</th>
+                    <th className="px-6 py-4 font-medium">Referred By</th>
                     <th className="px-6 py-4 font-medium">Status</th>
                     <th className="px-6 py-4 font-medium">Registered</th>
                     <th className="px-6 py-4 font-medium">Actions</th>
@@ -192,6 +194,15 @@ export default function UsersPage() {
                           <span className="text-xs px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-400 font-medium">
                             Direct
                           </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {user.referred_by_code ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-[#6B3FD9]/10 text-[#9B6FFF] font-medium">
+                            <Tag className="w-3 h-3" />{user.referred_by_code}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600 text-sm">—</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
