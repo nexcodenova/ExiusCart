@@ -55,17 +55,27 @@ build_app() {
     NEXT_PUBLIC_API_URL=$API_URL NEXT_DIST_DIR=.next-staging npm run build
   fi
 
+  # Validate the build produced a real output before touching the live dir
+  if [ ! -f .next-staging/BUILD_ID ]; then
+    echo "[$name] BUILD VALIDATION FAILED — BUILD_ID missing, aborting swap. Old build kept."
+    rm -rf .next-staging
+    exit 1
+  fi
+  echo "[$name] build validated (BUILD_ID: $(cat .next-staging/BUILD_ID))"
+
   # Atomic swap: keep .next-old as rollback target
   rm -rf .next-old
   [ -d .next ] && mv .next .next-old
   mv .next-staging .next
 
   # Graceful reload: starts new process, waits for it, THEN kills old one.
-  # If new process fails to start, PM2 keeps old process running.
+  # --max-restarts 15 prevents a bad build from restarting 500+ times.
+  # --exp-backoff-restart-delay backs off to 15s between restarts under load.
   if pm2 describe "$name" > /dev/null 2>&1; then
     pm2 reload "$name" --update-env
   else
-    pm2 start "npm start" --name "$name" --cwd "$dir"
+    pm2 start "npm start" --name "$name" --cwd "$dir" \
+      --max-restarts 15 --exp-backoff-restart-delay 1000
   fi
 
   # Health check — if app is not responding after 45s, roll back
