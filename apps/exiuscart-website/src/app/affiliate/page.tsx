@@ -70,7 +70,7 @@ export default function AffiliatePage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="text-xl font-bold"><span className="text-[#6B3FD9]">Exius</span>Cart</Link>
           <div className="flex items-center gap-4 text-sm">
-            <a href="https://store.exiuscart.com/login" className="text-slate-600 hover:text-slate-900 transition">Sign in</a>
+            <a href="https://affiliates.exiuscart.com/login" className="text-slate-600 hover:text-slate-900 transition">Sign in</a>
             <a href="#apply" className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">Become an affiliate</a>
           </div>
         </div>

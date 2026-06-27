@@ -140,7 +140,13 @@ function RegisterForm() {
   });
 
   useEffect(() => {
-    if (refFromUrl) setValue('refCode', refFromUrl);
+    if (refFromUrl) {
+      document.cookie = `exiuscart_ref=${refFromUrl}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Lax`;
+      setValue('refCode', refFromUrl);
+    } else {
+      const cookieMatch = document.cookie.match(/exiuscart_ref=([^;]+)/);
+      if (cookieMatch?.[1]) setValue('refCode', cookieMatch[1]);
+    }
   }, [refFromUrl, setValue]);
 
   const refCode = watch('refCode');
