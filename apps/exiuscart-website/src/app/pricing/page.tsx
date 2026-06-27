@@ -43,7 +43,7 @@ const faqs = [
   },
   {
     q: 'Is VAT invoicing available on the free trial?',
-    a: 'Yes — VAT-compliant invoicing is available on all plans including the free trial.',
+    a: 'Yes — VAT-compliant invoicing is available on all plans including the free trial. Your VAT rate is configured in your account settings.',
   },
   {
     q: 'What payment methods do you accept?',
@@ -154,7 +154,7 @@ export default function PricingPage() {
                 Included
               </p>
               <ul className="space-y-3">
-                {['25 products', '2 GB storage', '50 orders / month', '100 customers', '1 user account', 'Basic POS & Invoicing', 'VAT invoicing (5%)'].map((f) => (
+                {['25 products', '2 GB storage', '50 orders / month', '100 customers', '1 user account', 'Basic POS & Invoicing', 'VAT invoicing (Custom)', 'Basic marketing emails', 'Basic sales reports'].map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm text-gray-600">
                     <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                       <Check className="w-3 h-3 text-gray-500" />
@@ -162,7 +162,7 @@ export default function PricingPage() {
                     {f}
                   </li>
                 ))}
-                {['Shopify sync', 'WooCommerce / WordPress', 'Custom website sync', 'Multi-user access', 'Chat support'].map((f) => (
+                {['Shopify sync', 'WooCommerce / WordPress', 'Custom website sync', 'Multi-user access', 'HR & staff management', 'Chat support'].map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm text-gray-300">
                     <span className="w-5 h-5 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                       <X className="w-3 h-3 text-gray-300" />
@@ -211,11 +211,13 @@ export default function PricingPage() {
                   '5,000 customers',
                   '3 user accounts',
                   'Full POS & Invoicing',
-                  'VAT invoicing (5%)',
+                  'VAT invoicing (Custom)',
                   'Shopify sync',
                   'WooCommerce / WordPress',
                   'Custom website sync',
                   'Lead management (500)',
+                  'Email campaigns',
+                  'Advanced reports & export',
                   'Chat support',
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm text-gray-300">
@@ -256,13 +258,13 @@ export default function PricingPage() {
               </p>
               <ul className="space-y-3">
                 {[
-                  'Unlimited products',
-                  'Unlimited orders',
-                  'Unlimited customers & users',
-                  'Custom invoice branding',
-                  'Send from own domain',
+                  'Unlimited products & orders',
+                  'Unlimited customers · 3 users',
+                  'Full invoice branding',
                   'Multi-store & multi-location',
                   'Unlimited leads',
+                  'Unlimited email campaigns',
+                  'Advanced analytics',
                   'Priority support + onboarding',
                 ].map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm text-gray-600">
@@ -307,8 +309,8 @@ export default function PricingPage() {
               <div className="grid sm:grid-cols-2 gap-5">
                 {[
                   { icon: Store,      text: 'Custom pricing for marketplace operators with multiple vendors' },
-                  { icon: Users2,     text: 'Dedicated onboarding, setup, and success management' },
-                  { icon: Puzzle,     text: 'Custom integrations tailored to your business model' },
+                  { icon: Users2,     text: 'Send invoices from your own email domain — custom branding end-to-end' },
+                  { icon: Puzzle,     text: 'Custom integrations, HR & staff management tailored to your operation' },
                   { icon: Headphones, text: 'Priority support with a dedicated account manager' },
                 ].map(({ icon: Icon, text }) => (
                   <div key={text} className="flex items-start gap-3">
@@ -356,7 +358,7 @@ export default function PricingPage() {
               },
               {
                 name: 'VAT Invoicing',
-                desc: 'Auto 5% VAT on AED orders, 0% on USD exports. FTA-compliant PDF invoices generated automatically.',
+                desc: 'Custom VAT rate on your invoices. FTA-compliant PDF invoices generated automatically for every order.',
               },
               {
                 name: 'Order Management',
@@ -368,7 +370,7 @@ export default function PricingPage() {
               },
               {
                 name: 'HR & Payroll',
-                desc: 'Employee records, payroll processing, leave requests, and attendance tracking — no spreadsheets needed.',
+                desc: 'Employee records, payroll processing, leave requests, and attendance tracking. Available on Enterprise plan.',
               },
               {
                 name: 'Marketing & Campaigns',
@@ -380,7 +382,7 @@ export default function PricingPage() {
               },
               {
                 name: 'Helpdesk & Appointments',
-                desc: 'Log customer issues, assign to staff, set priorities. Let customers book appointments directly.',
+                desc: 'Log customer issues, assign to staff, set priorities. Let customers book appointments directly. Available on Enterprise plan.',
               },
               {
                 name: 'Sales Channels',
@@ -433,11 +435,11 @@ export default function PricingPage() {
                   '25 products',
                   '50 orders / month',
                   '100 customers · 1 user',
-                  'Basic POS',
-                  'VAT invoicing (5%)',
+                  'Basic POS & invoicing',
+                  'VAT invoicing (Custom)',
                   '50 invoice emails / mo',
                   'Basic stock tracking',
-                  'Appointment booking',
+                  'Basic marketing emails',
                   'Basic sales reports',
                   'Email support',
                 ].map((f) => (
@@ -467,14 +469,14 @@ export default function PricingPage() {
                   '1,000 orders / month',
                   '5,000 customers · 3 users',
                   'Full POS & invoicing',
+                  'VAT invoicing (Custom)',
                   '500 invoice emails / mo',
                   'Basic invoice branding',
                   'Low-stock alerts',
-                  'HR & Payroll',
                   'Shopify / WooCommerce sync',
                   'Custom website sync',
                   '500 leads · Meta Ads capture',
-                  'Basic email campaigns',
+                  'Email campaigns',
                   'Advanced sales reports',
                   'Data export (Excel / CSV)',
                   'Chat support',
@@ -499,10 +501,9 @@ export default function PricingPage() {
               <div className="space-y-1.5">
                 {[
                   'Unlimited products & orders',
-                  'Unlimited customers & users',
+                  'Unlimited customers · 3 users',
                   'Unlimited leads',
                   'Full invoice branding',
-                  'Send from own domain',
                   'Multi-location stock',
                   'Multi-store management',
                   'Unlimited email campaigns',
