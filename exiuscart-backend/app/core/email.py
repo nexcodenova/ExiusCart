@@ -366,8 +366,8 @@ def send_new_order_email(
     total: float,
     currency: str = "AED",
 ) -> bool:
-    source_label = {"pos": "POS (In-store)", "whatsapp": "WhatsApp", "online": "Online Store"}.get(source, source.title())
-    source_color = {"pos": "#10b981", "whatsapp": "#25D366", "online": "#6B3FD9"}.get(source, "#6B3FD9")
+    source_label = {"pos": "POS (In-store)", "online": "Online Store"}.get(source, source.replace("_", " ").title())
+    source_color = {"pos": "#10b981", "online": "#6B3FD9"}.get(source, "#6B3FD9")
 
     items_rows = "".join(
         f"""<tr>
@@ -448,7 +448,7 @@ def send_new_order_email(
               <td style="padding:5px 0;text-align:right;color:#e2e8f0;font-size:13px;">{currency} {float(subtotal):,.2f}</td>
             </tr>
             <tr>
-              <td style="padding:5px 0;color:#94a3b8;font-size:13px;">VAT (5%)</td>
+              <td style="padding:5px 0;color:#94a3b8;font-size:13px;">Tax</td>
               <td style="padding:5px 0;text-align:right;color:#e2e8f0;font-size:13px;">{currency} {float(tax_amount):,.2f}</td>
             </tr>
             <tr>

@@ -174,7 +174,7 @@ async def create_order(
         subtotal=float(subtotal),
         tax_amount=float(tax_amount),
         total=float(total),
-        currency="AED",
+        currency=shop.currency or "AED",
     )
 
     return new_order
