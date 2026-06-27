@@ -625,17 +625,17 @@ def get_admin_reports(
     # Plan distribution
     plan_rows = (
         db.query(
-            Subscription.plan,
+            Subscription.plan_type,
             func.count(Subscription.id).label("count"),
         )
         .filter(Subscription.status == "active")
-        .group_by(Subscription.plan)
+        .group_by(Subscription.plan_type)
         .all()
     )
     total_subs = sum(row.count for row in plan_rows) or 1
     plan_distribution = [
         {
-            "plan": row.plan or "Unknown",
+            "plan": row.plan_type or "Unknown",
             "count": row.count,
             "percentage": round((row.count / total_subs) * 100),
         }
