@@ -4,58 +4,193 @@ on:
   push:
     branches: [main]
 
-# Cancel older queued deploys when a new commit arrives
 concurrency:
   group: deploy-production
   cancel-in-progress: true
 
 jobs:
-  # ── Job 1: TypeScript + syntax check (runs in GitHub, free, fast) ────────────
-  # If this fails the deploy job never starts — server is NEVER touched.
-  build-test:
-    name: Build Test (TypeScript check)
+  # ── Detect what changed ────────────────────────────────────────────────────
+  changes:
+    name: Detect changed apps
+    runs-on: ubuntu-latest
+    outputs:
+      store:       ${{ steps.filter.outputs.store }}
+      admin:       ${{ steps.filter.outputs.admin }}
+      affiliates:  ${{ steps.filter.outputs.affiliates }}
+      backend:     ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            store:
+              - 'apps/exiuscart-store/**'
+            admin:
+              - 'apps/exiuscart-admin/**'
+            affiliates:
+              - 'apps/exiuscart-affiliates/**'
+            backend:
+              - 'exiuscart-backend/**'
+
+  # ── TypeScript check (fast, catches errors before any build) ──────────────
+  typecheck:
+    name: TypeScript check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: TypeScript — store
-        run: npx tsc --noEmit -p apps/exiuscart-store/tsconfig.json
-
-      - name: TypeScript — admin
-        run: npx tsc --noEmit -p apps/exiuscart-admin/tsconfig.json
-
-      - name: TypeScript — affiliates
-        run: npx tsc --noEmit -p apps/exiuscart-affiliates/tsconfig.json
-
-      - name: Python syntax — backend
-        run: |
+      - run: npm ci
+      - run: npx tsc --noEmit -p apps/exiuscart-store/tsconfig.json
+      - run: npx tsc --noEmit -p apps/exiuscart-admin/tsconfig.json
+      - run: |
           find exiuscart-backend/app -name "*.py" | xargs python3 -m py_compile
           echo "Backend syntax OK"
 
-  # ── Job 2: Deploy to server (only runs if build-test passes) ─────────────────
-  deploy:
-    name: SSH & Deploy
+  # ── Build store on GitHub Actions (7GB RAM, free) ─────────────────────────
+  build-store:
+    name: Build store
     runs-on: ubuntu-latest
-    needs: build-test
-
+    needs: [typecheck, changes]
+    if: needs.changes.outputs.store == 'true'
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build
+        run: npm run build --workspace=apps/exiuscart-store
+        env:
+          NEXT_PUBLIC_API_URL: https://api.exiuscart.com
+      - name: Upload .next
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-next
+          path: apps/exiuscart-store/.next
+          retention-days: 1
+
+  # ── Build admin on GitHub Actions ─────────────────────────────────────────
+  build-admin:
+    name: Build admin
+    runs-on: ubuntu-latest
+    needs: [typecheck, changes]
+    if: needs.changes.outputs.admin == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build
+        run: npm run build --workspace=apps/exiuscart-admin
+        env:
+          NEXT_PUBLIC_API_URL: https://api.exiuscart.com
+      - name: Upload .next
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-next
+          path: apps/exiuscart-admin/.next
+          retention-days: 1
+
+  # ── Deploy to server (only after builds pass) ─────────────────────────────
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    needs: [typecheck, changes, build-store, build-admin]
+    # Run even if build jobs were skipped (no changes)
+    if: always() && needs.typecheck.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download built artifacts (only if they were built this run)
+      - name: Download store build
+        if: needs.changes.outputs.store == 'true' && needs.build-store.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: store-next
+          path: apps/exiuscart-store/.next
+
+      - name: Download admin build
+        if: needs.changes.outputs.admin == 'true' && needs.build-admin.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: admin-next
+          path: apps/exiuscart-admin/.next
+
+      # Copy pre-built .next to server, then restart — no build on server
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 30m
+          command_timeout: 10m
           script: |
             cd /var/www/ExiusCart
-            git checkout -- . 2>/dev/null || true
             git pull origin main
             bash deploy.sh
+
+      # Rsync pre-built store .next if it changed
+      - name: Rsync store .next to server
+        if: needs.changes.outputs.store == 'true' && needs.build-store.result == 'success'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: apps/exiuscart-store/.next
+          target: /var/www/ExiusCart/
+
+      - name: Rsync admin .next to server
+        if: needs.changes.outputs.admin == 'true' && needs.build-admin.result == 'success'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: apps/exiuscart-admin/.next
+          target: /var/www/ExiusCart/
+
+      # Restart only the changed apps
+      - name: Restart changed apps
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 5m
+          script: |
+            cd /var/www/ExiusCart
+            git pull origin main
+
+            # Backend — always check (Python, no build needed)
+            if git diff HEAD~1 --name-only 2>/dev/null | grep -q "exiuscart-backend/"; then
+              echo "Reloading backend..."
+              source exiuscart-backend/venv/bin/activate
+              pip install -r exiuscart-backend/requirements.txt -q
+              pm2 reload exiuscart-backend --update-env
+              deactivate
+            fi
+
+            # Store — pre-built .next was rsynced above
+            if git diff HEAD~1 --name-only 2>/dev/null | grep -q "apps/exiuscart-store/"; then
+              echo "Reloading store..."
+              pm2 reload exiuscart-store --update-env
+            fi
+
+            # Admin — pre-built .next was rsynced above
+            if git diff HEAD~1 --name-only 2>/dev/null | grep -q "apps/exiuscart-admin/"; then
+              echo "Reloading admin..."
+              pm2 reload exiuscart-admin --update-env
+            fi
+
+            pm2 save
+            echo "Deploy complete — no builds ran on server"
