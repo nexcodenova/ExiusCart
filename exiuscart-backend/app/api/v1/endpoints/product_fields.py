@@ -365,3 +365,31 @@ def set_primary_image(
 
     db.commit()
     return {"message": "Primary image updated"}
+
+
+@router.post("/shops/{shop_id}/products/{product_id}/variant-image")
+async def upload_variant_image(
+    shop_id: int,
+    product_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload an image for a specific variant and return its R2 URL (no ProductImage record created)."""
+    get_shop_or_404(shop_id, db, current_user)
+    get_product_or_404(product_id, shop_id, db)
+
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, and GIF images are allowed")
+
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File size must be under 5MB")
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg"
+    try:
+        url = storage_upload(contents, shop_id, product_id, ext, content_type=file.content_type or "image/jpeg")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Image upload failed: {exc}")
+
+    return {"url": url}

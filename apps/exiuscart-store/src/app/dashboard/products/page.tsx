@@ -789,6 +789,7 @@ function ProductModal({
   interface Variant { id?: number; size: string; color: string; sku: string; quantity: number; price: string; image_url: string; }
   const emptyVariant = (): Variant => ({ size: '', color: '', sku: '', quantity: 0, price: '', image_url: '' });
   const [variants, setVariants] = useState<Variant[]>([]);
+  const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
 
   // TheDersi channel category state
   const [theDersiConnection, setTheDersiConnection] = useState<{ id: number } | null>(null);
@@ -930,6 +931,10 @@ function ProductModal({
       let productId: string;
 
       // Map camelCase form state to snake_case API fields
+      // When variants exist, total stock = sum of variant quantities
+      const totalStock = variants.length > 0
+        ? variants.reduce((sum, v) => sum + v.quantity, 0)
+        : formData.stock;
       const apiData = {
         name: formData.name,
         description: formData.description || null,
@@ -938,7 +943,7 @@ function ProductModal({
         price: formData.sellingPrice,
         compare_at_price: formData.compareAtPrice > 0 ? formData.compareAtPrice : null,
         cost_price: formData.costPrice > 0 ? formData.costPrice : null,
-        quantity: formData.stock,
+        quantity: totalStock,
         low_stock_threshold: formData.lowStockAlert,
         list_on_marketplace: formData.listOnMarketplace,
       };
@@ -1187,14 +1192,43 @@ function ProductModal({
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {v.image_url && <img src={v.image_url} alt="" className="w-8 h-8 rounded object-cover border border-border flex-shrink-0" />}
+                          {v.image_url
+                            ? <img src={v.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0 cursor-pointer" onClick={() => document.getElementById(`variant-img-input-${i}`)?.click()} />
+                            : <button type="button" onClick={() => document.getElementById(`variant-img-input-${i}`)?.click()} className="w-10 h-10 rounded-lg border-2 border-dashed border-border hover:border-primary flex items-center justify-center text-muted-foreground hover:text-primary transition flex-shrink-0">
+                                <ImageIcon className="w-4 h-4" />
+                              </button>
+                          }
                           <input
-                            type="url"
-                            value={v.image_url}
-                            onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, image_url: e.target.value } : r))}
-                            placeholder="Image URL for this variant (optional)"
-                            className="w-full px-2.5 py-1.5 bg-muted border border-border rounded-lg text-xs text-foreground focus:ring-2 focus:ring-primary outline-none"
+                            id={`variant-img-input-${i}`}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file || !product?.id) return;
+                              setUploadingVariantIdx(i);
+                              try {
+                                const res = await variantsApi.uploadImage(shopId, product.id, file);
+                                const url = res.data?.url;
+                                if (url) setVariants((arr) => arr.map((r, j) => j === i ? { ...r, image_url: url } : r));
+                              } catch {/* no-op */}
+                              setUploadingVariantIdx(null);
+                              e.target.value = '';
+                            }}
                           />
+                          <div className="flex-1 min-w-0">
+                            {uploadingVariantIdx === i
+                              ? <p className="text-xs text-muted-foreground animate-pulse">Uploading...</p>
+                              : v.image_url
+                              ? <p className="text-xs text-green-600 dark:text-green-400 truncate">Image uploaded</p>
+                              : <p className="text-xs text-muted-foreground">{product?.id ? 'Click icon to upload variant image' : 'Save product first, then add variant image'}</p>
+                            }
+                          </div>
+                          {v.image_url && (
+                            <button type="button" onClick={() => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, image_url: '' } : r))} className="text-xs text-muted-foreground hover:text-destructive transition">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1373,8 +1407,18 @@ function ProductModal({
               <div className="space-y-3">
                 <p className="text-sm font-medium text-foreground">Inventory</p>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Stock Quantity</label>
-                  <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    Stock Quantity
+                    {variants.length > 0 && <span className="ml-2 text-primary font-semibold">= {variants.reduce((s, v) => s + v.quantity, 0)} (from variants)</span>}
+                  </label>
+                  <input
+                    type="number"
+                    value={variants.length > 0 ? variants.reduce((s, v) => s + v.quantity, 0) : formData.stock}
+                    onChange={(e) => { if (variants.length === 0) setFormData({ ...formData, stock: Number(e.target.value) }); }}
+                    readOnly={variants.length > 0}
+                    min="0"
+                    className={`w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground ${variants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Low Stock Alert</label>

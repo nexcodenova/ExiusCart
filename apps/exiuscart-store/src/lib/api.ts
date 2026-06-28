@@ -402,8 +402,15 @@ export const variantsApi = {
   getAll: (shopId: string, productId: string) =>
     api.get(`/shops/${shopId}/products/${productId}/variants`),
   save: (shopId: string, productId: string, variants: {
-    size?: string; color?: string; sku?: string; quantity: number; price?: number;
+    size?: string; color?: string; sku?: string; quantity: number; price?: number; image_url?: string;
   }[]) => api.put(`/shops/${shopId}/products/${productId}/variants`, variants),
+  uploadImage: (shopId: string, productId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post(`/shops/${shopId}/products/${productId}/variant-image`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // ── Channel Integrations ───────────────────────────────
