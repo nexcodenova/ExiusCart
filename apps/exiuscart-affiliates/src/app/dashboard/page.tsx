@@ -114,8 +114,8 @@ export default function OverviewPage() {
       <div className="bg-[#7B4FE9]/10 border border-[#7B4FE9]/30 rounded-2xl p-5 mb-8">
         <p className="text-[#7B4FE9] font-semibold text-sm mb-1">Commission Structure</p>
         <p className="text-gray-400 text-sm">
-          Earn <span className="text-white font-semibold">$35</span> per monthly plan referral and <span className="text-white font-semibold">$75</span> per yearly plan referral. Commissions are subject to a lock period as stated in our{' '}
-          <a href="https://exiuscart.com/terms" target="_blank" rel="noopener noreferrer" className="text-[#7B4FE9] underline hover:text-white">Terms & Conditions</a>.
+          Earn <span className="text-white font-semibold">$25</span> per monthly plan referral and <span className="text-white font-semibold">$75</span> per yearly plan referral. Commissions are subject to a lock period as stated in our{' '}
+          <a href="https://exiuscart.com/affiliate/terms" target="_blank" rel="noopener noreferrer" className="text-[#7B4FE9] underline hover:text-white">Affiliate Terms & Conditions</a>.
         </p>
       </div>
 

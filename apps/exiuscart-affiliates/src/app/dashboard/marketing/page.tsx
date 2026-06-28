@@ -43,6 +43,24 @@ export default function MarketingPage() {
         <p className="text-gray-400 text-sm mt-1">Your referral link and ready-to-share content</p>
       </div>
 
+      {/* Earnings callout */}
+      <div className="bg-[#7B4FE9]/10 border border-[#7B4FE9]/30 rounded-2xl p-5 mb-6 flex flex-col sm:flex-row gap-4 items-center">
+        <div className="flex-1">
+          <p className="text-white font-bold text-base mb-1">Earn up to <span className="text-[#7B4FE9] text-2xl font-black">$75</span> per referral</p>
+          <p className="text-gray-400 text-sm">One-time commission per qualified referral that activates a paid plan.</p>
+        </div>
+        <div className="flex gap-4 shrink-0">
+          <div className="text-center bg-[#151F32] rounded-xl px-5 py-3 border border-gray-800">
+            <p className="text-2xl font-black text-white">$25</p>
+            <p className="text-xs text-gray-500 mt-0.5">Monthly plan</p>
+          </div>
+          <div className="text-center bg-[#7B4FE9]/20 rounded-xl px-5 py-3 border border-[#7B4FE9]/40">
+            <p className="text-2xl font-black text-[#7B4FE9]">$75</p>
+            <p className="text-xs text-gray-400 mt-0.5">Yearly plan</p>
+          </div>
+        </div>
+      </div>
+
       {/* Content policy */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 mb-6">
         <p className="text-amber-400 font-semibold text-sm mb-2">Promotion Policy — Please read</p>

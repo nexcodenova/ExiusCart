@@ -1,167 +1,327 @@
 import Link from 'next/link';
-import { ArrowLeft, BadgeCheck, Clock, DollarSign, ShieldAlert, AlertTriangle } from 'lucide-react';
 
 export const metadata = {
-  title: 'Affiliate Terms & Conditions — ExiusCart',
-  description: 'Full terms and conditions for the ExiusCart Affiliate Program, including commission rates, lock periods, eligibility rules, and payout conditions.',
+  title: 'Affiliate Program Terms & Conditions — ExiusCart',
+  description: 'Full legal terms and conditions governing the ExiusCart Affiliate Program, including commission rates, tracking, cookie policy, fraud rules, payout conditions, and applicable law.',
 };
 
 export default function AffiliateTermsPage() {
   return (
-    <div className="min-h-screen bg-[#FBF8F3] text-slate-900">
+    <div className="min-h-screen bg-white text-slate-900">
       {/* Nav */}
-      <nav className="border-b border-slate-200/70 bg-[#FBF8F3]/80 backdrop-blur sticky top-0 z-30">
+      <nav className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
           <Link href="/" className="text-xl font-bold"><span className="text-[#6B3FD9]">Exius</span>Cart</Link>
-          <Link href="/affiliate" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition">
-            <ArrowLeft className="h-4 w-4" /> Back to Affiliate Program
+          <Link href="/affiliate" className="text-sm text-slate-500 hover:text-slate-900 transition">
+            ← Back to Affiliate Program
           </Link>
         </div>
       </nav>
 
       <div className="mx-auto max-w-4xl px-6 py-16">
-        {/* Header */}
-        <div className="mb-12">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#6B3FD9]/20 bg-[#6B3FD9]/5 px-4 py-1.5 text-sm font-medium text-[#6B3FD9] mb-4">
-            <BadgeCheck className="h-4 w-4" /> Affiliate Program
-          </span>
-          <h1 className="text-4xl font-extrabold tracking-tight">Affiliate Terms &amp; Conditions</h1>
-          <p className="mt-3 text-slate-500 text-sm">Effective date: June 2026 · Applies to all ExiusCart Affiliate Program participants</p>
+        {/* Document header */}
+        <div className="border-b border-slate-200 pb-10 mb-10">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#6B3FD9] mb-3">ExiusCart Affiliate Program</p>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-4">Affiliate Program<br />Terms &amp; Conditions</h1>
+          <p className="text-sm text-slate-500">
+            <strong>Effective date:</strong> 1 June 2026 &nbsp;·&nbsp;
+            <strong>Operated by:</strong> NexCodeNova &nbsp;·&nbsp;
+            <strong>Applies to:</strong> All participants in the ExiusCart Affiliate Program
+          </p>
+          <p className="mt-4 text-sm text-slate-600 leading-relaxed max-w-3xl">
+            By applying to, being accepted into, or continuing to participate in the ExiusCart Affiliate Program (&ldquo;Program&rdquo;), you (&ldquo;Affiliate&rdquo;) agree to be fully bound by these Terms &amp; Conditions (&ldquo;Agreement&rdquo;). If you do not agree with any part of this Agreement, you must not participate in the Program. NexCodeNova (&ldquo;Company,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; &ldquo;our&rdquo;) reserves the right to amend this Agreement at any time. Continued participation after any amendment constitutes acceptance.
+          </p>
         </div>
 
-        <div className="space-y-10">
+        <div className="space-y-12 text-sm text-slate-700 leading-relaxed">
 
-          {/* Commission Rates */}
-          <Section icon={DollarSign} title="1. Commission Rates">
-            <p className="text-slate-600 mb-4">ExiusCart pays a one-time flat commission for each qualified referral that activates a paid subscription. Commissions are not recurring.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-semibold text-slate-500">Free Trial</p>
-                <p className="text-3xl font-extrabold text-slate-300 mt-1">$0</p>
-                <p className="text-xs text-slate-400 mt-1">No commission — referral has not paid</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-semibold text-slate-600">Monthly Plan</p>
-                <p className="text-3xl font-extrabold text-emerald-600 mt-1">$25</p>
-                <p className="text-xs text-slate-500 mt-1">One-time commission per referral</p>
-              </div>
-              <div className="rounded-2xl border-2 border-[#6B3FD9]/30 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold text-[#6B3FD9]">Yearly Plan</p>
-                <p className="text-3xl font-extrabold text-[#6B3FD9] mt-1">$75</p>
-                <p className="text-xs text-slate-500 mt-1">One-time commission per referral</p>
-              </div>
+          {/* 1 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">1. Definitions</h2>
+            <p className="mb-3">For the purposes of this Agreement, the following definitions apply:</p>
+            <ul className="space-y-2 list-none pl-0">
+              <li><strong className="text-slate-900">&ldquo;Affiliate&rdquo;</strong> — any individual or entity approved by NexCodeNova to participate in the Program and promote ExiusCart products and services in exchange for commission.</li>
+              <li><strong className="text-slate-900">&ldquo;Referral Link&rdquo;</strong> — the unique URL assigned to each Affiliate, containing a tracking parameter (&ldquo;ref code&rdquo;) that identifies traffic and sign-ups originating from that Affiliate.</li>
+              <li><strong className="text-slate-900">&ldquo;Qualified Referral&rdquo;</strong> — a new user who registers on ExiusCart using the Affiliate&apos;s Referral Link, has not previously registered on ExiusCart under any account, and subsequently activates a paid subscription within 90 days of their initial sign-up.</li>
+              <li><strong className="text-slate-900">&ldquo;Commission&rdquo;</strong> — the one-time flat payment made to the Affiliate for each Qualified Referral, as set out in Section 3.</li>
+              <li><strong className="text-slate-900">&ldquo;Lock Period&rdquo;</strong> — the mandatory 45-day holding period applied to every Commission after the referred customer&apos;s first payment, during which the Commission cannot be withdrawn.</li>
+              <li><strong className="text-slate-900">&ldquo;Cookie Window&rdquo;</strong> — the duration for which an Affiliate&apos;s tracking cookie remains active on the referred user&apos;s browser after clicking the Referral Link, currently set to <strong>90 days</strong>.</li>
+            </ul>
+          </section>
+
+          {/* 2 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">2. Eligibility &amp; Application</h2>
+            <p className="mb-3">Participation in the Program is open to individuals and entities who meet all of the following criteria:</p>
+            <ul className="space-y-2 list-disc list-inside pl-2">
+              <li>You are at least 18 years of age or the age of majority in your jurisdiction, whichever is greater.</li>
+              <li>You have a valid email address, a PayPal, Skrill, or Payoneer account capable of receiving payments.</li>
+              <li>You operate a website, social media account, YouTube channel, blog, newsletter, or other legitimate digital promotional channel with authentic, original content.</li>
+              <li>You are not a current employee, contractor, or director of NexCodeNova or ExiusCart.</li>
+              <li>You are not located in a jurisdiction subject to international sanctions that would prohibit the receipt of payments from the Company.</li>
+            </ul>
+            <p className="mt-3">Applications are reviewed at the Company&apos;s sole discretion. Approval of an application does not guarantee continued membership. The Company may revoke membership at any time for any reason, including but not limited to policy violations, inactivity, or changes in business direction.</p>
+          </section>
+
+          {/* 3 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">3. Commission Rates</h2>
+            <p className="mb-3">The Program pays a <strong>one-time flat commission</strong> per Qualified Referral. Commissions are not recurring and are not paid for renewals or subsequent billing cycles of the referred customer.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full border border-slate-200 text-sm">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="text-left px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Plan Activated by Referred Customer</th>
+                    <th className="text-left px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">One-Time Commission (USD)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-4 py-3 text-slate-600">Free Trial (no payment made)</td>
+                    <td className="px-4 py-3 font-semibold text-slate-400">$0 — no commission payable</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-4 py-3 text-slate-600">Monthly Plan</td>
+                    <td className="px-4 py-3 font-bold text-slate-900">$25.00</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-slate-600">Yearly Plan</td>
+                    <td className="px-4 py-3 font-bold text-[#6B3FD9]">$75.00</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <p className="mt-4 text-sm text-slate-500">Commission is credited to your affiliate account once the referred customer&apos;s payment is confirmed and the lock period has passed.</p>
-          </Section>
+            <p className="mt-3">Commission rates may be modified with 14 days&apos; advance notice to active Affiliates. Referrals that have already been confirmed prior to a rate change will be honoured at the rate in effect at the time of confirmation. The Company reserves the right to introduce promotional commission rates for limited periods without prior notice.</p>
+          </section>
 
-          {/* Lock Period */}
-          <Section icon={Clock} title="2. Lock Period (Holding Period)">
-            <p className="text-slate-600">All commissions are subject to a <strong className="text-slate-900">45-day lock period</strong> from the date the referred customer makes their first payment.</p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-600 list-disc list-inside">
-              <li>Commissions cannot be withdrawn or transferred during the lock period.</li>
-              <li>The lock period exists to account for refund windows and chargeback periods.</li>
-              <li>After 45 days, cleared commissions become available for payout request.</li>
-              <li>If the referred customer requests a refund during the lock period, the commission is cancelled (see Section 4).</li>
-            </ul>
-          </Section>
+          {/* 4 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">4. Tracking Technology — Cookies, IP Addresses &amp; Attribution</h2>
+            <p className="mb-3">The ExiusCart Affiliate Program uses multiple layers of tracking to attribute referrals accurately and to detect fraud.</p>
 
-          {/* Payout */}
-          <Section icon={DollarSign} title="3. Payout Conditions">
-            <ul className="space-y-3 text-sm text-slate-600">
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>Payouts are processed via <strong className="text-slate-900">PayPal, Skrill, or Payoneer</strong> only. No other methods are available.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>A minimum payout threshold applies — your cleared balance must reach <strong className="text-slate-900">$25</strong> before a withdrawal can be requested.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>Payout requests are processed within <strong className="text-slate-900">7 business days</strong> of approval.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>ExiusCart reserves the right to withhold payout if fraud or policy violation is suspected, pending investigation.</span></li>
+            <h3 className="font-semibold text-slate-900 mt-5 mb-2">4.1 Cookie-Based Tracking</h3>
+            <p className="mb-3">When a user clicks your Referral Link, a first-party cookie containing your affiliate code (&ldquo;ref&rdquo;) is placed on the user&apos;s browser. This cookie has a lifetime of <strong>90 days</strong>. If the user creates an ExiusCart account and activates a paid subscription within 90 days of their first click on your Referral Link, the referral is credited to your account.</p>
+            <ul className="space-y-1.5 list-disc list-inside pl-2 mb-3">
+              <li>If the user clears their cookies or uses a different browser or device before signing up, the referral may not be attributed to you.</li>
+              <li>Only the <em>last</em> Referral Link clicked before sign-up is credited. If a user clicks multiple Affiliate links, only the most recent one is recorded.</li>
+              <li>Cookie stuffing — placing tracking cookies on a user&apos;s device without their knowledge or a genuine click on your Referral Link — is strictly prohibited and constitutes fraud.</li>
             </ul>
-          </Section>
 
-          {/* Refund & Chargeback */}
-          <Section icon={ShieldAlert} title="4. Refunds, Money-Back Guarantee &amp; Commission Reversal">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 mb-5">
-              <p className="text-sm font-semibold text-amber-800 mb-1">Important — 7-Day Money-Back Guarantee Impact</p>
-              <p className="text-sm text-amber-700">ExiusCart offers customers a 7-day money-back guarantee. If a referred customer claims a refund within their first 7 days, their commission is forfeited entirely and will not be paid to the affiliate.</p>
-            </div>
-            <ul className="space-y-3 text-sm text-slate-600">
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>If a referred customer receives a refund <strong className="text-slate-900">in their second billing month</strong> (i.e., after renewing once), the affiliate commission is also <strong className="text-slate-900">reversed and not paid</strong>.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>Commissions that have already been paid out before a reversal occurs may be deducted from future earnings or recovered at ExiusCart&apos;s discretion.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>Chargebacks initiated by the referred customer result in immediate commission cancellation regardless of timing.</span></li>
+            <h3 className="font-semibold text-slate-900 mt-5 mb-2">4.2 IP Address Tracking</h3>
+            <p className="mb-3">In addition to cookies, ExiusCart records the IP address of each visitor who clicks a Referral Link. IP-based tracking is used as a secondary attribution signal and as a primary fraud-detection mechanism. The following IP-based patterns may trigger a fraud review and result in Commission cancellation:</p>
+            <ul className="space-y-1.5 list-disc list-inside pl-2 mb-3">
+              <li>Multiple sign-ups originating from the same IP address or IP range within a short time window.</li>
+              <li>Sign-ups originating from IP addresses associated with data centres, VPNs, proxy services, or TOR exit nodes.</li>
+              <li>Sign-ups where the Affiliate&apos;s own IP address matches or is within the same subnet as the referred user&apos;s IP address (indicative of self-referral).</li>
+              <li>Unusually high click-to-sign-up ratios from a single IP range, suggesting bot traffic or click farms.</li>
             </ul>
-          </Section>
+            <p>IP address data is stored for a minimum of 12 months for fraud investigation purposes and is processed in accordance with our Privacy Policy.</p>
 
-          {/* Eligibility Rules */}
-          <Section icon={BadgeCheck} title="5. Commission Eligibility Rules">
-            <p className="text-slate-600 mb-4">A referral is only considered a <em>qualified lead</em> and earns commission if ALL of the following conditions are met:</p>
-            <ul className="space-y-3 text-sm text-slate-600">
-              <li className="flex gap-2"><span className="text-emerald-600 font-bold shrink-0">✓</span><span>The referred customer signed up using your unique affiliate referral link.</span></li>
-              <li className="flex gap-2"><span className="text-emerald-600 font-bold shrink-0">✓</span><span>The referred customer is a <strong className="text-slate-900">new user</strong> who has not previously registered on ExiusCart.</span></li>
-              <li className="flex gap-2"><span className="text-emerald-600 font-bold shrink-0">✓</span><span>The referred customer activates a <strong className="text-slate-900">paid subscription</strong> (Free Trial referrals earn $0).</span></li>
-              <li className="flex gap-2"><span className="text-emerald-600 font-bold shrink-0">✓</span><span>You have created <strong className="text-slate-900">supporting content</strong> (landing page, blog post, social post, or video) that links to ExiusCart — bare link sharing without content is not permitted.</span></li>
-              <li className="flex gap-2"><span className="text-emerald-600 font-bold shrink-0">✓</span><span>Your account is in good standing with no policy violations at the time of payout.</span></li>
-            </ul>
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              <strong className="text-slate-800">Partnership label required:</strong> Once approved, you must display <em>&ldquo;Affiliate partner of ExiusCart by NexCodeNova&rdquo;</em> on your social profiles or website to activate payouts.
-            </div>
-          </Section>
+            <h3 className="font-semibold text-slate-900 mt-5 mb-2">4.3 UTM Parameters &amp; URL Integrity</h3>
+            <p>Affiliates must not alter, strip, or manipulate the tracking parameters on their Referral Link. Removing, replacing, or redirecting these parameters may result in referral attribution failure. The Company is not liable for lost commissions resulting from self-modification of Referral Links.</p>
+          </section>
 
-          {/* Promotion Rules */}
-          <Section icon={AlertTriangle} title="6. Promotion Rules">
-            <ul className="space-y-3 text-sm text-slate-600">
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span><strong className="text-slate-900">Paid advertising is allowed</strong> — you may run Google, Meta, TikTok, or any ad platform to promote your referral link.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span><strong className="text-slate-900">Supporting content is required</strong> — you must create a landing page, blog post, social post, or video around your referral link. Directly sharing a bare link without any supporting content is not permitted and will result in commission ineligibility.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>You may not make false or misleading claims about ExiusCart&apos;s features, pricing, or capabilities.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>Spam, unsolicited mass messaging, or purchasing fake traffic is strictly prohibited and will result in immediate account termination.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>Self-referrals (referring yourself or affiliated accounts) are prohibited.</span></li>
-            </ul>
-          </Section>
+          {/* 5 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">5. Qualified Referral Criteria</h2>
+            <p className="mb-3">A referral is a Qualified Referral — and therefore earns Commission — only if <strong>all</strong> of the following conditions are simultaneously satisfied:</p>
+            <ol className="space-y-2 list-decimal list-inside pl-2">
+              <li>The referred user clicked your Referral Link within the 90-day Cookie Window before registering.</li>
+              <li>The referred user is a genuinely new customer with no prior account on ExiusCart under any email address.</li>
+              <li>The referred user activates a paid subscription (Monthly or Yearly) within 90 days of signing up.</li>
+              <li>The referred user&apos;s payment is successfully processed and not subject to an immediate refund or chargeback.</li>
+              <li>Your affiliate account is in good standing with no unresolved policy violations at the time the Commission is calculated.</li>
+              <li>You have published supporting content (see Section 7) that includes your Referral Link, active and publicly accessible at the time of the referral.</li>
+              <li>The partnership label requirement (see Section 8) has been fulfilled and confirmed.</li>
+            </ol>
+            <p className="mt-3">The Company&apos;s tracking system is the sole and authoritative source for determining whether a referral qualifies. Disputes regarding tracking must be submitted in writing to affiliates@exiuscart.com within 30 days of the Commission calculation date.</p>
+          </section>
 
-          {/* Termination */}
-          <Section icon={ShieldAlert} title="7. Account Termination &amp; Disqualification">
-            <p className="text-slate-600 mb-3">ExiusCart reserves the right to terminate any affiliate account and forfeit pending commissions for:</p>
-            <ul className="space-y-2 text-sm text-slate-600 list-disc list-inside">
-              <li>Violation of any of these terms</li>
-              <li>Fraudulent activity, fake referrals, or traffic manipulation</li>
-              <li>Misrepresentation of ExiusCart or NexCodeNova</li>
-              <li>Failure to maintain the partnership label requirement after approval</li>
-              <li>Using prohibited promotion methods</li>
+          {/* 6 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">6. Lock Period &amp; Commission Crediting</h2>
+            <p className="mb-3">Upon a referred customer making their first qualifying payment, the corresponding Commission enters a <strong>45-day lock period</strong>. During this period:</p>
+            <ul className="space-y-2 list-disc list-inside pl-2">
+              <li>The Commission is visible in your Affiliate dashboard as &ldquo;Pending&rdquo; but cannot be withdrawn or transferred.</li>
+              <li>If the referred customer requests a refund (including under any money-back guarantee) within the 45-day lock period, the Commission is immediately cancelled and permanently forfeited.</li>
+              <li>If a chargeback is initiated by the referred customer at any time — even after the lock period — the Commission may be reversed and deducted from future earnings.</li>
+              <li>After 45 days, provided no refund or chargeback has been processed, the Commission is marked &ldquo;Cleared&rdquo; and becomes available for payout request.</li>
             </ul>
-            <p className="mt-3 text-sm text-slate-500">Upon termination, all pending and locked commissions are forfeited.</p>
-          </Section>
+          </section>
 
-          {/* General */}
-          <Section icon={BadgeCheck} title="8. General">
-            <ul className="space-y-3 text-sm text-slate-600">
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>These terms may be updated at any time. Continued participation in the affiliate program after changes constitutes acceptance.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>ExiusCart reserves the right to modify commission rates with 14 days&apos; notice to active affiliates.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>This program is operated by <strong className="text-slate-900">NexCodeNova</strong>. All disputes are governed by applicable law.</span></li>
-              <li className="flex gap-2"><span className="text-[#6B3FD9] font-bold shrink-0">•</span><span>For questions, contact us at <a href="mailto:affiliates@exiuscart.com" className="text-[#6B3FD9] hover:underline">affiliates@exiuscart.com</a>.</span></li>
+          {/* 7 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">7. Promotion Rules &amp; Content Requirements</h2>
+
+            <h3 className="font-semibold text-slate-900 mt-4 mb-2">7.1 Supporting Content Requirement</h3>
+            <p className="mb-3">Sharing a bare Referral Link without accompanying original content is <strong>not permitted</strong> and will result in those referrals being ineligible for Commission. Acceptable content formats include, but are not limited to: a landing page, blog post or article, social media post with original commentary, YouTube or TikTok video, newsletter segment, or podcast mention. The content must be publicly accessible and must fairly represent ExiusCart&apos;s actual features and pricing.</p>
+
+            <h3 className="font-semibold text-slate-900 mt-4 mb-2">7.2 Paid Advertising</h3>
+            <p className="mb-3">Paid advertising on any platform — including Google Ads, Meta Ads, TikTok Ads, YouTube Ads, and others — is permitted, provided the ad directs users to content you control (e.g. your landing page) rather than directly to ExiusCart. Directly linking paid ads to ExiusCart.com or any ExiusCart subdomain using your Referral Link is prohibited without prior written approval from the Company.</p>
+
+            <h3 className="font-semibold text-slate-900 mt-4 mb-2">7.3 Prohibited Promotion Methods</h3>
+            <p className="mb-3">The following methods are strictly prohibited and will result in immediate account termination and forfeiture of all pending and cleared Commissions:</p>
+            <ul className="space-y-1.5 list-disc list-inside pl-2">
+              <li>Spam — unsolicited bulk emails, SMS messages, WhatsApp broadcasts, or social media direct messages promoting your Referral Link.</li>
+              <li>Purchasing bot traffic, fake clicks, or incentivised clicks from click farms or paid-to-click services.</li>
+              <li>Self-referrals — creating or assisting in the creation of ExiusCart accounts using your own Referral Link, directly or through a third party you control.</li>
+              <li>Cookie stuffing or any form of unauthorised tracking manipulation.</li>
+              <li>Making false, exaggerated, or misleading claims about ExiusCart&apos;s features, pricing, security, or capabilities.</li>
+              <li>Impersonating ExiusCart, NexCodeNova, or any of their representatives.</li>
+              <li>Bidding on branded keywords (&ldquo;ExiusCart,&rdquo; &ldquo;NexCodeNova&rdquo; or any variant) on paid search platforms.</li>
+              <li>Placing the Referral Link on coupon, cashback, or deal aggregator websites without prior written approval.</li>
+              <li>Any promotion method that violates the terms of service of the platform on which it is used.</li>
             </ul>
-          </Section>
+          </section>
+
+          {/* 8 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">8. Partnership Label Requirement</h2>
+            <p className="mb-3">As a condition of payout eligibility, every Affiliate must publicly display the following disclosure on any channel or platform used to promote ExiusCart:</p>
+            <blockquote className="border-l-4 border-[#6B3FD9] pl-5 py-2 bg-slate-50 my-4 text-slate-800 font-mono text-sm">
+              &ldquo;Affiliate partner of ExiusCart by NexCodeNova&rdquo;
+            </blockquote>
+            <p className="mb-3">This label must be prominently displayed — for example, in your social media bio, website footer, or the disclosure section of any blog post or video description containing your Referral Link. Hidden or obfuscated disclosure does not satisfy this requirement.</p>
+            <p>Affiliates must confirm fulfilment of this requirement via the Affiliate dashboard. Failure to maintain this disclosure after confirmation, or providing false confirmation, constitutes a material breach of this Agreement and may result in immediate termination and Commission forfeiture.</p>
+          </section>
+
+          {/* 9 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">9. Payout Conditions</h2>
+            <p className="mb-3">Payouts are subject to the following conditions:</p>
+            <ul className="space-y-2 list-disc list-inside pl-2">
+              <li><strong>Minimum balance:</strong> Your cleared (post-lock) balance must reach a minimum of <strong>$25.00 USD</strong> before a payout can be requested.</li>
+              <li><strong>Payout methods:</strong> PayPal, Skrill, or Payoneer only. No bank transfers, cryptocurrency, gift cards, or other methods are available at this time.</li>
+              <li><strong>Processing time:</strong> Approved payout requests are processed within <strong>7 business days</strong>. The Company reserves the right to extend this period by up to 14 additional business days during audits, investigations, or high-volume periods.</li>
+              <li><strong>Taxes:</strong> You are solely responsible for declaring and paying any taxes applicable to your Commission income in your jurisdiction. The Company does not withhold tax on behalf of Affiliates unless required by applicable law.</li>
+              <li><strong>Currency:</strong> All Commissions and payouts are denominated in United States Dollars (USD). Currency conversion fees, if applicable, are borne by the Affiliate.</li>
+              <li><strong>Withheld payouts:</strong> The Company reserves the right to withhold any payout indefinitely pending the outcome of a fraud investigation, legal dispute, or regulatory inquiry. Affiliates will be notified of any withhold within 5 business days of the payout request being placed on hold.</li>
+            </ul>
+          </section>
+
+          {/* 10 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">10. Refunds, Chargebacks &amp; Commission Reversal</h2>
+            <p className="mb-3">ExiusCart offers customers a <strong>7-day money-back guarantee</strong> on their first payment. The following reversal rules apply:</p>
+            <ul className="space-y-2 list-disc list-inside pl-2">
+              <li>If a referred customer requests a refund within the 7-day money-back guarantee window, the Commission is cancelled and not payable under any circumstances.</li>
+              <li>If a referred customer initiates a chargeback with their bank or payment provider at any time, the Commission is cancelled regardless of whether the lock period has elapsed or the Commission has been paid out. If already paid out, the reversed amount will be deducted from your next cleared balance or recovered by the Company.</li>
+              <li>Commissions already paid out are subject to clawback if a chargeback or fraudulent referral is discovered after payment. You agree to repay any such amounts upon demand.</li>
+              <li>The Company is not liable for any refund or chargeback decision made by a third-party payment processor.</li>
+            </ul>
+          </section>
+
+          {/* 11 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">11. Fraud Detection &amp; Investigation</h2>
+            <p className="mb-3">The Company employs automated and manual fraud detection measures. Any of the following signals may trigger a fraud review, Commission suspension, or immediate account termination:</p>
+            <ul className="space-y-1.5 list-disc list-inside pl-2">
+              <li>High click volumes with low or zero sign-up conversion that is inconsistent with legitimate referral traffic patterns.</li>
+              <li>Multiple referrals from the same IP address, device fingerprint, or household within a short timeframe.</li>
+              <li>Referred accounts that are created but never used, or used only to trigger commission before cancellation.</li>
+              <li>Any correlation between the Affiliate&apos;s account details (name, email, IP address, payment account) and referred customer accounts.</li>
+              <li>Sudden spikes in referral volume that cannot be reasonably explained by documented promotional activity.</li>
+              <li>Use of VPN, proxy, or anonymisation services during referral-generating activity.</li>
+              <li>Shared device identifiers or browser fingerprints between the Affiliate and referred users.</li>
+            </ul>
+            <p className="mt-3">During an active fraud investigation, the Company may suspend payout processing without notice. The Affiliate will be given an opportunity to provide evidence to dispute findings. The Company&apos;s determination following investigation is final.</p>
+          </section>
+
+          {/* 12 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">12. Data Collection &amp; Privacy</h2>
+            <p className="mb-3">By participating in the Program, you consent to the following data practices:</p>
+            <ul className="space-y-2 list-disc list-inside pl-2">
+              <li>The Company collects and stores your name, email address, payment account details, IP addresses, and referral activity data for the purpose of administering the Program.</li>
+              <li>Click and referral data from your Referral Link — including timestamps, IP addresses, device types, and browser user-agents of users who click your link — is collected and retained for fraud detection and attribution purposes.</li>
+              <li>Data is retained for a minimum of 36 months following the end of your participation in the Program to comply with legal and audit requirements.</li>
+              <li>The Company does not sell Affiliate personal data to third parties. Data may be shared with payment processors (PayPal, Skrill, Payoneer) as necessary to execute payouts.</li>
+              <li>You are responsible for disclosing to your audience that clicking your Referral Link results in a cookie being placed on their browser, as required by applicable privacy laws including but not limited to the EU General Data Protection Regulation (GDPR) and the UK Privacy and Electronic Communications Regulations (PECR).</li>
+            </ul>
+          </section>
+
+          {/* 13 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">13. Intellectual Property</h2>
+            <p className="mb-3">The Company grants you a limited, non-exclusive, non-transferable, revocable licence to use ExiusCart&apos;s name, logo, and approved marketing materials solely for the purpose of promoting ExiusCart through the Program and in accordance with these Terms. This licence:</p>
+            <ul className="space-y-1.5 list-disc list-inside pl-2">
+              <li>Does not permit you to modify, alter, or create derivative works of any ExiusCart intellectual property.</li>
+              <li>Does not permit you to register domain names, social media handles, or business names that include &ldquo;ExiusCart&rdquo; or &ldquo;NexCodeNova&rdquo; without prior written consent.</li>
+              <li>Terminates automatically upon the termination or suspension of your Affiliate account.</li>
+            </ul>
+          </section>
+
+          {/* 14 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">14. Termination &amp; Disqualification</h2>
+            <p className="mb-3">Either party may terminate this Agreement at any time. The Company may terminate or suspend your Affiliate account with immediate effect and without prior notice for any of the following reasons:</p>
+            <ul className="space-y-1.5 list-disc list-inside pl-2 mb-3">
+              <li>Any violation of these Terms &amp; Conditions.</li>
+              <li>Any fraudulent, deceptive, or abusive conduct in connection with the Program.</li>
+              <li>Misrepresentation of ExiusCart, NexCodeNova, or their products and services.</li>
+              <li>Failure to maintain or removal of the partnership label (Section 8).</li>
+              <li>Inactivity for a period exceeding 12 consecutive months.</li>
+              <li>Any legal or regulatory requirement that necessitates termination.</li>
+            </ul>
+            <p>Upon termination for cause, all pending and locked Commissions are permanently forfeited. Upon termination without cause by the Company, Cleared Commissions available for payout at the time of termination will be paid out within 30 days, subject to final fraud review. You may not re-apply to the Program for 12 months following a termination for cause.</p>
+          </section>
+
+          {/* 15 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">15. Limitation of Liability &amp; Disclaimer</h2>
+            <p className="mb-3">To the maximum extent permitted by applicable law:</p>
+            <ul className="space-y-2 list-disc list-inside pl-2">
+              <li>The Company&apos;s total liability to you under or in connection with this Agreement shall not exceed the total amount of Commissions paid to you in the 6 months immediately preceding the event giving rise to the claim.</li>
+              <li>The Company is not liable for any indirect, special, consequential, incidental, or punitive damages arising from your participation in the Program, including lost profits or loss of expected Commission income.</li>
+              <li>The Program is provided &ldquo;as is.&rdquo; The Company makes no warranty regarding the continuity, availability, or profitability of the Program.</li>
+              <li>The Company is not responsible for any third-party platform decisions (ad account suspensions, social media takedowns, etc.) that affect your ability to promote ExiusCart.</li>
+            </ul>
+          </section>
+
+          {/* 16 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">16. Relationship of the Parties</h2>
+            <p>You and the Company are independent contractors. Nothing in this Agreement creates or implies any employment, partnership, joint venture, agency, franchise, or sales representative relationship. You have no authority to bind the Company in any contract or representation and must not represent yourself as an employee or agent of ExiusCart or NexCodeNova.</p>
+          </section>
+
+          {/* 17 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">17. Amendments</h2>
+            <p>The Company reserves the right to modify these Terms &amp; Conditions at any time. Material changes will be communicated to active Affiliates via email at least 14 days before taking effect, except in cases of urgent changes required by law or to prevent fraud, which may take effect immediately. Continued participation in the Program after the effective date of any amendment constitutes your binding acceptance of the revised terms. It is your responsibility to review these terms periodically.</p>
+          </section>
+
+          {/* 18 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">18. Governing Law &amp; Dispute Resolution</h2>
+            <p className="mb-3">This Agreement is governed by and construed in accordance with the laws of the United Arab Emirates (UAE) and, where applicable, the laws of the jurisdiction in which NexCodeNova is incorporated. In the event of any dispute arising from or in connection with this Agreement, the parties shall first attempt to resolve the matter by good-faith negotiation. If the dispute is not resolved within 30 days, it shall be referred to binding arbitration under the rules of a mutually agreed arbitral institution. Nothing in this clause prevents either party from seeking urgent injunctive relief from a court of competent jurisdiction.</p>
+            <p>You agree that any claim against the Company must be brought within <strong>12 months</strong> of the event giving rise to the claim. Claims brought after this period are time-barred.</p>
+          </section>
+
+          {/* 19 */}
+          <section>
+            <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">19. Contact &amp; Notices</h2>
+            <p className="mb-2">For questions about this Agreement, Commission disputes, or to report suspected fraud in the Program:</p>
+            <ul className="space-y-1.5 list-none pl-0">
+              <li><strong>Email:</strong> <a href="mailto:affiliates@exiuscart.com" className="text-[#6B3FD9] hover:underline">affiliates@exiuscart.com</a></li>
+              <li><strong>Operated by:</strong> NexCodeNova</li>
+              <li><strong>Website:</strong> <a href="https://exiuscart.com" className="text-[#6B3FD9] hover:underline">https://exiuscart.com</a></li>
+            </ul>
+            <p className="mt-3 text-slate-500 text-xs">All formal notices must be submitted in English in writing to the email address above. The Company will respond to compliance and legal notices within 10 business days.</p>
+          </section>
 
         </div>
 
-        {/* CTA */}
-        <div className="mt-16 rounded-3xl border border-[#6B3FD9]/20 bg-[#6B3FD9]/5 p-8 text-center">
-          <h2 className="text-2xl font-bold tracking-tight">Ready to join?</h2>
-          <p className="mt-2 text-slate-600">Apply now and start earning $75 per referral.</p>
-          <Link href="/affiliate#apply" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#6B3FD9] px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#6B3FD9]/20 transition hover:bg-[#5A2EC9]">
-            Apply to become an affiliate →
-          </Link>
+        {/* Footer */}
+        <div className="mt-16 pt-8 border-t border-slate-200 text-center">
+          <p className="text-xs text-slate-400">ExiusCart Affiliate Program Terms &amp; Conditions — Version effective 1 June 2026</p>
+          <p className="text-xs text-slate-400 mt-1">Operated by NexCodeNova · <a href="mailto:affiliates@exiuscart.com" className="hover:text-slate-600">affiliates@exiuscart.com</a></p>
+          <div className="mt-6">
+            <Link href="/affiliate" className="inline-flex items-center gap-2 rounded-xl bg-[#6B3FD9] px-6 py-3 text-sm font-semibold text-white hover:bg-[#5A2EC9] transition">
+              Apply to become an affiliate →
+            </Link>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Section({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 lg:p-8">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#6B3FD9]/10 shrink-0">
-          <Icon className="h-5 w-5 text-[#6B3FD9]" />
-        </div>
-        <h2 className="text-xl font-bold tracking-tight">{title}</h2>
-      </div>
-      {children}
     </div>
   );
 }
