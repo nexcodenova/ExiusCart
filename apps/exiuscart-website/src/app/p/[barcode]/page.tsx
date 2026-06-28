@@ -1,7 +1,19 @@
 import { notFound } from 'next/navigation';
-import { Package, Tag, BarChart3, BookmarkCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Package, Tag, BarChart3, BookmarkCheck, CheckCircle2, AlertCircle, Clock, FileText } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
+
+interface ReservationEntry {
+  id: number;
+  customer_name: string;
+  quantity: number;
+  reservation_type: string;
+  advance_amount: number | null;
+  lpo_number: string | null;
+  notes: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+}
 
 interface ProductInfo {
   name: string;
@@ -15,6 +27,7 @@ interface ProductInfo {
   shop_name: string;
   image_url: string | null;
   category: string | null;
+  reservations: ReservationEntry[];
 }
 
 async function getProduct(barcode: string): Promise<ProductInfo | null> {
@@ -157,6 +170,67 @@ export default async function ProductPublicPage({ params }: { params: { barcode:
             </div>
           </div>
         </div>
+
+        {/* Reservations list */}
+        {p.reservations && p.reservations.length > 0 && (
+          <div className="mt-4 bg-[#151F32] border border-gray-800 rounded-2xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-800 flex items-center gap-2">
+              <BookmarkCheck className="w-4 h-4 text-yellow-400" />
+              <p className="text-sm font-bold text-white">Active Reservations</p>
+              <span className="ml-auto text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full font-semibold">{p.reservations.length}</span>
+            </div>
+            <div className="divide-y divide-gray-800">
+              {p.reservations.map((r) => {
+                const isConfirmed = r.reservation_type === 'confirmed';
+                const expiresDate = r.expires_at ? new Date(r.expires_at) : null;
+                const createdDate = r.created_at ? new Date(r.created_at) : null;
+                return (
+                  <div key={r.id} className="px-5 py-4">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <p className="text-white font-semibold text-sm">{r.customer_name}</p>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full mt-1 ${
+                          isConfirmed
+                            ? 'bg-green-500/15 text-green-400'
+                            : 'bg-yellow-500/15 text-yellow-400'
+                        }`}>
+                          {isConfirmed ? 'Confirmed' : 'Soft Hold'}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-white font-black text-lg leading-none">{r.quantity}</p>
+                        <p className="text-gray-500 text-[10px] mt-0.5">units</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      {r.advance_amount && (
+                        <p className="text-[11px] text-gray-400">Advance: <span className="text-green-400 font-semibold">{p.currency} {r.advance_amount.toLocaleString()}</span></p>
+                      )}
+                      {r.lpo_number && (
+                        <div className="flex items-center gap-1">
+                          <FileText className="w-3 h-3 text-gray-600" />
+                          <p className="text-[11px] text-gray-400">LPO: <span className="text-gray-300">{r.lpo_number}</span></p>
+                        </div>
+                      )}
+                      {r.notes && (
+                        <p className="text-[11px] text-gray-500 italic">{r.notes}</p>
+                      )}
+                      <div className="flex items-center gap-1 mt-1">
+                        <Clock className="w-3 h-3 text-gray-600" />
+                        <p className="text-[10px] text-gray-600">
+                          {createdDate ? createdDate.toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                          {expiresDate && !isConfirmed && (
+                            <span className="text-orange-500"> · Expires {expiresDate.toLocaleDateString('en-AE', { day: 'numeric', month: 'short' })}</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <p className="text-center text-gray-700 text-xs mt-4">Powered by ExiusCart</p>
       </div>

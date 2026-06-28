@@ -33,13 +33,29 @@ def public_product_info(barcode: str, db: Session = Depends(get_db)):
 
     shop = db.query(Shop).filter(Shop.id == product.shop_id).first()
 
-    # Count active reservations for this product
-    reserved_qty = db.query(func.sum(Reservation.quantity)).filter(
+    # Active reservations for this product
+    active_reservations = db.query(Reservation).filter(
         Reservation.product_id == product.id,
         Reservation.status == "active",
-    ).scalar() or 0
+    ).order_by(Reservation.created_at.asc()).all()
 
+    reserved_qty = sum(r.quantity for r in active_reservations)
     available = max(0, (product.quantity or 0) - reserved_qty)
+
+    reservations_list = [
+        {
+            "id": r.id,
+            "customer_name": r.customer_name,
+            "quantity": r.quantity,
+            "reservation_type": r.reservation_type,
+            "advance_amount": float(r.advance_amount) if r.advance_amount else None,
+            "lpo_number": r.lpo_number,
+            "notes": r.notes,
+            "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in active_reservations
+    ]
 
     return {
         "name": product.name,
@@ -53,6 +69,7 @@ def public_product_info(barcode: str, db: Session = Depends(get_db)):
         "shop_name": shop.name if shop else "",
         "image_url": product.image_url or _first_image(db, product.id),
         "category": product.category.name if product.category else None,
+        "reservations": reservations_list,
     }
 
 
