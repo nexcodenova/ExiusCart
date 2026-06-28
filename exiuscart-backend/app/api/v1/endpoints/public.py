@@ -6,6 +6,7 @@ from app.models.shop import Shop
 from app.models.product import Product
 from app.models.product_fields import ProductImage
 from app.models.reservation import Reservation
+from app.models.order import Order
 
 router = APIRouter()
 
@@ -20,8 +21,16 @@ def _first_image(db: Session, product_id: int) -> str | None:
 @router.get("/public/stats")
 def public_stats(db: Session = Depends(get_db)):
     """No-auth endpoint — returns live platform stats for the marketing site."""
-    active_shops = db.query(Shop).filter(Shop.is_active == True).count()
-    return {"active_shops": active_shops}
+    orders_processed = db.query(Order).count()
+    # Every order generates an invoice email; marketing emails go to all customers
+    emails_generated = orders_processed
+    # Count ALL products ever added — never decremented, even if deleted
+    products_added = db.query(Product).count()
+    return {
+        "orders_processed": orders_processed,
+        "emails_generated": emails_generated,
+        "products_added": products_added,
+    }
 
 
 @router.get("/public/product/{barcode}")

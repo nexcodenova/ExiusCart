@@ -4,22 +4,34 @@ import { useEffect, useState } from 'react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
 
+interface Stats {
+  orders_processed: number;
+  emails_generated: number;
+  products_added: number;
+}
+
+function fmt(n: number | null): string {
+  if (n === null) return '—';
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k+`;
+  return `${n}+`;
+}
+
 export function LiveStats() {
-  const [activeShops, setActiveShops] = useState<number | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
     fetch(`${API}/api/v1/public/stats`)
       .then(r => r.json())
-      .then(d => setActiveShops(d.active_shops))
+      .then(d => setStats(d))
       .catch(() => {});
   }, []);
 
-  const display = activeShops === null ? '—' : activeShops > 0 ? `${activeShops}+` : String(activeShops);
-
   return (
     <div className="mt-16 pt-12 border-t border-gray-800">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <StatItem value={display} label="Active Shops" live />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8">
+        <StatItem value={fmt(stats?.orders_processed ?? null)} label="Orders Processed" live />
+        <StatItem value={fmt(stats?.emails_generated ?? null)} label="Emails Generated" live />
+        <StatItem value={fmt(stats?.products_added ?? null)} label="Products Added" live />
         <StatItem value="99.9%" label="Uptime" />
         <StatItem value="14-day" label="Free Trial" />
       </div>

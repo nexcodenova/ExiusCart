@@ -43,7 +43,7 @@ export default function DashboardLayout({
           collapsed={sidebarCollapsed}
           onCollapsedChange={setSidebarCollapsed}
           mobileOpen={mobileMenuOpen}
-          onMobileClose={() => setMobileMenuOpen(false)}
+          onMobileClose={() => {}}
         />
         <div
           className={`min-h-screen transition-all duration-300 pb-20 lg:pb-0 ${
