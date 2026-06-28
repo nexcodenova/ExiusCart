@@ -355,9 +355,9 @@ export default function POSPage() {
       />
     )}
 
-    <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-5rem)] flex flex-col lg:flex-row gap-4">
+    <div className="flex flex-col lg:h-[calc(100vh-5rem)] lg:flex-row gap-4">
       {/* Products Section */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex flex-col min-h-0 lg:flex-1">
         {/* Search & Filter */}
         <div className="bg-card rounded-xl border border-border p-3 mb-4">
           {/* Monthly order usage counter (free-tier sellers only) */}
@@ -450,7 +450,7 @@ export default function POSPage() {
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="lg:flex-1 lg:overflow-y-auto">
           {loadingProducts ? (
             <div className="flex items-center justify-center h-40">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -502,8 +502,8 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* Cart Section - Fixed on Desktop, Slide-up on Mobile */}
-      <div className="lg:w-96 bg-card border border-border rounded-xl flex flex-col">
+      {/* Cart Section - Desktop only sidebar */}
+      <div className="hidden lg:flex lg:w-96 bg-card border border-border rounded-xl flex-col">
         {/* Cart Header */}
         <div className="p-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -668,6 +668,23 @@ export default function POSPage() {
           </button>
         </div>
       </div>
+
+      {/* Mobile floating cart button */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-20 left-4 right-4 lg:hidden z-40">
+          <button
+            type="button"
+            onClick={handleCheckout}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl py-4 px-5 flex items-center justify-between shadow-2xl font-semibold transition"
+          >
+            <span className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              {cart.reduce((s, i) => s + i.quantity, 0)} item{cart.reduce((s, i) => s + i.quantity, 0) !== 1 ? 's' : ''}
+            </span>
+            <span>{total.toFixed(2)} {sym} →</span>
+          </button>
+        </div>
+      )}
 
       {/* Checkout Modal */}
       {showCheckout && (

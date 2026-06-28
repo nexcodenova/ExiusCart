@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
-  Bell, Search, Menu, User, Sun, Moon, GitBranch, ChevronDown,
+  Bell, Search, User, Sun, Moon, GitBranch, ChevronDown,
   Settings, CreditCard, LogOut, UserCircle,
 } from 'lucide-react';
 import { useTheme } from '@/components/providers/theme-provider';
@@ -79,11 +80,13 @@ export function Header({ onMenuClick }: HeaderProps) {
 
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6">
-      {/* Mobile menu */}
-      <button type="button" onClick={onMenuClick} aria-label="Open menu"
-        className="lg:hidden p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition">
-        <Menu className="w-6 h-6" />
-      </button>
+      {/* Mobile logo (replaces hamburger — sidebar is desktop-only) */}
+      <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
+        <Image src="/logo.svg" alt="ExiusCart" width={26} height={26} />
+        <span className="text-lg font-bold">
+          <span className="text-indigo-600 dark:text-indigo-400">Exius</span><span className="text-foreground">Cart</span>
+        </span>
+      </Link>
 
       {/* Search */}
       <div className="hidden md:flex items-center flex-1 max-w-md ml-4">

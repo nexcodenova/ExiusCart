@@ -14,7 +14,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuOpen = false; // sidebar is desktop-only; mobile uses bottom nav
   const [authed, setAuthed] = useState(false);
   const router = useRouter();
 
@@ -50,7 +50,7 @@ export default function DashboardLayout({
             sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
           }`}
         >
-          <Header onMenuClick={() => setMobileMenuOpen(true)} />
+          <Header onMenuClick={() => {}} />
           <TrialBanner />
           <main className="p-4 lg:p-6">{children}</main>
         </div>
