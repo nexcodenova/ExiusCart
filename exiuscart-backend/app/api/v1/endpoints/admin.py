@@ -22,6 +22,7 @@ from app.models.subscription import Subscription
 from app.models.lead import Lead
 from app.models.affiliate import Affiliate, Commission
 from app.models.product import Product, Category
+from app.models.order import Order
 from app.models.partner import PartnerLicense
 from app.models.admin_settings import AdminSettings
 
@@ -93,9 +94,9 @@ def get_admin_stats(
         Subscription.status == "active"
     ).scalar() or 0
 
-    # Pending subscriptions (trial that need manual approval / unpaid)
+    # Pending subscriptions (need manual approval)
     pending_count = db.query(func.count(Subscription.id)).filter(
-        Subscription.status == "trial"
+        Subscription.status.in_(["trial", "pending_approval"])
     ).scalar() or 0
 
     # Expiring soon (within 7 days)
@@ -146,6 +147,8 @@ def list_shops(
     result = []
     for shop in shops:
         sub = shop.subscription
+        product_count = db.query(func.count(Product.id)).filter(Product.shop_id == shop.id).scalar() or 0
+        order_count = db.query(func.count(Order.id)).filter(Order.shop_id == shop.id).scalar() or 0
         result.append({
             "id": shop.id,
             "name": shop.name,
@@ -161,6 +164,8 @@ def list_shops(
             "billing_type": sub.billing_type if sub else None,
             "starts_at": sub.starts_at.isoformat() if sub and sub.starts_at else None,
             "expires_at": sub.expires_at.isoformat() if sub and sub.expires_at else None,
+            "product_count": product_count,
+            "order_count": order_count,
         })
     return result
 
