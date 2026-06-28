@@ -117,6 +117,8 @@ jobs:
         with:
           name: store-next
           path: apps/exiuscart-store/.next
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.run_id }}
 
       - name: Download admin build
         if: needs.changes.outputs.admin == 'true' && needs.build-admin.result == 'success'
@@ -124,6 +126,8 @@ jobs:
         with:
           name: admin-next
           path: apps/exiuscart-admin/.next
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.run_id }}
 
       # Copy pre-built .next to server, then restart — no build on server
       - name: Deploy via SSH
