@@ -4,9 +4,17 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.shop import Shop
 from app.models.product import Product
+from app.models.product_fields import ProductImage
 from app.models.reservation import Reservation
 
 router = APIRouter()
+
+
+def _first_image(db: Session, product_id: int) -> str | None:
+    img = db.query(ProductImage).filter(
+        ProductImage.product_id == product_id
+    ).order_by(ProductImage.sort_order).first()
+    return img.url if img else None
 
 
 @router.get("/public/stats")
@@ -43,7 +51,7 @@ def public_product_info(barcode: str, db: Session = Depends(get_db)):
         "reserved": int(reserved_qty),
         "available": int(available),
         "shop_name": shop.name if shop else "",
-        "image_url": product.image_url,
+        "image_url": product.image_url or _first_image(db, product.id),
         "category": product.category.name if product.category else None,
     }
 

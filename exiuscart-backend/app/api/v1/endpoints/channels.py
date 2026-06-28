@@ -140,6 +140,7 @@ def _product_payload(
             "sku": v.sku,
             "quantity": v.quantity,
             "price": float(v.price) if v.price is not None else None,
+            "image_url": v.image_url or None,
         }
         for v in (product.variants or [])
     ]

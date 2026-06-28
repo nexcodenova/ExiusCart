@@ -341,6 +341,7 @@ class VariantIn(BaseModel):
     sku: Optional[str] = None
     quantity: int = 0
     price: Optional[float] = None
+    image_url: Optional[str] = None
 
 
 class VariantOut(BaseModel):
@@ -350,6 +351,7 @@ class VariantOut(BaseModel):
     sku: Optional[str]
     quantity: int
     price: Optional[float]
+    image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -391,6 +393,7 @@ def save_variants(
             sku=v.sku,
             quantity=v.quantity,
             price=v.price,
+            image_url=v.image_url,
         )
         db.add(pv)
         new_variants.append(pv)

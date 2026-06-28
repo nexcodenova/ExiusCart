@@ -786,8 +786,8 @@ function ProductModal({
   const [error, setError] = useState('');
 
   // Variants state
-  interface Variant { id?: number; size: string; color: string; sku: string; quantity: number; price: string; }
-  const emptyVariant = (): Variant => ({ size: '', color: '', sku: '', quantity: 0, price: '' });
+  interface Variant { id?: number; size: string; color: string; sku: string; quantity: number; price: string; image_url: string; }
+  const emptyVariant = (): Variant => ({ size: '', color: '', sku: '', quantity: 0, price: '', image_url: '' });
   const [variants, setVariants] = useState<Variant[]>([]);
 
   // TheDersi channel category state
@@ -822,6 +822,7 @@ function ProductModal({
           id: v.id, size: v.size ?? '', color: v.color ?? '',
           sku: v.sku ?? '', quantity: v.quantity ?? 0,
           price: v.price != null ? String(v.price) : '',
+          image_url: v.image_url ?? '',
         }))))
         .catch(() => {});
     }
@@ -981,6 +982,7 @@ function ProductModal({
           sku: v.sku || undefined,
           quantity: v.quantity,
           price: v.price !== '' ? Number(v.price) : undefined,
+          image_url: v.image_url || undefined,
         }))).catch(() => {}));
       }
 
@@ -1159,28 +1161,40 @@ function ProductModal({
                 ) : (
                   <>
                     {variants.map((v, i) => (
-                      <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                        <div className="col-span-3">
-                          {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Size</label>}
-                          <input type="text" value={v.size} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, size: e.target.value } : r))} placeholder="S / M / XL" className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                      <div key={i} className="space-y-2 border border-border rounded-lg p-3 bg-muted/20">
+                        <div className="grid grid-cols-12 gap-2 items-end">
+                          <div className="col-span-3">
+                            {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Size</label>}
+                            <input type="text" value={v.size} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, size: e.target.value } : r))} placeholder="S / M / XL" className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                          </div>
+                          <div className="col-span-3">
+                            {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Color</label>}
+                            <input type="text" value={v.color} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, color: e.target.value } : r))} placeholder="Red / Blue" className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                          </div>
+                          <div className="col-span-2">
+                            {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Stock</label>}
+                            <input type="number" value={v.quantity} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, quantity: Number(e.target.value) } : r))} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                          </div>
+                          <div className="col-span-3">
+                            {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Price (blank = default)</label>}
+                            <input type="number" value={v.price} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, price: e.target.value } : r))} placeholder={String(formData.sellingPrice)} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                          </div>
+                          <div className="col-span-1 flex justify-end">
+                            {i === 0 && <div className="mb-1 h-4" />}
+                            <button type="button" onClick={() => setVariants((arr) => arr.filter((_, j) => j !== i))} className="p-2 text-muted-foreground hover:text-destructive transition rounded-lg hover:bg-destructive/10">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="col-span-3">
-                          {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Color</label>}
-                          <input type="text" value={v.color} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, color: e.target.value } : r))} placeholder="Red / Blue" className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
-                        </div>
-                        <div className="col-span-2">
-                          {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Stock</label>}
-                          <input type="number" value={v.quantity} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, quantity: Number(e.target.value) } : r))} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
-                        </div>
-                        <div className="col-span-3">
-                          {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Price (blank = default)</label>}
-                          <input type="number" value={v.price} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, price: e.target.value } : r))} placeholder={String(formData.sellingPrice)} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
-                        </div>
-                        <div className="col-span-1 flex justify-end">
-                          {i === 0 && <div className="mb-1 h-4" />}
-                          <button type="button" onClick={() => setVariants((arr) => arr.filter((_, j) => j !== i))} className="p-2 text-muted-foreground hover:text-destructive transition rounded-lg hover:bg-destructive/10">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                        <div className="flex items-center gap-2">
+                          {v.image_url && <img src={v.image_url} alt="" className="w-8 h-8 rounded object-cover border border-border flex-shrink-0" />}
+                          <input
+                            type="url"
+                            value={v.image_url}
+                            onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, image_url: e.target.value } : r))}
+                            placeholder="Image URL for this variant (optional)"
+                            className="w-full px-2.5 py-1.5 bg-muted border border-border rounded-lg text-xs text-foreground focus:ring-2 focus:ring-primary outline-none"
+                          />
                         </div>
                       </div>
                     ))}

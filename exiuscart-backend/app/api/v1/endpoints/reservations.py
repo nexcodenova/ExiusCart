@@ -168,6 +168,7 @@ def update_reservation(
     shop_id: int,
     reservation_id: int,
     body: ReservationUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -176,6 +177,9 @@ def update_reservation(
     ).first()
     if not r:
         raise HTTPException(404, "Reservation not found")
+
+    old_status = r.status
+    old_type = r.reservation_type
 
     if body.customer_name is not None:
         r.customer_name = body.customer_name
@@ -193,16 +197,47 @@ def update_reservation(
         r.advance_amount = body.advance_amount
     if body.status is not None:
         r.status = body.status
-    if body.reservation_type is not None:
+    stock_changed = False
+    if body.reservation_type is not None and body.reservation_type != old_type:
         r.reservation_type = body.reservation_type
-        # upgrading soft_hold → confirmed: clear expiry
         if body.reservation_type == "confirmed":
+            # Upgrading soft_hold → confirmed: commit stock, clear expiry
             r.expires_at = None
-        elif body.reservation_type == "soft_hold" and not r.expires_at:
-            r.expires_at = datetime.utcnow() + timedelta(days=2)
+            if r.product_id and old_status == "active":
+                product = db.query(Product).filter(
+                    Product.id == r.product_id, Product.shop_id == shop_id
+                ).first()
+                if product:
+                    product.quantity = max(0, (product.quantity or 0) - r.quantity)
+                    stock_changed = True
+        elif body.reservation_type == "soft_hold":
+            if not r.expires_at:
+                r.expires_at = datetime.utcnow() + timedelta(days=2)
+            # Downgrading confirmed → soft_hold: restore stock
+            if old_type == "confirmed" and r.product_id and old_status == "active":
+                product = db.query(Product).filter(
+                    Product.id == r.product_id, Product.shop_id == shop_id
+                ).first()
+                if product:
+                    product.quantity = (product.quantity or 0) + r.quantity
+                    stock_changed = True
+
+    # Also restore stock if cancelling an active confirmed reservation
+    if body.status in ("cancelled", "expired") and old_status == "active" and old_type == "confirmed":
+        if r.product_id:
+            product = db.query(Product).filter(
+                Product.id == r.product_id, Product.shop_id == shop_id
+            ).first()
+            if product:
+                product.quantity = (product.quantity or 0) + r.quantity
+                stock_changed = True
 
     db.commit()
     db.refresh(r)
+
+    if stock_changed and r.product_id:
+        background_tasks.add_task(_bg_push_stock, r.product_id, shop_id)
+
     return _serialize(r)
 
 
