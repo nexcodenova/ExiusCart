@@ -1,23 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, MousePointerClick, Users, TrendingUp, BadgeCheck, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { DollarSign, MousePointerClick, Users, TrendingUp, BadgeCheck, AlertCircle, ExternalLink, CheckCircle2, Loader2 } from 'lucide-react';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
 const PARTNER_KEY = 'affiliate_partner_label_confirmed';
 
-const stats = [
-  { label: 'Total Earnings',  value: '$0.00',  sub: 'Commission earned',      icon: DollarSign,        color: '#7B4FE9' },
-  { label: 'Total Clicks',    value: '0',      sub: 'On your referral link',  icon: MousePointerClick, color: '#3B82F6' },
-  { label: 'Signups',         value: '0',      sub: 'Via your link',          icon: Users,             color: '#10B981' },
-  { label: 'Conversions',     value: '0',      sub: 'Paid customers',         icon: TrendingUp,        color: '#F59E0B' },
-];
+function affiliateHeaders() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('affiliate_token') : null;
+  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+}
 
 export default function OverviewPage() {
   const [partnerConfirmed, setPartnerConfirmed] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [statsData, setStatsData] = useState<{ total_signups: number; conversions: number; total_earnings: number; currency: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setPartnerConfirmed(localStorage.getItem(PARTNER_KEY) === 'yes');
+    fetch(`${API_BASE}/api/v1/affiliates/me/stats`, { headers: affiliateHeaders() })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setStatsData(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const handleConfirm = () => {
@@ -28,6 +34,13 @@ export default function OverviewPage() {
       setConfirming(false);
     }, 600);
   };
+
+  const stats = [
+    { label: 'Total Earnings',  value: loading ? '…' : `$${(statsData?.total_earnings ?? 0).toFixed(2)}`, sub: 'Commission earned',      icon: DollarSign,        color: '#7B4FE9' },
+    { label: 'Total Clicks',    value: '—',      sub: 'On your referral link',  icon: MousePointerClick, color: '#3B82F6' },
+    { label: 'Signups',         value: loading ? '…' : String(statsData?.total_signups ?? 0), sub: 'Via your link', icon: Users, color: '#10B981' },
+    { label: 'Conversions',     value: loading ? '…' : String(statsData?.conversions ?? 0), sub: 'Paid customers', icon: TrendingUp, color: '#F59E0B' },
+  ];
 
   return (
     <div>
@@ -89,7 +102,9 @@ export default function OverviewPage() {
                 <Icon className="w-4 h-4" style={{ color }} />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white mb-1">{value}</p>
+            <p className="text-3xl font-bold text-white mb-1">
+              {loading && value === '…' ? <Loader2 className="w-5 h-5 animate-spin inline" /> : value}
+            </p>
             <p className="text-gray-500 text-xs">{sub}</p>
           </div>
         ))}
@@ -104,16 +119,27 @@ export default function OverviewPage() {
         </p>
       </div>
 
-      {/* Recent activity placeholder */}
+      {/* Recent activity */}
       <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-6">
         <h2 className="text-white font-semibold mb-4">Recent Activity</h2>
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center mb-3">
-            <TrendingUp className="w-5 h-5 text-gray-600" />
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="w-6 h-6 text-[#7B4FE9] animate-spin" />
           </div>
-          <p className="text-gray-500 text-sm">No activity yet</p>
-          <p className="text-gray-600 text-xs mt-1">Share your referral link to start earning</p>
-        </div>
+        ) : (statsData?.total_signups ?? 0) === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center mb-3">
+              <TrendingUp className="w-5 h-5 text-gray-600" />
+            </div>
+            <p className="text-gray-500 text-sm">No activity yet</p>
+            <p className="text-gray-600 text-xs mt-1">Share your referral link to start earning</p>
+          </div>
+        ) : (
+          <p className="text-gray-400 text-sm">
+            You have <span className="text-white font-semibold">{statsData?.total_signups}</span> signup(s) and <span className="text-white font-semibold">{statsData?.conversions}</span> paid conversion(s). View the{' '}
+            <a href="/dashboard/referrals" className="text-[#7B4FE9] underline">Referrals</a> page for full details.
+          </p>
+        )}
       </div>
     </div>
   );
