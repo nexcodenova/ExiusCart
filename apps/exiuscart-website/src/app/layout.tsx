@@ -21,8 +21,8 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   title: 'ExiusCart - Smart Multi-Shop Business System',
   description:
-    'UAE-focused POS + Inventory Management Platform for small businesses',
-  keywords: ['POS', 'Point of Sale', 'UAE', 'Inventory', 'Invoicing'],
+    'All-in-one POS, inventory & invoicing platform for small businesses worldwide — UAE and international.',
+  keywords: ['POS', 'Point of Sale', 'UAE', 'Inventory', 'Invoicing', 'worldwide', 'small business'],
   icons: {
     icon: '/logo.svg',
     shortcut: '/logo.svg',

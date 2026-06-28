@@ -9,10 +9,10 @@ import { LiveStats } from '@/components/ui/live-stats';
 
 export const metadata: Metadata = {
   title: 'ExiusCart - Smart Business Management for Small Shops | POS, Invoicing & Inventory',
-  description: 'All-in-one business solution for UAE shops. Create VAT invoices, track inventory, manage orders. Affordable pricing starting from AED 45/month.',
+  description: 'All-in-one business solution for shops worldwide. Create VAT invoices, track inventory, manage orders. Affordable pricing starting from AED 45/month.',
   openGraph: {
     title: 'ExiusCart - Smart Business Management for Small Shops',
-    description: 'All-in-one business solution for UAE shops. POS, invoicing, inventory & order management.',
+    description: 'All-in-one business solution for shops worldwide. POS, invoicing, inventory & order management.',
     url: 'https://exiuscart.com',
     siteName: 'ExiusCart',
     type: 'website',

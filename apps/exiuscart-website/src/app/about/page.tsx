@@ -81,8 +81,8 @@ export default function AboutPage() {
             {[
               { stage: 'Founded', title: 'NexCodeNova Established', desc: 'Started as a software development studio in Sri Lanka, focused on building practical tools for real businesses.' },
               { stage: 'Product Launch', title: 'ExiusCart v1 Released', desc: 'First version launched — POS, inventory, and VAT invoicing for small businesses in the UAE.' },
-              { stage: 'Growth', title: 'Expanding to Dubai', desc: 'Opened regional operations in Dubai to better serve UAE-based businesses and provide local support.' },
-              { stage: "What's Next", title: 'Growing Across the Region', desc: 'Expanding our presence to Saudi Arabia and beyond, with new features shipping every month.', muted: true },
+              { stage: 'Growth', title: 'Expanding to Dubai', desc: 'Opened regional operations in Dubai to better serve businesses across the UAE and internationally.' },
+              { stage: "What's Next", title: 'Growing Worldwide', desc: 'Expanding our presence globally — UAE, Saudi Arabia, and beyond — with new features shipping every month.', muted: true },
             ].map(({ stage, title, desc, muted }) => (
               <div key={stage} className="relative">
                 <div className={`absolute -left-[25px] top-1 w-4 h-4 rounded-full ${muted ? 'bg-[#6B3FD9]/40' : 'bg-[#6B3FD9]'}`} />

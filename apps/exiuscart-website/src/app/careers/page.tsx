@@ -88,12 +88,12 @@ export default function CareersPage() {
                 <div>
                   <span className="text-[#6B3FD9] font-medium text-sm">ABOUT NEXCODENOVA</span>
                   <h2 className="text-2xl md:text-3xl font-bold text-white mt-2 mb-4">
-                    Building Tech for UAE Small Businesses
+                    Building Tech for Small Businesses Worldwide
                   </h2>
                   <p className="text-gray-400 leading-relaxed mb-4">
                     NexCodeNova is a technology company based in Sri Lanka, with plans to expand
                     to Dubai. ExiusCart is our flagship product — an all-in-one business management
-                    platform designed specifically for UAE small businesses.
+                    platform built for small businesses in the UAE and worldwide.
                   </p>
                   <p className="text-gray-400 leading-relaxed">
                     We believe in building practical solutions that solve real problems. Our team
@@ -239,7 +239,7 @@ export default function CareersPage() {
               <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
                 <Megaphone className="w-8 h-8 text-[#6B3FD9] mb-4" />
                 <h3 className="text-white font-semibold mb-2">Marketing</h3>
-                <p className="text-gray-400 text-sm">Tell our story, reach new audiences, and help UAE businesses discover ExiusCart.</p>
+                <p className="text-gray-400 text-sm">Tell our story, reach new audiences, and help businesses worldwide discover ExiusCart.</p>
               </div>
               <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
                 <Headphones className="w-8 h-8 text-[#6B3FD9] mb-4" />
