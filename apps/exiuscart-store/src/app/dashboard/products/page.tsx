@@ -786,7 +786,7 @@ function ProductModal({
   const [error, setError] = useState('');
 
   // Variants state
-  interface Variant { id?: number; size: string; color: string; sku: string; quantity: number; price: string; image_url: string; }
+  interface Variant { id?: number; size: string; color: string; sku: string; quantity: number; price: string; image_url: string; _pendingFile?: File; _previewUrl?: string; }
   const emptyVariant = (): Variant => ({ size: '', color: '', sku: '', quantity: 0, price: '', image_url: '' });
   const [variants, setVariants] = useState<Variant[]>([]);
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
@@ -979,9 +979,18 @@ function ProductModal({
         tasks.push(attributesApi.save(shopId, productId, attrsPayload).catch(() => {}));
       }
 
-      // Save variants if any are defined
+      // Save variants — upload any pending images first (Add Product mode)
       if (variants.length > 0) {
-        tasks.push(variantsApi.save(shopId, productId, variants.map((v) => ({
+        const resolvedVariants = await Promise.all(variants.map(async (v) => {
+          if (v._pendingFile && productId) {
+            try {
+              const res = await variantsApi.uploadImage(shopId, productId, v._pendingFile);
+              return { ...v, image_url: res.data?.url || v.image_url };
+            } catch { return v; }
+          }
+          return v;
+        }));
+        tasks.push(variantsApi.save(shopId, productId, resolvedVariants.map((v) => ({
           size: v.size || undefined,
           color: v.color || undefined,
           sku: v.sku || undefined,
@@ -1192,8 +1201,8 @@ function ProductModal({
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {v.image_url
-                            ? <img src={v.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0 cursor-pointer" onClick={() => document.getElementById(`variant-img-input-${i}`)?.click()} />
+                          {(v.image_url || v._previewUrl)
+                            ? <img src={v._previewUrl || v.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0 cursor-pointer" onClick={() => document.getElementById(`variant-img-input-${i}`)?.click()} />
                             : <button type="button" onClick={() => document.getElementById(`variant-img-input-${i}`)?.click()} className="w-10 h-10 rounded-lg border-2 border-dashed border-border hover:border-primary flex items-center justify-center text-muted-foreground hover:text-primary transition flex-shrink-0">
                                 <ImageIcon className="w-4 h-4" />
                               </button>
@@ -1205,14 +1214,21 @@ function ProductModal({
                             className="hidden"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
-                              if (!file || !product?.id) return;
-                              setUploadingVariantIdx(i);
-                              try {
-                                const res = await variantsApi.uploadImage(shopId, product.id, file);
-                                const url = res.data?.url;
-                                if (url) setVariants((arr) => arr.map((r, j) => j === i ? { ...r, image_url: url } : r));
-                              } catch {/* no-op */}
-                              setUploadingVariantIdx(null);
+                              if (!file) return;
+                              if (product?.id) {
+                                // Edit mode — upload immediately
+                                setUploadingVariantIdx(i);
+                                try {
+                                  const res = await variantsApi.uploadImage(shopId, product.id, file);
+                                  const url = res.data?.url;
+                                  if (url) setVariants((arr) => arr.map((r, j) => j === i ? { ...r, image_url: url, _pendingFile: undefined, _previewUrl: undefined } : r));
+                                } catch {/* no-op */}
+                                setUploadingVariantIdx(null);
+                              } else {
+                                // Add mode — store locally, upload after product is created
+                                const previewUrl = URL.createObjectURL(file);
+                                setVariants((arr) => arr.map((r, j) => j === i ? { ...r, _pendingFile: file, _previewUrl: previewUrl } : r));
+                              }
                               e.target.value = '';
                             }}
                           />
@@ -1221,7 +1237,9 @@ function ProductModal({
                               ? <p className="text-xs text-muted-foreground animate-pulse">Uploading...</p>
                               : v.image_url
                               ? <p className="text-xs text-green-600 dark:text-green-400 truncate">Image uploaded</p>
-                              : <p className="text-xs text-muted-foreground">{product?.id ? 'Click icon to upload variant image' : 'Save product first, then add variant image'}</p>
+                              : v._previewUrl
+                              ? <p className="text-xs text-blue-600 dark:text-blue-400 truncate">Image selected — will upload on save</p>
+                              : <p className="text-xs text-muted-foreground">Click icon to add variant image</p>
                             }
                           </div>
                           {v.image_url && (

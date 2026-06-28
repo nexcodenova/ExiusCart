@@ -57,6 +57,7 @@ export default function POSPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
   const [barcodeFlash, setBarcodeFlash] = useState<string | null>(null);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
@@ -193,6 +194,7 @@ export default function POSPage() {
     setDiscount(0);
     setCustomerName('');
     setCustomerPhone('');
+    setCustomerEmail('');
   };
 
   // Calculate totals based on VAT settings
@@ -240,6 +242,7 @@ export default function POSPage() {
         source: 'pos',
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
+        customer_email: customerEmail || undefined,
         notes: paymentMethod ? `Payment: ${paymentMethod}` : undefined,
         items: cart.map((item) => ({
           product_id: Number(item.id),
@@ -708,6 +711,15 @@ export default function POSPage() {
                     placeholder="Phone"
                     aria-label="Customer phone"
                     className="px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground text-sm"
+                  />
+                  <input
+                    type="email"
+                    id="customer-email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    placeholder="Email"
+                    aria-label="Customer email"
+                    className="col-span-2 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground text-sm"
                   />
                 </div>
               </div>
