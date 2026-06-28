@@ -615,6 +615,11 @@ function ReservationModal({ shopId, reservation, onClose, onSaved }: {
               <input type="tel" value={form.customer_phone} onChange={e => setForm(f => ({ ...f, customer_phone: e.target.value }))} placeholder="+971 50 000 0000"
                 className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground" />
             </div>
+            <div className="col-span-2">
+              <label className="text-sm text-muted-foreground mb-1.5 block">Email</label>
+              <input type="email" value={form.customer_email} onChange={e => setForm(f => ({ ...f, customer_email: e.target.value }))} placeholder="customer@email.com"
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground" />
+            </div>
           </div>
 
           {/* Product */}
