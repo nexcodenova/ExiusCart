@@ -70,7 +70,7 @@ class OrderItem(Base):
 
     # Foreign Keys
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)  # nullable so product can be deleted without losing order history
 
     # Relationships
     order = relationship("Order", back_populates="items")

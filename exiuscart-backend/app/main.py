@@ -22,6 +22,9 @@ with engine.connect() as conn:
     conn.execute(__import__('sqlalchemy').text(
         "ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);"
     ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE order_items ALTER COLUMN product_id DROP NOT NULL;"
+    ))
     # Back-fill: create pending_approval subscriptions for verified shops that have none
     conn.execute(__import__('sqlalchemy').text("""
         INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
