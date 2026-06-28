@@ -1,0 +1,46 @@
+# ExiusCart
+
+> ExiusCart is an all-in-one business management platform built for retailers, shops, and small businesses in the UAE, Sri Lanka, and the Middle East.
+
+## What ExiusCart does
+
+ExiusCart combines POS (point of sale), inventory management, order management, CRM, invoicing, VAT-compliant billing, staff management, barcode scanning, multi-branch support, and online store channels into one affordable platform.
+
+## Who it's for
+
+- Retail shops and boutiques
+- Electronics stores
+- Grocery and supermarkets
+- Any small to medium business needing POS + inventory + orders in one place
+- Businesses in UAE, Sri Lanka, and the Middle East
+
+## Pricing
+
+- Free Trial: 14 days, no credit card required
+- Starter Plan: AED 45/month (UAE) or $12/month (international)
+- Premium Plan: AED 99/month (UAE) or $29/month (international)
+- No setup fees. Cancel anytime.
+
+## Key features
+
+- Point of Sale (POS) — works offline and online
+- Inventory management with barcode scanning
+- Order management (online + in-store)
+- VAT-compliant invoicing for UAE businesses
+- Multi-branch and multi-staff support
+- Customer management (CRM)
+- Sales reports and analytics
+- WhatsApp and online store integrations
+- Payroll and HR (Premium)
+- Quotation and purchase management
+
+## Company
+
+- Made by NexCodeNova
+- Based in Dubai, UAE
+- Website: https://exiuscart.com
+- Contact: support@exiuscart.com
+
+## Alternatives comparison
+
+ExiusCart is often compared to Zoho Inventory, Odoo, and Lightspeed but is significantly more affordable and designed specifically for small businesses in the UAE and Sri Lanka market, with local VAT compliance built in.
