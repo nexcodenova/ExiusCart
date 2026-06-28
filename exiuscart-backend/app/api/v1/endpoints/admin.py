@@ -991,7 +991,9 @@ def admin_list_shopping_products(
 ):
     query = (
         db.query(Product)
+        .join(Shop, Product.shop_id == Shop.id)
         .options(joinedload(Product.shop), joinedload(Product.category))
+        .filter(Shop.slug == "exiuscart-dropshipping-system")
         .order_by(Product.is_trending.desc(), Product.is_featured.desc(), Product.created_at.desc())
     )
     if search:

@@ -60,7 +60,11 @@ def list_shopping_products(
             joinedload(Product.shop),
             joinedload(Product.category),
         )
-        .filter(Product.is_active == True, Shop.is_active == True)
+        .filter(
+            Product.is_active == True,
+            Shop.is_active == True,
+            Shop.slug == "exiuscart-dropshipping-system",
+        )
     )
 
     if search:
@@ -104,6 +108,7 @@ def get_shopping_product(
             Product.id == product_id,
             Product.is_active == True,
             Shop.is_active == True,
+            Shop.slug == "exiuscart-dropshipping-system",
         )
         .first()
     )
@@ -121,7 +126,11 @@ def list_shopping_categories(db: Session = Depends(get_db)):
         db.query(Category)
         .join(Product, Product.category_id == Category.id)
         .join(Shop, Product.shop_id == Shop.id)
-        .filter(Product.is_active == True, Shop.is_active == True)
+        .filter(
+            Product.is_active == True,
+            Shop.is_active == True,
+            Shop.slug == "exiuscart-dropshipping-system",
+        )
         .distinct()
         .order_by(Category.name)
         .all()
