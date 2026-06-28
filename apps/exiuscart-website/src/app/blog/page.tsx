@@ -80,6 +80,38 @@ const POSTS = [
     title: 'Syncing Shopify & WooCommerce Orders into One Dashboard',
     excerpt: 'Selling on multiple platforms? ExiusCart pulls all your orders — Shopify, WooCommerce, TheDersi, and your own site — into one place.',
   },
+  {
+    slug: 'best-pos-system-small-business-uae-2025',
+    category: 'Technology',
+    date: 'Jun 2026',
+    readTime: '7 min',
+    title: 'Best POS System for Small Businesses in UAE 2025',
+    excerpt: "Most POS roundups recommend US products that don't handle UAE VAT. Here is an honest guide comparing what actually works for UAE shop owners.",
+  },
+  {
+    slug: 'inventory-management-software-sri-lanka-retailers',
+    category: 'Guides',
+    date: 'Jun 2026',
+    readTime: '6 min',
+    title: 'Inventory Management Software for Sri Lanka Retailers',
+    excerpt: 'Sri Lanka retailers selling on TheDersi, in-store, and online need one system to manage it all. Here is what to look for and what works.',
+  },
+  {
+    slug: 'exiuscart-vs-zoho-inventory-comparison',
+    category: 'Technology',
+    date: 'Jun 2026',
+    readTime: '8 min',
+    title: 'ExiusCart vs Zoho Inventory — Honest Comparison 2025',
+    excerpt: 'A clear comparison of ExiusCart and Zoho Inventory for UAE retailers — pricing, UAE VAT, TheDersi integration, and which is right for your business.',
+  },
+  {
+    slug: 'all-in-one-business-software-uae-under-aed-100',
+    category: 'Growth',
+    date: 'Jun 2026',
+    readTime: '6 min',
+    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing Under AED 100',
+    excerpt: 'Most UAE businesses pay AED 300–500/month for separate tools. ExiusCart replaces all of them — POS, inventory, VAT invoicing, HR — for AED 45–99/month.',
+  },
 ];
 
 const CATEGORIES = ['All', 'Finance', 'Integrations', 'Guides', 'Technology', 'Growth', 'Productivity', 'HR & Payroll'];

@@ -1247,6 +1247,437 @@ function ShopifySyncPost() {
   );
 }
 
+function BestPOSUAE() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        You search &quot;best POS UAE&quot; and find articles recommending Square, Lightspeed, or Clover — platforms built for the US and UK market, priced in dollars, with no UAE VAT support and no Arabic receipt option. There is a better list to follow.
+      </p>
+
+      <P>The UAE business environment has specific requirements that most international POS platforms do not handle: 5% VAT invoicing with FTA compliance, AED as the primary currency, and pricing that makes sense for small businesses. This guide covers what to look for and which systems actually work in a UAE context.</P>
+
+      <H2 id="what-uae-pos-needs">What a UAE POS System Must Have</H2>
+      <P>Before looking at specific products, here are the non-negotiable requirements for any POS operating in the UAE:</P>
+
+      <UL items={[
+        'UAE VAT (5%) — FTA-compliant tax invoices with your TRN, automatic VAT calculation, sequential invoice numbers',
+        'AED as default currency — not a conversion, not an add-on, AED as the primary currency throughout',
+        'Cloud backup — cloud sync means you never lose data if a tablet breaks',
+        'Works on tablet or laptop — avoid proprietary hardware that locks you in to one vendor',
+        'Offline mode — continue selling during internet outages without losing the sale',
+        'Inventory built in — not a separate subscription, stock management included',
+        'Staff accounts — separate logins per team member with role-based access',
+        'Multi-branch support — essential if you ever plan to open a second location',
+      ]} />
+
+      <Callout type="warning">
+        Any POS that does not produce FTA-compliant tax invoices is a compliance risk if your annual turnover exceeds AED 375,000. The penalty for a non-compliant invoice is AED 2,500 per document. This rules out most cash register apps and several international POS platforms that have not built UAE-specific invoicing.
+      </Callout>
+
+      <H2 id="the-options">POS Options for UAE Small Businesses</H2>
+
+      <div className="overflow-x-auto my-7">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-900 text-white">
+              <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">System</th>
+              <th className="text-left px-4 py-3 font-semibold">Starting price</th>
+              <th className="text-left px-4 py-3 font-semibold">UAE VAT</th>
+              <th className="text-left px-4 py-3 font-semibold">Built for UAE</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Best for</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { s: 'ExiusCart',  p: 'AED 45/month',      vat: 'Yes — built in',    uae: 'Yes',         b: 'SMBs wanting all-in-one at low cost' },
+              { s: 'Zoho Books', p: 'AED 50+/month',     vat: 'Yes',                uae: 'Partly',      b: 'Accounting-focused businesses' },
+              { s: 'Square',     p: 'Free + % per sale', vat: 'Basic',              uae: 'No',          b: 'Freelancers and pop-ups' },
+              { s: 'Lightspeed', p: '$89 USD/month',     vat: 'Yes (addon)',         uae: 'Partly',      b: 'Larger retail chains' },
+              { s: 'Odoo',       p: 'From $7.25/user',   vat: 'Yes (configured)',   uae: 'With setup',  b: 'Businesses with in-house IT' },
+            ].map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className={`px-4 py-3 font-medium border-b border-gray-100 ${row.s === 'ExiusCart' ? 'text-[#6B3FD9]' : 'text-gray-900'}`}>{row.s}</td>
+                <td className="px-4 py-3 text-gray-700 border-b border-gray-100">{row.p}</td>
+                <td className="px-4 py-3 text-gray-700 border-b border-gray-100">{row.vat}</td>
+                <td className="px-4 py-3 text-gray-700 border-b border-gray-100">{row.uae}</td>
+                <td className="px-4 py-3 text-gray-500 border-b border-gray-100">{row.b}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <H2 id="exiuscart-recommendation">Why ExiusCart Is the Best Starting Point for UAE SMBs</H2>
+      <P>For a small business in the UAE that needs POS + inventory + invoicing + staff management in one affordable platform, ExiusCart is the closest thing to a purpose-built solution. It was built specifically for UAE and Middle East retail — not adapted from a US product.</P>
+
+      <UL items={[
+        'FTA-compliant VAT invoices built into every sale — no add-ons needed',
+        'AED as the primary currency — automatic AED/USD handling based on customer location',
+        'Runs on any tablet or laptop — no proprietary hardware to buy',
+        'Inventory, staff accounts, HR, payroll, and reports all included',
+        'TheDersi marketplace integration — direct connection to the UAE/Sri Lanka seller platform',
+        'Starter plan at AED 45/month — less than Zoho, Lightspeed, or Cin7',
+        '14-day free trial with all features unlocked — no credit card required',
+      ]} />
+
+      <div className="grid grid-cols-3 gap-4 my-8">
+        <StatBox stat="AED 45" label="Starter plan" sub="$12 USD · per month" />
+        <StatBox stat="AED 99" label="Premium plan" sub="$29 USD · per month" />
+        <StatBox stat="14 days" label="Free trial" sub="All features included" />
+      </div>
+
+      <H2 id="zoho-comparison">ExiusCart vs Zoho — For UAE Small Businesses</H2>
+      <P>Zoho is a legitimate product with strong accounting features. The trade-offs for a small UAE retailer:</P>
+
+      <UL items={[
+        'Zoho Inventory and Zoho Books are separate products — you pay for both',
+        'POS requires Zoho Point of Sale on top — adding more subscriptions',
+        'Setup complexity is higher — Zoho is built for flexibility, not out-of-the-box simplicity',
+        'No TheDersi integration',
+        'ExiusCart combines POS + inventory + invoicing + HR into one subscription at a lower price point',
+      ]} />
+
+      <Callout type="info">
+        Zoho is the right choice if you need deep accounting features — multi-currency books, complex tax setups, or integration with a CA firm. For a retailer who primarily needs to sell, track stock, and issue VAT invoices, ExiusCart covers more ground for less money.
+      </Callout>
+
+      <H2 id="what-to-try-first">What to Try First</H2>
+      <P>The fastest way to know if a POS is right for your business is to use it on your actual operations for a week. Start with ExiusCart — it has everything you need from day one, without configuration complexity, and the Starter plan at AED 45/month is the lowest-risk entry point in this category.</P>
+
+      <NumberedList items={[
+        { title: 'Start the ExiusCart free trial', desc: '14 days, all features, no card. Set it up the same day you read this.' },
+        { title: 'Import your product catalog', desc: 'Upload a CSV of your products or add them manually. Most catalogs take under an hour.' },
+        { title: 'Add staff accounts', desc: 'One account per team member. Set roles so cashiers can sell, managers can see reports.' },
+        { title: 'Run your first sale through the POS', desc: 'The interface is tablet-friendly. An FTA-compliant receipt generates automatically.' },
+        { title: 'Check the end-of-day report', desc: 'Revenue, units sold, best-sellers — all automatic. No spreadsheet needed.' },
+      ]} />
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">Try the best UAE POS free for 14 days</p>
+        <p className="text-gray-400 text-sm mb-6">Built for UAE businesses. VAT-compliant invoices, AED pricing, inventory included. No credit card required.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+function InventorySriLanka() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        A boutique in Colombo. A grocery in Kandy. An electronics seller on TheDersi. A clothing store shipping across Sri Lanka. Every one of them is tracking stock in a notebook or a spreadsheet — and every one of them loses sales to stock mistakes they did not see coming.
+      </p>
+
+      <P>Inventory management software for Sri Lanka retailers has a specific set of requirements: affordable pricing in USD, online marketplace integration (especially TheDersi), multi-channel support for stores that sell both physically and online, and simple enough to run without an IT team.</P>
+
+      <H2 id="why-sri-lanka-retailers-need-software">Why Sri Lanka Retailers Need Inventory Software Now</H2>
+      <P>The retail landscape in Sri Lanka is changing fast. Online sales through platforms like TheDersi have grown significantly — many shop owners now sell in-store, on WhatsApp, and through an online marketplace simultaneously. Managing stock across three channels manually is not sustainable beyond a certain volume.</P>
+
+      <UL items={[
+        'Selling the same product in-store and online without shared inventory leads to overselling — taking an order you cannot fulfil',
+        'Manual stock counts take hours that could go into the business itself',
+        'WhatsApp order management does not scale past about 20 orders a day',
+        'Without sales data, buying decisions are based on gut feeling rather than what actually moves',
+        'Marketplace platforms like TheDersi require accurate stock availability — out-of-stock listings hurt your seller rating',
+      ]} />
+
+      <Callout type="info">
+        The shift from one-channel to multi-channel retail is where most Sri Lanka sellers start feeling the pain. A system that handles inventory across TheDersi, in-store, and a direct website from one place eliminates the biggest source of errors.
+      </Callout>
+
+      <H2 id="what-to-look-for">What to Look for</H2>
+      <UL items={[
+        'USD pricing — most international SaaS tools price in USD, which is manageable for Sri Lanka businesses',
+        'TheDersi integration — direct native sync with TheDersi, not a manual export/import workaround',
+        'Works on a smartphone or basic laptop — not all businesses have dedicated hardware',
+        'Simple enough to learn without training — the system needs to be usable within a day',
+        'Cloud-based — local server solutions are a maintenance burden for small businesses',
+        'Order management included — inventory alone is not enough if you are processing online orders',
+      ]} />
+
+      <H2 id="thedersi-sellers">For TheDersi Sellers</H2>
+      <P>TheDersi is the largest online marketplace in Sri Lanka for fashion, accessories, and lifestyle products. If you sell on TheDersi, your inventory management system needs to speak directly to it — not require you to manually update stock after every order.</P>
+      <P>ExiusCart is the inventory management platform with native TheDersi integration. Orders placed on TheDersi sync into ExiusCart automatically — your stock count decrements, the order appears in your dashboard, and you can track fulfilment without touching the TheDersi seller portal.</P>
+
+      <Callout type="example">
+        <strong>How it works:</strong> A customer buys your dress on TheDersi. Within seconds, the order appears in ExiusCart. Stock count updates automatically. If that was the last unit, the TheDersi listing shows out of stock — no oversell. You mark the order fulfilled in ExiusCart and the status updates on TheDersi too.
+      </Callout>
+
+      <H2 id="pricing-for-sri-lanka">Pricing That Makes Sense</H2>
+      <P>The international benchmark for inventory management is $12–30 USD per month for a basic plan. For a business turning over meaningful volume per month, that pays for itself quickly in time saved and errors avoided.</P>
+
+      <div className="grid grid-cols-3 gap-4 my-8">
+        <StatBox stat="Free" label="14-day trial" sub="All features included" />
+        <StatBox stat="$12" label="Starter plan" sub="Per month · USD" />
+        <StatBox stat="$29" label="Premium plan" sub="Per month · unlimited" />
+      </div>
+
+      <H2 id="features-for-retailers">Key Features for Sri Lanka Retailers</H2>
+      <UL items={[
+        'TheDersi native integration — orders sync automatically, stock updates in real time',
+        'Multi-channel inventory — one stock count shared across in-store, online, and marketplace',
+        'Barcode scanning — for businesses with large catalogs, barcode-based stock management speeds everything up',
+        'Order management — receive, process, and fulfil orders from all channels in one dashboard',
+        'Sales reports — which products move fastest, revenue by day and month',
+        'Low stock alerts — get notified before you run out, not after you oversell',
+        'Staff accounts — multiple logins with role-based access',
+        'Customer records — purchase history, repeat buyers, contact details',
+      ]} />
+
+      <PullQuote>&quot;For a Sri Lanka retailer on TheDersi, the right inventory system connects your in-store and online operations so they work as one.&quot;</PullQuote>
+
+      <H2 id="migrating-from-spreadsheets">Moving from Spreadsheets</H2>
+      <P>Most Sri Lanka retailers start on spreadsheets and move to software when orders outpace manual management, they hire more than two staff, or they have their first significant oversell. The migration is simpler than it sounds — ExiusCart accepts a CSV import of your product catalog and most catalogs are imported in under an hour.</P>
+
+      <NumberedList items={[
+        { title: 'Export your product list as CSV', desc: 'Include name, SKU, price, and current stock quantity. That is all you need to start.' },
+        { title: 'Import to ExiusCart', desc: 'Upload the CSV and map your columns. Products are imported in minutes.' },
+        { title: 'Connect TheDersi', desc: 'Link your TheDersi seller account in ExiusCart Integrations. Orders start syncing immediately.' },
+        { title: 'Set low-stock alerts per product', desc: 'Choose a threshold. ExiusCart notifies you when stock drops below it so you can reorder before running out.' },
+        { title: 'Process your first TheDersi order in ExiusCart', desc: 'Watch the stock count drop automatically. No manual update needed.' },
+      ]} />
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">Try ExiusCart free — built for TheDersi sellers</p>
+        <p className="text-gray-400 text-sm mb-6">Native TheDersi integration, multi-channel inventory, order management. 14-day free trial, no credit card.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+function ExiusCartVsZohoPost() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        You found ExiusCart and you found Zoho. Both say they handle inventory. Both have pricing pages. Both claim to be the best option for your business. Here is an honest comparison — written by ExiusCart, so read with that context in mind, but written to actually help you decide correctly.
+      </p>
+
+      <P>If the right answer for your business is Zoho, this article will tell you that. The goal is a clear comparison across the dimensions that matter for UAE and Middle East retailers — pricing, UAE-specific features, ease of use, and what you actually get for the money.</P>
+
+      <H2 id="quick-summary">Quick Summary</H2>
+
+      <div className="overflow-x-auto my-7">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-900 text-white">
+              <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Feature</th>
+              <th className="text-left px-4 py-3 font-semibold">ExiusCart</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Zoho Inventory + Books</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { f: 'Starting price',        e: 'AED 45/mo ($12 USD)',       z: '~AED 50+/mo per app' },
+              { f: 'POS included',          e: 'Yes — built in',             z: 'Separate app (Zoho POS)' },
+              { f: 'HR & Payroll',          e: 'Premium plan',               z: 'Zoho People (separate)' },
+              { f: 'UAE VAT invoicing',     e: 'Built in, FTA-compliant',    z: 'Yes, with setup' },
+              { f: 'TheDersi integration',  e: 'Native, built in',           z: 'Not available' },
+              { f: 'Shopify sync',          e: 'Yes',                        z: 'Yes' },
+              { f: 'WooCommerce sync',      e: 'Yes',                        z: 'Yes' },
+              { f: 'Multi-branch',          e: 'Premium plan',               z: 'Higher plans' },
+              { f: 'Free trial',            e: '14 days, all features',      z: '14 days' },
+              { f: 'Setup complexity',      e: 'Low — ready out of the box', z: 'Medium-High' },
+              { f: 'Best for',             e: 'UAE/Sri Lanka SMBs, retail',  z: 'Businesses needing deep accounting' },
+            ].map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="px-4 py-3 font-medium text-gray-900 border-b border-gray-100">{row.f}</td>
+                <td className="px-4 py-3 text-[#6B3FD9] font-medium border-b border-gray-100">{row.e}</td>
+                <td className="px-4 py-3 text-gray-600 border-b border-gray-100">{row.z}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <H2 id="pricing-comparison">Pricing — The Real Number</H2>
+      <P>The price you see on Zoho&apos;s website is per app. To match what ExiusCart provides in one subscription, most small businesses need:</P>
+      <UL items={[
+        'Zoho Inventory — starts around $29/month for 1,500 orders',
+        'Zoho Books — starts around $15/month for accounts and VAT invoicing',
+        'Zoho POS — additional subscription for in-store point of sale',
+        'Total: $44–80+/month depending on order volume and features needed',
+      ]} />
+      <P>ExiusCart covers POS + inventory + invoicing + HR + payroll in one subscription: AED 45/month (Starter) or AED 99/month (Premium).</P>
+
+      <Callout type="info">
+        This does not mean Zoho is overpriced. The reason Zoho costs more is that each app is more fully featured. If you need deep double-entry accounting or complex multi-currency books, Zoho Books is the right tool. If you primarily need to sell, track stock, and issue UAE VAT invoices, ExiusCart covers it at lower cost.
+      </Callout>
+
+      <H2 id="uae-vat-features">UAE VAT Compliance</H2>
+      <P>Both ExiusCart and Zoho Books produce FTA-compliant VAT invoices. The difference is configuration effort.</P>
+      <P>In ExiusCart, UAE VAT is a setting you turn on. You enter your TRN, set your VAT rate (5%), and every invoice from that point includes your TRN, 5% VAT calculated per line item, and a sequential invoice number — automatically. No template to build.</P>
+      <P>In Zoho Books, UAE VAT compliance requires configuring tax codes, VAT accounts, and invoice templates. It works correctly once set up, but the initial setup takes longer and is more likely to require a tutorial or professional help.</P>
+
+      <H2 id="thedersi-marketplace">TheDersi Marketplace — ExiusCart Only</H2>
+      <P>If you sell on TheDersi — the UAE and Sri Lanka marketplace — this is a clear differentiator. ExiusCart has native TheDersi integration. Zoho does not.</P>
+      <P>With ExiusCart, TheDersi orders sync automatically, inventory updates in real time, and you can manage fulfilment from your ExiusCart dashboard without touching the TheDersi seller portal. With Zoho, TheDersi orders would need to be manually entered or handled through a third-party tool.</P>
+
+      <H2 id="ease-of-use">Ease of Use</H2>
+      <P>Zoho is a powerful platform — and with power comes complexity. The interface has a lot of options, menus, and settings. For a business owner who wants to set something up quickly and not think about it again, the learning curve can be significant.</P>
+      <P>ExiusCart is built for small business owners who want to sell, not configure software. The POS interface is designed for a tablet — you can hand it to a cashier and they can use it without training.</P>
+
+      <PullQuote>&quot;Zoho is what you want when you need control over everything. ExiusCart is what you want when you want everything to just work.&quot;</PullQuote>
+
+      <H2 id="when-to-choose-zoho">When You Should Choose Zoho</H2>
+      <UL items={[
+        'You need double-entry accounting for a CA or auditor review',
+        'You operate in multiple currencies and need proper FX accounting',
+        'You are in manufacturing, distribution, or B2B wholesale (not retail)',
+        'You already use other Zoho tools (CRM, Desk, People) and want them connected',
+        'You have an IT team or technical staff who can handle setup and maintenance',
+      ]} />
+
+      <H2 id="when-to-choose-exiuscart">When You Should Choose ExiusCart</H2>
+      <UL items={[
+        'You are a UAE or Sri Lanka retailer who primarily needs POS + inventory + VAT invoicing',
+        'You sell on TheDersi and need native marketplace integration',
+        'You want one subscription that covers POS, inventory, HR, and payroll without additional apps',
+        'You want to set it up yourself in an afternoon, not configure it over several weeks',
+        'Budget matters — AED 45/month vs AED 100–200+/month for a full Zoho stack',
+        'You are starting a new business and want everything working from day one',
+      ]} />
+
+      <H2 id="trial-both">Try Both Free</H2>
+      <P>Both ExiusCart and Zoho offer free trials. There is no better way to know which fits your business than to use both with your actual products and operations for a few days. Start with ExiusCart — the trial takes minutes to set up and you will know within an hour whether the interface matches how your business operates.</P>
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">Try ExiusCart free for 14 days</p>
+        <p className="text-gray-400 text-sm mb-6">POS, inventory, VAT invoicing, TheDersi integration — all features included. No credit card required.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+function AllInOneUnder100() {
+  return (
+    <article>
+      <p className="text-lg text-gray-700 leading-relaxed mb-8 font-medium border-b border-gray-100 pb-8">
+        A POS system. Inventory management. VAT-compliant invoicing. Order management. Staff accounts. HR and payroll. Customer records. Sales reports. Most businesses in the UAE pay for these as separate subscriptions — and end up spending AED 300–500 a month without realising it.
+      </p>
+
+      <P>ExiusCart Premium puts all of that in one platform at AED 99 per month. The Starter plan gives you POS, inventory, invoicing, and order management for AED 45 per month. This article covers exactly what you get and what it replaces.</P>
+
+      <H2 id="the-subscription-sprawl-problem">The Subscription Sprawl Problem</H2>
+      <P>Most small businesses end up with too many subscriptions. It happens gradually: you add a POS, then you need inventory software, then invoicing, then HR. Each one feels like a good decision at the time. A year later you have five separate tools, five separate logins, five separate sets of data that do not talk to each other — and a combined bill that dwarfs what a single integrated platform would cost.</P>
+
+      <div className="overflow-x-auto my-7">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-900 text-white">
+              <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Separate subscription</th>
+              <th className="text-left px-4 py-3 font-semibold">Typical cost (AED/mo)</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Covered by ExiusCart</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { s: 'POS software',             c: '80–200',    e: 'Yes' },
+              { s: 'Inventory management',      c: '60–150',    e: 'Yes' },
+              { s: 'VAT invoicing software',    c: '50–100',    e: 'Yes' },
+              { s: 'Order management system',   c: '80–200',    e: 'Yes' },
+              { s: 'HR & payroll software',     c: '80–200',    e: 'Yes (Premium)' },
+              { s: 'CRM / customer management', c: '60–150',    e: 'Yes' },
+              { s: 'Sales analytics',           c: '50–100',    e: 'Yes' },
+              { s: 'Total',                     c: '460–1,100', e: 'AED 45–99/month' },
+            ].map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className={`px-4 py-3 font-medium border-b border-gray-100 ${row.s === 'Total' ? 'font-bold text-gray-900' : 'text-gray-900'}`}>{row.s}</td>
+                <td className={`px-4 py-3 border-b border-gray-100 ${row.s === 'Total' ? 'text-red-600 font-bold' : 'text-gray-600'}`}>{row.c}</td>
+                <td className={`px-4 py-3 border-b border-gray-100 ${row.s === 'Total' ? 'text-[#6B3FD9] font-bold' : 'text-[#6B3FD9]'}`}>{row.e}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <PullQuote>&quot;The cost of separate tools is not just the subscriptions — it is the time spent switching between them and the data that never quite lines up.&quot;</PullQuote>
+
+      <H2 id="what-you-get-starter">Starter Plan — AED 45/Month</H2>
+      <P>The ExiusCart Starter plan is designed for businesses with one location and a small team:</P>
+
+      <UL items={[
+        'POS — full point-of-sale system, runs on any tablet or laptop, works offline',
+        'Inventory management — up to 1,000 products, barcode scanning, low-stock alerts',
+        'VAT invoicing — FTA-compliant tax invoices on every sale, with your TRN, 500 invoices per month',
+        'Order management — receive and process orders from in-store, TheDersi, and your website',
+        'Staff accounts — up to 3 staff with role-based access',
+        'Customer records — purchase history, contact details, repeat buyer tracking',
+        'Sales reports — daily, weekly, monthly revenue, best-selling products',
+        'TheDersi integration — automatic order sync with the TheDersi marketplace',
+        'Shopify and WooCommerce sync',
+      ]} />
+
+      <H2 id="what-you-get-premium">Premium Plan — AED 99/Month</H2>
+      <P>The Premium plan removes all limits and adds HR, payroll, and multi-branch management:</P>
+
+      <UL items={[
+        'Everything in Starter — unlimited',
+        'Unlimited products, staff, and invoices',
+        'Multi-branch support — manage multiple locations from one dashboard',
+        'HR and payroll — attendance tracking, leave management, payslip generation',
+        'Quotation and purchase order management',
+        'Advanced analytics and custom reports',
+        'Priority support + account manager',
+      ]} />
+
+      <div className="grid grid-cols-3 gap-4 my-8">
+        <StatBox stat="AED 45" label="Starter" sub="$12 USD · per month" />
+        <StatBox stat="AED 99" label="Premium" sub="$29 USD · per month" />
+        <StatBox stat="0" label="Setup fee" sub="No hidden costs" />
+      </div>
+
+      <Callout type="tip">
+        The Starter plan handles most small retail businesses comfortably — one location, up to 3 staff, up to 1,000 products. Only upgrade to Premium when you open a second branch, need payroll processing, or run a larger team.
+      </Callout>
+
+      <H2 id="uae-specific-features">UAE-Specific Features Included</H2>
+      <UL items={[
+        'FTA-compliant VAT invoicing — 5% VAT, TRN field, sequential numbering, PDF generation',
+        'AED as primary currency — no conversion required, invoices in AED for UAE transactions',
+        'USD pricing for international customers — auto-detected by customer location',
+        'TheDersi marketplace integration — native, not a third-party workaround',
+        'WPS-ready payroll — salary records for UAE Wage Protection System compliance (Premium)',
+      ]} />
+
+      <H2 id="who-its-for">Who This Is For</H2>
+      <UL items={[
+        'Physical retail shops — clothing, electronics, grocery, boutique, salon, pharmacy',
+        'Online sellers on TheDersi looking for inventory and order management',
+        'Businesses selling both in-store and online — one platform for all channels',
+        'Business owners who want to eliminate spreadsheets and multiple subscriptions',
+        'Growing businesses adding staff, locations, or channels',
+      ]} />
+
+      <H2 id="free-trial">14 Days Free — All Features</H2>
+      <P>The full platform is available during the 14-day free trial. No credit card required. You can set up your product catalog, run sales through the POS, connect TheDersi, and see exactly what you get before committing to any plan. Most businesses know within the first week whether it works for them.</P>
+
+      <NumberedList items={[
+        { title: 'Start the free trial', desc: 'Account created instantly. All features unlocked. No credit card.' },
+        { title: 'Set up your products', desc: 'Import via CSV or add manually. Most catalogs take under an hour.' },
+        { title: 'Configure UAE VAT', desc: 'Enter your TRN once. Every invoice is correct from that point.' },
+        { title: 'Connect your channels', desc: 'TheDersi, Shopify, WooCommerce — connect whichever you use.' },
+        { title: 'Add your staff', desc: 'Create accounts for your team. Set their roles. Done.' },
+      ]} />
+
+      <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
+        <p className="text-white font-black text-xl mb-2">All-in-one for AED 45/month. Try free for 14 days.</p>
+        <p className="text-gray-400 text-sm mb-6">POS, inventory, VAT invoicing, HR, multi-channel orders. Built for UAE businesses. No credit card required.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Start free trial <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 // ── Post registry ─────────────────────────────────────────────────────────────
 
 const POSTS: Record<string, {
@@ -1424,6 +1855,83 @@ const POSTS: Record<string, {
       { id: 'getting-connected',           label: 'Getting connected' },
     ],
     Content: ShopifySyncPost,
+  },
+  'best-pos-system-small-business-uae-2025': {
+    title: 'Best POS System for Small Businesses in UAE 2025',
+    seoTitle: 'Best POS System for UAE Small Businesses 2025 — Honest Comparison | ExiusCart',
+    seoDescription: 'Comparing the best POS systems for UAE small businesses — ExiusCart, Zoho, Square, Lightspeed. UAE VAT support, AED pricing, and which actually fits a small shop.',
+    category: 'Technology',
+    categoryColor: 'text-cyan-600 bg-cyan-50 border-cyan-100',
+    date: 'June 2026',
+    readTime: '7 min',
+    lead: "Most POS roundups recommend US products that don't handle UAE VAT. Here is an honest guide written for UAE shop owners.",
+    toc: [
+      { id: 'what-uae-pos-needs',       label: 'What a UAE POS must have' },
+      { id: 'the-options',               label: 'POS options compared' },
+      { id: 'exiuscart-recommendation',  label: 'Why ExiusCart fits UAE SMBs' },
+      { id: 'zoho-comparison',           label: 'ExiusCart vs Zoho' },
+      { id: 'what-to-try-first',         label: 'What to try first' },
+    ],
+    Content: BestPOSUAE,
+  },
+  'inventory-management-software-sri-lanka-retailers': {
+    title: 'Inventory Management Software for Sri Lanka Retailers',
+    seoTitle: 'Best Inventory Management Software for Sri Lanka Retailers 2025 | ExiusCart',
+    seoDescription: 'Inventory management software built for Sri Lanka retailers — TheDersi integration, multi-channel stock management, affordable USD pricing. Free trial available.',
+    category: 'Guides',
+    categoryColor: 'text-[#6B3FD9] bg-purple-50 border-purple-100',
+    date: 'June 2026',
+    readTime: '6 min',
+    lead: "Sri Lanka retailers selling on TheDersi, in-store, and online are managing stock across three places manually. Here is a better way.",
+    toc: [
+      { id: 'why-sri-lanka-retailers-need-software', label: 'Why software is needed now' },
+      { id: 'what-to-look-for',                      label: 'What to look for' },
+      { id: 'thedersi-sellers',                       label: 'For TheDersi sellers' },
+      { id: 'pricing-for-sri-lanka',                  label: 'Pricing that makes sense' },
+      { id: 'features-for-retailers',                 label: 'Key features' },
+      { id: 'migrating-from-spreadsheets',            label: 'Moving from spreadsheets' },
+    ],
+    Content: InventorySriLanka,
+  },
+  'exiuscart-vs-zoho-inventory-comparison': {
+    title: 'ExiusCart vs Zoho Inventory — Honest Comparison 2025',
+    seoTitle: 'ExiusCart vs Zoho Inventory — Honest Comparison for UAE Businesses | ExiusCart Blog',
+    seoDescription: 'ExiusCart vs Zoho Inventory for UAE and Middle East retailers — pricing, UAE VAT support, TheDersi integration, ease of use, and which is right for your business.',
+    category: 'Technology',
+    categoryColor: 'text-cyan-600 bg-cyan-50 border-cyan-100',
+    date: 'June 2026',
+    readTime: '8 min',
+    lead: "A fair comparison between ExiusCart and Zoho Inventory — written by ExiusCart, so read with that context, but written to actually help you decide correctly.",
+    toc: [
+      { id: 'quick-summary',            label: 'Quick summary' },
+      { id: 'pricing-comparison',       label: 'Pricing comparison' },
+      { id: 'uae-vat-features',         label: 'UAE VAT compliance' },
+      { id: 'thedersi-marketplace',     label: 'TheDersi integration' },
+      { id: 'ease-of-use',              label: 'Ease of use' },
+      { id: 'when-to-choose-zoho',      label: 'When to choose Zoho' },
+      { id: 'when-to-choose-exiuscart', label: 'When to choose ExiusCart' },
+      { id: 'trial-both',               label: 'Try both free' },
+    ],
+    Content: ExiusCartVsZohoPost,
+  },
+  'all-in-one-business-software-uae-under-aed-100': {
+    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing Under AED 100',
+    seoTitle: 'All-in-One Business Software UAE — POS, Inventory, VAT Invoicing Under AED 100/Month | ExiusCart',
+    seoDescription: 'Replace 5 separate subscriptions with one platform. ExiusCart gives UAE businesses POS, inventory, VAT invoicing, HR, and order management from AED 45/month.',
+    category: 'Growth',
+    categoryColor: 'text-orange-600 bg-orange-50 border-orange-100',
+    date: 'June 2026',
+    readTime: '6 min',
+    lead: "Most UAE businesses pay AED 300–500 a month for separate subscriptions that don't talk to each other. Here is what one platform at AED 45–99/month covers instead.",
+    toc: [
+      { id: 'the-subscription-sprawl-problem', label: 'The subscription sprawl problem' },
+      { id: 'what-you-get-starter',            label: 'Starter plan — AED 45/month' },
+      { id: 'what-you-get-premium',            label: 'Premium plan — AED 99/month' },
+      { id: 'uae-specific-features',           label: 'UAE-specific features' },
+      { id: 'who-its-for',                     label: 'Who it is for' },
+      { id: 'free-trial',                      label: '14-day free trial' },
+    ],
+    Content: AllInOneUnder100,
   },
 };
 
