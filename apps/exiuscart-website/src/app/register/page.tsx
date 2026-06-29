@@ -125,7 +125,7 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const refFromUrl = searchParams.get('ref') || '';
-  const [isRefLocked, setIsRefLocked] = useState(!!refFromUrl);
+  const [isRefLocked, setIsRefLocked] = useState(false);
 
   const {
     register,
@@ -135,7 +135,7 @@ function RegisterForm() {
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { refCode: refFromUrl, country: '' },
+    defaultValues: { refCode: '', country: '' },
   });
 
   useEffect(() => {
@@ -145,25 +145,25 @@ function RegisterForm() {
     })();
     if (!code) return;
 
+    // Fill and lock immediately while we validate
+    setValue('refCode', code);
+    setIsRefLocked(true);
+
     const API = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
     fetch(`${API}/api/v1/public/check-ref/${encodeURIComponent(code)}`)
       .then(r => r.json())
       .then(({ valid }) => {
         if (valid) {
           document.cookie = `exiuscart_ref=${code}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Lax`;
-          setValue('refCode', code);
-          setIsRefLocked(true);
         } else {
-          // Invalid or inactive affiliate — clear field and unlock so user can enter a different code
+          // Invalid or inactive — clear and unlock
           document.cookie = 'exiuscart_ref=; max-age=0; path=/';
           setValue('refCode', '');
           setIsRefLocked(false);
         }
       })
       .catch(() => {
-        // Network error: keep the code so registration isn't blocked
-        setValue('refCode', code);
-        setIsRefLocked(true);
+        // Network error: keep locked so the code isn't lost
       });
   }, [refFromUrl, setValue]);
 
