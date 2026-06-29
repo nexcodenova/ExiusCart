@@ -149,7 +149,7 @@ def _product_payload(
     compare_at_price = float(product.compare_at_price) if product.compare_at_price else None
     selling_price = float(product.price)
 
-    image_urls = [img.url for img in (product.images or []) if img.url][:4]
+    image_urls = [img.url for img in (product.images or []) if img.url]
     if not image_urls and product.image_url:
         image_urls = [product.image_url]
 

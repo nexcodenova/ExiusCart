@@ -12,6 +12,8 @@ from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product
 from app.models.product_fields import ShopField, ProductAttribute, ProductImage
+from app.models.product_variant import ProductVariant
+from app.models.subscription import Subscription
 from app.core.storage import upload_image as storage_upload, delete_image as storage_delete
 
 router = APIRouter()
@@ -228,11 +230,44 @@ def get_attributes(
     attrs = db.query(ProductAttribute).filter(ProductAttribute.product_id == product_id).all()
     return {a.field_key: a.value for a in attrs}
 
-# ── Product Images (max 6) ────────────────────────────────────────────────────
+# ── Product Images ────────────────────────────────────────────────────────────
 
-MAX_IMAGES = 6
+IMAGES_DEFAULT = 6    # free / starter / thedersi_basic
+IMAGES_PREMIUM = 15   # premium / thedersi_pro
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def _image_limit(shop_id: int, db: Session) -> int:
+    """Return 15 for premium/thedersi_pro shops, 6 for all others."""
+    sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id,
+        Subscription.status == "active",
+    ).first()
+    if sub and sub.plan_type in ("premium", "thedersi_pro"):
+        return IMAGES_PREMIUM
+    return IMAGES_DEFAULT
+
+
+def _combined_image_count(product_id: int, db: Session) -> int:
+    """Main product images + variants that already have an image URL."""
+    main = db.query(ProductImage).filter(ProductImage.product_id == product_id).count()
+    variants_with_img = db.query(ProductVariant).filter(
+        ProductVariant.product_id == product_id,
+        ProductVariant.image_url.isnot(None),
+        ProductVariant.image_url != "",
+    ).count()
+    return main + variants_with_img
+
+
+@router.get("/shops/{shop_id}/image-limit")
+def get_image_limit(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_shop_or_404(shop_id, db, current_user)
+    return {"limit": _image_limit(shop_id, db)}
 
 
 @router.get("/shops/{shop_id}/products/{product_id}/images", response_model=List[ImageOut])
@@ -261,10 +296,12 @@ async def upload_image(
     get_shop_or_404(shop_id, db, current_user)
     get_product_or_404(product_id, shop_id, db)
 
-    # Check max 6 images
+    limit = _image_limit(shop_id, db)
+    combined = _combined_image_count(product_id, db)
+    if combined >= limit:
+        raise HTTPException(status_code=400, detail=f"Image limit reached ({limit} total across main + variants)")
+
     count = db.query(ProductImage).filter(ProductImage.product_id == product_id).count()
-    if count >= MAX_IMAGES:
-        raise HTTPException(status_code=400, detail=f"Maximum {MAX_IMAGES} images allowed per product")
 
     # Validate file type
     if file.content_type not in ALLOWED_TYPES:
@@ -378,6 +415,11 @@ async def upload_variant_image(
     """Upload an image for a specific variant and return its R2 URL (no ProductImage record created)."""
     get_shop_or_404(shop_id, db, current_user)
     get_product_or_404(product_id, shop_id, db)
+
+    limit = _image_limit(shop_id, db)
+    combined = _combined_image_count(product_id, db)
+    if combined >= limit:
+        raise HTTPException(status_code=400, detail=f"Image limit reached ({limit} total across main + variants)")
 
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, and GIF images are allowed")

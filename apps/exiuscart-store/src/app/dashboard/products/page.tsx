@@ -799,8 +799,9 @@ function ProductModal({
   const [theDersiCategoryName, setTheDersiCategoryName] = useState('');
   const [loadingCategories, setLoadingCategories] = useState(false);
 
-  const totalImages = savedImages.length + pendingImages.length;
-  const MAX_IMAGES = 6;
+  const [imageLimit, setImageLimit] = useState(6);
+  const variantImageCount = variants.filter(v => v.image_url && v.image_url !== '').length;
+  const totalImages = savedImages.length + pendingImages.length + variantImageCount;
 
   // Load custom fields, existing product data, and TheDersi categories on mount
   useEffect(() => {
@@ -808,6 +809,10 @@ function ProductModal({
 
     fieldsApi.getAll(shopId)
       .then((res) => setCustomFields(res.data ?? []))
+      .catch(() => {});
+
+    imagesApi.getLimit(shopId)
+      .then((res) => setImageLimit(res.data?.limit ?? 6))
       .catch(() => {});
 
     if (product?.id) {
@@ -872,7 +877,7 @@ function ProductModal({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    const remaining = MAX_IMAGES - totalImages;
+    const remaining = imageLimit - totalImages;
     const toAdd = files.slice(0, remaining);
 
     const newPending: PendingImage[] = toAdd.map((file) => ({
@@ -1080,9 +1085,9 @@ function ProductModal({
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm text-muted-foreground">
                     Product Images
-                    <span className="ml-1.5 text-xs font-normal">({totalImages}/{MAX_IMAGES})</span>
+                    <span className="ml-1.5 text-xs font-normal">({totalImages}/{imageLimit} total incl. variants)</span>
                   </label>
-                  {totalImages < MAX_IMAGES && (
+                  {totalImages < imageLimit && (
                     <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition">
                       <Upload className="w-3.5 h-3.5" /> Upload
                     </button>
@@ -1123,14 +1128,14 @@ function ProductModal({
                       </div>
                     </div>
                   ))}
-                  {totalImages < MAX_IMAGES && (
+                  {totalImages < imageLimit && (
                     <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition">
                       <ImageIcon className="w-5 h-5 mb-1" />
                       <span className="text-xs">Add</span>
                     </button>
                   )}
                 </div>
-                {totalImages === 0 && <p className="text-xs text-muted-foreground mt-1.5">Upload up to 6 images. First image is set as primary.</p>}
+                {totalImages === 0 && <p className="text-xs text-muted-foreground mt-1.5">Upload up to {imageLimit} images total (main + variants). First image is set as primary.</p>}
               </div>
 
               {/* SKU + Barcode */}
@@ -1199,7 +1204,11 @@ function ProductModal({
                         <div className="flex items-center gap-2">
                           {(v.image_url || v._previewUrl)
                             ? <img src={v._previewUrl || v.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0 cursor-pointer" onClick={() => document.getElementById(`variant-img-input-${i}`)?.click()} />
-                            : <button type="button" onClick={() => document.getElementById(`variant-img-input-${i}`)?.click()} className="w-10 h-10 rounded-lg border-2 border-dashed border-border hover:border-primary flex items-center justify-center text-muted-foreground hover:text-primary transition flex-shrink-0">
+                            : <button type="button"
+                                disabled={totalImages >= imageLimit}
+                                onClick={() => document.getElementById(`variant-img-input-${i}`)?.click()}
+                                title={totalImages >= imageLimit ? `Image limit reached (${imageLimit} total)` : 'Add variant image'}
+                                className="w-10 h-10 rounded-lg border-2 border-dashed border-border hover:border-primary flex items-center justify-center text-muted-foreground hover:text-primary transition flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted-foreground">
                                 <ImageIcon className="w-4 h-4" />
                               </button>
                           }

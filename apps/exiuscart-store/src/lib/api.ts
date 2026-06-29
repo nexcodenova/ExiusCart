@@ -400,6 +400,8 @@ export const imagesApi = {
     api.delete(`/shops/${shopId}/products/${productId}/images/${imageId}`),
   setPrimary: (shopId: string, productId: string, imageId: string) =>
     api.put(`/shops/${shopId}/products/${productId}/images/${imageId}/primary`, {}),
+  getLimit: (shopId: string) =>
+    api.get(`/shops/${shopId}/image-limit`),
 };
 
 // ── Product Variants ───────────────────────────────────
