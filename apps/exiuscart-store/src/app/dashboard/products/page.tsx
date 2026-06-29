@@ -960,22 +960,10 @@ function ProductModal({
       // Everything below only needs productId and is independent — run in parallel
       const tasks: Promise<any>[] = [];
 
-      // Images: upload one by one so the first becomes primary; track failures
-      let imageUploadError = '';
+      // Images: upload sequentially (first one becomes primary)
       if (pendingImages.length > 0) {
-        let failed = 0;
         for (const pending of pendingImages) {
-          try {
-            await imagesApi.upload(shopId, productId, pending.file);
-          } catch (imgErr: any) {
-            failed++;
-            const detail = imgErr?.response?.data?.detail ?? 'Upload error';
-            console.error('[Image upload failed]', detail);
-            if (!imageUploadError) imageUploadError = detail;
-          }
-        }
-        if (failed > 0) {
-          imageUploadError = `${failed} image(s) failed to upload: ${imageUploadError}`;
+          await imagesApi.upload(shopId, productId, pending.file).catch(() => {});
         }
       }
 
@@ -1018,13 +1006,7 @@ function ProductModal({
       }
 
       await Promise.all(tasks);
-      if (imageUploadError) {
-        // Stay open so user sees the error and can retry
-        setError(`Product saved. ${imageUploadError} — try re-uploading in edit mode.`);
-        setSaving(false);
-      } else {
-        onSaved();
-      }
+      onSaved();
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Failed to save product. Please try again.');
       setSaving(false);
@@ -1231,28 +1213,18 @@ function ProductModal({
                               if (!file) return;
                               setVariantImageError('');
                               if (product?.id) {
-                                // Edit mode — upload immediately to R2 then persist
+                                // Edit mode — upload to R2 immediately, save URL on Update Product
                                 setUploadingVariantIdx(i);
                                 try {
                                   const res = await variantsApi.uploadImage(shopId, product.id, file);
                                   const url = res.data?.url;
                                   if (url) {
-                                    const updated = variants.map((r, j) =>
+                                    setVariants((arr) => arr.map((r, j) =>
                                       j === i ? { ...r, image_url: url, _pendingFile: undefined, _previewUrl: undefined } : r
-                                    );
-                                    setVariants(updated);
-                                    // Persist immediately so closing modal doesn't lose it
-                                    await variantsApi.save(shopId, product.id, updated.map((v) => ({
-                                      size: v.size || undefined,
-                                      color: v.color || undefined,
-                                      sku: v.sku || undefined,
-                                      quantity: v.quantity,
-                                      price: v.price !== '' ? Number(v.price) : undefined,
-                                      image_url: v.image_url || undefined,
-                                    }))).catch(() => {});
+                                    ));
                                   }
                                 } catch (err: any) {
-                                  const detail = err?.response?.data?.detail ?? 'Image upload failed. Please try again.';
+                                  const detail = err?.response?.data?.detail ?? 'Image upload failed — check your connection and try again.';
                                   setVariantImageError(detail);
                                 }
                                 setUploadingVariantIdx(null);
