@@ -74,8 +74,8 @@ async def create_order(
             )
     # ─────────────────────────────────────────────────────────────────────────
 
-    # Calculate totals
-    subtotal = 0
+    # Calculate totals (use Decimal throughout to avoid float/Decimal type errors)
+    subtotal = Decimal('0')
     order_items = []
 
     for item in order_data.items:
@@ -83,7 +83,7 @@ async def create_order(
         if not product:
             raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
 
-        item_total = item.quantity * item.unit_price
+        item_total = Decimal(str(item.quantity)) * Decimal(str(item.unit_price))
         subtotal += item_total
 
         order_items.append({
@@ -91,7 +91,7 @@ async def create_order(
             "product_name": product.name,
             "quantity": item.quantity,
             "unit_price": item.unit_price,
-            "total_price": item_total
+            "total_price": float(item_total)
         })
 
         # Update inventory
