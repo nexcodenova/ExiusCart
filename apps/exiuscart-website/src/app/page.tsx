@@ -393,21 +393,13 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+          <div className="max-w-2xl mx-auto">
             <TestimonialCard
               name="TheDersi"
               business="Sri Lankan Fashion Marketplace"
               location="Sri Lanka · #1 Fashion Platform"
               rating={5}
               text="TheDersi is Sri Lanka's leading fashion marketplace. Our sellers rely on ExiusCart to manage their products, inventory, and orders — all in one place. It has made running a multi-seller marketplace seamless and efficient."
-              featured
-            />
-            <TestimonialCard
-              name="North Veltrix"
-              business="Premium Hoodie & Streetwear Brand"
-              location="Shopify Store · Trending Brand"
-              rating={5}
-              text="Switched to ExiusCart and our inventory management became a breeze. We track every hoodie drop, manage stock across variants, and process orders faster than ever. It's exactly what a growing streetwear brand needs."
               featured
             />
           </div>

@@ -8,7 +8,7 @@ from app.models.product_fields import ProductImage
 from app.models.reservation import Reservation
 from app.models.order import Order
 from app.models.user import User
-from app.models.email_otp import EmailOtp
+from app.models.email_otp import EmailOTP
 
 router = APIRouter()
 
@@ -25,7 +25,7 @@ def public_stats(db: Session = Depends(get_db)):
     """No-auth endpoint — returns live platform stats for the marketing site."""
     orders_processed = db.query(Order).count()
     user_count = db.query(User).count()
-    otp_count = db.query(EmailOtp).count()
+    otp_count = db.query(EmailOTP).count()
     # Every user gets: 1 OTP email + 1 welcome/approval email = 2 per user
     # Every order gets: 1 seller notification + 1 customer invoice = 2 per order
     # Plus any extra OTPs still tracked in the table
