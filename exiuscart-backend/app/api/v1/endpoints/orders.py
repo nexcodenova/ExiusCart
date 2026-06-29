@@ -485,6 +485,7 @@ async def send_invoice(
         notes=order.notes,
         delivery_charge=delivery_charge,
         free_delivery_label=free_delivery_label,
+        order_already_paid=(order.payment_status == "paid"),
     )
 
     sent = send_email(
