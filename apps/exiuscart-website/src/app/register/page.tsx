@@ -122,11 +122,10 @@ function RegisterForm() {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
   const [phoneDialCode, setPhoneDialCode] = useState('+971');
-  const [isRefLocked, setIsRefLocked] = useState(!!refFromUrl);
   const searchParams = useSearchParams();
   const router = useRouter();
-
   const refFromUrl = searchParams.get('ref') || '';
+  const [isRefLocked, setIsRefLocked] = useState(!!refFromUrl);
 
   const {
     register,
