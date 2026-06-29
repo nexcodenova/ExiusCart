@@ -104,8 +104,8 @@ export default function AffiliatePage() {
 
           <div className="relative overflow-hidden">
             <video
-              className="w-full scale-[1.04]"
-              src="/affiliate/exiuscart-affiliate-video.mp4"
+              className="w-full scale-[1.04] mix-blend-multiply"
+              src="/affiliate/exiuscart-affiliate-video-transperent.mp4"
               autoPlay muted loop playsInline
             />
           </div>
