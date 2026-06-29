@@ -185,6 +185,7 @@ async def get_orders(
     shop_id: int,
     status: Optional[str] = None,
     source: Optional[str] = None,
+    search: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -196,6 +197,8 @@ async def get_orders(
         query = query.filter(Order.status == status)
     if source:
         query = query.filter(Order.source == source)
+    if search:
+        query = query.filter(Order.order_number.ilike(f"%{search}%"))
 
     orders = query.order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
 

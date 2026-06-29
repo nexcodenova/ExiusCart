@@ -13,7 +13,7 @@ from app.api.v1.deps import get_current_user
 router = APIRouter()
 
 
-@router.post("/", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/shops/{shop_id}/customers", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
 async def create_customer(
     shop_id: int,
     customer_data: CustomerCreate,
@@ -34,7 +34,7 @@ async def create_customer(
     return new_customer
 
 
-@router.get("/")
+@router.get("/shops/{shop_id}/customers")
 async def get_customers(
     shop_id: int,
     search: Optional[str] = None,
@@ -94,10 +94,10 @@ async def get_customers(
     return result
 
 
-@router.get("/{customer_id}", response_model=CustomerResponse)
+@router.get("/shops/{shop_id}/customers/{customer_id}", response_model=CustomerResponse)
 async def get_customer(
-    customer_id: int,
     shop_id: int,
+    customer_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -111,10 +111,10 @@ async def get_customer(
     return customer
 
 
-@router.put("/{customer_id}", response_model=CustomerResponse)
+@router.put("/shops/{shop_id}/customers/{customer_id}", response_model=CustomerResponse)
 async def update_customer(
-    customer_id: int,
     shop_id: int,
+    customer_id: int,
     customer_data: CustomerUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -136,10 +136,10 @@ async def update_customer(
     return customer
 
 
-@router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/shops/{shop_id}/customers/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_customer(
-    customer_id: int,
     shop_id: int,
+    customer_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
