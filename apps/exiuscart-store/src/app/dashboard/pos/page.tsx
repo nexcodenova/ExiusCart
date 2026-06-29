@@ -244,6 +244,7 @@ export default function POSPage() {
         customer_phone: customerPhone || undefined,
         customer_email: customerEmail || undefined,
         notes: paymentMethod ? `Payment: ${paymentMethod}` : undefined,
+        discount_amount: discountAmount > 0 ? discountAmount : undefined,
         items: cart.map((item) => ({
           product_id: Number(item.id),
           quantity: item.quantity,

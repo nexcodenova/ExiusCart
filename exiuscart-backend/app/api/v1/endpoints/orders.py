@@ -97,18 +97,22 @@ async def create_order(
         # Update inventory
         product.quantity = max(0, product.quantity - item.quantity)
 
+    # Apply discount before tax
+    discount_amount = Decimal(str(order_data.discount_amount or 0))
+    after_discount = subtotal - discount_amount
+
     # Calculate tax using shop's VAT configuration
     if shop.vat_enabled and shop.vat_rate and float(shop.vat_rate) > 0:
         rate = Decimal(str(shop.vat_rate)) / 100
         if shop.prices_include_vat:
-            tax_amount = subtotal * rate / (1 + rate)
-            total = subtotal
+            tax_amount = after_discount * rate / (1 + rate)
+            total = after_discount
         else:
-            tax_amount = subtotal * rate
-            total = subtotal + tax_amount
+            tax_amount = after_discount * rate
+            total = after_discount + tax_amount
     else:
         tax_amount = Decimal('0')
-        total = subtotal
+        total = after_discount
 
     # POS sales are immediate — mark as delivered and paid on creation
     is_pos = order_data.source == "pos"
@@ -150,6 +154,7 @@ async def create_order(
         payment_status="paid" if is_pos else "pending",
         subtotal=subtotal,
         tax_amount=tax_amount,
+        discount_amount=discount_amount,
         total=total,
         notes=order_data.notes,
         shipping_address=order_data.shipping_address

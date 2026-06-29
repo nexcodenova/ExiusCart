@@ -30,6 +30,7 @@ class OrderCreate(BaseModel):
     notes: Optional[str] = None
     shipping_address: Optional[str] = None
     source: str = "pos"  # pos, whatsapp, online
+    discount_amount: Optional[float] = None
 
 
 class OrderUpdate(BaseModel):
