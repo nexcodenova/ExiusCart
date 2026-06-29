@@ -1,14 +1,17 @@
 #!/bin/bash
-# deploy.sh — called by GitHub Actions after pre-built .next folders are rsynced
-# SERVER NEVER RUNS npm run build — GitHub Actions builds everything (7GB RAM, free)
+# deploy.sh — runs on server after git pull
+# Builds Next.js apps ON the server so RSC module paths are correct
 set -e
 
 PROJECT_DIR="/var/www/ExiusCart"
 
-echo "=== ExiusCart Deploy Started (server-side) ==="
+echo "=== ExiusCart Deploy Started ==="
 cd "$PROJECT_DIR"
 
 CHANGED=$(git diff HEAD~1 --name-only 2>/dev/null || echo "all")
+
+export NEXT_PUBLIC_API_URL="https://api.exiuscart.com"
+export NEXT_TELEMETRY_DISABLED=1
 
 # ── Backend ───────────────────────────────────────────────────────────────────
 if echo "$CHANGED" | grep -q "exiuscart-backend/" || [ "$CHANGED" = "all" ]; then
@@ -28,30 +31,48 @@ if echo "$CHANGED" | grep -q "exiuscart-backend/" || [ "$CHANGED" = "all" ]; the
   echo "Backend reloaded ✓"
 fi
 
-# ── Store — .next was pre-built on GitHub Actions and rsynced ─────────────────
+# ── Store — build on server so RSC paths match ────────────────────────────────
 if echo "$CHANGED" | grep -q "apps/exiuscart-store/" || [ "$CHANGED" = "all" ]; then
-  echo "--- Store ---"
-  if [ ! -f "$PROJECT_DIR/apps/exiuscart-store/.next/BUILD_ID" ]; then
-    echo "WARNING: No .next build found for store — skipping reload"
+  echo "--- Store (building on server) ---"
+  cd "$PROJECT_DIR"
+  rm -rf apps/exiuscart-store/.next
+  npm run build --workspace=apps/exiuscart-store
+  if pm2 describe exiuscart-store > /dev/null 2>&1; then
+    pm2 reload exiuscart-store --update-env
   else
-    pm2 reload exiuscart-store --update-env 2>/dev/null || \
-      PORT=3002 pm2 start npm --name exiuscart-store --cwd "$PROJECT_DIR/apps/exiuscart-store" -- start
-    echo "Store reloaded ✓"
+    PORT=3002 pm2 start npm --name exiuscart-store --cwd "$PROJECT_DIR/apps/exiuscart-store" -- start
   fi
+  echo "Store built and reloaded ✓"
 fi
 
-# ── Admin — .next was pre-built on GitHub Actions and rsynced ────────────────
+# ── Admin — build on server so RSC paths match ────────────────────────────────
 if echo "$CHANGED" | grep -q "apps/exiuscart-admin/" || [ "$CHANGED" = "all" ]; then
-  echo "--- Admin ---"
-  if [ ! -f "$PROJECT_DIR/apps/exiuscart-admin/.next/BUILD_ID" ]; then
-    echo "WARNING: No .next build found for admin — skipping reload"
+  echo "--- Admin (building on server) ---"
+  cd "$PROJECT_DIR"
+  rm -rf apps/exiuscart-admin/.next
+  npm run build --workspace=apps/exiuscart-admin
+  if pm2 describe exiuscart-admin > /dev/null 2>&1; then
+    pm2 reload exiuscart-admin --update-env
   else
-    pm2 reload exiuscart-admin --update-env 2>/dev/null || \
-      pm2 start npm --name exiuscart-admin --cwd "$PROJECT_DIR/apps/exiuscart-admin" -- start
-    echo "Admin reloaded ✓"
+    pm2 start npm --name exiuscart-admin --cwd "$PROJECT_DIR/apps/exiuscart-admin" -- start
   fi
+  echo "Admin built and reloaded ✓"
+fi
+
+# ── Affiliates — build on server ──────────────────────────────────────────────
+if echo "$CHANGED" | grep -q "apps/exiuscart-affiliates/" || [ "$CHANGED" = "all" ]; then
+  echo "--- Affiliates (building on server) ---"
+  cd "$PROJECT_DIR"
+  rm -rf apps/exiuscart-affiliates/.next
+  npm run build --workspace=apps/exiuscart-affiliates
+  if pm2 describe exiuscart-affiliates > /dev/null 2>&1; then
+    pm2 reload exiuscart-affiliates --update-env
+  else
+    pm2 start npm --name exiuscart-affiliates --cwd "$PROJECT_DIR/apps/exiuscart-affiliates" -- start
+  fi
+  echo "Affiliates built and reloaded ✓"
 fi
 
 pm2 save
-echo "=== Deploy Complete — zero builds ran on this server ==="
+echo "=== Deploy Complete ==="
 pm2 status

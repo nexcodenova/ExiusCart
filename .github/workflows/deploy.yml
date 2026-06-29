@@ -35,7 +35,7 @@ jobs:
             backend:
               - 'exiuscart-backend/**'
 
-  # ── TypeScript check (fast, catches errors before any build) ──────────────
+  # ── TypeScript check (fast, catches errors before deploy) ─────────────────
   typecheck:
     name: TypeScript check
     runs-on: ubuntu-latest
@@ -52,100 +52,21 @@ jobs:
           find exiuscart-backend/app -name "*.py" | xargs python3 -m py_compile
           echo "Backend syntax OK"
 
-  # ── Build + Deploy (single job — no artifacts needed) ────────────────────
+  # ── Deploy: pull + build on server (no path mismatch) ────────────────────
   deploy:
-    name: Build & Deploy
+    name: Deploy
     runs-on: ubuntu-latest
     needs: [typecheck, changes]
     if: always() && needs.typecheck.result == 'success'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-      - run: npm ci
-
-      # Build store if changed (7GB RAM on GitHub runner — no issue)
-      - name: Build store
-        if: needs.changes.outputs.store == 'true'
-        run: npm run build --workspace=apps/exiuscart-store
-        env:
-          NEXT_PUBLIC_API_URL: https://api.exiuscart.com
-
-      # Build admin if changed
-      - name: Build admin
-        if: needs.changes.outputs.admin == 'true'
-        run: npm run build --workspace=apps/exiuscart-admin
-        env:
-          NEXT_PUBLIC_API_URL: https://api.exiuscart.com
-
-      # Pull + run deploy.sh on server (backend pip install, etc.)
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 10m
+          command_timeout: 15m
           script: |
             cd /var/www/ExiusCart
             git pull origin main
             bash deploy.sh
-
-      # Copy pre-built store .next directly from this job — no artifact needed
-      - name: Rsync store .next to server
-        if: needs.changes.outputs.store == 'true'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: apps/exiuscart-store/.next
-          target: /var/www/ExiusCart/
-
-      - name: Rsync admin .next to server
-        if: needs.changes.outputs.admin == 'true'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: apps/exiuscart-admin/.next
-          target: /var/www/ExiusCart/
-
-      # Restart only the changed apps
-      - name: Restart changed apps
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 5m
-          script: |
-            cd /var/www/ExiusCart
-            git pull origin main
-
-            # Backend — always check (Python, no build needed)
-            if git diff HEAD~1 --name-only 2>/dev/null | grep -q "exiuscart-backend/"; then
-              echo "Reloading backend..."
-              source exiuscart-backend/venv/bin/activate
-              pip install -r exiuscart-backend/requirements.txt -q
-              pm2 reload exiuscart-backend --update-env
-              deactivate
-            fi
-
-            # Store — pre-built .next was rsynced above
-            if git diff HEAD~1 --name-only 2>/dev/null | grep -q "apps/exiuscart-store/"; then
-              echo "Reloading store..."
-              pm2 reload exiuscart-store --update-env
-            fi
-
-            # Admin — pre-built .next was rsynced above
-            if git diff HEAD~1 --name-only 2>/dev/null | grep -q "apps/exiuscart-admin/"; then
-              echo "Reloading admin..."
-              pm2 reload exiuscart-admin --update-env
-            fi
-
-            pm2 save
-            echo "Deploy complete"
