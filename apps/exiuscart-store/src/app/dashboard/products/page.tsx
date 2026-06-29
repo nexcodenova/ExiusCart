@@ -790,6 +790,7 @@ function ProductModal({
   const emptyVariant = (): Variant => ({ size: '', color: '', sku: '', quantity: 0, price: '', image_url: '' });
   const [variants, setVariants] = useState<Variant[]>([]);
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
+  const [variantImageError, setVariantImageError] = useState<string>('');
 
   // TheDersi channel category state
   const [theDersiConnection, setTheDersiConnection] = useState<{ id: number } | null>(null);
@@ -1228,14 +1229,32 @@ function ProductModal({
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
+                              setVariantImageError('');
                               if (product?.id) {
-                                // Edit mode — upload immediately
+                                // Edit mode — upload immediately to R2 then persist
                                 setUploadingVariantIdx(i);
                                 try {
                                   const res = await variantsApi.uploadImage(shopId, product.id, file);
                                   const url = res.data?.url;
-                                  if (url) setVariants((arr) => arr.map((r, j) => j === i ? { ...r, image_url: url, _pendingFile: undefined, _previewUrl: undefined } : r));
-                                } catch {/* no-op */}
+                                  if (url) {
+                                    const updated = variants.map((r, j) =>
+                                      j === i ? { ...r, image_url: url, _pendingFile: undefined, _previewUrl: undefined } : r
+                                    );
+                                    setVariants(updated);
+                                    // Persist immediately so closing modal doesn't lose it
+                                    await variantsApi.save(shopId, product.id, updated.map((v) => ({
+                                      size: v.size || undefined,
+                                      color: v.color || undefined,
+                                      sku: v.sku || undefined,
+                                      quantity: v.quantity,
+                                      price: v.price !== '' ? Number(v.price) : undefined,
+                                      image_url: v.image_url || undefined,
+                                    }))).catch(() => {});
+                                  }
+                                } catch (err: any) {
+                                  const detail = err?.response?.data?.detail ?? 'Image upload failed. Please try again.';
+                                  setVariantImageError(detail);
+                                }
                                 setUploadingVariantIdx(null);
                               } else {
                                 // Add mode — store locally, upload after product is created
@@ -1248,8 +1267,10 @@ function ProductModal({
                           <div className="flex-1 min-w-0">
                             {uploadingVariantIdx === i
                               ? <p className="text-xs text-muted-foreground animate-pulse">Uploading...</p>
+                              : variantImageError && uploadingVariantIdx === null
+                              ? <p className="text-xs text-red-500">{variantImageError}</p>
                               : v.image_url
-                              ? <p className="text-xs text-green-600 dark:text-green-400 truncate">Image uploaded</p>
+                              ? <p className="text-xs text-green-600 dark:text-green-400 truncate">Image saved</p>
                               : v._previewUrl
                               ? <p className="text-xs text-blue-600 dark:text-blue-400 truncate">Image selected — will upload on save</p>
                               : <p className="text-xs text-muted-foreground">Click icon to add variant image</p>
