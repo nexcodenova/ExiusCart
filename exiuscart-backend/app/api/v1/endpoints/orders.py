@@ -88,7 +88,7 @@ async def create_order(
 
         order_items.append({
             "product_id": item.product_id,
-            "name": product.name,
+            "product_name": product.name,
             "quantity": item.quantity,
             "unit_price": item.unit_price,
             "total_price": item_total
