@@ -875,11 +875,19 @@ function ProductModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const MAX_FILE_MB = 5;
+  const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     const remaining = imageLimit - totalImages;
+    const oversized = files.filter(f => f.size > MAX_FILE_BYTES);
+    if (oversized.length > 0) {
+      setError(`Image must be under ${MAX_FILE_MB}MB. "${oversized[0].name}" is too large.`);
+      e.target.value = '';
+      return;
+    }
     const toAdd = files.slice(0, remaining);
-
     const newPending: PendingImage[] = toAdd.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
@@ -1135,7 +1143,7 @@ function ProductModal({
                     </button>
                   )}
                 </div>
-                {totalImages === 0 && <p className="text-xs text-muted-foreground mt-1.5">Upload up to {imageLimit} images total (main + variants). First image is set as primary.</p>}
+                <p className="text-xs text-muted-foreground mt-1.5">Up to {imageLimit} images total (main + variants) · Max 5MB each · First image is primary.</p>
               </div>
 
               {/* SKU + Barcode */}
@@ -1221,6 +1229,11 @@ function ProductModal({
                               const file = e.target.files?.[0];
                               if (!file) return;
                               setVariantImageError('');
+                              if (file.size > MAX_FILE_BYTES) {
+                                setVariantImageError(`Image must be under ${MAX_FILE_MB}MB.`);
+                                e.target.value = '';
+                                return;
+                              }
                               if (product?.id) {
                                 // Edit mode — upload to R2 immediately, save URL on Update Product
                                 setUploadingVariantIdx(i);
