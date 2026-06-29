@@ -250,6 +250,9 @@ async def get_products(
         query = query.filter(Product.name.ilike(f"%{search}%"))
 
     products = query.offset(skip).limit(limit).all()
+    for p in products:
+        if not p.image_url and p.images:
+            p.image_url = p.images[0].url
     return products
 
 
@@ -267,6 +270,8 @@ async def get_product(
 
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    if not product.image_url and product.images:
+        product.image_url = product.images[0].url
     return product
 
 
