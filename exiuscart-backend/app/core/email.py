@@ -9,6 +9,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
 
+from app.core.database import SessionLocal
+
 logger = logging.getLogger(__name__)
 
 _SMTP_HOST     = os.getenv("SMTP_HOST", "email-smtp.ap-southeast-1.amazonaws.com")
@@ -47,6 +49,19 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
             server.login(_SMTP_USERNAME, _SMTP_PASSWORD)
             server.sendmail(sender_addr, [to], msg.as_string())
         logger.info(f"[EMAIL SENT] To: {to} | Subject: {subject}")
+        # Log every sent email — count only grows, never decreases
+        try:
+            from app.models.email_log import EmailLog
+            _db = SessionLocal()
+            _db.add(EmailLog(recipient=to))
+            _db.commit()
+        except Exception:
+            pass
+        finally:
+            try:
+                _db.close()
+            except Exception:
+                pass
         return True
     except Exception as exc:
         logger.error(f"[EMAIL FAILED] To: {to} | {exc}")

@@ -9,6 +9,7 @@ from app.models.reservation import Reservation
 from app.models.order import Order
 from app.models.user import User
 from app.models.email_otp import EmailOTP
+from app.models.email_log import EmailLog
 from app.models.affiliate import Affiliate
 
 router = APIRouter()
@@ -25,13 +26,7 @@ def _first_image(db: Session, product_id: int) -> str | None:
 def public_stats(db: Session = Depends(get_db)):
     """No-auth endpoint — returns live platform stats for the marketing site."""
     orders_processed = db.query(Order).count()
-    user_count = db.query(User).count()
-    otp_count = db.query(EmailOTP).count()
-    # Every user gets: 1 OTP email + 1 welcome/approval email = 2 per user
-    # Every order gets: 1 seller notification + 1 customer invoice = 2 per order
-    # Plus any extra OTPs still tracked in the table
-    emails_generated = (user_count * 2) + (orders_processed * 2) + otp_count
-    # Count ALL products ever added — never decremented, even if deleted
+    emails_generated = db.query(EmailLog).count()
     products_added = db.query(Product).count()
     return {
         "orders_processed": orders_processed,
