@@ -332,11 +332,14 @@ def fulfill_reservation(
         db.add(OrderItem(
             order_id=order.id,
             product_id=product.id,
+            product_name=product.name,
             quantity=r.quantity,
             unit_price=unit_price,
             total_price=unit_price * r.quantity,
         ))
-        product.quantity = max(0, (product.quantity or 0) - r.quantity)
+        # confirmed reservations already deducted stock on confirmation — don't double-deduct
+        if r.reservation_type == "soft_hold":
+            product.quantity = max(0, (product.quantity or 0) - r.quantity)
 
     # Mark reservation fulfilled
     r.status = "fulfilled"
