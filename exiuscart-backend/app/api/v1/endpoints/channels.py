@@ -343,13 +343,14 @@ def _bg_push_stock(product_id: int, shop_id: int):
 
             try:
                 with httpx.Client(timeout=8) as client:
-                    client.patch(
+                    r = client.patch(
                         f"{api_url}/exiuscart/products/{product_id}/stock",
                         json=stock_payload,
                         headers={"X-Api-Key": conn.channel_api_key},
                     )
-            except Exception:
-                pass  # stock sync is best-effort
+                logger.info(f"[STOCK SYNC] {conn.channel_type} product={product_id} qty={stock_payload['quantity']} → HTTP {r.status_code} {r.text[:120]}")
+            except Exception as exc:
+                logger.error(f"[STOCK SYNC] {conn.channel_type} product={product_id} FAILED: {exc}")
     finally:
         db.close()
 
