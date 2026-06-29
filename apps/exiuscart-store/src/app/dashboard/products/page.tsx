@@ -959,16 +959,23 @@ function ProductModal({
       // Everything below only needs productId and is independent — run in parallel
       const tasks: Promise<any>[] = [];
 
-      // Images: first one sequential (claims "primary"), the rest in parallel
+      // Images: upload one by one so the first becomes primary; track failures
+      let imageUploadError = '';
       if (pendingImages.length > 0) {
-        tasks.push((async () => {
-          try { await imagesApi.upload(shopId, productId, pendingImages[0].file); } catch {/* skip */}
-          await Promise.all(
-            pendingImages.slice(1).map((p) =>
-              imagesApi.upload(shopId, productId, p.file).catch(() => {})
-            )
-          );
-        })());
+        let failed = 0;
+        for (const pending of pendingImages) {
+          try {
+            await imagesApi.upload(shopId, productId, pending.file);
+          } catch (imgErr: any) {
+            failed++;
+            const detail = imgErr?.response?.data?.detail ?? 'Upload error';
+            console.error('[Image upload failed]', detail);
+            if (!imageUploadError) imageUploadError = detail;
+          }
+        }
+        if (failed > 0) {
+          imageUploadError = `${failed} image(s) failed to upload: ${imageUploadError}`;
+        }
       }
 
       // Save custom attributes
@@ -1010,7 +1017,13 @@ function ProductModal({
       }
 
       await Promise.all(tasks);
-      onSaved();
+      if (imageUploadError) {
+        // Stay open so user sees the error and can retry
+        setError(`Product saved. ${imageUploadError} — try re-uploading in edit mode.`);
+        setSaving(false);
+      } else {
+        onSaved();
+      }
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Failed to save product. Please try again.');
       setSaving(false);
