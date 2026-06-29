@@ -328,18 +328,16 @@ def _bg_push_stock(product_id: int, shop_id: int):
             api_url = _channel_url(conn)
             if not api_url:
                 continue
-            # Build variant stock list if variants exist
+            # Always use product.quantity as the authoritative total.
+            # Variant quantities are not updated by POS/reservation deductions,
+            # so using sum(variants) would send stale numbers.
             variants = db.query(ProductVariant).filter(ProductVariant.product_id == product_id).all()
+            stock_payload = {"quantity": product.quantity or 0}
             if variants:
-                stock_payload = {
-                    "quantity": sum(v.quantity for v in variants),
-                    "variants": [
-                        {"size": v.size, "color": v.color, "quantity": v.quantity}
-                        for v in variants
-                    ],
-                }
-            else:
-                stock_payload = {"quantity": product.quantity}
+                stock_payload["variants"] = [
+                    {"size": v.size, "color": v.color, "quantity": v.quantity}
+                    for v in variants
+                ]
 
             try:
                 with httpx.Client(timeout=8) as client:
@@ -348,9 +346,13 @@ def _bg_push_stock(product_id: int, shop_id: int):
                         json=stock_payload,
                         headers={"X-Api-Key": conn.channel_api_key},
                     )
-                logger.info(f"[STOCK SYNC] {conn.channel_type} product={product_id} qty={stock_payload['quantity']} → HTTP {r.status_code} {r.text[:120]}")
+                msg = f"[STOCK SYNC] {conn.channel_type} product={product_id} qty={stock_payload['quantity']} → HTTP {r.status_code} {r.text[:120]}"
+                print(msg, flush=True)
+                logger.info(msg)
             except Exception as exc:
-                logger.error(f"[STOCK SYNC] {conn.channel_type} product={product_id} FAILED: {exc}")
+                err = f"[STOCK SYNC] {conn.channel_type} product={product_id} FAILED: {exc}"
+                print(err, flush=True)
+                logger.error(err)
     finally:
         db.close()
 
