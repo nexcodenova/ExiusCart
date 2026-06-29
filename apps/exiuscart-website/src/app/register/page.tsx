@@ -122,7 +122,7 @@ function RegisterForm() {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
   const [phoneDialCode, setPhoneDialCode] = useState('+971');
-  const [isRefLocked, setIsRefLocked] = useState(false);
+  const [isRefLocked, setIsRefLocked] = useState(!!refFromUrl);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -155,8 +155,10 @@ function RegisterForm() {
           setValue('refCode', code);
           setIsRefLocked(true);
         } else {
-          // Affiliate deleted or inactive — clear the stale cookie
+          // Invalid or inactive affiliate — clear field and unlock so user can enter a different code
           document.cookie = 'exiuscart_ref=; max-age=0; path=/';
+          setValue('refCode', '');
+          setIsRefLocked(false);
         }
       })
       .catch(() => {
