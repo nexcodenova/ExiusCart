@@ -197,46 +197,17 @@ def update_reservation(
         r.advance_amount = body.advance_amount
     if body.status is not None:
         r.status = body.status
-    stock_changed = False
     if body.reservation_type is not None and body.reservation_type != old_type:
         r.reservation_type = body.reservation_type
         if body.reservation_type == "confirmed":
-            # Upgrading soft_hold → confirmed: commit stock, clear expiry
             r.expires_at = None
-            if r.product_id and old_status == "active":
-                product = db.query(Product).filter(
-                    Product.id == r.product_id, Product.shop_id == shop_id
-                ).first()
-                if product:
-                    product.quantity = max(0, (product.quantity or 0) - r.quantity)
-                    stock_changed = True
         elif body.reservation_type == "soft_hold":
             if not r.expires_at:
                 r.expires_at = datetime.utcnow() + timedelta(days=2)
-            # Downgrading confirmed → soft_hold: restore stock
-            if old_type == "confirmed" and r.product_id and old_status == "active":
-                product = db.query(Product).filter(
-                    Product.id == r.product_id, Product.shop_id == shop_id
-                ).first()
-                if product:
-                    product.quantity = (product.quantity or 0) + r.quantity
-                    stock_changed = True
 
-    # Also restore stock if cancelling an active confirmed reservation
-    if body.status in ("cancelled", "expired") and old_status == "active" and old_type == "confirmed":
-        if r.product_id:
-            product = db.query(Product).filter(
-                Product.id == r.product_id, Product.shop_id == shop_id
-            ).first()
-            if product:
-                product.quantity = (product.quantity or 0) + r.quantity
-                stock_changed = True
-
+    # Stock is never touched on type/status changes — only on fulfill
     db.commit()
     db.refresh(r)
-
-    if stock_changed and r.product_id:
-        background_tasks.add_task(_bg_push_stock, r.product_id, shop_id)
 
     return _serialize(r)
 
@@ -337,9 +308,7 @@ def fulfill_reservation(
             unit_price=unit_price,
             total_price=unit_price * r.quantity,
         ))
-        # confirmed reservations already deducted stock on confirmation — don't double-deduct
-        if r.reservation_type == "soft_hold":
-            product.quantity = max(0, (product.quantity or 0) - r.quantity)
+        product.quantity = max(0, (product.quantity or 0) - r.quantity)
 
     # Mark reservation fulfilled
     r.status = "fulfilled"
