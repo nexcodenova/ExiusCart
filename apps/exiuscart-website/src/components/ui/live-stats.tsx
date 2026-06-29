@@ -30,7 +30,7 @@ export function LiveStats() {
     <div className="mt-16 pt-12 border-t border-gray-800">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-8">
         <StatItem value={fmt(stats?.orders_processed ?? null)} label="Orders Processed" live />
-        <StatItem value={fmt(stats?.emails_generated ?? null)} label="Emails Generated" live />
+        <StatItem value={fmt(stats?.emails_generated ?? null)} label="Invoices & Marketing Mail" live />
         <StatItem value={fmt(stats?.products_added ?? null)} label="Products Added" live />
         <StatItem value="99.9%" label="Uptime" />
         <StatItem value="14-day" label="Free Trial" />
