@@ -140,17 +140,30 @@ function RegisterForm() {
   });
 
   useEffect(() => {
-    if (refFromUrl) {
-      document.cookie = `exiuscart_ref=${refFromUrl}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Lax`;
-      setValue('refCode', refFromUrl);
-      setIsRefLocked(true);
-    } else {
-      const cookieMatch = document.cookie.match(/exiuscart_ref=([^;]+)/);
-      if (cookieMatch?.[1]) {
-        setValue('refCode', cookieMatch[1]);
+    const code = refFromUrl || (() => {
+      const m = document.cookie.match(/exiuscart_ref=([^;]+)/);
+      return m?.[1] || '';
+    })();
+    if (!code) return;
+
+    const API = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
+    fetch(`${API}/api/v1/public/check-ref/${encodeURIComponent(code)}`)
+      .then(r => r.json())
+      .then(({ valid }) => {
+        if (valid) {
+          document.cookie = `exiuscart_ref=${code}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Lax`;
+          setValue('refCode', code);
+          setIsRefLocked(true);
+        } else {
+          // Affiliate deleted or inactive — clear the stale cookie
+          document.cookie = 'exiuscart_ref=; max-age=0; path=/';
+        }
+      })
+      .catch(() => {
+        // Network error: keep the code so registration isn't blocked
+        setValue('refCode', code);
         setIsRefLocked(true);
-      }
-    }
+      });
   }, [refFromUrl, setValue]);
 
   const refCode = watch('refCode');

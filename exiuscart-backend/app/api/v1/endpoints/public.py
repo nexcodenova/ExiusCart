@@ -9,6 +9,7 @@ from app.models.reservation import Reservation
 from app.models.order import Order
 from app.models.user import User
 from app.models.email_otp import EmailOTP
+from app.models.affiliate import Affiliate
 
 router = APIRouter()
 
@@ -37,6 +38,16 @@ def public_stats(db: Session = Depends(get_db)):
         "emails_generated": emails_generated,
         "products_added": products_added,
     }
+
+
+@router.get("/public/check-ref/{code}")
+def check_ref(code: str, db: Session = Depends(get_db)):
+    """No-auth endpoint — validates whether an affiliate referral code is active."""
+    affiliate = db.query(Affiliate).filter(
+        Affiliate.referral_code == code,
+        Affiliate.status == "approved",
+    ).first()
+    return {"valid": affiliate is not None}
 
 
 @router.get("/public/product/{barcode}")
