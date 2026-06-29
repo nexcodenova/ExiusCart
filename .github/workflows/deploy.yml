@@ -52,80 +52,35 @@ jobs:
           find exiuscart-backend/app -name "*.py" | xargs python3 -m py_compile
           echo "Backend syntax OK"
 
-  # ── Build store on GitHub Actions (7GB RAM, free) ─────────────────────────
-  build-store:
-    name: Build store
-    runs-on: ubuntu-latest
-    needs: [typecheck, changes]
-    if: needs.changes.outputs.store == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-      - run: npm ci
-      - name: Build
-        run: npm run build --workspace=apps/exiuscart-store
-        env:
-          NEXT_PUBLIC_API_URL: https://api.exiuscart.com
-      - name: Upload .next
-        uses: actions/upload-artifact@v4
-        with:
-          name: store-next
-          path: apps/exiuscart-store/.next
-          retention-days: 1
-
-  # ── Build admin on GitHub Actions ─────────────────────────────────────────
-  build-admin:
-    name: Build admin
-    runs-on: ubuntu-latest
-    needs: [typecheck, changes]
-    if: needs.changes.outputs.admin == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-      - run: npm ci
-      - name: Build
-        run: npm run build --workspace=apps/exiuscart-admin
-        env:
-          NEXT_PUBLIC_API_URL: https://api.exiuscart.com
-      - name: Upload .next
-        uses: actions/upload-artifact@v4
-        with:
-          name: admin-next
-          path: apps/exiuscart-admin/.next
-          retention-days: 1
-
-  # ── Deploy to server (only after builds pass) ─────────────────────────────
+  # ── Build + Deploy (single job — no artifacts needed) ────────────────────
   deploy:
-    name: Deploy to server
+    name: Build & Deploy
     runs-on: ubuntu-latest
-    needs: [typecheck, changes, build-store, build-admin]
-    # Run even if build jobs were skipped (no changes)
+    needs: [typecheck, changes]
     if: always() && needs.typecheck.result == 'success'
     steps:
       - uses: actions/checkout@v4
-
-      # Download built artifacts (only if they were built this run)
-      - name: Download store build
-        if: needs.changes.outputs.store == 'true' && needs.build-store.result == 'success'
-        uses: actions/download-artifact@v4
+      - uses: actions/setup-node@v4
         with:
-          name: store-next
-          path: apps/exiuscart-store/.next
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
 
-      - name: Download admin build
-        if: needs.changes.outputs.admin == 'true' && needs.build-admin.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: admin-next
-          path: apps/exiuscart-admin/.next
+      # Build store if changed (7GB RAM on GitHub runner — no issue)
+      - name: Build store
+        if: needs.changes.outputs.store == 'true'
+        run: npm run build --workspace=apps/exiuscart-store
+        env:
+          NEXT_PUBLIC_API_URL: https://api.exiuscart.com
 
-      # Copy pre-built .next to server, then restart — no build on server
+      # Build admin if changed
+      - name: Build admin
+        if: needs.changes.outputs.admin == 'true'
+        run: npm run build --workspace=apps/exiuscart-admin
+        env:
+          NEXT_PUBLIC_API_URL: https://api.exiuscart.com
+
+      # Pull + run deploy.sh on server (backend pip install, etc.)
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -138,9 +93,9 @@ jobs:
             git pull origin main
             bash deploy.sh
 
-      # Rsync pre-built store .next if it changed
+      # Copy pre-built store .next directly from this job — no artifact needed
       - name: Rsync store .next to server
-        if: needs.changes.outputs.store == 'true' && needs.build-store.result == 'success'
+        if: needs.changes.outputs.store == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -150,7 +105,7 @@ jobs:
           target: /var/www/ExiusCart/
 
       - name: Rsync admin .next to server
-        if: needs.changes.outputs.admin == 'true' && needs.build-admin.result == 'success'
+        if: needs.changes.outputs.admin == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -193,4 +148,4 @@ jobs:
             fi
 
             pm2 save
-            echo "Deploy complete — no builds ran on server"
+            echo "Deploy complete"
