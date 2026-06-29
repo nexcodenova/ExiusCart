@@ -20,7 +20,11 @@ class Shop(Base):
     city = Column(String(100), nullable=True)
     country = Column(String(100), default="UAE")
     currency = Column(String(10), default="AED")
-    tax_number = Column(String(50), nullable=True)  # VAT/TRN number
+    tax_number = Column(String(50), nullable=True)
+    vat_enabled = Column(Boolean, default=False)
+    vat_rate = Column(Numeric(5, 2), default=0.00)
+    prices_include_vat = Column(Boolean, default=False)
+    show_vat_breakdown = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

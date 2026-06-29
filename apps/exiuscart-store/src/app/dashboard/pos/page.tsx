@@ -79,7 +79,7 @@ export default function POSPage() {
         pricesIncludeVat: shopData.pricesIncludeVat,
         showVatBreakdown: shopData.showVatBreakdown,
       }
-    : { vatEnabled: true, vatRate: 5, pricesIncludeVat: true, showVatBreakdown: true };
+    : { vatEnabled: false, vatRate: 0, pricesIncludeVat: false, showVatBreakdown: false };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -94,10 +94,10 @@ export default function POSPage() {
           email: shop.email || '',
           vatNumber: shop.vat_number || '',
           tradeLicense: shop.trade_license || '',
-          vatEnabled: shop.vat_enabled ?? true,
-          vatRate: shop.vat_rate ?? 5,
-          pricesIncludeVat: shop.prices_include_vat ?? true,
-          showVatBreakdown: shop.show_vat_breakdown ?? true,
+          vatEnabled: shop.vat_enabled ?? false,
+          vatRate: shop.vat_rate ?? 0,
+          pricesIncludeVat: shop.prices_include_vat ?? false,
+          showVatBreakdown: shop.show_vat_breakdown ?? false,
         });
         const productsRes = await productsApi.getAll(String(shop.id));
         const rawProducts: POSProduct[] = (productsRes.data || []).map((p: any) => ({

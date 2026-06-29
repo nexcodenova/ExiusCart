@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { shopApi } from '@/lib/api';
 import {
   Settings,
   Shield,
@@ -19,25 +20,55 @@ type SettingsTab = 'general' | 'tax' | 'security' | 'notifications';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [taxSaving, setTaxSaving] = useState(false);
+  const [taxSaved, setTaxSaved] = useState(false);
 
-  // Settings state
   const [settings, setSettings] = useState({
     language: 'en',
     currency: 'AED',
     timezone: 'Asia/Dubai',
     theme: 'system',
-    // Tax settings
-    vatEnabled: true,
-    vatRate: 5,
-    pricesIncludeVat: true, // Most UAE shops set prices with VAT already included
-    showVatBreakdown: true, // Show VAT breakdown on receipt
-    // Notifications
+    vatEnabled: false,
+    vatRate: 0,
+    pricesIncludeVat: false,
+    showVatBreakdown: false,
     emailNotifications: true,
     pushNotifications: true,
     orderAlerts: true,
     lowStockAlerts: true,
     twoFactorEnabled: false,
   });
+
+  useEffect(() => {
+    shopApi.getMyShop().then((res) => {
+      const shop = res.data;
+      setSettings((prev) => ({
+        ...prev,
+        vatEnabled: shop.vat_enabled ?? false,
+        vatRate: shop.vat_rate ?? 0,
+        pricesIncludeVat: shop.prices_include_vat ?? false,
+        showVatBreakdown: shop.show_vat_breakdown ?? false,
+      }));
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveTax = async () => {
+    setTaxSaving(true);
+    try {
+      await shopApi.updateShop({
+        vat_enabled: settings.vatEnabled,
+        vat_rate: settings.vatRate,
+        prices_include_vat: settings.pricesIncludeVat,
+        show_vat_breakdown: settings.showVatBreakdown,
+      });
+      setTaxSaved(true);
+      setTimeout(() => setTaxSaved(false), 3000);
+    } catch {
+      alert('Failed to save tax settings.');
+    } finally {
+      setTaxSaving(false);
+    }
+  };
 
   const tabs = [
     { id: 'general' as SettingsTab, label: 'General', icon: Settings },
@@ -182,11 +213,10 @@ export default function SettingsPage() {
               VAT Configuration
             </h2>
 
-            {/* UAE VAT Info */}
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-              <p className="text-sm text-foreground font-medium">UAE VAT Rate: 5%</p>
+              <p className="text-sm text-foreground font-medium">Tax / VAT Configuration</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Standard VAT rate in UAE is 5%. This is applied to most goods and services.
+                Enable VAT only if your country requires it. Disable to charge no tax.
               </p>
             </div>
 
@@ -223,8 +253,13 @@ export default function SettingsPage() {
                       onChange={(e) => setSettings({ ...settings, vatRate: Number(e.target.value) })}
                       className="w-full sm:w-48 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground"
                     >
-                      <option value={0}>0% (Exempt)</option>
-                      <option value={5}>5% (UAE Standard)</option>
+                      <option value={0}>0% (Exempt / No Tax)</option>
+                      <option value={5}>5%</option>
+                      <option value={8}>8%</option>
+                      <option value={10}>10%</option>
+                      <option value={15}>15%</option>
+                      <option value={18}>18%</option>
+                      <option value={20}>20%</option>
                     </select>
                   </div>
 
@@ -325,9 +360,11 @@ export default function SettingsPage() {
             </div>
             <button
               type="button"
-              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition"
+              onClick={handleSaveTax}
+              disabled={taxSaving}
+              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-60"
             >
-              Save Tax Info
+              {taxSaving ? 'Saving...' : taxSaved ? 'Saved!' : 'Save Tax Settings'}
             </button>
           </div>
         </div>

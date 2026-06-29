@@ -31,6 +31,10 @@ class ShopUpdate(BaseModel):
     tax_number: Optional[str] = None
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
+    vat_enabled: Optional[bool] = None
+    vat_rate: Optional[float] = None
+    prices_include_vat: Optional[bool] = None
+    show_vat_breakdown: Optional[bool] = None
 
 
 class ShopResponse(ShopBase):
@@ -38,6 +42,10 @@ class ShopResponse(ShopBase):
     slug: str
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
+    vat_enabled: bool = False
+    vat_rate: float = 0.0
+    prices_include_vat: bool = False
+    show_vat_breakdown: bool = False
     is_active: bool
     owner_id: int
     created_at: datetime

@@ -98,6 +98,27 @@ async def get_shop(
     return shop
 
 
+@router.put("/me", response_model=ShopResponse)
+async def update_my_shop(
+    shop_data: ShopUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update the current user's primary shop (used by settings page)."""
+    shop = db.query(Shop).filter(
+        Shop.owner_id == current_user.id,
+        Shop.is_active == True,
+    ).order_by(Shop.id.asc()).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="No shop found")
+    update_data = shop_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(shop, field, value)
+    db.commit()
+    db.refresh(shop)
+    return shop
+
+
 @router.put("/{shop_id}", response_model=ShopResponse)
 async def update_shop(
     shop_id: int,
