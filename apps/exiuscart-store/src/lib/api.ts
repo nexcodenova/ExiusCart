@@ -178,7 +178,12 @@ export const expensesApi = {
 // ── Quotations ────────────────────────────────────────
 export const quotationsApi = {
   getAll: (shopId: string) => api.get(`/shops/${shopId}/quotations`),
+  get: (shopId: string, id: number) => api.get(`/shops/${shopId}/quotations/${id}`),
   create: (shopId: string, data: any) => api.post(`/shops/${shopId}/quotations`, data),
+  updateStatus: (shopId: string, id: number, status: string) =>
+    api.patch(`/shops/${shopId}/quotations/${id}/status`, { status }),
+  send: (shopId: string, id: number) => api.post(`/shops/${shopId}/quotations/${id}/send`, {}),
+  delete: (shopId: string, id: number) => api.delete(`/shops/${shopId}/quotations/${id}`),
 };
 
 // ── Reservations ──────────────────────────────────────
