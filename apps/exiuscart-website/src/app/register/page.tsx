@@ -154,16 +154,16 @@ function RegisterForm() {
       .then(r => r.json())
       .then(({ valid }) => {
         if (valid) {
+          // Valid — save 30-day tracking cookie
           document.cookie = `exiuscart_ref=${code}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Lax`;
         } else {
-          // Invalid or inactive — clear and unlock
+          // Invalid/inactive — clear stale cookie but keep field showing the code
           document.cookie = 'exiuscart_ref=; max-age=0; path=/';
-          setValue('refCode', '');
-          setIsRefLocked(false);
         }
+        // Field stays filled and locked regardless — the backend rejects invalid codes at signup
       })
       .catch(() => {
-        // Network error: keep locked so the code isn't lost
+        // Network error — keep locked and coded
       });
   }, [refFromUrl, setValue]);
 
