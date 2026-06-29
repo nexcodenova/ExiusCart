@@ -171,6 +171,30 @@ export default function SettingsPage() {
                   <option value="AED">AED - UAE Dirham</option>
                   <option value="SAR">SAR - Saudi Riyal</option>
                   <option value="USD">USD - US Dollar</option>
+                  <option value="EUR">EUR - Euro</option>
+                  <option value="GBP">GBP - British Pound</option>
+                  <option value="INR">INR - Indian Rupee</option>
+                  <option value="LKR">LKR - Sri Lanka Rupee</option>
+                  <option value="BDT">BDT - Bangladeshi Taka</option>
+                  <option value="PKR">PKR - Pakistani Rupee</option>
+                  <option value="MYR">MYR - Malaysian Ringgit</option>
+                  <option value="SGD">SGD - Singapore Dollar</option>
+                  <option value="CAD">CAD - Canadian Dollar</option>
+                  <option value="AUD">AUD - Australian Dollar</option>
+                  <option value="QAR">QAR - Qatari Riyal</option>
+                  <option value="KWD">KWD - Kuwaiti Dinar</option>
+                  <option value="BHD">BHD - Bahraini Dinar</option>
+                  <option value="OMR">OMR - Omani Rial</option>
+                  <option value="EGP">EGP - Egyptian Pound</option>
+                  <option value="NGN">NGN - Nigerian Naira</option>
+                  <option value="KES">KES - Kenyan Shilling</option>
+                  <option value="ZAR">ZAR - South African Rand</option>
+                  <option value="TRY">TRY - Turkish Lira</option>
+                  <option value="IDR">IDR - Indonesian Rupiah</option>
+                  <option value="PHP">PHP - Philippine Peso</option>
+                  <option value="THB">THB - Thai Baht</option>
+                  <option value="JPY">JPY - Japanese Yen</option>
+                  <option value="CNY">CNY - Chinese Yuan</option>
                 </select>
               </div>
               <div>
@@ -183,6 +207,32 @@ export default function SettingsPage() {
                 >
                   <option value="Asia/Dubai">Dubai (GMT+4)</option>
                   <option value="Asia/Riyadh">Riyadh (GMT+3)</option>
+                  <option value="Asia/Colombo">Colombo (GMT+5:30)</option>
+                  <option value="Asia/Kolkata">India (GMT+5:30)</option>
+                  <option value="Asia/Karachi">Karachi (GMT+5)</option>
+                  <option value="Asia/Dhaka">Dhaka (GMT+6)</option>
+                  <option value="Asia/Kuala_Lumpur">Kuala Lumpur (GMT+8)</option>
+                  <option value="Asia/Singapore">Singapore (GMT+8)</option>
+                  <option value="Asia/Jakarta">Jakarta (GMT+7)</option>
+                  <option value="Asia/Manila">Manila (GMT+8)</option>
+                  <option value="Asia/Bangkok">Bangkok (GMT+7)</option>
+                  <option value="Asia/Tokyo">Tokyo (GMT+9)</option>
+                  <option value="Asia/Shanghai">Shanghai (GMT+8)</option>
+                  <option value="Asia/Kuwait">Kuwait (GMT+3)</option>
+                  <option value="Asia/Qatar">Qatar (GMT+3)</option>
+                  <option value="Asia/Bahrain">Bahrain (GMT+3)</option>
+                  <option value="Asia/Muscat">Muscat (GMT+4)</option>
+                  <option value="Africa/Cairo">Cairo (GMT+3)</option>
+                  <option value="Africa/Lagos">Lagos (GMT+1)</option>
+                  <option value="Africa/Nairobi">Nairobi (GMT+3)</option>
+                  <option value="Africa/Johannesburg">Johannesburg (GMT+2)</option>
+                  <option value="Europe/London">London (GMT+0/+1)</option>
+                  <option value="Europe/Paris">Paris (GMT+1/+2)</option>
+                  <option value="Europe/Istanbul">Istanbul (GMT+3)</option>
+                  <option value="America/New_York">New York (GMT-5/-4)</option>
+                  <option value="America/Los_Angeles">Los Angeles (GMT-8/-7)</option>
+                  <option value="America/Toronto">Toronto (GMT-5/-4)</option>
+                  <option value="Australia/Sydney">Sydney (GMT+10/+11)</option>
                 </select>
               </div>
               <div>
@@ -278,18 +328,18 @@ export default function SettingsPage() {
                           }
                         </p>
                         <div className="bg-background/50 rounded-lg p-3 text-xs">
-                          <p className="font-medium text-foreground mb-1">Example: iPhone priced at 4,299 AED</p>
+                          <p className="font-medium text-foreground mb-1">Example: product priced at 1,000 {settings.currency}</p>
                           {settings.pricesIncludeVat ? (
                             <div className="text-muted-foreground space-y-0.5">
-                              <p>• Customer pays: <span className="text-foreground font-medium">4,299 AED</span></p>
-                              <p>• VAT included: <span className="text-foreground">204.71 AED</span></p>
-                              <p>• Net price: <span className="text-foreground">4,094.29 AED</span></p>
+                              <p>• Customer pays: <span className="text-foreground font-medium">1,000 {settings.currency}</span></p>
+                              <p>• VAT included: <span className="text-foreground">{(1000 * (settings.vatRate / 100) / (1 + settings.vatRate / 100)).toFixed(2)} {settings.currency}</span></p>
+                              <p>• Net price: <span className="text-foreground">{(1000 / (1 + settings.vatRate / 100)).toFixed(2)} {settings.currency}</span></p>
                             </div>
                           ) : (
                             <div className="text-muted-foreground space-y-0.5">
-                              <p>• Product price: <span className="text-foreground">4,299 AED</span></p>
-                              <p>• VAT (5%): <span className="text-foreground">+214.95 AED</span></p>
-                              <p>• Customer pays: <span className="text-foreground font-medium">4,513.95 AED</span></p>
+                              <p>• Product price: <span className="text-foreground">1,000 {settings.currency}</span></p>
+                              <p>• VAT ({settings.vatRate}%): <span className="text-foreground">+{(1000 * settings.vatRate / 100).toFixed(2)} {settings.currency}</span></p>
+                              <p>• Customer pays: <span className="text-foreground font-medium">{(1000 + 1000 * settings.vatRate / 100).toFixed(2)} {settings.currency}</span></p>
                             </div>
                           )}
                         </div>
