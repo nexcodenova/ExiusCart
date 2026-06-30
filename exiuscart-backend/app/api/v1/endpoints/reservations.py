@@ -309,6 +309,9 @@ def fulfill_reservation(
             total_price=unit_price * r.quantity,
         ))
         product.quantity = max(0, (product.quantity or 0) - r.quantity)
+        if product.is_bundle:
+            from app.api.v1.endpoints.bundles import deduct_bundle_components
+            deduct_bundle_components(product.id, r.quantity, db)
 
     # Mark reservation fulfilled
     r.status = "fulfilled"
