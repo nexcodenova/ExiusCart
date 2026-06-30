@@ -93,15 +93,21 @@ def save_bundle_components(
         if not comp:
             raise HTTPException(status_code=400, detail=f"Product {c.component_product_id} not found in this shop")
 
+    # Deduplicate: if same product+variant appears multiple times, sum quantities
+    seen: dict = {}
+    for c in components:
+        key = (c.component_product_id, c.variant_size or None, c.variant_color or None)
+        seen[key] = seen.get(key, 0) + max(1, c.quantity)
+
     # Replace all components
     db.query(BundleComponent).filter(BundleComponent.bundle_product_id == product_id).delete()
-    for c in components:
+    for (comp_id, v_size, v_color), qty in seen.items():
         db.add(BundleComponent(
             bundle_product_id=product_id,
-            component_product_id=c.component_product_id,
-            variant_size=c.variant_size or None,
-            variant_color=c.variant_color or None,
-            quantity=max(1, c.quantity),
+            component_product_id=comp_id,
+            variant_size=v_size,
+            variant_color=v_color,
+            quantity=qty,
         ))
 
     product.is_bundle = len(components) > 0

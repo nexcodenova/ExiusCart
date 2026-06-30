@@ -33,7 +33,13 @@ export function BundleBuilder({ enabled, onToggle, components, onChange, availab
   const noProducts = selectable.length === 0;
 
   function update(index: number, patch: Partial<BundleComponent>) {
-    onChange(components.map((c, i) => i === index ? { ...c, ...patch } : c));
+    const updated = { ...components[index], ...patch };
+    // Block duplicate product selection (same product already used in another row)
+    if (patch.component_product_id !== undefined) {
+      const alreadyUsed = components.some((c, i) => i !== index && c.component_product_id === patch.component_product_id && patch.component_product_id !== 0);
+      if (alreadyUsed) return;
+    }
+    onChange(components.map((c, i) => i === index ? updated : c));
   }
 
   function remove(index: number) {
@@ -76,7 +82,10 @@ export function BundleBuilder({ enabled, onToggle, components, onChange, availab
             <p className="text-xs text-muted-foreground text-center py-2">No components yet — add at least one product below.</p>
           )}
 
-          {components.map((c, i) => (
+          {components.map((c, i) => {
+            const usedIds = new Set(components.filter((_, j) => j !== i).map(x => String(x.component_product_id)));
+            const available = selectable.filter(p => !usedIds.has(String(p.id)) || String(p.id) === String(c.component_product_id));
+            return (
             <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-start">
               {/* Product selector */}
               <div className="space-y-1.5">
@@ -86,7 +95,7 @@ export function BundleBuilder({ enabled, onToggle, components, onChange, availab
                   className="w-full px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
                 >
                   <option value="">Select product…</option>
-                  {selectable.map(p => (
+                  {available.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
@@ -131,7 +140,8 @@ export function BundleBuilder({ enabled, onToggle, components, onChange, availab
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           <button
             type="button"
