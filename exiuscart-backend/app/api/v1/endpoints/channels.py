@@ -152,6 +152,10 @@ def _product_payload(
     image_urls = [img.url for img in (product.images or []) if img.url]
     if not image_urls and product.image_url:
         image_urls = [product.image_url]
+    # Include variant images in the gallery so TheDersi shows all product images
+    for v in (product.variants or []):
+        if v.image_url and v.image_url not in image_urls:
+            image_urls.append(v.image_url)
 
     return {
         "exiuscart_product_id": product.id,
