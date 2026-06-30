@@ -26,3 +26,4 @@ from app.models.thedersi_seller import TheDersiSeller
 from app.models.admin_settings import AdminSettings
 from app.models.email_otp import EmailOTP
 from app.models.reservation import Reservation
+from app.models.email_usage_log import EmailUsageLog

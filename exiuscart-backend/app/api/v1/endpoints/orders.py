@@ -6,6 +6,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 import uuid
 from app.core.database import get_db
+from app.api.v1.endpoints.usage import check_and_log_email
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.order import Order, OrderItem
@@ -492,6 +493,11 @@ async def send_invoice(
         free_delivery_label=free_delivery_label,
         order_already_paid=(order.payment_status == "paid"),
     )
+
+    # Check invoice email limit before sending
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    plan = sub.plan_type if sub else None
+    check_and_log_email(shop_id, "invoice", plan, recipient, order.id, db)
 
     sent = send_email(
         to=recipient,

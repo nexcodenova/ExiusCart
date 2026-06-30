@@ -5,6 +5,7 @@ import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, Externa
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { UsageBanner } from '@/components/usage-banner';
 
 interface OrderItem {
   id: number;
@@ -243,6 +244,8 @@ export default function OrdersPage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Orders</h1>
         <p className="text-sm text-muted-foreground">Track and manage all your orders</p>
       </div>
+
+      <UsageBanner shopId={shopId} show={['invoice_emails', 'orders']} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

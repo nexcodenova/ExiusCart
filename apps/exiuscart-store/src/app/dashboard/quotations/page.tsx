@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { quotationsApi, productsApi, customersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { UsageBanner } from '@/components/usage-banner';
 
 interface QuotationItem {
   product_id?: number;
@@ -96,6 +97,8 @@ export default function QuotationsPage() {
           <Plus className="w-4 h-4" /> New Quotation
         </button>
       </div>
+
+      <UsageBanner shopId={shopId} show={['quotation_emails']} />
 
       <div className="grid grid-cols-3 gap-4">
         {[

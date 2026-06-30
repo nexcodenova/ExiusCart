@@ -452,3 +452,7 @@ export const channelsApi = {
   requestTheDersiPayout: (shopId: string, channelId: number) =>
     api.post(`/shops/${shopId}/channels/${channelId}/thedersi-request-payout`),
 };
+
+export const usageApi = {
+  get: (shopId: string) => api.get(`/shops/${shopId}/usage`),
+};

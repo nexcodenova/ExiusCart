@@ -6,6 +6,7 @@ import uuid
 
 from app.core.database import get_db
 from app.api.v1.deps import get_current_user
+from app.api.v1.endpoints.usage import check_and_log_email
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.quotation import Quotation
@@ -54,8 +55,9 @@ def _get_shop(shop_id: int, user: User, db: Session) -> Shop:
     return shop
 
 
-def _is_premium(shop: Shop, db: Session) -> bool:
-    return True  # quotation email sending is available on all plans
+def _get_plan(shop_id: int, db: Session) -> str | None:
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
+    return sub.plan_type if sub else None
 
 
 def _next_quote_number(shop_id: int, db: Session) -> str:
@@ -198,18 +200,16 @@ def send_quotation(
     db: Session = Depends(get_db),
 ):
     shop = _get_shop(shop_id, current_user, db)
-
-    if not _is_premium(shop, db):
-        raise HTTPException(
-            status_code=403,
-            detail="Sending quotations by email is a Premium feature. Upgrade your plan to unlock it."
-        )
+    plan = _get_plan(shop_id, db)
 
     q = db.query(Quotation).filter(Quotation.id == quote_id, Quotation.shop_id == shop_id).first()
     if not q:
         raise HTTPException(status_code=404, detail="Quotation not found")
     if not q.customer_email:
         raise HTTPException(status_code=400, detail="This quotation has no customer email address")
+
+    # Check + log against monthly quotation email limit
+    check_and_log_email(shop_id, "quotation", plan, q.customer_email, q.id, db)
 
     send_quotation_email(
         to_email=q.customer_email,

@@ -7,7 +7,8 @@ import {
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi } from '@/lib/api';
+import { UsageBanner } from '@/components/usage-banner';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -288,6 +289,8 @@ export default function ProductsPage() {
           </button>
         </div>
       </div>
+
+      <UsageBanner shopId={shopId} show={['products', 'orders']} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
