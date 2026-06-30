@@ -61,12 +61,14 @@ export function UsageBanner({ shopId, show }: UsageBannerProps) {
 
   if (!data) return null;
 
-  const items: { key: UsageBannerProps['show'][number]; label: string; item: UsageItem }[] = [
-    { key: 'invoice_emails',   label: 'Invoice emails',   item: data.emails.invoice },
-    { key: 'quotation_emails', label: 'Quotation emails', item: data.emails.quotation },
-    { key: 'orders',           label: 'Orders',           item: data.orders },
-    { key: 'products',         label: 'Products',         item: data.products },
-  ].filter(x => show.includes(x.key) && x.item?.limit !== null);
+  type ShowKey = UsageBannerProps['show'][number];
+  const all: { key: ShowKey; label: string; item: UsageItem }[] = [
+    { key: 'invoice_emails' as ShowKey,   label: 'Invoice emails',   item: data.emails.invoice },
+    { key: 'quotation_emails' as ShowKey, label: 'Quotation emails', item: data.emails.quotation },
+    { key: 'orders' as ShowKey,           label: 'Orders',           item: data.orders },
+    { key: 'products' as ShowKey,         label: 'Products',         item: data.products },
+  ];
+  const items = all.filter(x => show.includes(x.key) && x.item?.limit !== null);
 
   if (items.length === 0) return null;
 
