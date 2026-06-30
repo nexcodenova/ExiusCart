@@ -597,6 +597,22 @@ def adjust_inventory(
         raise HTTPException(status_code=404, detail="Product not found")
 
     product.quantity = max(0, product.quantity + quantity)
+
+    # Keep variant quantities in sync so the edit modal stays accurate
+    from app.models.product_variant import ProductVariant
+    variants = db.query(ProductVariant).filter(ProductVariant.product_id == product_id).all()
+    if variants:
+        if len(variants) == 1:
+            variants[0].quantity = product.quantity
+        else:
+            old_total = sum(v.quantity for v in variants)
+            if old_total > 0:
+                new_qtys = [round(v.quantity / old_total * product.quantity) for v in variants]
+                diff = product.quantity - sum(new_qtys)
+                new_qtys[-1] += diff
+                for v, q in zip(variants, new_qtys):
+                    v.quantity = max(0, q)
+
     db.commit()
 
     from app.api.v1.endpoints.channels import trigger_stock_sync
