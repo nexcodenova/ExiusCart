@@ -76,6 +76,7 @@ class ProductResponse(ProductBase):
     is_active: bool
     is_featured: bool
     is_trending: bool = False
+    is_bundle: bool = False
     created_at: datetime
     category: Optional[CategoryResponse] = None
 
