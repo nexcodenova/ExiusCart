@@ -602,6 +602,7 @@ export default function ProductsPage() {
           product={editingProduct}
           shopId={shopId}
           categories={categories}
+          allProducts={products}
           channelStatus={editingProduct ? channelStatuses[editingProduct.id]?.thedersi : undefined}
           onClose={() => { setShowAddModal(false); setEditingProduct(null); }}
           onSaved={() => { setShowAddModal(false); setEditingProduct(null); fetchProducts(); }}
@@ -749,11 +750,12 @@ interface PendingImage {
 }
 
 function ProductModal({
-  product, shopId, categories, channelStatus, onClose, onSaved,
+  product, shopId, categories, allProducts, channelStatus, onClose, onSaved,
 }: {
   product: Product | null;
   shopId: string;
   categories: string[];
+  allProducts: Product[];
   channelStatus?: { status: string; rejection_reason?: string };
   onClose: () => void;
   onSaved: () => void;
@@ -797,7 +799,7 @@ function ProductModal({
   const [variantImageError, setVariantImageError] = useState<string>('');
 
   // Bundle state
-  const [isBundleEnabled, setIsBundleEnabled] = useState(product?.is_bundle ?? false);
+  const [isBundleEnabled, setIsBundleEnabled] = useState(p?.is_bundle ?? false);
   const [bundleComponents, setBundleComponents] = useState<BundleComponent[]>([]);
 
   // TheDersi channel category state
@@ -841,7 +843,7 @@ function ProductModal({
         }))))
         .catch(() => {});
 
-      if (product.is_bundle) {
+      if (p?.is_bundle) {
         bundlesApi.getComponents(shopId, String(product.id))
           .then(res => setBundleComponents((res.data ?? []).map((c: any) => ({
             component_product_id: c.component_product_id,
@@ -1042,7 +1044,7 @@ function ProductModal({
       if (isBundleEnabled && bundleComponents.length > 0) {
         const validComponents = bundleComponents.filter(c => c.component_product_id > 0);
         tasks.push(bundlesApi.saveComponents(shopId, productId, validComponents).catch(() => {}));
-      } else if (!isBundleEnabled && product?.is_bundle) {
+      } else if (!isBundleEnabled && p?.is_bundle) {
         tasks.push(bundlesApi.saveComponents(shopId, productId, []).catch(() => {}));
       }
 
@@ -1364,7 +1366,7 @@ function ProductModal({
                 onToggle={setIsBundleEnabled}
                 components={bundleComponents}
                 onChange={setBundleComponents}
-                availableProducts={products.map(p => ({ id: p.id!, name: p.name }))}
+                availableProducts={allProducts.map(p => ({ id: p.id, name: p.name }))}
                 currentProductId={product?.id}
               />
             </div>
