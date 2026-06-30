@@ -78,6 +78,25 @@ def upload_shop_image(contents: bytes, shop_id: int, image_type: str, ext: str, 
     return url
 
 
+def generate_presigned_url(shop_id: int, product_id: int, ext: str, content_type: str = "image/jpeg", expires: int = 300) -> dict:
+    """Return a presigned PUT URL so the browser can upload directly to R2."""
+    filename = f"{uuid.uuid4()}.{ext}"
+    key = f"products/{shop_id}/{product_id}/{filename}"
+    client = _get_r2_client()
+    presigned_url = client.generate_presigned_url(
+        "put_object",
+        Params={
+            "Bucket": _R2_BUCKET,
+            "Key": key,
+            "ContentType": content_type,
+            "CacheControl": "public, max-age=31536000",
+        },
+        ExpiresIn=expires,
+    )
+    public_url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    return {"presigned_url": presigned_url, "public_url": public_url}
+
+
 def delete_image(url: str) -> None:
     """Delete image from Cloudflare R2 by its public URL."""
     if not url or not _R2_ACCOUNT_ID:

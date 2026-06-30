@@ -14,7 +14,8 @@ from app.models.product import Product
 from app.models.product_fields import ShopField, ProductAttribute, ProductImage
 from app.models.product_variant import ProductVariant
 from app.models.subscription import Subscription
-from app.core.storage import upload_image as storage_upload, delete_image as storage_delete
+from fastapi import Query
+from app.core.storage import upload_image as storage_upload, delete_image as storage_delete, generate_presigned_url
 
 router = APIRouter()
 
@@ -282,6 +283,76 @@ def get_images(
     return db.query(ProductImage).filter(
         ProductImage.product_id == product_id
     ).order_by(ProductImage.sort_order).all()
+
+
+class ConfirmImageBody(BaseModel):
+    url: str
+    content_type: str = "image/jpeg"
+
+
+@router.get("/shops/{shop_id}/products/{product_id}/images/presign")
+def presign_product_image(
+    shop_id: int,
+    product_id: int,
+    content_type: str = Query("image/jpeg"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return a presigned PUT URL so the browser uploads directly to R2."""
+    get_shop_or_404(shop_id, db, current_user)
+    get_product_or_404(product_id, shop_id, db)
+    limit = _image_limit(shop_id, db)
+    if _combined_image_count(product_id, db) >= limit:
+        raise HTTPException(status_code=400, detail=f"Image limit reached ({limit} total across main + variants)")
+    ext = content_type.split("/")[-1].replace("jpeg", "jpg")
+    return generate_presigned_url(shop_id, product_id, ext, content_type)
+
+
+@router.post("/shops/{shop_id}/products/{product_id}/images/confirm", response_model=ImageOut, status_code=201)
+def confirm_product_image(
+    shop_id: int,
+    product_id: int,
+    body: ConfirmImageBody,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """After browser uploads directly to R2, register the URL in the DB."""
+    get_shop_or_404(shop_id, db, current_user)
+    get_product_or_404(product_id, shop_id, db)
+    limit = _image_limit(shop_id, db)
+    if _combined_image_count(product_id, db) >= limit:
+        raise HTTPException(status_code=400, detail=f"Image limit reached ({limit} total)")
+    count = db.query(ProductImage).filter(ProductImage.product_id == product_id).count()
+    is_primary = count == 0
+    image = ProductImage(product_id=product_id, url=body.url, sort_order=count, is_primary=is_primary)
+    db.add(image)
+    if is_primary:
+        product_obj = get_product_or_404(product_id, shop_id, db)
+        product_obj.image_url = body.url
+    db.commit()
+    db.refresh(image)
+    from app.api.v1.endpoints.channels import trigger_product_sync
+    trigger_product_sync(product_id, shop_id, background_tasks)
+    return image
+
+
+@router.get("/shops/{shop_id}/products/{product_id}/variant-image/presign")
+def presign_variant_image(
+    shop_id: int,
+    product_id: int,
+    content_type: str = Query("image/jpeg"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return a presigned PUT URL for a variant image upload."""
+    get_shop_or_404(shop_id, db, current_user)
+    get_product_or_404(product_id, shop_id, db)
+    limit = _image_limit(shop_id, db)
+    if _combined_image_count(product_id, db) >= limit:
+        raise HTTPException(status_code=400, detail=f"Image limit reached ({limit} total across main + variants)")
+    ext = content_type.split("/")[-1].replace("jpeg", "jpg")
+    return generate_presigned_url(shop_id, product_id, ext, content_type)
 
 
 @router.post("/shops/{shop_id}/products/{product_id}/images", response_model=ImageOut, status_code=201)

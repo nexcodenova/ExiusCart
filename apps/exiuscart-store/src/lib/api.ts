@@ -386,14 +386,26 @@ export const attributesApi = {
 };
 
 // ── Product Images (max 6) ─────────────────────────────
+async function uploadToR2(presignedUrl: string, file: File): Promise<void> {
+  const res = await fetch(presignedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000' },
+    body: file,
+  });
+  if (!res.ok) throw new Error(`R2 upload failed: ${res.status}`);
+}
+
 export const imagesApi = {
   getAll: (shopId: string, productId: string) =>
     api.get(`/shops/${shopId}/products/${productId}/images`),
-  upload: (shopId: string, productId: string, file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-    return api.post(`/shops/${shopId}/products/${productId}/images`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+  upload: async (shopId: string, productId: string, file: File) => {
+    const { data } = await api.get(`/shops/${shopId}/products/${productId}/images/presign`, {
+      params: { content_type: file.type || 'image/jpeg' },
+    });
+    await uploadToR2(data.presigned_url, file);
+    return api.post(`/shops/${shopId}/products/${productId}/images/confirm`, {
+      url: data.public_url,
+      content_type: file.type || 'image/jpeg',
     });
   },
   delete: (shopId: string, productId: string, imageId: string) =>
@@ -411,12 +423,12 @@ export const variantsApi = {
   save: (shopId: string, productId: string, variants: {
     size?: string; color?: string; sku?: string; quantity: number; price?: number; image_url?: string;
   }[]) => api.put(`/shops/${shopId}/products/${productId}/variants`, variants),
-  uploadImage: (shopId: string, productId: string, file: File) => {
-    const form = new FormData();
-    form.append('file', file);
-    return api.post(`/shops/${shopId}/products/${productId}/variant-image`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+  uploadImage: async (shopId: string, productId: string, file: File) => {
+    const { data } = await api.get(`/shops/${shopId}/products/${productId}/variant-image/presign`, {
+      params: { content_type: file.type || 'image/jpeg' },
     });
+    await uploadToR2(data.presigned_url, file);
+    return { data: { url: data.public_url } };
   },
 };
 
