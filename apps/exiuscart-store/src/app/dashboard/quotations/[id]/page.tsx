@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, use } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -47,8 +47,8 @@ const STATUS_STYLES: Record<string, string> = {
   expired: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
 
-export default function QuotationDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function QuotationDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const router = useRouter();
 
   const [quote, setQuote] = useState<Quotation | null>(null);

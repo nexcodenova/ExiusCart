@@ -259,13 +259,12 @@ def _bg_push_product(product_id: int, shop_id: int):
                     ChannelProductStatus.channel_type == conn.channel_type,
                 ).first()
                 if existing:
-                    # Preserve approval. A routine update (price, stock, image) on an
-                    # already-approved product must NOT bounce it back to pending review.
-                    # Only a previously REJECTED product is re-submitted after the fix.
-                    if existing.status == "rejected":
-                        existing.status = "pending_review"
-                        existing.rejection_reason = None
-                    # approved → stays approved; pending → stays pending
+                    # Any content update (name, price, images, description) must go back
+                    # to pending_review so TheDersi admin can approve the changes before
+                    # they go live. Stock-only changes use _bg_push_stock and never touch
+                    # this status, so those remain approved.
+                    existing.status = "pending_review"
+                    existing.rejection_reason = None
                 else:
                     db.add(ChannelProductStatus(
                         product_id=product_id,
