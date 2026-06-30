@@ -10,6 +10,14 @@ import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
+interface BundleComponentLine {
+  product_name: string;
+  qty_per_bundle: number;
+  total_qty: number;
+  variant_size: string | null;
+  variant_color: string | null;
+}
+
 interface EnrichedItem {
   id: number;
   product_id: number;
@@ -18,6 +26,8 @@ interface EnrichedItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  is_bundle: boolean;
+  bundle_components: BundleComponentLine[];
 }
 
 interface ChannelMeta {
@@ -194,7 +204,12 @@ export default function OrderDetailsPage() {
                   <Package className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{item.product_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">{item.product_name}</p>
+                    {item.is_bundle && (
+                      <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded font-medium">Bundle</span>
+                    )}
+                  </div>
                   {item.product_sku && <p className="text-xs text-muted-foreground font-mono">{item.product_sku}</p>}
                   {detail && (detail.size || detail.color) && (
                     <div className="flex gap-2 mt-1">
@@ -203,6 +218,20 @@ export default function OrderDetailsPage() {
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">Qty: {item.quantity} × {fmt(item.unit_price)}</p>
+                  {item.is_bundle && item.bundle_components.length > 0 && (
+                    <div className="mt-2 pl-3 border-l-2 border-primary/20 space-y-1">
+                      {item.bundle_components.map((c, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {c.product_name}
+                            {c.variant_size && ` · ${c.variant_size}`}
+                            {c.variant_color && ` · ${c.variant_color}`}
+                          </span>
+                          <span className="text-xs font-medium text-foreground ml-auto shrink-0">×{c.total_qty}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <span className="text-sm font-semibold text-foreground shrink-0">{fmt(item.total_price)}</span>
               </div>

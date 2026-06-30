@@ -19,6 +19,7 @@ from app.api.v1.endpoints.channels import trigger_stock_sync
 from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_new_order_email
 from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
 from app.models.subscription import Subscription
+from app.models.bundle_component import BundleComponent
 from datetime import timezone
 
 router = APIRouter()
@@ -367,10 +368,22 @@ async def get_order_details(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Enrich items with product names
+    # Enrich items with product names + bundle components
     enriched_items = []
     for item in order.items:
         product = db.query(Product).filter(Product.id == item.product_id).first()
+        is_bundle = bool(product and product.is_bundle)
+        components = []
+        if is_bundle:
+            for c in db.query(BundleComponent).filter(BundleComponent.bundle_product_id == product.id).all():
+                cp = db.query(Product).filter(Product.id == c.component_product_id).first()
+                components.append({
+                    "product_name": cp.name if cp else f"Product #{c.component_product_id}",
+                    "qty_per_bundle": c.quantity,
+                    "total_qty": c.quantity * item.quantity,
+                    "variant_size": c.variant_size,
+                    "variant_color": c.variant_color,
+                })
         enriched_items.append({
             "id": item.id,
             "product_id": item.product_id,
@@ -379,6 +392,8 @@ async def get_order_details(
             "quantity": item.quantity,
             "unit_price": float(item.unit_price),
             "total_price": float(item.total_price),
+            "is_bundle": is_bundle,
+            "bundle_components": components,
         })
 
     # Channel meta (TheDersi commission, delivery, etc.)
