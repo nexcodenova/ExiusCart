@@ -55,13 +55,7 @@ def _get_shop(shop_id: int, user: User, db: Session) -> Shop:
 
 
 def _is_premium(shop: Shop, db: Session) -> bool:
-    sub = db.query(Subscription).filter(
-        Subscription.shop_id == shop.id,
-        Subscription.status == "active",
-    ).first()
-    if not sub:
-        return False
-    return sub.plan_type in ("premium", "thedersi_pro")
+    return True  # quotation email sending is available on all plans
 
 
 def _next_quote_number(shop_id: int, db: Session) -> str:
