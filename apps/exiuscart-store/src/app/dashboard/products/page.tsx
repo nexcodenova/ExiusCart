@@ -1359,18 +1359,6 @@ function ProductModal({
               )}
             </div>
 
-            {/* ── Bundle Builder ─────────────────────────────────────── */}
-            <div className="px-6 pb-4">
-              <BundleBuilder
-                enabled={isBundleEnabled}
-                onToggle={setIsBundleEnabled}
-                components={bundleComponents}
-                onChange={setBundleComponents}
-                availableProducts={allProducts.map(p => ({ id: p.id, name: p.name }))}
-                currentProductId={product?.id}
-              />
-            </div>
-
             {/* ── RIGHT: Sidebar ─────────────────────────────────────── */}
             <div className="p-6 space-y-6 bg-muted/20">
 
@@ -1537,6 +1525,18 @@ function ProductModal({
               </div>
 
             </div>
+          </div>
+
+          {/* ── Bundle / Kit ── full-width section below both columns ── */}
+          <div className="border-t border-border px-6 py-5">
+            <BundleBuilder
+              enabled={isBundleEnabled}
+              onToggle={setIsBundleEnabled}
+              components={bundleComponents}
+              onChange={setBundleComponents}
+              availableProducts={allProducts.map(p => ({ id: p.id, name: p.name }))}
+              currentProductId={product?.id}
+            />
           </div>
         </form>
       </div>

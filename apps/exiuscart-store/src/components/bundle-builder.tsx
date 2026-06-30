@@ -30,6 +30,7 @@ function emptyComponent(): BundleComponent {
 
 export function BundleBuilder({ enabled, onToggle, components, onChange, availableProducts, currentProductId }: BundleBuilderProps) {
   const selectable = availableProducts.filter(p => p.id !== currentProductId);
+  const noProducts = selectable.length === 0;
 
   function update(index: number, patch: Partial<BundleComponent>) {
     onChange(components.map((c, i) => i === index ? { ...c, ...patch } : c));
@@ -53,15 +54,18 @@ export function BundleBuilder({ enabled, onToggle, components, onChange, availab
             Bundle / Kit Product
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Combine multiple products into one sellable bundle. Stock deducted from each component on sale.
+            {noProducts
+              ? 'Save this product first, then add other products to create a bundle.'
+              : 'Combine multiple products into one sellable bundle. Stock deducted from each component on sale.'}
           </p>
         </div>
         <button
           type="button"
-          onClick={() => onToggle(!enabled)}
-          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${enabled ? 'bg-primary' : 'bg-muted'}`}
+          onClick={() => !noProducts && onToggle(!enabled)}
+          disabled={noProducts}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${enabled && !noProducts ? 'bg-primary' : 'bg-muted'} ${noProducts ? 'opacity-40 cursor-not-allowed' : ''}`}
         >
-          <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+          <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${enabled && !noProducts ? 'translate-x-6' : 'translate-x-1'}`} />
         </button>
       </div>
 
