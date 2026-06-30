@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles
 
 api_router = APIRouter()
 
@@ -28,3 +28,4 @@ api_router.include_router(reservations.router, prefix="", tags=["Reservations"])
 api_router.include_router(affiliates.router, prefix="", tags=["Affiliates"])
 api_router.include_router(quotations.router, prefix="", tags=["Quotations"])
 api_router.include_router(usage.router, prefix="", tags=["Usage"])
+api_router.include_router(bundles.router, prefix="", tags=["Bundles"])

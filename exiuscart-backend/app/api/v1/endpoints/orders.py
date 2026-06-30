@@ -97,6 +97,9 @@ async def create_order(
 
         # Update inventory
         product.quantity = max(0, product.quantity - item.quantity)
+        if product.is_bundle:
+            from app.api.v1.endpoints.bundles import deduct_bundle_components
+            deduct_bundle_components(product.id, item.quantity, db)
 
     # Apply discount before tax
     discount_amount = Decimal(str(order_data.discount_amount or 0))

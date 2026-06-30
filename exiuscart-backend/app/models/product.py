@@ -48,6 +48,7 @@ class Product(Base):
     is_featured = Column(Boolean, default=False)
     is_trending = Column(Boolean, default=False)     # pinned to "Trending" section
     list_on_marketplace = Column(Boolean, default=True, server_default="true")  # push to TheDersi/marketplace channels (off = POS/local only)
+    is_bundle = Column(Boolean, default=False, server_default="false", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

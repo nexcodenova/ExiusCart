@@ -7,8 +7,9 @@ import {
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi, bundlesApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
+import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -795,6 +796,10 @@ function ProductModal({
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
   const [variantImageError, setVariantImageError] = useState<string>('');
 
+  // Bundle state
+  const [isBundleEnabled, setIsBundleEnabled] = useState(product?.is_bundle ?? false);
+  const [bundleComponents, setBundleComponents] = useState<BundleComponent[]>([]);
+
   // TheDersi channel category state
   const [theDersiConnection, setTheDersiConnection] = useState<{ id: number } | null>(null);
   const [theDersiCategories, setTheDersiCategories] = useState<{ id: string; name: string; parent_id?: string | null }[]>([]);
@@ -835,6 +840,18 @@ function ProductModal({
           image_url: v.image_url ?? '',
         }))))
         .catch(() => {});
+
+      if (product.is_bundle) {
+        bundlesApi.getComponents(shopId, String(product.id))
+          .then(res => setBundleComponents((res.data ?? []).map((c: any) => ({
+            component_product_id: c.component_product_id,
+            component_product_name: c.component_product_name,
+            variant_size: c.variant_size ?? '',
+            variant_color: c.variant_color ?? '',
+            quantity: c.quantity,
+          }))))
+          .catch(() => {});
+      }
     }
 
     // Auto-refresh TheDersi categories every time form opens
@@ -1019,6 +1036,14 @@ function ProductModal({
           channel_category_id: theDersiCategoryId,
           channel_category_name: theDersiCategoryName,
         }).catch(() => {}));
+      }
+
+      // Save bundle components if bundle is enabled
+      if (isBundleEnabled && bundleComponents.length > 0) {
+        const validComponents = bundleComponents.filter(c => c.component_product_id > 0);
+        tasks.push(bundlesApi.saveComponents(shopId, productId, validComponents).catch(() => {}));
+      } else if (!isBundleEnabled && product?.is_bundle) {
+        tasks.push(bundlesApi.saveComponents(shopId, productId, []).catch(() => {}));
       }
 
       await Promise.all(tasks);
@@ -1330,6 +1355,18 @@ function ProductModal({
                   No custom fields yet. Go to <strong>Settings → Product Fields</strong> to add fields like Brand, IMEI, Color.
                 </p>
               )}
+            </div>
+
+            {/* ── Bundle Builder ─────────────────────────────────────── */}
+            <div className="px-6 pb-4">
+              <BundleBuilder
+                enabled={isBundleEnabled}
+                onToggle={setIsBundleEnabled}
+                components={bundleComponents}
+                onChange={setBundleComponents}
+                availableProducts={products.map(p => ({ id: p.id!, name: p.name }))}
+                currentProductId={product?.id}
+              />
             </div>
 
             {/* ── RIGHT: Sidebar ─────────────────────────────────────── */}
