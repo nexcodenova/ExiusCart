@@ -11,7 +11,7 @@ export interface BundleComponent {
 }
 
 interface Product {
-  id: number;
+  id: number | string;
   name: string;
 }
 
@@ -21,7 +21,7 @@ interface BundleBuilderProps {
   components: BundleComponent[];
   onChange: (components: BundleComponent[]) => void;
   availableProducts: Product[];
-  currentProductId?: number;
+  currentProductId?: number | string;
 }
 
 function emptyComponent(): BundleComponent {
