@@ -703,6 +703,9 @@ async def receive_order_webhook(
             else:
                 product.quantity = max(0, product.quantity - item.quantity)
             stock_changed_product_ids.add(product.id)
+            if product.is_bundle:
+                from app.api.v1.endpoints.bundles import deduct_bundle_components
+                deduct_bundle_components(product.id, item.quantity, db)
 
     # Save channel-specific meta (commission, delivery, variants)
     # channel_order_id already normalized above (incoming_chan_id)
