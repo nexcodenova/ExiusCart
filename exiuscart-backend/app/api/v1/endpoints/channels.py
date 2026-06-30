@@ -169,12 +169,13 @@ def _product_payload(
     }
 
 
-def _push_one(payload: dict, conn: ChannelConnection):
-    """HTTP call to push/update a product on the connected channel."""
+def _push_one(payload: dict, conn: ChannelConnection) -> str | None:
+    """Push/update a product on the channel. Returns the 'status' field from the
+    channel's response body (e.g. 'pending_review' or 'active'), or None on error."""
     api_url = _channel_url(conn)
     if not api_url:
         logger.warning(f"[CHANNEL PUSH] No API URL for channel {conn.channel_type} conn={conn.id}")
-        return
+        return None
     headers = {"X-Api-Key": conn.channel_api_key, "Content-Type": "application/json"}
     pid = payload["exiuscart_product_id"]
     try:
@@ -184,8 +185,17 @@ def _push_one(payload: dict, conn: ChannelConnection):
             if r.status_code == 404:
                 r2 = client.post(f"{api_url}/exiuscart/products", json=payload, headers=headers)
                 logger.info(f"[CHANNEL PUSH] POST {api_url}/exiuscart/products → {r2.status_code}")
+                try:
+                    return r2.json().get("status")
+                except Exception:
+                    return None
+            try:
+                return r.json().get("status")
+            except Exception:
+                return None
     except Exception as exc:
         logger.error(f"[CHANNEL PUSH] {api_url} product={pid} error: {exc}")
+        return None
 
 
 def _delete_one(product_id: int, conn: ChannelConnection):
@@ -252,25 +262,31 @@ def _bg_push_product(product_id: int, shop_id: int):
             ).first()
             cat_id = pcc.channel_category_id if pcc else None
             sub_cat_id = pcc.channel_sub_category_id if pcc else None
-            _push_one(_product_payload(product, shop.currency, conn.channel_type, cat_id, sub_cat_id), conn)
+            channel_status = _push_one(
+                _product_payload(product, shop.currency, conn.channel_type, cat_id, sub_cat_id), conn
+            )
             if conn.channel_type in MARKETPLACE_CHANNELS:
                 existing = db.query(ChannelProductStatus).filter(
                     ChannelProductStatus.product_id == product_id,
                     ChannelProductStatus.channel_type == conn.channel_type,
                 ).first()
+                # Use TheDersi's response status directly.
+                # "pending_review" = sensitive fields changed (name/desc/images) → needs admin review.
+                # "active" = non-sensitive update (price/stock/category) → goes live immediately.
+                # None = error or non-marketplace channel → default to pending_review for new products.
+                new_status = channel_status if channel_status in ("pending_review", "active") else "pending_review"
                 if existing:
-                    # Any content update (name, price, images, description) must go back
-                    # to pending_review so TheDersi admin can approve the changes before
-                    # they go live. Stock-only changes use _bg_push_stock and never touch
-                    # this status, so those remain approved.
-                    existing.status = "pending_review"
-                    existing.rejection_reason = None
+                    if channel_status == "active":
+                        existing.status = "active"
+                    else:
+                        existing.status = "pending_review"
+                        existing.rejection_reason = None
                 else:
                     db.add(ChannelProductStatus(
                         product_id=product_id,
                         shop_id=shop_id,
                         channel_type=conn.channel_type,
-                        status="pending_review",
+                        status=new_status,
                     ))
         db.commit()
     except Exception as exc:
