@@ -67,9 +67,10 @@ const GROUPS: MenuGroup[] = [
     icon: DollarSign,
     accent: 'text-orange-500',
     items: [
-      { href: '/dashboard/accounting', label: 'Accounting', icon: BookOpen },
+      { href: '/dashboard/accounting', label: 'Accounting', icon: BookOpen  },
       { href: '/dashboard/expenses',   label: 'Expenses',   icon: Wallet   },
       { href: '/dashboard/reports',    label: 'Reports',    icon: BarChart3},
+      { href: '/dashboard/payout',     label: 'Payout',     icon: CreditCard },
     ],
   },
   {
