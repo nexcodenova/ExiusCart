@@ -534,6 +534,13 @@ export default function ChannelsPage() {
       icon: <Instagram className="w-5 h-5 text-pink-400" />,
       badge: 'soon',
     },
+    {
+      id: 'ebay',
+      name: 'eBay',
+      description: 'List products on eBay and manage orders directly from ExiusCart.',
+      icon: <Tag className="w-5 h-5 text-blue-500" />,
+      badge: 'soon',
+    },
   ];
 
   return (

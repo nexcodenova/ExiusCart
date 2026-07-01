@@ -73,6 +73,13 @@ const GROUPS: MenuGroup[] = [
     ],
   },
   {
+    id: 'channels',
+    label: null,
+    items: [
+      { href: '/dashboard/channels', label: 'Channels', icon: Link2 },
+    ],
+  },
+  {
     id: 'marketing',
     label: 'Marketing',
     icon: Megaphone,
@@ -114,8 +121,6 @@ const GROUPS: MenuGroup[] = [
     icon: Settings,
     accent: 'text-gray-400',
     items: [
-      { href: '/dashboard/channels',            label: 'Channels',      icon: Link2      },
-      { href: '/dashboard/shopify-integration', label: 'Shopify Sync',  icon: Link2      },
       { href: '/dashboard/branches',           label: 'Branches',      icon: GitBranch  },
       { href: '/dashboard/staff',              label: 'Staff & Roles', icon: Shield     },
       { href: '/dashboard/customization',      label: 'Customization', icon: Paintbrush },
