@@ -572,9 +572,13 @@ def build_invoice_html(
 
     rows = ""
     for item in items:
+        sub_html = "".join(
+            f'<span style="display:block;font-size:11px;color:#9ca3af;margin-top:3px;">↳ {s}</span>'
+            for s in (item.get("sub_items") or [])
+        )
         rows += f"""
         <tr>
-          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;">{item['name']}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;">{item['name']}{sub_html}</td>
           <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;text-align:center;">{item['qty']}</td>
           <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;text-align:right;">{fmt(item['unit_price'])}</td>
           <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600;">{fmt(item['total'])}</td>

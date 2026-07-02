@@ -554,6 +554,9 @@ async def receive_order_webhook(
                         if prod:
                             prod.quantity = max(0, (prod.quantity or 0) - it.quantity)
                             changed_pids.add(prod.id)
+                            if prod.is_bundle:
+                                from app.api.v1.endpoints.bundles import deduct_bundle_components
+                                deduct_bundle_components(prod.id, it.quantity, db)
                 elif old_payment == "paid" and new_payment != "paid":
                     for it in existing_order.items:
                         prod = db.query(Product).filter(Product.id == it.product_id).first()
@@ -585,7 +588,7 @@ async def receive_order_webhook(
     monthly_limit = MONTHLY_ORDER_LIMITS.get(plan_type)  # None = unlimited
 
     if monthly_limit is not None:
-        # Count ALL orders this calendar month (POS + every connected channel)
+        # Count channel/online orders only — POS is excluded (unlimited)
         now = datetime.now(timezone.utc)
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         orders_this_month = (
@@ -593,6 +596,7 @@ async def receive_order_webhook(
             .filter(
                 Order.shop_id == conn.shop_id,
                 Order.created_at >= month_start,
+                Order.source != "pos",
             )
             .count()
         )

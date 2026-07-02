@@ -300,7 +300,7 @@ def get_shop_subscription(
 
         source = "thedersi" if sub.promo_code in ("partner_thedersi", "domain_thedersi") else "exiuscart"
 
-        # For limited plans, include this month's order count (POS + channel combined)
+        # Channel/online orders this month (POS excluded — always unlimited)
         order_limit = MONTHLY_ORDER_LIMITS.get(sub.plan_type)
         orders_used = None
         if order_limit is not None:
@@ -309,6 +309,7 @@ def get_shop_subscription(
             orders_used = db.query(Order).filter(
                 Order.shop_id == shop_id,
                 Order.created_at >= month_start,
+                Order.source != "pos",
             ).count()
 
         plan_info = {

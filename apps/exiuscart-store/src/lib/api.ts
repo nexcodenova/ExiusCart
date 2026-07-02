@@ -81,7 +81,7 @@ export const productsApi = {
 
 // ── Orders ────────────────────────────────────────────
 export const ordersApi = {
-  getAll: (shopId: string, params?: { status?: string; search?: string }) =>
+  getAll: (shopId: string, params?: { status?: string; search?: string; month?: string; limit?: number }) =>
     api.get(`/shops/${shopId}/orders`, { params }),
   getOne: (shopId: string, orderId: string) =>
     api.get(`/shops/${shopId}/orders/${orderId}`),

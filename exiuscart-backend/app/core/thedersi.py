@@ -36,11 +36,11 @@ THEDERSI_TIER_MAP: dict = {
 }
 
 # Monthly order limits per plan (None = unlimited)
-# Counts ALL orders from any source (POS + every connected channel combined)
+# Counts channel/online orders only — POS is always unlimited regardless of plan
 MONTHLY_ORDER_LIMITS: dict = {
-    "free_trial":     50,    # matches pricing page
-    "thedersi_basic": 50,
-    "starter":        1000,  # matches pricing page
+    "free_trial":     50,
+    "thedersi_basic": 100,
+    "starter":        1000,
     "thedersi_pro":   None,  # unlimited
     "premium":        None,  # unlimited
 }

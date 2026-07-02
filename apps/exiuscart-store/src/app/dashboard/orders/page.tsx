@@ -1,11 +1,24 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, ChevronRight, CheckCircle2, PackageCheck, XCircle, Copy, Check } from 'lucide-react';
+import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
+
+function getMonthOptions() {
+  const options: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < 13; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = i === 0 ? `This month (${d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })})` : d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    options.push({ value, label });
+  }
+  return options;
+}
+const MONTH_OPTIONS = getMonthOptions();
 
 interface OrderItem {
   id: number;
@@ -194,30 +207,84 @@ function CopyBtn({ value }: { value: string }) {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState(MONTH_OPTIONS[0].value);
   const [shipTarget, setShipTarget] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
-  const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
+  const [shopId, setShopId] = useState('');
   const { fmt } = useCurrency();
+
+  useEffect(() => { setShopId(localStorage.getItem('shop_id') ?? ''); }, []);
 
   const fetchOrders = useCallback(async () => {
     if (!shopId) return;
     setLoading(true);
+    setError('');
     try {
       const res = await ordersApi.getAll(shopId, {
         status: statusFilter !== 'all' ? statusFilter : undefined,
         search: searchQuery || undefined,
+        month: monthFilter || undefined,
       });
-      setOrders(res.data);
-    } catch {
+      setOrders(res.data ?? []);
+    } catch (e: any) {
       setOrders([]);
+      const msg = e?.response?.data?.detail ?? e?.message ?? 'Failed to load orders. Check your connection.';
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      console.error('[Orders] fetch error:', e?.response?.data ?? e);
     } finally {
       setLoading(false);
     }
-  }, [shopId, searchQuery, statusFilter]);
+  }, [shopId, searchQuery, statusFilter, monthFilter]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const handleExcelExport = async () => {
+    if (!shopId) return;
+    setExporting(true);
+    try {
+      const res = await ordersApi.getAll(shopId, { limit: 2000 });
+      const allOrders: Order[] = res.data ?? [];
+      const groups: Record<string, Order[]> = {};
+      for (const o of allOrders) {
+        const d = new Date(o.created_at);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(o);
+      }
+      const XLSX = (await import('xlsx')) as any;
+      const wb = XLSX.utils.book_new();
+      const sortedMonths = Object.keys(groups).sort().reverse();
+      for (const mk of sortedMonths) {
+        const d = new Date(mk + '-01');
+        const sheetName = d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+        const rows = groups[mk].map((o) => ({
+          'Order #': o.order_number,
+          'Date': new Date(o.created_at).toLocaleDateString('en-GB'),
+          'Time': new Date(o.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          'Customer': o.customer_name ?? '',
+          'Phone': o.customer_phone ?? '',
+          'Source': o.source,
+          'Status': o.status,
+          'Payment': o.payment_status,
+          'Items': o.items.length,
+          'Subtotal': Number(o.subtotal),
+          'Discount': Number(o.discount_amount),
+          'Tax': Number(o.tax_amount),
+          'Total': Number(o.total),
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), sheetName);
+      }
+      XLSX.writeFile(wb, `orders-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (e) {
+      console.error('Export failed:', e);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleShipped = (updated: Order) => {
     setOrders(prev => prev.map(o => o.id === updated.id ? updated : o));
@@ -240,10 +307,28 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Orders</h1>
-        <p className="text-sm text-muted-foreground">Track and manage all your orders</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Orders</h1>
+          <p className="text-sm text-muted-foreground">Track and manage all your orders</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleExcelExport}
+          disabled={exporting}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition shrink-0"
+        >
+          <Download className="w-4 h-4" />
+          {exporting ? 'Exporting…' : 'Export Excel'}
+        </button>
       </div>
+
+      {error && (
+        <div className="flex items-start gap-3 bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-xl px-4 py-3">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <UsageBanner shopId={shopId} show={['invoice_emails', 'orders']} />
 
@@ -276,6 +361,20 @@ export default function OrdersPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
           />
+        </div>
+        <div className="relative">
+          <select
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            aria-label="Filter by month"
+            className="appearance-none w-full sm:w-52 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+          >
+            <option value="">All Time</option>
+            {MONTH_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
         </div>
         <div className="relative">
           <select

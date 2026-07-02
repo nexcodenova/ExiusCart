@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pydantic import BaseModel
 import uuid
@@ -20,7 +20,6 @@ from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_n
 from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
 from app.models.subscription import Subscription
 from app.models.bundle_component import BundleComponent
-from datetime import timezone
 
 router = APIRouter()
 
@@ -52,11 +51,11 @@ async def create_order(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
-    # ── Monthly order limit check (all plans with a cap, all order sources) ──
+    # ── Monthly order limit check — POS is always unlimited ──────────────────
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else None
     monthly_limit = MONTHLY_ORDER_LIMITS.get(plan_type)  # None = unlimited
-    if monthly_limit is not None:
+    if monthly_limit is not None and order_data.source != "pos":
         now = datetime.now(timezone.utc)
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         orders_this_month = db.query(Order).filter(
@@ -79,6 +78,31 @@ async def create_order(
     # Calculate totals (use Decimal throughout to avoid float/Decimal type errors)
     subtotal = Decimal('0')
     order_items = []
+
+    # Pre-flight stock check — validate all items before touching any inventory
+    for item in order_data.items:
+        pf_product = db.query(Product).filter(Product.id == item.product_id).first()
+        if not pf_product:
+            continue  # main loop below raises 404
+        if (pf_product.quantity or 0) < item.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient stock for '{pf_product.name}': "
+                       f"{pf_product.quantity or 0} available, {item.quantity} requested",
+            )
+        if pf_product.is_bundle:
+            components = db.query(BundleComponent).filter(
+                BundleComponent.bundle_product_id == pf_product.id
+            ).all()
+            for c in components:
+                comp = db.query(Product).filter(Product.id == c.component_product_id).first()
+                needed = c.quantity * item.quantity
+                if comp and (comp.quantity or 0) < needed:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Insufficient stock for bundle component '{comp.name}': "
+                               f"{comp.quantity or 0} available, {needed} needed",
+                    )
 
     for item in order_data.items:
         product = db.query(Product).filter(Product.id == item.product_id).first()
@@ -205,8 +229,9 @@ async def get_orders(
     status: Optional[str] = None,
     source: Optional[str] = None,
     search: Optional[str] = None,
+    month: Optional[str] = None,  # format: "2025-01"
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(200, ge=1, le=2000),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -218,6 +243,15 @@ async def get_orders(
         query = query.filter(Order.source == source)
     if search:
         query = query.filter(Order.order_number.ilike(f"%{search}%"))
+    if month:
+        try:
+            year, mon = int(month[:4]), int(month[5:7])
+            month_start = datetime(year, mon, 1, tzinfo=timezone.utc)
+            next_mon, next_yr = (mon + 1, year) if mon < 12 else (1, year + 1)
+            month_end = datetime(next_yr, next_mon, 1, tzinfo=timezone.utc)
+            query = query.filter(Order.created_at >= month_start, Order.created_at < month_end)
+        except (ValueError, IndexError):
+            pass
 
     orders = query.order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
 
@@ -474,16 +508,33 @@ async def send_invoice(
     if not recipient:
         raise HTTPException(status_code=400, detail="No customer email available. Pass customer_email in the request.")
 
-    # Build enriched items
+    # Build enriched items (include bundle component breakdown as sub-items)
     items = []
     for item in order.items:
         product = db.query(Product).filter(Product.id == item.product_id).first()
-        items.append({
+        item_dict: dict = {
             "name": product.name if product else f"Product #{item.product_id}",
             "qty": item.quantity,
             "unit_price": float(item.unit_price),
             "total": float(item.total_price),
-        })
+        }
+        if product and product.is_bundle:
+            components = db.query(BundleComponent).filter(
+                BundleComponent.bundle_product_id == product.id
+            ).all()
+            sub_items = []
+            for c in components:
+                comp = db.query(Product).filter(Product.id == c.component_product_id).first()
+                if comp:
+                    label = comp.name
+                    parts = [p for p in [c.variant_size, c.variant_color] if p]
+                    if parts:
+                        label += f" ({' / '.join(parts)})"
+                    label += f" × {c.quantity * item.quantity}"
+                    sub_items.append(label)
+            if sub_items:
+                item_dict["sub_items"] = sub_items
+        items.append(item_dict)
 
     # Delivery: orders of 10,000+ get free delivery as a gift from TheDersi;
     # smaller orders show the delivery charge the seller set at ship time.

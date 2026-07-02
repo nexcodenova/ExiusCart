@@ -300,6 +300,12 @@ def fulfill_reservation(
 
     # Create order item and reduce stock (only when product is linked)
     if product:
+        if (product.quantity or 0) < r.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient stock for '{product.name}': "
+                       f"{product.quantity or 0} available, {r.quantity} needed",
+            )
         db.add(OrderItem(
             order_id=order.id,
             product_id=product.id,
