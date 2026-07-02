@@ -32,10 +32,12 @@ if echo "$CHANGED" | grep -q "exiuscart-backend/" || [ "$CHANGED" = "all" ]; the
 fi
 
 # ── Store — build on server so RSC paths match ────────────────────────────────
+# NOTE: we do NOT rm -rf .next — old build stays live until pm2 reload completes.
+# Next.js uses BUILD_ID so stale files from previous builds are never served.
+# Keeping .next also preserves the SWC cache, cutting build time roughly in half.
 if echo "$CHANGED" | grep -q "apps/exiuscart-store/" || [ "$CHANGED" = "all" ]; then
   echo "--- Store (building on server) ---"
   cd "$PROJECT_DIR"
-  rm -rf apps/exiuscart-store/.next
   npm run build --workspace=apps/exiuscart-store
   if pm2 describe exiuscart-store > /dev/null 2>&1; then
     pm2 reload exiuscart-store --update-env
@@ -49,7 +51,6 @@ fi
 if echo "$CHANGED" | grep -q "apps/exiuscart-admin/" || [ "$CHANGED" = "all" ]; then
   echo "--- Admin (building on server) ---"
   cd "$PROJECT_DIR"
-  rm -rf apps/exiuscart-admin/.next
   npm run build --workspace=apps/exiuscart-admin
   if pm2 describe exiuscart-admin > /dev/null 2>&1; then
     pm2 reload exiuscart-admin --update-env
@@ -63,7 +64,6 @@ fi
 if echo "$CHANGED" | grep -q "apps/exiuscart-affiliates/" || [ "$CHANGED" = "all" ]; then
   echo "--- Affiliates (building on server) ---"
   cd "$PROJECT_DIR"
-  rm -rf apps/exiuscart-affiliates/.next
   npm run build --workspace=apps/exiuscart-affiliates
   if pm2 describe exiuscart-affiliates > /dev/null 2>&1; then
     pm2 reload exiuscart-affiliates --update-env
