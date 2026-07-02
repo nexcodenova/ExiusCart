@@ -483,6 +483,7 @@ export default function ProductsPage() {
                           </div>
                           <div>
                             <span className="font-medium text-foreground">{product.name}</span>
+                            <p className="text-xs text-muted-foreground/60 font-mono">#{product.id}</p>
                             {channelStatuses[product.id]?.thedersi && (() => {
                               const s = channelStatuses[product.id].thedersi;
                               const badge = s.status === 'approved'
@@ -560,7 +561,7 @@ export default function ProductsPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground truncate">{product.name}</h3>
-                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{product.sku}</p>
+                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{product.sku}<span className="text-muted-foreground/50"> · #{product.id}</span></p>
                       {channelStatuses[product.id]?.thedersi && (() => {
                         const s = channelStatuses[product.id].thedersi;
                         const badge = s.status === 'approved'

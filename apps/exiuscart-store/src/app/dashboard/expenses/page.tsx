@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Plus, Wallet, X, Trash2, ChevronDown } from 'lucide-react';
-import { expensesApi } from '@/lib/api';
+import { expensesApi, productsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface Expense {
@@ -14,7 +14,7 @@ interface Expense {
   paymentMethod: string;
 }
 
-const EXPENSE_CATEGORIES = ['Rent', 'Utilities', 'Supplies', 'Marketing', 'Salary', 'Transport', 'Other'];
+const EXPENSE_CATEGORIES = ['Rent', 'Utilities', 'Supplies / Product', 'Marketing', 'Salary', 'Transport', 'Other'];
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -25,6 +25,23 @@ export default function ExpensesPage() {
   const [formData, setFormData] = useState({ category: EXPENSE_CATEGORIES[0], description: '', amount: '', date: new Date().toISOString().split('T')[0], paymentMethod: 'cash' });
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const { fmt, sym } = useCurrency();
+
+  // Product picker state for "Supplies / Product" category
+  const [prodList, setProdList] = useState<{ id: string; name: string; cost_price: number }[]>([]);
+  const [selectedProd, setSelectedProd] = useState<{ id: string; name: string; cost_price: number } | null>(null);
+  const [stockCount, setStockCount] = useState('');
+  const [unitCost, setUnitCost] = useState('');
+
+  const isSuppliesProduct = formData.category === 'Supplies / Product';
+  const calculatedAmount = isSuppliesProduct && unitCost && stockCount
+    ? Number(unitCost) * Number(stockCount)
+    : null;
+
+  const resetProductFields = () => {
+    setSelectedProd(null);
+    setStockCount('');
+    setUnitCost('');
+  };
 
   const fetchExpenses = () => {
     if (!shopId) return;
@@ -38,12 +55,27 @@ export default function ExpensesPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    const finalAmount = calculatedAmount ?? Number(formData.amount);
     try {
-      await expensesApi.create(shopId, { ...formData, amount: Number(formData.amount) });
+      await expensesApi.create(shopId, { ...formData, amount: finalAmount });
       fetchExpenses();
     } catch {}
     setShowAddModal(false);
     setFormData({ category: EXPENSE_CATEGORIES[0], description: '', amount: '', date: new Date().toISOString().split('T')[0], paymentMethod: 'cash' });
+    resetProductFields();
+  };
+
+  const openAddModal = () => {
+    if (shopId && prodList.length === 0) {
+      productsApi.getAll(shopId, {}).then((r) => {
+        setProdList((r.data ?? []).map((p: any) => ({
+          id: String(p.id),
+          name: p.name,
+          cost_price: p.cost_price ?? 0,
+        })));
+      }).catch(() => {});
+    }
+    setShowAddModal(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -68,7 +100,7 @@ export default function ExpensesPage() {
           <h1 className="text-2xl font-bold text-foreground">Expenses</h1>
           <p className="text-muted-foreground text-sm">Track your business expenses</p>
         </div>
-        <button type="button" onClick={() => setShowAddModal(true)}
+        <button type="button" onClick={openAddModal}
           className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition">
           <Plus className="w-4 h-4" /> Add Expense
         </button>
@@ -110,7 +142,7 @@ export default function ExpensesPage() {
             <h3 className="font-semibold text-foreground mb-1">{searchQuery || selectedCategory !== 'All' ? 'No expenses found' : 'No expenses recorded'}</h3>
             <p className="text-sm text-muted-foreground mb-5">{searchQuery || selectedCategory !== 'All' ? 'Try adjusting your filters' : 'Start tracking your business expenses'}</p>
             {!searchQuery && selectedCategory === 'All' && (
-              <button type="button" onClick={() => setShowAddModal(true)}
+              <button type="button" onClick={openAddModal}
                 className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition">
                 <Plus className="w-4 h-4" /> Add First Expense
               </button>
@@ -148,26 +180,100 @@ export default function ExpensesPage() {
           <div className="bg-card rounded-xl border border-border w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h2 className="text-lg font-semibold text-foreground">Add Expense</h2>
-              <button type="button" onClick={() => setShowAddModal(false)} aria-label="Close" className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition"><X className="w-5 h-5" /></button>
+              <button type="button" onClick={() => { setShowAddModal(false); resetProductFields(); }} aria-label="Close" className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleAdd} className="p-4 space-y-4">
               <div>
                 <label className="text-sm text-muted-foreground mb-1.5 block">Category *</label>
-                <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} required
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground">
+                <select
+                  value={formData.category}
+                  onChange={(e) => {
+                    const cat = e.target.value;
+                    setFormData({ ...formData, category: cat });
+                    if (cat !== 'Supplies / Product') resetProductFields();
+                  }}
+                  required
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                >
                   {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+
+              {/* Product picker — only for Supplies / Product */}
+              {isSuppliesProduct && (
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">Product</label>
+                  <select
+                    value={selectedProd?.id ?? ''}
+                    onChange={(e) => {
+                      const prod = prodList.find(p => p.id === e.target.value) ?? null;
+                      setSelectedProd(prod);
+                      if (prod) {
+                        setFormData(prev => ({ ...prev, description: prod.name }));
+                        setUnitCost(String(prod.cost_price));
+                      }
+                    }}
+                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                  >
+                    <option value="">Select a product...</option>
+                    {prodList.map(p => (
+                      <option key={p.id} value={p.id}>#{p.id} — {p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="text-sm text-muted-foreground mb-1.5 block">Description *</label>
                 <input type="text" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} required
                   placeholder="e.g. Shop rent January" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
               </div>
+
+              {/* Cost price + stock count — only for Supplies / Product */}
+              {isSuppliesProduct && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Cost Price ({sym})</label>
+                    <input
+                      type="number"
+                      value={unitCost}
+                      onChange={(e) => setUnitCost(e.target.value)}
+                      min="0"
+                      placeholder="0"
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Stock Count</label>
+                    <input
+                      type="number"
+                      value={stockCount}
+                      onChange={(e) => setStockCount(e.target.value)}
+                      min="0"
+                      placeholder="0"
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">Amount ({sym}) *</label>
-                  <input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required min="0"
-                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                  <label className="text-sm text-muted-foreground mb-1.5 block">
+                    Amount ({sym}) *
+                    {calculatedAmount !== null && <span className="ml-1 text-primary font-semibold">= {calculatedAmount}</span>}
+                  </label>
+                  {calculatedAmount !== null ? (
+                    <input
+                      type="number"
+                      value={calculatedAmount}
+                      readOnly
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg outline-none text-foreground opacity-60 cursor-not-allowed"
+                    />
+                  ) : (
+                    <input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required min="0"
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                  )}
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground mb-1.5 block">Date *</label>
@@ -185,8 +291,14 @@ export default function ExpensesPage() {
                 </select>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>
-                <button type="submit" className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium">Add Expense</button>
+                <button type="button" onClick={() => { setShowAddModal(false); resetProductFields(); }} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={isSuppliesProduct && calculatedAmount === null && !formData.amount}
+                  className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium disabled:opacity-50"
+                >
+                  Add Expense
+                </button>
               </div>
             </form>
           </div>
