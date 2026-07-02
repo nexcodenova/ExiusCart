@@ -64,7 +64,7 @@ function TheDersiPayoutPanel({ connection, shopId }: { connection: ChannelConnec
   useEffect(() => {
     channelsApi.getTheDersiInfo(shopId, connection.id)
       .then((r) => setInfo(r.data))
-      .catch(() => setError('Could not load earnings data from TheDersi.'))
+      .catch((e: any) => setError(e?.response?.data?.detail || 'Could not load earnings data from TheDersi.'))
       .finally(() => setLoading(false));
     loadPayouts();
   }, [shopId, connection.id]);

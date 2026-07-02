@@ -917,7 +917,7 @@ def mark_purchase_received(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     from sqlalchemy.orm import joinedload
-    po = db.query(PurchaseOrder).options(joinedload(PurchaseOrder.items)).filter(
+    po = db.query(PurchaseOrder).options(joinedload(PurchaseOrder.items), joinedload(PurchaseOrder.supplier)).filter(
         PurchaseOrder.id == po_id, PurchaseOrder.shop_id == shop_id
     ).first()
     if not po:
@@ -939,6 +939,21 @@ def mark_purchase_received(
 
     po.status = "received"
     po.received_at = datetime.now(timezone.utc)
+
+    # Auto-create expense entry for this stock purchase
+    from app.models.expense import Expense
+    total_cost = sum(float(item.unit_cost or 0) * int(item.quantity_received or 0) for item in po.items)
+    if total_cost > 0:
+        supplier_name = po.supplier.name if po.supplier else "Unknown Supplier"
+        db.add(Expense(
+            shop_id=shop_id,
+            category="Supplies / Product",
+            description=f"{po.po_number} – {supplier_name}",
+            amount=total_cost,
+            date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            payment_method="cash",
+        ))
+
     db.commit()
 
     # Keep the marketplace stock count in sync after restocking (guard skips POS-only products)

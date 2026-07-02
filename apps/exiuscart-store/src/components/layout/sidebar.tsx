@@ -71,6 +71,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/expenses',   label: 'Expenses',   icon: Wallet   },
       { href: '/dashboard/reports',    label: 'Reports',    icon: BarChart3},
       { href: '/dashboard/payout',     label: 'Payout',     icon: CreditCard },
+      { href: '/dashboard/billing',    label: 'Billing',    icon: CreditCard },
     ],
   },
   {
@@ -125,7 +126,6 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/branches',           label: 'Branches',      icon: GitBranch  },
       { href: '/dashboard/staff',              label: 'Staff & Roles', icon: Shield     },
       { href: '/dashboard/customization',      label: 'Customization', icon: Paintbrush },
-      { href: '/dashboard/billing',            label: 'Billing',       icon: CreditCard },
       { href: '/dashboard/settings',           label: 'Settings',      icon: Settings   },
     ],
   },
