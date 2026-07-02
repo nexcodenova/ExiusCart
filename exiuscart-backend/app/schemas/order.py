@@ -12,7 +12,7 @@ class OrderItemCreate(BaseModel):
 
 class OrderItemResponse(BaseModel):
     id: int
-    product_id: int
+    product_id: Optional[int] = None
     quantity: int
     unit_price: Decimal
     total_price: Decimal

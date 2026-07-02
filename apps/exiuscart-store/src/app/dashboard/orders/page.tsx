@@ -22,7 +22,7 @@ const MONTH_OPTIONS = getMonthOptions();
 
 interface OrderItem {
   id: number;
-  product_id: number;
+  product_id: number | null;
   quantity: number;
   unit_price: number;
   total_price: number;
