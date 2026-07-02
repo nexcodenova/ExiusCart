@@ -328,13 +328,13 @@ export default function POSPage() {
           <div className="w-14 h-14 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center mx-auto mb-4">
             <ShoppingCart className="w-7 h-7 text-orange-400" />
           </div>
-          <h2 className="text-xl font-bold text-foreground mb-2">Monthly Order Limit Reached</h2>
+          <h2 className="text-xl font-bold text-foreground mb-2">Channel Order Limit Reached</h2>
           <p className="text-muted-foreground text-sm mb-1">
             You have used <span className="text-foreground font-bold">{orderLimitError.used}</span> of your{' '}
-            <span className="text-foreground font-bold">{orderLimitError.limit}</span> orders this month.
+            <span className="text-foreground font-bold">{orderLimitError.limit}</span> channel orders this month.
           </p>
           <p className="text-muted-foreground text-sm mb-5">
-            Upgrade your plan to get more orders per month. Contact support or visit the Pricing page.
+            This limit applies to TheDersi and other connected channels. Upgrade your plan for more. POS sales are always unlimited.
           </p>
           <button
             onClick={() => setOrderLimitError(null)}
@@ -361,25 +361,11 @@ export default function POSPage() {
       <div className="flex flex-col min-h-0 lg:flex-1">
         {/* Search & Filter */}
         <div className="bg-card rounded-xl border border-border p-3 mb-4">
-          {/* Monthly order usage counter (free-tier sellers only) */}
-          {orderUsage && (
-            <div className={`mb-3 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-between gap-2 ${
-              orderUsage.used >= orderUsage.limit
-                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                : orderUsage.used >= orderUsage.limit - 10
-                ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
-                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-            }`}>
-              <span>
-                {orderUsage.used >= orderUsage.limit
-                  ? `Monthly order limit reached (${orderUsage.used}/${orderUsage.limit}). Upgrade to Premium for unlimited orders.`
-                  : `Free plan: ${orderUsage.used}/${orderUsage.limit} orders this month`}
-              </span>
-              {orderUsage.used >= orderUsage.limit && (
-                <span className="text-xs font-semibold whitespace-nowrap opacity-80">Upgrade via TheDersi</span>
-              )}
-            </div>
-          )}
+          {/* POS unlimited sales badge */}
+          <div className="mb-3 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>Unlimited POS sales — no monthly limit on in-store transactions</span>
+          </div>
 
           {/* Barcode Scanner Status Banner */}
           {barcodeFlash && (

@@ -331,6 +331,10 @@ export default function OrdersPage() {
       )}
 
       <UsageBanner shopId={shopId} show={['invoice_emails', 'orders']} />
+      <p className="text-xs text-muted-foreground -mt-3">
+        Channel order limit applies to TheDersi, Shopify, and other connected channels only.{' '}
+        <span className="text-green-600 dark:text-green-400 font-medium">POS sales are unlimited.</span>
+      </p>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

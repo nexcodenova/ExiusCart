@@ -65,7 +65,7 @@ export function UsageBanner({ shopId, show }: UsageBannerProps) {
   const all: { key: ShowKey; label: string; item: UsageItem }[] = [
     { key: 'invoice_emails' as ShowKey,   label: 'Invoice emails',   item: data.emails.invoice },
     { key: 'quotation_emails' as ShowKey, label: 'Quotation emails', item: data.emails.quotation },
-    { key: 'orders' as ShowKey,           label: 'Orders',           item: data.orders },
+    { key: 'orders' as ShowKey,           label: 'Channel orders',   item: data.orders },
     { key: 'products' as ShowKey,         label: 'Products',         item: data.products },
   ];
   const items = all.filter(x => show.includes(x.key) && x.item?.limit !== null);
