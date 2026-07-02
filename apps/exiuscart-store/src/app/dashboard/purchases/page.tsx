@@ -69,7 +69,11 @@ export default function PurchasesPage() {
       ]);
       setPurchases(poRes.data ?? []);
       setSuppliers(supRes.data ?? []);
-      setProducts(prodRes.data ?? []);
+      setProducts((prodRes.data ?? []).map((p: any) => ({
+        id: String(p.id),
+        name: p.name,
+        costPrice: p.cost_price ?? 0,
+      })));
     } catch {
       setPurchases([]);
     } finally {
@@ -298,7 +302,7 @@ export default function PurchasesPage() {
                           <select value={item.product_id} onChange={(e) => updatePoItem(i, 'product_id', e.target.value)}
                             className="w-full px-2 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary focus:outline-none appearance-none">
                             <option value="">Custom item</option>
-                            {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            {products.map(p => <option key={p.id} value={p.id}>#{p.id} — {p.name}</option>)}
                           </select>
                         </div>
                       </div>

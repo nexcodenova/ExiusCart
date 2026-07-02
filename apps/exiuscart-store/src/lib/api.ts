@@ -264,6 +264,7 @@ export const marketingApi = {
   createEmailCampaign: (shopId: string, data: any) => api.post(`/shops/${shopId}/marketing/email`, data),
   updateEmailCampaign: (shopId: string, cid: number, data: any) => api.put(`/shops/${shopId}/marketing/email/${cid}`, data),
   deleteEmailCampaign: (shopId: string, cid: number) => api.delete(`/shops/${shopId}/marketing/email/${cid}`),
+  sendEmailCampaign: (shopId: string, cid: number) => api.post(`/shops/${shopId}/marketing/email/${cid}/send`, {}),
   // SMS Campaigns
   getSmsCampaigns: (shopId: string) => api.get(`/shops/${shopId}/marketing/sms`),
   createSmsCampaign: (shopId: string, data: any) => api.post(`/shops/${shopId}/marketing/sms`, data),

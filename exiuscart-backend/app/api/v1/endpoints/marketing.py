@@ -61,6 +61,67 @@ def delete_email_campaign(shop_id: int, cid: int, current_user: User = Depends(g
     db.delete(c); db.commit()
 
 
+@router.post("/shops/{shop_id}/marketing/email/{cid}/send")
+def send_email_campaign(shop_id: int, cid: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    c = db.query(EmailCampaign).filter(EmailCampaign.id == cid, EmailCampaign.shop_id == shop_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if c.status == "sent":
+        raise HTTPException(status_code=400, detail="Campaign already sent")
+
+    # Resolve plan
+    from app.models.subscription import Subscription
+    from app.models.email_usage_log import EmailUsageLog
+    from app.models.customer import Customer
+    from app.api.v1.endpoints.usage import EMAIL_LIMITS, _get_limit, _month_start
+    from app.core.email import send_email as _send_email
+    from sqlalchemy import func as sql_func
+
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
+    plan = sub.plan_type if sub else None
+
+    limit = _get_limit(EMAIL_LIMITS["marketing"], plan)
+    if limit == 0:
+        raise HTTPException(status_code=403, detail="Marketing emails are not available on your plan. Upgrade to Starter or above.")
+
+    used = db.query(sql_func.count(EmailUsageLog.id)).filter(
+        EmailUsageLog.shop_id == shop_id,
+        EmailUsageLog.email_type == "marketing",
+        EmailUsageLog.sent_at >= _month_start(),
+    ).scalar() or 0
+
+    remaining = (limit - used) if limit is not None else None  # None = unlimited
+
+    if remaining is not None and remaining <= 0:
+        raise HTTPException(status_code=429, detail=f"Monthly marketing email limit of {limit} reached. Upgrade to continue.")
+
+    customers = db.query(Customer).filter(
+        Customer.shop_id == shop_id,
+        Customer.email.isnot(None),
+        Customer.email != "",
+    ).all()
+
+    if not customers:
+        raise HTTPException(status_code=400, detail="No customers with email addresses found.")
+
+    to_send = customers if remaining is None else customers[:remaining]
+
+    sent_count = 0
+    for customer in to_send:
+        ok = _send_email(to=customer.email, subject=c.subject, html_body=c.body_html or f"<p>{c.name}</p>")
+        if ok:
+            db.add(EmailUsageLog(shop_id=shop_id, email_type="marketing", recipient_email=customer.email, reference_id=c.id))
+            sent_count += 1
+
+    c.status = "sent"
+    c.sent_at = datetime.now(timezone.utc)
+    c.recipients_count = sent_count
+    db.commit()
+
+    return {"sent": sent_count, "total_customers": len(customers), "limited_to": len(to_send)}
+
+
 # ── SMS Campaigns ──────────────────────────────────────────────────────────────
 
 @router.get("/shops/{shop_id}/marketing/sms")
