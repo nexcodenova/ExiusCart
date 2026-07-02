@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Plus, Mail, Send, Trash2, Edit2, Eye, X, Loader2, LayoutTemplate, CheckCircle, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 import { marketingApi, usageApi } from '@/lib/api';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -192,14 +193,11 @@ export default function EmailMarketingPage() {
 
       {/* Plan gate */}
       {marketingLocked && (
-        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-5 py-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">Email marketing not available on your plan</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Upgrade to <strong>Starter</strong> (200 emails/month), <strong>TheDersi Pro</strong>, or <strong>Premium</strong> to send marketing emails to customers.
-            </p>
-          </div>
+        <div className="bg-muted border border-border rounded-xl px-5 py-3.5 flex items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">Email marketing is not available on your current plan.</p>
+          <Link href="/dashboard/billing" className="shrink-0 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+            Upgrade Plan
+          </Link>
         </div>
       )}
 
