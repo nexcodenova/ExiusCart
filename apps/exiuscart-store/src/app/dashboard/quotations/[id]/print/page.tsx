@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { quotationsApi } from '@/lib/api';
 
 interface QuotationItem {
@@ -32,8 +33,8 @@ interface Quotation {
   currency: string;
 }
 
-export default function QuotationPrintPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function QuotationPrintPage() {
+  const { id } = useParams() as { id: string };
   const [quote, setQuote] = useState<Quotation | null>(null);
 
   useEffect(() => {

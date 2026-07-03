@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import {
   ArrowLeft, Download, Send, Trash2, CheckCircle2, XCircle,
@@ -47,8 +47,8 @@ const STATUS_STYLES: Record<string, string> = {
   expired: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
 
-export default function QuotationDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function QuotationDetailPage() {
+  const { id } = useParams() as { id: string };
   const router = useRouter();
 
   const [quote, setQuote] = useState<Quotation | null>(null);
