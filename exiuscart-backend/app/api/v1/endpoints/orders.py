@@ -360,13 +360,11 @@ async def update_order_status(
 
     previous_status = order.status
 
-    # Restore stock when a PAID order is cancelled. Stock is only ever deducted
-    # once payment is confirmed, so an unpaid/pending order never reserved stock
-    # and must not be restocked (that would inflate inventory). Guarded against
-    # re-cancelling to avoid double-restocking.
+    # Restore stock on cancel regardless of payment status — stock is deducted
+    # at order creation for all orders, so it must be restored on any cancel.
+    # Guard against re-cancelling to avoid double-restocking.
     restocked_ids: set = set()
-    was_paid = (order.payment_status or "").lower() == "paid"
-    if data.status == "cancelled" and previous_status != "cancelled" and was_paid:
+    if data.status == "cancelled" and previous_status != "cancelled":
         for item in order.items:
             product = db.query(Product).filter(Product.id == item.product_id).first()
             if product:
