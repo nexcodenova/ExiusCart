@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Percent,
   Receipt, Printer, Check, ShoppingCart, Package,
-  User, Download, Scan, Zap, Loader2, Camera,
+  User, Download, Scan, Zap, Loader2, Camera, PauseCircle, PlayCircle, Clock,
 } from 'lucide-react';
 import { generateInvoicePDF, generateThermalReceipt } from '@/lib/invoice-generator';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
@@ -29,6 +29,18 @@ interface CartItem {
   price: number;
   quantity: number;
   maxStock: number;
+}
+
+interface HeldBill {
+  id: string;
+  label: string;
+  items: CartItem[];
+  discount: number;
+  discountType: 'percent' | 'fixed';
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  heldAt: number;
 }
 
 interface ShopData {
@@ -71,6 +83,49 @@ export default function POSPage() {
   const [categories, setCategories] = useState<string[]>(['All']);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [shopData, setShopData] = useState<ShopData | null>(null);
+
+  const HELD_KEY = 'pos_held_bills';
+  const [heldBills, setHeldBills] = useState<HeldBill[]>(() => {
+    try { return JSON.parse(localStorage.getItem(HELD_KEY) || '[]'); } catch { return []; }
+  });
+  const [showHeldPanel, setShowHeldPanel] = useState(false);
+
+  const saveHeld = (bills: HeldBill[]) => {
+    setHeldBills(bills);
+    localStorage.setItem(HELD_KEY, JSON.stringify(bills));
+  };
+
+  const holdBill = () => {
+    if (cart.length === 0) return;
+    const bill: HeldBill = {
+      id: Date.now().toString(),
+      label: customerName || `Bill #${heldBills.length + 1}`,
+      items: cart,
+      discount,
+      discountType,
+      customerName,
+      customerPhone,
+      customerEmail,
+      heldAt: Date.now(),
+    };
+    saveHeld([...heldBills, bill]);
+    clearCart();
+  };
+
+  const resumeBill = (id: string) => {
+    const bill = heldBills.find(b => b.id === id);
+    if (!bill) return;
+    setCart(bill.items);
+    setDiscount(bill.discount);
+    setDiscountType(bill.discountType);
+    setCustomerName(bill.customerName);
+    setCustomerPhone(bill.customerPhone);
+    setCustomerEmail(bill.customerEmail);
+    saveHeld(heldBills.filter(b => b.id !== id));
+    setShowHeldPanel(false);
+  };
+
+  const deleteHeldBill = (id: string) => saveHeld(heldBills.filter(b => b.id !== id));
 
   const shopVatSettings = shopData
     ? {
@@ -491,9 +546,9 @@ export default function POSPage() {
       </div>
 
       {/* Cart Section - Desktop only sidebar */}
-      <div className="hidden lg:flex lg:w-96 bg-card border border-border rounded-xl flex-col">
+      <div className="hidden lg:flex lg:w-96 bg-card border border-border rounded-xl flex-col relative overflow-hidden">
         {/* Cart Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
+        <div className="p-4 border-b border-border flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <h2 className="font-semibold text-foreground">Cart</h2>
@@ -501,16 +556,74 @@ export default function POSPage() {
               {cart.reduce((sum, item) => sum + item.quantity, 0)} items
             </span>
           </div>
-          {cart.length > 0 && (
-            <button
-              type="button"
-              onClick={clearCart}
-              className="text-sm text-muted-foreground hover:text-destructive transition"
-            >
-              Clear
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {heldBills.length > 0 && (
+              <button type="button" onClick={() => setShowHeldPanel(true)}
+                className="relative flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition font-medium">
+                <Clock className="w-3.5 h-3.5" />
+                Held ({heldBills.length})
+              </button>
+            )}
+            {cart.length > 0 && (
+              <>
+                <button type="button" onClick={holdBill}
+                  className="flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition font-medium">
+                  <PauseCircle className="w-3.5 h-3.5" /> Hold
+                </button>
+                <button type="button" onClick={clearCart}
+                  className="text-xs text-muted-foreground hover:text-destructive transition px-1">
+                  Clear
+                </button>
+              </>
+            )}
+          </div>
         </div>
+
+        {/* Held Bills Panel */}
+        {showHeldPanel && (
+          <div className="absolute inset-0 z-30 bg-card rounded-xl flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <h3 className="font-semibold text-foreground text-sm">Held Bills</h3>
+              </div>
+              <button type="button" onClick={() => setShowHeldPanel(false)}
+                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground transition">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {heldBills.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No held bills</p>
+              ) : heldBills.map(bill => (
+                <div key={bill.id} className="bg-muted/50 rounded-xl p-3 border border-border">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="font-medium text-foreground text-sm">{bill.label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {bill.items.length} item{bill.items.length !== 1 ? 's' : ''} · {new Date(bill.heldAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => deleteHeldBill(bill.id)}
+                      className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive transition">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="text-xs text-muted-foreground mb-2 space-y-0.5">
+                    {bill.items.slice(0, 3).map(item => (
+                      <p key={item.id}>• {item.name} ×{item.quantity}</p>
+                    ))}
+                    {bill.items.length > 3 && <p>+{bill.items.length - 3} more</p>}
+                  </div>
+                  <button type="button" onClick={() => resumeBill(bill.id)}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90 transition">
+                    <PlayCircle className="w-3.5 h-3.5" /> Resume Bill
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Cart Items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
