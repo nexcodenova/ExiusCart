@@ -60,6 +60,7 @@ async def create_order(
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         orders_this_month = db.query(Order).filter(
             Order.shop_id == shop_id,
+            Order.source != "pos",
             Order.created_at >= month_start,
         ).count()
         if orders_this_month >= monthly_limit:
