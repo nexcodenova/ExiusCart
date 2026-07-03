@@ -145,9 +145,10 @@ def get_usage(
     ).group_by(EmailUsageLog.email_type).all()
     email_used = {et: cnt for et, cnt in rows}
 
-    # Order count this month
+    # Order count this month — POS orders are unlimited and not counted
     order_used = db.query(func.count(Order.id)).filter(
         Order.shop_id == shop_id,
+        Order.source != "pos",
         Order.created_at >= month_start,
     ).scalar() or 0
 
