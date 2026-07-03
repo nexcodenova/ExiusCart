@@ -469,7 +469,8 @@ export default function POSPage() {
                       </div>
                     )}
                   </div>
-                  <h3 className="font-medium text-foreground text-sm line-clamp-2 mb-2">{product.name}</h3>
+                  <h3 className="font-medium text-foreground text-sm line-clamp-2">{product.name}</h3>
+                  <p className="text-xs text-muted-foreground/60 font-mono mb-2">#{product.id}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-indigo-600 dark:text-indigo-400 font-bold">{product.sellingPrice} {sym}</span>
                     <span className={`text-xs px-1.5 py-0.5 rounded ${
@@ -524,6 +525,7 @@ export default function POSPage() {
               <div key={item.id} className="flex items-center gap-3 bg-muted/50 rounded-xl p-3">
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-foreground text-sm truncate">{item.name}</h4>
+                  <p className="text-xs text-muted-foreground/60 font-mono">#{item.id}</p>
                   <p className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold">{item.price} {sym}</p>
                 </div>
                 <div className="flex items-center gap-2">

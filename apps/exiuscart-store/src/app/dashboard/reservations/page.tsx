@@ -630,7 +630,7 @@ function ReservationModal({ shopId, reservation, onClose, onSaved }: {
                 className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground">
                 <option value="">Select product...</option>
                 {products.map(p => (
-                  <option key={p.id} value={String(p.id)}>{p.name} (stock: {p.stock})</option>
+                  <option key={p.id} value={String(p.id)}>#{p.id} — {p.name} (stock: {p.stock})</option>
                 ))}
               </select>
             </div>
