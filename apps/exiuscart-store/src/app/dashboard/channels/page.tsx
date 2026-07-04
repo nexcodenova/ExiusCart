@@ -201,9 +201,8 @@ function ChannelTile({ ch }: { ch: ChannelDef }) {
     soon: 'Coming Soon',
     locked: 'Not on your plan',
   };
-  const isLocked = ch.badge === 'locked';
   return (
-    <div className={`bg-card border border-border rounded-xl p-5 flex flex-col gap-4 ${isLocked ? 'opacity-50' : ''}`}>
+    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
           {ch.icon}
@@ -216,10 +215,16 @@ function ChannelTile({ ch }: { ch: ChannelDef }) {
         <p className="font-semibold text-foreground text-sm">{ch.name}</p>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{ch.description}</p>
       </div>
-      {ch.onAction && !isLocked && ch.badge !== 'soon' && (
+      {ch.onAction && ch.badge !== 'soon' && (
         <button type="button" onClick={ch.onAction}
           className="w-full py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition flex items-center justify-center gap-1.5">
           {ch.actionLabel ?? 'Connect'} <ExternalLink className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {ch.onAction && ch.badge === 'soon' && (
+        <button type="button" onClick={ch.onAction}
+          className="w-full py-2 text-sm font-medium border border-border rounded-lg hover:bg-muted transition text-muted-foreground">
+          Learn more
         </button>
       )}
     </div>
@@ -234,6 +239,7 @@ export default function ChannelsPage() {
   const [connections, setConnections] = useState<ChannelConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
+  const [dersiBlockChannel, setDersiBlockChannel] = useState<string | null>(null);
   const [shopifyConnected, setShopifyConnected] = useState(false);
   const [plan, setPlan] = useState('');
 
@@ -275,9 +281,9 @@ export default function ChannelsPage() {
       name: 'Shopify',
       description: 'Sync your Shopify store — products, orders, and inventory stay in sync automatically.',
       icon: <ShoppingBag className="w-5 h-5 text-[#96BF48]" />,
-      badge: isTheDersiUser ? 'locked' : (shopifyConnected ? 'live' : 'connect'),
-      badgeLabel: isTheDersiUser ? 'TheDersi Plan' : (shopifyConnected ? 'Connected' : 'Available'),
-      onAction: isTheDersiUser ? undefined : () => router.push('/dashboard/shopify-integration'),
+      badge: shopifyConnected ? 'live' : 'connect',
+      badgeLabel: shopifyConnected ? 'Connected' : 'Available',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Shopify') : () => router.push('/dashboard/shopify-integration'),
       actionLabel: shopifyConnected ? 'Manage Shopify' : 'Connect Shopify',
     },
     {
@@ -285,35 +291,40 @@ export default function ChannelsPage() {
       name: 'Custom Website',
       description: 'Connect any website using our API or webhook. Receive orders directly from your own storefront.',
       icon: <Globe className="w-5 h-5 text-sky-400" />,
-      badge: isTheDersiUser ? 'locked' : 'soon',
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Custom Website') : undefined,
     },
     {
       id: 'woocommerce',
       name: 'WooCommerce',
       description: 'WordPress + WooCommerce integration. Install the ExiusCart plugin to sync products and orders.',
       icon: <ShoppingCart className="w-5 h-5 text-[#7F54B3]" />,
-      badge: isTheDersiUser ? 'locked' : 'soon',
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('WooCommerce') : undefined,
     },
     {
       id: 'amazon',
       name: 'Amazon',
       description: 'List and manage your Amazon products and orders through ExiusCart.',
       icon: <Package className="w-5 h-5 text-orange-400" />,
-      badge: isTheDersiUser ? 'locked' : 'soon',
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Amazon') : undefined,
     },
     {
       id: 'instagram',
       name: 'Instagram Shopping',
       description: 'Tag products in your Instagram posts and stories. Orders sync to ExiusCart.',
       icon: <Instagram className="w-5 h-5 text-pink-400" />,
-      badge: isTheDersiUser ? 'locked' : 'soon',
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Instagram Shopping') : undefined,
     },
     {
       id: 'ebay',
       name: 'eBay',
       description: 'List products on eBay and manage orders directly from ExiusCart.',
       icon: <Tag className="w-5 h-5 text-blue-500" />,
-      badge: isTheDersiUser ? 'locked' : 'soon',
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('eBay') : undefined,
     },
   ];
 
@@ -361,6 +372,35 @@ export default function ChannelsPage() {
           onConnected={() => load()}
           onClose={() => { setShowTheDersiModal(false); load(); }}
         />
+      )}
+
+      {dersiBlockChannel && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Link2 className="w-5 h-5 text-primary" />
+              </div>
+              <button type="button" onClick={() => setDersiBlockChannel(null)}
+                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">{dersiBlockChannel}</p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                This channel is available for <strong>ExiusCart direct sellers</strong> only.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                As a <strong>TheDersi seller</strong>, your store is already connected through TheDersi. All your orders, stock, and payouts sync through that channel — no additional setup needed.
+              </p>
+            </div>
+            <button type="button" onClick={() => setDersiBlockChannel(null)}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+              Got it
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
