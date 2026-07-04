@@ -11,7 +11,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-500',
 };
 
-const EMPTY = { name: '', subject: '', body_html: '' };
+const EMPTY = { name: '', subject: '', body_html: '', ctaLink: 'https://thedersi.lk/new-arrivals', heroImage: '' };
 
 interface Template { id: string; label: string; desc: string; subject: string; body: string; headerBg: string; }
 
@@ -33,6 +33,8 @@ const EMAIL_TEMPLATES: Template[] = [
   <p style="color:#6b7280;font-size:16px;margin:0;line-height:1.6;">A limited-time deal for our valued customers.</p>
 </td></tr>
 
+__HERO__
+
 <tr><td style="background:#1f2937;padding:32px 48px;">
   <div style="border:2px dashed #374151;border-radius:12px;padding:28px;text-align:center;">
     <p style="color:#9ca3af;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 10px;">Your Promo Code</p>
@@ -45,7 +47,7 @@ const EMAIL_TEMPLATES: Template[] = [
   <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
   <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 28px;">We appreciate your loyalty and want to reward you with an exclusive deal. Use the code above at checkout to enjoy <strong>20% off</strong> your next purchase. This offer won't last long!</p>
   <div style="text-align:center;margin:0 0 28px;">
-    <a href="#" style="display:inline-block;background:#111827;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Shop the Sale →</a>
+    <a href="__CTA__" style="display:inline-block;background:#111827;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Shop the Sale →</a>
   </div>
   <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">Offer valid for a limited time. Cannot be combined with other offers.</p>
 </td></tr>
@@ -77,6 +79,8 @@ const EMAIL_TEMPLATES: Template[] = [
   </div>
 </td></tr>
 
+__HERO__
+
 <tr><td style="background:#ffffff;padding:40px 48px;">
   <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
   <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 24px;">Our <strong style="color:#dc2626;">biggest flash sale</strong> is live right now! For a few hours only, we're slashing prices on selected products. This is your chance to grab what you've been eyeing at an unbeatable price.</p>
@@ -85,7 +89,7 @@ const EMAIL_TEMPLATES: Template[] = [
     <p style="color:#ef4444;font-size:14px;margin:0;">Don't wait — these prices won't last past midnight.</p>
   </div>
   <div style="text-align:center;margin:0 0 28px;">
-    <a href="#" style="display:inline-block;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#ffffff;font-size:17px;font-weight:800;text-decoration:none;padding:18px 52px;border-radius:10px;">Grab the Deal Now →</a>
+    <a href="__CTA__" style="display:inline-block;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#ffffff;font-size:17px;font-weight:800;text-decoration:none;padding:18px 52px;border-radius:10px;">Grab the Deal Now →</a>
   </div>
   <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">Sale applies to selected items only. While stocks last.</p>
 </td></tr>
@@ -114,6 +118,8 @@ const EMAIL_TEMPLATES: Template[] = [
   <p style="color:rgba(255,255,255,0.8);font-size:17px;margin:0;">Fresh styles, just in. Be the first to shop.</p>
 </td></tr>
 
+__HERO__
+
 <tr><td style="background:#ffffff;padding:40px 48px;">
   <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
   <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 24px;">We're excited to announce that our latest collection has just arrived! Fresh designs, premium quality, and styles you'll love. Be the first to get your hands on these before they sell out.</p>
@@ -131,7 +137,7 @@ const EMAIL_TEMPLATES: Template[] = [
     </tr></table>
   </div>
   <div style="text-align:center;margin:0 0 28px;">
-    <a href="#" style="display:inline-block;background:linear-gradient(135deg,#6B3FD9,#8b5cf6);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Shop New Arrivals →</a>
+    <a href="__CTA__" style="display:inline-block;background:linear-gradient(135deg,#6B3FD9,#8b5cf6);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Shop New Arrivals →</a>
   </div>
   <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">New stock is limited. Shop early to avoid missing out!</p>
 </td></tr>
@@ -159,6 +165,8 @@ const EMAIL_TEMPLATES: Template[] = [
   <p style="color:rgba(255,255,255,0.9);font-size:17px;margin:0;">We appreciate your continued support.</p>
 </td></tr>
 
+__HERO__
+
 <tr><td style="background:#ffffff;padding:40px 48px;">
   <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
   <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 24px;">Your support means the world to us. Customers like you are exactly why we do what we do — and we want to show our appreciation with a little something special.</p>
@@ -168,7 +176,7 @@ const EMAIL_TEMPLATES: Template[] = [
     <p style="color:#a16207;font-size:14px;margin:0;">10% off your next order — no minimum spend</p>
   </div>
   <div style="text-align:center;margin:0 0 28px;">
-    <a href="#" style="display:inline-block;background:linear-gradient(135deg,#d97706,#f59e0b);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Redeem My Gift →</a>
+    <a href="__CTA__" style="display:inline-block;background:linear-gradient(135deg,#d97706,#f59e0b);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Redeem My Gift →</a>
   </div>
   <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">Code valid for 30 days. One use per customer.</p>
 </td></tr>
@@ -199,8 +207,10 @@ const EMAIL_TEMPLATES: Template[] = [
   <p style="color:#6b7280;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:0 0 16px;">Monthly Update</p>
   <h1 style="color:#f9fafb;font-size:44px;font-weight:900;margin:0 0 16px;line-height:1.15;">More Time<br/>to Save More</h1>
   <p style="color:#9ca3af;font-size:16px;margin:0 0 32px;line-height:1.7;">Discover our latest offers and exclusive deals,<br/>crafted just for you.</p>
-  <a href="#" style="display:inline-block;background:#f9fafb;color:#111827;font-size:15px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:10px;">Explore Now →</a>
+  <a href="__CTA__" style="display:inline-block;background:#f9fafb;color:#111827;font-size:15px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:10px;">Explore Now →</a>
 </td></tr>
+
+__HERO__
 
 <tr><td style="height:1px;background:#1f2937;"></td></tr>
 
@@ -226,7 +236,7 @@ const EMAIL_TEMPLATES: Template[] = [
 </td></tr>
 
 <tr><td style="background:#111827;padding:0 48px 40px;text-align:center;">
-  <a href="#" style="display:inline-block;background:#6B3FD9;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Visit Our Store →</a>
+  <a href="__CTA__" style="display:inline-block;background:#6B3FD9;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Visit Our Store →</a>
 </td></tr>
 
 <tr><td style="background:#0f0f0f;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;">
@@ -275,10 +285,16 @@ export default function EmailMarketingPage() {
   useEffect(() => { load(); }, [shopId]);
 
   const openNew = () => { setEditing(null); setForm(EMPTY); setShowTemplates(false); setShowModal(true); };
-  const openEdit = (c: any) => { setEditing(c); setForm({ name: c.name, subject: c.subject, body_html: c.body_html || '' }); setShowTemplates(false); setShowModal(true); };
+  const openEdit = (c: any) => { setEditing(c); setForm({ name: c.name, subject: c.subject, body_html: c.body_html || '', ctaLink: 'https://thedersi.lk/new-arrivals', heroImage: '' }); setShowTemplates(false); setShowModal(true); };
 
   const applyTemplate = (t: Template) => {
-    setForm(f => ({ ...f, subject: t.subject, body_html: t.body }));
+    const heroHtml = form.heroImage
+      ? `<tr><td style="padding:0;"><img src="${form.heroImage}" alt="" style="width:100%;max-height:340px;object-fit:cover;display:block;" /></td></tr>`
+      : '';
+    const applied = t.body
+      .replace(/__CTA__/g, form.ctaLink || 'https://thedersi.lk/new-arrivals')
+      .replace('__HERO__', heroHtml);
+    setForm(f => ({ ...f, subject: t.subject, body_html: applied }));
     setShowTemplates(false);
   };
 
@@ -465,6 +481,32 @@ export default function EmailMarketingPage() {
             </div>
 
             <div className="p-6 space-y-5 overflow-y-auto flex-1">
+
+              {/* Store link + hero image — used when applying templates */}
+              <div className="grid grid-cols-1 gap-4 p-4 bg-muted/40 border border-border rounded-xl">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider -mb-1">Template Settings — fill before applying a template</p>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">Button Link (Shop / Product URL)</label>
+                  <input
+                    value={form.ctaLink}
+                    onChange={e => setForm(f => ({ ...f, ctaLink: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="https://thedersi.lk/new-arrivals"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">This URL goes into all "Shop Now" / CTA buttons in the template.</p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">Hero Image URL <span className="text-muted-foreground/60">(optional)</span></label>
+                  <input
+                    value={form.heroImage}
+                    onChange={e => setForm(f => ({ ...f, heroImage: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="https://thedersi.lk/images/product.jpg"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Paste any image URL (product photo, banner). It will appear below the email header.</p>
+                </div>
+              </div>
+
               {/* Template picker toggle */}
               <div>
                 <button
