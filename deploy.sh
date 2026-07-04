@@ -37,6 +37,7 @@ fi
 # Keeping .next also preserves the SWC cache, cutting build time roughly in half.
 if echo "$CHANGED" | grep -q "apps/exiuscart-store/" || [ "$CHANGED" = "all" ]; then
   echo "--- Store (building on server) ---"
+  rm -rf "$PROJECT_DIR/apps/exiuscart-store/.next/export" 2>/dev/null || true
   cd "$PROJECT_DIR"
   npm run build --workspace=apps/exiuscart-store
   if pm2 describe exiuscart-store > /dev/null 2>&1; then
@@ -50,6 +51,7 @@ fi
 # ── Admin — build on server so RSC paths match ────────────────────────────────
 if echo "$CHANGED" | grep -q "apps/exiuscart-admin/" || [ "$CHANGED" = "all" ]; then
   echo "--- Admin (building on server) ---"
+  rm -rf "$PROJECT_DIR/apps/exiuscart-admin/.next/export" 2>/dev/null || true
   cd "$PROJECT_DIR"
   npm run build --workspace=apps/exiuscart-admin
   if pm2 describe exiuscart-admin > /dev/null 2>&1; then
@@ -63,6 +65,7 @@ fi
 # ── Affiliates — build on server ──────────────────────────────────────────────
 if echo "$CHANGED" | grep -q "apps/exiuscart-affiliates/" || [ "$CHANGED" = "all" ]; then
   echo "--- Affiliates (building on server) ---"
+  rm -rf "$PROJECT_DIR/apps/exiuscart-affiliates/.next/export" 2>/dev/null || true
   cd "$PROJECT_DIR"
   npm run build --workspace=apps/exiuscart-affiliates
   if pm2 describe exiuscart-affiliates > /dev/null 2>&1; then
