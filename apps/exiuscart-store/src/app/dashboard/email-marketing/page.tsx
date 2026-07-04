@@ -13,84 +13,227 @@ const STATUS_COLORS: Record<string, string> = {
 
 const EMPTY = { name: '', subject: '', body_html: '' };
 
-interface Template { id: string; label: string; desc: string; subject: string; body: string; }
+interface Template { id: string; label: string; desc: string; subject: string; body: string; headerBg: string; }
 
 const EMAIL_TEMPLATES: Template[] = [
   {
-    id: 'promo',
-    label: 'Promotional Offer',
-    desc: 'Discount coupon for customers',
-    subject: '🎉 Special Offer Just for You!',
-    body: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:32px;background:#ffffff;">
-  <h1 style="color:#111827;font-size:24px;margin-bottom:8px;">Exclusive Offer Just for You! 🎉</h1>
-  <p style="color:#6b7280;font-size:15px;">Hi there,</p>
-  <p style="color:#6b7280;font-size:15px;">We have a special discount waiting for you. Use the code below at checkout:</p>
-  <div style="background:#f9fafb;border:2px dashed #e5e7eb;border-radius:12px;padding:24px;text-align:center;margin:24px 0;">
-    <p style="color:#9ca3af;font-size:13px;margin:0 0 6px;">Your discount code</p>
-    <h2 style="color:#111827;font-size:32px;font-weight:bold;letter-spacing:4px;margin:0;">SAVE20</h2>
-    <p style="color:#9ca3af;font-size:13px;margin:6px 0 0;">20% off your next purchase</p>
+    id: 'dark-promo',
+    label: 'Dark Promo',
+    desc: 'Bold dark hero with discount code',
+    headerBg: 'linear-gradient(135deg,#111827,#1f2937)',
+    subject: '🎉 Exclusive Offer Just for You!',
+    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+<tr><td style="background:#111827;border-radius:16px 16px 0 0;padding:52px 48px 44px;text-align:center;">
+  <p style="color:#9ca3af;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:0 0 16px;">Exclusive Offer</p>
+  <h1 style="color:#ffffff;font-size:40px;font-weight:900;margin:0 0 12px;line-height:1.15;">Big Savings<br/>Are Here 🎁</h1>
+  <p style="color:#6b7280;font-size:16px;margin:0;line-height:1.6;">A limited-time deal for our valued customers.</p>
+</td></tr>
+
+<tr><td style="background:#1f2937;padding:32px 48px;">
+  <div style="border:2px dashed #374151;border-radius:12px;padding:28px;text-align:center;">
+    <p style="color:#9ca3af;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 10px;">Your Promo Code</p>
+    <h2 style="color:#f9fafb;font-size:38px;font-weight:900;letter-spacing:8px;margin:0 0 10px;font-family:monospace;">SAVE20</h2>
+    <p style="color:#6b7280;font-size:14px;margin:0;">20% off your entire order · Limited time</p>
   </div>
-  <p style="color:#6b7280;font-size:15px;">This offer is valid for a limited time only. Don't miss out!</p>
-  <p style="color:#9ca3af;font-size:12px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:16px;">To unsubscribe, reply to this email.</p>
-</div>`,
+</td></tr>
+
+<tr><td style="background:#ffffff;padding:40px 48px;">
+  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
+  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 28px;">We appreciate your loyalty and want to reward you with an exclusive deal. Use the code above at checkout to enjoy <strong>20% off</strong> your next purchase. This offer won't last long!</p>
+  <div style="text-align:center;margin:0 0 28px;">
+    <a href="#" style="display:inline-block;background:#111827;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Shop the Sale →</a>
+  </div>
+  <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">Offer valid for a limited time. Cannot be combined with other offers.</p>
+</td></tr>
+
+<tr><td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;border-top:1px solid #e5e7eb;">
+  <p style="color:#9ca3af;font-size:12px;margin:0;">You're receiving this because you're a valued customer.</p>
+  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">To unsubscribe, reply to this email.</p>
+</td></tr>
+
+</table></td></tr></table></body></html>`,
   },
   {
-    id: 'sale',
+    id: 'flash-sale',
     label: 'Flash Sale',
-    desc: 'Urgency-driven sale campaign',
+    desc: 'Red urgent sale, ends tonight',
+    headerBg: 'linear-gradient(135deg,#dc2626,#b91c1c)',
     subject: '⚡ Flash Sale — Ends Tonight!',
-    body: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:32px;background:#ffffff;">
-  <div style="background:#ef4444;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;">
-    <h1 style="color:#ffffff;font-size:28px;margin:0;">⚡ FLASH SALE</h1>
-    <p style="color:#fecaca;font-size:14px;margin:6px 0 0;">Limited time — ends tonight at midnight</p>
+    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#fff1f1;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#fff1f1;padding:32px 16px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+<tr><td style="background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:16px 16px 0 0;padding:44px 48px;text-align:center;">
+  <p style="color:#fca5a5;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:0 0 12px;">⚡ Limited Time Only</p>
+  <h1 style="color:#ffffff;font-size:52px;font-weight:900;margin:0 0 8px;line-height:1.1;">FLASH SALE</h1>
+  <h2 style="color:#fef2f2;font-size:28px;font-weight:700;margin:0 0 20px;">Up to 50% OFF</h2>
+  <div style="display:inline-block;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px 24px;">
+    <p style="color:#fff;font-size:14px;font-weight:600;margin:0;">⏰ Ends Tonight at Midnight</p>
   </div>
-  <p style="color:#6b7280;font-size:15px;">Hi there,</p>
-  <p style="color:#6b7280;font-size:15px;">Our biggest flash sale is live right now. Selected products are up to <strong style="color:#111827;">50% OFF</strong> for the next few hours only.</p>
-  <div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:4px;padding:16px;margin:24px 0;">
-    <p style="color:#c2410c;font-size:14px;font-weight:bold;margin:0;">⏰ Hurry — stock is limited!</p>
+</td></tr>
+
+<tr><td style="background:#ffffff;padding:40px 48px;">
+  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
+  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 24px;">Our <strong style="color:#dc2626;">biggest flash sale</strong> is live right now! For a few hours only, we're slashing prices on selected products. This is your chance to grab what you've been eyeing at an unbeatable price.</p>
+  <div style="background:#fff7f7;border:1px solid #fee2e2;border-left:4px solid #dc2626;border-radius:4px 8px 8px 4px;padding:16px 20px;margin:0 0 28px;">
+    <p style="color:#b91c1c;font-size:15px;font-weight:700;margin:0 0 4px;">⚡ Stock is limited — once it's gone, it's gone!</p>
+    <p style="color:#ef4444;font-size:14px;margin:0;">Don't wait — these prices won't last past midnight.</p>
   </div>
-  <p style="color:#6b7280;font-size:15px;">Visit our store now before prices go back up.</p>
-  <p style="color:#9ca3af;font-size:12px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:16px;">To unsubscribe, reply to this email.</p>
-</div>`,
+  <div style="text-align:center;margin:0 0 28px;">
+    <a href="#" style="display:inline-block;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#ffffff;font-size:17px;font-weight:800;text-decoration:none;padding:18px 52px;border-radius:10px;">Grab the Deal Now →</a>
+  </div>
+  <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">Sale applies to selected items only. While stocks last.</p>
+</td></tr>
+
+<tr><td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;border-top:1px solid #e5e7eb;">
+  <p style="color:#9ca3af;font-size:12px;margin:0;">You're receiving this because you're a valued customer.</p>
+  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">To unsubscribe, reply to this email.</p>
+</td></tr>
+
+</table></td></tr></table></body></html>`,
   },
   {
-    id: 'arrival',
-    label: 'New Arrival',
-    desc: 'Announce new products',
+    id: 'new-arrivals',
+    label: 'New Arrivals',
+    desc: 'Purple gradient, new collection',
+    headerBg: 'linear-gradient(135deg,#6B3FD9,#8b5cf6)',
     subject: '✨ New Products Just Arrived!',
-    body: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:32px;background:#ffffff;">
-  <h1 style="color:#111827;font-size:24px;margin-bottom:8px;">Something New Just Arrived ✨</h1>
-  <p style="color:#6b7280;font-size:15px;">Hi there,</p>
-  <p style="color:#6b7280;font-size:15px;">We're excited to share that new products are now available in our store. Fresh styles, great quality — check them out before they sell out!</p>
-  <div style="background:#f0fdf4;border-radius:12px;padding:20px;margin:24px 0;">
-    <p style="color:#166534;font-size:14px;font-weight:600;margin:0 0 6px;">🆕 New arrivals include:</p>
-    <ul style="color:#15803d;font-size:14px;margin:0;padding-left:20px;">
-      <li>Latest collection items</li>
-      <li>Exclusive limited stock</li>
-      <li>Special introductory prices</li>
-    </ul>
+    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f8f7ff;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f7ff;padding:32px 16px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+<tr><td style="background:linear-gradient(135deg,#6B3FD9,#8b5cf6);border-radius:16px 16px 0 0;padding:48px 48px 40px;text-align:center;">
+  <p style="color:rgba(255,255,255,0.7);font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:0 0 14px;">Just Landed</p>
+  <h1 style="color:#ffffff;font-size:40px;font-weight:900;margin:0 0 12px;line-height:1.2;">New Arrivals ✨</h1>
+  <p style="color:rgba(255,255,255,0.8);font-size:17px;margin:0;">Fresh styles, just in. Be the first to shop.</p>
+</td></tr>
+
+<tr><td style="background:#ffffff;padding:40px 48px;">
+  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
+  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 24px;">We're excited to announce that our latest collection has just arrived! Fresh designs, premium quality, and styles you'll love. Be the first to get your hands on these before they sell out.</p>
+  <div style="background:#faf8ff;border-radius:12px;padding:24px;margin:0 0 28px;border:1px solid #ede9fe;">
+    <p style="color:#6B3FD9;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 16px;">🆕 New this season</p>
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="width:50%;padding:0 12px 0 0;vertical-align:top;">
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">✓ &nbsp;Fresh seasonal styles</p>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:4px 0 0;">✓ &nbsp;Limited edition pieces</p>
+      </td>
+      <td style="width:50%;padding:0 0 0 12px;vertical-align:top;">
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">✓ &nbsp;Premium quality</p>
+        <p style="color:#374151;font-size:14px;line-height:1.7;margin:4px 0 0;">✓ &nbsp;Introductory prices</p>
+      </td>
+    </tr></table>
   </div>
-  <p style="color:#6b7280;font-size:15px;">Visit us in-store or online to be the first to grab these!</p>
-  <p style="color:#9ca3af;font-size:12px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:16px;">To unsubscribe, reply to this email.</p>
-</div>`,
+  <div style="text-align:center;margin:0 0 28px;">
+    <a href="#" style="display:inline-block;background:linear-gradient(135deg,#6B3FD9,#8b5cf6);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Shop New Arrivals →</a>
+  </div>
+  <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">New stock is limited. Shop early to avoid missing out!</p>
+</td></tr>
+
+<tr><td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;border-top:1px solid #e5e7eb;">
+  <p style="color:#9ca3af;font-size:12px;margin:0;">You're receiving this because you're a valued customer.</p>
+  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">To unsubscribe, reply to this email.</p>
+</td></tr>
+
+</table></td></tr></table></body></html>`,
   },
   {
-    id: 'loyalty',
-    label: 'Thank You / Loyalty',
-    desc: 'Appreciate your customers',
+    id: 'thank-you',
+    label: 'Thank You',
+    desc: 'Warm loyalty reward with gift code',
+    headerBg: 'linear-gradient(135deg,#d97706,#f59e0b)',
     subject: '💛 Thank You for Your Support!',
-    body: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:32px;background:#ffffff;">
-  <h1 style="color:#111827;font-size:24px;margin-bottom:8px;">Thank You! 💛</h1>
-  <p style="color:#6b7280;font-size:15px;">Hi there,</p>
-  <p style="color:#6b7280;font-size:15px;">We just wanted to take a moment to say <strong style="color:#111827;">thank you</strong> for your support. Customers like you are the reason we do what we do.</p>
-  <div style="background:#fefce8;border-radius:12px;padding:20px;text-align:center;margin:24px 0;">
-    <p style="color:#a16207;font-size:15px;margin:0 0 8px;">As a valued customer, here's a little gift:</p>
-    <h2 style="color:#854d0e;font-size:28px;font-weight:bold;letter-spacing:3px;margin:0;">THANKS10</h2>
-    <p style="color:#a16207;font-size:13px;margin:6px 0 0;">10% off your next order</p>
+    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#fffbeb;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;padding:32px 16px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+<tr><td style="background:linear-gradient(135deg,#d97706,#f59e0b);border-radius:16px 16px 0 0;padding:48px 48px 40px;text-align:center;">
+  <h1 style="color:#ffffff;font-size:44px;font-weight:900;margin:0 0 10px;">Thank You! 💛</h1>
+  <p style="color:rgba(255,255,255,0.9);font-size:17px;margin:0;">We appreciate your continued support.</p>
+</td></tr>
+
+<tr><td style="background:#ffffff;padding:40px 48px;">
+  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
+  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 24px;">Your support means the world to us. Customers like you are exactly why we do what we do — and we want to show our appreciation with a little something special.</p>
+  <div style="background:#fffbeb;border:2px solid #fbbf24;border-radius:12px;padding:28px;text-align:center;margin:0 0 28px;">
+    <p style="color:#92400e;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:0 0 10px;">A gift just for you</p>
+    <h2 style="color:#78350f;font-size:36px;font-weight:900;letter-spacing:6px;margin:0 0 10px;font-family:monospace;">THANKS10</h2>
+    <p style="color:#a16207;font-size:14px;margin:0;">10% off your next order — no minimum spend</p>
   </div>
-  <p style="color:#6b7280;font-size:15px;">We look forward to serving you again soon.</p>
-  <p style="color:#9ca3af;font-size:12px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:16px;">To unsubscribe, reply to this email.</p>
-</div>`,
+  <div style="text-align:center;margin:0 0 28px;">
+    <a href="#" style="display:inline-block;background:linear-gradient(135deg,#d97706,#f59e0b);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Redeem My Gift →</a>
+  </div>
+  <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">Code valid for 30 days. One use per customer.</p>
+</td></tr>
+
+<tr><td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;border-top:1px solid #e5e7eb;">
+  <p style="color:#9ca3af;font-size:12px;margin:0;">You're receiving this because you're a valued customer.</p>
+  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">To unsubscribe, reply to this email.</p>
+</td></tr>
+
+</table></td></tr></table></body></html>`,
+  },
+  {
+    id: 'dark-newsletter',
+    label: 'Dark Newsletter',
+    desc: 'Full dark theme — like a brand email',
+    headerBg: 'linear-gradient(135deg,#0f0f0f,#1a1a1a)',
+    subject: '📣 What\'s New This Month',
+    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0f0f0f;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:32px 16px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+<tr><td style="background:#0f0f0f;padding:24px 48px;text-align:center;border-radius:16px 16px 0 0;">
+  <p style="color:#f9fafb;font-size:22px;font-weight:800;margin:0;letter-spacing:-0.5px;">Your Shop Name</p>
+</td></tr>
+
+<tr><td style="background:#1a1a1a;padding:56px 48px;text-align:center;">
+  <p style="color:#6b7280;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:0 0 16px;">Monthly Update</p>
+  <h1 style="color:#f9fafb;font-size:44px;font-weight:900;margin:0 0 16px;line-height:1.15;">More Time<br/>to Save More</h1>
+  <p style="color:#9ca3af;font-size:16px;margin:0 0 32px;line-height:1.7;">Discover our latest offers and exclusive deals,<br/>crafted just for you.</p>
+  <a href="#" style="display:inline-block;background:#f9fafb;color:#111827;font-size:15px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:10px;">Explore Now →</a>
+</td></tr>
+
+<tr><td style="height:1px;background:#1f2937;"></td></tr>
+
+<tr><td style="background:#111827;padding:40px 48px;">
+  <h2 style="color:#f9fafb;font-size:22px;font-weight:700;margin:0 0 16px;">What's New This Season</h2>
+  <p style="color:#9ca3af;font-size:15px;line-height:1.8;margin:0 0 24px;">We've been working hard to bring you the best products and offers. Here's a quick look at what to explore this month:</p>
+  <table width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td style="width:50%;padding:0 10px 0 0;vertical-align:top;">
+      <div style="background:#1f2937;border-radius:10px;padding:20px;">
+        <p style="font-size:22px;margin:0 0 8px;">🛍️</p>
+        <p style="color:#f9fafb;font-size:14px;font-weight:600;margin:0 0 6px;">New Collection</p>
+        <p style="color:#6b7280;font-size:13px;margin:0;line-height:1.6;">Fresh products just added to the store.</p>
+      </div>
+    </td>
+    <td style="width:50%;padding:0 0 0 10px;vertical-align:top;">
+      <div style="background:#1f2937;border-radius:10px;padding:20px;">
+        <p style="font-size:22px;margin:0 0 8px;">⭐</p>
+        <p style="color:#f9fafb;font-size:14px;font-weight:600;margin:0 0 6px;">Exclusive Deals</p>
+        <p style="color:#6b7280;font-size:13px;margin:0;line-height:1.6;">Limited-time prices you won't find anywhere.</p>
+      </div>
+    </td>
+  </tr></table>
+</td></tr>
+
+<tr><td style="background:#111827;padding:0 48px 40px;text-align:center;">
+  <a href="#" style="display:inline-block;background:#6B3FD9;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Visit Our Store →</a>
+</td></tr>
+
+<tr><td style="background:#0f0f0f;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;">
+  <p style="color:#374151;font-size:12px;margin:0;">You're receiving this as a valued customer. To unsubscribe, reply to this email.</p>
+</td></tr>
+
+</table></td></tr></table></body></html>`,
   },
 ];
 
@@ -339,10 +482,13 @@ export default function EmailMarketingPage() {
                         key={t.id}
                         type="button"
                         onClick={() => applyTemplate(t)}
-                        className="text-left p-3 bg-muted/50 hover:bg-muted border border-border rounded-lg transition group"
+                        className="text-left border border-border rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-sm transition group"
                       >
-                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition">{t.label}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
+                        <div className="h-10 w-full" style={{ background: t.headerBg }} />
+                        <div className="p-3 bg-muted/30 group-hover:bg-muted/60 transition">
+                          <p className="text-sm font-medium text-foreground group-hover:text-primary transition">{t.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
+                        </div>
                       </button>
                     ))}
                   </div>
