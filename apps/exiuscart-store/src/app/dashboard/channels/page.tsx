@@ -292,7 +292,6 @@ export default function ChannelsPage() {
       description: 'Connect any website using our API or webhook. Receive orders directly from your own storefront.',
       icon: <Globe className="w-5 h-5 text-sky-400" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Custom Website') : undefined,
     },
     {
       id: 'woocommerce',
