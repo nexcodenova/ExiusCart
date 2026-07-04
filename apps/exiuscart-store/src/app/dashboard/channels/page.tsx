@@ -6,7 +6,7 @@ import {
   Copy, Check, X, ExternalLink,
   ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag,
 } from 'lucide-react';
-import { channelsApi, shopifyApi, shopApi } from '@/lib/api';
+import { channelsApi, shopifyApi, subscriptionApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -246,10 +246,11 @@ export default function ChannelsPage() {
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
   useEffect(() => {
-    shopApi.getMyShop()
-      .then((r) => setPlan(r.data?.subscription?.plan || ''))
+    if (!shopId) return;
+    subscriptionApi.getCurrent(shopId)
+      .then((r) => setPlan(r.data?.plan?.plan_type || ''))
       .catch(() => {});
-  }, []);
+  }, [shopId]);
 
   const load = () => {
     if (!shopId) return;

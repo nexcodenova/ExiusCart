@@ -34,7 +34,7 @@ export default function DashboardLayout({
     }
   }, [router]);
 
-  if (!authed) return null;
+  if (!authed) return <div className="min-h-screen bg-background" />;
 
   return (
     <CurrencyProvider>
