@@ -440,6 +440,33 @@ def get_top_products(
     return [{"name": r.name, "qty_sold": r.qty_sold or 0, "revenue": float(r.revenue or 0)} for r in rows]
 
 
+@router.get("/{shop_id}/reports/channel-revenue")
+def get_channel_revenue(
+    shop_id: int,
+    from_date: Optional[str] = Query(None, alias="from"),
+    to_date: Optional[str] = Query(None, alias="to"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    query = db.query(
+        Order.source,
+        func.sum(Order.total).label("revenue"),
+        func.count(Order.id).label("orders"),
+    ).filter(Order.shop_id == shop_id, Order.status != "cancelled")
+
+    if from_date:
+        query = query.filter(Order.created_at >= from_date)
+    if to_date:
+        query = query.filter(Order.created_at <= to_date + " 23:59:59")
+
+    rows = query.group_by(Order.source).all()
+    return [{"source": r.source or "unknown", "revenue": float(r.revenue or 0), "orders": r.orders} for r in rows]
+
+
 @router.get("/{shop_id}/reports/vat")
 def get_vat_report(
     shop_id: int,

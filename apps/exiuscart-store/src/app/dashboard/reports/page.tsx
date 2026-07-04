@@ -16,9 +16,25 @@ import { useCurrency } from '@/components/providers/currency-provider';
 const PIE = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#a855f7', '#14b8a6'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const CHANNEL_LABELS: Record<string, string> = {
+  pos: 'POS (In-store)',
+  thedersi: 'TheDersi',
+  online: 'Online Store',
+  manual: 'Manual',
+  unknown: 'Other',
+};
+const CHANNEL_COLORS: Record<string, string> = {
+  pos: '#10b981',
+  thedersi: '#6366f1',
+  online: '#0ea5e9',
+  manual: '#f59e0b',
+  unknown: '#94a3b8',
+};
+
 export default function ReportsPage() {
   const [salesData, setSalesData] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [channelRevenue, setChannelRevenue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
@@ -31,12 +47,15 @@ export default function ReportsPage() {
     if (period === 'week') from.setDate(now.getDate() - 7);
     else if (period === 'month') from.setMonth(now.getMonth() - 1);
     else from.setFullYear(now.getFullYear() - 1);
+    const fromStr = from.toISOString().split('T')[0];
+    const toStr = now.toISOString().split('T')[0];
     Promise.all([
-      reportsApi.getSalesReport(shopId, { from: from.toISOString().split('T')[0], to: now.toISOString().split('T')[0] }),
+      reportsApi.getSalesReport(shopId, { from: fromStr, to: toStr }),
       reportsApi.getTopProducts(shopId),
+      reportsApi.getChannelRevenue(shopId, { from: fromStr, to: toStr }),
     ])
-      .then(([s, t]) => { setSalesData(s.data ?? []); setTopProducts(t.data ?? []); })
-      .catch(() => { setSalesData([]); setTopProducts([]); })
+      .then(([s, t, c]) => { setSalesData(s.data ?? []); setTopProducts(t.data ?? []); setChannelRevenue(c.data ?? []); })
+      .catch(() => { setSalesData([]); setTopProducts([]); setChannelRevenue([]); })
       .finally(() => setLoading(false));
   }, [shopId, period]);
 
@@ -251,6 +270,44 @@ export default function ReportsPage() {
               )}
             </div>
           </div>
+
+          {/* Revenue per channel */}
+          {channelRevenue.length > 0 && (() => {
+            const totalChRev = channelRevenue.reduce((s, c) => s + c.revenue, 0);
+            return (
+              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+                <h2 className="mb-1 font-semibold text-foreground">Revenue by channel</h2>
+                <p className="mb-5 text-xs text-muted-foreground">Where your revenue is coming from this period</p>
+                <div className="space-y-3">
+                  {channelRevenue
+                    .sort((a, b) => b.revenue - a.revenue)
+                    .map((ch) => {
+                      const label = CHANNEL_LABELS[ch.source] ?? ch.source;
+                      const color = CHANNEL_COLORS[ch.source] ?? '#94a3b8';
+                      const pct = totalChRev > 0 ? (ch.revenue / totalChRev) * 100 : 0;
+                      return (
+                        <div key={ch.source}>
+                          <div className="flex items-center justify-between text-sm mb-1.5">
+                            <span className="flex items-center gap-2 text-foreground font-medium">
+                              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: color }} />
+                              {label}
+                            </span>
+                            <span className="flex items-center gap-3 tabular-nums">
+                              <span className="text-xs text-muted-foreground">{ch.orders} orders</span>
+                              <span className="font-semibold text-foreground">{fmt(ch.revenue, 0)}</span>
+                              <span className="text-xs text-muted-foreground w-10 text-right">{Math.round(pct)}%</span>
+                            </span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Top products — 2-column grid, gold/silver/bronze ranks */}
           {topProducts.length > 0 && (
