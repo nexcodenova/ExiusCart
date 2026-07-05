@@ -11,6 +11,7 @@ import {
   Lock,
   Receipt,
   Percent,
+  Calculator,
   Webhook,
   ChevronRight,
   Loader2,
