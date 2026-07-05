@@ -13,6 +13,40 @@ CHANGED=$(git diff HEAD~1 --name-only 2>/dev/null || echo "all")
 export NEXT_PUBLIC_API_URL="https://api.exiuscart.com"
 export NEXT_TELEMETRY_DISABLED=1
 
+# Helper: build a Next.js app safely.
+# Clears only the stale-build problem files (not the whole .next),
+# builds, and only reloads pm2 when the build actually succeeds.
+# If the build fails the OLD .next stays intact so the live site keeps running.
+build_app() {
+  local APP_DIR="$1"
+  local PM2_NAME="$2"
+  local PORT="$3"   # optional — only used when starting fresh
+
+  echo "--- Building $PM2_NAME ---"
+  cd "$PROJECT_DIR"
+
+  # Remove only the specific files that cause Next.js build errors.
+  # Do NOT rm -rf .next — the live server needs it while we build.
+  rm -rf  "$APP_DIR/.next/export"                   2>/dev/null || true
+  rm -f   "$APP_DIR/.next/server/pages-manifest.json" 2>/dev/null || true
+
+  # Build — if this fails set -e exits here; the old .next is untouched.
+  npm run build --workspace="$APP_DIR"
+
+  # Build succeeded — reload (or start) pm2
+  if pm2 describe "$PM2_NAME" > /dev/null 2>&1; then
+    pm2 reload "$PM2_NAME" --update-env
+  else
+    if [ -n "$PORT" ]; then
+      PORT="$PORT" pm2 start npm --name "$PM2_NAME" --cwd "$APP_DIR" -- start
+    else
+      pm2 start npm --name "$PM2_NAME" --cwd "$APP_DIR" -- start
+    fi
+  fi
+
+  echo "$PM2_NAME built and reloaded ✓"
+}
+
 # ── Backend ───────────────────────────────────────────────────────────────────
 if echo "$CHANGED" | grep -q "exiuscart-backend/" || [ "$CHANGED" = "all" ]; then
   echo "--- Backend ---"
@@ -31,46 +65,19 @@ if echo "$CHANGED" | grep -q "exiuscart-backend/" || [ "$CHANGED" = "all" ]; the
   echo "Backend reloaded ✓"
 fi
 
-# ── Store — build on server so RSC paths match ────────────────────────────────
+# ── Store ─────────────────────────────────────────────────────────────────────
 if echo "$CHANGED" | grep -q "apps/exiuscart-store/" || [ "$CHANGED" = "all" ]; then
-  echo "--- Store (building on server) ---"
-  rm -rf "$PROJECT_DIR/apps/exiuscart-store/.next" 2>/dev/null || true
-  cd "$PROJECT_DIR"
-  npm run build --workspace=apps/exiuscart-store
-  if pm2 describe exiuscart-store > /dev/null 2>&1; then
-    pm2 reload exiuscart-store --update-env
-  else
-    PORT=3002 pm2 start npm --name exiuscart-store --cwd "$PROJECT_DIR/apps/exiuscart-store" -- start
-  fi
-  echo "Store built and reloaded ✓"
+  build_app "apps/exiuscart-store" "exiuscart-store" "3002"
 fi
 
-# ── Admin — build on server so RSC paths match ────────────────────────────────
+# ── Admin ─────────────────────────────────────────────────────────────────────
 if echo "$CHANGED" | grep -q "apps/exiuscart-admin/" || [ "$CHANGED" = "all" ]; then
-  echo "--- Admin (building on server) ---"
-  rm -rf "$PROJECT_DIR/apps/exiuscart-admin/.next" 2>/dev/null || true
-  cd "$PROJECT_DIR"
-  npm run build --workspace=apps/exiuscart-admin
-  if pm2 describe exiuscart-admin > /dev/null 2>&1; then
-    pm2 reload exiuscart-admin --update-env
-  else
-    pm2 start npm --name exiuscart-admin --cwd "$PROJECT_DIR/apps/exiuscart-admin" -- start
-  fi
-  echo "Admin built and reloaded ✓"
+  build_app "apps/exiuscart-admin" "exiuscart-admin" ""
 fi
 
-# ── Affiliates — build on server ──────────────────────────────────────────────
+# ── Affiliates ────────────────────────────────────────────────────────────────
 if echo "$CHANGED" | grep -q "apps/exiuscart-affiliates/" || [ "$CHANGED" = "all" ]; then
-  echo "--- Affiliates (building on server) ---"
-  rm -rf "$PROJECT_DIR/apps/exiuscart-affiliates/.next" 2>/dev/null || true
-  cd "$PROJECT_DIR"
-  npm run build --workspace=apps/exiuscart-affiliates
-  if pm2 describe exiuscart-affiliates > /dev/null 2>&1; then
-    pm2 reload exiuscart-affiliates --update-env
-  else
-    pm2 start npm --name exiuscart-affiliates --cwd "$PROJECT_DIR/apps/exiuscart-affiliates" -- start
-  fi
-  echo "Affiliates built and reloaded ✓"
+  build_app "apps/exiuscart-affiliates" "exiuscart-affiliates" ""
 fi
 
 pm2 save
