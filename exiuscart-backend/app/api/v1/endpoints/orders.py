@@ -20,7 +20,7 @@ from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_n
 from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
 from app.models.subscription import Subscription
 from app.models.bundle_component import BundleComponent
-from app.models.channel import Channel
+from app.models.channel import ChannelConnection
 
 router = APIRouter()
 
@@ -556,7 +556,7 @@ async def send_invoice(
         tax_amount=float(order.tax_amount),
         discount_amount=float(order.discount_amount),
         total=float(order.total),
-        currency="LKR" if db.query(Channel).filter(Channel.shop_id == shop_id, Channel.channel_type == "thedersi").first() else (shop.currency if shop else "AED"),
+        currency="LKR" if db.query(ChannelConnection).filter(ChannelConnection.shop_id == shop_id, ChannelConnection.channel_type == "thedersi").first() else (shop.currency if shop else "AED"),
         notes=order.notes,
         delivery_charge=delivery_charge,
         free_delivery_label=free_delivery_label,
