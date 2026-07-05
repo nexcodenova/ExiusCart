@@ -47,6 +47,25 @@ build_app() {
   echo "$PM2_NAME built and reloaded ✓"
 }
 
+# ── Database migrations ───────────────────────────────────────────────────────
+echo "--- Running DB migrations ---"
+ENV_FILE="$PROJECT_DIR/exiuscart-backend/.env"
+if [ -f "$ENV_FILE" ]; then
+  DB_URL=$(grep ^DATABASE_URL "$ENV_FILE" | cut -d= -f2-)
+  if [ -n "$DB_URL" ]; then
+    for migration in "$PROJECT_DIR/exiuscart-backend/migrations/"*.sql; do
+      [ -f "$migration" ] || continue
+      echo "Applying: $(basename "$migration")"
+      psql "$DB_URL" -f "$migration" || echo "Warning: migration may already be applied or failed: $(basename "$migration")"
+    done
+    echo "Migrations done ✓"
+  else
+    echo "DATABASE_URL not found in .env — skipping migrations"
+  fi
+else
+  echo ".env not found — skipping migrations"
+fi
+
 # ── Backend ───────────────────────────────────────────────────────────────────
 if echo "$CHANGED" | grep -q "exiuscart-backend/" || [ "$CHANGED" = "all" ]; then
   echo "--- Backend ---"
