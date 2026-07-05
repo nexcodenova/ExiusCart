@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { shopApi } from '@/lib/api';
+import { shopApi, subscriptionApi } from '@/lib/api';
 import {
   Settings,
   Shield,
@@ -11,9 +11,10 @@ import {
   Lock,
   Receipt,
   Percent,
-  Calculator,
   Webhook,
   ChevronRight,
+  Loader2,
+  Check,
 } from 'lucide-react';
 
 type SettingsTab = 'general' | 'tax' | 'security' | 'notifications';
@@ -22,6 +23,11 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [taxSaving, setTaxSaving] = useState(false);
   const [taxSaved, setTaxSaved] = useState(false);
+  const [generalSaving, setGeneralSaving] = useState(false);
+  const [generalSaved, setGeneralSaved] = useState(false);
+  const [isTheDersiSeller, setIsTheDersiSeller] = useState(false);
+
+  const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
   const [settings, setSettings] = useState({
     language: 'en',
@@ -44,13 +50,40 @@ export default function SettingsPage() {
       const shop = res.data;
       setSettings((prev) => ({
         ...prev,
+        currency: shop.currency ?? 'AED',
         vatEnabled: shop.vat_enabled ?? false,
         vatRate: shop.vat_rate ?? 0,
         pricesIncludeVat: shop.prices_include_vat ?? false,
         showVatBreakdown: shop.show_vat_breakdown ?? false,
       }));
     }).catch(() => {});
-  }, []);
+
+    if (shopId) {
+      subscriptionApi.getCurrent(shopId)
+        .then((r) => {
+          const plan = r.data?.plan?.plan_type || '';
+          const isDersi = plan.startsWith('thedersi');
+          setIsTheDersiSeller(isDersi);
+          if (isDersi) {
+            setSettings((prev) => ({ ...prev, currency: 'LKR' }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [shopId]);
+
+  const handleSaveGeneral = async () => {
+    setGeneralSaving(true);
+    try {
+      await shopApi.updateShop({ currency: isTheDersiSeller ? 'LKR' : settings.currency });
+      setGeneralSaved(true);
+      setTimeout(() => setGeneralSaved(false), 3000);
+    } catch {
+      alert('Failed to save settings.');
+    } finally {
+      setGeneralSaving(false);
+    }
+  };
 
   const handleSaveTax = async () => {
     setTaxSaving(true);
@@ -161,41 +194,50 @@ export default function SettingsPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="currency-select" className="text-sm text-muted-foreground mb-1.5 block">Currency</label>
-                <select
-                  id="currency-select"
-                  value={settings.currency}
-                  onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground"
-                >
-                  <option value="AED">AED - UAE Dirham</option>
-                  <option value="SAR">SAR - Saudi Riyal</option>
-                  <option value="USD">USD - US Dollar</option>
-                  <option value="EUR">EUR - Euro</option>
-                  <option value="GBP">GBP - British Pound</option>
-                  <option value="INR">INR - Indian Rupee</option>
-                  <option value="LKR">LKR - Sri Lanka Rupee</option>
-                  <option value="BDT">BDT - Bangladeshi Taka</option>
-                  <option value="PKR">PKR - Pakistani Rupee</option>
-                  <option value="MYR">MYR - Malaysian Ringgit</option>
-                  <option value="SGD">SGD - Singapore Dollar</option>
-                  <option value="CAD">CAD - Canadian Dollar</option>
-                  <option value="AUD">AUD - Australian Dollar</option>
-                  <option value="QAR">QAR - Qatari Riyal</option>
-                  <option value="KWD">KWD - Kuwaiti Dinar</option>
-                  <option value="BHD">BHD - Bahraini Dinar</option>
-                  <option value="OMR">OMR - Omani Rial</option>
-                  <option value="EGP">EGP - Egyptian Pound</option>
-                  <option value="NGN">NGN - Nigerian Naira</option>
-                  <option value="KES">KES - Kenyan Shilling</option>
-                  <option value="ZAR">ZAR - South African Rand</option>
-                  <option value="TRY">TRY - Turkish Lira</option>
-                  <option value="IDR">IDR - Indonesian Rupiah</option>
-                  <option value="PHP">PHP - Philippine Peso</option>
-                  <option value="THB">THB - Thai Baht</option>
-                  <option value="JPY">JPY - Japanese Yen</option>
-                  <option value="CNY">CNY - Chinese Yuan</option>
-                </select>
+                <label htmlFor="currency-select" className="text-sm text-muted-foreground mb-1.5 block">
+                  Currency {isTheDersiSeller && <span className="text-xs text-indigo-500 ml-1">(TheDersi — locked to LKR)</span>}
+                </label>
+                {isTheDersiSeller ? (
+                  <div className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground flex items-center gap-2 cursor-not-allowed">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                    LKR - Sri Lanka Rupee
+                  </div>
+                ) : (
+                  <select
+                    id="currency-select"
+                    value={settings.currency}
+                    onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground"
+                  >
+                    <option value="AED">AED - UAE Dirham</option>
+                    <option value="SAR">SAR - Saudi Riyal</option>
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="INR">INR - Indian Rupee</option>
+                    <option value="LKR">LKR - Sri Lanka Rupee</option>
+                    <option value="BDT">BDT - Bangladeshi Taka</option>
+                    <option value="PKR">PKR - Pakistani Rupee</option>
+                    <option value="MYR">MYR - Malaysian Ringgit</option>
+                    <option value="SGD">SGD - Singapore Dollar</option>
+                    <option value="CAD">CAD - Canadian Dollar</option>
+                    <option value="AUD">AUD - Australian Dollar</option>
+                    <option value="QAR">QAR - Qatari Riyal</option>
+                    <option value="KWD">KWD - Kuwaiti Dinar</option>
+                    <option value="BHD">BHD - Bahraini Dinar</option>
+                    <option value="OMR">OMR - Omani Rial</option>
+                    <option value="EGP">EGP - Egyptian Pound</option>
+                    <option value="NGN">NGN - Nigerian Naira</option>
+                    <option value="KES">KES - Kenyan Shilling</option>
+                    <option value="ZAR">ZAR - South African Rand</option>
+                    <option value="TRY">TRY - Turkish Lira</option>
+                    <option value="IDR">IDR - Indonesian Rupiah</option>
+                    <option value="PHP">PHP - Philippine Peso</option>
+                    <option value="THB">THB - Thai Baht</option>
+                    <option value="JPY">JPY - Japanese Yen</option>
+                    <option value="CNY">CNY - Chinese Yuan</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label htmlFor="timezone-select" className="text-sm text-muted-foreground mb-1.5 block">Timezone</label>
@@ -248,6 +290,17 @@ export default function SettingsPage() {
                   <option value="system">System</option>
                 </select>
               </div>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveGeneral}
+                disabled={generalSaving}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-60"
+              >
+                {generalSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : generalSaved ? <Check className="w-4 h-4" /> : null}
+                {generalSaved ? 'Saved!' : 'Save Settings'}
+              </button>
             </div>
           </div>
         </div>

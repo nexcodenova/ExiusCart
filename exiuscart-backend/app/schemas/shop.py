@@ -29,8 +29,11 @@ class ShopUpdate(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     tax_number: Optional[str] = None
+    trade_license: Optional[str] = None
+    website: Optional[str] = None
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
+    currency: Optional[str] = None
     vat_enabled: Optional[bool] = None
     vat_rate: Optional[float] = None
     prices_include_vat: Optional[bool] = None
