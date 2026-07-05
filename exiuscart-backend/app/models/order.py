@@ -41,6 +41,9 @@ class Order(Base):
     total = Column(Numeric(10, 2), nullable=False)
     notes = Column(Text, nullable=True)
     shipping_address = Column(Text, nullable=True)
+    gift_wrap = Column(Boolean, default=False)
+    gift_wrap_fee = Column(Numeric(10, 2), default=0)
+    gift_message = Column(Text, nullable=True)
     # Shipment tracking
     tracking_number = Column(String(200), nullable=True)
     carrier = Column(String(100), nullable=True)        # "DHL", "FedEx", "Kapruka", etc.

@@ -103,6 +103,10 @@ class ChannelOrderWebhook(BaseModel):
     commission_rate: Optional[float] = None
     commission_amount: Optional[float] = None
     seller_net_earnings: Optional[float] = None
+    # Gift wrap (TheDersi specific)
+    gift_wrap: Optional[bool] = False
+    gift_wrap_fee: Optional[float] = 0
+    gift_message: Optional[str] = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -663,6 +667,9 @@ async def receive_order_webhook(
         total=payload.total,
         notes=f"{conn.channel_type.title()} Order #{payload.channel_order_id} | {delivery_note}",
         shipping_address=payload.shipping_address,
+        gift_wrap=payload.gift_wrap or False,
+        gift_wrap_fee=payload.gift_wrap_fee or 0,
+        gift_message=payload.gift_message or None,
     )
     db.add(order)
     db.flush()

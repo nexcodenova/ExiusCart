@@ -62,6 +62,9 @@ interface OrderDetails {
   total: number;
   notes: string | null;
   shipping_address: string | null;
+  gift_wrap: boolean;
+  gift_wrap_fee: number;
+  gift_message: string | null;
   tracking_number: string | null;
   carrier: string | null;
   shipped_at: string | null;
@@ -323,6 +326,36 @@ export default function OrderDetailsPage() {
           {order.tracking_number && <InfoRow label="Tracking #" value={order.tracking_number} mono />}
           {order.shipped_at && <InfoRow label="Shipped" value={new Date(order.shipped_at).toLocaleDateString('en-AE')} />}
           {order.estimated_delivery && <InfoRow label="Est. Delivery" value={order.estimated_delivery} />}
+        </div>
+      )}
+
+      {/* Gift Wrap */}
+      {order.gift_wrap && (
+        <div className="bg-pink-500/5 border border-pink-500/30 rounded-2xl px-5 py-4">
+          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            🎁 Gift Order
+          </h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Gift Wrapping</span>
+              <span className="font-medium text-pink-600 dark:text-pink-400">Included</span>
+            </div>
+            {order.gift_wrap_fee > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Gift Wrap Fee</span>
+                <span className="font-medium text-foreground">LKR {order.gift_wrap_fee.toLocaleString()}</span>
+              </div>
+            )}
+            {order.gift_message && (
+              <div className="mt-3 p-3 bg-pink-500/10 rounded-xl border border-pink-500/20">
+                <p className="text-xs text-muted-foreground mb-1 font-medium uppercase tracking-wide">Gift Message</p>
+                <p className="text-sm text-foreground italic">&ldquo;{order.gift_message}&rdquo;</p>
+              </div>
+            )}
+            <p className="text-xs text-pink-600 dark:text-pink-400 mt-2 font-medium">
+              ⚠ Pack this order as a gift and include the message card
+            </p>
+          </div>
         </div>
       )}
 
