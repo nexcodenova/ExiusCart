@@ -367,11 +367,16 @@ async def update_order_status(
     # Guard against re-cancelling to avoid double-restocking.
     restocked_ids: set = set()
     if data.status == "cancelled" and previous_status != "cancelled":
-        for item in order.items:
-            product = db.query(Product).filter(Product.id == item.product_id).first()
-            if product:
-                product.quantity = (product.quantity or 0) + item.quantity
-                restocked_ids.add(product.id)
+        # POS / WhatsApp / online orders: stock always deducted at creation → always restore.
+        # Channel orders (TheDersi, Shopify…): stock is only deducted when payment_status == "paid".
+        # Restoring stock for an unpaid channel order would add phantom units that were never removed.
+        stock_was_deducted = order.source in ("pos", "whatsapp", "online") or order.payment_status == "paid"
+        if stock_was_deducted:
+            for item in order.items:
+                product = db.query(Product).filter(Product.id == item.product_id).first()
+                if product:
+                    product.quantity = (product.quantity or 0) + item.quantity
+                    restocked_ids.add(product.id)
 
     order.status = data.status
     db.commit()
