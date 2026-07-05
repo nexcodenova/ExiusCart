@@ -249,6 +249,7 @@ export default function OrderDetailsPage() {
           <DollarSign className="w-5 h-5 text-muted-foreground" /> Pricing
         </h2>
         <InfoRow label="Subtotal" value={fmt(order.subtotal)} />
+        {order.gift_wrap && order.gift_wrap_fee > 0 && <InfoRow label="🎁 Gift Wrap Fee" value={fmt(order.gift_wrap_fee)} />}
         {order.discount_amount > 0 && <InfoRow label="Discount" value={`-${fmt(order.discount_amount)}`} />}
         {!isTheDersi && order.tax_amount > 0 && <InfoRow label="VAT (5%)" value={fmt(order.tax_amount)} />}
         <div className="flex items-center justify-between pt-2.5 mt-0.5">
