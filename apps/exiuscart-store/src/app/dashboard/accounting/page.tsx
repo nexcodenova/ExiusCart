@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   BookOpen, TrendingUp, TrendingDown, DollarSign, FileText,
   Download, Loader2, BarChart3, ArrowUpRight, ArrowDownRight,
-  Receipt, Scale, Calculator,
+  Receipt, Scale, Calculator, RefreshCcw,
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
@@ -35,6 +35,7 @@ export default function AccountingPage() {
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [summary, setSummary] = useState<{ pos_revenue: number; channel_revenue: number; refund_amount: number; cancelled_orders: number } | null>(null);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
   useEffect(() => {
@@ -45,8 +46,13 @@ export default function AccountingPage() {
     Promise.all([
       reportsApi.getSalesReport(shopId, { from, to }),
       reportsApi.getTopProducts(shopId),
+      reportsApi.getFinancialSummary(shopId, { from, to }),
     ])
-      .then(([s, t]) => { setSalesData(s.data ?? []); setTopProducts(t.data ?? []); })
+      .then(([s, t, fin]) => {
+        setSalesData(s.data ?? []);
+        setTopProducts(t.data ?? []);
+        setSummary(fin.data ?? null);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [shopId]);
@@ -101,12 +107,13 @@ export default function AccountingPage() {
           {/* ── Overview ── */}
           {tab === 'overview' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {[
-                  { label: 'Total Revenue',   value: `${fmt(totalRevenue)}`,  icon: TrendingUp,   color: 'text-green-500',  bg: 'bg-green-500/10' },
-                  { label: 'Total Orders',    value: totalOrders.toString(),       icon: FileText,     color: 'text-blue-500',   bg: 'bg-blue-500/10'  },
-                  { label: 'Avg Order Value', value: `${fmt(avgOrder)}`,       icon: DollarSign,   color: 'text-purple-500', bg: 'bg-purple-500/10'},
+                  { label: 'Total Revenue',   value: `${fmt(totalRevenue)}`,  icon: TrendingUp,    color: 'text-green-500',  bg: 'bg-green-500/10' },
+                  { label: 'Total Orders',    value: totalOrders.toString(),  icon: FileText,      color: 'text-blue-500',   bg: 'bg-blue-500/10'  },
+                  { label: 'Avg Order Value', value: `${fmt(avgOrder)}`,      icon: DollarSign,    color: 'text-purple-500', bg: 'bg-purple-500/10'},
                   { label: 'VAT Payable',     value: `${fmt(totalRevenue * 0.05 / 1.05)}`, icon: Receipt, color: 'text-orange-500', bg: 'bg-orange-500/10'},
+                  { label: 'Refund Amount',   value: summary ? fmt(summary.refund_amount) : '—', icon: RefreshCcw, color: 'text-red-500', bg: 'bg-red-500/10' },
                 ].map((s) => (
                   <div key={s.label} className="bg-card rounded-xl border border-border p-5">
                     <div className={`w-10 h-10 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>

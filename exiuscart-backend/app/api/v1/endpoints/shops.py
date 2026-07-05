@@ -467,6 +467,47 @@ def get_channel_revenue(
     return [{"source": r.source or "unknown", "revenue": float(r.revenue or 0), "orders": r.orders} for r in rows]
 
 
+@router.get("/{shop_id}/reports/financial-summary")
+def get_financial_summary(
+    shop_id: int,
+    from_date: Optional[str] = Query(None, alias="from"),
+    to_date: Optional[str] = Query(None, alias="to"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    def apply_dates(q):
+        if from_date:
+            q = q.filter(Order.created_at >= from_date)
+        if to_date:
+            q = q.filter(Order.created_at <= to_date + " 23:59:59")
+        return q
+
+    def scalar(q):
+        return float(q.scalar() or 0)
+
+    base = lambda: apply_dates(db.query(Order).filter(Order.shop_id == shop_id))
+
+    pos_revenue   = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.source == "pos",  Order.status != "cancelled")))
+    pos_orders    = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.source == "pos",  Order.status != "cancelled")).scalar() or 0
+    chan_revenue  = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.source != "pos",  Order.status != "cancelled")))
+    chan_orders   = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.source != "pos",  Order.status != "cancelled")).scalar() or 0
+    refund_amount = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.status == "cancelled", Order.payment_status == "paid")))
+    cancelled_count = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.status == "cancelled")).scalar() or 0
+
+    return {
+        "pos_revenue": pos_revenue,
+        "pos_orders": int(pos_orders),
+        "channel_revenue": chan_revenue,
+        "channel_orders": int(chan_orders),
+        "refund_amount": refund_amount,
+        "cancelled_orders": int(cancelled_count),
+    }
+
+
 @router.get("/{shop_id}/reports/vat")
 def get_vat_report(
     shop_id: int,

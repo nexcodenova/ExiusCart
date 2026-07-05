@@ -133,6 +133,8 @@ export const reportsApi = {
     api.get(`/shops/${shopId}/reports/channel-revenue`, { params }),
   getVatReport: (shopId: string, params: { year?: number; quarter?: number; vat_rate?: number; prices_include_vat?: boolean }) =>
     api.get(`/shops/${shopId}/reports/vat`, { params }),
+  getFinancialSummary: (shopId: string, params: { from: string; to: string }) =>
+    api.get(`/shops/${shopId}/reports/financial-summary`, { params }),
 };
 
 // ── Webhooks ──────────────────────────────────────────
