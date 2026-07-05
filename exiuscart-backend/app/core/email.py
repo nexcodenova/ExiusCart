@@ -529,6 +529,7 @@ def build_invoice_html(
     delivery_charge: float = 0,
     free_delivery_label: Optional[str] = None,
     order_already_paid: bool = False,
+    gift_wrap_fee: float = 0,
 ) -> str:
     def fmt(v: float) -> str:
         return f"{currency} {v:,.2f}"
@@ -589,6 +590,12 @@ def build_invoice_html(
           <td colspan="3" style="padding:6px 16px;text-align:right;color:#888;">Discount</td>
           <td style="padding:6px 16px;text-align:right;color:#ef4444;">-{fmt(discount_amount)}</td>
         </tr>""" if discount_amount > 0 else ""
+
+    gift_wrap_row = f"""
+        <tr>
+          <td colspan="3" style="padding:6px 16px;text-align:right;color:#888;">🎁 Gift Wrap</td>
+          <td style="padding:6px 16px;text-align:right;">{fmt(gift_wrap_fee)}</td>
+        </tr>""" if gift_wrap_fee and gift_wrap_fee > 0 else ""
 
     tax_row = f"""
         <tr>
@@ -656,6 +663,7 @@ def build_invoice_html(
                 <td style="padding:6px 16px;text-align:right;">{fmt(subtotal)}</td>
               </tr>
               {discount_row}
+              {gift_wrap_row}
               {tax_row}
               {paid_row}
               {delivery_row}

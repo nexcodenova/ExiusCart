@@ -564,6 +564,7 @@ async def send_invoice(
         delivery_charge=delivery_charge,
         free_delivery_label=free_delivery_label,
         order_already_paid=(order.payment_status == "paid"),
+        gift_wrap_fee=float(order.gift_wrap_fee or 0),
     )
 
     # Check invoice email limit before sending
