@@ -151,6 +151,18 @@ export default function InvoicePage() {
                 <span style={{ fontSize: 13, color: '#dc2626' }}>-{fmt(order.discount_amount)}</span>
               </div>
             )}
+            {order.delivery_charge > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e5e7eb' }}>
+                <span style={{ fontSize: 13, color: '#6b7280' }}>Delivery Charge</span>
+                <span style={{ fontSize: 13, color: '#111' }}>{fmt(order.delivery_charge)}</span>
+              </div>
+            )}
+            {order.gift_wrap_fee > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e5e7eb' }}>
+                <span style={{ fontSize: 13, color: '#6b7280' }}>🎁 Gift Wrap</span>
+                <span style={{ fontSize: 13, color: '#111' }}>{fmt(order.gift_wrap_fee)}</span>
+              </div>
+            )}
             {order.tax_amount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e5e7eb' }}>
                 <span style={{ fontSize: 13, color: '#6b7280' }}>VAT (5%)</span>

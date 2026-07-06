@@ -473,6 +473,7 @@ async def get_order_details(
         "carrier": order.carrier,
         "shipped_at": order.shipped_at,
         "estimated_delivery": order.estimated_delivery,
+        "delivery_charge": float(order.delivery_charge or 0),
         "created_at": order.created_at,
         "items": enriched_items,
         "channel_meta": channel_meta,
