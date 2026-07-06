@@ -29,6 +29,7 @@ interface TheDersiInfo {
   currency: string;
   next_payout_date: string;
   payout_overdue: boolean;
+  payout_note?: string;
 }
 
 interface PayoutRecord {
@@ -194,6 +195,7 @@ function TheDersiPayoutPanel({ connection, shopId }: { connection: ChannelConnec
   };
 
   const hasPending = payouts.some((p) => p.status === 'pending');
+  const todayIsMonday = new Date().getDay() === 1;
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -274,16 +276,23 @@ function TheDersiPayoutPanel({ connection, shopId }: { connection: ChannelConnec
             <button
               type="button"
               onClick={handleRequestPayout}
-              disabled={requesting || (info?.available_amount ?? 0) <= 0 || hasPending}
+              disabled={requesting || (info?.available_amount ?? 0) <= 0 || hasPending || !todayIsMonday}
               className="w-full py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {requesting && <Loader2 className="w-4 h-4 animate-spin" />}
               {hasPending
                 ? '⏳ Payout Request Pending'
+                : !todayIsMonday
+                ? `Available on Monday — ${info.currency} ${fmtNum(info.available_amount ?? 0)}`
                 : (info?.available_amount ?? 0) <= 0
                 ? 'No Balance Available'
                 : `Request Payout — ${info.currency} ${fmtNum(info.available_amount ?? 0)}`}
             </button>
+            {!todayIsMonday && (
+              <p className="text-xs text-muted-foreground text-center">
+                Payout requests are only accepted on <strong>Mondays</strong>. Next payout day: {new Date(info.next_payout_date + 'T00:00:00').toLocaleDateString('en-LK', { weekday: 'long', day: 'numeric', month: 'long' })}.
+              </p>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-muted/40 rounded-lg p-3 flex items-start gap-2.5">
@@ -299,9 +308,7 @@ function TheDersiPayoutPanel({ connection, shopId }: { connection: ChannelConnec
                 <div>
                   <p className="text-xs text-muted-foreground">Payout Schedule</p>
                   <p className="text-sm font-medium text-foreground">{info.payout_schedule}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {info.plan_label === 'Pro' ? 'Every Monday' : 'Every 2nd Monday'}
-                  </p>
+                  <p className="text-xs text-muted-foreground">All plans — request on Mondays</p>
                 </div>
               </div>
               <div className={`rounded-lg p-3 flex items-start gap-2.5 ${info.payout_overdue ? 'bg-red-500/10' : 'bg-muted/40'}`}>
@@ -319,6 +326,12 @@ function TheDersiPayoutPanel({ connection, shopId }: { connection: ChannelConnec
                 </div>
               </div>
             </div>
+
+            {info.payout_note && (
+              <p className="text-xs text-muted-foreground bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2.5">
+                ℹ️ {info.payout_note}
+              </p>
+            )}
 
             <div>
               <div className="flex items-center gap-2 mb-3">

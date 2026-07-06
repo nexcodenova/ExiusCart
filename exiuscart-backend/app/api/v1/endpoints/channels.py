@@ -848,11 +848,23 @@ def get_thedersi_seller_info(
                 headers={"X-Api-Key": conn.channel_api_key},
             )
             r.raise_for_status()
-            return r.json()
+            data = r.json()
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail="TheDersi returned an error")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not reach TheDersi: {e}")
+
+    # Override payout schedule fields to reflect TheDersi's updated rules:
+    # all plans (Free/Growth/Pro) now pay every Monday; requests only accepted on Mondays.
+    from datetime import date as _date, timedelta as _td
+    today = _date.today()
+    days_to_monday = (7 - today.weekday()) % 7  # 0 if today is Monday
+    next_monday = today + _td(days=days_to_monday)
+    data["payout_schedule"] = "Every Monday"
+    data["next_payout_date"] = next_monday.isoformat()
+    data["payout_overdue"] = False
+    data["payout_note"] = "Funds are released 7 days after delivery and paid out every Monday. Payout requests can only be submitted on Mondays."
+    return data
 
 
 @router.get("/shops/{shop_id}/channels/{channel_id}/thedersi-payouts")
