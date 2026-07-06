@@ -65,6 +65,10 @@ export const adminApi = {
     api.put(`/admin/subscriptions/${subId}/approve`),
   rejectSubscription: (subId: number) =>
     api.put(`/admin/subscriptions/${subId}/reject`),
+  updateSubscription: (subId: number, data: {
+    plan_type: string; billing_type: string; status: string;
+    amount_paid: number; currency: string; expires_at?: string | null;
+  }) => api.patch(`/admin/subscriptions/${subId}`, data),
 
   // Leads
   getLeads: (params?: { search?: string; status_filter?: string }) =>

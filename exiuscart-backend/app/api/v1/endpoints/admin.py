@@ -422,6 +422,63 @@ def reject_subscription(
     return {"message": "Subscription rejected", "id": sub_id}
 
 
+class UpdateSubscriptionIn(BaseModel):
+    plan_type: str
+    billing_type: str
+    status: str
+    amount_paid: float = 0.0
+    currency: str = "AED"
+    expires_at: Optional[str] = None  # ISO date string or null for lifetime
+
+
+@router.patch("/admin/subscriptions/{sub_id}")
+def update_subscription(
+    sub_id: int,
+    body: UpdateSubscriptionIn,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    """Admin manually edits any subscription — plan, billing type, status, amount, expiry."""
+    sub = db.query(Subscription).filter(Subscription.id == sub_id).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    now = datetime.now(timezone.utc)
+    sub.plan_type = body.plan_type
+    sub.billing_type = body.billing_type
+    sub.status = body.status
+    sub.amount_paid = body.amount_paid
+    sub.currency = body.currency
+
+    if body.expires_at:
+        try:
+            # Accept "YYYY-MM-DD" or full ISO string
+            raw = body.expires_at[:10]  # take date part only
+            sub.expires_at = datetime.strptime(raw, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except Exception:
+            sub.expires_at = None
+    else:
+        # Auto-calculate if activating a paid plan without explicit date
+        if body.status == "active" and not body.expires_at:
+            if body.billing_type == "monthly":
+                sub.expires_at = now + timedelta(days=30)
+            elif body.billing_type == "yearly":
+                sub.expires_at = now + timedelta(days=365)
+            else:
+                sub.expires_at = None  # Lifetime
+        elif body.status == "trial":
+            sub.expires_at = now + timedelta(days=14)
+            sub.trial_ends_at = now + timedelta(days=14)
+        else:
+            sub.expires_at = None
+
+    if body.status in ("active", "trial") and not sub.starts_at:
+        sub.starts_at = now
+
+    db.commit()
+    return {"message": "Subscription updated", "id": sub_id}
+
+
 # ── Dashboard quick panels ────────────────────────────────────────────────────
 
 @router.get("/admin/pending-subscriptions")
