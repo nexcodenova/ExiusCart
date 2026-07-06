@@ -29,3 +29,4 @@ from app.models.reservation import Reservation
 from app.models.email_usage_log import EmailUsageLog
 from app.models.bundle_component import BundleComponent
 from app.models.expense import Expense
+from app.models.credit_note import CreditNote

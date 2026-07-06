@@ -11,7 +11,7 @@ from app.models.user import User
 from app.models.shop import Shop
 from app.models.quotation import Quotation
 from app.models.subscription import Subscription
-from app.core.email import send_quotation_email
+from app.core.email import send_quotation_email, send_payment_reminder_email
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -99,6 +99,8 @@ def _serialize(q: Quotation) -> dict:
         "valid_until": q.valid_until.isoformat() if q.valid_until else None,
         "created_at": q.created_at.isoformat() if q.created_at else None,
         "currency": shop.currency if shop else "USD",
+        "reminder_count": q.reminder_count or 0,
+        "last_reminded_at": q.last_reminded_at.isoformat() if q.last_reminded_at else None,
     }
 
 
@@ -227,3 +229,38 @@ def send_quotation(
         currency=shop.currency or "USD",
     )
     return {"sent": True}
+
+
+@router.post("/shops/{shop_id}/quotations/{quote_id}/reminder")
+def send_reminder(
+    shop_id: int,
+    quote_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = _get_shop(shop_id, current_user, db)
+
+    q = db.query(Quotation).filter(Quotation.id == quote_id, Quotation.shop_id == shop_id).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    if not q.customer_email:
+        raise HTTPException(status_code=400, detail="This quotation has no customer email address")
+    if q.status not in ("pending",):
+        raise HTTPException(status_code=400, detail="Reminders can only be sent for pending quotations")
+
+    q.reminder_count = (q.reminder_count or 0) + 1
+    q.last_reminded_at = datetime.now(timezone.utc)
+    db.commit()
+
+    send_payment_reminder_email(
+        to_email=q.customer_email,
+        customer_name=q.customer_name,
+        shop_name=shop.name,
+        shop_logo_url=shop.logo_url,
+        quote_number=q.quote_number,
+        total=float(q.total),
+        valid_until=q.valid_until.strftime("%B %d, %Y") if q.valid_until else "",
+        reminder_count=q.reminder_count,
+        currency=shop.currency or "USD",
+    )
+    return {"sent": True, "reminder_count": q.reminder_count}

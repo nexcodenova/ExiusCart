@@ -189,7 +189,22 @@ export const quotationsApi = {
   updateStatus: (shopId: string, id: number, status: string) =>
     api.patch(`/shops/${shopId}/quotations/${id}/status`, { status }),
   send: (shopId: string, id: number) => api.post(`/shops/${shopId}/quotations/${id}/send`, {}),
+  sendReminder: (shopId: string, id: number) => api.post(`/shops/${shopId}/quotations/${id}/reminder`, {}),
   delete: (shopId: string, id: number) => api.delete(`/shops/${shopId}/quotations/${id}`),
+};
+
+// ── Credit Notes ──────────────────────────────────────
+export const creditNotesApi = {
+  getAll: (shopId: string) => api.get(`/shops/${shopId}/credit-notes`),
+  create: (shopId: string, data: { order_id?: number; reason: string; amount: number; notes?: string }) =>
+    api.post(`/shops/${shopId}/credit-notes`, data),
+  void: (shopId: string, cnId: number) => api.patch(`/shops/${shopId}/credit-notes/${cnId}/void`, {}),
+};
+
+// ── Cash Flow ─────────────────────────────────────────
+export const cashFlowApi = {
+  get: (shopId: string, params: { from: string; to: string }) =>
+    api.get(`/shops/${shopId}/reports/cash-flow`, { params }),
 };
 
 // ── Reservations ──────────────────────────────────────

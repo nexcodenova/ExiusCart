@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import {
   ArrowLeft, Download, Send, Trash2, CheckCircle2, XCircle,
-  Clock, Mail, AlertCircle, Printer,
+  Clock, Mail, AlertCircle, Printer, Bell, Loader2,
 } from 'lucide-react';
 import { quotationsApi } from '@/lib/api';
 
@@ -38,6 +38,8 @@ interface Quotation {
   valid_until: string;
   created_at: string;
   currency: string;
+  reminder_count?: number;
+  last_reminded_at?: string;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -54,6 +56,7 @@ export default function QuotationDetailPage() {
   const [quote, setQuote] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [reminding, setReminding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -110,6 +113,24 @@ export default function QuotationDetailPage() {
     }
   };
 
+  const handleReminder = async () => {
+    if (!quote?.customer_email) {
+      showToast('No customer email on this quotation', 'error');
+      return;
+    }
+    setReminding(true);
+    try {
+      const res = await quotationsApi.sendReminder(shopId, quote.id);
+      setQuote((prev) => prev ? { ...prev, reminder_count: res.data.reminder_count } : prev);
+      showToast(`Payment reminder sent to ${quote.customer_email}`, 'success');
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail ?? 'Failed to send reminder';
+      showToast(msg, 'error');
+    } finally {
+      setReminding(false);
+    }
+  };
+
   const handlePrint = () => {
     window.open(`/dashboard/quotations/${id}/print`, '_blank');
   };
@@ -155,6 +176,14 @@ export default function QuotationDetailPage() {
             <Mail className="w-4 h-4" />
             {sending ? 'Sending...' : `Send to ${quote.customer_email ? quote.customer_email : 'Customer'}`}
           </button>
+          {quote.status === 'pending' && quote.customer_email && (
+            <button type="button" onClick={handleReminder} disabled={reminding}
+              title={quote.reminder_count ? `Reminded ${quote.reminder_count}×` : 'Send payment reminder email'}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition disabled:opacity-50">
+              {reminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+              {quote.reminder_count ? `Remind (${quote.reminder_count}×)` : 'Send Reminder'}
+            </button>
+          )}
           <button type="button" onClick={handleDelete} disabled={deleting}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition disabled:opacity-50">
             <Trash2 className="w-4 h-4" />

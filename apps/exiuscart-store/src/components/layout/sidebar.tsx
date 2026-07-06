@@ -11,7 +11,7 @@ import {
   UserCheck, Paintbrush, GitBranch, Shield, ChevronDown,
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
-  DollarSign, Target, Sparkles, Link2, BookmarkCheck,
+  DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt,
 } from 'lucide-react';
 import { shopApi } from '@/lib/api';
 
@@ -67,8 +67,9 @@ const GROUPS: MenuGroup[] = [
     icon: DollarSign,
     accent: 'text-orange-500',
     items: [
-      { href: '/dashboard/accounting', label: 'Accounting', icon: BookOpen  },
-      { href: '/dashboard/expenses',   label: 'Expenses',   icon: Wallet   },
+      { href: '/dashboard/accounting',   label: 'Accounting',   icon: BookOpen     },
+      { href: '/dashboard/expenses',     label: 'Expenses',     icon: Wallet       },
+      { href: '/dashboard/credit-notes', label: 'Credit Notes', icon: Receipt      },
       { href: '/dashboard/reports',    label: 'Reports',    icon: BarChart3},
       { href: '/dashboard/payout',     label: 'Payout',     icon: CreditCard },
       { href: '/dashboard/billing',    label: 'Billing',    icon: CreditCard },

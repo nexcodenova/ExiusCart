@@ -13,6 +13,8 @@ from app.models.subscription import Subscription
 from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.supplier import Supplier, PurchaseOrder, PurchaseOrderItem
+from app.models.credit_note import CreditNote
+from app.models.expense import Expense as ExpenseModel
 from app.schemas.shop import ShopCreate, ShopResponse, ShopUpdate
 from app.api.v1.deps import get_current_user
 
@@ -1035,3 +1037,212 @@ def mark_purchase_received(
         trigger_stock_sync(pid, shop_id, background_tasks)
 
     return _po_out(po)
+
+
+# ── Credit Notes ───────────────────────────────────────────────────────────────
+
+def _next_cn_number(db: Session, shop_id: int) -> str:
+    count = db.query(func.count(CreditNote.id)).filter(CreditNote.shop_id == shop_id).scalar() or 0
+    year = datetime.now(timezone.utc).year
+    return f"CN-{year}-{count + 1:04d}"
+
+
+def _cn_out(cn: CreditNote) -> dict:
+    return {
+        "id": cn.id,
+        "cn_number": cn.cn_number,
+        "order_id": cn.order_id,
+        "order_number": cn.order.order_number if cn.order else None,
+        "reason": cn.reason,
+        "amount": float(cn.amount),
+        "status": cn.status,
+        "notes": cn.notes,
+        "created_at": cn.created_at.isoformat() if cn.created_at else None,
+    }
+
+
+@router.get("/{shop_id}/credit-notes")
+def list_credit_notes(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    from sqlalchemy.orm import joinedload
+    rows = (
+        db.query(CreditNote)
+        .options(joinedload(CreditNote.order))
+        .filter(CreditNote.shop_id == shop_id)
+        .order_by(CreditNote.id.desc())
+        .all()
+    )
+    return [_cn_out(cn) for cn in rows]
+
+
+@router.post("/{shop_id}/credit-notes", status_code=201)
+def create_credit_note(
+    shop_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    order_id = body.get("order_id") or None
+    if order_id:
+        order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+    cn = CreditNote(
+        cn_number=_next_cn_number(db, shop_id),
+        shop_id=shop_id,
+        order_id=order_id,
+        reason=body.get("reason", "").strip(),
+        amount=float(body.get("amount", 0)),
+        notes=body.get("notes") or None,
+        status="issued",
+    )
+    db.add(cn)
+    db.commit()
+    db.refresh(cn)
+    from sqlalchemy.orm import joinedload
+    cn = db.query(CreditNote).options(joinedload(CreditNote.order)).filter(CreditNote.id == cn.id).first()
+    return _cn_out(cn)
+
+
+@router.patch("/{shop_id}/credit-notes/{cn_id}/void", status_code=200)
+def void_credit_note(
+    shop_id: int,
+    cn_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    cn = db.query(CreditNote).filter(CreditNote.id == cn_id, CreditNote.shop_id == shop_id).first()
+    if not cn:
+        raise HTTPException(status_code=404, detail="Credit note not found")
+    cn.status = "voided"
+    db.commit()
+    return {"status": "voided"}
+
+
+# ── Cash Flow Statement ────────────────────────────────────────────────────────
+
+@router.get("/{shop_id}/reports/cash-flow")
+def get_cash_flow(
+    shop_id: int,
+    from_date: Optional[str] = Query(None, alias="from"),
+    to_date: Optional[str] = Query(None, alias="to"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    # Date range defaults to current month
+    today = datetime.now(timezone.utc).date()
+    try:
+        d_from = date.fromisoformat(from_date) if from_date else today.replace(day=1)
+        d_to   = date.fromisoformat(to_date)   if to_date   else today
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    # ── Operating Inflows: paid/completed orders ──────────────────────────────
+    inflow_q = (
+        db.query(func.sum(Order.total))
+        .filter(
+            Order.shop_id == shop_id,
+            Order.payment_status.in_(["paid", "completed"]),
+            cast(Order.created_at, Date) >= d_from,
+            cast(Order.created_at, Date) <= d_to,
+        )
+        .scalar() or 0
+    )
+    total_inflows = float(inflow_q)
+
+    # ── Operating Outflows: expenses ─────────────────────────────────────────
+    expense_q = (
+        db.query(func.sum(ExpenseModel.amount))
+        .filter(
+            ExpenseModel.shop_id == shop_id,
+            ExpenseModel.date >= d_from.isoformat(),
+            ExpenseModel.date <= d_to.isoformat(),
+        )
+        .scalar() or 0
+    )
+    total_expenses = float(expense_q)
+
+    # ── Outflows: purchases received in period ────────────────────────────────
+    purchase_q = (
+        db.query(func.sum(PurchaseOrder.total_amount))
+        .filter(
+            PurchaseOrder.shop_id == shop_id,
+            PurchaseOrder.status == "received",
+            cast(PurchaseOrder.received_at, Date) >= d_from,
+            cast(PurchaseOrder.received_at, Date) <= d_to,
+        )
+        .scalar() or 0
+    )
+    total_purchases = float(purchase_q)
+
+    # ── Refunds (outflows) ────────────────────────────────────────────────────
+    refund_q = (
+        db.query(func.sum(Order.total))
+        .filter(
+            Order.shop_id == shop_id,
+            Order.status == "cancelled",
+            Order.payment_status.in_(["paid", "refunded"]),
+            cast(Order.created_at, Date) >= d_from,
+            cast(Order.created_at, Date) <= d_to,
+        )
+        .scalar() or 0
+    )
+    total_refunds = float(refund_q)
+
+    total_outflows = total_expenses + total_purchases + total_refunds
+    net_cash_flow  = total_inflows - total_outflows
+
+    # ── Daily breakdown for chart ─────────────────────────────────────────────
+    from sqlalchemy import text as sql_text
+    days = (d_to - d_from).days + 1
+    daily = []
+    for i in range(days):
+        day = d_from + timedelta(days=i)
+        day_str = day.isoformat()
+
+        day_in = float(
+            db.query(func.sum(Order.total))
+            .filter(
+                Order.shop_id == shop_id,
+                Order.payment_status.in_(["paid", "completed"]),
+                cast(Order.created_at, Date) == day,
+            ).scalar() or 0
+        )
+        day_out = float(
+            db.query(func.sum(ExpenseModel.amount))
+            .filter(
+                ExpenseModel.shop_id == shop_id,
+                ExpenseModel.date == day_str,
+            ).scalar() or 0
+        )
+        daily.append({"date": day_str, "inflows": day_in, "outflows": day_out, "net": day_in - day_out})
+
+    return {
+        "from": d_from.isoformat(),
+        "to": d_to.isoformat(),
+        "total_inflows": total_inflows,
+        "total_outflows": total_outflows,
+        "total_expenses": total_expenses,
+        "total_purchases": total_purchases,
+        "total_refunds": total_refunds,
+        "net_cash_flow": net_cash_flow,
+        "daily": daily,
+    }

@@ -831,3 +831,84 @@ def send_quotation_email(
 </html>"""
 
     send_email(to_email, f"Quotation {quote_number} from {shop_name}", html)
+
+
+# ── Payment Reminder email ─────────────────────────────────────────────────────
+
+def send_payment_reminder_email(
+    to_email: str,
+    customer_name: str,
+    shop_name: str,
+    shop_logo_url: Optional[str],
+    quote_number: str,
+    total: float,
+    valid_until: str,
+    reminder_count: int,
+    currency: str = "USD",
+) -> None:
+    def fmt(v: float) -> str:
+        return f"{currency} {v:,.2f}"
+
+    first = (customer_name or "there").split()[0]
+    logo_block = (
+        f'<img src="{shop_logo_url}" alt="{shop_name}" '
+        f'style="max-height:48px;max-width:160px;object-fit:contain;margin-bottom:8px;" /><br/>'
+        if shop_logo_url else ""
+    )
+    ordinal = {1: "1st", 2: "2nd", 3: "3rd"}.get(reminder_count, f"{reminder_count}th")
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Payment Reminder – {quote_number}</title></head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+
+        <tr>
+          <td style="background:linear-gradient(135deg,#f59e0b,#ef4444);padding:28px 32px;text-align:center;">
+            {logo_block}
+            <h1 style="color:#fff;margin:0;font-size:24px;font-weight:800;">{shop_name}</h1>
+            <p style="color:rgba(255,255,255,0.9);margin:4px 0 0;font-size:14px;font-weight:600;">⏰ Payment Reminder – {ordinal} Notice</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:32px 32px 24px;">
+            <p style="margin:0 0 16px;font-size:16px;color:#1a1a1a;">Hi <strong>{first}</strong>,</p>
+            <p style="margin:0 0 20px;color:#555;line-height:1.7;">
+              This is a friendly reminder that the quotation <strong style="color:#6B3FD9;">{quote_number}</strong>
+              from <strong>{shop_name}</strong> is still awaiting your payment.
+            </p>
+
+            <div style="background:#fff8f0;border:2px solid #f59e0b;border-radius:10px;padding:20px 24px;text-align:center;margin-bottom:24px;">
+              <p style="margin:0 0 6px;font-size:13px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Amount Due</p>
+              <p style="margin:0;font-size:32px;font-weight:800;color:#ef4444;">{fmt(total)}</p>
+              {f'<p style="margin:8px 0 0;font-size:13px;color:#888;">Valid until: <strong style="color:#1a1a1a;">{valid_until}</strong></p>' if valid_until else ""}
+            </div>
+
+            <p style="margin:0;color:#555;line-height:1.7;font-size:14px;">
+              Please contact us if you have any questions or need to make alternative payment arrangements.
+              We appreciate your business and look forward to hearing from you.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#fafafa;padding:20px 32px;text-align:center;border-top:1px solid #f0f0f0;">
+            <p style="margin:0;font-size:13px;color:#666;">Questions? Contact {shop_name} directly.</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#ccc;">Powered by <strong style="color:#6B3FD9;">ExiusCart</strong></p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    send_email(
+        to_email,
+        f"[Reminder {ordinal}] Payment Due – {quote_number} from {shop_name}",
+        html,
+    )

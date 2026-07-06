@@ -5,13 +5,13 @@ import Link from 'next/link';
 import {
   BookOpen, TrendingUp, TrendingDown, DollarSign, FileText,
   Download, Loader2, BarChart3, ArrowUpRight, ArrowDownRight,
-  Receipt, Scale, Calculator, RefreshCcw, Eye, EyeOff,
+  Receipt, Scale, Calculator, RefreshCcw, Eye, EyeOff, Droplets,
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip,
+  XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend,
 } from 'recharts';
-import { reportsApi, subscriptionApi } from '@/lib/api';
+import { reportsApi, subscriptionApi, cashFlowApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 function AcctTooltip({ active, payload, label, fmt }: any) {
@@ -28,7 +28,7 @@ function AcctTooltip({ active, payload, label, fmt }: any) {
   );
 }
 
-type Tab = 'overview' | 'pl' | 'balance' | 'tax';
+type Tab = 'overview' | 'pl' | 'balance' | 'tax' | 'cashflow';
 
 export default function AccountingPage() {
   const [tab, setTab] = useState<Tab>('overview');
@@ -38,6 +38,8 @@ export default function AccountingPage() {
   const [summary, setSummary] = useState<{ pos_revenue: number; channel_revenue: number; refund_amount: number; cancelled_orders: number } | null>(null);
   const [isTheDersiSeller, setIsTheDersiSeller] = useState(false);
   const [vatEnabled, setVatEnabled] = useState(false);
+  const [cashFlow, setCashFlow] = useState<any>(null);
+  const [cfLoading, setCfLoading] = useState(false);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
   useEffect(() => {
@@ -74,11 +76,25 @@ export default function AccountingPage() {
   const { fmt: fmtCurrency, sym } = useCurrency();
   const fmt = (n: number) => fmtCurrency(n);
 
+  // Load cash flow data when tab is opened
+  useEffect(() => {
+    if (tab !== 'cashflow' || !shopId || cashFlow) return;
+    setCfLoading(true);
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const to = now.toISOString().split('T')[0];
+    cashFlowApi.get(shopId, { from, to })
+      .then((r) => setCashFlow(r.data))
+      .catch(() => {})
+      .finally(() => setCfLoading(false));
+  }, [tab, shopId, cashFlow]);
+
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: 'overview', label: 'Overview',       icon: BarChart3   },
-    { id: 'pl',       label: 'Profit & Loss',  icon: TrendingUp  },
-    { id: 'balance',  label: 'Balance Sheet',  icon: Scale       },
-    { id: 'tax',      label: 'Tax Filing',     icon: Receipt     },
+    { id: 'overview',  label: 'Overview',       icon: BarChart3   },
+    { id: 'pl',        label: 'Profit & Loss',  icon: TrendingUp  },
+    { id: 'balance',   label: 'Balance Sheet',  icon: Scale       },
+    { id: 'tax',       label: 'Tax Filing',     icon: Receipt     },
+    { id: 'cashflow',  label: 'Cash Flow',      icon: Droplets    },
   ];
 
   return (
@@ -360,6 +376,99 @@ export default function AccountingPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── Cash Flow ── */}
+          {tab === 'cashflow' && (
+            <div className="space-y-5">
+              {cfLoading ? (
+                <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+              ) : cashFlow ? (
+                <>
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Total Inflows',  value: fmt(cashFlow.total_inflows),  icon: ArrowUpRight,   color: 'text-green-500',  bg: 'bg-green-500/10'  },
+                      { label: 'Total Outflows', value: fmt(cashFlow.total_outflows), icon: ArrowDownRight, color: 'text-red-500',    bg: 'bg-red-500/10'    },
+                      { label: 'Expenses',       value: fmt(cashFlow.total_expenses), icon: Receipt,        color: 'text-orange-500', bg: 'bg-orange-500/10' },
+                      { label: 'Net Cash Flow',  value: fmt(cashFlow.net_cash_flow),  icon: Droplets,       color: cashFlow.net_cash_flow >= 0 ? 'text-green-600' : 'text-red-500', bg: cashFlow.net_cash_flow >= 0 ? 'bg-green-500/10' : 'bg-red-500/10' },
+                    ].map((s) => (
+                      <div key={s.label} className="bg-card rounded-xl border border-border p-5">
+                        <div className={`w-10 h-10 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
+                          <s.icon className={`w-5 h-5 ${s.color}`} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
+                        <p className="text-xl font-bold text-foreground">{s.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Cash flow breakdown */}
+                  <div className="bg-card rounded-xl border border-border overflow-hidden">
+                    <div className="p-4 border-b border-border">
+                      <h2 className="font-semibold text-foreground">Cash Flow Breakdown</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">{cashFlow.from} to {cashFlow.to}</p>
+                    </div>
+                    <div className="p-4 space-y-1 text-sm">
+                      <div className="flex justify-between py-2 border-b border-border font-semibold">
+                        <span className="text-green-600 dark:text-green-400">Operating Inflows</span>
+                        <span className="text-green-600 dark:text-green-400">{fmt(cashFlow.total_inflows)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 pl-4 text-muted-foreground">
+                        <span>Sales Revenue</span><span>{fmt(cashFlow.total_inflows)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-border font-semibold mt-2">
+                        <span className="text-red-500">Operating Outflows</span>
+                        <span className="text-red-500">({fmt(cashFlow.total_outflows)})</span>
+                      </div>
+                      <div className="flex justify-between py-2 pl-4 text-muted-foreground">
+                        <span>Business Expenses</span><span>({fmt(cashFlow.total_expenses)})</span>
+                      </div>
+                      <div className="flex justify-between py-2 pl-4 text-muted-foreground">
+                        <span>Stock Purchases</span><span>({fmt(cashFlow.total_purchases)})</span>
+                      </div>
+                      <div className="flex justify-between py-2 pl-4 text-muted-foreground">
+                        <span>Refunds</span><span>({fmt(cashFlow.total_refunds)})</span>
+                      </div>
+                      <div className={`flex justify-between py-3 px-3 rounded-xl font-bold text-base mt-3 ${cashFlow.net_cash_flow >= 0 ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-red-500/10 text-red-600'}`}>
+                        <span>Net Cash Flow</span>
+                        <span>{cashFlow.net_cash_flow >= 0 ? '+' : ''}{fmt(cashFlow.net_cash_flow)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Daily chart */}
+                  {cashFlow.daily?.length > 1 && (
+                    <div className="bg-card rounded-xl border border-border p-5">
+                      <h2 className="font-semibold text-foreground mb-1">Daily Cash Flow</h2>
+                      <p className="text-xs text-muted-foreground mb-4">Inflows vs Outflows per day</p>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={cashFlow.daily.map((d: any) => ({
+                            label: new Date(d.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+                            inflows: Math.round(d.inflows),
+                            outflows: Math.round(d.outflows),
+                          }))} margin={{ top: 4, right: 8, left: -16, bottom: 0 }} barSize={8}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.3} vertical={false} />
+                            <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} minTickGap={20} />
+                            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={52} />
+                            <Tooltip content={<AcctTooltip fmt={fmtCurrency} />} />
+                            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                            <Bar dataKey="inflows" name="Inflows" fill="#10b981" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="outflows" name="Outflows" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-20 text-center text-muted-foreground text-sm">
+                  <Droplets className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                  <p>No cash flow data available for this period.</p>
+                </div>
+              )}
             </div>
           )}
 
