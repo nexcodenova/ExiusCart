@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Package, Truck, DollarSign, ShoppingBag,
   FileText, Percent, Mail, Check, User, Phone, Download,
-  RefreshCcw, AlertTriangle,
+  RefreshCcw, AlertTriangle, Printer,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
@@ -463,6 +463,12 @@ export default function OrderDetailsPage() {
           className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition font-medium"
         >
           <Download className="w-4 h-4" /> Download PDF
+        </button>
+        <button
+          onClick={() => window.open(`/dashboard/orders/${orderId}/packing-slip`, '_blank')}
+          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition font-medium"
+        >
+          <Printer className="w-4 h-4" /> Packing Slip
         </button>
         {order.tracking_number && (
           <Link href={`/dashboard/orders/${orderId}/tracking`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition ml-auto">
