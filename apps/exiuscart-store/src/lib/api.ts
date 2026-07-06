@@ -101,6 +101,8 @@ export const ordersApi = {
     api.get(`/shops/${shopId}/orders/${orderId}/details`),
   sendInvoice: (shopId: string, orderId: string, customerEmail?: string) =>
     api.post(`/shops/${shopId}/orders/${orderId}/send-invoice`, { customer_email: customerEmail || null }),
+  refund: (shopId: string, orderId: string) =>
+    api.post(`/shops/${shopId}/orders/${orderId}/refund`),
 };
 
 // ── Customers ─────────────────────────────────────────

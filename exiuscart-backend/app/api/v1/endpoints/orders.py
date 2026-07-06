@@ -592,6 +592,44 @@ async def send_invoice(
     }
 
 
+@router.post("/shops/{shop_id}/orders/{order_id}/refund", response_model=OrderResponse)
+async def refund_order(
+    order_id: int,
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Refund a paid order: restores stock, marks status=cancelled, payment_status=refunded."""
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Order is already cancelled")
+    if order.payment_status != "paid":
+        raise HTTPException(status_code=400, detail="Only paid orders can be refunded")
+
+    # Restore stock
+    for item in order.items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        if product:
+            product.quantity = (product.quantity or 0) + item.quantity
+
+    order.status = "cancelled"
+    order.payment_status = "refunded"
+    db.commit()
+    db.refresh(order)
+
+    # Sync restored stock to TheDersi for POS orders
+    from app.api.v1.endpoints.channels import _bg_push_stock
+    for item in order.items:
+        try:
+            _bg_push_stock(item.product_id, shop_id)
+        except Exception:
+            pass
+
+    return order
+
+
 @router.get("/shops/{shop_id}/orders/{order_id}/tracking")
 async def get_tracking(
     order_id: int,

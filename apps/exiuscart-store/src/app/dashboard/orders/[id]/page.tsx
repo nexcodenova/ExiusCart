@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Package, Truck, DollarSign, ShoppingBag,
   FileText, Percent, Mail, Check, User, Phone, Download,
+  RefreshCcw, AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
@@ -112,6 +113,10 @@ export default function OrderDetailsPage() {
   const [sendingInvoice, setSendingInvoice] = useState(false);
   const [invoiceSent, setInvoiceSent] = useState(false);
   const [invoiceError, setInvoiceError] = useState('');
+  const [refunding, setRefunding] = useState(false);
+  const [refundDone, setRefundDone] = useState(false);
+  const [refundError, setRefundError] = useState('');
+  const [showRefundConfirm, setShowRefundConfirm] = useState(false);
 
   useEffect(() => {
     if (!shopId || !orderId) return;
@@ -133,6 +138,22 @@ export default function OrderDetailsPage() {
       setInvoiceError(err.response?.data?.detail || 'Failed to send invoice');
     } finally {
       setSendingInvoice(false);
+    }
+  };
+
+  const handleRefund = async () => {
+    if (!order) return;
+    setRefunding(true);
+    setRefundError('');
+    try {
+      const res = await ordersApi.refund(shopId, orderId);
+      setOrder(res.data);
+      setRefundDone(true);
+      setShowRefundConfirm(false);
+    } catch (err: any) {
+      setRefundError(err.response?.data?.detail || 'Refund failed');
+    } finally {
+      setRefunding(false);
     }
   };
 
@@ -370,6 +391,35 @@ export default function OrderDetailsPage() {
         </div>
       )}
 
+      {/* Refund confirm modal */}
+      {showRefundConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Refund this order?</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">This will cancel the order, mark it as refunded, and restore stock.</p>
+              </div>
+            </div>
+            {refundError && <p className="text-sm text-red-500 bg-red-500/10 rounded-lg px-3 py-2">{refundError}</p>}
+            <div className="flex gap-3">
+              <button onClick={() => setShowRefundConfirm(false)}
+                className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-muted transition">
+                Cancel
+              </button>
+              <button onClick={handleRefund} disabled={refunding}
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                {refunding && <RefreshCcw className="w-4 h-4 animate-spin" />}
+                {refunding ? 'Refunding...' : 'Yes, Refund'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Email invoice */}
       {invoiceError && (
         <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-xl px-4 py-3">{invoiceError}</div>
@@ -380,6 +430,22 @@ export default function OrderDetailsPage() {
         <Link href="/dashboard/orders" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
           <ArrowLeft className="w-4 h-4" /> Back to orders
         </Link>
+
+        {/* Refund button — only for POS paid orders that aren't already cancelled */}
+        {order.source === 'pos' && order.payment_status === 'paid' && order.status !== 'cancelled' && (
+          refundDone ? (
+            <span className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 font-medium">
+              <RefreshCcw className="w-4 h-4" /> Refunded
+            </span>
+          ) : (
+            <button
+              onClick={() => setShowRefundConfirm(true)}
+              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition font-medium"
+            >
+              <RefreshCcw className="w-4 h-4" /> Refund Order
+            </button>
+          )
+        )}
         <button
           onClick={handleSendInvoice}
           disabled={sendingInvoice}
