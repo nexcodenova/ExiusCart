@@ -4,6 +4,84 @@ from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal
 from app.api.v1.router import api_router
 import app.models  # noqa: F401 — ensure all models are registered before create_all
+import threading
+import time
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _run_recurring_invoice_scheduler():
+    """Background daemon thread: check and send due recurring invoices every 12 hours."""
+    while True:
+        try:
+            _process_due_recurring_invoices()
+        except Exception as exc:
+            logger.error(f"[RecurringInvoice scheduler] {exc}")
+        time.sleep(12 * 3600)
+
+
+def _process_due_recurring_invoices():
+    from datetime import date
+    from app.models.recurring_invoice import RecurringInvoice
+    from app.models.shop import Shop
+    from app.core.email import send_recurring_invoice_email
+
+    db = SessionLocal()
+    try:
+        today = date.today()
+        due = (
+            db.query(RecurringInvoice)
+            .filter(RecurringInvoice.is_active == True, RecurringInvoice.next_send_date <= today)
+            .all()
+        )
+        for ri in due:
+            if not ri.customer_email:
+                continue
+            shop = db.query(Shop).filter(Shop.id == ri.shop_id).first()
+            if not shop:
+                continue
+            try:
+                from datetime import datetime, timezone, timedelta
+                year = datetime.now(timezone.utc).year
+                count = (ri.send_count or 0) + 1
+                inv_num = f"RI-{year}-{ri.shop_id:03d}-{count:04d}"
+                send_recurring_invoice_email(
+                    to_email=ri.customer_email,
+                    customer_name=ri.customer_name,
+                    shop_name=shop.name,
+                    shop_logo_url=shop.logo_url,
+                    invoice_number=inv_num,
+                    items=ri.items,
+                    subtotal=float(ri.subtotal),
+                    discount=float(ri.discount),
+                    tax=float(ri.tax),
+                    total=float(ri.total),
+                    notes=ri.notes,
+                    currency=shop.currency or "USD",
+                )
+                ri.last_sent_at = datetime.now(timezone.utc)
+                ri.send_count = count
+                # Advance next_send_date by frequency
+                freq = ri.frequency
+                nd = ri.next_send_date
+                if freq == "weekly":
+                    nd = nd + timedelta(days=7)
+                elif freq == "monthly":
+                    m = nd.month + 1; y = nd.year + (m - 1) // 12; m = (m - 1) % 12 + 1
+                    nd = nd.replace(year=y, month=m)
+                elif freq == "quarterly":
+                    m = nd.month + 3; y = nd.year + (m - 1) // 12; m = (m - 1) % 12 + 1
+                    nd = nd.replace(year=y, month=m)
+                else:
+                    nd = nd.replace(year=nd.year + 1)
+                ri.next_send_date = nd
+                logger.info(f"[RecurringInvoice] Sent {inv_num} to {ri.customer_email}")
+            except Exception as e:
+                logger.error(f"[RecurringInvoice] Failed to send ri_id={ri.id}: {e}")
+        db.commit()
+    finally:
+        db.close()
 
 # Create any missing tables (safe for existing tables)
 Base.metadata.create_all(bind=engine)
@@ -48,6 +126,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Start recurring invoice background scheduler
+_scheduler_thread = threading.Thread(target=_run_recurring_invoice_scheduler, daemon=True)
+_scheduler_thread.start()
 
 # CORS middleware
 app.add_middleware(

@@ -207,6 +207,15 @@ export const cashFlowApi = {
     api.get(`/shops/${shopId}/reports/cash-flow`, { params }),
 };
 
+// ── Recurring Invoices ────────────────────────────────
+export const recurringInvoicesApi = {
+  getAll: (shopId: string) => api.get(`/shops/${shopId}/recurring-invoices`),
+  create: (shopId: string, data: any) => api.post(`/shops/${shopId}/recurring-invoices`, data),
+  update: (shopId: string, id: number, data: any) => api.patch(`/shops/${shopId}/recurring-invoices/${id}`, data),
+  delete: (shopId: string, id: number) => api.delete(`/shops/${shopId}/recurring-invoices/${id}`),
+  sendNow: (shopId: string, id: number) => api.post(`/shops/${shopId}/recurring-invoices/${id}/send-now`, {}),
+};
+
 // ── Reservations ──────────────────────────────────────
 export const reservationsApi = {
   getAll: (shopId: string, status?: string) =>

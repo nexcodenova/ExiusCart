@@ -16,13 +16,44 @@ from app.models.customer import Customer
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrderIn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
-from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_new_order_email
+from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_new_order_email, send_low_stock_alert_email
 from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
 from app.models.subscription import Subscription
 from app.models.bundle_component import BundleComponent
 from app.models.channel import ChannelConnection
 
 router = APIRouter()
+
+
+def _check_and_alert_low_stock(seller_email: str, shop_name: str, product_ids: list, shop_id: int):
+    """Background task: send low-stock alert if any sold products fell below threshold."""
+    try:
+        from app.core.database import SessionLocal
+        db = SessionLocal()
+        try:
+            low = (
+                db.query(Product)
+                .filter(
+                    Product.id.in_(product_ids),
+                    Product.shop_id == shop_id,
+                    Product.is_active == True,
+                    Product.quantity <= Product.low_stock_threshold,
+                )
+                .all()
+            )
+            if low:
+                send_low_stock_alert_email(
+                    to_email=seller_email,
+                    shop_name=shop_name,
+                    low_stock_items=[
+                        {"name": p.name, "sku": p.sku or "", "quantity": p.quantity, "threshold": p.low_stock_threshold}
+                        for p in low
+                    ],
+                )
+        finally:
+            db.close()
+    except Exception:
+        pass
 
 _VALID_STATUSES = {"pending", "confirmed", "packing", "processing", "shipped", "in_transit", "delivered", "cancelled"}
 
@@ -204,6 +235,15 @@ async def create_order(
     # Push updated stock to TheDersi for every product sold via POS
     for item in order_data.items:
         trigger_stock_sync(item.product_id, shop_id, background_tasks)
+
+    # Check and alert for low stock after deduction
+    background_tasks.add_task(
+        _check_and_alert_low_stock,
+        seller_email=current_user.email,
+        shop_name=shop.name,
+        product_ids=[i.product_id for i in order_data.items if i.product_id],
+        shop_id=shop_id,
+    )
 
     # Notify seller by email
     background_tasks.add_task(

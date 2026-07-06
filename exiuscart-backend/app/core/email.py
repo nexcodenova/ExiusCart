@@ -912,3 +912,194 @@ def send_payment_reminder_email(
         f"[Reminder {ordinal}] Payment Due – {quote_number} from {shop_name}",
         html,
     )
+
+
+# ── Low Stock Alert email ──────────────────────────────────────────────────────
+
+def send_low_stock_alert_email(
+    to_email: str,
+    shop_name: str,
+    low_stock_items: list,  # [{"name": str, "sku": str, "quantity": int, "threshold": int}]
+) -> None:
+    rows = ""
+    for item in low_stock_items:
+        qty = item.get("quantity", 0)
+        threshold = item.get("threshold", 5)
+        is_out = qty == 0
+        color = "#ef4444" if is_out else "#f59e0b"
+        label = "OUT OF STOCK" if is_out else f"{qty} left"
+        rows += f"""
+        <tr>
+          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-weight:500;color:#1a1a1a;">
+            {item.get('name', '')}
+            {"<br/><span style='font-size:11px;color:#aaa;'>SKU: " + item['sku'] + "</span>" if item.get('sku') else ""}
+          </td>
+          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;text-align:center;color:{color};font-weight:700;">{label}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;text-align:center;color:#888;">Min: {threshold}</td>
+        </tr>"""
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Low Stock Alert</title></head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+
+        <tr>
+          <td style="background:linear-gradient(135deg,#f59e0b,#ef4444);padding:28px 32px;">
+            <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800;">⚠️ Low Stock Alert</h1>
+            <p style="color:rgba(255,255,255,0.9);margin:4px 0 0;font-size:14px;">{shop_name} — Action required</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:24px 32px;">
+            <p style="margin:0 0 20px;color:#555;line-height:1.7;">
+              The following products in your <strong>{shop_name}</strong> store have fallen below their minimum stock threshold.
+              Please restock soon to avoid losing sales.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:8px;overflow:hidden;border:1px solid #f0f0f0;">
+              <thead>
+                <tr style="background:#fafafa;">
+                  <th style="padding:10px 16px;text-align:left;font-size:12px;color:#888;font-weight:600;text-transform:uppercase;">Product</th>
+                  <th style="padding:10px 16px;text-align:center;font-size:12px;color:#888;font-weight:600;text-transform:uppercase;">Stock</th>
+                  <th style="padding:10px 16px;text-align:center;font-size:12px;color:#888;font-weight:600;text-transform:uppercase;">Threshold</th>
+                </tr>
+              </thead>
+              <tbody>{rows}</tbody>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#fafafa;padding:20px 32px;text-align:center;border-top:1px solid #f0f0f0;">
+            <p style="margin:0;font-size:13px;color:#666;">
+              Log in to <strong>ExiusCart</strong> to create a purchase order or adjust stock.
+            </p>
+            <p style="margin:6px 0 0;font-size:11px;color:#ccc;">Powered by <strong style="color:#6B3FD9;">ExiusCart</strong></p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    send_email(
+        to_email,
+        f"⚠️ Low Stock Alert – {len(low_stock_items)} product{'s' if len(low_stock_items) > 1 else ''} need restocking — {shop_name}",
+        html,
+    )
+
+
+# ── Recurring Invoice email ────────────────────────────────────────────────────
+
+def send_recurring_invoice_email(
+    to_email: str,
+    customer_name: str,
+    shop_name: str,
+    shop_logo_url: Optional[str],
+    invoice_number: str,
+    items: list,
+    subtotal: float,
+    discount: float,
+    tax: float,
+    total: float,
+    notes: Optional[str],
+    currency: str = "USD",
+) -> None:
+    """Reuses quotation email layout but branded as a recurring invoice."""
+    def fmt(v: float) -> str:
+        return f"{currency} {v:,.2f}"
+
+    logo_block = (
+        f'<img src="{shop_logo_url}" alt="{shop_name}" '
+        f'style="max-height:48px;max-width:160px;object-fit:contain;margin-bottom:8px;" /><br/>'
+        if shop_logo_url else ""
+    )
+
+    rows = ""
+    for item in items:
+        rows += f"""
+        <tr>
+          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;">{item.get('name','')}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;text-align:center;">{item.get('qty', item.get('quantity',1))}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;text-align:right;">{fmt(item.get('unit_price',0))}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600;">{fmt(item.get('total',0))}</td>
+        </tr>"""
+
+    discount_row = f"""<tr><td colspan="3" style="padding:6px 16px;text-align:right;color:#888;">Discount</td>
+        <td style="padding:6px 16px;text-align:right;color:#ef4444;">-{fmt(discount)}</td></tr>""" if discount > 0 else ""
+    tax_row = f"""<tr><td colspan="3" style="padding:6px 16px;text-align:right;color:#888;">Tax</td>
+        <td style="padding:6px 16px;text-align:right;">{fmt(tax)}</td></tr>""" if tax > 0 else ""
+    notes_block = f'<p style="margin:16px 0 0;padding:12px 16px;background:#f9f9f9;border-left:3px solid #10b981;border-radius:4px;font-size:13px;color:#666;">Note: {notes}</p>' if notes else ""
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Invoice {invoice_number}</title></head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#10b981,#059669);padding:32px;text-align:center;">
+            {logo_block}
+            <h1 style="color:#fff;margin:0;font-size:24px;font-weight:800;">{shop_name}</h1>
+            <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:14px;">🔁 Recurring Invoice</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 32px 0;">
+            <table width="100%"><tr>
+              <td style="vertical-align:top;">
+                <p style="margin:0 0 4px;font-size:12px;color:#888;text-transform:uppercase;">Billed to</p>
+                <p style="margin:0;font-weight:600;color:#1a1a1a;font-size:15px;">{customer_name}</p>
+              </td>
+              <td style="vertical-align:top;text-align:right;">
+                <p style="margin:0 0 4px;font-size:12px;color:#888;text-transform:uppercase;">Invoice</p>
+                <p style="margin:0;font-weight:700;color:#10b981;font-size:16px;">{invoice_number}</p>
+              </td>
+            </tr></table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px 0;">
+            <table width="100%" style="border-radius:8px;overflow:hidden;border:1px solid #f0f0f0;">
+              <thead><tr style="background:#fafafa;">
+                <th style="padding:10px 16px;text-align:left;font-size:12px;color:#888;font-weight:600;text-transform:uppercase;">Item</th>
+                <th style="padding:10px 16px;text-align:center;font-size:12px;color:#888;font-weight:600;text-transform:uppercase;">Qty</th>
+                <th style="padding:10px 16px;text-align:right;font-size:12px;color:#888;font-weight:600;text-transform:uppercase;">Unit Price</th>
+                <th style="padding:10px 16px;text-align:right;font-size:12px;color:#888;font-weight:600;text-transform:uppercase;">Total</th>
+              </tr></thead>
+              <tbody>{rows}</tbody>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 32px;">
+            <table width="100%">
+              <tr><td colspan="3" style="padding:6px 16px;text-align:right;color:#888;">Subtotal</td><td style="padding:6px 16px;text-align:right;">{fmt(subtotal)}</td></tr>
+              {discount_row}{tax_row}
+              <tr><td colspan="4" style="padding:4px 16px;"><hr style="border:none;border-top:2px solid #f0f0f0;margin:4px 0;"></td></tr>
+              <tr>
+                <td colspan="3" style="padding:8px 16px;text-align:right;font-weight:700;font-size:16px;color:#1a1a1a;">Total Due</td>
+                <td style="padding:8px 16px;text-align:right;font-weight:800;font-size:18px;color:#10b981;">{fmt(total)}</td>
+              </tr>
+            </table>
+            {notes_block}
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#fafafa;padding:20px 32px;text-align:center;border-top:1px solid #f0f0f0;">
+            <p style="margin:0;font-size:13px;color:#666;">This is a recurring invoice. Questions? Contact {shop_name} directly.</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#ccc;">Powered by <strong style="color:#6B3FD9;">ExiusCart</strong></p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    send_email(to_email, f"Invoice {invoice_number} from {shop_name}", html)

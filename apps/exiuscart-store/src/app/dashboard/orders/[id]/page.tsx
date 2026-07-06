@@ -470,6 +470,12 @@ export default function OrderDetailsPage() {
         >
           <Printer className="w-4 h-4" /> Packing Slip
         </button>
+        <button
+          onClick={() => window.open(`/dashboard/orders/${orderId}/payment-receipt`, '_blank')}
+          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-700 dark:text-green-400 transition font-medium"
+        >
+          <Printer className="w-4 h-4" /> Payment Receipt
+        </button>
         {order.tracking_number && (
           <Link href={`/dashboard/orders/${orderId}/tracking`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition ml-auto">
             <Truck className="w-4 h-4" /> View tracking

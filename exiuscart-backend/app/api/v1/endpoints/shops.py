@@ -15,6 +15,7 @@ from app.models.product import Product
 from app.models.supplier import Supplier, PurchaseOrder, PurchaseOrderItem
 from app.models.credit_note import CreditNote
 from app.models.expense import Expense as ExpenseModel
+from app.models.recurring_invoice import RecurringInvoice
 from app.schemas.shop import ShopCreate, ShopResponse, ShopUpdate
 from app.api.v1.deps import get_current_user
 
@@ -694,6 +695,24 @@ def adjust_inventory(
     from app.api.v1.endpoints.channels import trigger_stock_sync
     trigger_stock_sync(product_id, shop_id, background_tasks)
 
+    # Alert shop owner if product is now below low stock threshold
+    if quantity < 0 and product.quantity <= product.low_stock_threshold:
+        from app.core.email import send_low_stock_alert_email
+        from app.models.user import User as UserModel
+        owner = db.query(UserModel).filter(UserModel.id == shop.owner_id).first()
+        if owner and owner.email:
+            background_tasks.add_task(
+                send_low_stock_alert_email,
+                to_email=owner.email,
+                shop_name=shop.name,
+                low_stock_items=[{
+                    "name": product.name,
+                    "sku": product.sku or "",
+                    "quantity": product.quantity,
+                    "threshold": product.low_stock_threshold,
+                }],
+            )
+
     return {"id": product.id, "name": product.name, "quantity": product.quantity}
 
 
@@ -1246,3 +1265,178 @@ def get_cash_flow(
         "net_cash_flow": net_cash_flow,
         "daily": daily,
     }
+
+
+# ── Recurring Invoices ─────────────────────────────────────────────────────────
+
+def _next_ri_number(db: Session, shop_id: int) -> str:
+    count = db.query(func.count(RecurringInvoice.id)).filter(RecurringInvoice.shop_id == shop_id).scalar() or 0
+    year = datetime.now(timezone.utc).year
+    return f"RI-{year}-{count + 1:04d}"
+
+
+def _ri_out(ri: RecurringInvoice) -> dict:
+    return {
+        "id": ri.id,
+        "customer_name": ri.customer_name,
+        "customer_email": ri.customer_email,
+        "customer_phone": ri.customer_phone,
+        "items": ri.items,
+        "subtotal": float(ri.subtotal),
+        "discount": float(ri.discount),
+        "tax": float(ri.tax),
+        "total": float(ri.total),
+        "notes": ri.notes,
+        "frequency": ri.frequency,
+        "next_send_date": ri.next_send_date.isoformat() if ri.next_send_date else None,
+        "last_sent_at": ri.last_sent_at.isoformat() if ri.last_sent_at else None,
+        "send_count": ri.send_count,
+        "is_active": ri.is_active,
+        "created_at": ri.created_at.isoformat() if ri.created_at else None,
+    }
+
+
+def _next_date_for_frequency(freq: str, from_date: date) -> date:
+    if freq == "weekly":
+        return from_date + timedelta(days=7)
+    elif freq == "monthly":
+        m = from_date.month + 1
+        y = from_date.year + (m - 1) // 12
+        m = (m - 1) % 12 + 1
+        return from_date.replace(year=y, month=m)
+    elif freq == "quarterly":
+        m = from_date.month + 3
+        y = from_date.year + (m - 1) // 12
+        m = (m - 1) % 12 + 1
+        return from_date.replace(year=y, month=m)
+    else:  # yearly
+        return from_date.replace(year=from_date.year + 1)
+
+
+@router.get("/{shop_id}/recurring-invoices")
+def list_recurring_invoices(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    rows = db.query(RecurringInvoice).filter(RecurringInvoice.shop_id == shop_id).order_by(RecurringInvoice.id.desc()).all()
+    return [_ri_out(r) for r in rows]
+
+
+@router.post("/{shop_id}/recurring-invoices", status_code=201)
+def create_recurring_invoice(
+    shop_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    freq = body.get("frequency", "monthly")
+    try:
+        start = date.fromisoformat(body.get("start_date", date.today().isoformat()))
+    except ValueError:
+        start = date.today()
+
+    ri = RecurringInvoice(
+        shop_id=shop_id,
+        customer_name=body.get("customer_name", ""),
+        customer_email=body.get("customer_email") or None,
+        customer_phone=body.get("customer_phone") or None,
+        items=body.get("items", []),
+        subtotal=float(body.get("subtotal", 0)),
+        discount=float(body.get("discount", 0)),
+        tax=float(body.get("tax", 0)),
+        total=float(body.get("total", 0)),
+        notes=body.get("notes") or None,
+        frequency=freq,
+        next_send_date=start,
+        is_active=True,
+    )
+    db.add(ri)
+    db.commit()
+    db.refresh(ri)
+    return _ri_out(ri)
+
+
+@router.patch("/{shop_id}/recurring-invoices/{ri_id}")
+def update_recurring_invoice(
+    shop_id: int,
+    ri_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    ri = db.query(RecurringInvoice).filter(RecurringInvoice.id == ri_id, RecurringInvoice.shop_id == shop_id).first()
+    if not ri:
+        raise HTTPException(status_code=404, detail="Not found")
+    for field in ("customer_name", "customer_email", "customer_phone", "items",
+                  "subtotal", "discount", "tax", "total", "notes", "frequency", "is_active"):
+        if field in body:
+            setattr(ri, field, body[field])
+    db.commit()
+    return _ri_out(ri)
+
+
+@router.delete("/{shop_id}/recurring-invoices/{ri_id}", status_code=204)
+def delete_recurring_invoice(
+    shop_id: int,
+    ri_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    ri = db.query(RecurringInvoice).filter(RecurringInvoice.id == ri_id, RecurringInvoice.shop_id == shop_id).first()
+    if not ri:
+        raise HTTPException(status_code=404, detail="Not found")
+    db.delete(ri)
+    db.commit()
+
+
+@router.post("/{shop_id}/recurring-invoices/{ri_id}/send-now")
+def send_recurring_invoice_now(
+    shop_id: int,
+    ri_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    ri = db.query(RecurringInvoice).filter(RecurringInvoice.id == ri_id, RecurringInvoice.shop_id == shop_id).first()
+    if not ri:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not ri.customer_email:
+        raise HTTPException(status_code=400, detail="No customer email on this recurring invoice")
+
+    from app.core.email import send_recurring_invoice_email
+    inv_num = _next_ri_number(db, shop_id)
+    send_recurring_invoice_email(
+        to_email=ri.customer_email,
+        customer_name=ri.customer_name,
+        shop_name=shop.name,
+        shop_logo_url=shop.logo_url,
+        invoice_number=inv_num,
+        items=ri.items,
+        subtotal=float(ri.subtotal),
+        discount=float(ri.discount),
+        tax=float(ri.tax),
+        total=float(ri.total),
+        notes=ri.notes,
+        currency=shop.currency or "USD",
+    )
+    ri.last_sent_at = datetime.now(timezone.utc)
+    ri.send_count = (ri.send_count or 0) + 1
+    ri.next_send_date = _next_date_for_frequency(ri.frequency, date.today())
+    db.commit()
+    return {"sent": True, "next_send_date": ri.next_send_date.isoformat()}
