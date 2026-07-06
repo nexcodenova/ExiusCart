@@ -5,13 +5,13 @@ import Link from 'next/link';
 import {
   BookOpen, TrendingUp, TrendingDown, DollarSign, FileText,
   Download, Loader2, BarChart3, ArrowUpRight, ArrowDownRight,
-  Receipt, Scale, Calculator, RefreshCcw,
+  Receipt, Scale, Calculator, RefreshCcw, Eye, EyeOff,
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
-import { reportsApi } from '@/lib/api';
+import { reportsApi, subscriptionApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 function AcctTooltip({ active, payload, label, fmt }: any) {
@@ -36,6 +36,8 @@ export default function AccountingPage() {
   const [salesData, setSalesData] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [summary, setSummary] = useState<{ pos_revenue: number; channel_revenue: number; refund_amount: number; cancelled_orders: number } | null>(null);
+  const [isTheDersiSeller, setIsTheDersiSeller] = useState(false);
+  const [vatEnabled, setVatEnabled] = useState(false);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
   useEffect(() => {
@@ -47,11 +49,14 @@ export default function AccountingPage() {
       reportsApi.getSalesReport(shopId, { from, to }),
       reportsApi.getTopProducts(shopId),
       reportsApi.getFinancialSummary(shopId, { from, to }),
+      subscriptionApi.getCurrent(shopId).catch(() => null),
     ])
-      .then(([s, t, fin]) => {
+      .then(([s, t, fin, sub]) => {
         setSalesData(s.data ?? []);
         setTopProducts(t.data ?? []);
         setSummary(fin.data ?? null);
+        const planType: string = sub?.data?.plan_type ?? '';
+        setIsTheDersiSeller(planType.startsWith('thedersi'));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -107,14 +112,32 @@ export default function AccountingPage() {
           {/* ── Overview ── */}
           {tab === 'overview' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* TheDersi sellers: VAT toggle */}
+              {isTheDersiSeller && (
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setVatEnabled((v) => !v)}
+                    className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border transition font-medium ${
+                      vatEnabled
+                        ? 'border-orange-400 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20'
+                        : 'border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    {vatEnabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    {vatEnabled ? 'Hide VAT Payable' : 'Show VAT Payable'}
+                  </button>
+                </div>
+              )}
+
+              <div className={`grid gap-4 ${(!isTheDersiSeller || vatEnabled) ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4'}`}>
                 {[
-                  { label: 'Total Revenue',   value: `${fmt(totalRevenue)}`,  icon: TrendingUp,    color: 'text-green-500',  bg: 'bg-green-500/10' },
-                  { label: 'Total Orders',    value: totalOrders.toString(),  icon: FileText,      color: 'text-blue-500',   bg: 'bg-blue-500/10'  },
-                  { label: 'Avg Order Value', value: `${fmt(avgOrder)}`,      icon: DollarSign,    color: 'text-purple-500', bg: 'bg-purple-500/10'},
-                  { label: 'VAT Payable',     value: `${fmt(totalRevenue * 0.05 / 1.05)}`, icon: Receipt, color: 'text-orange-500', bg: 'bg-orange-500/10'},
-                  { label: 'Refund Amount',   value: summary ? fmt(summary.refund_amount) : '—', icon: RefreshCcw, color: 'text-red-500', bg: 'bg-red-500/10' },
-                ].map((s) => (
+                  { label: 'Total Revenue',   value: fmt(totalRevenue),  icon: TrendingUp,    color: 'text-green-500',  bg: 'bg-green-500/10',  show: true },
+                  { label: 'Total Orders',    value: totalOrders.toString(),  icon: FileText,      color: 'text-blue-500',   bg: 'bg-blue-500/10',   show: true },
+                  { label: 'Avg Order Value', value: fmt(avgOrder),      icon: DollarSign,    color: 'text-purple-500', bg: 'bg-purple-500/10', show: true },
+                  { label: 'VAT Payable',     value: fmt(totalRevenue * 0.05 / 1.05), icon: Receipt, color: 'text-orange-500', bg: 'bg-orange-500/10', show: !isTheDersiSeller || vatEnabled },
+                  { label: 'Refund Amount',   value: summary ? fmt(summary.refund_amount) : '—', icon: RefreshCcw, color: 'text-red-500', bg: 'bg-red-500/10', show: true },
+                ].filter((s) => s.show).map((s) => (
                   <div key={s.label} className="bg-card rounded-xl border border-border p-5">
                     <div className={`w-10 h-10 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
                       <s.icon className={`w-5 h-5 ${s.color}`} />
