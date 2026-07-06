@@ -495,7 +495,10 @@ def get_financial_summary(
     pos_orders    = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.source == "pos",  Order.status != "cancelled")).scalar() or 0
     chan_revenue  = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.source != "pos",  Order.status != "cancelled")))
     chan_orders   = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.source != "pos",  Order.status != "cancelled")).scalar() or 0
-    refund_amount = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.status == "cancelled", Order.payment_status.in_(["paid", "refunded"]))))
+    refund_q              = apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.status == "cancelled", Order.payment_status.in_(["paid", "refunded"])))
+    refund_amount         = scalar(refund_q)
+    pos_refund_amount     = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.status == "cancelled", Order.payment_status.in_(["paid", "refunded"]), Order.source == "pos")))
+    channel_refund_amount = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.status == "cancelled", Order.payment_status.in_(["paid", "refunded"]), Order.source != "pos")))
     cancelled_count = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.status == "cancelled")).scalar() or 0
 
     return {
@@ -504,6 +507,8 @@ def get_financial_summary(
         "channel_revenue": chan_revenue,
         "channel_orders": int(chan_orders),
         "refund_amount": refund_amount,
+        "pos_refund_amount": pos_refund_amount,
+        "channel_refund_amount": channel_refund_amount,
         "cancelled_orders": int(cancelled_count),
     }
 

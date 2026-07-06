@@ -274,8 +274,8 @@ function CreateQuotationModal({
         sku: p.sku,
         quantity_available: p.quantity,
         qty: 1,
-        unit_price: p.price,
-        total: p.price,
+        unit_price: Number(p.price),
+        total: Number(p.price),
       }]);
     }
     setShowProductPicker(false);

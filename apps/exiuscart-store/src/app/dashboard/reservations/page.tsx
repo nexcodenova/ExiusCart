@@ -503,6 +503,7 @@ function ReservationModal({ shopId, reservation, onClose, onSaved }: {
 }) {
   const [products, setProducts] = useState<{ id: number; name: string; stock: number }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     customer_name: reservation?.customer_name ?? '',
     customer_phone: reservation?.customer_phone ?? '',
@@ -554,7 +555,8 @@ function ReservationModal({ shopId, reservation, onClose, onSaved }: {
         await reservationsApi.create(shopId, payload);
       }
       onSaved();
-    } catch {
+    } catch (e: any) {
+      setError(e?.response?.data?.detail ?? 'Failed to save reservation. Please try again.');
       setSaving(false);
     }
   };
@@ -670,6 +672,10 @@ function ReservationModal({ shopId, reservation, onClose, onSaved }: {
             <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder="e.g. Customer will confirm by Thursday..."
               className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground resize-none" />
           </div>
+
+          {error && (
+            <p className="text-sm text-red-500 bg-red-500/10 px-4 py-2.5 rounded-lg">{error}</p>
+          )}
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>

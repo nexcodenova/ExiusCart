@@ -47,6 +47,8 @@ interface FinancialSummary {
   channel_revenue: number;
   channel_orders: number;
   refund_amount: number;
+  pos_refund_amount: number;
+  channel_refund_amount: number;
   cancelled_orders: number;
 }
 
@@ -129,12 +131,12 @@ function POSEarningsPanel({ shopId }: { shopId: string }) {
               </div>
             </div>
 
-            {(summary?.refund_amount ?? 0) > 0 && (
+            {(summary?.pos_refund_amount ?? 0) > 0 && (
               <div className="flex items-center gap-3 px-4 py-3 bg-red-500/5 border border-red-500/20 rounded-xl text-sm">
                 <RefreshCcw className="w-4 h-4 text-red-500 shrink-0" />
-                <span className="text-muted-foreground">Refunds this month:</span>
+                <span className="text-muted-foreground">POS Refunds this month:</span>
                 <span className="font-semibold text-red-600 dark:text-red-400 ml-auto">
-                  -{sym} {fmtNum(summary?.refund_amount ?? 0)}
+                  -{sym} {fmtNum(summary?.pos_refund_amount ?? 0)}
                 </span>
               </div>
             )}
@@ -151,7 +153,7 @@ function POSEarningsPanel({ shopId }: { shopId: string }) {
 
 // ── TheDersi Channel Panel ────────────────────────────────────────────────────
 
-function TheDersiPayoutPanel({ connection, shopId }: { connection: ChannelConnection; shopId: string }) {
+function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { connection: ChannelConnection; shopId: string; channelRefundAmount: number }) {
   const [info, setInfo] = useState<TheDersiInfo | null>(null);
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -262,6 +264,16 @@ function TheDersiPayoutPanel({ connection, shopId }: { connection: ChannelConnec
                 <p className="text-xs text-muted-foreground mt-0.5">Including past payouts</p>
               </div>
             </div>
+
+            {channelRefundAmount > 0 && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-red-500/5 border border-red-500/20 rounded-xl text-sm">
+                <RefreshCcw className="w-4 h-4 text-red-500 shrink-0" />
+                <span className="text-muted-foreground">TheDersi Refunds this month:</span>
+                <span className="font-semibold text-red-600 dark:text-red-400 ml-auto">
+                  -{info?.currency ?? 'LKR'} {fmtNum(channelRefundAmount)}
+                </span>
+              </div>
+            )}
 
             {payoutSuccess && (
               <div className="bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
@@ -401,13 +413,23 @@ export default function PayoutPage() {
   const [shopId, setShopId] = useState('');
   const [connections, setConnections] = useState<ChannelConnection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [channelRefundAmount, setChannelRefundAmount] = useState(0);
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
   useEffect(() => {
     if (!shopId) return;
-    channelsApi.getConnections(shopId)
-      .then((r) => setConnections(r.data ?? []))
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const to = now.toISOString().split('T')[0];
+    Promise.all([
+      channelsApi.getConnections(shopId),
+      reportsApi.getFinancialSummary(shopId, { from, to }),
+    ])
+      .then(([connRes, sumRes]) => {
+        setConnections(connRes.data ?? []);
+        setChannelRefundAmount(sumRes.data?.channel_refund_amount ?? 0);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [shopId]);
@@ -436,7 +458,7 @@ export default function PayoutPage() {
           {/* Channel payouts — only if connected */}
           {theDersiConns.length > 0 ? (
             theDersiConns.map((conn) => (
-              <TheDersiPayoutPanel key={conn.id} connection={conn} shopId={shopId} />
+              <TheDersiPayoutPanel key={conn.id} connection={conn} shopId={shopId} channelRefundAmount={channelRefundAmount} />
             ))
           ) : (
             <div className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-4">
