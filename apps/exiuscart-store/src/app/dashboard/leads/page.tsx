@@ -153,7 +153,6 @@ export default function LeadsPage() {
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <Zap className="w-4 h-4 text-primary" />
           <h2 className="font-semibold text-foreground text-sm">Social Media Auto-Capture</h2>
-          <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full">Premium &amp; TheDersi Pro</span>
         </div>
 
         {integrationLocked ? (
