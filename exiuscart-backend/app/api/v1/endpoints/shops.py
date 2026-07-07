@@ -381,7 +381,7 @@ def request_plan_upgrade(
         shop_id=shop_id,
         plan_type=plan_id,
         billing_type="monthly",
-        status="pending",
+        status="pending_approval",
         amount_paid=cat["price"],
         currency="AED",
     )
