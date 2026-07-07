@@ -25,6 +25,8 @@ class OrderSource(str, enum.Enum):
     POS = "pos"
     WHATSAPP = "whatsapp"
     ONLINE = "online"
+    SHOPIFY = "shopify"
+    CHANNEL = "channel"
 
 
 class Order(Base):
@@ -32,6 +34,7 @@ class Order(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_number = Column(String(50), unique=True, index=True, nullable=False)
+    reference = Column(String(200), nullable=True, index=True)  # external ID e.g. SHOPIFY-123456
     status = Column(String(20), default=OrderStatus.PENDING.value)
     payment_status = Column(String(20), default=PaymentStatus.PENDING.value)
     source = Column(String(20), default=OrderSource.POS.value)

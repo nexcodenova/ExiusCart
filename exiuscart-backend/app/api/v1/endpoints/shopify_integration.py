@@ -1,6 +1,6 @@
 """Shopify Integration endpoints — Connect, Sync Products/Orders/Inventory."""
 from datetime import datetime, timezone
-from typing import Optional
+import uuid
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from sqlalchemy.orm import Session
@@ -13,6 +13,11 @@ from app.models.customer import Customer
 from app.models.shopify_integration import ShopifyStore, ShopifySyncLog
 from app.api.v1.deps import get_current_user
 import os
+
+
+def _shopify_order_number() -> str:
+    ts = datetime.now().strftime("%Y%m%d%H%M")
+    return f"SHP-{ts}-{uuid.uuid4().hex[:4].upper()}"
 
 router = APIRouter()
 
@@ -248,25 +253,30 @@ async def _pull_orders(store: ShopifyStore, db: Session, shop_id: int):
                 if existing:
                     continue
 
+                total = float(so.get("total_price", 0))
                 order = Order(
                     shop_id=shop_id,
+                    order_number=_shopify_order_number(),
                     reference=ref,
                     customer_id=customer.id if customer else None,
-                    status=so.get("financial_status", "pending"),
-                    total=float(so.get("total_price", 0)),
-                    payment_method="shopify",
+                    source="shopify",
+                    status="pending" if so.get("financial_status") in ("pending", "unpaid") else so.get("financial_status", "pending"),
+                    payment_status="paid" if so.get("financial_status") == "paid" else "pending",
+                    subtotal=total,
+                    total=total,
                     notes=f"Imported from Shopify #{so.get('order_number')}",
                 )
                 db.add(order); db.flush()
 
                 for item in so.get("line_items", []):
+                    qty = item.get("quantity", 1)
+                    price = float(item.get("price", 0))
                     oi = OrderItem(
                         order_id=order.id,
                         product_name=item.get("title", ""),
-                        sku=item.get("sku", ""),
-                        quantity=item.get("quantity", 1),
-                        unit_price=float(item.get("price", 0)),
-                        total_price=float(item.get("price", 0)) * item.get("quantity", 1),
+                        quantity=qty,
+                        unit_price=price,
+                        total_price=price * qty,
                     )
                     db.add(oi)
                 processed += 1
@@ -387,17 +397,24 @@ async def receive_shopify_webhook(shop_id: int, request: Request, db: Session = 
                 db.add(customer); db.flush()
             ref = f"SHOPIFY-{so['id']}"
             if not db.query(Order).filter(Order.reference == ref, Order.shop_id == shop_id).first():
+                total = float(so.get("total_price", 0))
                 order = Order(
-                    shop_id=shop_id, reference=ref,
+                    shop_id=shop_id,
+                    order_number=_shopify_order_number(),
+                    reference=ref,
+                    source="shopify",
                     customer_id=customer.id if customer else None,
-                    status=so.get("financial_status", "pending"),
-                    total=float(so.get("total_price", 0)),
-                    payment_method="shopify",
+                    status="pending",
+                    payment_status="paid" if so.get("financial_status") == "paid" else "pending",
+                    subtotal=total,
+                    total=total,
                     notes=f"Shopify #{so.get('order_number')}",
                 )
                 db.add(order); db.flush()
                 for item in so.get("line_items", []):
-                    db.add(OrderItem(order_id=order.id, product_name=item.get("title", ""), sku=item.get("sku", ""), quantity=item.get("quantity", 1), unit_price=float(item.get("price", 0)), total_price=float(item.get("price", 0)) * item.get("quantity", 1)))
+                    qty = item.get("quantity", 1)
+                    price = float(item.get("price", 0))
+                    db.add(OrderItem(order_id=order.id, product_name=item.get("title", ""), quantity=qty, unit_price=price, total_price=price * qty))
                 db.commit()
         except Exception:
             pass
