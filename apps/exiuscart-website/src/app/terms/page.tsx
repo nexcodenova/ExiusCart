@@ -35,7 +35,7 @@ export default function TermsPage() {
           {/* Header */}
           <div className="mb-12">
             <h1 className="text-4xl font-bold text-white mb-4">Terms of Service</h1>
-            <p className="text-gray-400">Last updated: January 2026</p>
+            <p className="text-gray-400">Last updated: July 7, 2026</p>
           </div>
 
           {/* Content */}
@@ -53,10 +53,17 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-semibold text-white mb-4">2. Description of Service</h2>
                 <p className="text-gray-400 leading-relaxed">
-                  ExiusCart is a business management platform that provides point of sale (POS), inventory
-                  management, invoicing, customer management, and WhatsApp ordering capabilities for small
-                  and medium businesses. Our services are designed primarily for businesses operating in
-                  the UAE and surrounding regions.
+                  ExiusCart is a multi-channel business management platform that provides point of sale (POS),
+                  inventory management, invoicing, customer management, lead management, and sales channel
+                  integration for small and medium businesses. Connected channels include TheDersi, Shopify,
+                  TikTok Shop, eBay, WooCommerce, Amazon, Instagram Shopping, and custom websites.
+                  Our services are designed primarily for businesses operating in the UAE and surrounding regions.
+                </p>
+                <p className="text-gray-400 leading-relaxed mt-4">
+                  By connecting third-party sales channels through ExiusCart, you authorise us to access
+                  and process data from those platforms on your behalf. You are responsible for ensuring
+                  you have the necessary rights and permissions to connect those channels and process the
+                  data they contain.
                 </p>
               </section>
 
@@ -191,7 +198,7 @@ export default function TermsPage() {
                 </p>
                 <div className="mt-4 bg-[#151F32] rounded-xl p-6 border border-gray-800">
                   <p className="text-white font-medium">NexCodeNova</p>
-                  <p className="text-gray-400 mt-2">Email: legal@exiuscart.com</p>
+                  <p className="text-gray-400 mt-2">Email: support@exiuscart.com</p>
                   <p className="text-gray-400">WhatsApp: +971 56 239 3573</p>
                   <p className="text-gray-400">Location: Sri Lanka | Dubai</p>
                 </div>

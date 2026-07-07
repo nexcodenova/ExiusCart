@@ -6,7 +6,7 @@ import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | ExiusCart',
-  description: 'ExiusCart privacy policy. Learn how we collect, use, and protect your data. We respect your privacy and keep your business information secure.',
+  description: 'ExiusCart Privacy Policy — how we collect, use, and protect your data across all connected channels including Shopify, TikTok Shop, eBay, Google Ads, and Meta.',
   openGraph: {
     title: 'Privacy Policy | ExiusCart',
     description: 'ExiusCart privacy policy. How we collect, use and protect your data.',
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
                 <h1 className="text-4xl font-bold text-white">Privacy Policy</h1>
               </div>
             </div>
-            <p className="text-gray-400">Last updated: January 2026</p>
+            <p className="text-gray-400">Last updated: July 7, 2026</p>
           </div>
 
           {/* Quick Summary */}
@@ -119,7 +119,58 @@ export default function PrivacyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-semibold text-white mb-4">4. Data Sharing and Disclosure</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">4. Third-Party Channel Integrations</h2>
+                <p className="text-gray-400 leading-relaxed mb-4">
+                  ExiusCart integrates with third-party sales channels on your behalf. When you connect a channel, we
+                  access and process data from that platform solely to provide the integration. You remain the data
+                  controller for your customers&apos; information; we act as a data processor on your behalf.
+                </p>
+                <div className="space-y-4">
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">TheDersi</p>
+                    <p className="text-gray-400 text-sm">We receive order data, customer information, product listings, and stock levels via webhook and API. Product updates and stock changes are pushed back to TheDersi in real time.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">Shopify</p>
+                    <p className="text-gray-400 text-sm">We access your Shopify store&apos;s orders, products, inventory, and customer data via the Shopify Admin API. We register webhooks for real-time updates and push product and stock changes back to Shopify.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">TikTok Shop</p>
+                    <p className="text-gray-400 text-sm">We access your TikTok Shop products, orders, and inventory via the TikTok Shop Open Platform API using OAuth 2.0. Order data syncs via TikTok webhooks. Product listings and stock are pushed to TikTok Shop.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">eBay</p>
+                    <p className="text-gray-400 text-sm">We access your eBay listings, orders, and inventory via the eBay REST API using OAuth 2.0. Order notifications are received via eBay platform notifications. Product and inventory changes are pushed to eBay.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">WooCommerce</p>
+                    <p className="text-gray-400 text-sm">We connect to your WooCommerce store via API keys you provide. Orders are received via webhook and inventory is synced bidirectionally.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">Amazon</p>
+                    <p className="text-gray-400 text-sm">We access your Amazon Seller Central account via the Amazon SP-API (Selling Partner API). We access order data, product listings, and inventory solely to sync your Amazon business with ExiusCart.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">Instagram Shopping / Meta Commerce</p>
+                    <p className="text-gray-400 text-sm">We access your Facebook Page and Instagram Business account via the Meta Graph API using Facebook Login (OAuth 2.0). We sync product catalogs and receive order notifications on your behalf.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">Google Ads Lead Capture</p>
+                    <p className="text-gray-400 text-sm">We receive lead information from your Google Ads Lead Form campaigns via a secure webhook URL. Lead data (name, email, phone) is stored in ExiusCart as leads on your behalf. This feature is available on eligible plans only.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">Meta Ads Lead Capture</p>
+                    <p className="text-gray-400 text-sm">We receive lead information from your Meta (Facebook/Instagram) Lead Ad campaigns via webhook. Lead data is stored in ExiusCart on your behalf. This feature is available on eligible plans only.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">Custom Websites</p>
+                    <p className="text-gray-400 text-sm">We provide a webhook URL that your custom website can use to send order and lead data to ExiusCart. All data received through this webhook is processed as order and customer data on your behalf.</p>
+                  </div>
+                </div>
+              </section>
+
+            <section>
+                <h2 className="text-2xl font-semibold text-white mb-4">5. Data Sharing and Disclosure</h2>
                 <p className="text-gray-400 leading-relaxed mb-4">
                   We do not sell your personal information. We may share your data only in the following circumstances:
                 </p>
@@ -132,7 +183,7 @@ export default function PrivacyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-semibold text-white mb-4">5. Data Security</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">6. Data Security</h2>
                 <p className="text-gray-400 leading-relaxed">
                   We implement industry-standard security measures to protect your data:
                 </p>
@@ -161,7 +212,7 @@ export default function PrivacyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-semibold text-white mb-4">6. Data Retention</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">7. Data Retention</h2>
                 <p className="text-gray-400 leading-relaxed">
                   We retain your data for as long as your account is active or as needed to provide services.
                   After account termination, we retain data for up to 30 days to allow for data export.
@@ -171,7 +222,7 @@ export default function PrivacyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-semibold text-white mb-4">7. Your Rights</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">8. Your Rights</h2>
                 <p className="text-gray-400 leading-relaxed mb-4">
                   You have the following rights regarding your personal data:
                 </p>
@@ -184,12 +235,12 @@ export default function PrivacyPage() {
                   <li><strong className="text-white">Restriction:</strong> Limit how we process your data</li>
                 </ul>
                 <p className="text-gray-400 leading-relaxed mt-4">
-                  To exercise these rights, contact us at privacy@exiuscart.com or through your account settings.
+                  To exercise these rights, contact us at support@exiuscart.com or through your account settings.
                 </p>
               </section>
 
               <section>
-                <h2 className="text-2xl font-semibold text-white mb-4">8. Cookies</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">9. Cookies</h2>
                 <p className="text-gray-400 leading-relaxed mb-4">
                   We use cookies and similar technologies to:
                 </p>
@@ -206,7 +257,7 @@ export default function PrivacyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-semibold text-white mb-4">9. International Data Transfers</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">10. International Data Transfers</h2>
                 <p className="text-gray-400 leading-relaxed">
                   Your data may be processed and stored in Sri Lanka, UAE, and other countries where our
                   service providers operate. We ensure appropriate safeguards are in place for international
@@ -215,7 +266,7 @@ export default function PrivacyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-semibold text-white mb-4">10. Children&apos;s Privacy</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">11. Children&apos;s Privacy</h2>
                 <p className="text-gray-400 leading-relaxed">
                   ExiusCart is not intended for use by individuals under 18 years of age. We do not
                   knowingly collect personal information from children. If you believe we have collected
@@ -224,7 +275,7 @@ export default function PrivacyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-semibold text-white mb-4">11. Changes to This Policy</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">12. Changes to This Policy</h2>
                 <p className="text-gray-400 leading-relaxed">
                   We may update this Privacy Policy from time to time. We will notify you of significant
                   changes via email or through a notice on our platform. The &quot;Last updated&quot; date at the
@@ -233,7 +284,7 @@ export default function PrivacyPage() {
               </section>
 
               <section>
-                <h2 className="text-2xl font-semibold text-white mb-4">12. Contact Us</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">13. Contact Us</h2>
                 <p className="text-gray-400 leading-relaxed mb-4">
                   If you have questions about this Privacy Policy or our data practices, please contact us:
                 </p>
@@ -242,7 +293,7 @@ export default function PrivacyPage() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <Mail className="w-4 h-4 text-[#6B3FD9]" />
-                      <span className="text-gray-400">privacy@exiuscart.com</span>
+                      <span className="text-gray-400">support@exiuscart.com</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <Bell className="w-4 h-4 text-[#6B3FD9]" />

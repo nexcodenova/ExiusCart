@@ -1,370 +1,245 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 import type { Metadata } from 'next';
-import {
-  ArrowLeft,
-  Briefcase,
-  Globe,
-  Clock,
-  Heart,
-  Zap,
-  Users,
-  Rocket,
-  Code,
-  Palette,
-  Megaphone,
-  Headphones,
-  Mail,
-  MapPin,
-  Coffee,
-  Laptop,
-  Calendar,
-  Target,
-  Lightbulb,
-  Shield,
-} from 'lucide-react';
+import { ArrowLeft, Mail, MapPin, ArrowUpRight, Target, Zap, Lightbulb, Shield, Globe2, Clock, Laptop, Rocket, Heart, Users } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
-  title: 'Careers at NexCodeNova | Join Our Remote-First Team | ExiusCart',
-  description: 'Join NexCodeNova, the team behind ExiusCart. Remote-first culture, competitive pay, and the chance to build tools that empower small businesses worldwide.',
+  title: 'Careers | NexCode Nova — Team Behind ExiusCart',
+  description: 'ExiusCart is built and owned by NexCode Nova, a SaaS company under Fairan Pvt Ltd. Small remote team building real software for real businesses.',
   openGraph: {
-    title: 'Careers at NexCodeNova | Join Our Team',
-    description: 'Join NexCodeNova. Remote-first culture building tools for small businesses worldwide.',
+    title: 'Careers | NexCode Nova',
+    description: 'Join the team behind ExiusCart. Small team, real work, remote-first.',
     url: 'https://exiuscart.com/careers',
     siteName: 'ExiusCart',
     type: 'website',
   },
 };
 
+const workingHere = [
+  { n: '01', title: 'Fully remote, always',       body: 'No office, no plans to get one. Work from wherever you work best. We run async by default.' },
+  { n: '02', title: 'Results, not hours',          body: "We don't track when you log in. Flexible hours, no micromanagement — just good work." },
+  { n: '03', title: 'Freelance & contract welcome', body: 'Not every role is full-time. Project-based and contract arrangements are completely fine.' },
+  { n: '04', title: 'Early stage, real ownership', body: 'Join now and you shape the product — not just execute tasks handed down from above.' },
+];
+
+const values = [
+  { icon: Target,   label: 'Customer First',       desc: 'Every decision starts with — how does this help our customers?' },
+  { icon: Zap,      label: 'Move Fast',             desc: 'We ship, learn from feedback, and iterate. Done beats perfect.' },
+  { icon: Lightbulb,label: 'Think Big',             desc: 'We are building something that will change how businesses run in the UAE.' },
+  { icon: Shield,   label: 'Trust & Transparency',  desc: 'We share openly, give honest feedback, and trust each other.' },
+];
+
+const perks = [
+  { icon: Globe2,  label: 'Work From Anywhere',    desc: 'Fully remote. Home, coffee shop, beach — wherever you do your best work.' },
+  { icon: Clock,   label: 'Flexible Hours',         desc: 'No 9–5. We care about results, not when you clock in.' },
+  { icon: Laptop,  label: 'Modern Tools',           desc: 'We give you what you need — great stack, premium software, good setup.' },
+  { icon: Rocket,  label: 'Grow With Us',           desc: 'As we expand into Dubai, early people get the most exciting opportunities.' },
+  { icon: Heart,   label: 'Work-Life Balance',      desc: 'Your life matters. No micromanagement, no burnout culture.' },
+  { icon: Users,   label: 'A Real Team',            desc: 'Passionate people who care about what they build. We collaborate, not compete.' },
+];
+
+const roles = ['Engineering', 'Design', 'Marketing', 'Customer Support'];
+
 export default function CareersPage() {
   return (
-    <div className="min-h-screen bg-[#0B1121]">
+    <div className="min-h-screen bg-[#F5F3EF]">
       <Navbar />
 
-      <main className="pt-28 pb-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          {/* Back Link */}
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm mb-8 transition"
-          >
+      <main className="pt-28 pb-24 px-6">
+        <div className="max-w-5xl mx-auto">
+
+          <Link href="/" className="inline-flex items-center gap-1.5 text-gray-400 hover:text-gray-700 text-sm mb-14 transition">
             <ArrowLeft className="w-4 h-4" />
-            Back to Home
+            Back
           </Link>
 
-          {/* Hero Section */}
-          <div className="text-center mb-16">
-            <div className="w-16 h-16 bg-[#6B3FD9]/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Briefcase className="w-8 h-8 text-[#6B3FD9]" />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Join Our Team
-            </h1>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-6">
-              Help us build the future of business management in the UAE.
-              We are a remote-first company based in Sri Lanka, expanding to Dubai.
+          {/* ── Hero ── */}
+          <div className="mb-16">
+            <p className="text-[#6B3FD9] text-[11px] font-bold tracking-[0.2em] uppercase mb-4">
+              NexCode Nova · Careers
             </p>
-            <div className="flex items-center justify-center gap-6 text-sm">
-              <span className="flex items-center gap-2 text-gray-400">
-                <MapPin className="w-4 h-4 text-[#6B3FD9]" />
-                Sri Lanka | Dubai
-              </span>
-              <span className="flex items-center gap-2 text-gray-400">
-                <Globe className="w-4 h-4 text-[#6B3FD9]" />
-                Remote First
-              </span>
-              <span className="flex items-center gap-2 text-gray-400">
-                <Coffee className="w-4 h-4 text-[#6B3FD9]" />
-                Freelance Friendly
-              </span>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.05] tracking-tight mb-6">
+              Small team.<br />
+              <span style={{ color: '#6B3FD9' }}>Real product.</span>
+            </h1>
+            <p className="text-gray-500 text-base leading-relaxed max-w-xl">
+              ExiusCart is fully owned and built by{' '}
+              <a href="https://nexcodenova.com" target="_blank" rel="noopener noreferrer"
+                className="text-gray-900 font-semibold border-b border-gray-400 hover:border-[#6B3FD9] hover:text-[#6B3FD9] transition">
+                NexCode Nova
+              </a>
+              , a SaaS company under <span className="text-gray-900 font-semibold">Fairan Pvt Ltd</span>.
+              Sri Lanka-based, expanding into Dubai. All hiring is handled by NexCode Nova.
+            </p>
+          </div>
+
+          {/* ── NexCode Nova dark card ── */}
+          <div className="relative bg-gray-900 rounded-3xl overflow-hidden mb-16">
+            <div className="absolute inset-0 opacity-[0.04]"
+              style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
+            <div className="relative p-8 md:p-10">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+                <div className="flex-1">
+                  <span className="inline-block text-[#9B6FF9] text-[10px] font-bold tracking-[0.2em] uppercase bg-[#9B6FF9]/10 px-3 py-1 rounded-full mb-4">
+                    About NexCode Nova
+                  </span>
+                  <p className="text-white font-black text-2xl leading-snug mb-3">
+                    The SaaS company<br />behind ExiusCart
+                  </p>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    We build our own products, own them fully, and grow them long-term.
+                    No agency work, no client projects. ExiusCart is our flagship — a
+                    multi-channel business management platform for sellers in the UAE and Middle East.
+                  </p>
+                </div>
+                <a href="https://nexcodenova.com" target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-white text-gray-900 hover:bg-[#6B3FD9] hover:text-white text-xs font-bold px-4 py-2.5 rounded-xl transition whitespace-nowrap self-start">
+                  nexcodenova.com
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </div>
           </div>
 
-          {/* About Us */}
-          <section className="mb-20">
-            <div className="bg-gradient-to-r from-[#151F32] to-[#1A2540] rounded-2xl border border-gray-800 p-8 md:p-12">
-              <div className="grid md:grid-cols-2 gap-8 items-center">
-                <div>
-                  <span className="text-[#6B3FD9] font-medium text-sm">ABOUT NEXCODENOVA</span>
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mt-2 mb-4">
-                    Building Tech for Small Businesses Worldwide
-                  </h2>
-                  <p className="text-gray-400 leading-relaxed mb-4">
-                    NexCodeNova is a technology company based in Sri Lanka, with plans to expand
-                    to Dubai. ExiusCart is our flagship product — an all-in-one business management
-                    platform built for small businesses in the UAE and worldwide.
-                  </p>
-                  <p className="text-gray-400 leading-relaxed">
-                    We believe in building practical solutions that solve real problems. Our team
-                    works remotely, values results over hours, and is passionate about creating
-                    technology that makes a difference.
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-[#0B1121] rounded-xl p-6 text-center">
-                    <p className="text-3xl font-bold text-[#6B3FD9]">100%</p>
-                    <p className="text-gray-400 text-sm">Remote Team</p>
+          {/* ── Values ── */}
+          <div className="mb-16">
+            <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-gray-400 mb-6">
+              What we stand for
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {values.map(({ icon: Icon, label, desc }) => (
+                <div key={label} className="bg-white border border-gray-200 rounded-2xl p-5 flex gap-4 items-start">
+                  <div className="w-9 h-9 rounded-xl bg-[#6B3FD9]/8 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Icon className="w-4 h-4 text-[#6B3FD9]" />
                   </div>
-                  <div className="bg-[#0B1121] rounded-xl p-6 text-center">
-                    <p className="text-3xl font-bold text-[#6B3FD9]">2</p>
-                    <p className="text-gray-400 text-sm">Countries</p>
-                  </div>
-                  <div className="bg-[#0B1121] rounded-xl p-6 text-center">
-                    <p className="text-3xl font-bold text-[#6B3FD9]">UAE</p>
-                    <p className="text-gray-400 text-sm">Target Market</p>
-                  </div>
-                  <div className="bg-[#0B1121] rounded-xl p-6 text-center">
-                    <p className="text-3xl font-bold text-[#6B3FD9]">∞</p>
-                    <p className="text-gray-400 text-sm">Growth Potential</p>
+                  <div>
+                    <p className="text-gray-900 font-bold text-sm mb-0.5">{label}</p>
+                    <p className="text-gray-400 text-xs leading-relaxed">{desc}</p>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          </section>
+          </div>
 
-          {/* Our Values */}
-          <section className="mb-20">
-            <div className="text-center mb-12">
-              <span className="text-[#6B3FD9] font-medium text-sm">OUR VALUES</span>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mt-2">
-                What We Stand For
-              </h2>
+          {/* ── What it's like ── */}
+          <div className="mb-16">
+            <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-gray-400 mb-6">
+              What it&apos;s like to work here
+            </p>
+            <div className="space-y-px">
+              {workingHere.map(({ n, title, body }, i) => (
+                <div key={n}
+                  className={`flex gap-6 p-6 bg-white border border-gray-200
+                    ${i === 0 ? 'rounded-t-2xl' : ''}
+                    ${i === workingHere.length - 1 ? 'rounded-b-2xl' : ''}`}>
+                  <span className="text-3xl font-black text-gray-100 leading-none w-10 flex-shrink-0 select-none">{n}</span>
+                  <div>
+                    <p className="text-gray-900 font-bold text-sm mb-1">{title}</p>
+                    <p className="text-gray-400 text-sm leading-relaxed">{body}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Target className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Customer First</h3>
-                <p className="text-gray-400 text-sm">Every decision starts with &quot;How does this help our customers?&quot;</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Rocket className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Move Fast</h3>
-                <p className="text-gray-400 text-sm">We ship quickly, learn from feedback, and iterate. Done is better than perfect.</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Lightbulb className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Think Big</h3>
-                <p className="text-gray-400 text-sm">We are building something that will transform how businesses operate in the UAE.</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 text-center hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Trust & Transparency</h3>
-                <p className="text-gray-400 text-sm">We share openly, give honest feedback, and trust each other to do great work.</p>
-              </div>
-            </div>
-          </section>
+          </div>
 
-          {/* Benefits */}
-          <section className="mb-20">
-            <div className="text-center mb-12">
-              <span className="text-[#6B3FD9] font-medium text-sm">WHY JOIN US</span>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mt-2">
-                Benefits & Perks
-              </h2>
+          {/* ── Perks ── */}
+          <div className="mb-16">
+            <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-gray-400 mb-6">
+              Benefits &amp; perks
+            </p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {perks.map(({ icon: Icon, label, desc }) => (
+                <div key={label} className="bg-white border border-gray-200 rounded-2xl p-5">
+                  <Icon className="w-5 h-5 text-[#6B3FD9] mb-3" />
+                  <p className="text-gray-900 font-bold text-sm mb-1">{label}</p>
+                  <p className="text-gray-400 text-xs leading-relaxed">{desc}</p>
+                </div>
+              ))}
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Globe className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Work From Anywhere</h3>
-                <p className="text-gray-400 text-sm">We are fully remote. Work from home, a coffee shop, or the beach — wherever you do your best work.</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Clock className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Flexible Hours</h3>
-                <p className="text-gray-400 text-sm">No rigid 9-5 schedules. We care about results, not when you clock in. Work when you are most productive.</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Laptop className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Latest Tools</h3>
-                <p className="text-gray-400 text-sm">We provide the tools you need — modern tech stack, premium software, and collaboration tools.</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Rocket className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Growth Opportunities</h3>
-                <p className="text-gray-400 text-sm">As we expand to Dubai and beyond, grow with us. Early team members get exciting opportunities.</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Heart className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Work-Life Balance</h3>
-                <p className="text-gray-400 text-sm">Your life matters. Generous time off, no micromanagement, and a culture that respects boundaries.</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-[#6B3FD9]" />
-                </div>
-                <h3 className="text-white font-semibold mb-2">Great Team</h3>
-                <p className="text-gray-400 text-sm">Work with passionate, skilled people who love what they do. We collaborate, not compete.</p>
-              </div>
-            </div>
-          </section>
+          </div>
 
-          {/* Departments */}
-          <section className="mb-20">
-            <div className="text-center mb-12">
-              <span className="text-[#6B3FD9] font-medium text-sm">TEAMS</span>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mt-2">
-                Our Departments
-              </h2>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <Code className="w-8 h-8 text-[#6B3FD9] mb-4" />
-                <h3 className="text-white font-semibold mb-2">Engineering</h3>
-                <p className="text-gray-400 text-sm">Build scalable products with modern technologies like React, Next.js, Node.js, and TypeScript.</p>
+          {/* ── Roles + Positions ── */}
+          <div className="grid sm:grid-cols-2 gap-4 mb-16">
+            <div className="bg-[#6B3FD9] rounded-3xl p-7">
+              <p className="text-white/60 text-[10px] font-bold tracking-[0.2em] uppercase mb-5">Areas we hire in</p>
+              <div className="space-y-3">
+                {roles.map((r) => (
+                  <div key={r} className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/40 flex-shrink-0" />
+                    <span className="text-white font-semibold text-sm">{r}</span>
+                  </div>
+                ))}
               </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <Palette className="w-8 h-8 text-[#6B3FD9] mb-4" />
-                <h3 className="text-white font-semibold mb-2">Design</h3>
-                <p className="text-gray-400 text-sm">Create beautiful, intuitive experiences that delight users and solve real problems.</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <Megaphone className="w-8 h-8 text-[#6B3FD9] mb-4" />
-                <h3 className="text-white font-semibold mb-2">Marketing</h3>
-                <p className="text-gray-400 text-sm">Tell our story, reach new audiences, and help businesses worldwide discover ExiusCart.</p>
-              </div>
-              <div className="bg-[#151F32] rounded-xl border border-gray-800 p-6 hover:border-[#6B3FD9]/30 transition">
-                <Headphones className="w-8 h-8 text-[#6B3FD9] mb-4" />
-                <h3 className="text-white font-semibold mb-2">Customer Success</h3>
-                <p className="text-gray-400 text-sm">Help our customers succeed. Be the friendly voice that guides them through their journey.</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Open Positions */}
-          <section className="mb-20">
-            <div className="text-center mb-12">
-              <span className="text-[#6B3FD9] font-medium text-sm">OPEN POSITIONS</span>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mt-2">
-                Current Opportunities
-              </h2>
+              <p className="text-white/40 text-xs mt-6">Engineering · Design · Growth · Support</p>
             </div>
 
-            {/* No Openings Message */}
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-12 text-center">
-              <div className="w-20 h-20 bg-[#1A2540] rounded-full flex items-center justify-center mx-auto mb-6">
-                <Calendar className="w-10 h-10 text-gray-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-3">
-                No Open Positions Right Now
-              </h3>
-              <p className="text-gray-400 max-w-lg mx-auto mb-6">
-                We don&apos;t have any open positions at the moment, but we&apos;re always
-                interested in meeting talented people. If you think you&apos;d be a great
-                fit for our team, we&apos;d love to hear from you.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a
-                  href="mailto:careers@exiuscart.com"
-                  className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-8 py-3 rounded-lg transition"
-                >
-                  <Mail className="w-5 h-5" />
-                  Send Your Resume
-                </a>
-                <a
-                  href="https://wa.me/971562393573?text=Hi%2C%20I%27m%20interested%20in%20career%20opportunities%20at%20ExiusCart"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 bg-transparent hover:bg-white/5 text-white font-semibold px-8 py-3 rounded-lg transition border border-gray-700"
-                >
-                  Contact on WhatsApp
-                </a>
-              </div>
-            </div>
-          </section>
-
-          {/* Working Style */}
-          <section className="mb-20">
-            <div className="bg-gradient-to-r from-[#6B3FD9]/10 to-[#FF6B35]/10 rounded-2xl border border-[#6B3FD9]/20 p-8 md:p-12">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                  How We Work
-                </h2>
-                <p className="text-gray-400 max-w-2xl mx-auto">
-                  We believe in flexibility and trust. Here&apos;s what working with us looks like.
+            <div className="bg-white border border-gray-200 rounded-3xl p-7 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-5">
+                  <p className="text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase">Open positions</p>
+                  <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">0 open</span>
+                </div>
+                <p className="text-gray-900 font-bold text-lg leading-snug mb-2">Nothing listed<br />right now</p>
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  We don&apos;t always post publicly. Send an email anyway — we read everything.
                 </p>
               </div>
-              <div className="grid sm:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="w-14 h-14 bg-[#151F32] rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Globe className="w-7 h-7 text-[#6B3FD9]" />
-                  </div>
-                  <h3 className="text-white font-semibold mb-2">Remote & Flexible</h3>
-                  <p className="text-gray-400 text-sm">
-                    Work from anywhere. Set your own schedule. We trust you to deliver.
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="w-14 h-14 bg-[#151F32] rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Zap className="w-7 h-7 text-[#6B3FD9]" />
-                  </div>
-                  <h3 className="text-white font-semibold mb-2">Freelance Welcome</h3>
-                  <p className="text-gray-400 text-sm">
-                    Project-based work available. Flexible contracts for skilled professionals.
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="w-14 h-14 bg-[#151F32] rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Rocket className="w-7 h-7 text-[#6B3FD9]" />
-                  </div>
-                  <h3 className="text-white font-semibold mb-2">Grow With Us</h3>
-                  <p className="text-gray-400 text-sm">
-                    As we expand to Dubai, early team members get exciting opportunities.
-                  </p>
-                </div>
-              </div>
+              <a href="https://www.nexcodenova.com/careers"
+                target="_blank" rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center gap-1.5 text-[#6B3FD9] font-bold text-xs hover:gap-2.5 transition-all">
+                View & apply on NexCode Nova <ArrowUpRight className="w-3.5 h-3.5" />
+              </a>
             </div>
-          </section>
+          </div>
 
-          {/* Contact CTA */}
-          <section>
-            <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 md:p-12 text-center">
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                Let&apos;s Connect
+          {/* ── Contact ── */}
+          <div className="relative bg-gray-900 rounded-3xl overflow-hidden">
+            <div className="absolute inset-0 opacity-[0.04]"
+              style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
+            <div className="relative p-10 md:p-14">
+              <p className="text-[#9B6FF9] text-[11px] font-bold tracking-[0.2em] uppercase mb-4">Get in touch</p>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.1] tracking-tight mb-4">
+                Think you&apos;d be<br />
+                <span style={{ color: '#9B6FF9' }}>a good fit?</span>
               </h2>
-              <p className="text-gray-400 max-w-lg mx-auto mb-8">
-                Even if there are no open positions, we&apos;re always looking for talented
-                individuals. Send us your resume and tell us what you&apos;re passionate about.
+              <p className="text-gray-400 text-base mb-10 max-w-md leading-relaxed">
+                Send your resume, a portfolio link, or just tell us what you work on.
+                No cover letter needed — we read everything.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <a
-                  href="mailto:careers@exiuscart.com"
-                  className="flex items-center gap-2 text-gray-400 hover:text-white transition"
-                >
-                  <Mail className="w-5 h-5 text-[#6B3FD9]" />
-                  careers@exiuscart.com
+
+              <div className="flex flex-col sm:flex-row gap-4 mb-12">
+                <a href="https://www.nexcodenova.com/careers" target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-bold px-6 py-3.5 rounded-xl transition text-sm">
+                  <ArrowUpRight className="w-4 h-4" />
+                  Apply on NexCode Nova
                 </a>
-                <span className="text-gray-700 hidden sm:block">|</span>
-                <a
-                  href="https://wa.me/971562393573"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-gray-400 hover:text-[#25D366] transition"
-                >
-                  <Globe className="w-5 h-5 text-[#25D366]" />
-                  +971 56 239 3573
+                <a href="mailto:careers@nexcodenova.com"
+                  className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-3.5 rounded-xl transition text-sm">
+                  <Mail className="w-4 h-4" />
+                  careers@nexcodenova.com
                 </a>
               </div>
+
+              <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row gap-6">
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-4 h-4 text-[#9B6FF9] flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-semibold text-sm">Sri Lanka · Dubai</p>
+                    <p className="text-gray-500 text-xs">Fairan Pvt Ltd · NexCode Nova</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Mail className="w-4 h-4 text-[#9B6FF9] flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-semibold text-sm">careers@nexcodenova.com</p>
+                    <p className="text-gray-500 text-xs">Handled by NexCode Nova team</p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </section>
+          </div>
+
         </div>
       </main>
 
@@ -372,4 +247,3 @@ export default function CareersPage() {
     </div>
   );
 }
-

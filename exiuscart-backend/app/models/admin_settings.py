@@ -24,7 +24,7 @@ class AdminSettings(Base):
     alert_system_errors = Column(Boolean, default=True)
     alert_high_traffic = Column(Boolean, default=True)
     alert_failed_logins = Column(Boolean, default=True)
-    notification_email_primary = Column(String, default="admin@exiuscart.com")
+    notification_email_primary = Column(String, default="support@exiuscart.com")
     notification_email_secondary = Column(String, default="")
 
     # Security
