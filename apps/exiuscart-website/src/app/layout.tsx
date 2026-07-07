@@ -37,7 +37,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${cairo.variable} font-sans`}>
+      <body className={`${inter.variable} ${inter.className} ${cairo.variable} font-sans`}>
         {GA_ID && (
           <>
             <Script
