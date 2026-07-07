@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+import logging
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -11,6 +12,8 @@ from app.models.user import User
 from app.models.email_otp import EmailOTP
 from app.models.email_log import EmailLog
 from app.models.affiliate import Affiliate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -133,3 +136,105 @@ def public_reservation_info(reservation_id: int, db: Session = Depends(get_db)):
         "product_stock": product_stock,
         "product_reserved": product_reserved,
     }
+
+
+# ── Social Media Lead Capture (no auth — token in URL) ────────────────────────
+
+def _shop_by_token(token: str, db: Session) -> Shop:
+    shop = db.query(Shop).filter(Shop.lead_capture_token == token).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Invalid capture token")
+    return shop
+
+
+def _plan_eligible(shop: Shop, db: Session) -> bool:
+    from app.models.subscription import Subscription
+    from app.api.v1.endpoints.marketing import SOCIAL_LEAD_PLANS
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop.id).order_by(Subscription.id.desc()).first()
+    plan = sub.plan_type if sub else "free_trial"
+    return plan in SOCIAL_LEAD_PLANS
+
+
+def _save_lead(shop_id: int, name: str, email: str, phone: str, company: str, source: str, db: Session):
+    from app.models.marketing import ShopLead
+    from app.api.v1.endpoints.marketing import LEAD_LIMITS
+    from app.models.subscription import Subscription
+    from sqlalchemy import func as sql_func
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    plan = sub.plan_type if sub else "free_trial"
+    limit = LEAD_LIMITS.get(plan)
+    if limit is not None:
+        count = db.query(sql_func.count(ShopLead.id)).filter(ShopLead.shop_id == shop_id).scalar() or 0
+        if count >= limit:
+            logger.info(f"[LEAD CAPTURE] shop={shop_id} at limit ({count}/{limit}) — lead skipped")
+            return None
+    lead = ShopLead(shop_id=shop_id, name=name or "Unknown", email=email or None,
+                    phone=phone or None, company=company or None, source=source, status="new")
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+    return lead
+
+
+# ── Google Ads ────────────────────────────────────────────────────────────────
+
+@router.get("/public/lead-capture/{token}")
+def google_ads_verify(token: str, google_key: str = None, db: Session = Depends(get_db)):
+    """Google Ads pings this URL (GET) before activating the webhook. Must return 200."""
+    _shop_by_token(token, db)
+    return {"status": "ok"}
+
+
+@router.post("/public/lead-capture/{token}")
+async def google_ads_lead(token: str, request: Request, db: Session = Depends(get_db)):
+    """
+    Google Ads Lead Form webhook (POST).
+    Google sends lead data here whenever someone submits an in-ad lead form.
+    Payload: { "user_column_data": [{"column_name": "FULL_NAME", "string_value": "..."}] }
+    """
+    shop = _shop_by_token(token, db)
+    if not _plan_eligible(shop, db):
+        return {"status": "plan_not_eligible"}
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    name = email = phone = company = ""
+
+    # Parse Google's user_column_data format
+    for col in body.get("user_column_data", []):
+        cn = (col.get("column_name") or "").upper()
+        val = col.get("string_value") or ""
+        if cn == "FULL_NAME":
+            name = val
+        elif cn == "FIRST_NAME":
+            name = val
+        elif cn == "LAST_NAME":
+            name = f"{name} {val}".strip()
+        elif cn == "EMAIL":
+            email = val
+        elif cn == "PHONE_NUMBER":
+            phone = val
+        elif cn in ("COMPANY_NAME", "COMPANY"):
+            company = val
+
+    # Fallback: key_value_data format (older Google Ads API)
+    if not name:
+        for kv in body.get("key_value_data", []):
+            k = (kv.get("key") or "").upper()
+            v = kv.get("value") or ""
+            if k in ("FULL_NAME", "FIRST_NAME"):
+                name = v
+            elif k == "EMAIL":
+                email = v
+            elif k == "PHONE_NUMBER":
+                phone = v
+
+    if not name:
+        name = f"Google Lead #{body.get('lead_id', 'unknown')}"
+
+    lead = _save_lead(shop.id, name, email, phone, company, "google_ads", db)
+    logger.info(f"[LEAD CAPTURE] Google Ads → shop={shop.id} name={name} lead_id={lead.id if lead else 'skipped'}")
+    return {"status": "ok"}

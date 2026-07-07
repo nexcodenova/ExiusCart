@@ -316,6 +316,7 @@ export const marketingApi = {
 // ── Leads ─────────────────────────────────────────────
 export const leadsApi = {
   getStats: (shopId: string) => api.get(`/shops/${shopId}/leads/stats`),
+  getIntegration: (shopId: string) => api.get(`/shops/${shopId}/leads/integration`),
   getAll: (shopId: string, params?: { status?: string; search?: string }) =>
     api.get(`/shops/${shopId}/leads`, { params }),
   create: (shopId: string, data: any) => api.post(`/shops/${shopId}/leads`, data),

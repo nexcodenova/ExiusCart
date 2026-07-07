@@ -29,6 +29,7 @@ class Shop(Base):
     loyalty_enabled = Column(Boolean, default=False)
     loyalty_points_per_currency = Column(Numeric(6, 2), default=1.0)
     loyalty_redemption_rate = Column(Numeric(6, 2), default=0.01)
+    lead_capture_token = Column(String(64), unique=True, nullable=True, index=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

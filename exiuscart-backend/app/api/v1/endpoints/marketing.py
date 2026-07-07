@@ -1,4 +1,6 @@
 """Marketing endpoints — Email Campaigns, SMS Campaigns, Events, Surveys, Leads."""
+import os
+import secrets
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,6 +12,8 @@ from app.models.shop import Shop
 from app.models.marketing import EmailCampaign, SMSCampaign, Event, Survey, SurveyQuestion, ShopLead
 from app.models.subscription import Subscription
 from app.api.v1.deps import get_current_user
+
+SOCIAL_LEAD_PLANS = {"premium", "lifetime", "thedersi_pro"}
 
 LEAD_LIMITS: dict = {
     "free_trial":    0,
@@ -358,3 +362,38 @@ def delete_lead(shop_id: int, lid: int, current_user: User = Depends(get_current
     lead = db.query(ShopLead).filter(ShopLead.id == lid, ShopLead.shop_id == shop_id).first()
     if not lead: raise HTTPException(status_code=404, detail="Not found")
     db.delete(lead); db.commit()
+
+
+# ── Social Media Lead Capture Integration ─────────────────────────────────────
+
+@router.get("/shops/{shop_id}/leads/integration")
+def get_lead_integration(shop_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Returns the webhook URLs for Google Ads and Meta lead capture.
+    Only available on Premium and TheDersi Pro plans.
+    Auto-generates a unique capture token for the shop on first call.
+    """
+    shop = _shop(shop_id, current_user, db)
+    plan = _lead_plan(shop_id, db)
+    if plan not in SOCIAL_LEAD_PLANS:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "plan_required",
+                "plan": plan,
+                "message": "Social media lead capture is available on Premium and TheDersi Pro plans only.",
+            },
+        )
+    if not shop.lead_capture_token:
+        shop.lead_capture_token = secrets.token_urlsafe(32)
+        db.commit()
+        db.refresh(shop)
+
+    api_base = os.getenv("EXIUSCART_API_BASE", "https://api.exiuscart.com/api/v1").rstrip("/")
+    token = shop.lead_capture_token
+    return {
+        "token": token,
+        "plan": plan,
+        "google_webhook_url": f"{api_base}/public/lead-capture/{token}",
+        "meta_webhook_url": f"{api_base}/public/lead-capture/{token}/meta",
+    }

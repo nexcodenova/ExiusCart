@@ -1,11 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Target, Trash2, Edit2, X, Loader2, ChevronDown, Search } from 'lucide-react';
+import { Plus, Target, Trash2, Edit2, X, Loader2, ChevronDown, Search, Copy, Check as CheckIcon, Zap, Instagram, Facebook } from 'lucide-react';
 import Link from 'next/link';
 import { leadsApi } from '@/lib/api';
 
 const STATUSES = ['new', 'contacted', 'qualified', 'converted', 'lost'] as const;
-const SOURCES = ['manual', 'website', 'meta_ads', 'whatsapp', 'referral', 'other'] as const;
+const SOURCES  = ['manual', 'website', 'google_ads', 'meta_ads', 'whatsapp', 'referral', 'other'] as const;
+
+const SOURCE_LABELS: Record<string, string> = {
+  manual: 'Manual', website: 'Website', google_ads: 'Google Ads',
+  meta_ads: 'Meta Ads', whatsapp: 'WhatsApp', referral: 'Referral', other: 'Other',
+};
 
 const STATUS_COLORS: Record<string, string> = {
   new:       'bg-blue-500/10 text-blue-600 dark:text-blue-400',
@@ -17,10 +22,28 @@ const STATUS_COLORS: Record<string, string> = {
 
 const EMPTY = { name: '', email: '', phone: '', company: '', source: 'manual', status: 'new', notes: '', value: '', assigned_to: '' };
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <button onClick={copy} className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition">
+      {copied ? <CheckIcon className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? 'Copied!' : 'Copy'}
+    </button>
+  );
+}
+
 export default function LeadsPage() {
   const [shopId, setShopId] = useState('');
   const [leads, setLeads] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [integration, setIntegration] = useState<any>(null);
+  const [integrationLocked, setIntegrationLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [search, setSearch] = useState('');
@@ -48,26 +71,35 @@ export default function LeadsPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [shopId, filterStatus, search]);
+  const loadIntegration = async () => {
+    if (!shopId) return;
+    try {
+      const r = await leadsApi.getIntegration(shopId);
+      setIntegration(r.data);
+      setIntegrationLocked(false);
+    } catch (err: any) {
+      if (err?.response?.status === 403) setIntegrationLocked(true);
+    }
+  };
+
+  useEffect(() => { load(); loadIntegration(); }, [shopId]);
+  useEffect(() => { if (shopId) load(); }, [filterStatus, search]);
 
   const openNew = () => { setEditing(null); setForm({ ...EMPTY }); setError(''); setShowModal(true); };
   const openEdit = (l: any) => {
     setEditing(l);
     setForm({ name: l.name, email: l.email || '', phone: l.phone || '', company: l.company || '', source: l.source || 'manual', status: l.status || 'new', notes: l.notes || '', value: l.value ? String(l.value) : '', assigned_to: l.assigned_to || '' });
-    setError('');
-    setShowModal(true);
+    setError(''); setShowModal(true);
   };
 
   const save = async () => {
     if (!form.name.trim()) return;
-    setSaving(true);
-    setError('');
+    setSaving(true); setError('');
     try {
       const payload = { ...form, value: form.value ? parseFloat(form.value) : null };
       if (editing) { await leadsApi.update(shopId, editing.id, payload); }
       else { await leadsApi.create(shopId, payload); }
-      setShowModal(false);
-      load();
+      setShowModal(false); load();
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       if (typeof detail === 'object') setError(detail?.message || 'Failed to save lead.');
@@ -84,15 +116,15 @@ export default function LeadsPage() {
     try { await leadsApi.delete(shopId, l.id); load(); } catch {}
   };
 
-  const planLocked = stats?.limit === 0;
-  const atLimit = stats?.limit !== null && stats?.limit !== undefined && stats?.total >= stats?.limit;
+  const planLocked     = stats?.limit === 0;
+  const atLimit        = stats?.limit !== null && stats?.limit !== undefined && stats?.total >= stats?.limit;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Lead Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">Track potential customers and move them through your pipeline</p>
+          <p className="text-sm text-muted-foreground mt-1">Track potential customers and convert them through your pipeline</p>
         </div>
         <button
           onClick={openNew}
@@ -103,7 +135,7 @@ export default function LeadsPage() {
         </button>
       </div>
 
-      {/* Plan gate */}
+      {/* Plan gate — lead management */}
       {planLocked && (
         <div className="bg-muted border border-border rounded-xl px-5 py-4 flex items-center justify-between gap-4">
           <div>
@@ -115,6 +147,89 @@ export default function LeadsPage() {
           </Link>
         </div>
       )}
+
+      {/* ── Social Media Lead Capture ─────────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Zap className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold text-foreground text-sm">Social Media Auto-Capture</h2>
+          <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full">Premium &amp; TheDersi Pro</span>
+        </div>
+
+        {integrationLocked ? (
+          <div className="px-5 py-5 flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">Automatically capture leads from Google Ads and Meta (Facebook / Instagram) directly into ExiusCart — no manual copying.</p>
+            <Link href="/dashboard/billing" className="shrink-0 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition whitespace-nowrap">
+              Upgrade to unlock
+            </Link>
+          </div>
+        ) : integration ? (
+          <div className="divide-y divide-border">
+
+            {/* Google Ads */}
+            <div className="px-5 py-5 grid md:grid-cols-2 gap-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#4285F4]/10 flex items-center justify-center">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                  </div>
+                  <span className="font-semibold text-foreground text-sm">Google Ads</span>
+                  <span className="text-[10px] bg-green-500/10 text-green-600 dark:text-green-400 font-bold px-2 py-0.5 rounded-full">Live</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                  When someone fills your Google Lead Form Ad, the lead is automatically added to ExiusCart. Paste the webhook URL into your Google Ads campaign.
+                </p>
+                <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
+                  <li>Open your Google Ads campaign</li>
+                  <li>Go to <strong className="text-foreground">Assets → Lead form</strong></li>
+                  <li>Click <strong className="text-foreground">Delivery → Webhook</strong></li>
+                  <li>Paste the URL below and save</li>
+                </ol>
+              </div>
+              <div className="flex flex-col justify-center gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Your Google Ads Webhook URL</label>
+                  <div className="flex items-center gap-2 bg-muted border border-border rounded-lg px-3 py-2">
+                    <code className="text-xs text-foreground flex-1 break-all">{integration.google_webhook_url}</code>
+                    <CopyButton text={integration.google_webhook_url} />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">Leads captured will appear with source <strong>Google Ads</strong>.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Meta — Coming Soon */}
+            <div className="px-5 py-5 grid md:grid-cols-2 gap-6 opacity-60">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#1877F2]/10 flex items-center justify-center">
+                    <Facebook className="w-4 h-4 text-[#1877F2]" />
+                  </div>
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#515BD4] flex items-center justify-center -ml-3">
+                    <Instagram className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="font-semibold text-foreground text-sm">Meta — Facebook &amp; Instagram</span>
+                  <span className="text-[10px] bg-muted text-muted-foreground font-bold px-2 py-0.5 rounded-full border border-border">Coming Soon</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Automatically capture leads from Facebook Lead Ads and Instagram Lead Ads into ExiusCart. Connect your Meta Business page once, and all ad leads flow in automatically.
+                </p>
+              </div>
+              <div className="flex items-center">
+                <div className="bg-muted/50 border border-dashed border-border rounded-xl px-4 py-4 text-center w-full">
+                  <p className="text-xs font-medium text-muted-foreground">Meta integration is coming soon.</p>
+                  <p className="text-[11px] text-muted-foreground/70 mt-1">We'll notify you when it's ready.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          <div className="px-5 py-6 text-center">
+            <div className="inline-block w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        )}
+      </div>
 
       {/* Usage bar */}
       {stats && stats.limit !== null && stats.limit > 0 && (
@@ -166,7 +281,7 @@ export default function LeadsPage() {
             <Target className="w-14 h-14 text-muted-foreground mx-auto mb-4 opacity-40" />
             <h3 className="font-semibold text-foreground mb-1">{filterStatus || search ? 'No leads match your filter' : 'No leads yet'}</h3>
             <p className="text-sm text-muted-foreground mb-5">
-              {filterStatus || search ? 'Try clearing your filters.' : 'Add your first lead to start tracking your pipeline.'}
+              {filterStatus || search ? 'Try clearing your filters.' : 'Add your first lead manually, or connect Google Ads above for automatic capture.'}
             </p>
             {!planLocked && !filterStatus && !search && (
               <button onClick={openNew} className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition">
@@ -191,12 +306,12 @@ export default function LeadsPage() {
                       <p className="font-medium text-foreground">{l.name}</p>
                       {l.assigned_to && <p className="text-xs text-muted-foreground mt-0.5">Assigned: {l.assigned_to}</p>}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
                       {l.email && <p>{l.email}</p>}
                       {l.phone && <p>{l.phone}</p>}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{l.company || '—'}</td>
-                    <td className="px-4 py-3 text-muted-foreground capitalize">{(l.source || 'manual').replace('_', ' ')}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{l.company || '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{SOURCE_LABELS[l.source] || l.source}</td>
                     <td className="px-4 py-3">
                       <div className="relative group inline-block">
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium capitalize cursor-pointer ${STATUS_COLORS[l.status] || STATUS_COLORS.new}`}>
@@ -215,7 +330,7 @@ export default function LeadsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
                       {l.value ? <span className="font-medium text-foreground">{Number(l.value).toLocaleString()}</span> : '—'}
                     </td>
                     <td className="px-4 py-3">
@@ -240,7 +355,6 @@ export default function LeadsPage() {
               <h2 className="text-lg font-semibold text-foreground">{editing ? 'Edit Lead' : 'Add Lead'}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition"><X className="w-5 h-5" /></button>
             </div>
-
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-600 dark:text-red-400">{error}</div>
@@ -269,7 +383,7 @@ export default function LeadsPage() {
                 <div>
                   <label className="text-sm text-muted-foreground mb-1.5 block">Source</label>
                   <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none">
-                    {SOURCES.map(s => <option key={s} value={s} className="capitalize">{s.replace('_', ' ')}</option>)}
+                    {SOURCES.map(s => <option key={s} value={s}>{SOURCE_LABELS[s]}</option>)}
                   </select>
                 </div>
                 <div>
@@ -288,7 +402,6 @@ export default function LeadsPage() {
                 </div>
               </div>
             </div>
-
             <div className="flex gap-3 px-6 py-4 border-t border-border shrink-0">
               <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition text-sm">Cancel</button>
               <button
