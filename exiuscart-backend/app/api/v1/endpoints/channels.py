@@ -517,7 +517,7 @@ async def receive_cancel_webhook(
     2. Sets order.status = 'cancelled', payment_status = 'refunded' (if applicable).
     3. Restores product stock for all items (only if order was previously paid).
     4. Pushes restored stock back to TheDersi so both sides stay in sync.
-    5. Emails the seller to notify them.
+    TheDersi handles all customer and seller email notifications on their side.
     """
     body = await request.body()
     x_sig = request.headers.get("X-Signature", "")
