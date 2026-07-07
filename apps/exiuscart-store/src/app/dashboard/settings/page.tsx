@@ -37,6 +37,7 @@ export default function SettingsPage() {
     theme: 'system',
     vatEnabled: false,
     vatRate: 0,
+    vatLabel: 'VAT',
     pricesIncludeVat: false,
     showVatBreakdown: false,
     emailNotifications: true,
@@ -54,6 +55,7 @@ export default function SettingsPage() {
         currency: shop.currency ?? 'AED',
         vatEnabled: shop.vat_enabled ?? false,
         vatRate: shop.vat_rate ?? 0,
+        vatLabel: shop.vat_label ?? 'VAT',
         pricesIncludeVat: shop.prices_include_vat ?? false,
         showVatBreakdown: shop.show_vat_breakdown ?? false,
       }));
@@ -92,6 +94,7 @@ export default function SettingsPage() {
       await shopApi.updateShop({
         vat_enabled: settings.vatEnabled,
         vat_rate: settings.vatRate,
+        vat_label: settings.vatLabel,
         prices_include_vat: settings.pricesIncludeVat,
         show_vat_breakdown: settings.showVatBreakdown,
       });
@@ -324,6 +327,15 @@ export default function SettingsPage() {
               </p>
             </div>
 
+            {isTheDersiSeller && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-6">
+                <p className="text-sm text-foreground font-medium">TheDersi sellers</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  VAT is off by default. You only need to enable VAT if you are personally VAT-registered.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-6">
               {/* VAT Enabled Toggle */}
               <div className="flex items-center justify-between py-3 border-b border-border">
@@ -347,6 +359,47 @@ export default function SettingsPage() {
 
               {settings.vatEnabled && (
                 <>
+                  {/* Country VAT Preset */}
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Country / Tax Preset</label>
+                    <select
+                      title="Country VAT Preset"
+                      onChange={(e) => {
+                        const presets: Record<string, { rate: number; label: string }> = {
+                          UAE: { rate: 5, label: 'VAT' }, KSA: { rate: 15, label: 'VAT' },
+                          India: { rate: 18, label: 'GST' }, UK: { rate: 20, label: 'VAT' },
+                          EU: { rate: 20, label: 'VAT' }, Australia: { rate: 10, label: 'GST' },
+                          Canada: { rate: 5, label: 'GST' }, Custom: { rate: 0, label: 'Tax' },
+                        };
+                        const p = presets[e.target.value];
+                        if (p && e.target.value !== 'Custom') setSettings(s => ({ ...s, vatRate: p.rate, vatLabel: p.label }));
+                      }}
+                      className="w-full sm:w-64 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground"
+                    >
+                      <option value="">-- Select Country --</option>
+                      <option value="UAE">🇦🇪 UAE — 5% VAT</option>
+                      <option value="KSA">🇸🇦 Saudi Arabia — 15% VAT</option>
+                      <option value="India">🇮🇳 India — 18% GST</option>
+                      <option value="UK">🇬🇧 UK — 20% VAT</option>
+                      <option value="EU">🇪🇺 EU — 20% VAT</option>
+                      <option value="Australia">🇦🇺 Australia — 10% GST</option>
+                      <option value="Canada">🇨🇦 Canada — 5% GST</option>
+                      <option value="Custom">✏️ Custom</option>
+                    </select>
+                  </div>
+
+                  {/* Tax Label */}
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Tax Label (what appears on invoices)</label>
+                    <input
+                      type="text"
+                      value={settings.vatLabel ?? 'VAT'}
+                      onChange={(e) => setSettings(s => ({ ...s, vatLabel: e.target.value }))}
+                      placeholder="VAT / GST / Tax"
+                      className="w-full sm:w-64 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground"
+                    />
+                  </div>
+
                   {/* VAT Rate */}
                   <div>
                     <label htmlFor="vatRate" className="text-sm text-muted-foreground mb-1.5 block">VAT Rate (%)</label>

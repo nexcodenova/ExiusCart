@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Package, Truck, DollarSign, ShoppingBag,
   FileText, Percent, Mail, Check, User, Phone, Download,
-  RefreshCcw, AlertTriangle, Printer,
+  RefreshCcw, AlertTriangle, Printer, MessageCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
@@ -475,6 +475,16 @@ export default function OrderDetailsPage() {
           className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-700 dark:text-green-400 transition font-medium"
         >
           <Printer className="w-4 h-4" /> Payment Receipt
+        </button>
+        <button
+          onClick={() => {
+            const phone = order?.customer?.phone?.replace(/\D/g, '') ?? '';
+            const msg = encodeURIComponent(`Hi ${order?.customer?.name ?? 'there'}, your order ${order?.order_number} has been confirmed. Total: ${fmt(order?.total ?? 0)}. Thank you!`);
+            window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+          }}
+          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 transition font-medium"
+        >
+          <MessageCircle className="w-4 h-4" /> WhatsApp
         </button>
         {order.tracking_number && (
           <Link href={`/dashboard/orders/${orderId}/tracking`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition ml-auto">

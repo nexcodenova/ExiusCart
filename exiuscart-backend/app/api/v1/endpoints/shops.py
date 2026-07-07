@@ -16,8 +16,13 @@ from app.models.supplier import Supplier, PurchaseOrder, PurchaseOrderItem
 from app.models.credit_note import CreditNote
 from app.models.expense import Expense as ExpenseModel
 from app.models.recurring_invoice import RecurringInvoice
+from app.models.payroll import PayrollStaff, PayrollRun, PayrollItem
+from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
+from app.models.branch import Branch
+from app.models.quotation import Quotation
 from app.schemas.shop import ShopCreate, ShopResponse, ShopUpdate
 from app.api.v1.deps import get_current_user
+import math
 
 # Plan catalogue (source of truth)
 PLAN_CATALOGUE = {
@@ -1440,3 +1445,853 @@ def send_recurring_invoice_now(
     ri.next_send_date = _next_date_for_frequency(ri.frequency, date.today())
     db.commit()
     return {"sent": True, "next_send_date": ri.next_send_date.isoformat()}
+
+
+# ── P&L Statement ──────────────────────────────────────────────────────────────
+
+@router.get("/{shop_id}/reports/pl")
+def get_pl_statement(
+    shop_id: int,
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    today = datetime.now(timezone.utc).date()
+    try:
+        d_from = date.fromisoformat(from_date) if from_date else today.replace(day=1)
+        d_to   = date.fromisoformat(to_date)   if to_date   else today
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    # Revenue: paid orders in range
+    revenue = float(
+        db.query(func.sum(Order.total))
+        .filter(
+            Order.shop_id == shop_id,
+            Order.payment_status == "paid",
+            cast(Order.created_at, Date) >= d_from,
+            cast(Order.created_at, Date) <= d_to,
+        )
+        .scalar() or 0
+    )
+
+    # Cost of goods: purchase orders received in range
+    try:
+        from app.models.supplier import PurchaseOrder as _PO
+        cogs = float(
+            db.query(func.sum(_PO.total_amount))
+            .filter(
+                _PO.shop_id == shop_id,
+                _PO.status == "received",
+                cast(_PO.received_at, Date) >= d_from,
+                cast(_PO.received_at, Date) <= d_to,
+            )
+            .scalar() or 0
+        )
+    except Exception:
+        cogs = 0.0
+
+    gross_profit = revenue - cogs
+
+    # Expenses by category
+    expense_rows = (
+        db.query(ExpenseModel.category, func.sum(ExpenseModel.amount).label("total"))
+        .filter(
+            ExpenseModel.shop_id == shop_id,
+            ExpenseModel.date >= d_from.isoformat(),
+            ExpenseModel.date <= d_to.isoformat(),
+        )
+        .group_by(ExpenseModel.category)
+        .all()
+    )
+    expenses = [{"category": r.category, "total": float(r.total)} for r in expense_rows]
+    total_expenses = sum(e["total"] for e in expenses)
+
+    operating_profit = gross_profit - total_expenses
+
+    # Tax paid
+    tax_paid = float(
+        db.query(func.sum(Order.tax_amount))
+        .filter(
+            Order.shop_id == shop_id,
+            Order.payment_status == "paid",
+            cast(Order.created_at, Date) >= d_from,
+            cast(Order.created_at, Date) <= d_to,
+        )
+        .scalar() or 0
+    )
+
+    net_profit = operating_profit - tax_paid
+
+    return {
+        "from_date": d_from.isoformat(),
+        "to_date": d_to.isoformat(),
+        "currency": shop.currency or "AED",
+        "revenue": revenue,
+        "cost_of_goods": cogs,
+        "gross_profit": gross_profit,
+        "expenses": expenses,
+        "total_expenses": total_expenses,
+        "operating_profit": operating_profit,
+        "tax_paid": tax_paid,
+        "net_profit": net_profit,
+    }
+
+
+# ── Balance Sheet ──────────────────────────────────────────────────────────────
+
+@router.get("/{shop_id}/reports/balance-sheet")
+def get_balance_sheet(
+    shop_id: int,
+    as_of: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    today = datetime.now(timezone.utc).date()
+    try:
+        d_as_of = date.fromisoformat(as_of) if as_of else today
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    # Assets
+    cash = float(
+        db.query(func.sum(Order.total))
+        .filter(
+            Order.shop_id == shop_id,
+            Order.payment_status == "paid",
+            cast(Order.created_at, Date) <= d_as_of,
+        )
+        .scalar() or 0
+    )
+
+    accounts_receivable = float(
+        db.query(func.sum(Quotation.total))
+        .filter(
+            Quotation.shop_id == shop_id,
+            Quotation.status == "pending",
+            cast(Quotation.created_at, Date) <= d_as_of,
+        )
+        .scalar() or 0
+    )
+
+    # Inventory value: quantity * price for active products
+    products = (
+        db.query(Product)
+        .filter(Product.shop_id == shop_id, Product.is_active == True)
+        .all()
+    )
+    inventory_value = sum(
+        float(p.quantity or 0) * float(p.price or 0) for p in products
+    )
+
+    total_assets = cash + accounts_receivable + inventory_value
+
+    # Liabilities
+    try:
+        from app.models.supplier import PurchaseOrder as _PO
+        accounts_payable = float(
+            db.query(func.sum(_PO.total_amount))
+            .filter(
+                _PO.shop_id == shop_id,
+                _PO.status.notin_(["received", "cancelled"]),
+                cast(_PO.created_at, Date) <= d_as_of,
+            )
+            .scalar() or 0
+        )
+    except Exception:
+        accounts_payable = 0.0
+
+    vat_payable = 0.0
+    if shop.vat_enabled:
+        vat_payable = float(
+            db.query(func.sum(Order.tax_amount))
+            .filter(
+                Order.shop_id == shop_id,
+                Order.payment_status == "paid",
+                cast(Order.created_at, Date) <= d_as_of,
+            )
+            .scalar() or 0
+        )
+
+    total_liabilities = accounts_payable + vat_payable
+
+    retained_earnings = total_assets - total_liabilities
+
+    return {
+        "as_of": d_as_of.isoformat(),
+        "currency": shop.currency or "AED",
+        "assets": {
+            "cash": cash,
+            "accounts_receivable": accounts_receivable,
+            "inventory_value": inventory_value,
+            "total_assets": total_assets,
+        },
+        "liabilities": {
+            "accounts_payable": accounts_payable,
+            "vat_payable": vat_payable,
+            "total_liabilities": total_liabilities,
+        },
+        "equity": {
+            "retained_earnings": retained_earnings,
+        },
+    }
+
+
+# ── Payroll ────────────────────────────────────────────────────────────────────
+
+def _staff_out(s: PayrollStaff) -> dict:
+    return {
+        "id": s.id,
+        "shop_id": s.shop_id,
+        "name": s.name,
+        "role": s.role,
+        "email": s.email,
+        "phone": s.phone,
+        "salary": float(s.salary),
+        "currency": s.currency,
+        "join_date": s.join_date.isoformat() if s.join_date else None,
+        "is_active": s.is_active,
+        "notes": s.notes,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
+    }
+
+
+def _payroll_item_out(item: PayrollItem) -> dict:
+    return {
+        "id": item.id,
+        "run_id": item.run_id,
+        "staff_id": item.staff_id,
+        "staff_name": item.staff_name,
+        "role": item.role,
+        "base_salary": float(item.base_salary),
+        "bonus": float(item.bonus),
+        "deduction": float(item.deduction),
+        "net_pay": float(item.net_pay),
+    }
+
+
+def _run_out(run: PayrollRun, include_items: bool = False) -> dict:
+    data = {
+        "id": run.id,
+        "shop_id": run.shop_id,
+        "month": run.month,
+        "year": run.year,
+        "status": run.status,
+        "total_amount": float(run.total_amount),
+        "currency": run.currency,
+        "notes": run.notes,
+        "paid_at": run.paid_at.isoformat() if run.paid_at else None,
+        "created_at": run.created_at.isoformat() if run.created_at else None,
+    }
+    if include_items:
+        data["items"] = [_payroll_item_out(i) for i in run.items]
+    return data
+
+
+@router.get("/{shop_id}/payroll/staff")
+def list_payroll_staff(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    staff = (
+        db.query(PayrollStaff)
+        .filter(PayrollStaff.shop_id == shop_id, PayrollStaff.is_active == True)
+        .order_by(PayrollStaff.id.asc())
+        .all()
+    )
+    return [_staff_out(s) for s in staff]
+
+
+@router.post("/{shop_id}/payroll/staff", status_code=201)
+def create_payroll_staff(
+    shop_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    join_date = None
+    if body.get("join_date"):
+        try:
+            join_date = date.fromisoformat(body["join_date"])
+        except ValueError:
+            pass
+
+    s = PayrollStaff(
+        shop_id=shop_id,
+        name=body.get("name", ""),
+        role=body.get("role") or None,
+        email=body.get("email") or None,
+        phone=body.get("phone") or None,
+        salary=float(body.get("salary", 0)),
+        currency=body.get("currency", shop.currency or "AED"),
+        join_date=join_date,
+        is_active=True,
+        notes=body.get("notes") or None,
+    )
+    db.add(s)
+    db.commit()
+    db.refresh(s)
+    return _staff_out(s)
+
+
+@router.patch("/{shop_id}/payroll/staff/{staff_id}")
+def update_payroll_staff(
+    shop_id: int,
+    staff_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    s = db.query(PayrollStaff).filter(PayrollStaff.id == staff_id, PayrollStaff.shop_id == shop_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    for field in ("name", "role", "email", "phone", "salary", "currency", "is_active", "notes"):
+        if field in body:
+            setattr(s, field, body[field])
+    if "join_date" in body and body["join_date"]:
+        try:
+            s.join_date = date.fromisoformat(body["join_date"])
+        except ValueError:
+            pass
+    db.commit()
+    return _staff_out(s)
+
+
+@router.delete("/{shop_id}/payroll/staff/{staff_id}", status_code=200)
+def delete_payroll_staff(
+    shop_id: int,
+    staff_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    s = db.query(PayrollStaff).filter(PayrollStaff.id == staff_id, PayrollStaff.shop_id == shop_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    s.is_active = False
+    db.commit()
+    return {"status": "deactivated"}
+
+
+@router.get("/{shop_id}/payroll/runs")
+def list_payroll_runs(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    runs = (
+        db.query(PayrollRun)
+        .filter(PayrollRun.shop_id == shop_id)
+        .order_by(PayrollRun.year.desc(), PayrollRun.month.desc())
+        .all()
+    )
+    return [_run_out(r) for r in runs]
+
+
+@router.post("/{shop_id}/payroll/runs", status_code=201)
+def create_payroll_run(
+    shop_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    month = int(body.get("month", datetime.now(timezone.utc).month))
+    year = int(body.get("year", datetime.now(timezone.utc).year))
+
+    run = PayrollRun(
+        shop_id=shop_id,
+        month=month,
+        year=year,
+        status="draft",
+        total_amount=0,
+        currency=body.get("currency", shop.currency or "AED"),
+        notes=body.get("notes") or None,
+    )
+    db.add(run)
+    db.flush()
+
+    items_data = body.get("items", [])
+    total = 0.0
+    for item_body in items_data:
+        sid = item_body.get("staff_id")
+        staff = db.query(PayrollStaff).filter(PayrollStaff.id == sid, PayrollStaff.shop_id == shop_id).first() if sid else None
+        staff_name = (staff.name if staff else item_body.get("staff_name", "")) or ""
+        role = (staff.role if staff else item_body.get("role")) or None
+        base_salary = float(staff.salary if staff else item_body.get("base_salary", 0))
+        bonus = float(item_body.get("bonus", 0))
+        deduction = float(item_body.get("deduction", 0))
+        net_pay = base_salary + bonus - deduction
+        total += net_pay
+
+        pi = PayrollItem(
+            run_id=run.id,
+            staff_id=sid,
+            staff_name=staff_name,
+            role=role,
+            base_salary=base_salary,
+            bonus=bonus,
+            deduction=deduction,
+            net_pay=net_pay,
+        )
+        db.add(pi)
+
+    run.total_amount = total
+    db.commit()
+    db.refresh(run)
+    return _run_out(run, include_items=True)
+
+
+@router.get("/{shop_id}/payroll/runs/{run_id}")
+def get_payroll_run(
+    shop_id: int,
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    run = db.query(PayrollRun).filter(PayrollRun.id == run_id, PayrollRun.shop_id == shop_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Payroll run not found")
+    return _run_out(run, include_items=True)
+
+
+@router.patch("/{shop_id}/payroll/runs/{run_id}/pay")
+def pay_payroll_run(
+    shop_id: int,
+    run_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    run = db.query(PayrollRun).filter(PayrollRun.id == run_id, PayrollRun.shop_id == shop_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Payroll run not found")
+    if run.status == "paid":
+        raise HTTPException(status_code=400, detail="Payroll run already paid")
+    run.status = "paid"
+    run.paid_at = datetime.now(timezone.utc)
+    db.commit()
+    return _run_out(run, include_items=True)
+
+
+# ── Loyalty ────────────────────────────────────────────────────────────────────
+
+def _calc_tier(points: int) -> str:
+    if points >= 5000:
+        return "gold"
+    elif points >= 1000:
+        return "silver"
+    return "bronze"
+
+
+def _loyalty_account_out(acct: LoyaltyAccount, include_transactions: bool = False) -> dict:
+    data = {
+        "id": acct.id,
+        "shop_id": acct.shop_id,
+        "customer_name": acct.customer_name,
+        "phone": acct.phone,
+        "email": acct.email,
+        "points": acct.points,
+        "tier": acct.tier,
+        "total_spent": float(acct.total_spent),
+        "is_active": acct.is_active,
+        "created_at": acct.created_at.isoformat() if acct.created_at else None,
+    }
+    if include_transactions:
+        txs = sorted(acct.transactions, key=lambda t: t.id, reverse=True)[:20]
+        data["transactions"] = [
+            {
+                "id": t.id,
+                "type": t.type,
+                "points": t.points,
+                "description": t.description,
+                "order_id": t.order_id,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+            }
+            for t in txs
+        ]
+    return data
+
+
+@router.get("/{shop_id}/loyalty/settings")
+def get_loyalty_settings(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    return {
+        "loyalty_enabled": shop.loyalty_enabled,
+        "loyalty_points_per_currency": float(shop.loyalty_points_per_currency or 1.0),
+        "loyalty_redemption_rate": float(shop.loyalty_redemption_rate or 0.01),
+        "tiers": [
+            {"name": "bronze", "min_points": 0, "max_points": 999},
+            {"name": "silver", "min_points": 1000, "max_points": 4999},
+            {"name": "gold", "min_points": 5000, "max_points": None},
+        ],
+    }
+
+
+@router.patch("/{shop_id}/loyalty/settings")
+def update_loyalty_settings(
+    shop_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    for field in ("loyalty_enabled", "loyalty_points_per_currency", "loyalty_redemption_rate"):
+        if field in body:
+            setattr(shop, field, body[field])
+    db.commit()
+    return {
+        "loyalty_enabled": shop.loyalty_enabled,
+        "loyalty_points_per_currency": float(shop.loyalty_points_per_currency or 1.0),
+        "loyalty_redemption_rate": float(shop.loyalty_redemption_rate or 0.01),
+    }
+
+
+@router.get("/{shop_id}/loyalty/accounts")
+def list_loyalty_accounts(
+    shop_id: int,
+    search: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    q = db.query(LoyaltyAccount).filter(
+        LoyaltyAccount.shop_id == shop_id,
+        LoyaltyAccount.is_active == True,
+    )
+    if search:
+        like = f"%{search}%"
+        q = q.filter(
+            (LoyaltyAccount.customer_name.ilike(like)) |
+            (LoyaltyAccount.phone.ilike(like)) |
+            (LoyaltyAccount.email.ilike(like))
+        )
+    accounts = q.order_by(LoyaltyAccount.points.desc()).all()
+    return [_loyalty_account_out(a) for a in accounts]
+
+
+@router.post("/{shop_id}/loyalty/accounts", status_code=201)
+def create_loyalty_account(
+    shop_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    acct = LoyaltyAccount(
+        shop_id=shop_id,
+        customer_name=body.get("customer_name", ""),
+        phone=body.get("phone") or None,
+        email=body.get("email") or None,
+        points=0,
+        tier="bronze",
+        total_spent=0,
+        is_active=True,
+    )
+    db.add(acct)
+    db.commit()
+    db.refresh(acct)
+    return _loyalty_account_out(acct)
+
+
+@router.get("/{shop_id}/loyalty/accounts/{account_id}")
+def get_loyalty_account(
+    shop_id: int,
+    account_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    acct = db.query(LoyaltyAccount).filter(
+        LoyaltyAccount.id == account_id,
+        LoyaltyAccount.shop_id == shop_id,
+    ).first()
+    if not acct:
+        raise HTTPException(status_code=404, detail="Loyalty account not found")
+    return _loyalty_account_out(acct, include_transactions=True)
+
+
+@router.post("/{shop_id}/loyalty/accounts/{account_id}/earn")
+def loyalty_earn(
+    shop_id: int,
+    account_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    acct = db.query(LoyaltyAccount).filter(
+        LoyaltyAccount.id == account_id,
+        LoyaltyAccount.shop_id == shop_id,
+    ).first()
+    if not acct:
+        raise HTTPException(status_code=404, detail="Loyalty account not found")
+
+    amount = float(body.get("amount", 0))
+    ppc = float(shop.loyalty_points_per_currency or 1.0)
+    earned = math.floor(amount * ppc)
+
+    acct.points = (acct.points or 0) + earned
+    acct.total_spent = float(acct.total_spent or 0) + amount
+    acct.tier = _calc_tier(acct.points)
+
+    tx = LoyaltyTransaction(
+        account_id=acct.id,
+        type="earn",
+        points=earned,
+        description=body.get("description") or f"Earned {earned} points",
+        order_id=body.get("order_id") or None,
+    )
+    db.add(tx)
+    db.commit()
+    db.refresh(acct)
+    return {
+        "points_earned": earned,
+        "total_points": acct.points,
+        "tier": acct.tier,
+    }
+
+
+@router.post("/{shop_id}/loyalty/accounts/{account_id}/redeem")
+def loyalty_redeem(
+    shop_id: int,
+    account_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    acct = db.query(LoyaltyAccount).filter(
+        LoyaltyAccount.id == account_id,
+        LoyaltyAccount.shop_id == shop_id,
+    ).first()
+    if not acct:
+        raise HTTPException(status_code=404, detail="Loyalty account not found")
+
+    points_to_redeem = int(body.get("points", 0))
+    if points_to_redeem <= 0:
+        raise HTTPException(status_code=400, detail="Points must be positive")
+    if (acct.points or 0) < points_to_redeem:
+        raise HTTPException(status_code=400, detail="Insufficient points")
+
+    rr = float(shop.loyalty_redemption_rate or 0.01)
+    currency_value = round(points_to_redeem * rr, 2)
+
+    acct.points = (acct.points or 0) - points_to_redeem
+    acct.tier = _calc_tier(acct.points)
+
+    tx = LoyaltyTransaction(
+        account_id=acct.id,
+        type="redeem",
+        points=-points_to_redeem,
+        description=body.get("description") or f"Redeemed {points_to_redeem} points",
+        order_id=None,
+    )
+    db.add(tx)
+    db.commit()
+    db.refresh(acct)
+    return {
+        "points_redeemed": points_to_redeem,
+        "currency_value": currency_value,
+        "currency": shop.currency or "AED",
+        "total_points": acct.points,
+        "tier": acct.tier,
+    }
+
+
+@router.post("/{shop_id}/loyalty/accounts/lookup")
+def lookup_loyalty_account(
+    shop_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    phone = body.get("phone", "").strip()
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number required")
+    acct = db.query(LoyaltyAccount).filter(
+        LoyaltyAccount.shop_id == shop_id,
+        LoyaltyAccount.phone == phone,
+        LoyaltyAccount.is_active == True,
+    ).first()
+    if not acct:
+        raise HTTPException(status_code=404, detail="No loyalty account found for this phone number")
+    return _loyalty_account_out(acct, include_transactions=True)
+
+
+# ── Branches ───────────────────────────────────────────────────────────────────
+
+def _branch_out(b: Branch) -> dict:
+    return {
+        "id": b.id,
+        "shop_id": b.shop_id,
+        "name": b.name,
+        "address": b.address,
+        "phone": b.phone,
+        "manager_name": b.manager_name,
+        "manager_email": b.manager_email,
+        "is_active": b.is_active,
+        "is_main": b.is_main,
+        "notes": b.notes,
+        "created_at": b.created_at.isoformat() if b.created_at else None,
+    }
+
+
+@router.get("/{shop_id}/branches")
+def list_branches(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    branches = (
+        db.query(Branch)
+        .filter(Branch.shop_id == shop_id)
+        .order_by(Branch.is_main.desc(), Branch.id.asc())
+        .all()
+    )
+    return [_branch_out(b) for b in branches]
+
+
+@router.post("/{shop_id}/branches", status_code=201)
+def create_branch(
+    shop_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    b = Branch(
+        shop_id=shop_id,
+        name=body.get("name", ""),
+        address=body.get("address") or None,
+        phone=body.get("phone") or None,
+        manager_name=body.get("manager_name") or None,
+        manager_email=body.get("manager_email") or None,
+        is_active=bool(body.get("is_active", True)),
+        is_main=bool(body.get("is_main", False)),
+        notes=body.get("notes") or None,
+    )
+    db.add(b)
+    db.commit()
+    db.refresh(b)
+    return _branch_out(b)
+
+
+@router.patch("/{shop_id}/branches/{bid}")
+def update_branch(
+    shop_id: int,
+    bid: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    b = db.query(Branch).filter(Branch.id == bid, Branch.shop_id == shop_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    for field in ("name", "address", "phone", "manager_name", "manager_email", "is_active", "notes"):
+        if field in body:
+            setattr(b, field, body[field])
+    db.commit()
+    return _branch_out(b)
+
+
+@router.delete("/{shop_id}/branches/{bid}", status_code=200)
+def delete_branch(
+    shop_id: int,
+    bid: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    b = db.query(Branch).filter(Branch.id == bid, Branch.shop_id == shop_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    if b.is_main:
+        raise HTTPException(status_code=400, detail="Cannot delete the main branch")
+    db.delete(b)
+    db.commit()
+    return {"status": "deleted"}
+
+
+@router.patch("/{shop_id}/branches/{bid}/set-main")
+def set_main_branch(
+    shop_id: int,
+    bid: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    b = db.query(Branch).filter(Branch.id == bid, Branch.shop_id == shop_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    # Clear existing main flag
+    db.query(Branch).filter(Branch.shop_id == shop_id, Branch.is_main == True).update({"is_main": False})
+    b.is_main = True
+    db.commit()
+    return _branch_out(b)

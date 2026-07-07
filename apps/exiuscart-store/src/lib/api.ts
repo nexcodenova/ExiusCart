@@ -510,3 +510,44 @@ export const bundlesApi = {
     quantity: number;
   }[]) => api.put(`/shops/${shopId}/products/${productId}/bundle-components`, components),
 };
+
+export const plApi = {
+  get: (shopId: string, from: string, to: string) =>
+    api.get(`/shops/${shopId}/reports/pl`, { params: { from_date: from, to_date: to } }),
+};
+
+export const balanceSheetApi = {
+  get: (shopId: string, asOf: string) =>
+    api.get(`/shops/${shopId}/reports/balance-sheet`, { params: { as_of: asOf } }),
+};
+
+export const payrollApi = {
+  getStaff: (shopId: string) => api.get(`/shops/${shopId}/payroll/staff`),
+  createStaff: (shopId: string, data: any) => api.post(`/shops/${shopId}/payroll/staff`, data),
+  updateStaff: (shopId: string, staffId: number, data: any) => api.patch(`/shops/${shopId}/payroll/staff/${staffId}`, data),
+  deleteStaff: (shopId: string, staffId: number) => api.delete(`/shops/${shopId}/payroll/staff/${staffId}`),
+  getRuns: (shopId: string) => api.get(`/shops/${shopId}/payroll/runs`),
+  createRun: (shopId: string, data: any) => api.post(`/shops/${shopId}/payroll/runs`, data),
+  getRun: (shopId: string, runId: number) => api.get(`/shops/${shopId}/payroll/runs/${runId}`),
+  markPaid: (shopId: string, runId: number) => api.patch(`/shops/${shopId}/payroll/runs/${runId}/pay`, {}),
+};
+
+export const loyaltyApi = {
+  getSettings: (shopId: string) => api.get(`/shops/${shopId}/loyalty/settings`),
+  updateSettings: (shopId: string, data: any) => api.patch(`/shops/${shopId}/loyalty/settings`, data),
+  getAccounts: (shopId: string, search?: string) =>
+    api.get(`/shops/${shopId}/loyalty/accounts`, { params: search ? { search } : {} }),
+  createAccount: (shopId: string, data: any) => api.post(`/shops/${shopId}/loyalty/accounts`, data),
+  getAccount: (shopId: string, id: number) => api.get(`/shops/${shopId}/loyalty/accounts/${id}`),
+  earn: (shopId: string, id: number, data: any) => api.post(`/shops/${shopId}/loyalty/accounts/${id}/earn`, data),
+  redeem: (shopId: string, id: number, data: any) => api.post(`/shops/${shopId}/loyalty/accounts/${id}/redeem`, data),
+  lookup: (shopId: string, phone: string) => api.post(`/shops/${shopId}/loyalty/accounts/lookup`, { phone }),
+};
+
+export const branchApi = {
+  getAll: (shopId: string) => api.get(`/shops/${shopId}/branches`),
+  create: (shopId: string, data: any) => api.post(`/shops/${shopId}/branches`, data),
+  update: (shopId: string, id: number, data: any) => api.patch(`/shops/${shopId}/branches/${id}`, data),
+  delete: (shopId: string, id: number) => api.delete(`/shops/${shopId}/branches/${id}`),
+  setMain: (shopId: string, id: number) => api.patch(`/shops/${shopId}/branches/${id}/set-main`, {}),
+};

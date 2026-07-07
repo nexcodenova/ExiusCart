@@ -11,7 +11,7 @@ import {
   ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend,
 } from 'recharts';
-import { reportsApi, subscriptionApi, cashFlowApi } from '@/lib/api';
+import { reportsApi, subscriptionApi, cashFlowApi, plApi, balanceSheetApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 function AcctTooltip({ active, payload, label, fmt }: any) {
@@ -40,13 +40,27 @@ export default function AccountingPage() {
   const [vatEnabled, setVatEnabled] = useState(false);
   const [cashFlow, setCashFlow] = useState<any>(null);
   const [cfLoading, setCfLoading] = useState(false);
+
+  const now = new Date();
+  const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const defaultTo = now.toISOString().split('T')[0];
+
+  const [plFrom, setPlFrom] = useState(defaultFrom);
+  const [plTo, setPlTo] = useState(defaultTo);
+  const [plData, setPlData] = useState<any>(null);
+  const [plLoading, setPlLoading] = useState(false);
+
+  const [bsAsOf, setBsAsOf] = useState(defaultTo);
+  const [bsData, setBsData] = useState<any>(null);
+  const [bsLoading, setBsLoading] = useState(false);
+
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
   useEffect(() => {
     if (!shopId) { setLoading(false); return; }
-    const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const to = now.toISOString().split('T')[0];
+    const initDate = new Date();
+    const from = new Date(initDate.getFullYear(), initDate.getMonth(), 1).toISOString().split('T')[0];
+    const to = initDate.toISOString().split('T')[0];
     Promise.all([
       reportsApi.getSalesReport(shopId, { from, to }),
       reportsApi.getTopProducts(shopId),
@@ -80,9 +94,9 @@ export default function AccountingPage() {
   useEffect(() => {
     if (tab !== 'cashflow' || !shopId || cashFlow) return;
     setCfLoading(true);
-    const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const to = now.toISOString().split('T')[0];
+    const cfDate = new Date();
+    const from = new Date(cfDate.getFullYear(), cfDate.getMonth(), 1).toISOString().split('T')[0];
+    const to = cfDate.toISOString().split('T')[0];
     cashFlowApi.get(shopId, { from, to })
       .then((r) => setCashFlow(r.data))
       .catch(() => {})
@@ -263,119 +277,193 @@ export default function AccountingPage() {
 
           {/* ── Profit & Loss ── */}
           {tab === 'pl' && (
-            <div className="space-y-4">
-              <div className="bg-card rounded-xl border border-border overflow-hidden">
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                  <h2 className="font-semibold text-foreground">Profit &amp; Loss Statement</h2>
-                  <span className="text-xs text-muted-foreground">Current Month</span>
-                </div>
-                <div className="p-4 space-y-1">
-                  {/* Revenue */}
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="font-semibold text-foreground">Revenue</span>
-                    <span className="font-semibold text-green-600 dark:text-green-400">{fmt(totalRevenue)} {sym}</span>
+            <div className="space-y-5">
+              <div className="bg-card rounded-xl border border-border p-5">
+                <div className="flex flex-wrap items-end gap-4">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">From</label>
+                    <input type="date" value={plFrom} onChange={e => setPlFrom(e.target.value)}
+                      className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:ring-2 focus:ring-primary" />
                   </div>
-                  <div className="flex justify-between py-2 pl-4 text-sm">
-                    <span className="text-muted-foreground">Sales Revenue</span>
-                    <span className="text-foreground">{fmt(totalRevenue)} {sym}</span>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">To</label>
+                    <input type="date" value={plTo} onChange={e => setPlTo(e.target.value)}
+                      className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:ring-2 focus:ring-primary" />
                   </div>
-
-                  {/* Cost of Goods */}
-                  <div className="flex justify-between py-2 border-b border-border mt-2">
-                    <span className="font-semibold text-foreground">Cost of Goods Sold</span>
-                    <span className="font-semibold text-red-500">— {sym}</span>
-                  </div>
-                  <div className="flex justify-between py-2 pl-4 text-sm">
-                    <span className="text-muted-foreground">Purchase Cost</span>
-                    <span className="text-muted-foreground">Connect suppliers for data</span>
-                  </div>
-
-                  {/* Gross Profit */}
-                  <div className="flex justify-between py-3 bg-muted/30 rounded-lg px-3 mt-2">
-                    <span className="font-bold text-foreground">Gross Profit</span>
-                    <span className="font-bold text-green-600 dark:text-green-400">{fmt(totalRevenue)} {sym}</span>
-                  </div>
-
-                  {/* VAT */}
-                  <div className="flex justify-between py-2 border-b border-border mt-2">
-                    <span className="font-semibold text-foreground">VAT (5%)</span>
-                    <span className="font-semibold text-orange-500">({fmt(totalRevenue * 0.05 / 1.05)}) {sym}</span>
-                  </div>
-
-                  {/* Net Profit */}
-                  <div className="flex justify-between py-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl px-3 border border-indigo-200 dark:border-indigo-500/20 mt-3">
-                    <span className="font-bold text-lg text-foreground">Net Profit</span>
-                    <span className="font-bold text-lg text-indigo-600 dark:text-indigo-400">{fmt(totalRevenue - (totalRevenue * 0.05 / 1.05))} {sym}</span>
-                  </div>
+                  <button type="button"
+                    onClick={() => {
+                      if (!shopId) return;
+                      setPlLoading(true);
+                      plApi.get(shopId, plFrom, plTo)
+                        .then(r => setPlData(r.data))
+                        .catch(() => {})
+                        .finally(() => setPlLoading(false));
+                    }}
+                    disabled={plLoading}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60">
+                    {plLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
+                    Generate
+                  </button>
+                  {plData && (
+                    <button type="button" onClick={() => window.print()}
+                      className="inline-flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg text-sm hover:bg-muted transition">
+                      <Download className="w-4 h-4" /> Export PDF
+                    </button>
+                  )}
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Connect purchase orders &amp; expenses for a complete P&amp;L.
-                <Link href="/dashboard/expenses" className="text-primary ml-1 hover:underline">Add Expenses →</Link>
-              </p>
+
+              {plData && (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    {[
+                      { label: 'Revenue', value: fmt(plData.revenue ?? 0), color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/10', icon: TrendingUp },
+                      { label: 'Cost of Goods', value: fmt(plData.cost_of_goods ?? 0), color: 'text-red-500', bg: 'bg-red-500/10', icon: TrendingDown },
+                      { label: 'Gross Profit', value: fmt(plData.gross_profit ?? 0), color: (plData.gross_profit ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500', bg: 'bg-green-500/10', icon: DollarSign },
+                      { label: 'Total Expenses', value: fmt(plData.total_expenses ?? 0), color: 'text-orange-500', bg: 'bg-orange-500/10', icon: TrendingDown },
+                      { label: 'Net Profit', value: fmt(plData.net_profit ?? 0), color: (plData.net_profit ?? 0) >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500', bg: (plData.net_profit ?? 0) >= 0 ? 'bg-indigo-500/10' : 'bg-red-500/10', icon: BarChart3 },
+                    ].map(s => (
+                      <div key={s.label} className="bg-card rounded-xl border border-border p-5">
+                        <div className={`w-10 h-10 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
+                          <s.icon className={`w-5 h-5 ${s.color}`} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
+                        <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {plData.expenses_breakdown?.length > 0 && (
+                    <div className="bg-card rounded-xl border border-border overflow-hidden">
+                      <div className="p-4 border-b border-border">
+                        <h2 className="font-semibold text-foreground">Expenses Breakdown</h2>
+                      </div>
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left px-4 py-3 text-muted-foreground font-medium">Category</th>
+                            <th className="text-right px-4 py-3 text-muted-foreground font-medium">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {plData.expenses_breakdown.map((row: any, i: number) => (
+                            <tr key={i} className="hover:bg-muted/30">
+                              <td className="px-4 py-3 text-foreground">{row.category}</td>
+                              <td className="px-4 py-3 text-right text-red-500 font-medium">{fmt(row.amount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!plData && !plLoading && (
+                <div className="py-16 text-center text-muted-foreground text-sm">
+                  <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                  <p>Select a date range and click Generate to view your P&amp;L statement.</p>
+                </div>
+              )}
             </div>
           )}
 
           {/* ── Balance Sheet ── */}
           {tab === 'balance' && (
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* Assets */}
-              <div className="bg-card rounded-xl border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-green-500/5">
-                  <h2 className="font-semibold text-foreground flex items-center gap-2">
-                    <ArrowUpRight className="w-4 h-4 text-green-500" /> Assets
-                  </h2>
-                </div>
-                <div className="p-4 space-y-3">
-                  {[
-                    { label: 'Cash & Bank',         value: '—',               note: 'Connect bank feed' },
-                    { label: 'Accounts Receivable', value: '—',               note: 'Unpaid invoices'   },
-                    { label: 'Inventory Value',     value: `${fmt(0)} ${sym}`,   note: 'Stock on hand'     },
-                    { label: 'Revenue This Month',  value: `${fmt(totalRevenue)} ${sym}`, note: '' },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                      <div>
-                        <p className="text-sm text-foreground">{item.label}</p>
-                        {item.note && <p className="text-xs text-muted-foreground">{item.note}</p>}
-                      </div>
-                      <span className="text-sm font-semibold text-foreground">{item.value}</span>
-                    </div>
-                  ))}
-                  <div className="pt-2 flex justify-between font-bold">
-                    <span className="text-foreground">Total Assets</span>
-                    <span className="text-green-600 dark:text-green-400">{fmt(totalRevenue)} {sym}</span>
+            <div className="space-y-5">
+              <div className="bg-card rounded-xl border border-border p-5">
+                <div className="flex flex-wrap items-end gap-4">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">As of Date</label>
+                    <input type="date" value={bsAsOf} onChange={e => setBsAsOf(e.target.value)}
+                      className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:ring-2 focus:ring-primary" />
                   </div>
+                  <button type="button"
+                    onClick={() => {
+                      if (!shopId) return;
+                      setBsLoading(true);
+                      balanceSheetApi.get(shopId, bsAsOf)
+                        .then(r => setBsData(r.data))
+                        .catch(() => {})
+                        .finally(() => setBsLoading(false));
+                    }}
+                    disabled={bsLoading}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60">
+                    {bsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scale className="w-4 h-4" />}
+                    Generate
+                  </button>
                 </div>
               </div>
 
-              {/* Liabilities & Equity */}
-              <div className="bg-card rounded-xl border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-red-500/5">
-                  <h2 className="font-semibold text-foreground flex items-center gap-2">
-                    <ArrowDownRight className="w-4 h-4 text-red-500" /> Liabilities &amp; Equity
-                  </h2>
-                </div>
-                <div className="p-4 space-y-3">
-                  {[
-                    { label: 'VAT Payable',          value: `${fmt(totalRevenue * 0.05 / 1.05)} ${sym}`, note: 'Due to tax authority' },
-                    { label: 'Accounts Payable',     value: '—',    note: 'Unpaid supplier bills'  },
-                    { label: 'Subscription Payable', value: '—',    note: 'Platform fees'          },
-                    { label: "Owner's Equity",        value: '—',    note: 'Assets minus liabilities'},
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                      <div>
-                        <p className="text-sm text-foreground">{item.label}</p>
-                        {item.note && <p className="text-xs text-muted-foreground">{item.note}</p>}
+              {bsData && (
+                <>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-card rounded-xl border border-green-500/30 overflow-hidden">
+                      <div className="p-4 border-b border-border bg-green-500/5">
+                        <h2 className="font-semibold text-foreground flex items-center gap-2">
+                          <ArrowUpRight className="w-4 h-4 text-green-500" /> Assets
+                        </h2>
                       </div>
-                      <span className="text-sm font-semibold text-foreground">{item.value}</span>
+                      <div className="p-4 space-y-2 text-sm">
+                        {[
+                          { label: 'Cash', value: bsData.assets?.cash ?? 0 },
+                          { label: 'Accounts Receivable', value: bsData.assets?.accounts_receivable ?? 0 },
+                          { label: 'Inventory Value', value: bsData.assets?.inventory_value ?? 0 },
+                        ].map(row => (
+                          <div key={row.label} className="flex justify-between py-2 border-b border-border/50">
+                            <span className="text-muted-foreground">{row.label}</span>
+                            <span className="text-foreground font-medium">{fmt(row.value)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between py-2 font-bold text-base pt-3">
+                          <span className="text-foreground">Total Assets</span>
+                          <span className="text-green-600 dark:text-green-400">{fmt(bsData.assets?.total ?? 0)}</span>
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                  <div className="pt-2 flex justify-between font-bold">
-                    <span className="text-foreground">Total Liabilities</span>
-                    <span className="text-red-500">{fmt(totalRevenue * 0.05 / 1.05)} {sym}</span>
+
+                    <div className="bg-card rounded-xl border border-red-500/30 overflow-hidden">
+                      <div className="p-4 border-b border-border bg-red-500/5">
+                        <h2 className="font-semibold text-foreground flex items-center gap-2">
+                          <ArrowDownRight className="w-4 h-4 text-red-500" /> Liabilities
+                        </h2>
+                      </div>
+                      <div className="p-4 space-y-2 text-sm">
+                        {[
+                          { label: 'Accounts Payable', value: bsData.liabilities?.accounts_payable ?? 0 },
+                          { label: 'VAT Payable', value: bsData.liabilities?.vat_payable ?? 0 },
+                        ].map(row => (
+                          <div key={row.label} className="flex justify-between py-2 border-b border-border/50">
+                            <span className="text-muted-foreground">{row.label}</span>
+                            <span className="text-red-500 font-medium">{fmt(row.value)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between py-2 font-bold text-base pt-3">
+                          <span className="text-foreground">Total Liabilities</span>
+                          <span className="text-red-500">{fmt(bsData.liabilities?.total ?? 0)}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Equity (Retained Earnings)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Total Assets − Total Liabilities</p>
+                    </div>
+                    <p className={`text-2xl font-bold ${(bsData.equity ?? 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500'}`}>
+                      {fmt(bsData.equity ?? (bsData.assets?.total ?? 0) - (bsData.liabilities?.total ?? 0))}
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {!bsData && !bsLoading && (
+                <div className="py-16 text-center text-muted-foreground text-sm">
+                  <Scale className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                  <p>Select a date and click Generate to view your balance sheet.</p>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

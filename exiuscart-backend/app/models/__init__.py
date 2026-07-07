@@ -31,3 +31,6 @@ from app.models.bundle_component import BundleComponent
 from app.models.expense import Expense
 from app.models.credit_note import CreditNote
 from app.models.recurring_invoice import RecurringInvoice
+from app.models.payroll import PayrollStaff, PayrollRun, PayrollItem
+from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
+from app.models.branch import Branch

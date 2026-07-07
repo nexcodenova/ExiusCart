@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import {
   ArrowLeft, Download, Send, Trash2, CheckCircle2, XCircle,
-  Clock, Mail, AlertCircle, Printer, Bell, Loader2,
+  Clock, Mail, AlertCircle, Printer, Bell, Loader2, MessageCircle,
 } from 'lucide-react';
 import { quotationsApi } from '@/lib/api';
 
@@ -184,6 +184,15 @@ export default function QuotationDetailPage() {
               {quote.reminder_count ? `Remind (${quote.reminder_count}×)` : 'Send Reminder'}
             </button>
           )}
+          <button type="button"
+            onClick={() => {
+              const phone = quote.customer_phone?.replace(/\D/g, '') ?? '';
+              const msg = encodeURIComponent(`Hi ${quote.customer_name}, please find your quotation ${quote.quote_number} from ${quote.shop_name}. Total: ${fmt(quote.total)}. Valid until ${quote.valid_until}. Thank you!`);
+              window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+            }}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 rounded-lg transition font-medium">
+            <MessageCircle className="w-4 h-4" /> WhatsApp
+          </button>
           <button type="button" onClick={handleDelete} disabled={deleting}
             className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition disabled:opacity-50">
             <Trash2 className="w-4 h-4" />
