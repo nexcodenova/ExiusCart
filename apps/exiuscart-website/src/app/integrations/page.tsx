@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { ArrowRight, FileText, Printer, BarChart3, CreditCard, Globe, Smartphone, Mail, ShoppingCart } from 'lucide-react';
+import { ArrowRight, FileText, Printer, BarChart3, CreditCard, Globe, Smartphone, Mail, ShoppingCart, ShoppingBag, Store } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 
@@ -81,6 +81,57 @@ export default function IntegrationsPage() {
           From thermal printers to payment gateways — ExiusCart connects with the
           services you rely on every day, with more on the way.
         </p>
+      </section>
+
+      {/* Featured Channel Integrations */}
+      <section className="px-6 pb-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+              Sales Channel Sync
+            </span>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+
+            {/* Shopify */}
+            <div className="bg-[#0B1121] rounded-2xl p-8 flex flex-col justify-between min-h-[220px] group hover:ring-2 hover:ring-[#6B3FD9]/40 transition-all">
+              <div>
+                <div className="w-12 h-12 bg-[#6B3FD9]/20 rounded-xl flex items-center justify-center mb-5">
+                  <ShoppingBag className="w-6 h-6 text-[#6B3FD9]" />
+                </div>
+                <h3 className="text-white font-bold text-lg mb-2">Shopify</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-5">
+                  Connect your Shopify store. Orders sync in real time, stock stays in sync both ways.
+                  Add payroll, accounting, loyalty and multi-branch — all without leaving ExiusCart.
+                </p>
+              </div>
+              <Link href="/shopify"
+                className="inline-flex items-center gap-2 text-[#6B3FD9] hover:text-white font-semibold text-sm transition-colors">
+                Learn more about Shopify integration <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* TheDersi */}
+            <div className="bg-white rounded-2xl p-8 border border-black/6 flex flex-col justify-between min-h-[220px] group hover:border-[#6B3FD9]/30 hover:shadow-sm transition-all">
+              <div>
+                <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center mb-5">
+                  <Store className="w-6 h-6 text-[#6B3FD9]" />
+                </div>
+                <h3 className="text-gray-900 font-bold text-lg mb-2">TheDersi</h3>
+                <p className="text-gray-500 text-sm leading-relaxed mb-5">
+                  ExiusCart is the official backend for TheDersi sellers. Orders sync automatically,
+                  stock updates both ways, and cancellations are handled in real time.
+                </p>
+              </div>
+              <Link href="/register"
+                className="inline-flex items-center gap-2 text-[#6B3FD9] hover:text-[#5A2EC9] font-semibold text-sm transition-colors">
+                Connect your TheDersi store <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+          </div>
+        </div>
       </section>
 
       {/* Available Now */}

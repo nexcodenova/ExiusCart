@@ -6,12 +6,12 @@ import { useState } from 'react';
 import { Menu, X, ArrowRight } from 'lucide-react';
 
 const navLinks = [
-  { href: '/features', label: 'Features' },
-  { href: '/industries', label: 'Industries' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/about', label: 'About' },
-  { href: '/blog', label: 'Blog' },
-  { href: '/contact', label: 'Contact' },
+  { href: '/features',     label: 'Features'      },
+  { href: '/industries',   label: 'Industries'    },
+  { href: '/integrations', label: 'Integrations'  },
+  { href: '/pricing',      label: 'Pricing'       },
+  { href: '/blog',         label: 'Blog'          },
+  { href: '/contact',      label: 'Contact'       },
 ];
 
 export function Navbar() {

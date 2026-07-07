@@ -15,7 +15,7 @@ const NAV = [
     heading: 'Solutions',
     links: [
       { label: 'Marketplace',           href: '/industries'    },
-      { label: 'Shopify & Custom Sites', href: '/integrations'},
+      { label: 'Shopify & Custom Sites', href: '/shopify' },
       { label: 'Physical Shops',        href: '/industries'   },
       { label: 'All Industries', href: '/industries'          },
     ],
