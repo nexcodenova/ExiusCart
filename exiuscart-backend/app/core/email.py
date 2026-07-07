@@ -1103,3 +1103,87 @@ def send_recurring_invoice_email(
 </body></html>"""
 
     send_email(to_email, f"Invoice {invoice_number} from {shop_name}", html)
+
+
+# ── TheDersi Order Cancellation — seller notification ─────────────────────────
+
+def send_thedersi_cancellation_email(
+    to_email: str,
+    shop_name: str,
+    order_number: str,
+    channel_order_id: str,
+    reason: str,
+    restored_items: list,
+    was_refunded: bool,
+) -> bool:
+    stock_rows = "".join(
+        f"<tr><td style='padding:6px 12px;border-bottom:1px solid #f3f4f6;font-size:13px;color:#374151;'>{item}</td></tr>"
+        for item in restored_items
+    ) if restored_items else "<tr><td style='padding:6px 12px;font-size:13px;color:#6b7280;'>No stock to restore (order was unpaid)</td></tr>"
+
+    refund_notice = """
+      <div style='background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin:16px 0;'>
+        <p style='margin:0;font-size:13px;color:#92400e;'>
+          <strong>Refund:</strong> TheDersi will process the customer refund on their side.
+          No action needed from you.
+        </p>
+      </div>""" if was_refunded else ""
+
+    html = f"""<!DOCTYPE html><html><head><meta charset='UTF-8'></head>
+<body style='margin:0;padding:0;background:#f9fafb;font-family:Segoe UI,Arial,sans-serif;'>
+  <table width='100%' cellpadding='0' cellspacing='0' style='max-width:580px;margin:32px auto;'>
+    <tr><td style='background:#dc2626;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;'>
+      <h1 style='margin:0;color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px;'>Order Cancelled by TheDersi</h1>
+      <p style='margin:6px 0 0;color:#fecaca;font-size:13px;'>Action taken by TheDersi admin team</p>
+    </td></tr>
+    <tr><td style='background:#fff;padding:28px 32px;border:1px solid #e5e7eb;'>
+      <p style='color:#374151;font-size:14px;margin:0 0 16px;'>Hi <strong>{shop_name}</strong>,</p>
+      <p style='color:#374151;font-size:14px;margin:0 0 20px;'>
+        TheDersi has cancelled one of your orders. Here are the details:
+      </p>
+
+      <div style='background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:20px;'>
+        <table width='100%' style='font-size:13px;'>
+          <tr>
+            <td style='color:#6b7280;padding:4px 0;'>Your Order Number</td>
+            <td style='font-weight:700;color:#111;text-align:right;font-family:monospace;'>{order_number}</td>
+          </tr>
+          <tr>
+            <td style='color:#6b7280;padding:4px 0;'>TheDersi Order ID</td>
+            <td style='font-weight:700;color:#111;text-align:right;font-family:monospace;'>{channel_order_id}</td>
+          </tr>
+          <tr>
+            <td style='color:#6b7280;padding:4px 0;'>Reason</td>
+            <td style='font-weight:600;color:#dc2626;text-align:right;'>{reason}</td>
+          </tr>
+          <tr>
+            <td style='color:#6b7280;padding:4px 0;'>New Status</td>
+            <td style='font-weight:700;color:#dc2626;text-align:right;'>Cancelled</td>
+          </tr>
+        </table>
+      </div>
+
+      {refund_notice}
+
+      <p style='font-size:13px;font-weight:700;color:#374151;margin:20px 0 8px;'>Stock Restored in Your Dashboard</p>
+      <table width='100%' style='border:1px solid #e5e7eb;border-radius:8px;border-collapse:collapse;overflow:hidden;'>
+        {stock_rows}
+      </table>
+
+      <div style='background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;margin:20px 0 0;'>
+        <p style='margin:0;font-size:13px;color:#166534;'>
+          ✅ Your ExiusCart inventory has been automatically updated. No manual action required.
+        </p>
+      </div>
+    </td></tr>
+    <tr><td style='background:#f9fafb;border:1px solid #e5e7eb;border-radius:0 0 12px 12px;padding:16px 32px;text-align:center;'>
+      <p style='margin:0;font-size:11px;color:#9ca3af;'>ExiusCart · Powered by ExiusCart</p>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    return send_email(
+        to_email,
+        f"⚠️ Order {order_number} Cancelled by TheDersi — Stock Restored",
+        html,
+    )

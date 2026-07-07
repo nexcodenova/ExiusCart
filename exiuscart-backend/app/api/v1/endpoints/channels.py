@@ -497,6 +497,128 @@ def manual_sync(
 
 # ── Webhook receiver — channels call this when orders are placed ──────────────
 
+class CancelWebhook(BaseModel):
+    channel_order_id: str
+    status: str = "cancelled"
+    payment_status: Optional[str] = None   # "refunded" or None
+    reason: Optional[str] = None
+
+
+@router.post("/channels/webhook/{webhook_secret}/cancel")
+async def receive_cancel_webhook(
+    webhook_secret: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """
+    Called by TheDersi when their admin cancels an order (customer request or dispute).
+    1. Finds the ExiusCart order by channel_order_id.
+    2. Sets order.status = 'cancelled', payment_status = 'refunded' (if applicable).
+    3. Restores product stock for all items (only if order was previously paid).
+    4. Pushes restored stock back to TheDersi so both sides stay in sync.
+    5. Emails the seller to notify them.
+    """
+    body = await request.body()
+    x_sig = request.headers.get("X-Signature", "")
+    if not verify_thedersi_signature(body, x_sig):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        payload = CancelWebhook.model_validate_json(body)
+    except Exception as exc:
+        logger.error(f"[CANCEL-WEBHOOK] parse error: {exc} | body={body[:300]}")
+        raise HTTPException(status_code=422, detail=f"Invalid payload: {exc}")
+
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.webhook_secret == webhook_secret,
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Invalid webhook URL")
+
+    # Normalise channel_order_id (strip duplicate TD- prefix if present)
+    chan_id = payload.channel_order_id
+    while chan_id.startswith("TD-TD-"):
+        chan_id = chan_id[3:]
+
+    meta = db.query(ChannelOrderMeta).filter(
+        ChannelOrderMeta.channel_type == conn.channel_type,
+        ChannelOrderMeta.channel_order_id == chan_id,
+    ).first()
+    if not meta:
+        logger.warning(f"[CANCEL-WEBHOOK] channel_order_id not found: {chan_id}")
+        raise HTTPException(status_code=404, detail=f"Order not found: {chan_id}")
+
+    order = db.query(Order).filter(Order.id == meta.order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="ExiusCart order record missing")
+
+    # Idempotent — already cancelled, nothing to do
+    if order.status == "cancelled":
+        return {
+            "success": True,
+            "message": "Order already cancelled",
+            "order_number": order.order_number,
+        }
+
+    was_paid = (order.payment_status or "").lower() == "paid"
+
+    # Restore stock only if order was paid (stock was previously deducted)
+    restored: list[str] = []
+    product_ids_to_push: list[int] = []
+    if was_paid:
+        for item in order.items:
+            if item.product_id:
+                prod = db.query(Product).filter(Product.id == item.product_id).first()
+                if prod:
+                    prod.quantity = (prod.quantity or 0) + item.quantity
+                    restored.append(f"{prod.name} (+{item.quantity})")
+                    product_ids_to_push.append(prod.id)
+
+    # Update order
+    order.status = "cancelled"
+    if payload.payment_status:
+        order.payment_status = payload.payment_status.lower()
+    elif was_paid:
+        order.payment_status = "refunded"
+
+    db.commit()
+
+    # Push restored stock back to TheDersi so their inventory stays in sync
+    for pid in product_ids_to_push:
+        background_tasks.add_task(_bg_push_stock, pid, conn.shop_id)
+
+    # Notify the seller by email
+    shop = db.query(Shop).filter(Shop.id == conn.shop_id).first()
+    owner = db.query(User).filter(User.id == shop.owner_id).first() if shop else None
+    if owner and owner.email:
+        from app.core.email import send_thedersi_cancellation_email
+        background_tasks.add_task(
+            send_thedersi_cancellation_email,
+            to_email=owner.email,
+            shop_name=shop.name if shop else "Your Shop",
+            order_number=order.order_number,
+            channel_order_id=chan_id,
+            reason=payload.reason or "Cancelled by TheDersi admin",
+            restored_items=restored,
+            was_refunded=was_paid,
+        )
+
+    logger.info(
+        f"[CANCEL-WEBHOOK] {order.order_number} cancelled "
+        f"(channel={chan_id}, reason={payload.reason}, stock_restored={restored})"
+    )
+
+    return {
+        "success": True,
+        "order_number": order.order_number,
+        "status": "cancelled",
+        "payment_status": order.payment_status,
+        "stock_restored": restored,
+    }
+
+
 @router.post("/channels/webhook/{webhook_secret}")
 async def receive_order_webhook(
     webhook_secret: str,
