@@ -4,6 +4,24 @@ from sqlalchemy.sql import func
 from app.core.database import Base
 
 
+class ShopLead(Base):
+    __tablename__ = "shop_leads"
+    id = Column(Integer, primary_key=True, index=True)
+    shop_id = Column(Integer, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(30), nullable=True)
+    company = Column(String(255), nullable=True)
+    source = Column(String(50), default="manual")  # manual | website | meta_ads | whatsapp | referral
+    status = Column(String(30), default="new")     # new | contacted | qualified | converted | lost
+    notes = Column(Text, nullable=True)
+    value = Column(Numeric(12, 2), nullable=True)
+    assigned_to = Column(String(255), nullable=True)
+    last_contacted_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 class EmailCampaign(Base):
     __tablename__ = "email_campaigns"
     id = Column(Integer, primary_key=True, index=True)

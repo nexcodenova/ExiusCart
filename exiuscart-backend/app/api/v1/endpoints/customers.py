@@ -7,10 +7,20 @@ from app.models.user import User
 from app.models.shop import Shop
 from app.models.customer import Customer
 from app.models.order import Order
+from app.models.subscription import Subscription
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
 from app.api.v1.deps import get_current_user
 
 router = APIRouter()
+
+CUSTOMER_LIMITS: dict = {
+    "free_trial":    100,
+    "thedersi_basic": 100,
+    "starter":       5_000,
+    "thedersi_pro":  5_000,
+    "premium":       None,   # unlimited
+    "lifetime":      None,
+}
 
 
 @router.post("/shops/{shop_id}/customers", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
@@ -23,6 +33,25 @@ async def create_customer(
     shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
+
+    # ── Plan-based customer limit check ──────────────────────────────────────
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    plan_type = sub.plan_type if sub else "free_trial"
+    limit = CUSTOMER_LIMITS.get(plan_type)
+    if limit is not None:
+        count = db.query(func.count(Customer.id)).filter(Customer.shop_id == shop_id).scalar() or 0
+        if count >= limit:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": "customer_limit_reached",
+                    "limit": limit,
+                    "used": count,
+                    "plan": plan_type,
+                    "message": f"Customer limit of {limit} reached on your {plan_type} plan. Upgrade to add more customers.",
+                },
+            )
+    # ─────────────────────────────────────────────────────────────────────────
 
     new_customer = Customer(
         **customer_data.model_dump(),

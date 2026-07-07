@@ -1,13 +1,24 @@
-"""Marketing endpoints — Email Campaigns, SMS Campaigns, Events, Surveys."""
+"""Marketing endpoints — Email Campaigns, SMS Campaigns, Events, Surveys, Leads."""
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func as sql_func
 from app.core.database import get_db
 from app.models.user import User
 from app.models.shop import Shop
-from app.models.marketing import EmailCampaign, SMSCampaign, Event, Survey, SurveyQuestion
+from app.models.marketing import EmailCampaign, SMSCampaign, Event, Survey, SurveyQuestion, ShopLead
+from app.models.subscription import Subscription
 from app.api.v1.deps import get_current_user
+
+LEAD_LIMITS: dict = {
+    "free_trial":    0,
+    "thedersi_basic": 0,
+    "starter":       500,
+    "thedersi_pro":  500,
+    "premium":       None,
+    "lifetime":      None,
+}
 
 router = APIRouter()
 
@@ -246,3 +257,104 @@ def delete_survey(shop_id: int, sid: int, current_user: User = Depends(get_curre
     s = db.query(Survey).filter(Survey.id == sid, Survey.shop_id == shop_id).first()
     if not s: raise HTTPException(status_code=404, detail="Not found")
     db.delete(s); db.commit()
+
+
+# ── Leads ──────────────────────────────────────────────────────────────────────
+
+def _lead_plan(shop_id: int, db: Session):
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    return sub.plan_type if sub else "free_trial"
+
+
+@router.get("/shops/{shop_id}/leads/stats")
+def lead_stats(shop_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    plan = _lead_plan(shop_id, db)
+    limit = LEAD_LIMITS.get(plan)
+    total = db.query(sql_func.count(ShopLead.id)).filter(ShopLead.shop_id == shop_id).scalar() or 0
+    by_status = dict(
+        db.query(ShopLead.status, sql_func.count(ShopLead.id))
+        .filter(ShopLead.shop_id == shop_id)
+        .group_by(ShopLead.status)
+        .all()
+    )
+    return {"total": total, "limit": limit, "plan": plan, "by_status": by_status}
+
+
+@router.get("/shops/{shop_id}/leads")
+def list_leads(
+    shop_id: int,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _shop(shop_id, current_user, db)
+    q = db.query(ShopLead).filter(ShopLead.shop_id == shop_id)
+    if status:
+        q = q.filter(ShopLead.status == status)
+    if search:
+        term = f"%{search}%"
+        q = q.filter(
+            ShopLead.name.ilike(term) | ShopLead.email.ilike(term) | ShopLead.phone.ilike(term) | ShopLead.company.ilike(term)
+        )
+    return q.order_by(ShopLead.created_at.desc()).all()
+
+
+@router.post("/shops/{shop_id}/leads", status_code=201)
+def create_lead(shop_id: int, body: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    plan = _lead_plan(shop_id, db)
+    limit = LEAD_LIMITS.get(plan, 0)
+    if limit == 0:
+        raise HTTPException(status_code=403, detail="Lead management is not available on your current plan. Upgrade to Starter or above.")
+    if limit is not None:
+        count = db.query(sql_func.count(ShopLead.id)).filter(ShopLead.shop_id == shop_id).scalar() or 0
+        if count >= limit:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": "lead_limit_reached",
+                    "limit": limit,
+                    "used": count,
+                    "plan": plan,
+                    "message": f"Lead limit of {limit} reached. Upgrade to Premium for unlimited leads.",
+                },
+            )
+    lead = ShopLead(
+        shop_id=shop_id,
+        name=body.get("name", "").strip(),
+        email=body.get("email") or None,
+        phone=body.get("phone") or None,
+        company=body.get("company") or None,
+        source=body.get("source", "manual"),
+        status=body.get("status", "new"),
+        notes=body.get("notes") or None,
+        value=body.get("value") or None,
+        assigned_to=body.get("assigned_to") or None,
+    )
+    db.add(lead); db.commit(); db.refresh(lead)
+    return lead
+
+
+@router.put("/shops/{shop_id}/leads/{lid}")
+def update_lead(shop_id: int, lid: int, body: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    lead = db.query(ShopLead).filter(ShopLead.id == lid, ShopLead.shop_id == shop_id).first()
+    if not lead: raise HTTPException(status_code=404, detail="Lead not found")
+    for f in ("name", "email", "phone", "company", "source", "status", "notes", "value", "assigned_to"):
+        if f in body:
+            setattr(lead, f, body[f] or None)
+    if "last_contacted_at" in body and body["last_contacted_at"]:
+        lead.last_contacted_at = datetime.fromisoformat(body["last_contacted_at"])
+    lead.updated_at = datetime.now(timezone.utc)
+    db.commit(); db.refresh(lead)
+    return lead
+
+
+@router.delete("/shops/{shop_id}/leads/{lid}", status_code=204)
+def delete_lead(shop_id: int, lid: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    lead = db.query(ShopLead).filter(ShopLead.id == lid, ShopLead.shop_id == shop_id).first()
+    if not lead: raise HTTPException(status_code=404, detail="Not found")
+    db.delete(lead); db.commit()

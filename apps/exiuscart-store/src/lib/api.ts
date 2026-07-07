@@ -313,6 +313,16 @@ export const marketingApi = {
   deleteSurvey: (shopId: string, sid: number) => api.delete(`/shops/${shopId}/surveys/${sid}`),
 };
 
+// ── Leads ─────────────────────────────────────────────
+export const leadsApi = {
+  getStats: (shopId: string) => api.get(`/shops/${shopId}/leads/stats`),
+  getAll: (shopId: string, params?: { status?: string; search?: string }) =>
+    api.get(`/shops/${shopId}/leads`, { params }),
+  create: (shopId: string, data: any) => api.post(`/shops/${shopId}/leads`, data),
+  update: (shopId: string, lid: number, data: any) => api.put(`/shops/${shopId}/leads/${lid}`, data),
+  delete: (shopId: string, lid: number) => api.delete(`/shops/${shopId}/leads/${lid}`),
+};
+
 // ── Recruitment ───────────────────────────────────────
 export const recruitmentApi = {
   getJobs: (shopId: string) => api.get(`/shops/${shopId}/recruitment/jobs`),

@@ -92,6 +92,7 @@ const GROUPS: MenuGroup[] = [
     icon: Megaphone,
     accent: 'text-purple-500',
     items: [
+      { href: '/dashboard/leads',             label: 'Lead Management', icon: Target         },
       { href: '/dashboard/email-marketing',   label: 'Email Marketing', icon: Mail           },
       { href: '/dashboard/sms-marketing',    label: 'SMS Marketing',   icon: MessageSquare  },
       { href: '/dashboard/events',           label: 'Events',          icon: Calendar       },

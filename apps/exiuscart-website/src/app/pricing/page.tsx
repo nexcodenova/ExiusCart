@@ -157,7 +157,7 @@ export default function PricingPage() {
                 Included
               </p>
               <ul className="space-y-3">
-                {['25 products', '2 GB storage', '50 orders / month', '100 customers', '1 user account', 'Basic POS & Invoicing', 'VAT invoicing (Custom)', 'Basic marketing emails', 'Basic sales reports'].map((f) => (
+                {['25 products', '2 GB storage', '50 orders / month', '100 customers', '1 user account', 'Basic POS & Invoicing', 'VAT invoicing (Custom)', 'Basic marketing emails', 'Basic sales reports', '1 channel connection (Shopify, TheDersi, or custom site)'].map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm text-gray-600">
                     <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                       <Check className="w-3 h-3 text-gray-500" />
@@ -165,7 +165,7 @@ export default function PricingPage() {
                     {f}
                   </li>
                 ))}
-                {['Shopify sync', 'WooCommerce / WordPress', 'Custom website sync', 'Multi-user access', 'HR & staff management', 'Chat support'].map((f) => (
+                {['Multi-user access', 'HR & staff management', 'Chat support'].map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm text-gray-300">
                     <span className="w-5 h-5 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                       <X className="w-3 h-3 text-gray-300" />
@@ -223,9 +223,7 @@ export default function PricingPage() {
                   '3 user accounts',
                   'Full POS & Invoicing',
                   'VAT invoicing (Custom)',
-                  'Shopify sync',
-                  'WooCommerce / WordPress',
-                  'Custom website sync',
+                  'Channel sync — Shopify, TheDersi & custom website',
                   'Lead management (500)',
                   'Email campaigns',
                   'Advanced reports & export',
@@ -463,6 +461,7 @@ export default function PricingPage() {
                   'Basic marketing emails',
                   'Basic sales reports',
                   'Email support',
+                  '1 channel connection (Shopify, TheDersi, or custom site)',
                 ].map((f) => (
                   <div key={f} className="flex items-center gap-2.5">
                     <div className="w-4 h-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
@@ -494,8 +493,7 @@ export default function PricingPage() {
                   '500 invoice emails / mo',
                   'Basic invoice branding',
                   'Low-stock alerts',
-                  'Shopify / WooCommerce sync',
-                  'Custom website sync',
+                  'Channel sync — Shopify, TheDersi & custom website',
                   '500 leads · Meta Ads capture',
                   'Email campaigns',
                   'Advanced sales reports',

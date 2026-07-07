@@ -409,6 +409,25 @@ def connect_channel(
     if existing:
         raise HTTPException(status_code=400, detail=f"Already connected to {data.channel_type}")
 
+    # Free trial: max 1 active channel connection
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    plan_type = sub.plan_type if sub else "free_trial"
+    if plan_type == "free_trial":
+        active_count = db.query(ChannelConnection).filter(
+            ChannelConnection.shop_id == shop_id,
+            ChannelConnection.is_active == True,
+        ).count()
+        if active_count >= 1:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": "channel_limit_reached",
+                    "limit": 1,
+                    "plan": plan_type,
+                    "message": "Free trial allows 1 channel connection. Upgrade to Starter to connect Shopify, TheDersi, and your own website together.",
+                },
+            )
+
     conn = ChannelConnection(
         shop_id=shop_id,
         channel_type=data.channel_type,
