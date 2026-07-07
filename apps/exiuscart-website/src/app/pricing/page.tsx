@@ -71,7 +71,10 @@ export default function PricingPage() {
   const prices = pricing[currency];
   const starterPrice = billing === 'monthly' ? prices.starter.monthly : prices.starter.yearly;
   const premiumPrice = billing === 'monthly' ? prices.premium.monthly : prices.premium.yearly;
+  const starterOriginal = billing === 'monthly' ? prices.starter.originalMonthly : prices.starter.originalYearly;
+  const premiumOriginal = billing === 'monthly' ? prices.premium.originalMonthly : prices.premium.originalYearly;
   const period = billing === 'monthly' ? '/mo' : '/yr';
+  const currSym = currency === 'USD' ? '$' : 'AED ';
 
   return (
     <div className="min-h-screen bg-[#F5F3EF]">
@@ -182,7 +185,15 @@ export default function PricingPage() {
               <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#6B3FD9]">
                 Starter
               </span>
-              <div className="mt-4 mb-2 flex items-start gap-2">
+              {starterOriginal && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-sm text-gray-500 line-through">{currSym}{starterOriginal}{period}</span>
+                  <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                    {Math.round((1 - starterPrice / starterOriginal) * 100)}% OFF
+                  </span>
+                </div>
+              )}
+              <div className="mt-2 mb-2 flex items-start gap-2">
                 {currency === 'USD' ? (
                   <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
                 ) : (
@@ -235,7 +246,15 @@ export default function PricingPage() {
               <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-400">
                 Premium
               </span>
-              <div className="mt-4 mb-2 flex items-start gap-2">
+              {premiumOriginal && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-sm text-gray-400 line-through">{currSym}{premiumOriginal}{period}</span>
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                    {Math.round((1 - premiumPrice / premiumOriginal) * 100)}% OFF
+                  </span>
+                </div>
+              )}
+              <div className="mt-2 mb-2 flex items-start gap-2">
                 {currency === 'USD' ? (
                   <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
                 ) : (

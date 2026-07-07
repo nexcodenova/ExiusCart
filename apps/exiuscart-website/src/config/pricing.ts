@@ -11,6 +11,8 @@ export interface CurrencyConfig {
 export interface PlanPricing {
   monthly: number;
   yearly: number;
+  originalMonthly?: number;
+  originalYearly?: number;
 }
 
 export interface Plan {
@@ -60,14 +62,14 @@ export const plans: Plan[] = [
 
 export const pricing: Record<CurrencyCode, Record<string, PlanPricing>> = {
   AED: {
-    free_trial: { monthly: 0, yearly: 0 },
-    starter:    { monthly: 45,  yearly: 459  },
-    premium:    { monthly: 99,  yearly: 999  },
+    free_trial: { monthly: 0,  yearly: 0    },
+    starter:    { monthly: 45, yearly: 459,  originalMonthly: 89,  originalYearly: 890  },
+    premium:    { monthly: 99, yearly: 999,  originalMonthly: 149, originalYearly: 1490 },
   },
   USD: {
-    free_trial: { monthly: 0, yearly: 0 },
-    starter:    { monthly: 12, yearly: 120 },
-    premium:    { monthly: 29, yearly: 290 },
+    free_trial: { monthly: 0,  yearly: 0    },
+    starter:    { monthly: 12, yearly: 120,  originalMonthly: 24,  originalYearly: 240  },
+    premium:    { monthly: 29, yearly: 290,  originalMonthly: 49,  originalYearly: 490  },
   },
 };
 
