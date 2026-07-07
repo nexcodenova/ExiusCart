@@ -42,6 +42,100 @@ function CopyBox({ label, value }: { label: string; value: string }) {
   );
 }
 
+// ── Custom Website connect modal ──────────────────────────────────────────────
+
+function CustomWebsiteModal({ shopId, onConnected, onClose }: {
+  shopId: string; onConnected: () => void; onClose: () => void;
+}) {
+  const [apiKey, setApiKey] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
+
+  const connect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiKey.trim()) return;
+    setSaving(true); setError('');
+    try {
+      const r = await channelsApi.connect(shopId, {
+        channel_type: 'custom',
+        channel_api_key: apiKey.trim(),
+      });
+      const url = r.data?.webhook_url ?? '';
+      setWebhookUrl(url);
+      onConnected();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Connection failed. Try again.');
+    } finally { setSaving(false); }
+  };
+
+  if (webhookUrl) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-card rounded-xl border border-border w-full max-w-md p-6 space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Custom Website Connected!</p>
+              <p className="text-xs text-muted-foreground">Use this webhook URL in your website's checkout</p>
+            </div>
+          </div>
+          <CopyBox label="ExiusCart Order Webhook URL — add this to your website checkout" value={webhookUrl} />
+          <div className="bg-muted/50 rounded-lg px-3 py-3 space-y-1.5 text-xs text-muted-foreground">
+            <p><strong className="text-foreground">How it works:</strong></p>
+            <p>When a customer places an order on your website, POST the order data to this URL. ExiusCart will create the order, update stock, and sync everything automatically.</p>
+            <p>Your website must send the <strong className="text-foreground">X-Signature</strong> header and match the API key you just set.</p>
+          </div>
+          <button onClick={onClose}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-card rounded-xl border border-border w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <p className="font-semibold text-foreground">Connect Custom Website</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Get an order webhook URL for your own storefront</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={connect} className="p-5 space-y-4">
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+              {error}
+            </div>
+          )}
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">API Key *</label>
+            <input type="text" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
+              placeholder="Choose any secret key, e.g. mysite_secret_key_123"
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+            <p className="text-xs text-muted-foreground mt-1">
+              This is a shared secret between your website and ExiusCart. Choose any string — you'll use it when sending orders from your site.
+            </p>
+          </div>
+          <button type="submit" disabled={saving}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saving ? 'Connecting...' : 'Connect & Get Webhook URL'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
 // ── TheDersi connect modal ────────────────────────────────────────────────────
 
 function TheDersiConnectModal({ shopId, onConnected, onClose }: {
@@ -239,6 +333,7 @@ export default function ChannelsPage() {
   const [connections, setConnections] = useState<ChannelConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
+  const [showCustomWebsiteModal, setShowCustomWebsiteModal] = useState(false);
   const [dersiBlockChannel, setDersiBlockChannel] = useState<string | null>(null);
   const [shopifyConnected, setShopifyConnected] = useState(false);
   const [plan, setPlan] = useState('');
@@ -292,7 +387,10 @@ export default function ChannelsPage() {
       name: 'Custom Website',
       description: 'Connect any website using our API or webhook. Receive orders directly from your own storefront.',
       icon: <Globe className="w-5 h-5 text-sky-400" />,
-      badge: 'soon',
+      badge: 'connect',
+      badgeLabel: 'Available',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Custom Website') : () => setShowCustomWebsiteModal(true),
+      actionLabel: 'Connect Website',
     },
     {
       id: 'woocommerce',
@@ -371,6 +469,14 @@ export default function ChannelsPage() {
           shopId={shopId}
           onConnected={() => load()}
           onClose={() => { setShowTheDersiModal(false); load(); }}
+        />
+      )}
+
+      {showCustomWebsiteModal && (
+        <CustomWebsiteModal
+          shopId={shopId}
+          onConnected={() => load()}
+          onClose={() => { setShowCustomWebsiteModal(false); load(); }}
         />
       )}
 
