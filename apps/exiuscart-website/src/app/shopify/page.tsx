@@ -129,7 +129,7 @@ export default function ShopifyPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">ExiusCart Starter (replaces all apps)</span>
-                    <span className="font-semibold text-[#6B3FD9]">AED 45/mo</span>
+                    <span className="font-semibold text-[#6B3FD9]">$12/mo</span>
                   </div>
                   {SAVINGS.map((s) => (
                     <div key={s.tool} className="flex justify-between text-sm">

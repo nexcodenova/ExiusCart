@@ -124,9 +124,9 @@ export default function IntegrationsPage() {
                   stock updates both ways, and cancellations are handled in real time.
                 </p>
               </div>
-              <Link href="/register"
+              <Link href="https://www.thedersi.lk/sell" target="_blank" rel="noreferrer"
                 className="inline-flex items-center gap-2 text-[#6B3FD9] hover:text-[#5A2EC9] font-semibold text-sm transition-colors">
-                Connect your TheDersi store <ArrowRight className="w-4 h-4" />
+                Become a TheDersi seller <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
