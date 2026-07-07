@@ -589,22 +589,6 @@ async def receive_cancel_webhook(
     for pid in product_ids_to_push:
         background_tasks.add_task(_bg_push_stock, pid, conn.shop_id)
 
-    # Notify the seller by email
-    shop = db.query(Shop).filter(Shop.id == conn.shop_id).first()
-    owner = db.query(User).filter(User.id == shop.owner_id).first() if shop else None
-    if owner and owner.email:
-        from app.core.email import send_thedersi_cancellation_email
-        background_tasks.add_task(
-            send_thedersi_cancellation_email,
-            to_email=owner.email,
-            shop_name=shop.name if shop else "Your Shop",
-            order_number=order.order_number,
-            channel_order_id=chan_id,
-            reason=payload.reason or "Cancelled by TheDersi admin",
-            restored_items=restored,
-            was_refunded=was_paid,
-        )
-
     logger.info(
         f"[CANCEL-WEBHOOK] {order.order_number} cancelled "
         f"(channel={chan_id}, reason={payload.reason}, stock_restored={restored})"
