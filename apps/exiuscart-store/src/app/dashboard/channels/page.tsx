@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Link2, Loader2, CheckCircle2,
   Copy, Check, X, ExternalLink,
-  ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag,
+  ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2,
 } from 'lucide-react';
 import { channelsApi, shopifyApi, subscriptionApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -393,6 +393,22 @@ export default function ChannelsPage() {
       actionLabel: 'Connect Website',
     },
     {
+      id: 'tiktok',
+      name: 'TikTok Shop',
+      description: 'Sell directly on TikTok. Orders sync to ExiusCart, stock stays in sync automatically.',
+      icon: <Music2 className="w-5 h-5 text-[#010101] dark:text-white" />,
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('TikTok Shop') : undefined,
+    },
+    {
+      id: 'ebay',
+      name: 'eBay',
+      description: 'List products on eBay and manage all orders directly from ExiusCart.',
+      icon: <Tag className="w-5 h-5 text-[#E53238]" />,
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('eBay') : undefined,
+    },
+    {
       id: 'woocommerce',
       name: 'WooCommerce',
       description: 'WordPress + WooCommerce integration. Install the ExiusCart plugin to sync products and orders.',
@@ -415,14 +431,6 @@ export default function ChannelsPage() {
       icon: <Instagram className="w-5 h-5 text-pink-400" />,
       badge: 'soon',
       onAction: isTheDersiUser ? () => setDersiBlockChannel('Instagram Shopping') : undefined,
-    },
-    {
-      id: 'ebay',
-      name: 'eBay',
-      description: 'List products on eBay and manage orders directly from ExiusCart.',
-      icon: <Tag className="w-5 h-5 text-blue-500" />,
-      badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('eBay') : undefined,
     },
   ];
 
