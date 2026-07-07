@@ -238,18 +238,26 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Please verify your email before logging in"
         )
 
-    # Block login if account is pending admin approval (superusers bypass this)
+    # Block login only if the account has NEVER been approved (no active/trial sub exists).
+    # If user submitted an upgrade request during an active trial, they still have a trial
+    # sub — do not block them just because the upgrade is pending_approval.
     if not user.is_superuser:
         login_shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
         if login_shop:
-            login_sub = db.query(Subscription).filter(
-                Subscription.shop_id == login_shop.id
-            ).order_by(Subscription.id.desc()).first()
-            if login_sub and login_sub.status == "pending_approval":
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="pending_approval"
-                )
+            has_active_or_trial = db.query(Subscription).filter(
+                Subscription.shop_id == login_shop.id,
+                Subscription.status.in_(["active", "trial"]),
+            ).first()
+            if not has_active_or_trial:
+                # No active/trial sub — check if only pending_approval exists
+                login_sub = db.query(Subscription).filter(
+                    Subscription.shop_id == login_shop.id
+                ).order_by(Subscription.id.desc()).first()
+                if login_sub and login_sub.status == "pending_approval":
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="pending_approval"
+                    )
 
     access_token = create_access_token(data={"sub": str(user.id)})
 
