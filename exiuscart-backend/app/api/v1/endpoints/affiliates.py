@@ -130,6 +130,7 @@ def affiliate_stats(
     affiliate: Affiliate = Depends(get_current_affiliate),
     db: Session = Depends(get_db),
 ):
+    from datetime import datetime, timezone, timedelta
     referred_users = db.query(User).filter(User.referred_by_code == affiliate.referral_code).all()
     total_signups = len(referred_users)
 
@@ -144,16 +145,77 @@ def affiliate_stats(
             if sub:
                 conversions += 1
 
-    total_earnings = db.query(func.sum(Commission.amount)).filter(
+    now = datetime.now(timezone.utc)
+    lock_cutoff = now - timedelta(days=30)
+
+    all_commissions = db.query(Commission).filter(
         Commission.affiliate_id == affiliate.id
-    ).scalar() or 0
+    ).all()
+
+    locked_amount = 0.0
+    pending_approval_amount = 0.0
+    available_amount = 0.0
+    paid_amount = 0.0
+
+    for c in all_commissions:
+        created = c.created_at
+        if created and created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if c.status == "paid":
+            paid_amount += float(c.amount)
+        elif c.status == "approved":
+            available_amount += float(c.amount)
+        elif c.status == "pending":
+            if created and created > lock_cutoff:
+                locked_amount += float(c.amount)
+            else:
+                pending_approval_amount += float(c.amount)
+
+    total_earnings = locked_amount + pending_approval_amount + available_amount + paid_amount
 
     return {
         "total_signups": total_signups,
         "conversions": conversions,
-        "total_earnings": float(total_earnings),
+        "total_earnings": total_earnings,
+        "locked_amount": locked_amount,
+        "pending_approval_amount": pending_approval_amount,
+        "available_amount": available_amount,
+        "paid_amount": paid_amount,
         "currency": "USD",
     }
+
+
+class PayoutDetailsIn(BaseModel):
+    payout_method: str  # paypal | skrill | payoneer
+    paypal_email: str = ""
+    skrill_email: str = ""
+    payoneer_id: str = ""
+
+
+@router.get("/affiliates/me/payout-details")
+def get_payout_details(
+    affiliate: Affiliate = Depends(get_current_affiliate),
+):
+    return {
+        "payout_method": affiliate.payout_method or "",
+        "paypal_email": affiliate.paypal_email or "",
+        "skrill_email": affiliate.skrill_email or "",
+        "payoneer_id": affiliate.payoneer_id or "",
+    }
+
+
+@router.patch("/affiliates/me/payout-details")
+def update_payout_details(
+    data: PayoutDetailsIn,
+    affiliate: Affiliate = Depends(get_current_affiliate),
+    db: Session = Depends(get_db),
+):
+    affiliate.payout_method = data.payout_method
+    affiliate.paypal_email = data.paypal_email or None
+    affiliate.skrill_email = data.skrill_email or None
+    affiliate.payoneer_id = data.payoneer_id or None
+    db.commit()
+    return {"message": "Payout details saved"}
 
 
 @router.get("/affiliates/me/referrals")

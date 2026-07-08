@@ -768,6 +768,10 @@ def _affiliate_out(affiliate: Affiliate, db: Session) -> dict:
         "pending_amount": float(pending_amount),
         "referral_count": referral_count,
         "notes": affiliate.notes,
+        "payout_method": affiliate.payout_method or "",
+        "paypal_email": affiliate.paypal_email or "",
+        "skrill_email": affiliate.skrill_email or "",
+        "payoneer_id": affiliate.payoneer_id or "",
         "created_at": affiliate.created_at,
         "approved_at": affiliate.approved_at,
     }
@@ -857,6 +861,21 @@ def update_affiliate_status(
             pass
 
     return {"status": affiliate.status}
+
+
+@router.put("/admin/commissions/{commission_id}/approve")
+def approve_commission(
+    commission_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    commission = db.query(Commission).filter(Commission.id == commission_id).first()
+    if not commission:
+        raise HTTPException(status_code=404, detail="Commission not found")
+    commission.status = "approved"
+    commission.approved_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"message": "Commission approved for payout"}
 
 
 @router.put("/admin/commissions/{commission_id}/pay")

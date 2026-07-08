@@ -114,6 +114,8 @@ export const adminApi = {
     api.put(`/admin/affiliates/${affiliateId}/status`),
   updateCommissionRate: (affiliateId: number, rate: number) =>
     api.put(`/admin/affiliates/${affiliateId}/commission-rate`, null, { params: { rate } }),
+  approveCommission: (commissionId: number) =>
+    api.put(`/admin/commissions/${commissionId}/approve`),
   payCommission: (commissionId: number) =>
     api.put(`/admin/commissions/${commissionId}/pay`),
 

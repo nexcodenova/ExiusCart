@@ -26,6 +26,11 @@ class Affiliate(Base):
     tier_threshold = Column(Integer, default=10)
     password_hash = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)  # admin notes
+    # Payout details supplied by the affiliate
+    payout_method = Column(String(20), nullable=True)   # paypal | skrill | payoneer
+    paypal_email = Column(String(255), nullable=True)
+    skrill_email = Column(String(255), nullable=True)
+    payoneer_id = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     approved_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -42,7 +47,9 @@ class Commission(Base):
     subscription_id = Column(Integer, ForeignKey("subscriptions.id"), nullable=True)
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(String(10), default="AED")
-    status = Column(String(20), default="pending")  # pending | paid
+    # pending → (30d lock expires) → pending (shows as pending_approval) → approved → paid
+    status = Column(String(20), default="pending")  # pending | approved | paid
+    approved_at = Column(DateTime(timezone=True), nullable=True)
     paid_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

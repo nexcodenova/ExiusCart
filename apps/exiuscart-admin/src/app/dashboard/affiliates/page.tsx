@@ -36,6 +36,10 @@ interface Affiliate {
   pending_amount: number;
   referral_count: number;
   notes: string | null;
+  payout_method: string;
+  paypal_email: string;
+  skrill_email: string;
+  payoneer_id: string;
   created_at: string;
   approved_at: string | null;
   commissions?: Commission[];
@@ -64,6 +68,7 @@ export default function AffiliatesPage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [payingId, setPayingId] = useState<number | null>(null);
+  const [approvingId, setApprovingId] = useState<number | null>(null);
 
   const fetchAffiliates = async () => {
     setLoading(true);
@@ -103,6 +108,18 @@ export default function AffiliatesPage() {
       setDetailCache((prev) => ({ ...prev, [id]: res.data }));
     } finally {
       setLoadingDetail(null);
+    }
+  };
+
+  const approveCommission = async (commissionId: number, affiliateId: number) => {
+    setApprovingId(commissionId);
+    try {
+      await adminApi.approveCommission(commissionId);
+      const res = await adminApi.getAffiliate(affiliateId);
+      setDetailCache((prev) => ({ ...prev, [affiliateId]: res.data }));
+      await fetchAffiliates();
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -365,6 +382,19 @@ export default function AffiliatesPage() {
                             </div>
                           </div>
 
+                          {/* Payout Details */}
+                          {(detail.payout_method || detail.paypal_email || detail.skrill_email || detail.payoneer_id) && (
+                            <div>
+                              <p className="text-gray-400 text-sm font-medium mb-3">Payout Details</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {detail.payout_method && <AppField label="Preferred Method" value={detail.payout_method.charAt(0).toUpperCase() + detail.payout_method.slice(1)} />}
+                                {detail.paypal_email && <AppField label="PayPal Email" value={detail.paypal_email} />}
+                                {detail.skrill_email && <AppField label="Skrill Email" value={detail.skrill_email} />}
+                                {detail.payoneer_id && <AppField label="Payoneer ID / Email" value={detail.payoneer_id} />}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Commission History */}
                           <div>
                             <p className="text-gray-400 text-sm font-medium mb-2">Commission History</p>
@@ -372,38 +402,58 @@ export default function AffiliatesPage() {
                               <p className="text-gray-600 text-sm">No commissions yet</p>
                             ) : (
                               <div className="space-y-2">
-                                {detail.commissions.map((c) => (
-                                  <div key={c.id} className="flex items-center justify-between bg-[#151F32] rounded-lg px-4 py-3">
-                                    <div>
-                                      <p className="text-sm font-medium text-white">{c.shop_name}</p>
-                                      <p className="text-xs text-gray-500">
-                                        {new Date(c.created_at).toLocaleDateString()}
-                                        {c.paid_at && ` · Paid ${new Date(c.paid_at).toLocaleDateString()}`}
-                                      </p>
+                                {detail.commissions.map((c) => {
+                                  const createdDate = new Date(c.created_at);
+                                  const lockUntil = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+                                  const now = new Date();
+                                  const isLocked = c.status === 'pending' && lockUntil > now;
+                                  const isPendingApproval = c.status === 'pending' && lockUntil <= now;
+                                  const isApproved = c.status === 'approved';
+                                  const isPaid = c.status === 'paid';
+                                  return (
+                                    <div key={c.id} className="flex items-center justify-between bg-[#151F32] rounded-lg px-4 py-3">
+                                      <div>
+                                        <p className="text-sm font-medium text-white">{c.shop_name}</p>
+                                        <p className="text-xs text-gray-500">
+                                          {createdDate.toLocaleDateString()}
+                                          {isLocked && ` · Lock expires ${lockUntil.toLocaleDateString()}`}
+                                          {c.paid_at && ` · Paid ${new Date(c.paid_at).toLocaleDateString()}`}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-sm font-semibold text-white">
+                                          {c.amount.toFixed(2)} {c.currency}
+                                        </span>
+                                        {isLocked && (
+                                          <span className="text-xs px-2 py-1 bg-gray-500/10 text-gray-400 rounded-full">Locked 30d</span>
+                                        )}
+                                        {isPendingApproval && (
+                                          <button
+                                            type="button"
+                                            onClick={() => approveCommission(c.id, affiliate.id)}
+                                            disabled={approvingId === c.id}
+                                            className="text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+                                          >
+                                            {approvingId === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Approve Payout'}
+                                          </button>
+                                        )}
+                                        {isApproved && (
+                                          <button
+                                            type="button"
+                                            onClick={() => payCommission(c.id, affiliate.id)}
+                                            disabled={payingId === c.id}
+                                            className="text-xs px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
+                                          >
+                                            {payingId === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Mark Paid'}
+                                          </button>
+                                        )}
+                                        {isPaid && (
+                                          <span className="text-xs px-2 py-1 bg-green-500/10 text-green-400 rounded-full">Paid</span>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-sm font-semibold text-white">
-                                        {c.amount.toFixed(2)} {c.currency}
-                                      </span>
-                                      {c.status === 'pending' ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => payCommission(c.id, affiliate.id)}
-                                          disabled={payingId === c.id}
-                                          className="text-xs px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
-                                        >
-                                          {payingId === c.id ? (
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                          ) : (
-                                            'Mark Paid'
-                                          )}
-                                        </button>
-                                      ) : (
-                                        <span className="text-xs px-2 py-1 bg-green-500/10 text-green-400 rounded-full">Paid</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
