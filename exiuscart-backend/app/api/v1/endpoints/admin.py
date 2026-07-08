@@ -366,7 +366,8 @@ def approve_subscription(
             sub.expires_at = None  # Lifetime / one-time
 
     # ── Auto-commission: check if shop owner was referred by an affiliate ──────
-    # Flat commission: $75 yearly, $25 monthly (USD) — no commission on free trials
+    # One commission per shop per affiliate, ever — regardless of plan changes/upgrades.
+    # No commission on free trials.
     if sub.shop and sub.plan_type != "free_trial":
         shop_owner = db.query(User).filter(User.id == sub.shop.owner_id).first()
         if shop_owner and shop_owner.referred_by_code:
@@ -375,10 +376,12 @@ def approve_subscription(
                 Affiliate.status == "active",
             ).first()
             if affiliate:
-                existing = db.query(Commission).filter(
-                    Commission.subscription_id == sub.id
+                # Guard: one commission per shop per affiliate, not per subscription
+                already_commissioned = db.query(Commission).filter(
+                    Commission.affiliate_id == affiliate.id,
+                    Commission.shop_id == sub.shop_id,
                 ).first()
-                if not existing:
+                if not already_commissioned:
                     commission_amount = 75.0 if sub.billing_type == "yearly" else 25.0
                     commission = Commission(
                         affiliate_id=affiliate.id,
