@@ -45,21 +45,21 @@ export default function OverviewPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Overview</h1>
-        <p className="text-gray-400 text-sm mt-1">Your affiliate performance at a glance</p>
+        <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
+        <p className="text-gray-500 text-sm mt-1">Your affiliate performance at a glance</p>
       </div>
 
       {/* Partnership label requirement */}
       {!partnerConfirmed ? (
-        <div className="bg-[#7B4FE9]/10 border border-[#7B4FE9]/40 rounded-2xl p-5 mb-6">
+        <div className="bg-[#7B4FE9]/8 border border-[#7B4FE9]/30 rounded-2xl p-5 mb-6">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-[#7B4FE9] flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-white font-semibold text-sm mb-1">Action required to unlock payouts</p>
-              <p className="text-gray-400 text-sm mb-3">
+              <p className="text-gray-900 font-semibold text-sm mb-1">Action required to unlock payouts</p>
+              <p className="text-gray-500 text-sm mb-3">
                 You must add the following text to your social media bio, website footer, or any page where you promote ExiusCart:
               </p>
-              <div className="bg-[#0D1526] border border-[#7B4FE9]/30 rounded-xl px-4 py-3 mb-4">
+              <div className="bg-gray-50 border border-[#7B4FE9]/20 rounded-xl px-4 py-3 mb-4">
                 <p className="text-[#7B4FE9] font-mono text-sm font-semibold tracking-wide">
                   &quot;Affiliate partner of ExiusCart by NexCodeNova&quot;
                 </p>
@@ -69,7 +69,7 @@ export default function OverviewPage() {
                   href="https://exiuscart.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-4 py-2.5 rounded-lg transition-all"
+                  className="inline-flex items-center gap-2 text-xs text-gray-500 hover:text-gray-900 border border-gray-300 hover:border-gray-400 px-4 py-2.5 rounded-lg transition-all"
                 >
                   <ExternalLink className="w-3.5 h-3.5" /> Open your social profile
                 </a>
@@ -86,57 +86,57 @@ export default function OverviewPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 mb-6 flex items-center gap-3">
-          <BadgeCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-          <p className="text-emerald-400 text-sm font-medium">Partnership label confirmed — your payouts are unlocked.</p>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-6 flex items-center gap-3">
+          <BadgeCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          <p className="text-emerald-700 text-sm font-medium">Partnership label confirmed — your payouts are unlocked.</p>
         </div>
       )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         {stats.map(({ label, value, sub, icon: Icon, color }) => (
-          <div key={label} className="bg-[#151F32] border border-gray-800 rounded-2xl p-5">
+          <div key={label} className="bg-white border border-gray-200 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-gray-400 text-sm">{label}</p>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}22` }}>
+              <p className="text-gray-500 text-sm">{label}</p>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}18` }}>
                 <Icon className="w-4 h-4" style={{ color }} />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white mb-1">
+            <p className="text-3xl font-bold text-gray-900 mb-1">
               {loading && value === '…' ? <Loader2 className="w-5 h-5 animate-spin inline" /> : value}
             </p>
-            <p className="text-gray-500 text-xs">{sub}</p>
+            <p className="text-gray-400 text-xs">{sub}</p>
           </div>
         ))}
       </div>
 
       {/* Commission notice */}
-      <div className="bg-[#7B4FE9]/10 border border-[#7B4FE9]/30 rounded-2xl p-5 mb-8">
+      <div className="bg-[#7B4FE9]/8 border border-[#7B4FE9]/20 rounded-2xl p-5 mb-8">
         <p className="text-[#7B4FE9] font-semibold text-sm mb-1">Commission Structure</p>
-        <p className="text-gray-400 text-sm">
-          Earn <span className="text-white font-semibold">$25</span> per monthly plan referral and <span className="text-white font-semibold">$75</span> per yearly plan referral. Commissions are subject to a lock period as stated in our{' '}
-          <a href="https://exiuscart.com/affiliate/terms" target="_blank" rel="noopener noreferrer" className="text-[#7B4FE9] underline hover:text-white">Affiliate Terms & Conditions</a>.
+        <p className="text-gray-500 text-sm">
+          Earn <span className="text-gray-900 font-semibold">$25</span> per monthly plan referral and <span className="text-gray-900 font-semibold">$75</span> per yearly plan referral. Commissions are subject to a lock period as stated in our{' '}
+          <a href="https://exiuscart.com/affiliate/terms" target="_blank" rel="noopener noreferrer" className="text-[#7B4FE9] underline hover:text-[#5A2EC9]">Affiliate Terms & Conditions</a>.
         </p>
       </div>
 
       {/* Recent activity */}
-      <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-white font-semibold mb-4">Recent Activity</h2>
+      <div className="bg-white border border-gray-200 rounded-2xl p-6">
+        <h2 className="text-gray-900 font-semibold mb-4">Recent Activity</h2>
         {loading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="w-6 h-6 text-[#7B4FE9] animate-spin" />
           </div>
         ) : (statsData?.total_signups ?? 0) === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center mb-3">
-              <TrendingUp className="w-5 h-5 text-gray-600" />
+            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+              <TrendingUp className="w-5 h-5 text-gray-400" />
             </div>
             <p className="text-gray-500 text-sm">No activity yet</p>
-            <p className="text-gray-600 text-xs mt-1">Share your referral link to start earning</p>
+            <p className="text-gray-400 text-xs mt-1">Share your referral link to start earning</p>
           </div>
         ) : (
-          <p className="text-gray-400 text-sm">
-            You have <span className="text-white font-semibold">{statsData?.total_signups}</span> signup(s) and <span className="text-white font-semibold">{statsData?.conversions}</span> paid conversion(s). View the{' '}
+          <p className="text-gray-500 text-sm">
+            You have <span className="text-gray-900 font-semibold">{statsData?.total_signups}</span> signup(s) and <span className="text-gray-900 font-semibold">{statsData?.conversions}</span> paid conversion(s). View the{' '}
             <a href="/dashboard/referrals" className="text-[#7B4FE9] underline">Referrals</a> page for full details.
           </p>
         )}

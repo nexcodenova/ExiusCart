@@ -41,21 +41,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!authChecked) return null;
 
   return (
-    <div className="min-h-screen bg-[#0B1121] flex">
+    <div className="min-h-screen bg-gray-50 flex">
 
       {/* Sidebar — desktop */}
-      <aside className="hidden lg:flex flex-col w-60 bg-[#0D1526] border-r border-gray-800 fixed inset-y-0 left-0 z-30">
+      <aside className="hidden lg:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-30">
         <SidebarContent pathname={pathname} />
       </aside>
 
       {/* Sidebar — mobile overlay */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <aside className="relative w-60 bg-[#0D1526] border-r border-gray-800 flex flex-col z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+          <aside className="relative w-60 bg-white border-r border-gray-200 flex flex-col z-50">
             <button
               onClick={() => setMobileOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
             >
               <X className="w-5 h-5" />
             </button>
@@ -67,14 +67,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main */}
       <div className="lg:ml-60 flex-1 flex flex-col min-h-screen">
         {/* Top bar — mobile */}
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#0D1526] border-b border-gray-800">
+        <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#7B4FE9] flex items-center justify-center">
               <span className="text-white font-black text-xs">E</span>
             </div>
-            <span className="text-white font-bold text-sm">Affiliates</span>
+            <span className="text-gray-900 font-bold text-sm">Affiliates</span>
           </div>
-          <button onClick={() => setMobileOpen(true)} className="text-gray-400 hover:text-white">
+          <button onClick={() => setMobileOpen(true)} className="text-gray-400 hover:text-gray-700">
             <Menu className="w-5 h-5" />
           </button>
         </header>
@@ -95,11 +95,11 @@ function SidebarContent({
   return (
     <>
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-gray-800">
+      <div className="px-5 py-5 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <Image src="/logo.svg" alt="ExiusCart" width={32} height={32} className="flex-shrink-0" />
           <div>
-            <p className="text-white font-bold text-sm leading-tight">ExiusCart</p>
+            <p className="text-gray-900 font-bold text-sm leading-tight">ExiusCart</p>
             <p className="text-[#7B4FE9] text-xs font-medium">Affiliates</p>
           </div>
         </div>
@@ -116,8 +116,8 @@ function SidebarContent({
               onClick={onNav}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 active
-                  ? 'bg-[#7B4FE9]/20 text-[#7B4FE9]'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-[#7B4FE9]/10 text-[#7B4FE9]'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
@@ -129,7 +129,7 @@ function SidebarContent({
       </nav>
 
       {/* Bottom */}
-      <div className="px-3 py-4 border-t border-gray-800">
+      <div className="px-3 py-4 border-t border-gray-200">
         <button
           onClick={() => {
             localStorage.removeItem('affiliate_token');
@@ -138,7 +138,7 @@ function SidebarContent({
             localStorage.removeItem('affiliate_code');
             window.location.href = '/login';
           }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all w-full"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all w-full"
         >
           <LogOut className="w-4 h-4" />
           Sign Out

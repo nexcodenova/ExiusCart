@@ -23,11 +23,11 @@ interface Referral {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active:           'bg-green-500/10 text-green-400',
-  pending_approval: 'bg-yellow-500/10 text-yellow-400',
-  trial:            'bg-blue-500/10 text-blue-400',
-  registered:       'bg-gray-500/10 text-gray-400',
-  expired:          'bg-red-500/10 text-red-400',
+  active:           'bg-green-100 text-green-700',
+  pending_approval: 'bg-yellow-100 text-yellow-700',
+  trial:            'bg-blue-100 text-blue-700',
+  registered:       'bg-gray-100 text-gray-600',
+  expired:          'bg-red-100 text-red-600',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -57,45 +57,45 @@ export default function ReferralsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Referrals</h1>
-        <p className="text-gray-400 text-sm mt-1">People who signed up via your referral link</p>
+        <h1 className="text-2xl font-bold text-gray-900">Referrals</h1>
+        <p className="text-gray-500 text-sm mt-1">People who signed up via your referral link</p>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-5">
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[#7B4FE9]/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[#7B4FE9]/10 flex items-center justify-center">
               <Users className="w-4 h-4 text-[#7B4FE9]" />
             </div>
-            <span className="text-gray-400 text-sm">Total Signups</span>
+            <span className="text-gray-500 text-sm">Total Signups</span>
           </div>
-          <p className="text-3xl font-bold text-white">{loading ? '…' : totalSignups}</p>
+          <p className="text-3xl font-bold text-gray-900">{loading ? '…' : totalSignups}</p>
         </div>
-        <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-5">
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-              <UserCheck className="w-4 h-4 text-emerald-400" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+              <UserCheck className="w-4 h-4 text-emerald-600" />
             </div>
-            <span className="text-gray-400 text-sm">Converted</span>
+            <span className="text-gray-500 text-sm">Converted</span>
           </div>
-          <p className="text-3xl font-bold text-white">{loading ? '…' : converted}</p>
+          <p className="text-3xl font-bold text-gray-900">{loading ? '…' : converted}</p>
         </div>
-        <div className="bg-[#151F32] border border-gray-800 rounded-2xl p-5">
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
-              <Clock className="w-4 h-4 text-yellow-400" />
+            <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center">
+              <Clock className="w-4 h-4 text-yellow-600" />
             </div>
-            <span className="text-gray-400 text-sm">Pending</span>
+            <span className="text-gray-500 text-sm">Pending</span>
           </div>
-          <p className="text-3xl font-bold text-white">{loading ? '…' : pending}</p>
+          <p className="text-3xl font-bold text-gray-900">{loading ? '…' : pending}</p>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-[#151F32] border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800">
-          <h2 className="text-white font-semibold">Referral List</h2>
+      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-gray-900 font-semibold">Referral List</h2>
         </div>
 
         {loading ? (
@@ -104,11 +104,11 @@ export default function ReferralsPage() {
           </div>
         ) : referrals.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-            <div className="w-14 h-14 rounded-full bg-gray-800 flex items-center justify-center mb-4">
-              <Users className="w-6 h-6 text-gray-600" />
+            <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+              <Users className="w-6 h-6 text-gray-400" />
             </div>
-            <p className="text-gray-400 font-medium mb-1">No referrals yet</p>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-500 font-medium mb-1">No referrals yet</p>
+            <p className="text-gray-400 text-sm">
               Share your referral link from the Marketing page to start getting signups.
             </p>
           </div>
@@ -118,7 +118,7 @@ export default function ReferralsPage() {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-800 text-gray-400">
+                  <tr className="border-b border-gray-200 text-gray-500">
                     <th className="text-left px-6 py-3 font-medium">Name</th>
                     <th className="text-left px-6 py-3 font-medium">Store</th>
                     <th className="text-left px-6 py-3 font-medium">Plan</th>
@@ -129,42 +129,42 @@ export default function ReferralsPage() {
                 </thead>
                 <tbody>
                   {referrals.map((r, i) => (
-                    <tr key={i} className="border-b border-gray-800 last:border-0 hover:bg-[#1A2540] transition">
+                    <tr key={i} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition">
                       <td className="px-6 py-4">
-                        <p className="text-white font-medium">{r.name}</p>
-                        <p className="text-xs text-gray-500">{r.email}</p>
+                        <p className="text-gray-900 font-medium">{r.name}</p>
+                        <p className="text-xs text-gray-400">{r.email}</p>
                       </td>
                       <td className="px-6 py-4">
                         {r.store_name ? (
-                          <div className="flex items-center gap-1.5 text-gray-300">
-                            <Store className="w-3.5 h-3.5 text-gray-500" />
+                          <div className="flex items-center gap-1.5 text-gray-600">
+                            <Store className="w-3.5 h-3.5 text-gray-400" />
                             {r.store_name}
                           </div>
                         ) : (
-                          <span className="text-gray-600">—</span>
+                          <span className="text-gray-300">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 capitalize text-gray-300">
+                      <td className="px-6 py-4 capitalize text-gray-600">
                         {r.plan === 'free_trial' ? 'Free Trial' : r.plan || '—'}
                       </td>
-                      <td className="px-6 py-4 text-gray-400">
+                      <td className="px-6 py-4 text-gray-500">
                         {r.signed_up ? new Date(r.signed_up).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`text-xs px-2.5 py-1 rounded-lg ${STATUS_COLORS[r.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
+                        <span className={`text-xs px-2.5 py-1 rounded-lg ${STATUS_COLORS[r.status] ?? 'bg-gray-100 text-gray-500'}`}>
                           {STATUS_LABELS[r.status] ?? r.status}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         {r.commission > 0 ? (
                           <div>
-                            <p className="text-white font-semibold">${r.commission.toFixed(2)}</p>
-                            <p className={`text-xs ${r.commission_status === 'paid' ? 'text-green-400' : 'text-yellow-400'}`}>
+                            <p className="text-gray-900 font-semibold">${r.commission.toFixed(2)}</p>
+                            <p className={`text-xs ${r.commission_status === 'paid' ? 'text-green-600' : 'text-yellow-600'}`}>
                               {r.commission_status === 'paid' ? 'Paid' : 'Pending'}
                             </p>
                           </div>
                         ) : (
-                          <span className="text-gray-600">—</span>
+                          <span className="text-gray-300">—</span>
                         )}
                       </td>
                     </tr>
@@ -174,23 +174,23 @@ export default function ReferralsPage() {
             </div>
 
             {/* Mobile cards */}
-            <div className="sm:hidden divide-y divide-gray-800">
+            <div className="sm:hidden divide-y divide-gray-100">
               {referrals.map((r, i) => (
                 <div key={i} className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="text-white font-medium text-sm">{r.name}</p>
-                      <p className="text-xs text-gray-500">{r.email}</p>
+                      <p className="text-gray-900 font-medium text-sm">{r.name}</p>
+                      <p className="text-xs text-gray-400">{r.email}</p>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-lg ${STATUS_COLORS[r.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-lg ${STATUS_COLORS[r.status] ?? 'bg-gray-100 text-gray-500'}`}>
                       {STATUS_LABELS[r.status] ?? r.status}
                     </span>
                   </div>
-                  {r.store_name && <p className="text-xs text-gray-400 mb-1">{r.store_name}</p>}
-                  <div className="flex items-center justify-between text-xs text-gray-500">
+                  {r.store_name && <p className="text-xs text-gray-500 mb-1">{r.store_name}</p>}
+                  <div className="flex items-center justify-between text-xs text-gray-400">
                     <span>{r.signed_up ? new Date(r.signed_up).toLocaleDateString() : '—'}</span>
                     {r.commission > 0 && (
-                      <span className="text-white font-semibold">${r.commission.toFixed(2)}</span>
+                      <span className="text-gray-900 font-semibold">${r.commission.toFixed(2)}</span>
                     )}
                   </div>
                 </div>
