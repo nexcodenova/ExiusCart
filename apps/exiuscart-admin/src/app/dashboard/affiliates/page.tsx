@@ -13,7 +13,7 @@ interface Commission {
   shop_name: string;
   amount: number;
   currency: string;
-  status: 'pending' | 'paid';
+  status: 'pending' | 'approved' | 'paid';
   paid_at: string | null;
   created_at: string;
 }
