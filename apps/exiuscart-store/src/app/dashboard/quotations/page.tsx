@@ -4,11 +4,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, Plus, ClipboardList, Clock, CheckCircle2, FileText,
-  X, Trash2, Package, GripVertical, ChevronDown, Info,
+  X, Trash2, Package, GripVertical, Info, Lock,
 } from 'lucide-react';
-import { quotationsApi, productsApi, customersApi } from '@/lib/api';
+import { quotationsApi, productsApi, customersApi, subscriptionApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
+
+// Only ExiusCart Premium gets advanced. Everyone else (including TheDersi Pro) gets basic.
+const isAdvancedPlan = (p: string) => p === 'premium';
+const canCreateQuote = (p: string) => p !== 'free_trial' && p !== '';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -82,6 +86,7 @@ export default function QuotationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [plan, setPlan] = useState('');
   const { sym } = useCurrency();
 
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
@@ -97,6 +102,13 @@ export default function QuotationsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (!shopId) return;
+    subscriptionApi.getCurrent(shopId)
+      .then(r => setPlan(r.data?.plan_type ?? 'free_trial'))
+      .catch(() => setPlan('free_trial'));
+  }, [shopId]);
+
   const filtered = quotations.filter((q) =>
     q.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     q.quote_number.toLowerCase().includes(searchQuery.toLowerCase())
@@ -109,11 +121,28 @@ export default function QuotationsPage() {
           <h1 className="text-2xl font-bold text-foreground">Quotations</h1>
           <p className="text-muted-foreground text-sm">Create and send professional price quotes to any client</p>
         </div>
-        <button type="button" onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm">
-          <Plus className="w-4 h-4" /> New Quotation
-        </button>
+        {canCreateQuote(plan) ? (
+          <button type="button" onClick={() => setShowModal(true)}
+            className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm">
+            <Plus className="w-4 h-4" /> New Quotation
+          </button>
+        ) : plan !== '' && (
+          <div className="inline-flex items-center gap-2 bg-muted border border-border px-4 py-2.5 rounded-lg text-sm text-muted-foreground">
+            <Lock className="w-4 h-4" />
+            Upgrade to ExiusCart Premium to create quotations
+          </div>
+        )}
       </div>
+
+      {plan === 'free_trial' && (
+        <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 px-4 py-3 flex items-start gap-3">
+          <Lock className="w-4 h-4 text-indigo-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Quotations require ExiusCart Premium</p>
+            <p className="text-xs text-indigo-600/80 dark:text-indigo-400/80 mt-0.5">Create unlimited professional quotations, share client links, and more — available on ExiusCart Premium.</p>
+          </div>
+        </div>
+      )}
 
       <UsageBanner shopId={shopId} show={['quotation_emails']} />
 
@@ -215,6 +244,7 @@ export default function QuotationsPage() {
       {showModal && (
         <CreateQuotationModal
           shopId={shopId}
+          plan={plan}
           onClose={() => setShowModal(false)}
           onCreated={(id) => { setShowModal(false); router.push(`/dashboard/quotations/${id}`); }}
         />
@@ -225,12 +255,23 @@ export default function QuotationsPage() {
 
 // ── Advanced Create Modal ──────────────────────────────────────────────────────
 
-function CreateQuotationModal({ shopId, onClose, onCreated }: {
+function UpgradeLock({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/60 border border-border rounded-lg px-3 py-2.5">
+      <Lock className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+      <span>{message} — <span className="font-semibold text-indigo-500">Upgrade to ExiusCart Premium</span></span>
+    </div>
+  );
+}
+
+function CreateQuotationModal({ shopId, plan, onClose, onCreated }: {
   shopId: string;
+  plan: string;
   onClose: () => void;
   onCreated: (id: number) => void;
 }) {
   const { sym } = useCurrency();
+  const advanced = isAdvancedPlan(plan);
 
   // Client
   const [customerName, setCustomerName] = useState('');
@@ -416,10 +457,17 @@ function CreateQuotationModal({ shopId, onClose, onCreated }: {
                   className="inline-flex items-center gap-1.5 text-xs border border-border text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg transition">
                   <Package className="w-3.5 h-3.5" /> From Inventory
                 </button>
-                <button type="button" onClick={addSection}
-                  className="inline-flex items-center gap-1.5 text-xs border border-border text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg transition">
-                  + Section
-                </button>
+                {advanced ? (
+                  <button type="button" onClick={addSection}
+                    className="inline-flex items-center gap-1.5 text-xs border border-border text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg transition">
+                    + Section
+                  </button>
+                ) : (
+                  <span title="Upgrade to ExiusCart Premium"
+                    className="inline-flex items-center gap-1.5 text-xs border border-border/50 text-muted-foreground/40 px-3 py-1.5 rounded-lg cursor-not-allowed select-none">
+                    <Lock className="w-3 h-3" /> Section
+                  </span>
+                )}
                 <button type="button" onClick={addItem}
                   className="inline-flex items-center gap-1.5 text-xs bg-foreground text-background px-3 py-1.5 rounded-lg transition hover:opacity-90">
                   + Add Item
@@ -480,12 +528,18 @@ function CreateQuotationModal({ shopId, onClose, onCreated }: {
                           className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground font-medium" />
                       </div>
                       {/* Unit */}
-                      <div className="w-28">
-                        <select value={row.unit} onChange={e => updateItem(row._id, { unit: e.target.value })}
-                          className="w-full px-2 py-2 bg-muted border border-border rounded-lg text-sm outline-none text-foreground">
-                          {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                      </div>
+                      {advanced ? (
+                        <div className="w-28">
+                          <select value={row.unit} onChange={e => updateItem(row._id, { unit: e.target.value })}
+                            className="w-full px-2 py-2 bg-muted border border-border rounded-lg text-sm outline-none text-foreground">
+                            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="w-20 flex items-center px-2">
+                          <span className="text-xs text-muted-foreground/60">pcs</span>
+                        </div>
+                      )}
                       {/* Qty */}
                       <div className="w-20">
                         <input type="number" min={0} step={0.5} placeholder="Qty"
@@ -512,23 +566,27 @@ function CreateQuotationModal({ shopId, onClose, onCreated }: {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    {/* Description */}
-                    <input type="text" placeholder="Description (optional) — e.g. Includes 3 revisions, delivered in 5 days"
-                      value={row.description}
-                      onChange={e => updateItem(row._id, { description: e.target.value })}
-                      className="w-full px-3 py-1.5 bg-transparent text-xs text-muted-foreground outline-none placeholder:text-muted-foreground/50 border-t border-border/50 pt-2" />
-                    {/* Optional toggle */}
-                    <div className="flex items-center gap-2 pt-1 border-t border-border/40">
-                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                        <input type="checkbox" checked={row.is_optional}
-                          onChange={e => updateItem(row._id, { is_optional: e.target.checked })}
-                          className="rounded" />
-                        Mark as optional add-on (excluded from total)
-                      </label>
-                      {row.is_optional && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 font-medium">Optional</span>
-                      )}
-                    </div>
+                    {/* Description — advanced only */}
+                    {advanced && (
+                      <input type="text" placeholder="Description (optional) — e.g. Includes 3 revisions, delivered in 5 days"
+                        value={row.description}
+                        onChange={e => updateItem(row._id, { description: e.target.value })}
+                        className="w-full px-3 py-1.5 bg-transparent text-xs text-muted-foreground outline-none placeholder:text-muted-foreground/50 border-t border-border/50 pt-2" />
+                    )}
+                    {/* Optional toggle — advanced only */}
+                    {advanced && (
+                      <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                          <input type="checkbox" checked={row.is_optional}
+                            onChange={e => updateItem(row._id, { is_optional: e.target.checked })}
+                            className="rounded" />
+                          Mark as optional add-on (excluded from total)
+                        </label>
+                        {row.is_optional && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 font-medium">Optional</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               )}
@@ -610,9 +668,13 @@ function CreateQuotationModal({ shopId, onClose, onCreated }: {
               </div>
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Terms & Conditions</label>
-                <textarea rows={3} value={terms} onChange={e => setTerms(e.target.value)}
-                  placeholder="e.g. 50% deposit required to begin. All work is subject to our standard T&C. Revisions: 2 rounds included."
-                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground resize-none" />
+                {advanced ? (
+                  <textarea rows={3} value={terms} onChange={e => setTerms(e.target.value)}
+                    placeholder="e.g. 50% deposit required to begin. All work is subject to our standard T&C. Revisions: 2 rounds included."
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground resize-none" />
+                ) : (
+                  <UpgradeLock message="Terms & Conditions on PDF" />
+                )}
               </div>
             </div>
           </section>
@@ -620,31 +682,37 @@ function CreateQuotationModal({ shopId, onClose, onCreated }: {
           {/* ── Company Info ── */}
           <section>
             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Company Info on PDF</h3>
-            <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
-              <Info className="w-3 h-3" /> Optional — appears below your shop name on the PDF
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">Address</label>
-                <textarea rows={2} value={companyAddress} onChange={e => setCompanyAddress(e.target.value)}
-                  placeholder="e.g. NexCode Nova LLC, Business Bay, Dubai, UAE"
-                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground resize-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">TRN / VAT Number</label>
-                  <input type="text" value={companyTrn} onChange={e => setCompanyTrn(e.target.value)}
-                    placeholder="e.g. 100123456789003"
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
+            {advanced ? (
+              <>
+                <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
+                  <Info className="w-3 h-3" /> Optional — appears below your shop name on the PDF
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Address</label>
+                    <textarea rows={2} value={companyAddress} onChange={e => setCompanyAddress(e.target.value)}
+                      placeholder="e.g. NexCode Nova LLC, Business Bay, Dubai, UAE"
+                      className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground resize-none" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">TRN / VAT Number</label>
+                      <input type="text" value={companyTrn} onChange={e => setCompanyTrn(e.target.value)}
+                        placeholder="e.g. 100123456789003"
+                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Bank / Payment Details</label>
+                      <input type="text" value={companyBank} onChange={e => setCompanyBank(e.target.value)}
+                        placeholder="e.g. Emirates NBD IBAN: AE070331234567890123456"
+                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1">Bank / Payment Details</label>
-                  <input type="text" value={companyBank} onChange={e => setCompanyBank(e.target.value)}
-                    placeholder="e.g. Emirates NBD IBAN: AE070331234567890123456"
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
-                </div>
-              </div>
-            </div>
+              </>
+            ) : (
+              <UpgradeLock message="Address, TRN/VAT, bank details on PDF" />
+            )}
           </section>
 
           {error && (
