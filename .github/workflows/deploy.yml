@@ -14,10 +14,9 @@ jobs:
     name: Detect changed apps
     runs-on: ubuntu-latest
     outputs:
-      store:       ${{ steps.filter.outputs.store }}
-      admin:       ${{ steps.filter.outputs.admin }}
-      affiliates:  ${{ steps.filter.outputs.affiliates }}
-      backend:     ${{ steps.filter.outputs.backend }}
+      store:    ${{ steps.filter.outputs.store }}
+      admin:    ${{ steps.filter.outputs.admin }}
+      backend:  ${{ steps.filter.outputs.backend }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,8 +29,6 @@ jobs:
               - 'apps/exiuscart-store/**'
             admin:
               - 'apps/exiuscart-admin/**'
-            affiliates:
-              - 'apps/exiuscart-affiliates/**'
             backend:
               - 'exiuscart-backend/**'
 
@@ -83,10 +80,6 @@ jobs:
         if: needs.changes.outputs.admin == 'true'
         run: npm run build --workspace=apps/exiuscart-admin
 
-      - name: Build affiliates
-        if: needs.changes.outputs.affiliates == 'true'
-        run: npm run build --workspace=apps/exiuscart-affiliates
-
       # ── Setup SSH for rsync ────────────────────────────────────────────────
       - name: Setup SSH key
         run: |
@@ -111,14 +104,6 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             apps/exiuscart-admin/.next/ \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/ExiusCart/apps/exiuscart-admin/.next/
-
-      - name: Sync affiliates build
-        if: needs.changes.outputs.affiliates == 'true'
-        run: |
-          rsync -az --delete --exclude=cache \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            apps/exiuscart-affiliates/.next/ \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/ExiusCart/apps/exiuscart-affiliates/.next/
 
       # ── Pull source + run migrations + reload PM2 (no build on server) ─────
       - name: Deploy to server
@@ -150,9 +135,8 @@ jobs:
             fi
 
             # Reload PM2 for changed apps — .next was already synced by rsync above
-            [ "${{ needs.changes.outputs.store }}"      = "true" ] && pm2 reload exiuscart-store      --update-env || true
-            [ "${{ needs.changes.outputs.admin }}"      = "true" ] && pm2 reload exiuscart-admin      --update-env || true
-            [ "${{ needs.changes.outputs.affiliates }}" = "true" ] && pm2 reload exiuscart-affiliates --update-env || true
+            [ "${{ needs.changes.outputs.store }}" = "true" ] && pm2 reload exiuscart-store --update-env || true
+            [ "${{ needs.changes.outputs.admin }}" = "true" ] && pm2 reload exiuscart-admin --update-env || true
 
             # Backend: reinstall Python deps if needed then reload
             if [ "${{ needs.changes.outputs.backend }}" = "true" ]; then
