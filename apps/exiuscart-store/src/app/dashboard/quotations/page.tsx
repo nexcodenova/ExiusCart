@@ -10,9 +10,9 @@ import { quotationsApi, productsApi, customersApi, subscriptionApi } from '@/lib
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
 
-// Only ExiusCart Premium gets advanced. Everyone else (including TheDersi Pro) gets basic.
+// All plans can create basic quotations. Only ExiusCart Premium gets advanced features.
 const isAdvancedPlan = (p: string) => p === 'premium';
-const canCreateQuote = (p: string) => p !== 'free_trial' && p !== '';
+const canCreateQuote = (_p: string) => true;
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -121,28 +121,11 @@ export default function QuotationsPage() {
           <h1 className="text-2xl font-bold text-foreground">Quotations</h1>
           <p className="text-muted-foreground text-sm">Create and send professional price quotes to any client</p>
         </div>
-        {canCreateQuote(plan) ? (
-          <button type="button" onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm">
-            <Plus className="w-4 h-4" /> New Quotation
-          </button>
-        ) : plan !== '' && (
-          <div className="inline-flex items-center gap-2 bg-muted border border-border px-4 py-2.5 rounded-lg text-sm text-muted-foreground">
-            <Lock className="w-4 h-4" />
-            Upgrade to ExiusCart Premium to create quotations
-          </div>
-        )}
+        <button type="button" onClick={() => setShowModal(true)}
+          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm">
+          <Plus className="w-4 h-4" /> New Quotation
+        </button>
       </div>
-
-      {plan === 'free_trial' && (
-        <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 px-4 py-3 flex items-start gap-3">
-          <Lock className="w-4 h-4 text-indigo-500 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Quotations require ExiusCart Premium</p>
-            <p className="text-xs text-indigo-600/80 dark:text-indigo-400/80 mt-0.5">Create unlimited professional quotations, share client links, and more — available on ExiusCart Premium.</p>
-          </div>
-        </div>
-      )}
 
       <UsageBanner shopId={shopId} show={['quotation_emails']} />
 
