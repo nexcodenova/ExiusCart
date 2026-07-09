@@ -238,3 +238,66 @@ async def google_ads_lead(token: str, request: Request, db: Session = Depends(ge
     lead = _save_lead(shop.id, name, email, phone, company, "google_ads", db)
     logger.info(f"[LEAD CAPTURE] Google Ads → shop={shop.id} name={name} lead_id={lead.id if lead else 'skipped'}")
     return {"status": "ok"}
+
+
+# ── Public Quotation (client view + accept/reject) ────────────────────────────
+
+@router.get("/public/quotation/{token}")
+def public_quotation_view(token: str, db: Session = Depends(get_db)):
+    """No-auth endpoint — client views their quotation via share link."""
+    from app.models.quotation import Quotation
+    q = db.query(Quotation).filter(Quotation.client_token == token).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    shop = q.shop
+    return {
+        "quote_number": q.quote_number,
+        "shop_name": shop.name if shop else "",
+        "shop_logo": shop.logo_url if shop else None,
+        "currency": shop.currency if shop else "AED",
+        "customer_name": q.customer_name,
+        "customer_email": q.customer_email,
+        "customer_phone": q.customer_phone,
+        "items": q.items,
+        "subtotal": float(q.subtotal),
+        "discount": float(q.discount),
+        "tax": float(q.tax),
+        "tax_rate": float(q.tax_rate or 0),
+        "tax_type": q.tax_type or "fixed",
+        "total": float(q.total),
+        "notes": q.notes,
+        "terms": q.terms,
+        "payment_schedule": q.payment_schedule,
+        "company_address": q.company_address,
+        "company_trn": q.company_trn,
+        "company_bank": q.company_bank,
+        "status": q.status,
+        "valid_until": q.valid_until.isoformat() if q.valid_until else None,
+        "created_at": q.created_at.isoformat() if q.created_at else None,
+        "client_accepted_name": q.client_accepted_name,
+        "client_accepted_at": q.client_accepted_at.isoformat() if q.client_accepted_at else None,
+    }
+
+
+@router.post("/public/quotation/{token}/respond")
+async def public_quotation_respond(token: str, request: Request, db: Session = Depends(get_db)):
+    """No-auth endpoint — client accepts or rejects quotation via share link."""
+    from app.models.quotation import Quotation
+    from datetime import datetime, timezone
+    q = db.query(Quotation).filter(Quotation.client_token == token).first()
+    if not q:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    if q.status not in ("pending",):
+        raise HTTPException(status_code=400, detail="This quotation has already been responded to")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    action = body.get("action")
+    if action not in ("accept", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'accept' or 'reject'")
+    q.status = "accepted" if action == "accept" else "rejected"
+    q.client_accepted_at = datetime.now(timezone.utc)
+    q.client_accepted_name = body.get("name") or q.customer_name
+    db.commit()
+    return {"status": q.status}

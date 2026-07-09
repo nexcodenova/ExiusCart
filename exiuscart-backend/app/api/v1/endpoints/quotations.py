@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date, datetime, timezone
-import uuid
+import secrets
 
 from app.core.database import get_db
 from app.api.v1.deps import get_current_user
@@ -19,26 +19,39 @@ router = APIRouter()
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
-class QuotationItem(BaseModel):
+class QuotationRow(BaseModel):
+    type: str = 'item'                      # 'item' | 'section'
+    section_title: Optional[str] = None     # for section rows
     product_id: Optional[int] = None
-    name: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    unit: Optional[str] = None              # pcs, hrs, days, months, etc.
     sku: Optional[str] = None
     quantity_available: Optional[int] = None
-    qty: int
-    unit_price: float
-    total: float
+    qty: float = 1
+    unit_price: float = 0
+    total: float = 0
+    is_optional: bool = False
 
 
 class QuotationCreate(BaseModel):
     customer_name: str
     customer_email: Optional[str] = None
     customer_phone: Optional[str] = None
-    items: list[QuotationItem]
+    customer_company: Optional[str] = None
+    items: list[QuotationRow]
     subtotal: float
     discount: float = 0
     tax: float = 0
+    tax_rate: float = 0
+    tax_type: str = 'fixed'
     total: float
     notes: Optional[str] = None
+    terms: Optional[str] = None
+    payment_schedule: Optional[list] = None
+    company_address: Optional[str] = None
+    company_trn: Optional[str] = None
+    company_bank: Optional[str] = None
     valid_until: date
 
 
@@ -89,12 +102,23 @@ def _serialize(q: Quotation) -> dict:
         "customer_name": q.customer_name,
         "customer_email": q.customer_email,
         "customer_phone": q.customer_phone,
+        "customer_company": getattr(q, 'customer_company', None),
         "items": q.items,
         "subtotal": float(q.subtotal),
         "discount": float(q.discount),
         "tax": float(q.tax),
+        "tax_rate": float(q.tax_rate or 0),
+        "tax_type": q.tax_type or 'fixed',
         "total": float(q.total),
         "notes": q.notes,
+        "terms": q.terms,
+        "payment_schedule": q.payment_schedule,
+        "company_address": q.company_address,
+        "company_trn": q.company_trn,
+        "company_bank": q.company_bank,
+        "client_token": q.client_token,
+        "client_accepted_at": q.client_accepted_at.isoformat() if q.client_accepted_at else None,
+        "client_accepted_name": q.client_accepted_name,
         "status": q.status,
         "valid_until": q.valid_until.isoformat() if q.valid_until else None,
         "created_at": q.created_at.isoformat() if q.created_at else None,
@@ -135,9 +159,17 @@ def create_quotation(
         subtotal=data.subtotal,
         discount=data.discount,
         tax=data.tax,
+        tax_rate=data.tax_rate,
+        tax_type=data.tax_type,
         total=data.total,
         notes=data.notes,
+        terms=data.terms,
+        payment_schedule=data.payment_schedule,
+        company_address=data.company_address,
+        company_trn=data.company_trn,
+        company_bank=data.company_bank,
         valid_until=data.valid_until,
+        client_token=secrets.token_urlsafe(32),
     )
     db.add(q)
     db.commit()
@@ -210,7 +242,6 @@ def send_quotation(
     if not q.customer_email:
         raise HTTPException(status_code=400, detail="This quotation has no customer email address")
 
-    # Check + log against monthly quotation email limit
     check_and_log_email(shop_id, "quotation", plan, q.customer_email, q.id, db)
 
     send_quotation_email(

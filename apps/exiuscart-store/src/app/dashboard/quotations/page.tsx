@@ -4,21 +4,38 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, Plus, ClipboardList, Clock, CheckCircle2, FileText,
-  X, Trash2, Package, ChevronDown,
+  X, Trash2, Package, GripVertical, ChevronDown, Info,
 } from 'lucide-react';
 import { quotationsApi, productsApi, customersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
 
-interface QuotationItem {
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+type RowType = 'item' | 'section';
+
+interface ItemRow {
+  _id: string;
+  type: 'item';
   product_id?: number;
   name: string;
-  sku?: string;
-  quantity_available?: number;
+  description: string;
+  unit: string;
   qty: number;
   unit_price: number;
   total: number;
+  is_optional: boolean;
+  sku?: string;
+  quantity_available?: number;
 }
+
+interface SectionRow {
+  _id: string;
+  type: 'section';
+  section_title: string;
+}
+
+type QuoteRow = ItemRow | SectionRow;
 
 interface Quotation {
   id: number;
@@ -26,7 +43,7 @@ interface Quotation {
   customer_name: string;
   customer_email?: string;
   customer_phone?: string;
-  items: QuotationItem[];
+  items: QuoteRow[];
   subtotal: number;
   discount: number;
   tax: number;
@@ -37,20 +54,8 @@ interface Quotation {
   currency: string;
 }
 
-interface Product {
-  id: number;
-  name: string;
-  sku?: string;
-  price: number;
-  quantity: number;
-}
-
-interface Customer {
-  id: number;
-  name: string;
-  phone?: string;
-  email?: string;
-}
+interface Product { id: number; name: string; sku?: string; price: number; quantity: number; }
+interface Customer { id: number; name: string; phone?: string; email?: string; }
 
 const STATUS_STYLES: Record<string, string> = {
   accepted: 'bg-green-500/10 text-green-600 dark:text-green-400',
@@ -58,6 +63,18 @@ const STATUS_STYLES: Record<string, string> = {
   expired: 'bg-red-500/10 text-red-600 dark:text-red-400',
   rejected: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
+
+const UNITS = ['pcs', 'hrs', 'days', 'months', 'words', 'posts', 'tasks', 'pages', 'kg', 'sessions', 'fixed', 'custom'];
+
+let _rowId = 0;
+const uid = () => `r${++_rowId}`;
+
+const blankItem = (): ItemRow => ({
+  _id: uid(), type: 'item', name: '', description: '', unit: 'pcs',
+  qty: 1, unit_price: 0, total: 0, is_optional: false,
+});
+
+// ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function QuotationsPage() {
   const router = useRouter();
@@ -90,7 +107,7 @@ export default function QuotationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Quotations</h1>
-          <p className="text-muted-foreground text-sm">Create and manage price quotes for customers</p>
+          <p className="text-muted-foreground text-sm">Create and send professional price quotes to any client</p>
         </div>
         <button type="button" onClick={() => setShowModal(true)}
           className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm">
@@ -137,7 +154,7 @@ export default function QuotationsPage() {
               {searchQuery ? 'No quotations found' : 'No quotations yet'}
             </h3>
             <p className="text-sm text-muted-foreground mb-5">
-              {searchQuery ? 'Try a different search' : 'Create your first quotation to send price quotes to customers'}
+              {searchQuery ? 'Try a different search' : 'Create your first quotation for any client — products, services, freelance work, anything.'}
             </p>
             {!searchQuery && (
               <button type="button" onClick={() => setShowModal(true)}
@@ -152,7 +169,7 @@ export default function QuotationsPage() {
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">Quote #</th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Customer</th>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Client</th>
                   <th className="text-center p-4 text-sm font-medium text-muted-foreground">Items</th>
                   <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total</th>
                   <th className="text-center p-4 text-sm font-medium text-muted-foreground">Valid Until</th>
@@ -170,7 +187,9 @@ export default function QuotationsPage() {
                       {q.customer_phone && <p className="text-xs text-muted-foreground">{q.customer_phone}</p>}
                     </td>
                     <td className="p-4 text-center">
-                      <span className="text-sm text-muted-foreground">{q.items.length}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {q.items.filter((i: any) => i.type !== 'section').length}
+                      </span>
                     </td>
                     <td className="p-4 text-right">
                       <span className="text-sm font-semibold text-foreground">
@@ -197,48 +216,55 @@ export default function QuotationsPage() {
         <CreateQuotationModal
           shopId={shopId}
           onClose={() => setShowModal(false)}
-          onCreated={(id) => {
-            setShowModal(false);
-            router.push(`/dashboard/quotations/${id}`);
-          }}
+          onCreated={(id) => { setShowModal(false); router.push(`/dashboard/quotations/${id}`); }}
         />
       )}
     </div>
   );
 }
 
-// ── Create Quotation Modal ─────────────────────────────────────────────────────
+// ── Advanced Create Modal ──────────────────────────────────────────────────────
 
-function CreateQuotationModal({
-  shopId,
-  onClose,
-  onCreated,
-}: {
+function CreateQuotationModal({ shopId, onClose, onCreated }: {
   shopId: string;
   onClose: () => void;
   onCreated: (id: number) => void;
 }) {
   const { sym } = useCurrency();
 
+  // Client
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [items, setItems] = useState<QuotationItem[]>([]);
-  const [discount, setDiscount] = useState(0);
-  const [tax, setTax] = useState(0);
-  const [notes, setNotes] = useState('');
-  const [validUntil, setValidUntil] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    return d.toISOString().split('T')[0];
-  });
+  const [customerCompany, setCustomerCompany] = useState('');
 
+  // Rows
+  const [rows, setRows] = useState<QuoteRow[]>([blankItem()]);
+
+  // Pricing
+  const [discount, setDiscount] = useState(0);
+  const [taxType, setTaxType] = useState<'fixed' | 'percent'>('fixed');
+  const [taxValue, setTaxValue] = useState(0);
+
+  // Details
+  const [validUntil, setValidUntil] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().split('T')[0];
+  });
+  const [notes, setNotes] = useState('');
+  const [terms, setTerms] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyTrn, setCompanyTrn] = useState('');
+  const [companyBank, setCompanyBank] = useState('');
+
+  // Inventory picker
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState('');
-  const [showProductPicker, setShowProductPicker] = useState(false);
+  const [showInvPicker, setShowInvPicker] = useState(false);
+
+  // Customer picker
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
-  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [showCustPicker, setShowCustPicker] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -248,72 +274,66 @@ function CreateQuotationModal({
     customersApi.getAll(shopId).then(r => setCustomers(r.data ?? [])).catch(() => {});
   }, [shopId]);
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    (p.sku ?? '').toLowerCase().includes(productSearch.toLowerCase())
-  );
+  // Computed totals
+  const subtotal = rows.reduce((s, r) => r.type === 'item' && !r.is_optional ? s + r.total : s, 0);
+  const taxAmount = taxType === 'percent' ? subtotal * taxValue / 100 : taxValue;
+  const total = subtotal - discount + taxAmount;
 
-  const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    (c.phone ?? '').includes(customerSearch) ||
-    (c.email ?? '').toLowerCase().includes(customerSearch.toLowerCase())
-  );
+  // Row actions
+  const addItem = () => setRows(r => [...r, blankItem()]);
+  const addSection = () => setRows(r => [...r, { _id: uid(), type: 'section', section_title: '' }]);
+  const addFromInventory = (p: Product) => {
+    const item: ItemRow = {
+      _id: uid(), type: 'item',
+      product_id: p.id, name: p.name, description: '', unit: 'pcs',
+      qty: 1, unit_price: Number(p.price), total: Number(p.price),
+      is_optional: false, sku: p.sku, quantity_available: p.quantity,
+    };
+    setRows(r => [...r, item]);
+    setShowInvPicker(false); setProductSearch('');
+  };
+  const removeRow = (id: string) => setRows(r => r.filter(x => x._id !== id));
 
-  const addProduct = (p: Product) => {
-    const exists = items.find(i => i.product_id === p.id);
-    if (exists) {
-      setItems(items.map(i =>
-        i.product_id === p.id
-          ? { ...i, qty: i.qty + 1, total: (i.qty + 1) * i.unit_price }
-          : i
-      ));
-    } else {
-      setItems([...items, {
-        product_id: p.id,
-        name: p.name,
-        sku: p.sku,
-        quantity_available: p.quantity,
-        qty: 1,
-        unit_price: Number(p.price),
-        total: Number(p.price),
-      }]);
-    }
-    setShowProductPicker(false);
-    setProductSearch('');
+  const updateItem = (id: string, patch: Partial<ItemRow>) => {
+    setRows(rows.map(r => {
+      if (r._id !== id || r.type !== 'item') return r;
+      const updated = { ...r, ...patch };
+      updated.total = updated.qty * updated.unit_price;
+      return updated;
+    }));
   };
 
-  const updateQty = (idx: number, qty: number) => {
-    if (qty < 1) return;
-    setItems(items.map((it, i) => i === idx ? { ...it, qty, total: qty * it.unit_price } : it));
+  const updateSection = (id: string, title: string) => {
+    setRows(rows.map(r => r._id === id && r.type === 'section' ? { ...r, section_title: title } : r));
   };
-
-  const updatePrice = (idx: number, price: number) => {
-    setItems(items.map((it, i) => i === idx ? { ...it, unit_price: price, total: it.qty * price } : it));
-  };
-
-  const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
-
-  const subtotal = items.reduce((s, i) => s + i.total, 0);
-  const total = subtotal - discount + tax;
 
   const handleSubmit = async () => {
-    if (!customerName.trim()) { setError('Customer name is required'); return; }
-    if (items.length === 0) { setError('Add at least one product'); return; }
-    setSaving(true);
-    setError('');
+    if (!customerName.trim()) { setError('Client name is required'); return; }
+    const itemRows = rows.filter(r => r.type === 'item') as ItemRow[];
+    if (itemRows.length === 0) { setError('Add at least one item'); return; }
+    setSaving(true); setError('');
     try {
-      const res = await quotationsApi.create(shopId, {
+      const payload = {
         customer_name: customerName,
         customer_email: customerEmail || undefined,
         customer_phone: customerPhone || undefined,
-        items,
+        customer_company: customerCompany || undefined,
+        items: rows.map(({ _id, ...rest }) => rest),
         subtotal,
         discount,
-        tax,
+        tax: taxAmount,
+        tax_rate: taxValue,
+        tax_type: taxType,
         total,
         notes: notes || undefined,
+        terms: terms || undefined,
+        payment_schedule: undefined,
+        company_address: companyAddress || undefined,
+        company_trn: companyTrn || undefined,
+        company_bank: companyBank || undefined,
         valid_until: validUntil,
-      });
+      };
+      const res = await quotationsApi.create(shopId, payload);
       onCreated(res.data.id);
     } catch (e: any) {
       setError(e?.response?.data?.detail ?? 'Failed to create quotation');
@@ -322,39 +342,46 @@ function CreateQuotationModal({
     }
   };
 
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    (p.sku ?? '').toLowerCase().includes(productSearch.toLowerCase())
+  );
+  const filteredCustomers = customers.filter(c =>
+    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    (c.phone ?? '').includes(customerSearch) ||
+    (c.email ?? '').toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto py-6">
-      <div className="bg-card rounded-2xl border border-border w-full max-w-2xl mx-4 shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto py-4 px-4">
+      <div className="bg-card rounded-2xl border border-border w-full max-w-4xl shadow-2xl">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card rounded-t-2xl z-10">
           <h2 className="text-lg font-bold text-foreground">New Quotation</h2>
           <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground transition">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-8">
 
-          {/* Customer */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-3">Customer</label>
-            <div className="relative mb-2">
-              <input type="text" placeholder="Search existing customers..."
+          {/* ── Client ── */}
+          <section>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Client</h3>
+            <div className="relative mb-3">
+              <input type="text" placeholder="Search existing clients..."
                 value={customerSearch}
-                onFocus={() => setShowCustomerPicker(true)}
-                onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerPicker(true); }}
-                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
-              {showCustomerPicker && filteredCustomers.length > 0 && (
-                <div className="absolute top-full mt-1 left-0 right-0 bg-card border border-border rounded-xl shadow-lg z-10 max-h-40 overflow-y-auto">
+                onFocus={() => setShowCustPicker(true)}
+                onChange={(e) => { setCustomerSearch(e.target.value); setShowCustPicker(true); }}
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm outline-none text-foreground placeholder:text-muted-foreground" />
+              {showCustPicker && filteredCustomers.length > 0 && (
+                <div className="absolute top-full mt-1 left-0 right-0 bg-card border border-border rounded-xl shadow-lg z-20 max-h-40 overflow-y-auto">
                   {filteredCustomers.slice(0, 6).map(c => (
                     <button key={c.id} type="button"
                       onClick={() => {
-                        setCustomerName(c.name);
-                        setCustomerPhone(c.phone ?? '');
-                        setCustomerEmail(c.email ?? '');
-                        setShowCustomerPicker(false);
-                        setCustomerSearch('');
+                        setCustomerName(c.name); setCustomerPhone(c.phone ?? '');
+                        setCustomerEmail(c.email ?? ''); setShowCustPicker(false); setCustomerSearch('');
                       }}
                       className="w-full text-left px-4 py-2.5 hover:bg-muted transition text-sm">
                       <span className="font-medium text-foreground">{c.name}</span>
@@ -364,176 +391,270 @@ function CreateQuotationModal({
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input type="text" placeholder="Full name *" value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
-              <input type="email" placeholder="Email (optional)" value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-                className="px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
-              <input type="tel" placeholder="Phone (optional)" value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className="px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Full Name *', value: customerName, set: setCustomerName, type: 'text' },
+                { label: 'Company', value: customerCompany, set: setCustomerCompany, type: 'text' },
+                { label: 'Email', value: customerEmail, set: setCustomerEmail, type: 'email' },
+                { label: 'Phone', value: customerPhone, set: setCustomerPhone, type: 'tel' },
+              ].map(f => (
+                <div key={f.label}>
+                  <label className="block text-xs text-muted-foreground mb-1">{f.label}</label>
+                  <input type={f.type} value={f.value} onChange={e => f.set(e.target.value)}
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground" />
+                </div>
+              ))}
             </div>
-          </div>
+          </section>
 
-          {/* Products */}
-          <div>
+          {/* ── Line Items ── */}
+          <section>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-foreground">Products</label>
-              <button type="button" onClick={() => setShowProductPicker(!showProductPicker)}
-                className="inline-flex items-center gap-1.5 text-xs bg-muted hover:bg-muted/70 border border-border text-foreground px-3 py-1.5 rounded-lg transition">
-                <Package className="w-3.5 h-3.5" /> Add Product
-              </button>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Line Items</h3>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowInvPicker(v => !v)}
+                  className="inline-flex items-center gap-1.5 text-xs border border-border text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg transition">
+                  <Package className="w-3.5 h-3.5" /> From Inventory
+                </button>
+                <button type="button" onClick={addSection}
+                  className="inline-flex items-center gap-1.5 text-xs border border-border text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg transition">
+                  + Section
+                </button>
+                <button type="button" onClick={addItem}
+                  className="inline-flex items-center gap-1.5 text-xs bg-foreground text-background px-3 py-1.5 rounded-lg transition hover:opacity-90">
+                  + Add Item
+                </button>
+              </div>
             </div>
 
-            {showProductPicker && (
+            {/* Inventory picker */}
+            {showInvPicker && (
               <div className="mb-3 border border-border rounded-xl overflow-hidden">
                 <div className="p-2 border-b border-border">
-                  <input type="text" placeholder="Search products..." value={productSearch}
-                    autoFocus
+                  <input type="text" placeholder="Search inventory..." value={productSearch} autoFocus
                     onChange={(e) => setProductSearch(e.target.value)}
                     className="w-full px-3 py-2 bg-muted rounded-lg text-sm outline-none text-foreground placeholder:text-muted-foreground" />
                 </div>
-                <div className="max-h-48 overflow-y-auto">
+                <div className="max-h-44 overflow-y-auto">
                   {filteredProducts.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-6">No products found</p>
                   ) : filteredProducts.slice(0, 10).map(p => (
-                    <button key={p.id} type="button" onClick={() => addProduct(p)}
+                    <button key={p.id} type="button" onClick={() => addFromInventory(p)}
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted transition border-b border-border/50 last:border-0">
                       <div className="text-left">
                         <p className="text-sm font-medium text-foreground">{p.name}</p>
                         {p.sku && <p className="text-xs text-muted-foreground">SKU: {p.sku}</p>}
-                        <p className={`text-xs ${p.quantity > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
-                          Stock: {p.quantity}
-                        </p>
                       </div>
-                      <span className="text-sm font-semibold text-foreground">{p.price.toLocaleString()} {sym}</span>
+                      <span className="text-sm font-semibold text-foreground">{Number(p.price).toLocaleString()} {sym}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {items.length === 0 ? (
+            {/* Rows */}
+            <div className="space-y-2">
+              {rows.map((row) =>
+                row.type === 'section' ? (
+                  <div key={row._id} className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center gap-2 bg-muted/60 border border-border rounded-xl px-3 py-2">
+                      <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground w-16">Section</span>
+                      <input type="text" placeholder="Section title e.g. Design, Development..."
+                        value={row.section_title}
+                        onChange={e => updateSection(row._id, e.target.value)}
+                        className="flex-1 bg-transparent outline-none text-sm font-semibold text-foreground placeholder:text-muted-foreground" />
+                    </div>
+                    <button type="button" onClick={() => removeRow(row._id)} className="text-muted-foreground hover:text-red-500 transition p-1">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div key={row._id} className="border border-border rounded-xl p-3 space-y-2 bg-card">
+                    <div className="flex gap-2">
+                      {/* Name */}
+                      <div className="flex-1">
+                        <input type="text" placeholder="Item name / service *"
+                          value={row.name}
+                          onChange={e => updateItem(row._id, { name: e.target.value })}
+                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground font-medium" />
+                      </div>
+                      {/* Unit */}
+                      <div className="w-28">
+                        <select value={row.unit} onChange={e => updateItem(row._id, { unit: e.target.value })}
+                          className="w-full px-2 py-2 bg-muted border border-border rounded-lg text-sm outline-none text-foreground">
+                          {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                      </div>
+                      {/* Qty */}
+                      <div className="w-20">
+                        <input type="number" min={0} step={0.5} placeholder="Qty"
+                          value={row.qty}
+                          onChange={e => updateItem(row._id, { qty: parseFloat(e.target.value) || 0 })}
+                          className="w-full px-2 py-2 bg-muted border border-border rounded-lg text-sm outline-none text-center text-foreground" />
+                      </div>
+                      {/* Price */}
+                      <div className="w-28">
+                        <input type="number" min={0} step={0.01} placeholder="Price"
+                          value={row.unit_price}
+                          onChange={e => updateItem(row._id, { unit_price: parseFloat(e.target.value) || 0 })}
+                          className="w-full px-2 py-2 bg-muted border border-border rounded-lg text-sm outline-none text-right text-foreground" />
+                      </div>
+                      {/* Total */}
+                      <div className="w-28 flex items-center justify-end">
+                        <span className="text-sm font-bold text-foreground tabular-nums">
+                          {row.total.toLocaleString()} {sym}
+                        </span>
+                      </div>
+                      {/* Delete */}
+                      <button type="button" onClick={() => removeRow(row._id)}
+                        className="text-muted-foreground hover:text-red-500 transition flex-shrink-0">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {/* Description */}
+                    <input type="text" placeholder="Description (optional) — e.g. Includes 3 revisions, delivered in 5 days"
+                      value={row.description}
+                      onChange={e => updateItem(row._id, { description: e.target.value })}
+                      className="w-full px-3 py-1.5 bg-transparent text-xs text-muted-foreground outline-none placeholder:text-muted-foreground/50 border-t border-border/50 pt-2" />
+                    {/* Optional toggle */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                        <input type="checkbox" checked={row.is_optional}
+                          onChange={e => updateItem(row._id, { is_optional: e.target.checked })}
+                          className="rounded" />
+                        Mark as optional add-on (excluded from total)
+                      </label>
+                      {row.is_optional && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 font-medium">Optional</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+
+            {rows.length === 0 && (
               <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
                 <Package className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
-                <p className="text-sm text-muted-foreground">No products added yet</p>
-              </div>
-            ) : (
-              <div className="border border-border rounded-xl overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 text-xs font-medium text-muted-foreground">Product</th>
-                      <th className="text-center p-3 text-xs font-medium text-muted-foreground">Stock</th>
-                      <th className="text-center p-3 text-xs font-medium text-muted-foreground">Qty</th>
-                      <th className="text-right p-3 text-xs font-medium text-muted-foreground">Price</th>
-                      <th className="text-right p-3 text-xs font-medium text-muted-foreground">Total</th>
-                      <th className="p-3" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {items.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="p-3">
-                          <p className="font-medium text-foreground">{item.name}</p>
-                          {item.sku && <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>}
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className={`text-xs font-medium ${(item.quantity_available ?? 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
-                            {item.quantity_available ?? '—'}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <input type="number" min={1} value={item.qty}
-                            onChange={(e) => updateQty(idx, parseInt(e.target.value) || 1)}
-                            className="w-16 text-center px-2 py-1 bg-muted border border-border rounded-lg text-sm outline-none text-foreground" />
-                        </td>
-                        <td className="p-3">
-                          <input type="number" min={0} step={0.01} value={item.unit_price}
-                            onChange={(e) => updatePrice(idx, parseFloat(e.target.value) || 0)}
-                            className="w-24 text-right px-2 py-1 bg-muted border border-border rounded-lg text-sm outline-none text-foreground" />
-                        </td>
-                        <td className="p-3 text-right font-semibold text-foreground">
-                          {item.total.toLocaleString()} {sym}
-                        </td>
-                        <td className="p-3">
-                          <button type="button" onClick={() => removeItem(idx)}
-                            className="text-muted-foreground hover:text-red-500 transition">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <p className="text-sm text-muted-foreground">No items yet — add items or sections above</p>
               </div>
             )}
-          </div>
+          </section>
 
-          {/* Totals row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Discount ({sym})</label>
-              <input type="number" min={0} step={0.01} value={discount}
-                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground" />
+          {/* ── Pricing ── */}
+          <section>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Pricing</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Discount ({sym})</label>
+                <input type="number" min={0} step={0.01} value={discount}
+                  onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground" />
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Tax</label>
+                <div className="flex gap-2">
+                  <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+                    {(['fixed', 'percent'] as const).map(t => (
+                      <button key={t} type="button" onClick={() => setTaxType(t)}
+                        className={`px-3 py-2 font-medium transition ${taxType === t ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
+                        {t === 'fixed' ? `${sym} Fixed` : '% VAT'}
+                      </button>
+                    ))}
+                  </div>
+                  <input type="number" min={0} step={0.01} value={taxValue}
+                    onChange={e => setTaxValue(parseFloat(e.target.value) || 0)}
+                    placeholder={taxType === 'percent' ? 'e.g. 5' : '0.00'}
+                    className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Tax ({sym})</label>
-              <input type="number" min={0} step={0.01} value={tax}
-                onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground" />
-            </div>
-          </div>
-
-          {/* Total display */}
-          {items.length > 0 && (
-            <div className="bg-muted/50 rounded-xl p-4 space-y-1.5">
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Subtotal</span><span>{subtotal.toLocaleString()} {sym}</span>
+            {/* Totals summary */}
+            <div className="bg-muted/40 rounded-xl p-4 space-y-1.5 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Subtotal</span><span>{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} {sym}</span>
               </div>
               {discount > 0 && (
-                <div className="flex justify-between text-sm text-red-500">
-                  <span>Discount</span><span>-{discount.toLocaleString()} {sym}</span>
+                <div className="flex justify-between text-red-500">
+                  <span>Discount</span><span>-{discount.toLocaleString(undefined, { minimumFractionDigits: 2 })} {sym}</span>
                 </div>
               )}
-              {tax > 0 && (
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Tax</span><span>+{tax.toLocaleString()} {sym}</span>
+              {taxValue > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Tax{taxType === 'percent' ? ` (${taxValue}%)` : ''}</span>
+                  <span>+{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} {sym}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-foreground pt-1 border-t border-border">
-                <span>Total</span><span>{total.toLocaleString()} {sym}</span>
+              <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-2 mt-1">
+                <span>Total</span>
+                <span className="text-indigo-500">{total.toLocaleString(undefined, { minimumFractionDigits: 2 })} {sym}</span>
               </div>
             </div>
-          )}
+          </section>
 
-          {/* Valid Until + Notes */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Valid Until *</label>
-              <input type="date" value={validUntil}
-                onChange={(e) => setValidUntil(e.target.value)}
-                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground" />
+          {/* ── Details ── */}
+          <section>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Details</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Valid Until *</label>
+                <input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)}
+                  className="w-full sm:w-48 px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground" />
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Notes (shown on PDF)</label>
+                <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
+                  placeholder="e.g. Prices are valid for 14 days from issue date"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Terms & Conditions</label>
+                <textarea rows={3} value={terms} onChange={e => setTerms(e.target.value)}
+                  placeholder="e.g. 50% deposit required to begin. All work is subject to our standard T&C. Revisions: 2 rounds included."
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground resize-none" />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Notes (optional)</label>
-              <input type="text" placeholder="e.g. Prices valid for 7 days" value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
+          </section>
+
+          {/* ── Company Info ── */}
+          <section>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Company Info on PDF</h3>
+            <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
+              <Info className="w-3 h-3" /> Optional — appears below your shop name on the PDF
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Address</label>
+                <textarea rows={2} value={companyAddress} onChange={e => setCompanyAddress(e.target.value)}
+                  placeholder="e.g. NexCode Nova LLC, Business Bay, Dubai, UAE"
+                  className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">TRN / VAT Number</label>
+                  <input type="text" value={companyTrn} onChange={e => setCompanyTrn(e.target.value)}
+                    placeholder="e.g. 100123456789003"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">Bank / Payment Details</label>
+                  <input type="text" value={companyBank} onChange={e => setCompanyBank(e.target.value)}
+                    placeholder="e.g. Emirates NBD IBAN: AE070331234567890123456"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-foreground/10 text-foreground placeholder:text-muted-foreground" />
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
           {error && (
             <p className="text-sm text-red-500 bg-red-500/10 px-4 py-2.5 rounded-lg">{error}</p>
           )}
         </div>
 
-        <div className="flex gap-3 p-6 border-t border-border">
+        <div className="flex gap-3 px-6 py-4 border-t border-border sticky bottom-0 bg-card rounded-b-2xl">
           <button type="button" onClick={onClose}
-            className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition">
+            className="px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition">
             Cancel
           </button>
           <button type="button" onClick={handleSubmit} disabled={saving}
@@ -541,6 +662,7 @@ function CreateQuotationModal({
             {saving ? 'Creating...' : 'Create Quotation'}
           </button>
         </div>
+
       </div>
     </div>
   );
