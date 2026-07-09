@@ -783,6 +783,62 @@ def get_dashboard_stats(
         Ord.created_at.desc()
     ).limit(5).all()
 
+    # Order status breakdown (all time)
+    from sqlalchemy import extract
+    status_rows = db.query(Ord.status, func.count(Ord.id)).filter(
+        Ord.shop_id == shop_id
+    ).group_by(Ord.status).all()
+    order_status_breakdown = {r[0]: r[1] for r in status_rows}
+
+    # Sales by channel (last 30 days)
+    thirty_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    channel_rows = db.query(
+        Ord.source,
+        func.sum(Ord.total).label("sales"),
+        func.count(Ord.id).label("orders"),
+    ).filter(
+        Ord.shop_id == shop_id,
+        Ord.status != "cancelled",
+        Ord.created_at >= thirty_ago,
+    ).group_by(Ord.source).all()
+    channel_breakdown = [
+        {"source": r[0] or "pos", "sales": float(r[1] or 0), "orders": int(r[2])}
+        for r in channel_rows
+    ]
+
+    # Hourly order activity (last 24 hours)
+    day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+    hourly_rows = db.query(
+        extract("hour", Ord.created_at).label("hour"),
+        func.count(Ord.id).label("cnt"),
+        func.sum(Ord.total).label("sales"),
+    ).filter(
+        Ord.shop_id == shop_id,
+        Ord.created_at >= day_ago,
+    ).group_by(extract("hour", Ord.created_at)).order_by(extract("hour", Ord.created_at)).all()
+    hourly_orders = [
+        {"hour": int(r.hour), "orders": int(r.cnt), "sales": float(r.sales or 0)}
+        for r in hourly_rows
+    ]
+
+    # Top 5 products by revenue (last 30 days)
+    from app.models.order import OrderItem as OrdItemModel
+    top_products_rows = db.query(
+        OrdItemModel.product_name,
+        func.sum(OrdItemModel.total).label("revenue"),
+        func.sum(OrdItemModel.quantity).label("qty"),
+    ).join(Ord, Ord.id == OrdItemModel.order_id).filter(
+        Ord.shop_id == shop_id,
+        Ord.status != "cancelled",
+        Ord.created_at >= thirty_ago,
+    ).group_by(OrdItemModel.product_name).order_by(
+        func.sum(OrdItemModel.total).desc()
+    ).limit(5).all()
+    top_products = [
+        {"name": r[0] or "Unknown", "revenue": float(r[1] or 0), "qty": int(r[2] or 0)}
+        for r in top_products_rows
+    ]
+
     return {
         "sales": float(today_sales),
         "salesChange": sales_change,
@@ -811,6 +867,10 @@ def get_dashboard_stats(
             }
             for o in recent_orders
         ],
+        "orderStatusBreakdown": order_status_breakdown,
+        "channelBreakdown": channel_breakdown,
+        "hourlyOrders": hourly_orders,
+        "topProducts": top_products,
     }
 
 

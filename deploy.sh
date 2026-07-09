@@ -25,12 +25,12 @@ build_app() {
   echo "--- Building $PM2_NAME ---"
   cd "$PROJECT_DIR"
 
-  # Remove only the specific files that cause Next.js build errors.
-  # Do NOT rm -rf .next — the live server needs it while we build.
-  rm -rf  "$APP_DIR/.next/export"                   2>/dev/null || true
-  rm -f   "$APP_DIR/.next/server/pages-manifest.json" 2>/dev/null || true
+  # Always clear .next fully before building to avoid ENOENT / corrupt state.
+  # The live server keeps running on its existing process during the build;
+  # pm2 reload below is what switches traffic to the new build.
+  rm -rf "$APP_DIR/.next" 2>/dev/null || true
 
-  # Build — if this fails set -e exits here; the old .next is untouched.
+  # Build — if this fails set -e exits here.
   npm run build --workspace="$APP_DIR"
 
   # Build succeeded — reload (or start) pm2
