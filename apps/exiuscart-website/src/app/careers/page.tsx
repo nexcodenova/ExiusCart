@@ -226,7 +226,7 @@ export default function CareersPage() {
                   <MapPin className="w-4 h-4 text-[#9B6FF9] flex-shrink-0" />
                   <div>
                     <p className="text-white font-semibold text-sm">Sri Lanka · Dubai</p>
-                    <p className="text-gray-500 text-xs">Fairan Pvt Ltd · NexCode Nova</p>
+                    <p className="text-gray-500 text-xs">Fairam Pvt Ltd · NexCode Nova</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
