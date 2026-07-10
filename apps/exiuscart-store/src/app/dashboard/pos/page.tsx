@@ -295,8 +295,6 @@ export default function POSPage() {
     setCart([]);
     setDiscount(0);
     setServiceCharge(0);
-    setTip(0);
-    setTipCustom('');
     setCustomerName('');
     setCustomerPhone('');
     setCustomerEmail('');
