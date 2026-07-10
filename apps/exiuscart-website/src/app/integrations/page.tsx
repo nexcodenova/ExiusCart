@@ -196,8 +196,8 @@ export default function IntegrationsPage() {
               Sales Channel Sync
             </span>
           </div>
-          {/* Featured two */}
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
+          {/* Featured three */}
+          <div className="grid md:grid-cols-3 gap-4 mb-4">
 
             {/* Shopify */}
             <div className="bg-[#0B1121] rounded-2xl p-8 flex flex-col justify-between min-h-[220px] group hover:ring-2 hover:ring-[#6B3FD9]/40 transition-all">
@@ -233,6 +233,26 @@ export default function IntegrationsPage() {
                 className="inline-flex items-center gap-2 text-[#6B3FD9] hover:text-[#5A2EC9] font-semibold text-sm transition-colors">
                 Become a TheDersi seller <ArrowRight className="w-4 h-4" />
               </Link>
+            </div>
+
+            {/* Daraz */}
+            <div className="bg-white rounded-2xl p-8 border border-black/6 flex flex-col justify-between min-h-[220px] group hover:border-orange-300 hover:shadow-sm transition-all">
+              <div>
+                <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-5">
+                  <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#F85606">
+                    <path d="M20 4H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1 11.5c0 .83-.67 1.5-1.5 1.5h-11C5.67 17 5 16.33 5 15.5v-7C5 7.67 5.67 7 6.5 7h11c.83 0 1.5.67 1.5 1.5v7zm-5.5-5H12v-1.5c0-.28-.22-.5-.5-.5s-.5.22-.5.5v4c0 .28.22.5.5.5s.5-.22.5-.5V13h1.5c.83 0 1.5-.67 1.5-1.5S14.33 10 13.5 10zm0 2H12v-1h1.5c.28 0 .5.22.5.5s-.22.5-.5.5z"/>
+                  </svg>
+                </div>
+                <h3 className="text-gray-900 font-bold text-lg mb-2">Daraz</h3>
+                <p className="text-gray-500 text-sm leading-relaxed mb-5">
+                  Sri Lanka's #1 marketplace, now connected to ExiusCart. Orders sync automatically,
+                  stock deducts in real time, and fulfilment updates push back to Daraz instantly.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-full w-fit">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" />
+                Available on paid plans
+              </span>
             </div>
 
           </div>
