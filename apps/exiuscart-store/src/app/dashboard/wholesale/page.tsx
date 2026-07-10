@@ -72,6 +72,7 @@ function fmt(n: number, currency = 'LKR') {
 export default function WholesalePage() {
   const [shopId, setShopId] = useState('');
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
+  const [planType, setPlanType] = useState<string>('');
   const [tab, setTab] = useState<'overview' | 'catalogue' | 'buyers' | 'orders'>('overview');
   const [products, setProducts] = useState<WProduct[]>([]);
   const [buyers, setBuyers] = useState<Buyer[]>([]);
@@ -102,8 +103,10 @@ export default function WholesalePage() {
   useEffect(() => {
     if (!shopId) return;
     subscriptionApi.getCurrent(shopId).then(r => {
-      setIsPremium(r.data?.plan?.plan_type === 'premium');
-    }).catch(() => setIsPremium(false));
+      const pt = r.data?.plan?.plan_type ?? '';
+      setPlanType(pt);
+      setIsPremium(pt === 'premium');
+    }).catch(() => { setPlanType(''); setIsPremium(false); });
   }, [shopId]);
 
   const loadAll = async () => {
@@ -225,6 +228,7 @@ export default function WholesalePage() {
   // ── Premium gate ──
 
   if (isPremium === false) {
+    const isTheDersiPlan = planType === 'thedersi_basic' || planType === 'thedersi_pro';
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="bg-card border border-border rounded-2xl p-10 max-w-md text-center space-y-5">
@@ -233,11 +237,22 @@ export default function WholesalePage() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-foreground mb-2">Wholesale — Premium Feature</h2>
-            <p className="text-sm text-muted-foreground">Build a wholesale catalogue, manage B2B buyers, auto-generate quotations, and track wholesale revenue — all on Premium.</p>
+            {isTheDersiPlan ? (
+              <p className="text-sm text-muted-foreground">
+                Wholesale B2B is available for <span className="font-semibold text-foreground">ExiusCart Premium subscribers</span> only.
+                Your plan is managed by TheDersi — contact TheDersi for plan information.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Build a wholesale catalogue, manage B2B buyers, auto-generate quotations, and track wholesale revenue — all on Premium.
+              </p>
+            )}
           </div>
-          <a href="/dashboard/billing" className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-semibold text-sm transition">
-            <Crown className="w-4 h-4" /> Upgrade to Premium
-          </a>
+          {!isTheDersiPlan && (
+            <a href="/dashboard/billing" className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-semibold text-sm transition">
+              <Crown className="w-4 h-4" /> Upgrade to Premium
+            </a>
+          )}
         </div>
       </div>
     );

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   BarChart3, TrendingUp, DollarSign, ShoppingCart, FileText, Package, Trophy,
   Boxes, CalendarDays, Zap, ArrowUpRight, ArrowDownRight,
+  AlertCircle, CheckCircle, Clock, Flame, Snowflake,
 } from 'lucide-react';
 import {
   ResponsiveContainer, ComposedChart, Area, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -37,6 +38,20 @@ export default function ReportsPage() {
   const [channelRevenue, setChannelRevenue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
+  const [activeTab, setActiveTab] = useState<'sales' | 'pl' | 'aging' | 'profitability'>('sales');
+  // P&L
+  const [plData, setPlData] = useState<any>(null);
+  const [plLoading, setPlLoading] = useState(false);
+  const now = new Date();
+  const [plFrom, setPlFrom] = useState(new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]);
+  const [plTo, setPlTo] = useState(now.toISOString().split('T')[0]);
+  // AR Aging
+  const [agingData, setAgingData] = useState<any>(null);
+  const [agingLoading, setAgingLoading] = useState(false);
+  // Product Profitability
+  const [profitData, setProfitData] = useState<any>(null);
+  const [profitLoading, setProfitLoading] = useState(false);
+
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const { fmt } = useCurrency();
 
@@ -58,6 +73,39 @@ export default function ReportsPage() {
       .catch(() => { setSalesData([]); setTopProducts([]); setChannelRevenue([]); })
       .finally(() => setLoading(false));
   }, [shopId, period]);
+
+  const fetchPL = () => {
+    if (!shopId) return;
+    setPlLoading(true);
+    reportsApi.getPL(shopId, { from_date: plFrom, to_date: plTo })
+      .then(r => setPlData(r.data))
+      .catch(() => setPlData(null))
+      .finally(() => setPlLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab === 'pl' && shopId && !plData) fetchPL();
+  }, [activeTab, shopId]);
+
+  useEffect(() => {
+    if (activeTab === 'aging' && shopId && !agingData) {
+      setAgingLoading(true);
+      reportsApi.getARaging(shopId)
+        .then(r => setAgingData(r.data))
+        .catch(() => setAgingData(null))
+        .finally(() => setAgingLoading(false));
+    }
+  }, [activeTab, shopId]);
+
+  useEffect(() => {
+    if (activeTab === 'profitability' && shopId && !profitData) {
+      setProfitLoading(true);
+      reportsApi.getProductProfitability(shopId)
+        .then(r => setProfitData(r.data))
+        .catch(() => setProfitData(null))
+        .finally(() => setProfitLoading(false));
+    }
+  }, [activeTab, shopId]);
 
   const totalSales = salesData.reduce((s, d) => s + (d.sales ?? 0), 0);
   const totalOrders = salesData.reduce((s, d) => s + (d.orders ?? 0), 0);
@@ -111,28 +159,51 @@ export default function ReportsPage() {
   if (topProducts[0]) insights.push(`"${topProducts[0].name}" is your top product — ${Math.round(((topProducts[0].revenue ?? 0) / (totalSales || 1)) * 100)}% of total revenue.`);
   if (salesDelta !== null) insights.push(`Revenue ${salesDelta >= 0 ? 'grew' : 'fell'} ${Math.abs(salesDelta)}% in the second half of this period vs the first.`);
 
+  const TABS = [
+    { key: 'sales', label: 'Sales' },
+    { key: 'pl', label: 'P&L Statement' },
+    { key: 'aging', label: 'AR Aging' },
+    { key: 'profitability', label: 'Profitability' },
+  ] as const;
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Sales performance &amp; product insights</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-border bg-muted/40 p-0.5">
-            {(['week', 'month', 'year'] as const).map((p) => (
-              <button key={p} onClick={() => setPeriod(p)}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition ${period === p ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                {p}
-              </button>
-            ))}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">Sales performance, financials &amp; product insights</p>
           </div>
-          <Link href="/dashboard/reports/vat" className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted">
-            <FileText className="h-4 w-4" /> VAT
-          </Link>
+          <div className="flex items-center gap-2">
+            {activeTab === 'sales' && (
+              <div className="flex rounded-lg border border-border bg-muted/40 p-0.5">
+                {(['week', 'month', 'year'] as const).map((p) => (
+                  <button key={p} onClick={() => setPeriod(p)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition ${period === p ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Link href="/dashboard/reports/vat" className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted">
+              <FileText className="h-4 w-4" /> VAT
+            </Link>
+          </div>
+        </div>
+        {/* Tab navigation */}
+        <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-muted/40 p-1">
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setActiveTab(t.key)}
+              className={`shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition ${activeTab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* ── SALES TAB ──────────────────────────────────────────────────────────── */}
+      {activeTab === 'sales' && <>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
@@ -346,6 +417,315 @@ export default function ReportsPage() {
             </div>
           )}
         </>
+      )}
+
+      </> /* end sales tab */}
+
+      {/* ── P&L TAB ────────────────────────────────────────────────────────────── */}
+      {activeTab === 'pl' && (
+        <div className="space-y-5">
+          {/* Date range */}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">From</label>
+              <input type="date" value={plFrom} onChange={e => setPlFrom(e.target.value)}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">To</label>
+              <input type="date" value={plTo} onChange={e => setPlTo(e.target.value)}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <button onClick={fetchPL}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
+              Run Report
+            </button>
+          </div>
+
+          {plLoading && (
+            <div className="grid gap-4 sm:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted/40" />
+              ))}
+            </div>
+          )}
+
+          {!plLoading && !plData && (
+            <div className="rounded-2xl border border-border bg-card p-12 text-center">
+              <DollarSign className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Select a date range and click Run Report</p>
+            </div>
+          )}
+
+          {!plLoading && plData && (() => {
+            const r = plData;
+            const cards = [
+              { label: 'Total Revenue', value: fmt(r.revenue.total, 0), sub: `Retail ${fmt(r.revenue.retail, 0)} + Wholesale ${fmt(r.revenue.wholesale, 0)}`, color: 'text-indigo-600 dark:text-indigo-400' },
+              { label: 'Cost of Goods', value: fmt(r.cogs, 0), sub: 'Received purchase orders', color: 'text-red-500' },
+              { label: 'Gross Profit', value: fmt(r.gross_profit, 0), sub: `Margin: ${r.gross_margin_pct}%`, color: r.gross_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500' },
+              { label: 'Total Expenses', value: fmt(r.total_expenses, 0), sub: `${Object.keys(r.expenses_by_category).length} categories`, color: 'text-amber-600 dark:text-amber-400' },
+              { label: 'Net Profit', value: fmt(r.net_profit, 0), sub: `Net margin: ${r.net_margin_pct}%`, color: r.net_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500' },
+            ];
+            return (
+              <>
+                <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                  {cards.map(c => (
+                    <div key={c.label} className="rounded-2xl border border-border bg-card p-4">
+                      <p className="text-xs font-medium text-muted-foreground">{c.label}</p>
+                      <p className={`mt-1 text-xl font-bold tabular-nums ${c.color}`}>{c.value}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{c.sub}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-2">
+                  {/* Expenses by category */}
+                  {Object.keys(r.expenses_by_category).length > 0 && (
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <h3 className="mb-4 font-semibold text-foreground">Expenses by Category</h3>
+                      <div className="space-y-3">
+                        {Object.entries(r.expenses_by_category as Record<string, number>).map(([cat, amt]) => {
+                          const pct = r.total_expenses > 0 ? (amt / r.total_expenses) * 100 : 0;
+                          return (
+                            <div key={cat}>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="text-foreground">{cat}</span>
+                                <span className="font-semibold tabular-nums text-foreground">{fmt(amt, 0)} <span className="text-xs text-muted-foreground">({Math.round(pct)}%)</span></span>
+                              </div>
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                                <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Monthly breakdown table */}
+                  {r.monthly.length > 0 && (
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <h3 className="mb-4 font-semibold text-foreground">Monthly Breakdown</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                              <th className="pb-2 font-medium">Month</th>
+                              <th className="pb-2 text-right font-medium">Revenue</th>
+                              <th className="pb-2 text-right font-medium">COGS</th>
+                              <th className="pb-2 text-right font-medium">Gross</th>
+                              <th className="pb-2 text-right font-medium">Expenses</th>
+                              <th className="pb-2 text-right font-medium">Net</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {r.monthly.map((m: any) => (
+                              <tr key={m.month} className="text-xs">
+                                <td className="py-2 font-medium text-foreground">{m.month}</td>
+                                <td className="py-2 text-right tabular-nums text-foreground">{fmt(m.revenue, 0)}</td>
+                                <td className="py-2 text-right tabular-nums text-muted-foreground">{fmt(m.cogs, 0)}</td>
+                                <td className="py-2 text-right tabular-nums text-foreground">{fmt(m.gross_profit, 0)}</td>
+                                <td className="py-2 text-right tabular-nums text-muted-foreground">{fmt(m.expenses, 0)}</td>
+                                <td className={`py-2 text-right tabular-nums font-semibold ${m.net_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{fmt(m.net_profit, 0)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ── AR AGING TAB ───────────────────────────────────────────────────────── */}
+      {activeTab === 'aging' && (
+        <div className="space-y-5">
+          {agingLoading && <div className="h-40 animate-pulse rounded-2xl bg-muted/40" />}
+
+          {!agingLoading && !agingData && (
+            <div className="rounded-2xl border border-border bg-card p-12 text-center">
+              <Clock className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Loading AR aging data...</p>
+            </div>
+          )}
+
+          {!agingLoading && agingData && (() => {
+            const d = agingData;
+            const bucketDefs = [
+              { key: '0_30', label: '0–30 days', color: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+              { key: '31_60', label: '31–60 days', color: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+              { key: '61_90', label: '61–90 days', color: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-400', badge: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+              { key: '90_plus', label: '90+ days', color: 'bg-red-500', text: 'text-red-500', badge: 'bg-red-500/10 text-red-500' },
+            ];
+            return (
+              <>
+                {/* Summary card */}
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <p className="text-sm text-muted-foreground">Total Outstanding</p>
+                  <p className="mt-1 text-3xl font-bold tabular-nums text-foreground">{fmt(d.total_outstanding, 0)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{d.count} open quotation{d.count !== 1 ? 's' : ''}</p>
+                </div>
+
+                {/* Bucket cards */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {bucketDefs.map(b => (
+                    <div key={b.key} className="rounded-2xl border border-border bg-card p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${b.color}`} />
+                        <span className="text-xs font-medium text-muted-foreground">{b.label}</span>
+                      </div>
+                      <p className={`text-xl font-bold tabular-nums ${b.text}`}>{fmt(d.totals[b.key], 0)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{d.buckets[b.key]?.length ?? 0} quote{d.buckets[b.key]?.length !== 1 ? 's' : ''}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quotations per bucket */}
+                {bucketDefs.map(b => {
+                  const items: any[] = d.buckets[b.key] ?? [];
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={b.key} className="rounded-2xl border border-border bg-card p-5">
+                      <h3 className="mb-4 flex items-center gap-2 font-semibold text-foreground">
+                        <span className={`h-2.5 w-2.5 rounded-full ${b.color}`} />
+                        {b.label}
+                        <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold ${b.badge}`}>{items.length}</span>
+                      </h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                              <th className="pb-2 font-medium">Quote #</th>
+                              <th className="pb-2 font-medium">Customer</th>
+                              <th className="pb-2 font-medium">Age</th>
+                              <th className="pb-2 font-medium">Valid Until</th>
+                              <th className="pb-2 text-right font-medium">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {items.map((q: any) => (
+                              <tr key={q.id} className="text-xs">
+                                <td className="py-2 font-mono text-foreground">{q.quote_number}</td>
+                                <td className="py-2 text-foreground">{q.customer_name}</td>
+                                <td className={`py-2 font-semibold ${b.text}`}>{q.age_days}d</td>
+                                <td className="py-2 text-muted-foreground">{q.valid_until}</td>
+                                <td className="py-2 text-right tabular-nums font-semibold text-foreground">{fmt(q.amount, 0)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ── PRODUCT PROFITABILITY TAB ───────────────────────────────────────────── */}
+      {activeTab === 'profitability' && (
+        <div className="space-y-5">
+          {profitLoading && <div className="h-40 animate-pulse rounded-2xl bg-muted/40" />}
+
+          {!profitLoading && !profitData && (
+            <div className="rounded-2xl border border-border bg-card p-12 text-center">
+              <Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Loading profitability data...</p>
+            </div>
+          )}
+
+          {!profitLoading && profitData && (() => {
+            const products: any[] = profitData.products ?? [];
+            const totalRev = products.reduce((s: number, p: any) => s + p.revenue, 0);
+            const totalProfit = products.reduce((s: number, p: any) => s + p.gross_profit, 0);
+            const avgMargin = totalRev > 0 ? (totalProfit / totalRev) * 100 : 0;
+            return (
+              <>
+                {/* Summary */}
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-border bg-card p-4">
+                    <p className="text-xs text-muted-foreground">Total Revenue</p>
+                    <p className="mt-1 text-xl font-bold tabular-nums text-indigo-600 dark:text-indigo-400">{fmt(totalRev, 0)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-card p-4">
+                    <p className="text-xs text-muted-foreground">Total Gross Profit</p>
+                    <p className={`mt-1 text-xl font-bold tabular-nums ${totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{fmt(totalProfit, 0)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-card p-4">
+                    <p className="text-xs text-muted-foreground">Avg Gross Margin</p>
+                    <p className={`mt-1 text-xl font-bold tabular-nums ${avgMargin >= 40 ? 'text-emerald-600 dark:text-emerald-400' : avgMargin >= 20 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500'}`}>{avgMargin.toFixed(1)}%</p>
+                  </div>
+                </div>
+
+                {products.length === 0 ? (
+                  <div className="rounded-2xl border border-border bg-card p-12 text-center">
+                    <Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">No product sales found for this period.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-border bg-card p-5">
+                    <div className="mb-1 flex items-center justify-between">
+                      <h3 className="font-semibold text-foreground">Products by Profitability</h3>
+                      <span className="text-xs text-muted-foreground">{profitData.period.from} → {profitData.period.to}</span>
+                    </div>
+                    <p className="mb-4 text-xs text-muted-foreground">Sorted by revenue. Margin bar: green ≥40%, amber ≥20%, red below.</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                            <th className="pb-2 font-medium">Product</th>
+                            <th className="pb-2 text-right font-medium">Revenue</th>
+                            <th className="pb-2 text-right font-medium">Units</th>
+                            <th className="pb-2 text-right font-medium">COGS</th>
+                            <th className="pb-2 text-right font-medium">Gross Profit</th>
+                            <th className="pb-2 font-medium pl-4">Margin</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {products.map((p: any) => {
+                            const marginColor = p.margin_pct >= 40
+                              ? 'bg-emerald-500'
+                              : p.margin_pct >= 20
+                              ? 'bg-amber-500'
+                              : 'bg-red-500';
+                            const marginTextColor = p.margin_pct >= 40
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : p.margin_pct >= 20
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-red-500';
+                            return (
+                              <tr key={p.product_id}>
+                                <td className="py-2.5 text-foreground font-medium max-w-[180px] truncate">{p.name}</td>
+                                <td className="py-2.5 text-right tabular-nums text-foreground">{fmt(p.revenue, 0)}</td>
+                                <td className="py-2.5 text-right tabular-nums text-muted-foreground">{p.units_sold}</td>
+                                <td className="py-2.5 text-right tabular-nums text-muted-foreground">{fmt(p.cogs, 0)}</td>
+                                <td className={`py-2.5 text-right tabular-nums font-semibold ${p.gross_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{fmt(p.gross_profit, 0)}</td>
+                                <td className="py-2.5 pl-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
+                                      <div className={`h-full rounded-full transition-all ${marginColor}`} style={{ width: `${Math.min(100, Math.max(0, p.margin_pct))}%` }} />
+                                    </div>
+                                    <span className={`text-xs font-semibold tabular-nums ${marginTextColor}`}>{p.margin_pct}%</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
       )}
     </div>
   );

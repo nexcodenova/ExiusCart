@@ -137,6 +137,14 @@ export const reportsApi = {
     api.get(`/shops/${shopId}/reports/vat`, { params }),
   getFinancialSummary: (shopId: string, params: { from: string; to: string }) =>
     api.get(`/shops/${shopId}/reports/financial-summary`, { params }),
+  getPL: (shopId: string, params: { from_date: string; to_date: string }) =>
+    api.get(`/shops/${shopId}/reports/pl`, { params }),
+  getARaging: (shopId: string) =>
+    api.get(`/shops/${shopId}/reports/ar-aging`),
+  getProductProfitability: (shopId: string, params?: { from_date?: string; to_date?: string }) =>
+    api.get(`/shops/${shopId}/reports/product-profitability`, { params }),
+  getProductPerformance: (shopId: string) =>
+    api.get(`/shops/${shopId}/reports/product-performance`),
 };
 
 // ── Webhooks ──────────────────────────────────────────

@@ -5,9 +5,9 @@ import {
   Plus, Search, Edit, Trash2, Package, X, ChevronDown,
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
-  Printer, Lock,
+  Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi, bundlesApi, suppliersApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
@@ -190,6 +190,13 @@ export default function ProductsPage() {
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [planType, setPlanType] = useState<string>('');
+  const [perfData, setPerfData] = useState<Record<string, { revenue: number; revenue_30d: number; units_sold: number; heat: string; margin_pct: number; days_since_sale: number }>>({});
+  const [sortBy, setSortBy] = useState<'default' | 'revenue' | 'margin' | 'stock'>('default');
+
+  useEffect(() => {
+    if (!shopId) return;
+    reportsApi.getProductPerformance(shopId).then(r => setPerfData(r.data ?? {})).catch(() => {});
+  }, [shopId]);
 
   useEffect(() => {
     if (!shopId) return;
@@ -227,11 +234,18 @@ export default function ProductsPage() {
     setSelectedForPrint(new Set());
   };
 
-  const displayedProducts = stockFilter === 'low'
+  const filteredProducts = stockFilter === 'low'
     ? products.filter(p => p.stock > 0 && p.stock <= p.lowStockAlert)
     : stockFilter === 'out'
     ? products.filter(p => p.stock === 0)
     : products;
+
+  const displayedProducts = [...filteredProducts].sort((a, b) => {
+    if (sortBy === 'revenue') return (perfData[b.id]?.revenue ?? 0) - (perfData[a.id]?.revenue ?? 0);
+    if (sortBy === 'margin') return (perfData[b.id]?.margin_pct ?? 0) - (perfData[a.id]?.margin_pct ?? 0);
+    if (sortBy === 'stock') return a.stock - b.stock;
+    return 0;
+  });
 
   return (
     <div className="space-y-6">
@@ -369,8 +383,19 @@ export default function ProductsPage() {
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
           </div>
-          {/* Stock quick-filters */}
-          <div className="flex gap-2 flex-wrap">
+          {/* Sort + Stock quick-filters */}
+          <div className="flex gap-2 flex-wrap items-center">
+            <div className="relative">
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
+                className="appearance-none pl-8 pr-8 py-1.5 bg-muted border border-border rounded-lg text-xs font-medium text-foreground focus:ring-2 focus:ring-foreground/10 outline-none cursor-pointer">
+                <option value="default">Sort: Default</option>
+                <option value="revenue">Sort: Revenue ↓</option>
+                <option value="margin">Sort: Margin ↓</option>
+                <option value="stock">Sort: Stock ↑</option>
+              </select>
+              <ArrowUpDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            </div>
             <button
               onClick={() => setStockFilter('all')}
               className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'all' ? 'bg-foreground text-background border-foreground' : 'bg-muted text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground'}`}
@@ -457,6 +482,8 @@ export default function ProductsPage() {
                     <th className="text-left p-4 text-sm font-medium text-muted-foreground">Category</th>
                     <th className="text-right p-4 text-sm font-medium text-muted-foreground">Cost</th>
                     <th className="text-right p-4 text-sm font-medium text-muted-foreground">Price</th>
+                    <th className="text-right p-4 text-sm font-medium text-muted-foreground">Revenue</th>
+                    <th className="text-right p-4 text-sm font-medium text-muted-foreground">Margin</th>
                     <th className="text-center p-4 text-sm font-medium text-muted-foreground">Stock</th>
                     <th className="text-right p-4 text-sm font-medium text-muted-foreground">Actions</th>
                   </tr>
@@ -484,7 +511,12 @@ export default function ProductsPage() {
                               : <Package className="w-6 h-6 text-muted-foreground" />}
                           </div>
                           <div>
-                            <span className="font-medium text-foreground">{product.name}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-foreground">{product.name}</span>
+                              {perfData[product.id]?.heat === 'hot' && <Flame className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+                              {perfData[product.id]?.heat === 'moving' && <TrendingUp className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                              {perfData[product.id] && perfData[product.id].heat === 'slow' && <Snowflake className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                            </div>
                             <p className="text-xs text-muted-foreground/60 font-mono">#{product.id}</p>
                             {channelStatuses[product.id]?.thedersi && (() => {
                               const s = channelStatuses[product.id].thedersi;
@@ -509,6 +541,21 @@ export default function ProductsPage() {
                       <td className="p-4"><span className="text-sm text-foreground">{product.category}</span></td>
                       <td className="p-4 text-right"><span className="text-sm text-muted-foreground">{product.costPrice} {sym}</span></td>
                       <td className="p-4 text-right"><span className="text-sm font-medium text-foreground">{product.sellingPrice} {sym}</span></td>
+                      <td className="p-4 text-right">
+                        {perfData[product.id] ? (
+                          <div>
+                            <span className="text-sm font-medium text-foreground">{sym}{Math.round(perfData[product.id].revenue).toLocaleString()}</span>
+                            {perfData[product.id].revenue_30d > 0 && <p className="text-xs text-muted-foreground">{sym}{Math.round(perfData[product.id].revenue_30d).toLocaleString()} /30d</p>}
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </td>
+                      <td className="p-4 text-right">
+                        {perfData[product.id]?.margin_pct ? (
+                          <span className={`text-sm font-semibold ${perfData[product.id].margin_pct >= 40 ? 'text-green-600 dark:text-green-400' : perfData[product.id].margin_pct >= 20 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500'}`}>
+                            {perfData[product.id].margin_pct}%
+                          </span>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </td>
                       <td className="p-4 text-center">
                         <span className={`text-sm font-medium px-2 py-1 rounded-full ${
                           product.stock === 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400'
@@ -562,7 +609,11 @@ export default function ProductsPage() {
                         : <Package className="w-8 h-8 text-muted-foreground" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground truncate">{product.name}</h3>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-medium text-foreground truncate">{product.name}</h3>
+                        {perfData[product.id]?.heat === 'hot' && <Flame className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+                        {perfData[product.id]?.heat === 'moving' && <TrendingUp className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                      </div>
                       <p className="text-xs text-muted-foreground font-mono mt-0.5">{product.sku}<span className="text-muted-foreground/50"> · #{product.id}</span></p>
                       {channelStatuses[product.id]?.thedersi && (() => {
                         const s = channelStatuses[product.id].thedersi;
@@ -580,11 +631,17 @@ export default function ProductsPage() {
                           </>
                         );
                       })()}
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <span className="text-sm font-semibold text-foreground">{product.sellingPrice} {sym}</span>
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${product.stock === 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400' : product.stock <= product.lowStockAlert ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400' : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>
                           {product.stock} in stock
                         </span>
+                        {perfData[product.id]?.revenue > 0 && (
+                          <span className="text-xs text-muted-foreground">{sym}{Math.round(perfData[product.id].revenue).toLocaleString()} earned</span>
+                        )}
+                        {perfData[product.id]?.margin_pct > 0 && (
+                          <span className={`text-xs font-semibold ${perfData[product.id].margin_pct >= 40 ? 'text-green-600 dark:text-green-400' : 'text-amber-500'}`}>{perfData[product.id].margin_pct}% margin</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1">

@@ -112,6 +112,43 @@ with engine.connect() as conn:
     conn.execute(__import__('sqlalchemy').text(
         "ALTER TABLE shop_leads ADD COLUMN IF NOT EXISTS score_breakdown JSONB;"
     ))
+    # Quotation table — add columns that may not exist in older deployments
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS tax_rate NUMERIC(5,2) NOT NULL DEFAULT 0;"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS tax_type VARCHAR(10) NOT NULL DEFAULT 'fixed';"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS payment_schedule JSONB;"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS company_address TEXT;"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS company_trn VARCHAR(100);"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS company_bank TEXT;"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_token VARCHAR(64) UNIQUE;"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_accepted_at TIMESTAMPTZ;"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_accepted_name VARCHAR(200);"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS reminder_count INTEGER NOT NULL DEFAULT 0;"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ;"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "CREATE INDEX IF NOT EXISTS ix_quotations_client_token ON quotations(client_token) WHERE client_token IS NOT NULL;"
+    ))
     # Wholesale tables (created by create_all, no manual migration needed)
     # Ensure wholesale_buyers token index exists
     conn.execute(__import__('sqlalchemy').text(
