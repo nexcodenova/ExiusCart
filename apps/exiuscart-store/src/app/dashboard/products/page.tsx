@@ -7,7 +7,7 @@ import {
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi, bundlesApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi, bundlesApi, suppliersApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
@@ -25,6 +25,8 @@ interface Product {
   lowStockAlert: number;
   vatPercent: number;
   image?: string | null;
+  supplier_id?: number | null;
+  supplier?: { id: number; name: string } | null;
 }
 
 interface ShopField {
@@ -778,7 +780,10 @@ function ProductModal({
     lowStockAlert: p?.low_stock_threshold ?? p?.lowStockAlert ?? 5,
     vatPercent: p?.vat_percent ?? p?.vatPercent ?? 5,
     listOnMarketplace: p?.list_on_marketplace ?? true,
+    supplierId: p?.supplier_id ?? null as number | null,
   });
+
+  const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
 
   // Custom fields state
   const [customFields, setCustomFields] = useState<ShopField[]>([]);
@@ -820,6 +825,10 @@ function ProductModal({
 
     fieldsApi.getAll(shopId)
       .then((res) => setCustomFields(res.data ?? []))
+      .catch(() => {});
+
+    suppliersApi.getAll(shopId)
+      .then((res) => setSuppliers((res.data ?? []).map((s: any) => ({ id: s.id, name: s.name }))))
       .catch(() => {});
 
     imagesApi.getLimit(shopId)
@@ -983,6 +992,7 @@ function ProductModal({
         quantity: totalStock,
         low_stock_threshold: formData.lowStockAlert,
         list_on_marketplace: formData.listOnMarketplace,
+        supplier_id: formData.supplierId ?? null,
       };
 
       if (product?.id) {
@@ -1501,6 +1511,26 @@ function ProductModal({
                   <label className="text-xs text-muted-foreground mb-1 block">Low Stock Alert</label>
                   <input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
                 </div>
+              </div>
+
+              <div className="border-t border-border" />
+
+              {/* Supplier */}
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Supplier</label>
+                <select
+                  value={formData.supplierId ?? ''}
+                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value ? Number(e.target.value) : null })}
+                  className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                >
+                  <option value="">No supplier</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                {suppliers.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-1.5">No suppliers yet — add them in <strong>Suppliers</strong>.</p>
+                )}
               </div>
 
               <div className="border-t border-border" />

@@ -55,10 +55,12 @@ class Product(Base):
     # Foreign Keys
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
 
     # Relationships
     shop = relationship("Shop", back_populates="products")
     category = relationship("Category", back_populates="products")
+    supplier = relationship("Supplier", foreign_keys=[supplier_id])
     order_items = relationship("OrderItem", back_populates="product")
     attributes = relationship("ProductAttribute", back_populates="product", cascade="all, delete-orphan")
     images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan", order_by="ProductImage.sort_order")

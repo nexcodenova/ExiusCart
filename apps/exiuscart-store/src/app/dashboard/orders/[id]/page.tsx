@@ -5,10 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Package, Truck, DollarSign, ShoppingBag,
   FileText, Percent, Mail, Check, User, Phone, Download,
-  RefreshCcw, AlertTriangle, Printer, MessageCircle,
+  RefreshCcw, AlertTriangle, Printer, MessageCircle, X,
+  ChevronDown, Minus, Plus,
 } from 'lucide-react';
 import Link from 'next/link';
-import { ordersApi } from '@/lib/api';
+import { ordersApi, creditNotesApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface BundleComponentLine {
@@ -116,7 +117,13 @@ export default function OrderDetailsPage() {
   const [refunding, setRefunding] = useState(false);
   const [refundDone, setRefundDone] = useState(false);
   const [refundError, setRefundError] = useState('');
-  const [showRefundConfirm, setShowRefundConfirm] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+
+  // Return modal state
+  const [returnQtys, setReturnQtys] = useState<Record<number, number>>({});
+  const [returnReason, setReturnReason] = useState('');
+  const [returnNotes, setReturnNotes] = useState('');
+  const [createCreditNote, setCreateCreditNote] = useState(true);
 
   useEffect(() => {
     if (!shopId || !orderId) return;
@@ -141,17 +148,47 @@ export default function OrderDetailsPage() {
     }
   };
 
-  const handleRefund = async () => {
+  const openReturnModal = () => {
     if (!order) return;
+    const initial: Record<number, number> = {};
+    order.items.forEach((item) => { initial[item.id] = item.quantity; });
+    setReturnQtys(initial);
+    setReturnReason('');
+    setReturnNotes('');
+    setCreateCreditNote(true);
+    setRefundError('');
+    setShowReturnModal(true);
+  };
+
+  const returnTotal = order
+    ? order.items.reduce((sum, item) => sum + (returnQtys[item.id] ?? 0) * item.unit_price, 0)
+    : 0;
+
+  const handleReturn = async () => {
+    if (!order) return;
+    if (!returnReason) { setRefundError('Please select a reason for the return.'); return; }
+    const hasItems = order.items.some((item) => (returnQtys[item.id] ?? 0) > 0);
+    if (!hasItems) { setRefundError('Select at least one item to return.'); return; }
+
     setRefunding(true);
     setRefundError('');
     try {
       const res = await ordersApi.refund(shopId, orderId);
       setOrder(res.data);
+
+      if (createCreditNote && returnTotal > 0) {
+        await creditNotesApi.create(shopId, {
+          order_id: order.id,
+          reason: returnReason,
+          amount: returnTotal,
+          notes: returnNotes || null,
+        }).catch(() => {});
+      }
+
       setRefundDone(true);
-      setShowRefundConfirm(false);
+      setShowReturnModal(false);
     } catch (err: any) {
-      setRefundError(err.response?.data?.detail || 'Refund failed');
+      setRefundError(err.response?.data?.detail || 'Refund failed. Please try again.');
     } finally {
       setRefunding(false);
     }
@@ -391,29 +428,139 @@ export default function OrderDetailsPage() {
         </div>
       )}
 
-      {/* Refund confirm modal */}
-      {showRefundConfirm && (
+      {/* Return / Refund modal */}
+      {showReturnModal && order && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
-          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
+                  <RefreshCcw className="w-4 h-4 text-orange-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">Return / Refund</h3>
+                  <p className="text-xs text-muted-foreground">Order {order.order_number}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-foreground">Refund this order?</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">This will cancel the order, mark it as refunded, and restore stock.</p>
-              </div>
+              <button onClick={() => setShowReturnModal(false)} className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition">
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            {refundError && <p className="text-sm text-red-500 bg-red-500/10 rounded-lg px-3 py-2">{refundError}</p>}
-            <div className="flex gap-3">
-              <button onClick={() => setShowRefundConfirm(false)}
-                className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-muted transition">
+
+            <div className="overflow-y-auto flex-1 p-5 space-y-5">
+              {/* Items */}
+              <div>
+                <p className="text-sm font-medium text-foreground mb-3">Select items to return</p>
+                <div className="space-y-2">
+                  {order.items.map((item) => {
+                    const qty = returnQtys[item.id] ?? 0;
+                    return (
+                      <div key={item.id} className="flex items-center gap-3 bg-muted/40 rounded-xl px-3 py-2.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{item.product_name}</p>
+                          <p className="text-xs text-muted-foreground">{fmt(item.unit_price)} × ordered {item.quantity}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setReturnQtys((prev) => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] ?? item.quantity) - 1) }))}
+                            className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-muted transition text-foreground"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center text-sm font-semibold text-foreground">{qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => setReturnQtys((prev) => ({ ...prev, [item.id]: Math.min(item.quantity, (prev[item.id] ?? item.quantity) + 1) }))}
+                            className="w-7 h-7 rounded-lg border border-border flex items-center justify-center hover:bg-muted transition text-foreground"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Return Reason *</label>
+                <div className="relative">
+                  <select
+                    value={returnReason}
+                    onChange={(e) => setReturnReason(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl focus:ring-2 focus:ring-primary outline-none text-foreground appearance-none pr-8"
+                  >
+                    <option value="">Select reason...</option>
+                    <option value="Damaged / Defective">Damaged / Defective</option>
+                    <option value="Wrong item received">Wrong item received</option>
+                    <option value="Customer changed mind">Customer changed mind</option>
+                    <option value="Item not as described">Item not as described</option>
+                    <option value="Duplicate order">Duplicate order</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Additional Notes</label>
+                <textarea
+                  value={returnNotes}
+                  onChange={(e) => setReturnNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Optional details about this return..."
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl focus:ring-2 focus:ring-primary outline-none text-foreground resize-none text-sm"
+                />
+              </div>
+
+              {/* Credit note toggle */}
+              <div className="flex items-center justify-between bg-muted/40 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Create Credit Note</p>
+                  <p className="text-xs text-muted-foreground">Auto-generates CN for {fmt(returnTotal)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCreateCreditNote((v) => !v)}
+                  className={`w-11 h-6 rounded-full transition-colors relative ${createCreditNote ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${createCreditNote ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+
+              {/* Summary */}
+              {returnTotal > 0 && (
+                <div className="bg-orange-500/8 border border-orange-500/20 rounded-xl px-4 py-3 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Refund amount</span>
+                    <span className="font-bold text-orange-600 dark:text-orange-400">{fmt(returnTotal)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Stock will be restored · Order marked as refunded</p>
+                </div>
+              )}
+
+              {refundError && (
+                <p className="text-sm text-red-500 bg-red-500/10 rounded-xl px-3 py-2">{refundError}</p>
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-border flex gap-3 shrink-0">
+              <button
+                onClick={() => setShowReturnModal(false)}
+                className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-muted transition"
+              >
                 Cancel
               </button>
-              <button onClick={handleRefund} disabled={refunding}
-                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
+              <button
+                onClick={handleReturn}
+                disabled={refunding}
+                className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
                 {refunding && <RefreshCcw className="w-4 h-4 animate-spin" />}
-                {refunding ? 'Refunding...' : 'Yes, Refund'}
+                {refunding ? 'Processing...' : 'Confirm Return'}
               </button>
             </div>
           </div>
@@ -431,21 +578,22 @@ export default function OrderDetailsPage() {
           <ArrowLeft className="w-4 h-4" /> Back to orders
         </Link>
 
-        {/* Refund button — only for POS paid orders that aren't already cancelled */}
-        {order.source === 'pos' && order.payment_status === 'paid' && order.status !== 'cancelled' && (
+        {/* Return / Refund — for any paid order not yet cancelled */}
+        {order.payment_status === 'paid' && order.status !== 'cancelled' && (
           refundDone ? (
-            <span className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 font-medium">
+            <span className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 font-medium">
               <RefreshCcw className="w-4 h-4" /> Refunded
             </span>
           ) : (
             <button
-              onClick={() => setShowRefundConfirm(true)}
-              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition font-medium"
+              onClick={openReturnModal}
+              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 transition font-medium"
             >
-              <RefreshCcw className="w-4 h-4" /> Refund Order
+              <RefreshCcw className="w-4 h-4" /> Return / Refund
             </button>
           )
         )}
+
         <button
           onClick={handleSendInvoice}
           disabled={sendingInvoice}
@@ -476,16 +624,39 @@ export default function OrderDetailsPage() {
         >
           <Printer className="w-4 h-4" /> Payment Receipt
         </button>
-        <button
-          onClick={() => {
-            const phone = order?.customer?.phone?.replace(/\D/g, '') ?? '';
-            const msg = encodeURIComponent(`Hi ${order?.customer?.name ?? 'there'}, your order ${order?.order_number} has been confirmed. Total: ${fmt(order?.total ?? 0)}. Thank you!`);
-            window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
-          }}
-          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 transition font-medium"
-        >
-          <MessageCircle className="w-4 h-4" /> WhatsApp
-        </button>
+
+        {/* WhatsApp — status-aware smart message */}
+        {order.customer?.phone && (
+          <button
+            onClick={() => {
+              const phone = order.customer!.phone!.replace(/\D/g, '');
+              const name = order.customer!.name ?? 'there';
+              let msg = '';
+              if (order.status === 'shipped') {
+                msg = `Hi ${name}, your order *${order.order_number}* has been shipped!`
+                  + (order.carrier ? `\n📦 Carrier: ${order.carrier}` : '')
+                  + (order.tracking_number ? `\n🔍 Tracking: ${order.tracking_number}` : '')
+                  + (order.estimated_delivery ? `\n🗓 Est. Delivery: ${order.estimated_delivery}` : '')
+                  + `\n\nThank you for shopping with us!`;
+              } else if (order.status === 'delivered' || order.status === 'completed') {
+                msg = `Hi ${name}, your order *${order.order_number}* has been delivered! 🎉\n\nWe hope you love your purchase. Feel free to reach out if you need anything!`;
+              } else if (order.status === 'pending') {
+                msg = `Hi ${name}, we've received your order *${order.order_number}* (${fmt(order.total)}). We'll confirm it shortly — thank you!`;
+              } else if (order.status === 'processing') {
+                msg = `Hi ${name}, your order *${order.order_number}* is being prepared. We'll notify you once it ships!`;
+              } else {
+                msg = `Hi ${name}, your order *${order.order_number}* has been confirmed. Total: ${fmt(order.total)}. Thank you for your purchase!`;
+              }
+              window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+            }}
+            className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] transition font-medium"
+          >
+            <MessageCircle className="w-4 h-4" />
+            WhatsApp
+            {order.status === 'shipped' && <span className="text-xs bg-[#25D366]/20 px-1.5 py-0.5 rounded-full">+ tracking</span>}
+          </button>
+        )}
+
         {order.tracking_number && (
           <Link href={`/dashboard/orders/${orderId}/tracking`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition ml-auto">
             <Truck className="w-4 h-4" /> View tracking

@@ -41,6 +41,7 @@ class ProductBase(BaseModel):
     quantity: int = 0
     low_stock_threshold: int = 5
     category_id: Optional[int] = None
+    supplier_id: Optional[int] = None
     list_on_marketplace: bool = True  # off = product stays in POS/inventory only, never sent to TheDersi
 
 
@@ -59,12 +60,21 @@ class ProductUpdate(BaseModel):
     quantity: Optional[int] = None
     low_stock_threshold: Optional[int] = None
     category_id: Optional[int] = None
+    supplier_id: Optional[int] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None
     is_active: Optional[bool] = None
     is_featured: Optional[bool] = None
     is_trending: Optional[bool] = None
     list_on_marketplace: Optional[bool] = None
+
+
+class SupplierRef(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
 
 
 class ProductResponse(ProductBase):
@@ -79,6 +89,8 @@ class ProductResponse(ProductBase):
     is_bundle: bool = False
     created_at: datetime
     category: Optional[CategoryResponse] = None
+    supplier_id: Optional[int] = None
+    supplier: Optional[SupplierRef] = None
 
     @property
     def discount_percent(self) -> Optional[int]:

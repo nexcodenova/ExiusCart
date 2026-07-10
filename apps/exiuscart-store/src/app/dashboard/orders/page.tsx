@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, BarChart2 } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
@@ -74,6 +74,16 @@ interface ShipModalProps {
 }
 
 const FREE_DELIVERY_THRESHOLD = 10000;
+
+const CHANNEL_META: Record<string, { label: string; bg: string; text: string; dot: string; border: string }> = {
+  pos:            { label: 'Point of Sale',   bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500', border: 'border-emerald-500/20' },
+  thedersi:       { label: 'TheDersi',        bg: 'bg-indigo-500/10',  text: 'text-indigo-600 dark:text-indigo-400',   dot: 'bg-indigo-500',  border: 'border-indigo-500/20' },
+  shopify:        { label: 'Shopify',         bg: 'bg-green-500/10',   text: 'text-green-600 dark:text-green-400',     dot: 'bg-green-500',   border: 'border-green-500/20' },
+  custom_website: { label: 'Custom Website',  bg: 'bg-blue-500/10',    text: 'text-blue-600 dark:text-blue-400',       dot: 'bg-blue-500',    border: 'border-blue-500/20' },
+  daraz:          { label: 'Daraz',           bg: 'bg-orange-500/10',  text: 'text-orange-600 dark:text-orange-400',   dot: 'bg-orange-500',  border: 'border-orange-500/20' },
+  website:        { label: 'Website',         bg: 'bg-purple-500/10',  text: 'text-purple-600 dark:text-purple-400',   dot: 'bg-purple-500',  border: 'border-purple-500/20' },
+  manual:         { label: 'Manual',          bg: 'bg-gray-500/10',    text: 'text-gray-600 dark:text-gray-400',       dot: 'bg-gray-400',    border: 'border-gray-500/20' },
+};
 
 function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -217,6 +227,33 @@ export default function OrdersPage() {
   const [shopId, setShopId] = useState('');
   const { fmt } = useCurrency();
 
+  // ── Analytics derived from the currently-filtered orders ──────────────────
+  const salesOrders = useMemo(() => orders.filter(o => o.source !== 'pos_return'), [orders]);
+  const totalRevenue = useMemo(() => salesOrders.reduce((s, o) => s + Number(o.total), 0), [salesOrders]);
+  const avgOrderValue = useMemo(() => salesOrders.length > 0 ? totalRevenue / salesOrders.length : 0, [salesOrders, totalRevenue]);
+  const pendingCount = useMemo(() => orders.filter(o => o.status === 'pending').length, [orders]);
+  const completedRevenue = useMemo(() =>
+    orders.filter(o => ['delivered', 'completed'].includes(o.status)).reduce((s, o) => s + Number(o.total), 0),
+    [orders]
+  );
+
+  const channelBreakdown = useMemo(() => {
+    const map: Record<string, { orders: number; revenue: number; cash: number; card: number; split: number }> = {};
+    for (const o of salesOrders) {
+      const src = o.source || 'other';
+      if (!map[src]) map[src] = { orders: 0, revenue: 0, cash: 0, card: 0, split: 0 };
+      map[src].orders += 1;
+      map[src].revenue += Number(o.total);
+      if (src === 'pos') {
+        const n = o.notes || '';
+        if (n.includes('Payment: split')) map[src].split += 1;
+        else if (n.includes('Payment: card')) map[src].card += 1;
+        else map[src].cash += 1;
+      }
+    }
+    return Object.entries(map).sort((a, b) => b[1].revenue - a[1].revenue);
+  }, [salesOrders]);
+
   useEffect(() => { setShopId(localStorage.getItem('shop_id') ?? ''); }, []);
 
   const fetchOrders = useCallback(async () => {
@@ -336,23 +373,110 @@ export default function OrdersPage() {
         <span className="text-green-600 dark:text-green-400 font-medium">POS sales are unlimited.</span>
       </p>
 
-      {/* Stats */}
+      {/* ── Revenue Overview ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Total orders', icon: FileText, value: orders.length },
-          { label: 'Pending', icon: Package, value: orders.filter(o => o.status === 'pending').length },
-          { label: 'Shipped', icon: Truck, value: orders.filter(o => o.status === 'shipped').length },
-          { label: 'Completed', icon: CheckCircle2, value: orders.filter(o => o.status === 'completed' || o.status === 'delivered').length },
-        ].map(({ label, icon: Icon, value }) => (
-          <div key={label} className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-              <Icon className="h-5 w-5 text-foreground/70" />
+        {/* Total Revenue — hero card */}
+        <div className="col-span-2 lg:col-span-1 rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-indigo-600/10 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 bg-indigo-500/15 rounded-xl">
+              <TrendingUp className="h-4 w-4 text-indigo-500" />
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-            <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums text-foreground">{loading ? '—' : value}</p>
+            <p className="text-sm text-muted-foreground font-medium">Total Revenue</p>
           </div>
-        ))}
+          <p className="text-3xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400 tabular-nums">
+            {loading ? '—' : fmt(totalRevenue)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1.5">{salesOrders.length} order{salesOrders.length !== 1 ? 's' : ''} · {monthFilter ? 'this period' : 'all time'}</p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 bg-muted rounded-xl"><BarChart2 className="h-4 w-4 text-foreground/60" /></div>
+            <p className="text-sm text-muted-foreground">Avg Order Value</p>
+          </div>
+          <p className="text-2xl font-bold tracking-tight tabular-nums text-foreground">{loading ? '—' : fmt(avgOrderValue)}</p>
+          <p className="text-xs text-muted-foreground mt-1.5">Per transaction</p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 bg-green-500/10 rounded-xl"><CheckCircle2 className="h-4 w-4 text-green-500" /></div>
+            <p className="text-sm text-muted-foreground">Collected Revenue</p>
+          </div>
+          <p className="text-2xl font-bold tracking-tight tabular-nums text-green-600 dark:text-green-400">{loading ? '—' : fmt(completedRevenue)}</p>
+          <p className="text-xs text-muted-foreground mt-1.5">Delivered & completed</p>
+        </div>
+
+        <div className={`rounded-2xl border bg-card p-5 ${pendingCount > 0 ? 'border-yellow-500/30' : 'border-border'}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className={`p-2 rounded-xl ${pendingCount > 0 ? 'bg-yellow-500/10' : 'bg-muted'}`}>
+              <Package className={`h-4 w-4 ${pendingCount > 0 ? 'text-yellow-500' : 'text-foreground/60'}`} />
+            </div>
+            <p className="text-sm text-muted-foreground">Needs Attention</p>
+          </div>
+          <p className={`text-2xl font-bold tracking-tight tabular-nums ${pendingCount > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-foreground'}`}>
+            {loading ? '—' : pendingCount}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1.5">Pending orders</p>
+        </div>
       </div>
+
+      {/* ── Channel Revenue Breakdown ── */}
+      {!loading && channelBreakdown.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-sm font-semibold text-foreground">Revenue by Channel</h2>
+            <span className="text-xs text-muted-foreground">({channelBreakdown.length} active)</span>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {channelBreakdown.map(([channel, stats]) => {
+              const meta = CHANNEL_META[channel] ?? { label: channel, bg: 'bg-muted', text: 'text-foreground', dot: 'bg-gray-400', border: 'border-border' };
+              const pct = totalRevenue > 0 ? (stats.revenue / totalRevenue) * 100 : 0;
+              return (
+                <div key={channel} className={`rounded-2xl border ${meta.border} bg-card p-4`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${meta.dot} shrink-0`} />
+                      <p className={`text-xs font-semibold ${meta.text}`}>{meta.label}</p>
+                    </div>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${meta.bg} ${meta.text}`}>
+                      {pct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <p className="text-xl font-bold text-foreground tabular-nums">{fmt(stats.revenue)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{stats.orders} order{stats.orders !== 1 ? 's' : ''}</p>
+
+                  {/* POS payment breakdown */}
+                  {channel === 'pos' && stats.orders > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border flex gap-3 text-xs text-muted-foreground">
+                      {stats.cash > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Banknote className="w-3 h-3" /> {stats.cash}
+                        </span>
+                      )}
+                      {stats.card > 0 && (
+                        <span className="flex items-center gap-1">
+                          <CreditCard className="w-3 h-3" /> {stats.card}
+                        </span>
+                      )}
+                      {stats.split > 0 && (
+                        <span className="flex items-center gap-1">
+                          <ArrowLeftRight className="w-3 h-3" /> {stats.split}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Revenue bar */}
+                  <div className="mt-3 h-1 bg-muted rounded-full overflow-hidden">
+                    <div className={`h-full ${meta.dot} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-card rounded-xl border border-border p-4 flex flex-col sm:flex-row gap-4">
