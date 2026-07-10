@@ -317,11 +317,23 @@ export const marketingApi = {
 export const leadsApi = {
   getStats: (shopId: string) => api.get(`/shops/${shopId}/leads/stats`),
   getIntegration: (shopId: string) => api.get(`/shops/${shopId}/leads/integration`),
-  getAll: (shopId: string, params?: { status?: string; search?: string }) =>
+  getAll: (shopId: string, params?: { status?: string; search?: string; sort_by?: string; min_score?: number }) =>
     api.get(`/shops/${shopId}/leads`, { params }),
   create: (shopId: string, data: any) => api.post(`/shops/${shopId}/leads`, data),
   update: (shopId: string, lid: number, data: any) => api.put(`/shops/${shopId}/leads/${lid}`, data),
   delete: (shopId: string, lid: number) => api.delete(`/shops/${shopId}/leads/${lid}`),
+};
+
+// ── Drip Flows ────────────────────────────────────────
+export const dripFlowsApi = {
+  getAll: (shopId: string) => api.get(`/shops/${shopId}/drip-flows`),
+  create: (shopId: string, data: any) => api.post(`/shops/${shopId}/drip-flows`, data),
+  update: (shopId: string, fid: number, data: any) => api.put(`/shops/${shopId}/drip-flows/${fid}`, data),
+  delete: (shopId: string, fid: number) => api.delete(`/shops/${shopId}/drip-flows/${fid}`),
+  toggle: (shopId: string, fid: number) => api.post(`/shops/${shopId}/drip-flows/${fid}/toggle`, {}),
+  getEnrollments: (shopId: string, fid: number) => api.get(`/shops/${shopId}/drip-flows/${fid}/enrollments`),
+  enrollLead: (shopId: string, fid: number, leadId: number) =>
+    api.post(`/shops/${shopId}/drip-flows/${fid}/enroll/${leadId}`, {}),
 };
 
 // ── Recruitment ───────────────────────────────────────

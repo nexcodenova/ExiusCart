@@ -18,8 +18,58 @@ class ShopLead(Base):
     value = Column(Numeric(12, 2), nullable=True)
     assigned_to = Column(String(255), nullable=True)
     last_contacted_at = Column(DateTime(timezone=True), nullable=True)
+    score = Column(Integer, default=0, nullable=False)
+    score_breakdown = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class DripFlow(Base):
+    __tablename__ = "drip_flows"
+    id = Column(Integer, primary_key=True, index=True)
+    shop_id = Column(Integer, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    trigger_type = Column(String(50), nullable=False)
+    # lead_created | status_changed | score_above | no_activity_days
+    trigger_config = Column(JSON, nullable=True)
+    is_active = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    steps = relationship("DripFlowStep", back_populates="flow", cascade="all, delete-orphan",
+                         order_by="DripFlowStep.sort_order")
+    enrollments = relationship("DripFlowEnrollment", back_populates="flow", cascade="all, delete-orphan")
+
+
+class DripFlowStep(Base):
+    __tablename__ = "drip_flow_steps"
+    id = Column(Integer, primary_key=True, index=True)
+    flow_id = Column(Integer, ForeignKey("drip_flows.id", ondelete="CASCADE"), nullable=False)
+    sort_order = Column(Integer, default=0)
+    step_type = Column(String(30), nullable=False)
+    # wait | send_email | send_whatsapp | update_status
+    config = Column(JSON, nullable=False, default=dict)
+    # wait:          {"hours": 24}
+    # send_email:    {"subject": "...", "body_html": "..."}
+    # send_whatsapp: {"message": "Hi {name}, ..."}
+    # update_status: {"status": "contacted"}
+    flow = relationship("DripFlow", back_populates="steps")
+
+
+class DripFlowEnrollment(Base):
+    __tablename__ = "drip_flow_enrollments"
+    id = Column(Integer, primary_key=True, index=True)
+    flow_id = Column(Integer, ForeignKey("drip_flows.id", ondelete="CASCADE"), nullable=False)
+    lead_id = Column(Integer, ForeignKey("shop_leads.id", ondelete="CASCADE"), nullable=False)
+    shop_id = Column(Integer, nullable=False)
+    current_step_order = Column(Integer, default=0)
+    status = Column(String(20), default="active")  # active | completed | paused | failed
+    next_run_at = Column(DateTime(timezone=True), nullable=True)
+    enrolled_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    steps_completed = Column(Integer, default=0)
+    emails_sent = Column(Integer, default=0)
+    flow = relationship("DripFlow", back_populates="enrollments")
+    lead = relationship("ShopLead")
 
 
 class EmailCampaign(Base):

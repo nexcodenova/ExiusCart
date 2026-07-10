@@ -1,15 +1,18 @@
-"""Marketing endpoints — Email Campaigns, SMS Campaigns, Events, Surveys, Leads."""
+"""Marketing endpoints — Email Campaigns, SMS Campaigns, Events, Surveys, Leads, Drip Flows."""
 import os
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.models.user import User
 from app.models.shop import Shop
-from app.models.marketing import EmailCampaign, SMSCampaign, Event, Survey, SurveyQuestion, ShopLead
+from app.models.marketing import (
+    EmailCampaign, SMSCampaign, Event, Survey, SurveyQuestion,
+    ShopLead, DripFlow, DripFlowStep, DripFlowEnrollment,
+)
 from app.models.subscription import Subscription
 from app.api.v1.deps import get_current_user
 
@@ -25,6 +28,206 @@ LEAD_LIMITS: dict = {
 }
 
 router = APIRouter()
+
+
+# ── Lead Scoring ───────────────────────────────────────────────────────────────
+
+def compute_score(lead: ShopLead) -> tuple[int, dict]:
+    """Compute a 0–100 score for a lead based on available signals."""
+    breakdown: dict = {}
+    score = 0
+
+    # Status
+    status_pts = {"new": 5, "contacted": 15, "qualified": 30, "converted": 5, "lost": -50}
+    pts = status_pts.get(lead.status or "new", 0)
+    if pts:
+        breakdown["status"] = pts
+        score += pts
+
+    # Source quality
+    source_pts = {
+        "google_ads": 20, "meta_ads": 15, "referral": 15,
+        "whatsapp": 10, "website": 8, "manual": 5, "other": 3,
+    }
+    pts = source_pts.get(lead.source or "manual", 0)
+    if pts:
+        breakdown["source"] = pts
+        score += pts
+
+    # Deal value
+    val = float(lead.value or 0)
+    if val >= 10000:
+        breakdown["value"] = 25; score += 25
+    elif val >= 5000:
+        breakdown["value"] = 20; score += 20
+    elif val >= 1000:
+        breakdown["value"] = 12; score += 12
+    elif val >= 500:
+        breakdown["value"] = 8; score += 8
+    elif val > 0:
+        breakdown["value"] = 5; score += 5
+
+    # Contact completeness
+    if lead.email:
+        breakdown["email"] = 5; score += 5
+    if lead.phone:
+        breakdown["phone"] = 5; score += 5
+    if lead.company:
+        breakdown["company"] = 3; score += 3
+
+    # Recency of creation
+    now = datetime.now(timezone.utc)
+    created = lead.created_at
+    if created:
+        if hasattr(created, "tzinfo") and created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        days_old = (now - created).days
+        if days_old <= 1:
+            breakdown["recency"] = 15; score += 15
+        elif days_old <= 7:
+            breakdown["recency"] = 10; score += 10
+        elif days_old <= 30:
+            breakdown["recency"] = 5; score += 5
+        elif days_old > 60:
+            breakdown["recency"] = -10; score -= 10
+
+    # Last contacted recency
+    if lead.last_contacted_at:
+        lc = lead.last_contacted_at
+        if hasattr(lc, "tzinfo") and lc.tzinfo is None:
+            lc = lc.replace(tzinfo=timezone.utc)
+        days_since = (now - lc).days
+        if days_since <= 3:
+            breakdown["last_contact"] = 10; score += 10
+        elif days_since <= 7:
+            breakdown["last_contact"] = 5; score += 5
+
+    return max(0, min(100, score)), breakdown
+
+
+def _apply_score(lead: ShopLead):
+    s, b = compute_score(lead)
+    lead.score = s
+    lead.score_breakdown = b
+
+
+# ── Drip Flow Runner ───────────────────────────────────────────────────────────
+
+def _set_next_step(enrollment: DripFlowEnrollment, steps: list, now: datetime):
+    """Advance enrollment to next step and compute next_run_at."""
+    enrollment.current_step_order += 1
+    enrollment.steps_completed += 1
+    if enrollment.current_step_order >= len(steps):
+        enrollment.status = "completed"
+        enrollment.completed_at = now
+        return
+    next_step = steps[enrollment.current_step_order]
+    if next_step.step_type == "wait":
+        hours = (next_step.config or {}).get("hours", 24)
+        enrollment.next_run_at = now + timedelta(hours=float(hours))
+    else:
+        enrollment.next_run_at = now  # run immediately on next tick
+
+
+def process_drip_flows(db: Session):
+    """Process all due drip flow enrollments. Called every 5 min."""
+    now = datetime.now(timezone.utc)
+    due = (
+        db.query(DripFlowEnrollment)
+        .filter(DripFlowEnrollment.status == "active", DripFlowEnrollment.next_run_at <= now)
+        .all()
+    )
+    for enrollment in due:
+        try:
+            flow = enrollment.flow
+            if not flow or not flow.is_active:
+                enrollment.status = "paused"
+                continue
+            steps = sorted(flow.steps, key=lambda s: s.sort_order)
+            if not steps or enrollment.current_step_order >= len(steps):
+                enrollment.status = "completed"
+                enrollment.completed_at = now
+                continue
+            step = steps[enrollment.current_step_order]
+            cfg = step.config or {}
+
+            if step.step_type == "wait":
+                _set_next_step(enrollment, steps, now)
+
+            elif step.step_type == "send_email":
+                lead = enrollment.lead
+                if lead and lead.email:
+                    from app.core.email import send_email as _send_email
+                    subj = (cfg.get("subject") or "").replace("{name}", lead.name or "there")
+                    body = (cfg.get("body_html") or f"<p>Hi {lead.name or 'there'},</p>").replace("{name}", lead.name or "there")
+                    ok = _send_email(to=lead.email, subject=subj, html_body=body)
+                    if ok:
+                        enrollment.emails_sent = (enrollment.emails_sent or 0) + 1
+                _set_next_step(enrollment, steps, now)
+
+            elif step.step_type == "send_whatsapp":
+                # WhatsApp is logged — actual send is client-triggered via wa.me deeplink
+                _set_next_step(enrollment, steps, now)
+
+            elif step.step_type == "update_status":
+                lead = enrollment.lead
+                if lead:
+                    new_status = cfg.get("status", "contacted")
+                    lead.status = new_status
+                    _apply_score(lead)
+                _set_next_step(enrollment, steps, now)
+
+        except Exception:
+            pass
+
+    db.commit()
+
+
+def process_drip_flows_job():
+    """Entry point for the background thread — creates its own DB session."""
+    db = SessionLocal()
+    try:
+        process_drip_flows(db)
+    finally:
+        db.close()
+
+
+def _auto_enroll(lead: ShopLead, trigger_type: str, db: Session, trigger_data: dict | None = None):
+    """Check active flows for matching trigger and enroll the lead if not already enrolled."""
+    flows = (
+        db.query(DripFlow)
+        .filter(DripFlow.shop_id == lead.shop_id, DripFlow.is_active == True, DripFlow.trigger_type == trigger_type)
+        .all()
+    )
+    now = datetime.now(timezone.utc)
+    for flow in flows:
+        # Skip if already actively enrolled
+        existing = (
+            db.query(DripFlowEnrollment)
+            .filter(DripFlowEnrollment.flow_id == flow.id, DripFlowEnrollment.lead_id == lead.id,
+                    DripFlowEnrollment.status == "active")
+            .first()
+        )
+        if existing:
+            continue
+        cfg = flow.trigger_config or {}
+        # Condition checks
+        if trigger_type == "status_changed" and cfg.get("status"):
+            if cfg["status"] != (trigger_data or {}).get("status"):
+                continue
+        elif trigger_type == "score_above":
+            if lead.score < cfg.get("score", 70):
+                continue
+        # Enroll
+        steps = sorted(flow.steps, key=lambda s: s.sort_order)
+        first_run = now
+        if steps and steps[0].step_type == "wait":
+            hours = (steps[0].config or {}).get("hours", 24)
+            first_run = now + timedelta(hours=float(hours))
+        db.add(DripFlowEnrollment(
+            flow_id=flow.id, lead_id=lead.id, shop_id=lead.shop_id,
+            current_step_order=0, status="active", next_run_at=first_run,
+        ))
 
 
 def _shop(shop_id: int, user: User, db: Session) -> Shop:
@@ -282,7 +485,11 @@ def lead_stats(shop_id: int, current_user: User = Depends(get_current_user), db:
         .group_by(ShopLead.status)
         .all()
     )
-    return {"total": total, "limit": limit, "plan": plan, "by_status": by_status}
+    hot = db.query(sql_func.count(ShopLead.id)).filter(ShopLead.shop_id == shop_id, ShopLead.score >= 61).scalar() or 0
+    warm = db.query(sql_func.count(ShopLead.id)).filter(ShopLead.shop_id == shop_id, ShopLead.score >= 31, ShopLead.score <= 60).scalar() or 0
+    cold = db.query(sql_func.count(ShopLead.id)).filter(ShopLead.shop_id == shop_id, ShopLead.score <= 30).scalar() or 0
+    return {"total": total, "limit": limit, "plan": plan, "by_status": by_status,
+            "score_hot": hot, "score_warm": warm, "score_cold": cold}
 
 
 @router.get("/shops/{shop_id}/leads")
@@ -290,6 +497,8 @@ def list_leads(
     shop_id: int,
     status: Optional[str] = None,
     search: Optional[str] = None,
+    sort_by: Optional[str] = None,  # "score" | "date"
+    min_score: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -300,9 +509,16 @@ def list_leads(
     if search:
         term = f"%{search}%"
         q = q.filter(
-            ShopLead.name.ilike(term) | ShopLead.email.ilike(term) | ShopLead.phone.ilike(term) | ShopLead.company.ilike(term)
+            ShopLead.name.ilike(term) | ShopLead.email.ilike(term) |
+            ShopLead.phone.ilike(term) | ShopLead.company.ilike(term)
         )
-    return q.order_by(ShopLead.created_at.desc()).all()
+    if min_score is not None:
+        q = q.filter(ShopLead.score >= min_score)
+    if sort_by == "score":
+        q = q.order_by(ShopLead.score.desc(), ShopLead.created_at.desc())
+    else:
+        q = q.order_by(ShopLead.created_at.desc())
+    return q.all()
 
 
 @router.post("/shops/{shop_id}/leads", status_code=201)
@@ -337,7 +553,11 @@ def create_lead(shop_id: int, body: dict, current_user: User = Depends(get_curre
         value=body.get("value") or None,
         assigned_to=body.get("assigned_to") or None,
     )
-    db.add(lead); db.commit(); db.refresh(lead)
+    db.add(lead); db.flush()
+    _apply_score(lead)
+    db.commit(); db.refresh(lead)
+    _auto_enroll(lead, "lead_created", db)
+    db.commit()
     return lead
 
 
@@ -346,13 +566,19 @@ def update_lead(shop_id: int, lid: int, body: dict, current_user: User = Depends
     _shop(shop_id, current_user, db)
     lead = db.query(ShopLead).filter(ShopLead.id == lid, ShopLead.shop_id == shop_id).first()
     if not lead: raise HTTPException(status_code=404, detail="Lead not found")
+    old_status = lead.status
     for f in ("name", "email", "phone", "company", "source", "status", "notes", "value", "assigned_to"):
         if f in body:
             setattr(lead, f, body[f] or None)
     if "last_contacted_at" in body and body["last_contacted_at"]:
         lead.last_contacted_at = datetime.fromisoformat(body["last_contacted_at"])
     lead.updated_at = datetime.now(timezone.utc)
+    _apply_score(lead)
     db.commit(); db.refresh(lead)
+    if lead.status != old_status:
+        _auto_enroll(lead, "status_changed", db, {"status": lead.status})
+    _auto_enroll(lead, "score_above", db)
+    db.commit()
     return lead
 
 
@@ -397,3 +623,137 @@ def get_lead_integration(shop_id: int, current_user: User = Depends(get_current_
         "google_webhook_url": f"{api_base}/public/lead-capture/{token}",
         "meta_webhook_url": f"{api_base}/public/lead-capture/{token}/meta",
     }
+
+
+# ── Drip Flows ─────────────────────────────────────────────────────────────────
+
+def _flow_to_dict(flow: DripFlow, db: Session) -> dict:
+    enrolled = db.query(sql_func.count(DripFlowEnrollment.id)).filter(
+        DripFlowEnrollment.flow_id == flow.id, DripFlowEnrollment.status == "active"
+    ).scalar() or 0
+    completed = db.query(sql_func.count(DripFlowEnrollment.id)).filter(
+        DripFlowEnrollment.flow_id == flow.id, DripFlowEnrollment.status == "completed"
+    ).scalar() or 0
+    emails_sent = db.query(sql_func.sum(DripFlowEnrollment.emails_sent)).filter(
+        DripFlowEnrollment.flow_id == flow.id
+    ).scalar() or 0
+    return {
+        "id": flow.id, "name": flow.name, "description": flow.description,
+        "trigger_type": flow.trigger_type, "trigger_config": flow.trigger_config,
+        "is_active": flow.is_active, "created_at": flow.created_at.isoformat() if flow.created_at else None,
+        "steps": [{"id": s.id, "sort_order": s.sort_order, "step_type": s.step_type, "config": s.config}
+                  for s in sorted(flow.steps, key=lambda x: x.sort_order)],
+        "stats": {"enrolled": enrolled, "completed": completed, "emails_sent": int(emails_sent)},
+    }
+
+
+@router.get("/shops/{shop_id}/drip-flows")
+def list_drip_flows(shop_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    flows = db.query(DripFlow).filter(DripFlow.shop_id == shop_id).order_by(DripFlow.created_at.desc()).all()
+    return [_flow_to_dict(f, db) for f in flows]
+
+
+@router.post("/shops/{shop_id}/drip-flows", status_code=201)
+def create_drip_flow(shop_id: int, body: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    flow = DripFlow(
+        shop_id=shop_id,
+        name=body.get("name", "New Flow").strip(),
+        description=body.get("description") or None,
+        trigger_type=body.get("trigger_type", "lead_created"),
+        trigger_config=body.get("trigger_config") or {},
+        is_active=False,
+    )
+    db.add(flow); db.flush()
+    for i, step in enumerate(body.get("steps", [])):
+        db.add(DripFlowStep(
+            flow_id=flow.id, sort_order=i,
+            step_type=step.get("step_type", "wait"),
+            config=step.get("config") or {},
+        ))
+    db.commit(); db.refresh(flow)
+    return _flow_to_dict(flow, db)
+
+
+@router.put("/shops/{shop_id}/drip-flows/{fid}")
+def update_drip_flow(shop_id: int, fid: int, body: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    flow = db.query(DripFlow).filter(DripFlow.id == fid, DripFlow.shop_id == shop_id).first()
+    if not flow: raise HTTPException(status_code=404, detail="Flow not found")
+    for f in ("name", "description", "trigger_type", "trigger_config", "is_active"):
+        if f in body: setattr(flow, f, body[f])
+    if "steps" in body:
+        for s in flow.steps: db.delete(s)
+        db.flush()
+        for i, step in enumerate(body["steps"]):
+            db.add(DripFlowStep(
+                flow_id=flow.id, sort_order=i,
+                step_type=step.get("step_type", "wait"),
+                config=step.get("config") or {},
+            ))
+    db.commit(); db.refresh(flow)
+    return _flow_to_dict(flow, db)
+
+
+@router.delete("/shops/{shop_id}/drip-flows/{fid}", status_code=204)
+def delete_drip_flow(shop_id: int, fid: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    flow = db.query(DripFlow).filter(DripFlow.id == fid, DripFlow.shop_id == shop_id).first()
+    if not flow: raise HTTPException(status_code=404, detail="Flow not found")
+    db.delete(flow); db.commit()
+
+
+@router.post("/shops/{shop_id}/drip-flows/{fid}/toggle")
+def toggle_drip_flow(shop_id: int, fid: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    flow = db.query(DripFlow).filter(DripFlow.id == fid, DripFlow.shop_id == shop_id).first()
+    if not flow: raise HTTPException(status_code=404, detail="Flow not found")
+    flow.is_active = not flow.is_active
+    db.commit()
+    return {"id": flow.id, "is_active": flow.is_active}
+
+
+@router.get("/shops/{shop_id}/drip-flows/{fid}/enrollments")
+def list_flow_enrollments(shop_id: int, fid: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    flow = db.query(DripFlow).filter(DripFlow.id == fid, DripFlow.shop_id == shop_id).first()
+    if not flow: raise HTTPException(status_code=404, detail="Flow not found")
+    enrollments = db.query(DripFlowEnrollment).filter(DripFlowEnrollment.flow_id == fid).order_by(DripFlowEnrollment.enrolled_at.desc()).all()
+    result = []
+    for e in enrollments:
+        lead = e.lead
+        result.append({
+            "id": e.id, "status": e.status, "steps_completed": e.steps_completed,
+            "emails_sent": e.emails_sent, "enrolled_at": e.enrolled_at.isoformat() if e.enrolled_at else None,
+            "completed_at": e.completed_at.isoformat() if e.completed_at else None,
+            "next_run_at": e.next_run_at.isoformat() if e.next_run_at else None,
+            "lead": {"id": lead.id, "name": lead.name, "email": lead.email, "score": lead.score} if lead else None,
+        })
+    return result
+
+
+@router.post("/shops/{shop_id}/drip-flows/{fid}/enroll/{lead_id}", status_code=201)
+def enroll_lead(shop_id: int, fid: int, lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    flow = db.query(DripFlow).filter(DripFlow.id == fid, DripFlow.shop_id == shop_id).first()
+    if not flow: raise HTTPException(status_code=404, detail="Flow not found")
+    lead = db.query(ShopLead).filter(ShopLead.id == lead_id, ShopLead.shop_id == shop_id).first()
+    if not lead: raise HTTPException(status_code=404, detail="Lead not found")
+    existing = db.query(DripFlowEnrollment).filter(
+        DripFlowEnrollment.flow_id == fid, DripFlowEnrollment.lead_id == lead_id,
+        DripFlowEnrollment.status == "active",
+    ).first()
+    if existing: raise HTTPException(status_code=409, detail="Lead already actively enrolled in this flow")
+    steps = sorted(flow.steps, key=lambda s: s.sort_order)
+    now = datetime.now(timezone.utc)
+    first_run = now
+    if steps and steps[0].step_type == "wait":
+        hours = (steps[0].config or {}).get("hours", 24)
+        first_run = now + timedelta(hours=float(hours))
+    enrollment = DripFlowEnrollment(
+        flow_id=fid, lead_id=lead_id, shop_id=shop_id,
+        current_step_order=0, status="active", next_run_at=first_run,
+    )
+    db.add(enrollment); db.commit()
+    return {"enrolled": True, "next_run_at": first_run.isoformat()}

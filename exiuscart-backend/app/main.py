@@ -106,6 +106,12 @@ with engine.connect() as conn:
     conn.execute(__import__('sqlalchemy').text(
         "ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL;"
     ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE shop_leads ADD COLUMN IF NOT EXISTS score INTEGER NOT NULL DEFAULT 0;"
+    ))
+    conn.execute(__import__('sqlalchemy').text(
+        "ALTER TABLE shop_leads ADD COLUMN IF NOT EXISTS score_breakdown JSONB;"
+    ))
     # Back-fill: create pending_approval subscriptions for verified shops that have none
     conn.execute(__import__('sqlalchemy').text("""
         INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
@@ -133,6 +139,19 @@ app = FastAPI(
 # Start recurring invoice background scheduler
 _scheduler_thread = threading.Thread(target=_run_recurring_invoice_scheduler, daemon=True)
 _scheduler_thread.start()
+
+# Start drip flow runner (every 5 minutes)
+def _run_drip_flow_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.marketing import process_drip_flows_job
+            process_drip_flows_job()
+        except Exception as exc:
+            logger.error(f"[DripFlow scheduler] {exc}")
+        time.sleep(5 * 60)
+
+_drip_thread = threading.Thread(target=_run_drip_flow_scheduler, daemon=True)
+_drip_thread.start()
 
 # CORS middleware
 app.add_middleware(
