@@ -181,7 +181,7 @@ export default function OrderDetailsPage() {
           order_id: order.id,
           reason: returnReason,
           amount: returnTotal,
-          notes: returnNotes || null,
+          notes: returnNotes || undefined,
         }).catch(() => {});
       }
 

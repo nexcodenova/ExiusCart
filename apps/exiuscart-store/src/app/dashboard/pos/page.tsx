@@ -41,7 +41,6 @@ interface HeldBill {
   discountType: 'percent' | 'fixed';
   serviceCharge: number;
   serviceChargeType: 'percent' | 'fixed';
-  tip: number;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -87,8 +86,6 @@ export default function POSPage() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'split'>('cash');
   const [splitCashAmount, setSplitCashAmount] = useState(0);
-  const [tip, setTip] = useState(0);
-  const [tipCustom, setTipCustom] = useState('');
   const [isReturnMode, setIsReturnMode] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState('');
@@ -148,7 +145,6 @@ export default function POSPage() {
       discountType,
       serviceCharge,
       serviceChargeType,
-      tip,
       customerName,
       customerPhone,
       customerEmail,
@@ -166,7 +162,6 @@ export default function POSPage() {
     setDiscountType(bill.discountType);
     setServiceCharge(bill.serviceCharge || 0);
     setServiceChargeType(bill.serviceChargeType || 'percent');
-    setTip(bill.tip || 0);
     setCustomerName(bill.customerName);
     setCustomerPhone(bill.customerPhone);
     setCustomerEmail(bill.customerEmail);
@@ -334,7 +329,7 @@ export default function POSPage() {
     total = subtotal + vatAmount;
   }
 
-  const grandTotal = total + tip;
+  const grandTotal = total;
   const splitCardAmount = Math.max(0, grandTotal - splitCashAmount);
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -351,8 +346,6 @@ export default function POSPage() {
       } else {
         noteParts.push(`Payment: ${paymentMethod}`);
       }
-      if (tip > 0) noteParts.push(`Tip: ${tip.toFixed(2)}`);
-
       await ordersApi.create(shopId, {
         source: isReturnMode ? 'pos_return' : 'pos',
         customer_name: customerName || undefined,
@@ -1106,45 +1099,6 @@ export default function POSPage() {
                 )}
               </div>
 
-              {/* Tip — sales only */}
-              {!isReturnMode && (
-                <div>
-                  <h3 className="text-sm font-medium text-foreground mb-3">Tip (Optional)</h3>
-                  <div className="flex gap-2 mb-2">
-                    {[10, 15, 20].map(pct => {
-                      const tipVal = parseFloat((total * pct / 100).toFixed(2));
-                      const isActive = tip === tipVal && tipCustom === '';
-                      return (
-                        <button key={pct} type="button"
-                          onClick={() => { setTip(tipVal); setTipCustom(''); }}
-                          className={`flex-1 py-2 rounded-lg border text-sm font-medium transition ${
-                            isActive
-                              ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-                              : 'border-border text-muted-foreground hover:border-indigo-300'
-                          }`}>
-                          {pct}%
-                        </button>
-                      );
-                    })}
-                    <button type="button" onClick={() => { setTip(0); setTipCustom(''); }}
-                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition ${
-                        tip === 0
-                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-                          : 'border-border text-muted-foreground hover:border-indigo-300'
-                      }`}>
-                      None
-                    </button>
-                  </div>
-                  <input type="number" value={tipCustom}
-                    onChange={(e) => { setTipCustom(e.target.value); setTip(Number(e.target.value) || 0); }}
-                    placeholder={`Custom tip (${sym})`}
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary text-foreground" />
-                  {tip > 0 && (
-                    <p className="text-xs text-indigo-500 mt-1">Tip: {sym}{tip.toFixed(2)}</p>
-                  )}
-                </div>
-              )}
-
               {/* Order Summary */}
               <div className="bg-muted/50 rounded-xl p-4">
                 <h3 className="text-sm font-medium text-foreground mb-3">Order Summary</h3>
@@ -1209,12 +1163,6 @@ export default function POSPage() {
                           </div>
                         )}
                       </>
-                    )}
-                    {tip > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Tip</span>
-                        <span className="text-foreground">+{tip.toFixed(2)} {sym}</span>
-                      </div>
                     )}
                     <div className="flex justify-between font-bold text-base pt-2 border-t border-border mt-1">
                       <span className={isReturnMode ? 'text-red-600 dark:text-red-400' : 'text-foreground'}>
