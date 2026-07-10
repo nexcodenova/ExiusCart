@@ -136,6 +136,142 @@ function CustomWebsiteModal({ shopId, onConnected, onClose }: {
 }
 
 
+// ── Daraz connect modal ───────────────────────────────────────────────────────
+
+function DarazConnectModal({ shopId, onConnected, onClose }: {
+  shopId: string; onConnected: () => void; onClose: () => void;
+}) {
+  const [userId, setUserId] = useState('');
+  const [appKey, setAppKey] = useState('');
+  const [appSecret, setAppSecret] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+
+  const connect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId.trim() || !appKey.trim() || !appSecret.trim()) return;
+    setSaving(true); setError('');
+    try {
+      await channelsApi.connect(shopId, {
+        channel_type: 'daraz',
+        channel_api_key: `${appKey.trim()}|${appSecret.trim()}`,
+        channel_api_url: 'https://api.daraz.lk',
+        channel_seller_id: userId.trim(),
+      });
+      setDone(true);
+      onConnected();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Connection failed. Check your credentials.');
+    } finally { setSaving(false); }
+  };
+
+  if (done) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-card rounded-xl border border-border w-full max-w-md p-6 space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Daraz Connected!</p>
+              <p className="text-xs text-muted-foreground">Orders from Daraz.lk will now sync to your dashboard automatically.</p>
+            </div>
+          </div>
+          <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+            <p><strong className="text-foreground">What happens next:</strong></p>
+            <p>• New Daraz orders appear in your Orders list tagged "Daraz"</p>
+            <p>• Stock deducts automatically when orders come in</p>
+            <p>• Mark as shipped in ExiusCart → Daraz updates too</p>
+          </div>
+          <button onClick={onClose}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-card rounded-xl border border-border w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <p className="font-semibold text-foreground">Connect Daraz</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Get credentials from open.daraz.com → My Apps</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={connect} className="p-5 space-y-4">
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+              {error}
+            </div>
+          )}
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">Daraz Seller User ID *</label>
+            <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} required
+              placeholder="Your Daraz seller account user ID"
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">App Key *</label>
+            <input type="text" value={appKey} onChange={(e) => setAppKey(e.target.value)} required
+              placeholder="App Key from Daraz Open Platform"
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">App Secret *</label>
+            <input type="password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} required
+              placeholder="App Secret from Daraz Open Platform"
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+          </div>
+          <div className="bg-muted/50 rounded-lg px-3 py-2.5 text-xs text-muted-foreground">
+            Get these from <strong className="text-foreground">open.daraz.com</strong> → Register as Developer → Create App → Copy App Key & Secret.
+          </div>
+          <button type="submit" disabled={saving}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saving ? 'Connecting...' : 'Connect Daraz'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Daraz connected card ──────────────────────────────────────────────────────
+
+function DarazCard({ connection }: { connection: ChannelConnection }) {
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-orange-500/10 flex items-center justify-center">
+            <ShoppingBag className="w-4 h-4 text-orange-500" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground text-sm">Daraz</p>
+            <p className="text-xs text-muted-foreground">Sri Lanka's #1 Marketplace</p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+          <CheckCircle2 className="w-3 h-3" /> Connected
+        </span>
+      </div>
+      <div className="p-5 text-sm text-muted-foreground">
+        <p>Seller ID: <strong className="text-foreground">{connection.channel_seller_id}</strong></p>
+        <p className="mt-1 text-xs">Orders syncing from daraz.lk automatically</p>
+      </div>
+    </div>
+  );
+}
+
+
 // ── TheDersi connect modal ────────────────────────────────────────────────────
 
 function TheDersiConnectModal({ shopId, onConnected, onClose }: {
@@ -334,7 +470,9 @@ export default function ChannelsPage() {
   const [loading, setLoading] = useState(true);
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
   const [showCustomWebsiteModal, setShowCustomWebsiteModal] = useState(false);
+  const [showDarazModal, setShowDarazModal] = useState(false);
   const [dersiBlockChannel, setDersiBlockChannel] = useState<string | null>(null);
+  const [darazLocked, setDarazLocked] = useState(false);
   const [shopifyConnected, setShopifyConnected] = useState(false);
   const [plan, setPlan] = useState('');
 
@@ -358,8 +496,12 @@ export default function ChannelsPage() {
   useEffect(() => { load(); }, [shopId]);
 
   const theDersiConns = connections.filter((c) => c.channel_type === 'thedersi');
+  const darazConns = connections.filter((c) => c.channel_type === 'daraz');
   const hasTheDersi = theDersiConns.length > 0;
+  const hasDaraz = darazConns.length > 0;
   const isTheDersiUser = plan.startsWith('thedersi');
+  // Daraz available for paid plans only — not thedersi_basic or free_trial
+  const canUseDaraz = ['thedersi_pro', 'starter', 'premium'].includes(plan);
 
   const availableChannels: ChannelDef[] = [
     {
@@ -391,6 +533,16 @@ export default function ChannelsPage() {
       badgeLabel: 'Available',
       onAction: isTheDersiUser ? () => setDersiBlockChannel('Custom Website') : () => setShowCustomWebsiteModal(true),
       actionLabel: 'Connect Website',
+    },
+    {
+      id: 'daraz',
+      name: 'Daraz',
+      description: "Sri Lanka's #1 marketplace. Orders sync to ExiusCart automatically — manage everything from one dashboard.",
+      icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
+      badge: hasDaraz ? 'live' : canUseDaraz ? 'connect' : 'locked',
+      badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : 'Paid plan required',
+      onAction: hasDaraz ? undefined : canUseDaraz ? () => setShowDarazModal(true) : () => setDarazLocked(true),
+      actionLabel: 'Connect Daraz',
     },
     {
       id: 'tiktok',
@@ -450,12 +602,15 @@ export default function ChannelsPage() {
         </div>
       ) : (
         <>
-          {/* Active TheDersi connections — show full card with earnings */}
-          {theDersiConns.length > 0 && (
+          {/* Active connected channel cards */}
+          {(theDersiConns.length > 0 || darazConns.length > 0) && (
             <div className="space-y-4">
               <h2 className="text-sm font-medium text-foreground">Connected</h2>
               {theDersiConns.map((conn) => (
                 <TheDersiCard key={conn.id} connection={conn} />
+              ))}
+              {darazConns.map((conn) => (
+                <DarazCard key={conn.id} connection={conn} />
               ))}
             </div>
           )}
@@ -486,6 +641,42 @@ export default function ChannelsPage() {
           onConnected={() => load()}
           onClose={() => { setShowCustomWebsiteModal(false); load(); }}
         />
+      )}
+
+      {showDarazModal && (
+        <DarazConnectModal
+          shopId={shopId}
+          onConnected={() => load()}
+          onClose={() => { setShowDarazModal(false); load(); }}
+        />
+      )}
+
+      {darazLocked && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
+                <ShoppingBag className="w-5 h-5 text-orange-500" />
+              </div>
+              <button type="button" onClick={() => setDarazLocked(false)}
+                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Daraz Integration</p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                {plan === 'thedersi_basic'
+                  ? 'Daraz sync is available on TheDersi Pro. Upgrade your TheDersi plan to connect your Daraz seller account.'
+                  : 'Daraz sync is available on paid plans. Upgrade to ExiusCart Starter or Premium to connect your Daraz seller account.'}
+              </p>
+            </div>
+            <button type="button" onClick={() => setDarazLocked(false)}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+              Got it
+            </button>
+          </div>
+        </div>
       )}
 
       {dersiBlockChannel && (

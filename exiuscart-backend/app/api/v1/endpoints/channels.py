@@ -10,6 +10,7 @@ Supported channels:
   shopify    — Shopify store
   woocommerce — WooCommerce site
   custom     — any custom website using our storefront API
+  daraz      — Daraz.lk marketplace (paid plans only); credentials stored as app_key|app_secret in channel_api_key
 """
 import os
 import secrets
