@@ -336,6 +336,22 @@ export const dripFlowsApi = {
     api.post(`/shops/${shopId}/drip-flows/${fid}/enroll/${leadId}`, {}),
 };
 
+// ── Wholesale ─────────────────────────────────────────
+export const wholesaleApi = {
+  getProducts: (shopId: string) => api.get(`/shops/${shopId}/wholesale/products`),
+  createProduct: (shopId: string, data: any) => api.post(`/shops/${shopId}/wholesale/products`, data),
+  updateProduct: (shopId: string, pid: number, data: any) => api.put(`/shops/${shopId}/wholesale/products/${pid}`, data),
+  deleteProduct: (shopId: string, pid: number) => api.delete(`/shops/${shopId}/wholesale/products/${pid}`),
+  getBuyers: (shopId: string) => api.get(`/shops/${shopId}/wholesale/buyers`),
+  createBuyer: (shopId: string, data: any) => api.post(`/shops/${shopId}/wholesale/buyers`, data),
+  updateBuyer: (shopId: string, bid: number, data: any) => api.put(`/shops/${shopId}/wholesale/buyers/${bid}`, data),
+  toggleBuyer: (shopId: string, bid: number) => api.post(`/shops/${shopId}/wholesale/buyers/${bid}/toggle`, {}),
+  deleteBuyer: (shopId: string, bid: number) => api.delete(`/shops/${shopId}/wholesale/buyers/${bid}`),
+  getOrders: (shopId: string, status?: string) => api.get(`/shops/${shopId}/wholesale/orders`, { params: status ? { status } : {} }),
+  updateOrderStatus: (shopId: string, oid: number, status: string) => api.put(`/shops/${shopId}/wholesale/orders/${oid}/status`, { status }),
+  getStats: (shopId: string) => api.get(`/shops/${shopId}/wholesale/stats`),
+};
+
 // ── Recruitment ───────────────────────────────────────
 export const recruitmentApi = {
   getJobs: (shopId: string) => api.get(`/shops/${shopId}/recruitment/jobs`),

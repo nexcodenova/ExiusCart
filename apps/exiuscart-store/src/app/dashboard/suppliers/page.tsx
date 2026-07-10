@@ -3,75 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Search, Plus, Truck, Edit, Trash2, X, Loader2,
-  Phone, Mail, MapPin, User, MessageCircle, Lock, Crown, Package, Star,
-  ShoppingBag,
+  Phone, Mail, MapPin, User,
 } from 'lucide-react';
-import { suppliersApi, subscriptionApi } from '@/lib/api';
-
-// ── Edit this list to add / remove TheDersi wholesale suppliers ───────────────
-const THEDERSI_WHOLESALE = [
-  {
-    id: 'ws-1',
-    name: 'Colombo Fabric House',
-    category: 'Fabrics & Textiles',
-    description: 'Premium cotton, silk, and synthetic fabrics. Minimum order 10 meters.',
-    location: 'Colombo 10',
-    whatsapp: '94771234567',
-    badge: '',
-  },
-  {
-    id: 'ws-2',
-    name: 'Pettah Garments Wholesale',
-    category: 'Ready-made Clothing',
-    description: 'Bulk ready-made garments — men\'s, women\'s, and kids. MOQ 50 pieces per design.',
-    location: 'Pettah, Colombo',
-    whatsapp: '94777654321',
-    badge: 'Popular',
-  },
-  {
-    id: 'ws-3',
-    name: 'Lanka Accessories Hub',
-    category: 'Fashion Accessories',
-    description: 'Bags, belts, jewellery, and hair accessories. Low MOQ for TheDersi sellers.',
-    location: 'Nugegoda',
-    whatsapp: '94779876543',
-    badge: '',
-  },
-  {
-    id: 'ws-4',
-    name: 'Textile Direct SL',
-    category: 'Fabrics & Textiles',
-    description: 'Imported lace, chiffon, and embroidered materials at wholesale prices.',
-    location: 'Maradana, Colombo',
-    whatsapp: '947123456789',
-    badge: 'New',
-  },
-  {
-    id: 'ws-5',
-    name: 'Fashion Forward Wholesale',
-    category: 'Ready-made Clothing',
-    description: 'Trendy women\'s fashion. New designs weekly. TheDersi exclusive pricing.',
-    location: 'Kandy',
-    whatsapp: '94768765432',
-    badge: '',
-  },
-  {
-    id: 'ws-6',
-    name: 'SL Footwear Hub',
-    category: 'Footwear',
-    description: 'Sandals, heels, sneakers, and flats. All sizes. MOQ 12 pairs per style.',
-    location: 'Dehiwala',
-    whatsapp: '94752345678',
-    badge: '',
-  },
-];
-
-const CATEGORY_COLORS: Record<string, string> = {
-  'Fabrics & Textiles':   'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  'Ready-made Clothing':  'bg-pink-500/10 text-pink-600 dark:text-pink-400',
-  'Fashion Accessories':  'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  'Footwear':             'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-};
+import { suppliersApi } from '@/lib/api';
 
 // ── Private supplier type ─────────────────────────────────────────────────────
 interface Supplier {
@@ -95,20 +29,8 @@ export default function SuppliersPage() {
   const [form, setForm]                 = useState(EMPTY_FORM);
   const [saving, setSaving]             = useState(false);
   const [deleteId, setDeleteId]         = useState<number | null>(null);
-  const [planType, setPlanType]         = useState('');
 
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
-
-  useEffect(() => {
-    if (!shopId) return;
-    subscriptionApi.getCurrent(shopId)
-      .then((r) => setPlanType(r.data?.plan?.plan_type || ''))
-      .catch(() => {});
-  }, [shopId]);
-
-  const isTheDersiPro   = planType === 'thedersi_pro';
-  const isTheDersiBasic = planType === 'thedersi_basic';
-  const isTheDersiUser  = isTheDersiPro || isTheDersiBasic;
 
   const fetchSuppliers = useCallback(async () => {
     if (!shopId) return;
@@ -160,127 +82,12 @@ export default function SuppliersPage() {
   return (
     <div className="space-y-8">
 
-      {/* ── TheDersi Wholesale — Pro access ────────────────────────────────── */}
-      {isTheDersiPro && (
-        <div className="space-y-4">
-          {/* Banner */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-[1px]">
-            <div className="relative rounded-2xl bg-gradient-to-br from-indigo-950/90 via-purple-950/90 to-pink-950/90 px-6 py-5 overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 relative">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20 shrink-0">
-                    <ShoppingBag className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-white">TheDersi Wholesale Network</p>
-                      <span className="text-xs bg-green-400/20 text-green-300 border border-green-400/30 px-2 py-0.5 rounded-full">Connected</span>
-                    </div>
-                    <p className="text-xs text-indigo-200 mt-0.5">
-                      Exclusive wholesale suppliers for TheDersi Pro sellers — tap WhatsApp to order
-                    </p>
-                  </div>
-                </div>
-                <div className="sm:ml-auto shrink-0">
-                  <span className="text-xs bg-white/10 text-white border border-white/20 px-3 py-1.5 rounded-full font-medium">
-                    {THEDERSI_WHOLESALE.length} Suppliers
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Supplier cards */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {THEDERSI_WHOLESALE.map((ws) => {
-              const catColor = CATEGORY_COLORS[ws.category] ?? 'bg-muted text-muted-foreground';
-              const waMsg = encodeURIComponent(
-                `Hi, I'm a TheDersi Pro seller on ExiusCart. I'd like to inquire about wholesale pricing from ${ws.name}.`
-              );
-              return (
-                <div key={ws.id} className="bg-card border border-border rounded-xl p-5 flex flex-col gap-3 hover:border-primary/40 transition">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                      <Package className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      {ws.badge === 'Popular' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
-                          <Star className="w-3 h-3" /> Popular
-                        </span>
-                      )}
-                      {ws.badge === 'New' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-500/10 text-green-600 dark:text-green-400">
-                          New
-                        </span>
-                      )}
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${catColor}`}>
-                        {ws.category}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex-1">
-                    <p className="font-semibold text-foreground">{ws.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{ws.description}</p>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5 shrink-0" />
-                    {ws.location}
-                  </div>
-
-                  <a
-                    href={`https://wa.me/${ws.whatsapp}?text=${waMsg}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2 flex items-center justify-center gap-2 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 rounded-lg text-sm font-medium hover:bg-[#25D366]/20 transition"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    WhatsApp
-                  </a>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── TheDersi Wholesale — Basic locked ──────────────────────────────── */}
-      {isTheDersiBasic && (
-        <div className="rounded-2xl border border-border bg-card p-6 flex flex-col sm:flex-row items-center gap-5">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Lock className="w-6 h-6 text-primary" />
-          </div>
-          <div className="flex-1 text-center sm:text-left">
-            <p className="font-semibold text-foreground">TheDersi Wholesale Network</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Access exclusive wholesale suppliers and order directly via WhatsApp. Available for TheDersi Pro sellers.
-            </p>
-          </div>
-          <a
-            href="https://thedersi.lk/seller/upgrade?plan=pro&ref=exiuscart"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition"
-          >
-            <Crown className="w-4 h-4" />
-            Upgrade to Pro
-          </a>
-        </div>
-      )}
-
-      {/* ── My Suppliers (all users) ────────────────────────────────────────── */}
+      {/* ── My Suppliers ────────────────────────────────────────────────────── */}
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              {isTheDersiUser ? 'My Suppliers' : 'Suppliers'}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {isTheDersiUser ? 'Your private supplier contacts' : 'Manage your product suppliers'}
-            </p>
+            <h1 className="text-2xl font-bold text-foreground">Suppliers</h1>
+            <p className="text-muted-foreground text-sm">Manage your product suppliers</p>
           </div>
           <button type="button" onClick={openAdd}
             className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition">

@@ -45,6 +45,7 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/dashboard/pos',          label: 'Point of Sale', icon: ShoppingCart  },
       { href: '/dashboard/orders',       label: 'Orders',        icon: FileText      },
+      { href: '/dashboard/wholesale',    label: 'Wholesale',     icon: Boxes         },
       { href: '/dashboard/customers',    label: 'Customers',     icon: Users         },
       { href: '/dashboard/quotations',   label: 'Quotations',    icon: ClipboardList },
       { href: '/dashboard/reservations', label: 'Reservations',  icon: BookmarkCheck },

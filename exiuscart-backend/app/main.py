@@ -112,6 +112,11 @@ with engine.connect() as conn:
     conn.execute(__import__('sqlalchemy').text(
         "ALTER TABLE shop_leads ADD COLUMN IF NOT EXISTS score_breakdown JSONB;"
     ))
+    # Wholesale tables (created by create_all, no manual migration needed)
+    # Ensure wholesale_buyers token index exists
+    conn.execute(__import__('sqlalchemy').text(
+        "CREATE INDEX IF NOT EXISTS ix_wholesale_buyers_token ON wholesale_buyers(token);"
+    ))
     # Back-fill: create pending_approval subscriptions for verified shops that have none
     conn.execute(__import__('sqlalchemy').text("""
         INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
