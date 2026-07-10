@@ -174,6 +174,7 @@ def _product_payload(
         "variants": variants,
         "is_featured": False,
         "is_trending": False,
+        "is_bundle": bool(product.is_bundle),
     }
 
 
