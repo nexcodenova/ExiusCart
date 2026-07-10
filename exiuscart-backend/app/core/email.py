@@ -707,6 +707,7 @@ def send_quotation_email(
     valid_until: str,
     notes: Optional[str],
     currency: str = "USD",
+    client_link: Optional[str] = None,
 ) -> None:
     def fmt(v: float) -> str:
         return f"{currency} {v:,.2f}"
@@ -745,6 +746,16 @@ def send_quotation_email(
         </tr>""" if tax > 0 else ""
 
     notes_block = f'<p style="margin:16px 0 0;padding:12px 16px;background:#f9f9f9;border-left:3px solid #6B3FD9;border-radius:4px;font-size:13px;color:#666;">Note: {notes}</p>' if notes else ""
+
+    client_link_block = f"""
+        <tr>
+          <td style="padding:8px 32px 24px;text-align:center;">
+            <a href="{client_link}" style="display:inline-block;background:linear-gradient(135deg,#6B3FD9,#8b5cf6);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 36px;border-radius:10px;letter-spacing:0.2px;">
+              View &amp; Accept Quotation
+            </a>
+            <p style="margin:10px 0 0;font-size:11px;color:#aaa;">Or copy this link: <a href="{client_link}" style="color:#6B3FD9;word-break:break-all;">{client_link}</a></p>
+          </td>
+        </tr>""" if client_link else ""
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -817,6 +828,8 @@ def send_quotation_email(
           </td>
         </tr>
 
+        {client_link_block}
+
         <tr>
           <td style="background:#fafafa;padding:20px 32px;text-align:center;border-top:1px solid #f0f0f0;">
             <p style="margin:0;font-size:13px;color:#666;">Questions? Reply to this email or contact {shop_name} directly.</p>
@@ -845,6 +858,7 @@ def send_payment_reminder_email(
     valid_until: str,
     reminder_count: int,
     currency: str = "USD",
+    client_link: Optional[str] = None,
 ) -> None:
     def fmt(v: float) -> str:
         return f"{currency} {v:,.2f}"
@@ -891,6 +905,12 @@ def send_payment_reminder_email(
               Please contact us if you have any questions or need to make alternative payment arrangements.
               We appreciate your business and look forward to hearing from you.
             </p>
+            {f"""<div style="text-align:center;margin-top:24px;">
+              <a href="{client_link}" style="display:inline-block;background:linear-gradient(135deg,#6B3FD9,#8b5cf6);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 36px;border-radius:10px;">
+                View Quotation
+              </a>
+              <p style="margin:10px 0 0;font-size:11px;color:#aaa;"><a href="{client_link}" style="color:#6B3FD9;word-break:break-all;">{client_link}</a></p>
+            </div>""" if client_link else ""}
           </td>
         </tr>
 

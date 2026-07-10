@@ -244,6 +244,8 @@ def send_quotation(
 
     check_and_log_email(shop_id, "quotation", plan, q.customer_email, q.id, db)
 
+    client_link = f"https://store.exiuscart.com/q/{q.client_token}" if q.client_token else None
+
     send_quotation_email(
         to_email=q.customer_email,
         customer_name=q.customer_name,
@@ -258,6 +260,7 @@ def send_quotation(
         valid_until=q.valid_until.strftime("%B %d, %Y") if q.valid_until else "",
         notes=q.notes,
         currency=shop.currency or "USD",
+        client_link=client_link,
     )
     return {"sent": True}
 
@@ -283,6 +286,8 @@ def send_reminder(
     q.last_reminded_at = datetime.now(timezone.utc)
     db.commit()
 
+    client_link = f"https://store.exiuscart.com/q/{q.client_token}" if q.client_token else None
+
     send_payment_reminder_email(
         to_email=q.customer_email,
         customer_name=q.customer_name,
@@ -293,5 +298,6 @@ def send_reminder(
         valid_until=q.valid_until.strftime("%B %d, %Y") if q.valid_until else "",
         reminder_count=q.reminder_count,
         currency=shop.currency or "USD",
+        client_link=client_link,
     )
     return {"sent": True, "reminder_count": q.reminder_count}
