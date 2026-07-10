@@ -839,6 +839,68 @@ def get_dashboard_stats(
         for r in top_products_rows
     ]
 
+    # KPI: avg order value (last 30 days, non-cancelled)
+    aov_row = db.query(func.avg(Ord.total)).filter(
+        Ord.shop_id == shop_id,
+        Ord.status != "cancelled",
+        Ord.created_at >= thirty_ago,
+    ).scalar()
+    avg_order_value = float(aov_row or 0)
+
+    # KPI: fulfillment rate = delivered / (all non-cancelled) last 30 days
+    total_non_cancelled = db.query(func.count(Ord.id)).filter(
+        Ord.shop_id == shop_id,
+        Ord.status != "cancelled",
+        Ord.created_at >= thirty_ago,
+    ).scalar() or 0
+    delivered_count = db.query(func.count(Ord.id)).filter(
+        Ord.shop_id == shop_id,
+        Ord.status == "delivered",
+        Ord.created_at >= thirty_ago,
+    ).scalar() or 0
+    fulfillment_rate = round((delivered_count / total_non_cancelled * 100), 1) if total_non_cancelled > 0 else 0
+
+    # KPI: cancellation rate
+    cancelled_count = db.query(func.count(Ord.id)).filter(
+        Ord.shop_id == shop_id,
+        Ord.status == "cancelled",
+        Ord.created_at >= thirty_ago,
+    ).scalar() or 0
+    total_all = total_non_cancelled + cancelled_count
+    cancellation_rate = round((cancelled_count / total_all * 100), 1) if total_all > 0 else 0
+
+    # KPI: revenue this month vs last month
+    month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_month_start = (month_start - timedelta(days=1)).replace(day=1)
+    this_month_rev = float(db.query(func.sum(Ord.total)).filter(
+        Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= month_start,
+    ).scalar() or 0)
+    last_month_rev = float(db.query(func.sum(Ord.total)).filter(
+        Ord.shop_id == shop_id, Ord.status != "cancelled",
+        Ord.created_at >= last_month_start, Ord.created_at < month_start,
+    ).scalar() or 0)
+    revenue_mom = round(((this_month_rev - last_month_rev) / last_month_rev * 100), 1) if last_month_rev > 0 else 0
+
+    # KPI: new customers this month
+    from app.models.customer import Customer as Cust
+    new_customers_month = db.query(func.count(Cust.id)).filter(
+        Cust.shop_id == shop_id,
+        Cust.created_at >= month_start,
+    ).scalar() or 0
+
+    # Day-of-week breakdown (last 30 days)
+    dow_rows = db.query(
+        extract("dow", Ord.created_at).label("dow"),
+        func.count(Ord.id).label("cnt"),
+        func.sum(Ord.total).label("sales"),
+    ).filter(
+        Ord.shop_id == shop_id,
+        Ord.created_at >= thirty_ago,
+    ).group_by(extract("dow", Ord.created_at)).order_by(extract("dow", Ord.created_at)).all()
+    dow_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    dow_map = {int(r.dow): {"orders": int(r.cnt), "sales": float(r.sales or 0)} for r in dow_rows}
+    daily_breakdown = [{"day": dow_names[i], "orders": dow_map.get(i, {}).get("orders", 0), "sales": dow_map.get(i, {}).get("sales", 0)} for i in range(7)]
+
     return {
         "sales": float(today_sales),
         "salesChange": sales_change,
@@ -871,6 +933,14 @@ def get_dashboard_stats(
         "channelBreakdown": channel_breakdown,
         "hourlyOrders": hourly_orders,
         "topProducts": top_products,
+        "avgOrderValue": avg_order_value,
+        "fulfillmentRate": fulfillment_rate,
+        "cancellationRate": cancellation_rate,
+        "thisMonthRevenue": this_month_rev,
+        "lastMonthRevenue": last_month_rev,
+        "revenueMoM": revenue_mom,
+        "newCustomersMonth": new_customers_month,
+        "dailyBreakdown": daily_breakdown,
     }
 
 

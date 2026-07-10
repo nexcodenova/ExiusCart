@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ShoppingBag, Package, Users, ArrowUp, ArrowDown, AlertTriangle,
   ShoppingCart, Plus, FileText, BarChart3, Wallet, MoreHorizontal,
-  TrendingUp, Activity,
+  TrendingUp, Activity, Target, XCircle, UserPlus, CalendarDays,
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -23,6 +23,14 @@ interface DashboardStats {
   channelBreakdown?: { source: string; sales: number; orders: number }[];
   hourlyOrders?: { hour: number; orders: number; sales: number }[];
   topProducts?: { name: string; revenue: number; qty: number }[];
+  avgOrderValue?: number;
+  fulfillmentRate?: number;
+  cancellationRate?: number;
+  thisMonthRevenue?: number;
+  lastMonthRevenue?: number;
+  revenueMoM?: number;
+  newCustomersMonth?: number;
+  dailyBreakdown?: { day: string; orders: number; sales: number }[];
 }
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -361,6 +369,116 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── KPI cards row ── */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <KpiCard
+          icon={Wallet} label="This month" color="indigo"
+          value={fmt(stats?.thisMonthRevenue ?? 0, 0)}
+          sub={stats?.revenueMoM !== undefined && stats.revenueMoM !== 0
+            ? `${stats.revenueMoM > 0 ? '+' : ''}${stats.revenueMoM}% vs last month`
+            : `Last month ${fmt(stats?.lastMonthRevenue ?? 0, 0)}`}
+          delta={stats?.revenueMoM}
+        />
+        <KpiCard
+          icon={Target} label="Avg order value" color="violet"
+          value={fmt(stats?.avgOrderValue ?? 0, 0)}
+          sub="Last 30 days"
+        />
+        <KpiCard
+          icon={TrendingUp} label="Fulfillment rate" color="emerald"
+          value={`${stats?.fulfillmentRate ?? 0}%`}
+          sub="Delivered / total orders"
+        />
+        <KpiCard
+          icon={XCircle} label="Cancellation rate" color="red"
+          value={`${stats?.cancellationRate ?? 0}%`}
+          sub="Last 30 days"
+        />
+      </div>
+
+      {/* ── Day of week + New customers ── */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Day of week bar chart */}
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <h2 className="font-semibold text-foreground">Orders by day of week</h2>
+            <span className="ml-auto text-xs text-muted-foreground">Last 30 days</span>
+          </div>
+          <div className="h-44">
+            {(stats?.dailyBreakdown ?? []).every(d => d.orders === 0) ? (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No orders yet</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats?.dailyBreakdown ?? []} margin={{ top: 4, right: 4, left: -28, bottom: 0 }} barSize={28}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.12} vertical={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
+                          <p className="font-medium text-foreground mb-1">{label}</p>
+                          <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{payload[0]?.value}</span></p>
+                          <p className="text-muted-foreground">Sales: <span className="font-semibold text-foreground">{fmt(Number(payload[1]?.value ?? 0), 0)}</span></p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="orders" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sales" fill="#10b981" radius={[4, 4, 0, 0]} hide />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground text-center">Best day = most orders — use this to plan promotions</p>
+        </div>
+
+        {/* New customers + quick stats */}
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-5">
+          <div className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-muted-foreground" />
+            <h2 className="font-semibold text-foreground">This month</h2>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">New customers</span>
+              <span className="text-xl font-bold text-foreground tabular-nums">{stats?.newCustomersMonth ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Revenue</span>
+              <span className="text-base font-bold text-indigo-500 tabular-nums">{fmt(stats?.thisMonthRevenue ?? 0, 0)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">vs Last month</span>
+              <span className={`text-sm font-semibold tabular-nums ${(stats?.revenueMoM ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                {(stats?.revenueMoM ?? 0) >= 0 ? '+' : ''}{stats?.revenueMoM ?? 0}%
+              </span>
+            </div>
+            <div className="h-px bg-border" />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Fulfillment</span>
+              <div className="flex items-center gap-2">
+                <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${stats?.fulfillmentRate ?? 0}%` }} />
+                </div>
+                <span className="text-sm font-semibold text-foreground">{stats?.fulfillmentRate ?? 0}%</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Cancellations</span>
+              <div className="flex items-center gap-2">
+                <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-red-500 rounded-full" style={{ width: `${stats?.cancellationRate ?? 0}%` }} />
+                </div>
+                <span className="text-sm font-semibold text-foreground">{stats?.cancellationRate ?? 0}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Top products by revenue */}
       {stats?.topProducts && stats.topProducts.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
@@ -395,6 +513,32 @@ export default function DashboardPage() {
             })}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function KpiCard({ icon: Icon, label, value, sub, delta, color }: {
+  icon: React.ElementType; label: string; value: string; sub?: string; delta?: number;
+  color: 'indigo' | 'violet' | 'emerald' | 'red';
+}) {
+  const colors = {
+    indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400',
+    violet: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400',
+    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
+    red: 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400',
+  };
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${colors[color]}`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <p className="mt-4 text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
+      {sub && (
+        <p className={`mt-1 text-xs ${delta !== undefined && delta !== 0 ? (delta > 0 ? 'text-emerald-500' : 'text-red-500') : 'text-muted-foreground'}`}>
+          {sub}
+        </p>
       )}
     </div>
   );
