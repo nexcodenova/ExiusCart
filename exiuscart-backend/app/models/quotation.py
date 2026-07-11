@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Text, Date, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, Text, Date, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -7,9 +7,10 @@ from app.core.database import Base
 
 class Quotation(Base):
     __tablename__ = "quotations"
+    __table_args__ = (UniqueConstraint("shop_id", "quote_number", name="uq_quotations_shop_quote_number"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    quote_number = Column(String(30), unique=True, nullable=False)
+    quote_number = Column(String(30), nullable=False)
     shop_id = Column(Integer, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False)
 
     customer_name = Column(String(200), nullable=False)

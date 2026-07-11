@@ -1228,6 +1228,35 @@ def get_all_channel_statuses(
     return result
 
 
+@router.get("/shops/{shop_id}/product-channel-categories")
+def get_all_product_channel_categories(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns all TheDersi category assignments for a shop's products in one call.
+    Returns: { product_id: { channel_connection_id: {channel_category_id, channel_category_name} } }
+    """
+    _shop_or_404(shop_id, current_user, db)
+    rows = (
+        db.query(ProductChannelCategory)
+        .join(Product, Product.id == ProductChannelCategory.product_id)
+        .filter(Product.shop_id == shop_id)
+        .all()
+    )
+    result: dict = {}
+    for r in rows:
+        pid = str(r.product_id)
+        if pid not in result:
+            result[pid] = {}
+        result[pid][r.channel_connection_id] = {
+            "channel_category_id": r.channel_category_id,
+            "channel_category_name": r.channel_category_name,
+        }
+    return result
+
+
 @router.get("/shops/{shop_id}/products/{product_id}/channel-status")
 def get_product_channel_status(
     shop_id: int,

@@ -256,9 +256,16 @@ export default function OrderDetailsPage() {
           <h2 className="font-semibold text-foreground">Items ({order.items.length})</h2>
         </div>
         <div className="divide-y divide-border">
-          {order.items.map((item) => {
-            // Check if TheDersi items_detail has size/color info for this item
-            const detail = order.channel_meta?.items_detail?.find((d: any) => d.product_id === item.product_id);
+          {order.items.map((item, idx) => {
+            // TheDersi stores items_detail from OrderItemIn.model_dump() — field is exiuscart_product_id
+            const theDersiItems = order.channel_meta?.items_detail ?? [];
+            const detail = isTheDersi
+              ? (theDersiItems.find((d: any) =>
+                  d.exiuscart_product_id === item.product_id ||
+                  d.exiuscart_product_id === String(item.product_id) ||
+                  d.product_id === item.product_id
+                ) ?? theDersiItems[idx] ?? null)
+              : null;
             return (
               <div key={item.id} className="px-5 py-4 flex items-start gap-4">
                 <div className="p-2.5 bg-muted rounded-lg shrink-0">
@@ -272,10 +279,19 @@ export default function OrderDetailsPage() {
                     )}
                   </div>
                   {item.product_sku && <p className="text-xs text-muted-foreground font-mono">{item.product_sku}</p>}
+                  {item.product_id && <p className="text-xs text-muted-foreground/60 font-mono">Product #{item.product_id}</p>}
                   {detail && (detail.size || detail.color) && (
-                    <div className="flex gap-2 mt-1">
-                      {detail.size && <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">Size: {detail.size}</span>}
-                      {detail.color && <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">Color: {detail.color}</span>}
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {detail.color && (
+                        <span className="text-xs px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full font-medium">
+                          Color: {detail.color}
+                        </span>
+                      )}
+                      {detail.size && (
+                        <span className="text-xs px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full font-medium">
+                          Size: {detail.size}
+                        </span>
+                      )}
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">Qty: {item.quantity} × {fmt(item.unit_price)}</p>

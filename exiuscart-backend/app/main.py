@@ -114,6 +114,9 @@ _MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS ix_quotations_client_token ON quotations(client_token) WHERE client_token IS NOT NULL;",
     # Wholesale index
     "CREATE INDEX IF NOT EXISTS ix_wholesale_buyers_token ON wholesale_buyers(token);",
+    # Fix quote_number uniqueness: was global, must be per-shop so each shop has its own QT sequence
+    "ALTER TABLE quotations DROP CONSTRAINT IF EXISTS quotations_quote_number_key;",
+    "ALTER TABLE quotations ADD CONSTRAINT uq_quotations_shop_quote_number UNIQUE (shop_id, quote_number);",
     # Back-fill: free_trial subscription for verified shops that have none
     """INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
        SELECT s.id, 'free_trial', 'monthly', 'pending_approval', 0, COALESCE(s.currency, 'AED'), NOW()

@@ -68,35 +68,18 @@ export default function ProductsPage() {
   const csvInputRef = useRef<HTMLInputElement>(null);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
-  // Inline category editing
-  const [inlineCatId, setInlineCatId] = useState<string | null>(null);
-  const [inlineCatSaving, setInlineCatSaving] = useState(false);
-
-  const saveInlineCategory = async (productId: string, category: string) => {
-    const product = products.find(p => String(p.id) === productId);
-    if (!product) return;
-    setInlineCatSaving(true);
-    try {
-      await productsApi.update(shopId, productId, {
-        name: product.name, selling_price: product.sellingPrice,
-        cost_price: product.costPrice, quantity: product.stock,
-        category,
-      });
-      setProducts(prev => prev.map(p => String(p.id) === productId ? { ...p, category } : p));
-      if (!categories.includes(category)) setCategories(prev => [...prev, category].sort());
-    } catch { /* silent */ } finally {
-      setInlineCatSaving(false);
-      setInlineCatId(null);
-    }
-  };
-
   // Channel status map: { product_id: { thedersi: { status, rejection_reason } } }
   const [channelStatuses, setChannelStatuses] = useState<Record<string, Record<string, { status: string; rejection_reason?: string }>>>({});
+  // Channel category map: { product_id: { connection_id: { channel_category_id, channel_category_name } } }
+  const [channelCategories, setChannelCategories] = useState<Record<string, Record<string, { channel_category_id: string; channel_category_name: string }>>>({});
 
   useEffect(() => {
     if (!shopId) return;
     channelsApi.getAllChannelStatuses(shopId)
       .then((r) => setChannelStatuses(r.data ?? {}))
+      .catch(() => {});
+    channelsApi.getAllProductChannelCategories(shopId)
+      .then((r) => setChannelCategories(r.data ?? {}))
       .catch(() => {});
   }, [shopId]);
 
@@ -561,38 +544,24 @@ export default function ProductsPage() {
                       </td>
                       <td className="p-4"><span className="text-sm text-muted-foreground font-mono">{product.sku}</span></td>
                       <td className="p-4">
-                        {inlineCatId === String(product.id) ? (
-                          <div className="flex items-center gap-1">
-                            <select
-                              autoFocus
-                              disabled={inlineCatSaving}
-                              defaultValue={product.category || ''}
-                              onBlur={e => { if (!inlineCatSaving) setInlineCatId(null); }}
-                              onChange={e => {
-                                const val = e.target.value;
-                                if (val === '__new__') return;
-                                saveInlineCategory(String(product.id), val);
-                              }}
-                              onKeyDown={e => { if (e.key === 'Escape') setInlineCatId(null); }}
-                              className="rounded-lg border border-indigo-400 bg-card px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[140px]"
-                            >
-                              <option value="">No category</option>
-                              {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                            {inlineCatSaving && <span className="text-xs text-muted-foreground">Saving…</span>}
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setInlineCatId(String(product.id))}
-                            className="group flex items-center gap-1 rounded px-1 py-0.5 text-left text-sm transition hover:bg-muted"
-                          >
-                            {product.category
-                              ? <span className="text-foreground">{product.category}</span>
-                              : <span className="text-muted-foreground/60 italic">+ category</span>
-                            }
-                            <svg className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 16H9v-3z" /></svg>
-                          </button>
-                        )}
+                        {(() => {
+                          const catEntries = channelCategories[product.id]
+                            ? Object.values(channelCategories[product.id])
+                            : [];
+                          const theDersiCat = catEntries[0];
+                          if (theDersiCat) {
+                            return (
+                              <div>
+                                <span className="text-sm text-foreground">{theDersiCat.channel_category_name}</span>
+                                <p className="text-xs text-indigo-500/80 mt-0.5">TheDersi</p>
+                              </div>
+                            );
+                          }
+                          if (product.category) {
+                            return <span className="text-sm text-foreground">{product.category}</span>;
+                          }
+                          return <span className="text-sm text-muted-foreground/40">—</span>;
+                        })()}
                       </td>
                       <td className="p-4 text-right"><span className="text-sm text-muted-foreground">{product.costPrice} {sym}</span></td>
                       <td className="p-4 text-right"><span className="text-sm font-medium text-foreground">{product.sellingPrice} {sym}</span></td>

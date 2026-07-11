@@ -578,16 +578,26 @@ export default function OrdersPage() {
                       </td>
                       <td className="p-4 hidden sm:table-cell">
                         {order.source === 'pos' ? (
-                          <div>
-                            <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">POS</span>
-                            {order.notes && (() => { const m = order.notes.match(/Payment:\s*(\w+)/i); return m ? <p className="text-xs text-muted-foreground mt-1 capitalize">{m[1]}</p> : null; })()}
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 self-start">POS</span>
+                            {order.notes && (() => {
+                              const m = order.notes.match(/Payment:\s*(\w+)/i);
+                              if (!m) return null;
+                              const method = m[1].toLowerCase();
+                              const cls = method === 'cash' ? 'text-green-600 dark:text-green-400'
+                                : method === 'card' ? 'text-blue-600 dark:text-blue-400'
+                                : method === 'split' ? 'text-purple-600 dark:text-purple-400'
+                                : 'text-muted-foreground';
+                              return <p className={`text-xs capitalize font-medium ${cls}`}>{method}</p>;
+                            })()}
                           </div>
                         ) : (
-                          <div>
-                            <span className="text-xs px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                              {order.source === 'thedersi' ? 'TheDersi' : order.source.charAt(0).toUpperCase() + order.source.slice(1)}
-                            </span>
-                            {order.customer_name && <p className="text-xs text-foreground mt-1 font-medium">{order.customer_name}</p>}
+                          <div className="flex flex-col gap-1">
+                            {(() => {
+                              const meta = CHANNEL_META[order.source] ?? { label: order.source, bg: 'bg-muted', text: 'text-muted-foreground', dot: 'bg-gray-400', border: 'border-border' };
+                              return <span className={`text-xs px-2 py-1 rounded-full self-start ${meta.bg} ${meta.text}`}>{meta.label}</span>;
+                            })()}
+                            {order.customer_name && <p className="text-xs text-foreground font-medium">{order.customer_name}</p>}
                             {order.customer_phone && <p className="text-xs text-muted-foreground">{order.customer_phone}</p>}
                           </div>
                         )}
@@ -600,7 +610,12 @@ export default function OrdersPage() {
                         <span className="text-sm font-semibold text-foreground">{fmt(order.total)}</span>
                       </td>
                       <td className="p-4 text-center hidden md:table-cell">
-                        <span className="text-xs text-muted-foreground capitalize">{order.payment_status}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${
+                          order.payment_status === 'paid' ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                          : order.payment_status === 'pending' ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                          : order.payment_status === 'refunded' ? 'bg-gray-500/10 text-gray-500'
+                          : 'bg-red-500/10 text-red-500'
+                        }`}>{order.payment_status}</span>
                       </td>
                       <td className="p-4 text-center">
                         <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${STATUS_STYLES[order.status] ?? 'bg-muted text-muted-foreground'}`}>

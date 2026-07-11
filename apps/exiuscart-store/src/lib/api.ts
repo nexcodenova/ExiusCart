@@ -531,6 +531,8 @@ export const channelsApi = {
   }) => api.put(`/shops/${shopId}/products/${productId}/channel-category`, data),
   getAllChannelStatuses: (shopId: string) =>
     api.get(`/shops/${shopId}/channel-statuses`),
+  getAllProductChannelCategories: (shopId: string) =>
+    api.get(`/shops/${shopId}/product-channel-categories`),
   getProductChannelStatus: (shopId: string, productId: string) =>
     api.get(`/shops/${shopId}/products/${productId}/channel-status`),
   getProductChannelCategories: (shopId: string, productId: string) =>
