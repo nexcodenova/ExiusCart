@@ -38,6 +38,15 @@ class ShopUpdate(BaseModel):
     vat_rate: Optional[float] = None
     prices_include_vat: Optional[bool] = None
     show_vat_breakdown: Optional[bool] = None
+    # Storefront / TheDersi profile
+    about_text: Optional[str] = None
+    social_instagram: Optional[str] = None
+    social_tiktok: Optional[str] = None
+    social_facebook: Optional[str] = None
+    brand_color: Optional[str] = None
+    # ExiusCart dashboard theme
+    accent_color: Optional[str] = None
+    font_family: Optional[str] = None
 
 
 class ShopResponse(ShopBase):
@@ -49,6 +58,15 @@ class ShopResponse(ShopBase):
     vat_rate: float = 0.0
     prices_include_vat: bool = False
     show_vat_breakdown: bool = False
+    # Storefront / TheDersi profile
+    about_text: Optional[str] = None
+    social_instagram: Optional[str] = None
+    social_tiktok: Optional[str] = None
+    social_facebook: Optional[str] = None
+    brand_color: Optional[str] = None
+    # ExiusCart dashboard theme
+    accent_color: Optional[str] = None
+    font_family: Optional[str] = None
     is_active: bool
     owner_id: int
     created_at: datetime

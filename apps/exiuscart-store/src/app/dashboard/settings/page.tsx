@@ -16,9 +16,14 @@ import {
   ChevronRight,
   Loader2,
   Check,
+  Store,
+  Instagram,
+  Video,
+  Facebook,
+  Palette,
 } from 'lucide-react';
 
-type SettingsTab = 'general' | 'tax' | 'security' | 'notifications';
+type SettingsTab = 'general' | 'tax' | 'storefront' | 'security' | 'notifications';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -26,7 +31,16 @@ export default function SettingsPage() {
   const [taxSaved, setTaxSaved] = useState(false);
   const [generalSaving, setGeneralSaving] = useState(false);
   const [generalSaved, setGeneralSaved] = useState(false);
+  const [storefrontSaving, setStorefrontSaving] = useState(false);
+  const [storefrontSaved, setStorefrontSaved] = useState(false);
   const [isTheDersiSeller, setIsTheDersiSeller] = useState(false);
+
+  // Storefront / TheDersi profile
+  const [aboutText, setAboutText] = useState('');
+  const [socialInstagram, setSocialInstagram] = useState('');
+  const [socialTiktok, setSocialTiktok] = useState('');
+  const [socialFacebook, setSocialFacebook] = useState('');
+  const [brandColor, setBrandColor] = useState('#6366f1');
 
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
@@ -59,6 +73,11 @@ export default function SettingsPage() {
         pricesIncludeVat: shop.prices_include_vat ?? false,
         showVatBreakdown: shop.show_vat_breakdown ?? false,
       }));
+      setAboutText(shop.about_text ?? '');
+      setSocialInstagram(shop.social_instagram ?? '');
+      setSocialTiktok(shop.social_tiktok ?? '');
+      setSocialFacebook(shop.social_facebook ?? '');
+      if (shop.brand_color) setBrandColor(shop.brand_color);
     }).catch(() => {});
 
     if (shopId) {
@@ -107,9 +126,29 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveStorefront = async () => {
+    setStorefrontSaving(true);
+    try {
+      await shopApi.updateShop({
+        about_text: aboutText || null,
+        social_instagram: socialInstagram || null,
+        social_tiktok: socialTiktok || null,
+        social_facebook: socialFacebook || null,
+        brand_color: brandColor || null,
+      });
+      setStorefrontSaved(true);
+      setTimeout(() => setStorefrontSaved(false), 3000);
+    } catch {
+      alert('Failed to save storefront settings.');
+    } finally {
+      setStorefrontSaving(false);
+    }
+  };
+
   const tabs = [
     { id: 'general' as SettingsTab, label: 'General', icon: Settings },
     { id: 'tax' as SettingsTab, label: 'Tax & VAT', icon: Receipt },
+    ...(isTheDersiSeller ? [{ id: 'storefront' as SettingsTab, label: 'Storefront', icon: Store }] : []),
     { id: 'security' as SettingsTab, label: 'Security', icon: Shield },
     { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
   ];
@@ -522,6 +561,120 @@ export default function SettingsPage() {
               className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-60"
             >
               {taxSaving ? 'Saving...' : taxSaved ? 'Saved!' : 'Save Tax Settings'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Storefront Settings (TheDersi sellers only) */}
+      {activeTab === 'storefront' && (
+        <div className="space-y-6">
+          {/* Info banner */}
+          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-4 py-3 flex items-start gap-3">
+            <Store className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">TheDersi Storefront Profile</p>
+              <p className="text-xs text-muted-foreground mt-0.5">This information appears on your public shop page on TheDersi. Changes sync automatically.</p>
+            </div>
+          </div>
+
+          {/* About */}
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Store className="w-5 h-5 text-primary" />
+              About Your Shop
+            </h2>
+            <textarea
+              value={aboutText}
+              onChange={(e) => setAboutText(e.target.value)}
+              rows={5}
+              maxLength={1000}
+              placeholder="Tell customers about your shop — what you sell, your story, why they should buy from you..."
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground resize-none"
+            />
+            <p className="text-xs text-muted-foreground mt-1">{aboutText.length}/1000 characters</p>
+          </div>
+
+          {/* Social Links */}
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Social Links</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 flex items-center gap-2 block">
+                  <Instagram className="w-4 h-4 text-pink-500" /> Instagram
+                </label>
+                <input
+                  type="url"
+                  value={socialInstagram}
+                  onChange={(e) => setSocialInstagram(e.target.value)}
+                  placeholder="https://instagram.com/yourshop"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 flex items-center gap-2 block">
+                  <Video className="w-4 h-4 text-foreground" /> TikTok
+                </label>
+                <input
+                  type="url"
+                  value={socialTiktok}
+                  onChange={(e) => setSocialTiktok(e.target.value)}
+                  placeholder="https://tiktok.com/@yourshop"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 flex items-center gap-2 block">
+                  <Facebook className="w-4 h-4 text-blue-500" /> Facebook
+                </label>
+                <input
+                  type="url"
+                  value={socialFacebook}
+                  onChange={(e) => setSocialFacebook(e.target.value)}
+                  placeholder="https://facebook.com/yourshop"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Brand Color */}
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-1 flex items-center gap-2">
+              <Palette className="w-5 h-5 text-primary" /> Brand Accent Color
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">Used as the accent color on your TheDersi storefront and ExiusCart dashboard.</p>
+            <div className="flex items-center gap-4">
+              <input
+                type="color"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                className="w-14 h-14 rounded-xl border border-border cursor-pointer bg-background p-0.5 shrink-0"
+              />
+              <div>
+                <input
+                  type="text"
+                  value={brandColor}
+                  onChange={(e) => setBrandColor(e.target.value)}
+                  maxLength={7}
+                  placeholder="#6366f1"
+                  className="w-36 px-3 py-2 bg-muted border border-border rounded-lg text-sm font-mono text-foreground focus:ring-2 focus:ring-primary outline-none"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Must be a valid 6-digit hex color</p>
+              </div>
+              <div className="w-16 h-14 rounded-xl border border-border shrink-0" style={{ background: brandColor }} />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleSaveStorefront}
+              disabled={storefrontSaving}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-60"
+            >
+              {storefrontSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : storefrontSaved ? <Check className="w-4 h-4" /> : null}
+              {storefrontSaved ? 'Saved & synced to TheDersi!' : 'Save Storefront Settings'}
             </button>
           </div>
         </div>

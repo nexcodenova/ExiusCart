@@ -8,6 +8,7 @@ import {
   Image as ImageIcon, FileText, Sliders, Loader2, X,
 } from 'lucide-react';
 import { shopApi } from '@/lib/api';
+import { applyBrandColor } from '@/lib/brand-color';
 
 type Tab = 'branding' | 'invoice' | 'receipt' | 'theme';
 
@@ -73,6 +74,15 @@ export default function CustomizationPage() {
       setReceiptPhone(s.phone || '');
       setReceiptEmail(s.email || '');
       setReceiptWebsite(s.website || '');
+      // Restore saved theme
+      if (s.brand_color) {
+        setPrimaryColor(s.brand_color);
+        const matchIdx = COLOR_PRESETS.findIndex(p => p.primary.toLowerCase() === s.brand_color.toLowerCase());
+        if (matchIdx >= 0) setSelectedPreset(matchIdx);
+        else setSelectedPreset(-1);
+      }
+      if (s.accent_color) setAccentColor(s.accent_color);
+      if (s.font_family) setFontFamily(s.font_family);
     }).catch(() => {});
   }, []);
 
@@ -108,10 +118,17 @@ export default function CustomizationPage() {
 
   async function handleSave() {
     try {
-      const payload: any = { name: shopName };
+      const payload: any = {
+        name: shopName,
+        brand_color: primaryColor || null,
+        accent_color: accentColor || null,
+        font_family: fontFamily || null,
+      };
       if (tagline) payload.tagline = tagline;
       if (logoUrl) payload.logo_url = logoUrl;
       await shopApi.updateShop(payload);
+      // Apply immediately to the current dashboard session
+      applyBrandColor(primaryColor, accentColor);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {}

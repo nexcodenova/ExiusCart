@@ -118,8 +118,13 @@ def notify_thedersi_profile_updated(
     thedersi_seller_id: str,
     logo_url: str | None,
     banner_url: str | None,
+    about_text: str | None = None,
+    social_instagram: str | None = None,
+    social_tiktok: str | None = None,
+    social_facebook: str | None = None,
+    brand_color: str | None = None,
 ) -> None:
-    """POST profile_updated event to TheDersi when seller changes logo/banner. Fire-and-forget."""
+    """POST profile_updated event to TheDersi when seller changes profile fields. Fire-and-forget."""
     if not THEDERSI_WEBHOOK_URL or not thedersi_seller_id:
         return
 
@@ -131,6 +136,16 @@ def notify_thedersi_profile_updated(
         payload["logo_url"] = logo_url
     if banner_url:
         payload["banner_url"] = banner_url
+    if about_text:
+        payload["about_text"] = about_text
+    if social_instagram:
+        payload["social_instagram"] = social_instagram
+    if social_tiktok:
+        payload["social_tiktok"] = social_tiktok
+    if social_facebook:
+        payload["social_facebook"] = social_facebook
+    if brand_color:
+        payload["brand_color"] = brand_color
 
     body = json.dumps(payload, separators=(",", ":"))
     sig = _hmac_signature(body)

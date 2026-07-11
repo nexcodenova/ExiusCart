@@ -147,7 +147,8 @@ async def update_shop(
         )
 
     update_data = shop_data.model_dump(exclude_unset=True)
-    profile_changed = bool(update_data.keys() & {"logo_url", "banner_url"})
+    _thedersi_profile_fields = {"logo_url", "banner_url", "about_text", "social_instagram", "social_tiktok", "social_facebook", "brand_color"}
+    profile_changed = bool(update_data.keys() & _thedersi_profile_fields)
 
     for field, value in update_data.items():
         setattr(shop, field, value)
@@ -155,7 +156,7 @@ async def update_shop(
     db.commit()
     db.refresh(shop)
 
-    # Notify TheDersi if logo or banner changed and shop has an active TheDersi connection
+    # Notify TheDersi if any storefront profile field changed
     if profile_changed:
         from app.models.channel import ChannelConnection
         from app.core.thedersi import notify_thedersi_profile_updated
@@ -170,6 +171,11 @@ async def update_shop(
                 conn.channel_seller_id,
                 shop.logo_url,
                 shop.banner_url,
+                shop.about_text,
+                shop.social_instagram,
+                shop.social_tiktok,
+                shop.social_facebook,
+                shop.brand_color,
             )
 
     return shop
@@ -243,7 +249,17 @@ def _fire_thedersi_profile(shop_id: int, shop: Shop, background_tasks: Backgroun
         ChannelConnection.is_active == True,
     ).first()
     if conn and conn.channel_seller_id:
-        background_tasks.add_task(notify_thedersi_profile_updated, conn.channel_seller_id, shop.logo_url, shop.banner_url)
+        background_tasks.add_task(
+            notify_thedersi_profile_updated,
+            conn.channel_seller_id,
+            shop.logo_url,
+            shop.banner_url,
+            shop.about_text,
+            shop.social_instagram,
+            shop.social_tiktok,
+            shop.social_facebook,
+            shop.brand_color,
+        )
 
 
 @router.delete("/{shop_id}", status_code=status.HTTP_204_NO_CONTENT)

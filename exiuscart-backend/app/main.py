@@ -117,6 +117,14 @@ _MIGRATIONS = [
     # Fix quote_number uniqueness: was global, must be per-shop so each shop has its own QT sequence
     "ALTER TABLE quotations DROP CONSTRAINT IF EXISTS quotations_quote_number_key;",
     "ALTER TABLE quotations ADD CONSTRAINT uq_quotations_shop_quote_number UNIQUE (shop_id, quote_number);",
+    # Storefront profile fields (TheDersi sync + ExiusCart branding)
+    "ALTER TABLE shops ADD COLUMN IF NOT EXISTS about_text TEXT;",
+    "ALTER TABLE shops ADD COLUMN IF NOT EXISTS social_instagram VARCHAR(300);",
+    "ALTER TABLE shops ADD COLUMN IF NOT EXISTS social_tiktok VARCHAR(300);",
+    "ALTER TABLE shops ADD COLUMN IF NOT EXISTS social_facebook VARCHAR(300);",
+    "ALTER TABLE shops ADD COLUMN IF NOT EXISTS brand_color VARCHAR(7);",
+    "ALTER TABLE shops ADD COLUMN IF NOT EXISTS accent_color VARCHAR(7);",
+    "ALTER TABLE shops ADD COLUMN IF NOT EXISTS font_family VARCHAR(50);",
     # Back-fill: free_trial subscription for verified shops that have none
     """INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
        SELECT s.id, 'free_trial', 'monthly', 'pending_approval', 0, COALESCE(s.currency, 'AED'), NOW()

@@ -7,6 +7,7 @@ import { Header } from '@/components/layout/header';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { TrialBanner } from '@/components/layout/trial-banner';
 import { CurrencyProvider } from '@/components/providers/currency-provider';
+import { applyBrandColor } from '@/lib/brand-color';
 
 export default function DashboardLayout({
   children,
@@ -29,6 +30,8 @@ export default function DashboardLayout({
       import('@/lib/api').then(({ shopApi }) => {
         shopApi.getMyShop().then((res) => {
           if (res.data?.id) localStorage.setItem('shop_id', String(res.data.id));
+          // Apply brand color as CSS custom property so each seller sees their own accent color
+          applyBrandColor(res.data?.brand_color, res.data?.accent_color);
         }).catch(() => {});
       });
     }

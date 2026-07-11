@@ -418,4 +418,9 @@ def thedersi_seller_profile(
         "thedersi_seller_id": thedersi_seller_id,
         "logo_url": shop.logo_url,
         "banner_url": shop.banner_url,
+        "about_text": shop.about_text,
+        "social_instagram": shop.social_instagram,
+        "social_tiktok": shop.social_tiktok,
+        "social_facebook": shop.social_facebook,
+        "brand_color": shop.brand_color,
     }

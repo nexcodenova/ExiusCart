@@ -30,6 +30,15 @@ class Shop(Base):
     loyalty_points_per_currency = Column(Numeric(6, 2), default=1.0)
     loyalty_redemption_rate = Column(Numeric(6, 2), default=0.01)
     lead_capture_token = Column(String(64), unique=True, nullable=True, index=True)
+    # Storefront / TheDersi profile fields
+    about_text = Column(Text, nullable=True)
+    social_instagram = Column(String(300), nullable=True)
+    social_tiktok = Column(String(300), nullable=True)
+    social_facebook = Column(String(300), nullable=True)
+    brand_color = Column(String(7), nullable=True)
+    # ExiusCart dashboard theme
+    accent_color = Column(String(7), nullable=True)
+    font_family = Column(String(50), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
