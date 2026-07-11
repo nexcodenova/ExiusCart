@@ -401,6 +401,52 @@ def thedersi_status(
 
 # ── Seller profile (Option B: TheDersi can pull logo/banner) ──────────────────
 
+@router.put("/partner/thedersi/seller-status", dependencies=[Depends(require_thedersi_key)])
+def thedersi_seller_status(
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    """
+    Called by TheDersi to set a seller's channel status (approved / suspended / rejected).
+    Only affects the TheDersi channel connection — POS and other channels are untouched.
+    - approved:  clear suspension, resume normal TheDersi order sync
+    - suspended: block new TheDersi orders; seller sees notice in their dashboard
+    - rejected:  same as suspended; seller is shown "not approved" notice
+    """
+    thedersi_seller_id = payload.get("thedersi_seller_id", "").strip()
+    status = payload.get("status", "").strip().lower()
+
+    if not thedersi_seller_id:
+        raise HTTPException(status_code=422, detail="thedersi_seller_id is required")
+    if status not in ("approved", "suspended", "rejected"):
+        raise HTTPException(status_code=422, detail="status must be approved, suspended, or rejected")
+
+    shop = _find_shop_by_seller_id(thedersi_seller_id, db)
+    if not shop:
+        raise HTTPException(status_code=404, detail="Seller not found")
+
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop.id,
+        ChannelConnection.channel_type == "thedersi",
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="TheDersi channel connection not found")
+
+    conn.seller_status = None if status == "approved" else status
+    db.commit()
+
+    logger.info(
+        f"[PARTNER] seller-status updated: seller={thedersi_seller_id} shop={shop.id} status={status}"
+    )
+    return {
+        "ok": True,
+        "thedersi_seller_id": thedersi_seller_id,
+        "seller_status": conn.seller_status,
+    }
+
+
+# ── Seller profile (Option B: TheDersi can pull logo/banner) ──────────────────
+
 @router.get("/partner/thedersi/seller-profile", dependencies=[Depends(require_thedersi_key)])
 def thedersi_seller_profile(
     thedersi_seller_id: str,

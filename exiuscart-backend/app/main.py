@@ -125,6 +125,8 @@ _MIGRATIONS = [
     "ALTER TABLE shops ADD COLUMN IF NOT EXISTS brand_color VARCHAR(7);",
     "ALTER TABLE shops ADD COLUMN IF NOT EXISTS accent_color VARCHAR(7);",
     "ALTER TABLE shops ADD COLUMN IF NOT EXISTS font_family VARCHAR(50);",
+    # TheDersi per-channel seller status (approved | suspended | rejected)
+    "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS seller_status VARCHAR(20);",
     # Back-fill: free_trial subscription for verified shops that have none
     """INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
        SELECT s.id, 'free_trial', 'monthly', 'pending_approval', 0, COALESCE(s.currency, 'AED'), NOW()

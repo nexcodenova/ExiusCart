@@ -471,6 +471,7 @@ def list_channels(
             "channel_seller_id": c.channel_seller_id,
             "last_synced_at": c.last_synced_at,
             "webhook_url": _webhook_url(c),
+            "seller_status": c.seller_status,
         }
         for c in conns
     ]
@@ -656,6 +657,16 @@ async def receive_order_webhook(
     ).first()
     if not conn:
         raise HTTPException(status_code=404, detail="Invalid webhook URL")
+
+    if conn.seller_status in ("suspended", "rejected"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "channel_suspended",
+                "seller_status": conn.seller_status,
+                "message": "This seller's TheDersi channel is suspended. No new orders are accepted.",
+            },
+        )
 
     # ── Idempotency: dedupe by channel_order_id ───────────────────────────────
     # TheDersi sends the same order twice: payment_status "pending" first, then

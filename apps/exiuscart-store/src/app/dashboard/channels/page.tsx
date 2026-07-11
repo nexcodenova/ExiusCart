@@ -17,6 +17,7 @@ interface ChannelConnection {
   channel_type: string;
   channel_seller_id?: string;
   webhook_url: string;
+  seller_status?: string | null;
 }
 
 function CopyBox({ label, value }: { label: string; value: string }) {
@@ -378,28 +379,54 @@ function TheDersiConnectModal({ shopId, onConnected, onClose }: {
 // ── TheDersi connected card ───────────────────────────────────────────────────
 
 function TheDersiCard({ connection }: { connection: ChannelConnection }) {
+  const isSuspended = connection.seller_status === 'suspended';
+  const isRejected = connection.seller_status === 'rejected';
+  const isRestricted = isSuspended || isRejected;
+
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Link2 className="w-4 h-4 text-primary" />
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isRestricted ? 'bg-red-500/10' : 'bg-primary/10'}`}>
+            <Link2 className={`w-4 h-4 ${isRestricted ? 'text-red-500' : 'text-primary'}`} />
           </div>
           <div>
             <p className="font-semibold text-foreground text-sm">TheDersi</p>
             <p className="text-xs text-muted-foreground">Sri Lankan Fashion Marketplace</p>
           </div>
         </div>
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
-          <CheckCircle2 className="w-3 h-3" /> Connected
-        </span>
+        {isRestricted ? (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-red-500/10 text-red-600 dark:text-red-400">
+            <X className="w-3 h-3" /> {isSuspended ? 'Suspended' : 'Not Approved'}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+            <CheckCircle2 className="w-3 h-3" /> Connected
+          </span>
+        )}
       </div>
+
+      {isRestricted && (
+        <div className="mx-5 mt-5 px-4 py-3 bg-red-500/8 border border-red-500/20 rounded-lg">
+          <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">
+            {isSuspended ? 'TheDersi channel suspended' : 'TheDersi account not approved'}
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {isSuspended
+              ? 'New TheDersi orders are paused. Your POS and other channels continue to work. Please contact TheDersi support to resolve your account status.'
+              : 'Your TheDersi seller application was not approved. New orders from TheDersi are paused. Contact TheDersi support for more information.'}
+          </p>
+        </div>
+      )}
+
       <div className="p-5 space-y-4">
         <CopyBox label="Your ExiusCart Webhook URL" value={connection.webhook_url} />
-        <Link href="/dashboard/payout"
-          className="flex items-center justify-center gap-2 w-full py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition">
-          View Payouts & Earnings →
-        </Link>
+        {!isRestricted && (
+          <Link href="/dashboard/payout"
+            className="flex items-center justify-center gap-2 w-full py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition">
+            View Payouts & Earnings →
+          </Link>
+        )}
       </div>
     </div>
   );
