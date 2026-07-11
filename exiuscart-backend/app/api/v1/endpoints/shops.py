@@ -901,6 +901,110 @@ def get_dashboard_stats(
     dow_map = {int(r.dow): {"orders": int(r.cnt), "sales": float(r.sales or 0)} for r in dow_rows}
     daily_breakdown = [{"day": dow_names[i], "orders": dow_map.get(i, {}).get("orders", 0), "sales": dow_map.get(i, {}).get("sales", 0)} for i in range(7)]
 
+    # ── Advanced stats ─────────────────────────────────────────────────────────
+
+    # All-time revenue + orders
+    all_time_revenue = float(db.query(func.sum(Ord.total)).filter(
+        Ord.shop_id == shop_id, Ord.status != "cancelled",
+    ).scalar() or 0)
+    all_time_orders = db.query(func.count(Ord.id)).filter(
+        Ord.shop_id == shop_id, Ord.status != "cancelled",
+    ).scalar() or 0
+
+    # Shop member since date
+    member_since = shop.created_at.strftime("%b %Y") if shop.created_at else "N/A"
+
+    # This week (Mon–today)
+    week_start = today_start - timedelta(days=today_start.weekday())
+    this_week_rev = float(db.query(func.sum(Ord.total)).filter(
+        Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= week_start,
+    ).scalar() or 0)
+    this_week_orders = db.query(func.count(Ord.id)).filter(
+        Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= week_start,
+    ).scalar() or 0
+
+    # This year
+    year_start = today_start.replace(month=1, day=1)
+    this_year_rev = float(db.query(func.sum(Ord.total)).filter(
+        Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= year_start,
+    ).scalar() or 0)
+    this_year_orders = db.query(func.count(Ord.id)).filter(
+        Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= year_start,
+    ).scalar() or 0
+
+    # Today avg order value
+    today_aov_row = db.query(func.avg(Ord.total)).filter(
+        Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= today_start,
+    ).scalar()
+    today_avg_order = float(today_aov_row or 0)
+
+    # 12-month monthly breakdown
+    monthly_revenue_12m = []
+    for i in range(11, -1, -1):
+        # go back i months from current month
+        ref = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        for _ in range(i):
+            ref = (ref - timedelta(days=1)).replace(day=1)
+        m_start = ref
+        m_end = (m_start + timedelta(days=32)).replace(day=1)
+        m_rev = float(db.query(func.sum(Ord.total)).filter(
+            Ord.shop_id == shop_id, Ord.status != "cancelled",
+            Ord.created_at >= m_start, Ord.created_at < m_end,
+        ).scalar() or 0)
+        m_orders = db.query(func.count(Ord.id)).filter(
+            Ord.shop_id == shop_id, Ord.status != "cancelled",
+            Ord.created_at >= m_start, Ord.created_at < m_end,
+        ).scalar() or 0
+        monthly_revenue_12m.append({
+            "month": m_start.strftime("%b '%y"),
+            "revenue": round(m_rev, 2),
+            "orders": m_orders,
+        })
+    # Add MoM growth %
+    for idx, m in enumerate(monthly_revenue_12m):
+        if idx > 0:
+            prev = monthly_revenue_12m[idx - 1]["revenue"]
+            m["growth"] = round(((m["revenue"] - prev) / prev * 100), 1) if prev > 0 else 0
+        else:
+            m["growth"] = 0
+
+    # Repeat customer rate
+    from sqlalchemy import text as sa_text
+    repeat_sub = (
+        db.query(Ord.customer_id, func.count(Ord.id).label("cnt"))
+        .filter(Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.customer_id.isnot(None))
+        .group_by(Ord.customer_id)
+        .subquery()
+    )
+    total_customers_ordered = db.query(func.count()).select_from(repeat_sub).scalar() or 0
+    repeat_customers = db.query(func.count()).select_from(repeat_sub).filter(repeat_sub.c.cnt >= 2).scalar() or 0
+    repeat_customer_rate = round((repeat_customers / total_customers_ordered * 100), 1) if total_customers_ordered > 0 else 0
+
+    # Inventory value (stock × cost_price for products that have cost set)
+    inv_val_row = db.query(func.sum(Product.quantity * Product.cost_price)).filter(
+        Product.shop_id == shop_id, Product.is_active == True,
+        Product.cost_price.isnot(None), Product.cost_price > 0,
+    ).scalar()
+    inventory_value = float(inv_val_row or 0)
+
+    # Out of stock count
+    out_of_stock_count = db.query(func.count(Product.id)).filter(
+        Product.shop_id == shop_id, Product.is_active == True, Product.quantity <= 0,
+    ).scalar() or 0
+
+    # Top customers this month
+    from app.models.customer import Customer as Cust
+    top_cust_rows = (
+        db.query(Cust.id, Cust.name, func.count(Ord.id).label("orders"), func.sum(Ord.total).label("revenue"))
+        .join(Ord, Ord.customer_id == Cust.id)
+        .filter(Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= month_start)
+        .group_by(Cust.id, Cust.name)
+        .order_by(func.sum(Ord.total).desc())
+        .limit(5)
+        .all()
+    )
+    top_customers = [{"id": r[0], "name": r[1] or "Unknown", "orders": int(r[2]), "revenue": float(r[3] or 0)} for r in top_cust_rows]
+
     return {
         "sales": float(today_sales),
         "salesChange": sales_change,
@@ -911,18 +1015,14 @@ def get_dashboard_stats(
         "cash": 0,
         "card": 0,
         "lowStockAlerts": [
-            {
-                "name": p.name,
-                "stock": p.quantity,
-                "min": p.low_stock_threshold,
-            }
+            {"name": p.name, "stock": p.quantity, "min": p.low_stock_threshold}
             for p in low_stock
         ],
         "whatsappOrders": [],
         "recentOrders": [
             {
                 "id": str(o.id),
-                "customer": "Customer",
+                "customer": o.customer_name or (o.customer.name if o.customer else "Customer"),
                 "amount": str(o.total),
                 "status": o.status,
                 "time": o.created_at.isoformat(),
@@ -941,6 +1041,20 @@ def get_dashboard_stats(
         "revenueMoM": revenue_mom,
         "newCustomersMonth": new_customers_month,
         "dailyBreakdown": daily_breakdown,
+        # Advanced
+        "allTimeRevenue": all_time_revenue,
+        "allTimeOrders": all_time_orders,
+        "memberSince": member_since,
+        "thisWeekRevenue": this_week_rev,
+        "thisWeekOrders": this_week_orders,
+        "thisYearRevenue": this_year_rev,
+        "thisYearOrders": this_year_orders,
+        "todayAvgOrder": today_avg_order,
+        "monthlyRevenue12m": monthly_revenue_12m,
+        "repeatCustomerRate": repeat_customer_rate,
+        "inventoryValue": inventory_value,
+        "outOfStockCount": out_of_stock_count,
+        "topCustomers": top_customers,
     }
 
 
