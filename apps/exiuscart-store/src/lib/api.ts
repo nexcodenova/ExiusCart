@@ -16,13 +16,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Redirect to login on 401
+// Force logout on 401 (expired/invalid token) or 403 account deactivated
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('access_token');
-      window.location.href = '/login';
+    if (typeof window !== 'undefined') {
+      const status = error.response?.status;
+      const detail = error.response?.data?.detail ?? '';
+      const isDeactivated =
+        status === 403 &&
+        (detail === 'User is deactivated' || detail === 'Account is deactivated');
+      if (status === 401 || isDeactivated) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('shop_id');
+        window.location.href = '/login?reason=deactivated';
+      }
     }
     return Promise.reject(error);
   }

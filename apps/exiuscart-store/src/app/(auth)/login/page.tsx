@@ -13,6 +13,12 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reason') === 'deactivated') {
+      setError('Your account has been deactivated. Please contact support.');
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
     const hash = window.location.hash;
     if (hash.startsWith('#token=')) {
       const token = hash.slice(7);
