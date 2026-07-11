@@ -407,11 +407,12 @@ def thedersi_seller_status(
     db: Session = Depends(get_db),
 ):
     """
-    Called by TheDersi to set a seller's channel status (approved / suspended / rejected).
-    Only affects the TheDersi channel connection — POS and other channels are untouched.
-    - approved:  clear suspension, resume normal TheDersi order sync
-    - suspended: block new TheDersi orders; seller sees notice in their dashboard
-    - rejected:  same as suspended; seller is shown "not approved" notice
+    Called by TheDersi to set a seller's account status (approved / suspended / rejected).
+    TheDersi sellers access ExiusCart via TheDersi — if TheDersi suspends them, their
+    full ExiusCart account is locked (user.is_active = False), blocking login and all API calls.
+    - approved:  restore full account access + clear channel suspension flag
+    - suspended: lock ExiusCart account immediately; existing tokens stop working
+    - rejected:  same as suspended
     """
     thedersi_seller_id = payload.get("thedersi_seller_id", "").strip()
     status = payload.get("status", "").strip().lower()
@@ -432,16 +433,28 @@ def thedersi_seller_status(
     if not conn:
         raise HTTPException(status_code=404, detail="TheDersi channel connection not found")
 
-    conn.seller_status = None if status == "approved" else status
+    owner = db.query(User).filter(User.id == shop.owner_id).first()
+
+    if status == "approved":
+        conn.seller_status = None
+        if owner:
+            owner.is_active = True
+    else:
+        conn.seller_status = status
+        if owner:
+            owner.is_active = False
+
     db.commit()
 
     logger.info(
-        f"[PARTNER] seller-status updated: seller={thedersi_seller_id} shop={shop.id} status={status}"
+        f"[PARTNER] seller-status updated: seller={thedersi_seller_id} shop={shop.id} "
+        f"status={status} user_active={owner.is_active if owner else 'N/A'}"
     )
     return {
         "ok": True,
         "thedersi_seller_id": thedersi_seller_id,
         "seller_status": conn.seller_status,
+        "account_active": owner.is_active if owner else None,
     }
 
 
