@@ -825,14 +825,14 @@ def get_dashboard_stats(
     from app.models.order import OrderItem as OrdItemModel
     top_products_rows = db.query(
         OrdItemModel.product_name,
-        func.sum(OrdItemModel.total).label("revenue"),
+        func.sum(OrdItemModel.total_price).label("revenue"),
         func.sum(OrdItemModel.quantity).label("qty"),
     ).join(Ord, Ord.id == OrdItemModel.order_id).filter(
         Ord.shop_id == shop_id,
         Ord.status != "cancelled",
         Ord.created_at >= thirty_ago,
     ).group_by(OrdItemModel.product_name).order_by(
-        func.sum(OrdItemModel.total).desc()
+        func.sum(OrdItemModel.total_price).desc()
     ).limit(5).all()
     top_products = [
         {"name": r[0] or "Unknown", "revenue": float(r[1] or 0), "qty": int(r[2] or 0)}
