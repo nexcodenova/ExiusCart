@@ -999,7 +999,7 @@ def get_dashboard_stats(
         "recentOrders": [
             {
                 "id": str(o.id),
-                "customer": o.customer_name or (o.customer.name if o.customer else "Customer"),
+                "customer": (o.customer.name if o.customer else "Customer"),
                 "amount": str(o.total),
                 "status": o.status,
                 "time": o.created_at.isoformat(),
