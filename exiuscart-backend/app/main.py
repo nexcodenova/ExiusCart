@@ -86,86 +86,49 @@ def _process_due_recurring_invoices():
 # Create any missing tables (safe for existing tables)
 Base.metadata.create_all(bind=engine)
 
-# Run safe column migrations for existing tables
-with engine.connect() as conn:
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE NOT NULL;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE products ADD COLUMN IF NOT EXISTS source_url VARCHAR(1000);"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE order_items ALTER COLUMN product_id DROP NOT NULL;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE shop_leads ADD COLUMN IF NOT EXISTS score INTEGER NOT NULL DEFAULT 0;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE shop_leads ADD COLUMN IF NOT EXISTS score_breakdown JSONB;"
-    ))
-    # Quotation table — add columns that may not exist in older deployments
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS tax_rate NUMERIC(5,2) NOT NULL DEFAULT 0;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS tax_type VARCHAR(10) NOT NULL DEFAULT 'fixed';"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS payment_schedule JSONB;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS company_address TEXT;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS company_trn VARCHAR(100);"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS company_bank TEXT;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_token VARCHAR(64) UNIQUE;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_accepted_at TIMESTAMPTZ;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_accepted_name VARCHAR(200);"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS reminder_count INTEGER NOT NULL DEFAULT 0;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ;"
-    ))
-    conn.execute(__import__('sqlalchemy').text(
-        "CREATE INDEX IF NOT EXISTS ix_quotations_client_token ON quotations(client_token) WHERE client_token IS NOT NULL;"
-    ))
-    # Wholesale tables (created by create_all, no manual migration needed)
-    # Ensure wholesale_buyers token index exists
-    conn.execute(__import__('sqlalchemy').text(
-        "CREATE INDEX IF NOT EXISTS ix_wholesale_buyers_token ON wholesale_buyers(token);"
-    ))
-    # Back-fill: create pending_approval subscriptions for verified shops that have none
-    conn.execute(__import__('sqlalchemy').text("""
-        INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
-        SELECT s.id, 'free_trial', 'monthly', 'pending_approval', 0, COALESCE(s.currency, 'AED'), NOW()
-        FROM shops s
-        JOIN users u ON u.id = s.owner_id
-        WHERE u.is_verified = TRUE
-          AND NOT EXISTS (
-              SELECT 1 FROM subscriptions sub WHERE sub.shop_id = s.id
-          );
-    """))
-    conn.commit()
+# Run safe column migrations — each statement is independent so one failure never blocks the rest
+_sa_text = __import__('sqlalchemy').text
+_MIGRATIONS = [
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE NOT NULL;",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS source_url VARCHAR(1000);",
+    "ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);",
+    "ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);",
+    "ALTER TABLE order_items ALTER COLUMN product_id DROP NOT NULL;",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL;",
+    "ALTER TABLE shop_leads ADD COLUMN IF NOT EXISTS score INTEGER NOT NULL DEFAULT 0;",
+    "ALTER TABLE shop_leads ADD COLUMN IF NOT EXISTS score_breakdown JSONB;",
+    # Quotation columns
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS tax_rate NUMERIC(5,2) NOT NULL DEFAULT 0;",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS tax_type VARCHAR(10) NOT NULL DEFAULT 'fixed';",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS payment_schedule JSONB;",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS company_address TEXT;",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS company_trn VARCHAR(100);",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS company_bank TEXT;",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_token VARCHAR(64);",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_accepted_at TIMESTAMPTZ;",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_accepted_name VARCHAR(200);",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS reminder_count INTEGER NOT NULL DEFAULT 0;",
+    "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ;",
+    # Unique constraint on client_token (safe to re-run — DO NOTHING on conflict)
+    "ALTER TABLE quotations ADD CONSTRAINT uq_quotations_client_token UNIQUE (client_token);",
+    "CREATE INDEX IF NOT EXISTS ix_quotations_client_token ON quotations(client_token) WHERE client_token IS NOT NULL;",
+    # Wholesale index
+    "CREATE INDEX IF NOT EXISTS ix_wholesale_buyers_token ON wholesale_buyers(token);",
+    # Back-fill: free_trial subscription for verified shops that have none
+    """INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
+       SELECT s.id, 'free_trial', 'monthly', 'pending_approval', 0, COALESCE(s.currency, 'AED'), NOW()
+       FROM shops s JOIN users u ON u.id = s.owner_id
+       WHERE u.is_verified = TRUE
+         AND NOT EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.shop_id = s.id);""",
+]
+
+for _sql in _MIGRATIONS:
+    try:
+        with engine.connect() as _conn:
+            _conn.execute(_sa_text(_sql))
+            _conn.commit()
+    except Exception as _e:
+        logger.warning(f"[migration] skipped (already applied or harmless): {_e!r:.120}")
 
 
 

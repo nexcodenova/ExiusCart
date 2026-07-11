@@ -20,6 +20,9 @@ const CURRENCY_META: Record<Currency, { symbol: string; flag: string; country: s
   INR: { symbol: 'INR', flag: '🇮🇳', country: 'India',                paymentNote: 'Indian Visa / Mastercard / UPI accepted' },
 };
 
+const PLAN_RANK: Record<string, number> = { free_trial: 0, starter: 1, premium: 2 };
+const TD_RANK:   Record<string, number> = { free: 0, growth: 1, pro: 2 };
+
 const PLAN_PRICING: Record<Currency, { starter: number; premium: number; extraStaff: number }> = {
   AED: { starter: 45,   premium: 99,   extraStaff: 15  },
   USD: { starter: 12,   premium: 29,   extraStaff: 5   },
@@ -182,6 +185,7 @@ export default function BillingPage() {
   const [upgradeSuccess, setUpgradeSuccess] = useState('');
   const [upgradeError, setUpgradeError] = useState('');
   const [isTheDersiShop, setIsTheDersiShop] = useState(false);
+  const [isDowngradeFlow, setIsDowngradeFlow] = useState(false);
 
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
@@ -214,8 +218,9 @@ export default function BillingPage() {
     'free';
 
 
-  const handleUpgrade = (planId: string) => {
+  const handleUpgrade = (planId: string, downgrade = false) => {
     setSelectedPlan(planId);
+    setIsDowngradeFlow(downgrade);
     setUpgradeSuccess('');
     setUpgradeError('');
     setSelectedPayment('card');
@@ -231,7 +236,11 @@ export default function BillingPage() {
       const { subscriptionApi } = await import('@/lib/api');
       await subscriptionApi.requestUpgrade(shopId, selectedPlan);
       const plan = plans.find(p => p.id === selectedPlan);
-      setUpgradeSuccess(`Upgrade to ${plan?.name} requested! Our team will activate it within 24 hours.`);
+      setUpgradeSuccess(
+        isDowngradeFlow
+          ? `Downgrade to ${plan?.name} requested. Our team will process it within 24 hours.`
+          : `Upgrade to ${plan?.name} requested! Our team will activate it within 24 hours.`
+      );
     } catch (err: any) {
       setUpgradeError(err.response?.data?.detail || 'Failed to submit upgrade request');
     } finally {
@@ -320,6 +329,10 @@ export default function BillingPage() {
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {THEDERSI_PLANS.map((plan) => {
               const isCurrent = plan.id === theDersiCurrentId;
+              const currentTdRank = TD_RANK[theDersiCurrentId] ?? 0;
+              const thisTdRank = TD_RANK[plan.id] ?? 0;
+              const isTdUpgrade = !isCurrent && thisTdRank > currentTdRank;
+              const isTdDowngrade = !isCurrent && thisTdRank < currentTdRank;
               return (
                 <div key={plan.id}
                   className={`relative bg-card rounded-2xl border-2 p-5 flex flex-col transition-shadow hover:shadow-lg ${isCurrent ? 'border-indigo-500 shadow-indigo-500/10 shadow-lg' : plan.color}`}>
@@ -361,20 +374,25 @@ export default function BillingPage() {
                     <div className="w-full py-2.5 rounded-xl bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-semibold text-center border border-green-500/20">
                       ✓ Current Plan
                     </div>
-                  ) : plan.upgradeSlug ? (
+                  ) : isTdUpgrade ? (
                     <a
-                      href={`https://thedersi.lk/seller/upgrade?plan=${plan.upgradeSlug}&ref=exiuscart`}
+                      href={`https://thedersi.lk/seller/upgrade?plan=${plan.upgradeSlug ?? plan.id}&ref=exiuscart`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`w-full py-2.5 rounded-xl text-sm font-semibold text-center transition flex items-center justify-center gap-2 ${plan.btnColor}`}
                     >
                       Upgrade on TheDersi <ArrowRight className="w-4 h-4" />
                     </a>
-                  ) : (
-                    <div className="w-full py-2.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium text-center">
-                      Start Free
-                    </div>
-                  )}
+                  ) : isTdDowngrade ? (
+                    <a
+                      href={`https://thedersi.lk/seller/upgrade?plan=${plan.upgradeSlug ?? plan.id}&ref=exiuscart`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 rounded-xl text-sm font-semibold text-center transition flex items-center justify-center gap-2 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10"
+                    >
+                      Downgrade on TheDersi <ArrowRight className="w-4 h-4" />
+                    </a>
+                  ) : null}
                 </div>
               );
             })}
@@ -504,10 +522,17 @@ export default function BillingPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition">
                 <Plus className="w-4 h-4" /> Add Staff
               </button>
-              <button type="button" onClick={() => handleUpgrade('premium')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition">
-                <Zap className="w-4 h-4" /> Upgrade
-              </button>
+              {currentPlan?.plan_type === 'premium' ? (
+                <button type="button" onClick={() => handleUpgrade('starter', true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-500/10 transition">
+                  Downgrade to Starter
+                </button>
+              ) : (
+                <button type="button" onClick={() => handleUpgrade('premium')}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition">
+                  <Zap className="w-4 h-4" /> Upgrade
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -540,6 +565,9 @@ export default function BillingPage() {
         <div className="grid md:grid-cols-3 gap-4">
           {plans.map((plan) => {
             const isCurrent = plan.name === currentPlan?.name;
+            const currentRank = PLAN_RANK[currentPlan?.plan_type ?? 'free_trial'] ?? 0;
+            const thisRank = PLAN_RANK[plan.id] ?? 0;
+            const isDowngrade = !isCurrent && thisRank < currentRank;
             return (
               <div key={plan.id}
                 className={`bg-card rounded-xl border-2 p-6 relative ${plan.popular ? 'border-primary' : 'border-border'}`}>
@@ -579,17 +607,21 @@ export default function BillingPage() {
                     </li>
                   ))}
                 </ul>
-                <button type="button" onClick={() => handleUpgrade(plan.id)}
-                  disabled={isCurrent}
-                  className={`w-full py-3 rounded-lg font-medium transition ${
-                    isCurrent
-                      ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                      : plan.popular
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'border border-border text-foreground hover:bg-muted'
-                  }`}>
-                  {isCurrent ? 'Current Plan' : plan.id === 'free_trial' ? 'Start Free Trial' : 'Select Plan'}
-                </button>
+                {isCurrent ? (
+                  <button disabled className="w-full py-3 rounded-lg font-medium bg-muted text-muted-foreground cursor-not-allowed">
+                    Current Plan
+                  </button>
+                ) : plan.id === 'free_trial' ? null : isDowngrade ? (
+                  <button type="button" onClick={() => handleUpgrade(plan.id, true)}
+                    className="w-full py-3 rounded-lg font-medium transition border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10">
+                    Downgrade to {plan.name}
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => handleUpgrade(plan.id)}
+                    className={`w-full py-3 rounded-lg font-medium transition ${plan.popular ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'border border-border text-foreground hover:bg-muted'}`}>
+                    Upgrade to {plan.name}
+                  </button>
+                )}
               </div>
             );
           })}
@@ -710,7 +742,7 @@ export default function BillingPage() {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-card rounded-xl border border-border w-full max-w-md">
               <div className="p-4 border-b border-border flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Confirm Upgrade</h2>
+                <h2 className="text-lg font-semibold text-foreground">{isDowngradeFlow ? 'Confirm Downgrade' : 'Confirm Upgrade'}</h2>
                 <button type="button" onClick={() => setShowUpgradeModal(false)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">✕</button>
               </div>
 
@@ -727,7 +759,7 @@ export default function BillingPage() {
                 <div className="p-4 space-y-4">
                   <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground">Upgrading to</p>
+                      <p className="text-xs text-muted-foreground">{isDowngradeFlow ? 'Downgrading to' : 'Upgrading to'}</p>
                       <p className="text-xl font-bold text-foreground">{plan.name} Plan</p>
                     </div>
                     <div className="text-right">
@@ -769,7 +801,9 @@ export default function BillingPage() {
                   </div>
 
                   <p className="text-sm text-muted-foreground">
-                    Your upgrade request will be sent to our team. We&apos;ll activate your new plan within 24 hours after payment confirmation.
+                    {isDowngradeFlow
+                      ? "Your downgrade request will be sent to our team. We'll process it and adjust your plan within 24 hours."
+                      : "Your upgrade request will be sent to our team. We'll activate your new plan within 24 hours after payment confirmation."}
                   </p>
 
                   {upgradeError && (
@@ -782,7 +816,7 @@ export default function BillingPage() {
                     <button type="button" onClick={confirmUpgrade} disabled={upgradeLoading}
                       className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2">
                       {upgradeLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                      Request Upgrade
+                      {isDowngradeFlow ? 'Request Downgrade' : 'Request Upgrade'}
                     </button>
                   </div>
                 </div>

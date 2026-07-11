@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Cell, PieChart, Pie,
+  Tooltip, Cell, PieChart, Pie, ComposedChart, Area, Line,
 } from 'recharts';
 import { dashboardApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
@@ -166,9 +166,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <PeriodCard label="Today" value={L ? '—' : String(stats?.orders ?? 0)} sub={stats?.todayAvgOrder ? `Avg ${fmt(stats.todayAvgOrder, 0)}` : undefined} icon={ShoppingBag} color="indigo" plain />
           <PeriodCard label="This week" value={L ? '—' : String(stats?.thisWeekOrders ?? 0)} icon={CalendarDays} color="violet" plain />
-          <PeriodCard label="This month" value={L ? '—' : String(Math.round((stats?.thisMonthRevenue ?? 0) > 0 || (stats?.avgOrderValue ?? 0) > 0 ? (stats?.allTimeOrders ?? 0) > 0 ? (stats?.thisYearOrders ?? 0) : 0 : 0))}
-            icon={TrendingUp} color="emerald" plain
-            value2={L ? '—' : String(stats?.thisYearOrders ?? 0)} label2="This year" />
+          <PeriodCard label="This month" value={L ? '—' : String(stats?.monthlyRevenue12m?.at(-1)?.orders ?? 0)} icon={TrendingUp} color="emerald" plain />
           <PeriodCard label="This year" value={L ? '—' : String(stats?.thisYearOrders ?? 0)} icon={BarChart3} color="amber" plain />
           <PeriodCard label="All time" value={L ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()} icon={Boxes} color="rose" plain />
         </div>
@@ -188,7 +186,13 @@ export default function DashboardPage() {
           ) : (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.monthlyRevenue12m} margin={{ top: 16, right: 4, left: -16, bottom: 0 }}>
+                <ComposedChart data={stats.monthlyRevenue12m} margin={{ top: 16, right: 4, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.01} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="4 4" stroke="#94a3b8" strokeOpacity={0.15} vertical={false} />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={52} />
@@ -204,12 +208,13 @@ export default function DashboardPage() {
                       </div>
                     );
                   }} />
-                  <Bar dataKey="revenue" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                  <Bar dataKey="revenue" radius={[4, 4, 0, 0]} maxBarSize={32}>
                     {stats.monthlyRevenue12m.map((m, i) => (
-                      <Cell key={i} fill={i === stats.monthlyRevenue12m!.length - 1 ? '#6366f1' : '#6366f130'} />
+                      <Cell key={i} fill={i === stats.monthlyRevenue12m!.length - 1 ? '#6366f150' : '#6366f118'} />
                     ))}
                   </Bar>
-                </BarChart>
+                  <Area type="monotone" dataKey="revenue" fill="url(#revGradient)" stroke="#6366f1" strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: '#6366f1' }} />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           )}
