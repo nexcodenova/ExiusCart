@@ -27,7 +27,7 @@ interface TheDersiInfo {
   available_amount: number;
   total_earned_lifetime: number;
   currency: string;
-  next_payout_date: string;
+  next_payout_date: string | null;
   payout_overdue: boolean;
   payout_note?: string;
 }
@@ -222,9 +222,12 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
   const commission = (n: number) => (n * commissionRate) / 100;
   const net = (n: number) => n - commission(n);
   const cur = info?.currency ?? 'LKR';
-  const nextDate = info?.next_payout_date
-    ? new Date(info.next_payout_date + 'T00:00:00').toLocaleDateString('en-LK', { weekday: 'short', day: 'numeric', month: 'short' })
-    : '—';
+  const nextDate = (() => {
+    if (!info?.next_payout_date) return nextMondayLabel;
+    const d = new Date(info.next_payout_date + 'T00:00:00');
+    if (isNaN(d.getTime())) return nextMondayLabel;
+    return d.toLocaleDateString('en-LK', { weekday: 'short', day: 'numeric', month: 'short' });
+  })();
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
