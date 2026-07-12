@@ -312,6 +312,16 @@ export default function AffiliatesPage() {
                         <p className="text-xs text-gray-500">Pending</p>
                         <p className="text-sm font-semibold text-yellow-400">{affiliate.pending_amount.toFixed(0)} AED</p>
                       </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Payout</p>
+                        {affiliate.payout_method ? (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">
+                            {affiliate.payout_method}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-600">—</span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Actions */}
@@ -417,17 +427,39 @@ export default function AffiliatesPage() {
                           </div>
 
                           {/* Payout Details */}
-                          {(detail.payout_method || detail.paypal_email || detail.skrill_email || detail.payoneer_id) && (
-                            <div>
-                              <p className="text-gray-400 text-sm font-medium mb-3">Payout Details</p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                {detail.payout_method && <AppField label="Preferred Method" value={detail.payout_method.charAt(0).toUpperCase() + detail.payout_method.slice(1)} />}
-                                {detail.paypal_email && <AppField label="PayPal Email" value={detail.paypal_email} />}
-                                {detail.skrill_email && <AppField label="Skrill Email" value={detail.skrill_email} />}
-                                {detail.payoneer_id && <AppField label="Payoneer ID / Email" value={detail.payoneer_id} />}
+                          <div>
+                            <p className="text-gray-400 text-sm font-medium mb-3">Payout Details</p>
+                            {(detail.payout_method || detail.paypal_email || detail.skrill_email || detail.payoneer_id) ? (
+                              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {detail.payout_method && (
+                                  <div>
+                                    <p className="text-gray-500 text-xs mb-1">Preferred Method</p>
+                                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">{detail.payout_method}</span>
+                                  </div>
+                                )}
+                                {detail.paypal_email && (
+                                  <div>
+                                    <p className="text-gray-500 text-xs mb-1">PayPal Email</p>
+                                    <p className="text-emerald-300 text-sm font-medium break-all">{detail.paypal_email}</p>
+                                  </div>
+                                )}
+                                {detail.skrill_email && (
+                                  <div>
+                                    <p className="text-gray-500 text-xs mb-1">Skrill Email</p>
+                                    <p className="text-emerald-300 text-sm font-medium break-all">{detail.skrill_email}</p>
+                                  </div>
+                                )}
+                                {detail.payoneer_id && (
+                                  <div>
+                                    <p className="text-gray-500 text-xs mb-1">Payoneer ID / Email</p>
+                                    <p className="text-emerald-300 text-sm font-medium break-all">{detail.payoneer_id}</p>
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          )}
+                            ) : (
+                              <p className="text-gray-600 text-sm bg-[#151F32] rounded-lg px-4 py-3">No payout details saved yet — affiliate has not set their payment method.</p>
+                            )}
+                          </div>
 
                           {/* Commission History */}
                           <div>
