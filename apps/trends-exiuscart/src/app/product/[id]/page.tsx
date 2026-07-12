@@ -71,7 +71,7 @@ export default function ProductDetailPage() {
           className="flex items-center gap-2 px-5 py-2.5 bg-[#FF6000] text-white font-semibold rounded-xl hover:bg-[#e05500] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Trends
+          Back to Prodora
         </Link>
       </div>
     );
@@ -313,7 +313,7 @@ export default function ProductDetailPage() {
       </div>
 
       <footer className="max-w-5xl mx-auto px-4 py-8 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Fairam Private Limited &nbsp;·&nbsp; ExiusCart Trends
+        © {new Date().getFullYear()} Fairam Private Limited &nbsp;·&nbsp; Prodora by ExiusCart
       </footer>
     </div>
   );

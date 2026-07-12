@@ -82,13 +82,13 @@ export default function HomePage() {
       <header className="bg-[#FF6000] shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/" className="flex-shrink-0 flex items-center gap-2 mr-2">
-            <Image src="/logo.svg" alt="ExiusCart" width={30} height={30} />
+            <Image src="/logo.svg" alt="Prodora" width={30} height={30} />
             <div className="leading-none">
               <span className="text-white font-extrabold text-lg tracking-tight block leading-none">
-                ExiusCart
+                Prodora
               </span>
               <span className="text-orange-100 text-[10px] font-medium tracking-widest uppercase">
-                Trends
+                by ExiusCart
               </span>
             </div>
           </Link>
@@ -137,12 +137,12 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto px-4 py-8 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-extrabold leading-tight">
-                Dropshipping Products
+                Discover Winning Products
                 <br />
                 <span className="text-orange-100">Ready to Sell</span>
               </h1>
               <p className="text-orange-100 text-sm mt-2 max-w-sm">
-                Source trending products and start selling from your ExiusCart store today.
+                Find all kinds of winning products and sell them from your ExiusCart store today.
               </p>
             </div>
             <div className="hidden sm:block text-6xl select-none">🔥</div>
@@ -186,10 +186,10 @@ export default function HomePage() {
             <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Tag className="w-4 h-4 text-[#FF6000]" />
-                <span className="text-xs font-bold text-gray-700">Dropship Tips</span>
+                <span className="text-xs font-bold text-gray-700">How it works</span>
               </div>
               <ul className="text-xs text-gray-500 space-y-1.5">
-                <li>✓ Download product images</li>
+                <li>✓ Browse winning products</li>
                 <li>✓ Copy supplier links</li>
                 <li>✓ List on your ExiusCart store</li>
                 <li>✓ Start selling today</li>
@@ -271,8 +271,8 @@ export default function HomePage() {
       <footer className="bg-white border-t border-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="ExiusCart" width={22} height={22} />
-            <span className="font-semibold text-gray-600">ExiusCart Trends</span>
+            <Image src="/logo.svg" alt="Prodora" width={22} height={22} />
+            <span className="font-semibold text-gray-600">Prodora by ExiusCart</span>
           </div>
           <p>© {new Date().getFullYear()} Fairam Private Limited. All rights reserved.</p>
         </div>

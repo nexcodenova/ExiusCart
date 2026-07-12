@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ExiusCart Trends',
-  description: 'Trending products curated for ExiusCart premium users',
+  title: 'Prodora — Discover Winning Products',
+  description: 'Find winning products ready to sell. Powered by ExiusCart.',
   icons: {
     icon: '/logo.svg',
     shortcut: '/logo.svg',
