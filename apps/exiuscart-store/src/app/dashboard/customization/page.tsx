@@ -67,6 +67,7 @@ export default function CustomizationPage() {
   useEffect(() => {
     shopApi.getMyShop().then(res => {
       const s = res.data;
+      if (!s) return;
       setShopName(s.name || '');
       setTagline(s.tagline || '');
       setLogoUrl(s.logo_url || '');
@@ -74,12 +75,10 @@ export default function CustomizationPage() {
       setReceiptPhone(s.phone || '');
       setReceiptEmail(s.email || '');
       setReceiptWebsite(s.website || '');
-      // Restore saved theme
       if (s.brand_color) {
         setPrimaryColor(s.brand_color);
         const matchIdx = COLOR_PRESETS.findIndex(p => p.primary.toLowerCase() === s.brand_color.toLowerCase());
-        if (matchIdx >= 0) setSelectedPreset(matchIdx);
-        else setSelectedPreset(-1);
+        setSelectedPreset(matchIdx >= 0 ? matchIdx : -1);
       }
       if (s.accent_color) setAccentColor(s.accent_color);
       if (s.font_family) setFontFamily(s.font_family);
@@ -310,7 +309,7 @@ export default function CustomizationPage() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Selected: {COLOR_PRESETS[selectedPreset].name}</p>
+                <p className="text-xs text-muted-foreground mt-2">Selected: {selectedPreset >= 0 ? COLOR_PRESETS[selectedPreset].name : 'Custom'}</p>
               </div>
 
               {/* Custom colors */}
