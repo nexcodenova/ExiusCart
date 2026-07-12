@@ -29,7 +29,7 @@ api.interceptors.response.use(
       if (status === 401 || isDeactivated) {
         localStorage.removeItem('access_token');
         localStorage.removeItem('shop_id');
-        window.location.href = '/login?reason=deactivated';
+        window.location.href = isDeactivated ? '/login?reason=deactivated' : '/login';
       }
     }
     return Promise.reject(error);
