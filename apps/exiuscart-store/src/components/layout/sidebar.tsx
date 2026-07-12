@@ -71,7 +71,6 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/dashboard/accounting',   label: 'Accounting',   icon: BookOpen     },
       { href: '/dashboard/expenses',     label: 'Expenses',     icon: Wallet       },
-      { href: '/dashboard/payroll',      label: 'Payroll',      icon: Users        },
       { href: '/dashboard/loyalty',      label: 'Loyalty',      icon: Star         },
       { href: '/dashboard/credit-notes',        label: 'Credit Notes',       icon: Receipt   },
       { href: '/dashboard/recurring-invoices',  label: 'Recurring Invoices', icon: RefreshCw },
