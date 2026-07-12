@@ -992,16 +992,24 @@ def get_thedersi_seller_info(
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not reach TheDersi: {e}")
 
-    # Override payout schedule fields to reflect TheDersi's updated rules:
-    # all plans (Free/Growth/Pro) now pay every Monday; requests only accepted on Mondays.
+    # Keep schedule label static — all plans pay every Monday.
+    # Let next_payout_date and payout_overdue come from TheDersi: they now calculate
+    # the correct Monday cutoff per-order (7-day hold → next Monday on/after hold ends).
+    # Only fall back to "next Monday" if TheDersi didn't return a date.
     from datetime import date as _date, timedelta as _td
     today = _date.today()
-    days_to_monday = (7 - today.weekday()) % 7  # 0 if today is Monday
+    days_to_monday = (7 - today.weekday()) % 7
     next_monday = today + _td(days=days_to_monday)
     data["payout_schedule"] = "Every Monday"
-    data["next_payout_date"] = next_monday.isoformat()
-    data["payout_overdue"] = False
-    data["payout_note"] = "Funds are released 7 days after delivery and paid out every Monday. Payout requests can only be submitted on Mondays."
+    if not data.get("next_payout_date"):
+        data["next_payout_date"] = next_monday.isoformat()
+    if "payout_overdue" not in data:
+        data["payout_overdue"] = False
+    data["payout_note"] = (
+        "Each order has a 7-day hold from the order date. "
+        "Once the hold ends, funds become payable on the next Monday on or after that date. "
+        "Payout requests can only be submitted on Mondays."
+    )
     return data
 
 

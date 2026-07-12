@@ -250,7 +250,10 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
                 <p className="text-xl font-bold text-amber-700 dark:text-amber-300">
                   {info.currency} {fmtNum(info.held_amount ?? 0)}
                 </p>
-                <p className="text-xs text-amber-600/70 dark:text-amber-500 mt-0.5">7-day hold from order date</p>
+                <p className="text-xs text-amber-600/70 dark:text-amber-500 mt-0.5">
+                  7-day hold · releases{' '}
+                  {new Date(info.next_payout_date + 'T00:00:00').toLocaleDateString('en-LK', { day: 'numeric', month: 'short' })}
+                </p>
               </div>
 
               <div className="bg-muted/50 rounded-xl p-4">
