@@ -411,10 +411,32 @@ def connect_channel(
     if existing:
         raise HTTPException(status_code=400, detail=f"Already connected to {data.channel_type}")
 
-    # Free trial: max 1 active channel connection
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
-    if plan_type == "free_trial":
+
+    # TheDersi users: only TheDersi channel + Daraz (Pro only)
+    if plan_type.startswith("thedersi"):
+        if data.channel_type not in ("thedersi", "daraz"):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "channel_not_available",
+                    "plan": plan_type,
+                    "message": "Your plan is managed by TheDersi. Only TheDersi and Daraz channels are available on TheDersi plans.",
+                },
+            )
+        if data.channel_type == "daraz" and plan_type != "thedersi_pro":
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "daraz_requires_pro",
+                    "plan": plan_type,
+                    "message": "Daraz sync is available on TheDersi Pro. Upgrade your TheDersi plan to connect Daraz.",
+                },
+            )
+
+    # Free trial + Starter: max 1 active channel connection; Premium = unlimited
+    if plan_type in ("free_trial", "starter"):
         active_count = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id,
             ChannelConnection.is_active == True,
@@ -426,7 +448,7 @@ def connect_channel(
                     "error": "channel_limit_reached",
                     "limit": 1,
                     "plan": plan_type,
-                    "message": "Free trial allows 1 channel connection. Upgrade to Starter to connect Shopify, TheDersi, and your own website together.",
+                    "message": "Your plan allows 1 channel connection. Upgrade to Premium (99 AED/mo) to connect all channels.",
                 },
             )
 

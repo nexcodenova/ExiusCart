@@ -472,10 +472,16 @@ function ChannelTile({ ch }: { ch: ChannelDef }) {
         <p className="font-semibold text-foreground text-sm">{ch.name}</p>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{ch.description}</p>
       </div>
-      {ch.onAction && ch.badge !== 'soon' && (
+      {ch.onAction && ch.badge !== 'soon' && ch.badge !== 'locked' && (
         <button type="button" onClick={ch.onAction}
           className="w-full py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition flex items-center justify-center gap-1.5">
           {ch.actionLabel ?? 'Connect'} <ExternalLink className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {ch.onAction && ch.badge === 'locked' && (
+        <button type="button" onClick={ch.onAction}
+          className="w-full py-2 text-sm font-medium border border-border rounded-lg hover:bg-muted transition text-muted-foreground">
+          {ch.actionLabel ?? 'Upgrade to Premium'}
         </button>
       )}
       {ch.onAction && ch.badge === 'soon' && (
@@ -500,6 +506,7 @@ export default function ChannelsPage() {
   const [showDarazModal, setShowDarazModal] = useState(false);
   const [dersiBlockChannel, setDersiBlockChannel] = useState<string | null>(null);
   const [darazLocked, setDarazLocked] = useState(false);
+  const [upgradeLimitModal, setUpgradeLimitModal] = useState(false);
   const [shopifyConnected, setShopifyConnected] = useState(false);
   const [plan, setPlan] = useState('');
 
@@ -527,8 +534,13 @@ export default function ChannelsPage() {
   const hasTheDersi = theDersiConns.length > 0;
   const hasDaraz = darazConns.length > 0;
   const isTheDersiUser = plan.startsWith('thedersi');
-  // Daraz available for paid plans only — not thedersi_basic or free_trial
-  const canUseDaraz = ['thedersi_pro', 'starter', 'premium'].includes(plan);
+  const isPremium = plan === 'premium';
+  // Count Shopify separately since it's tracked via a different API
+  const totalChannelCount = connections.length + (shopifyConnected ? 1 : 0);
+  // Free trial + Starter = max 1 channel; Premium = unlimited
+  const channelLimitReached = !isPremium && !isTheDersiUser && totalChannelCount >= 1;
+  // Daraz: TheDersi Pro or Premium only
+  const canUseDaraz = ['thedersi_pro', 'premium'].includes(plan);
 
   const availableChannels: ChannelDef[] = [
     {
@@ -536,30 +548,40 @@ export default function ChannelsPage() {
       name: 'TheDersi',
       description: "List products on Sri Lanka's #1 fashion marketplace. Orders sync automatically to your dashboard.",
       icon: <Link2 className="w-5 h-5 text-primary" />,
-      badge: hasTheDersi ? 'live' : 'connect',
-      badgeLabel: hasTheDersi ? 'Connected' : 'Available',
-      onAction: hasTheDersi ? undefined : () => setShowTheDersiModal(true),
-      actionLabel: 'Connect TheDersi',
+      badge: hasTheDersi ? 'live' : (channelLimitReached ? 'locked' : 'connect'),
+      badgeLabel: hasTheDersi ? 'Connected' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
+      onAction: hasTheDersi ? undefined : (channelLimitReached ? () => setUpgradeLimitModal(true) : () => setShowTheDersiModal(true)),
+      actionLabel: channelLimitReached ? 'Upgrade to Premium' : 'Connect TheDersi',
     },
     {
       id: 'shopify',
       name: 'Shopify',
       description: 'Sync your Shopify store — products, orders, and inventory stay in sync automatically.',
       icon: <ShoppingBag className="w-5 h-5 text-[#96BF48]" />,
-      badge: shopifyConnected ? 'live' : 'connect',
-      badgeLabel: shopifyConnected ? 'Connected' : 'Available',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Shopify') : () => router.push('/dashboard/shopify-integration'),
-      actionLabel: shopifyConnected ? 'Manage Shopify' : 'Connect Shopify',
+      badge: shopifyConnected ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: shopifyConnected ? 'Connected' : (isTheDersiUser ? 'TheDersi managed' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: shopifyConnected
+        ? undefined
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('Shopify')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => router.push('/dashboard/shopify-integration'),
+      actionLabel: shopifyConnected ? 'Manage Shopify' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Shopify')),
     },
     {
       id: 'custom_website',
       name: 'Custom Website',
       description: 'Connect any website using our API or webhook. Receive orders directly from your own storefront.',
       icon: <Globe className="w-5 h-5 text-sky-400" />,
-      badge: 'connect',
-      badgeLabel: 'Available',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Custom Website') : () => setShowCustomWebsiteModal(true),
-      actionLabel: 'Connect Website',
+      badge: isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect'),
+      badgeLabel: isTheDersiUser ? 'TheDersi managed' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
+      onAction: isTheDersiUser
+        ? () => setDersiBlockChannel('Custom Website')
+        : channelLimitReached
+          ? () => setUpgradeLimitModal(true)
+          : () => setShowCustomWebsiteModal(true),
+      actionLabel: isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Website'),
     },
     {
       id: 'daraz',
@@ -621,6 +643,26 @@ export default function ChannelsPage() {
           Connect marketplaces and storefronts to sell everywhere from one dashboard.
         </p>
       </div>
+
+      {/* Plan limit banner for free/starter users */}
+      {!loading && !isTheDersiUser && !isPremium && plan !== '' && (
+        <div className={`flex items-center justify-between gap-4 px-5 py-4 rounded-xl border ${channelLimitReached ? 'bg-amber-500/8 border-amber-500/30' : 'bg-muted/60 border-border'}`}>
+          <div>
+            <p className={`text-sm font-semibold ${channelLimitReached ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}`}>
+              {channelLimitReached ? '1 channel slot used — limit reached' : '1 channel slot available on your plan'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {channelLimitReached
+                ? 'Upgrade to Premium to connect all channels — Shopify, Daraz, TheDersi, Noon & more.'
+                : 'Free Trial & Starter plans include 1 channel. Upgrade to Premium for all channels.'}
+            </p>
+          </div>
+          <Link href="/dashboard/billing"
+            className="shrink-0 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition whitespace-nowrap">
+            Upgrade to Premium
+          </Link>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
@@ -693,9 +735,9 @@ export default function ChannelsPage() {
             <div>
               <p className="font-semibold text-foreground">Daraz Integration</p>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                {plan === 'thedersi_basic'
+                {isTheDersiUser
                   ? 'Daraz sync is available on TheDersi Pro. Upgrade your TheDersi plan to connect your Daraz seller account.'
-                  : 'Daraz sync is available on paid plans. Upgrade to ExiusCart Starter or Premium to connect your Daraz seller account.'}
+                  : 'Daraz sync is available on Premium plans. Upgrade to ExiusCart Premium to connect your Daraz seller account.'}
               </p>
             </div>
             <button type="button" onClick={() => setDarazLocked(false)}
@@ -721,15 +763,45 @@ export default function ChannelsPage() {
             <div>
               <p className="font-semibold text-foreground">{dersiBlockChannel}</p>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                This channel is available for <strong>ExiusCart direct sellers</strong> only.
-              </p>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                As a <strong>TheDersi seller</strong>, your store is already connected through TheDersi. All your orders, stock, and payouts sync through that channel — no additional setup needed.
+                Your plan is managed by TheDersi. To access more channels, upgrade your plan through TheDersi.
               </p>
             </div>
             <button type="button" onClick={() => setDersiBlockChannel(null)}
               className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
               Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {upgradeLimitModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Link2 className="w-5 h-5 text-primary" />
+              </div>
+              <button type="button" onClick={() => setUpgradeLimitModal(false)}
+                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Channel limit reached</p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                Free Trial and Starter plans include <strong className="text-foreground">1 channel connection</strong>. You've already used your slot.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                Upgrade to <strong className="text-foreground">Premium (99 AED/mo)</strong> to connect all channels — Shopify, Daraz, TheDersi, Noon & more.
+              </p>
+            </div>
+            <Link href="/dashboard/billing" onClick={() => setUpgradeLimitModal(false)}
+              className="block w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition text-center">
+              Upgrade to Premium
+            </Link>
+            <button type="button" onClick={() => setUpgradeLimitModal(false)}
+              className="w-full py-2 border border-border rounded-lg text-sm text-muted-foreground hover:bg-muted transition">
+              Maybe later
             </button>
           </div>
         </div>
