@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Wallet, Lock, Clock, CheckCircle, DollarSign, ArrowRight, Loader2, BadgeCheck, AlertCircle } from 'lucide-react';
+import { Wallet, Lock, Clock, CheckCircle, DollarSign, ArrowRight, Loader2, BadgeCheck, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
 const MINIMUM_PAYOUT = 100;
@@ -9,6 +9,18 @@ const MINIMUM_PAYOUT = 100;
 function affiliateHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('affiliate_token') : null;
   return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+}
+
+interface PayoutRequestRecord {
+  id: number;
+  amount: number;
+  currency: string;
+  payout_method: string;
+  payout_address: string;
+  status: 'pending' | 'paid' | 'rejected';
+  admin_notes: string | null;
+  requested_at: string;
+  paid_at: string | null;
 }
 
 export default function PayoutsPage() {
@@ -21,16 +33,46 @@ export default function PayoutsPage() {
     paid_amount: number;
     total_earnings: number;
   } | null>(null);
+  const [payoutRequests, setPayoutRequests] = useState<PayoutRequestRecord[]>([]);
+  const [requesting, setRequesting] = useState(false);
+  const [requestError, setRequestError] = useState('');
+  const [requestSuccess, setRequestSuccess] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
     Promise.all([
       fetch(`${API_BASE}/api/v1/affiliates/me/stats`, { headers: affiliateHeaders() }).then(r => r.ok ? r.json() : null),
       fetch(`${API_BASE}/api/v1/affiliates/me/payout-details`, { headers: affiliateHeaders() }).then(r => r.ok ? r.json() : null),
-    ]).then(([s, p]) => {
+      fetch(`${API_BASE}/api/v1/affiliates/me/payout-requests`, { headers: affiliateHeaders() }).then(r => r.ok ? r.json() : []),
+    ]).then(([s, p, reqs]) => {
       if (s) setStats(s);
       if (p) setPayoutDetails(p);
+      setPayoutRequests(reqs || []);
     }).finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleRequestPayout = async () => {
+    setRequesting(true);
+    setRequestError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/affiliates/me/request-payout`, {
+        method: 'POST',
+        headers: affiliateHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRequestError(data.detail || 'Failed to submit request');
+      } else {
+        setRequestSuccess(true);
+        loadData();
+      }
+    } catch {
+      setRequestError('Network error. Please try again.');
+    } finally {
+      setRequesting(false);
+    }
+  };
 
   const locked = stats?.locked_amount ?? 0;
   const pendingApproval = stats?.pending_approval_amount ?? 0;
@@ -196,14 +238,37 @@ export default function PayoutsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
-                    <BadgeCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <p className="text-sm text-emerald-700">Your balance is eligible for payout. Submit your request below.</p>
-                  </div>
-                  <button className="bg-[#7B4FE9] hover:bg-[#5A2EC9] text-white font-semibold px-6 py-3 rounded-xl text-sm transition-all">
-                    Request Payout — ${available.toFixed(2)}
-                  </button>
-                  <p className="text-xs text-gray-400 mt-2">Processed within 3–5 business days after review.</p>
+                  {requestSuccess ? (
+                    <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-700">Payout request submitted!</p>
+                        <p className="text-xs text-emerald-600 mt-0.5">We'll process it within 3–5 business days and send you a confirmation email.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
+                        <BadgeCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <p className="text-sm text-emerald-700">Your balance is eligible for payout. Submit your request below.</p>
+                      </div>
+                      {requestError && (
+                        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
+                          <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-red-600">{requestError}</p>
+                        </div>
+                      )}
+                      <button
+                        onClick={handleRequestPayout}
+                        disabled={requesting}
+                        className="bg-[#7B4FE9] hover:bg-[#5A2EC9] disabled:opacity-60 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-all flex items-center gap-2"
+                      >
+                        {requesting && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {requesting ? 'Submitting...' : `Request Payout — $${available.toFixed(2)}`}
+                      </button>
+                      <p className="text-xs text-gray-400 mt-2">Processed within 3–5 business days after review.</p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -214,13 +279,50 @@ export default function PayoutsPage() {
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-gray-900 font-semibold">Payout History</h2>
             </div>
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Clock className="w-6 h-6 text-gray-400" />
+            {payoutRequests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <Clock className="w-6 h-6 text-gray-400" />
+                </div>
+                <p className="text-gray-500 font-medium mb-1">No payouts yet</p>
+                <p className="text-gray-400 text-sm">Your payout history will appear here once processed</p>
               </div>
-              <p className="text-gray-500 font-medium mb-1">No payouts yet</p>
-              <p className="text-gray-400 text-sm">Your payout history will appear here once processed</p>
-            </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {payoutRequests.map((req) => (
+                  <div key={req.id} className="px-6 py-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                        req.status === 'paid' ? 'bg-emerald-100' : req.status === 'rejected' ? 'bg-red-100' : 'bg-amber-100'
+                      }`}>
+                        {req.status === 'paid' ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> :
+                         req.status === 'rejected' ? <XCircle className="w-4 h-4 text-red-500" /> :
+                         <Clock className="w-4 h-4 text-amber-500" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">${req.amount.toFixed(2)} {req.currency}</p>
+                        <p className="text-xs text-gray-400">{req.payout_method?.toUpperCase()} · {req.payout_address}</p>
+                        {req.admin_notes && <p className="text-xs text-red-500 mt-0.5">{req.admin_notes}</p>}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${
+                        req.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                        req.status === 'rejected' ? 'bg-red-100 text-red-600' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {req.status === 'paid' ? 'Paid' : req.status === 'rejected' ? 'Rejected' : 'Processing'}
+                      </span>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {req.paid_at
+                          ? new Date(req.paid_at).toLocaleDateString()
+                          : new Date(req.requested_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

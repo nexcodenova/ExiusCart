@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.core.config import settings
 from app.core.email import send_affiliate_dashboard_ready_email
-from app.models.affiliate import Affiliate, Commission
+from app.models.affiliate import Affiliate, Commission, PayoutRequest
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
@@ -176,6 +176,7 @@ def affiliate_stats(
     return {
         "total_signups": total_signups,
         "conversions": conversions,
+        "total_clicks": affiliate.total_clicks or 0,
         "total_earnings": total_earnings,
         "locked_amount": locked_amount,
         "pending_approval_amount": pending_approval_amount,
@@ -259,3 +260,147 @@ def affiliate_referrals(
         })
 
     return result
+
+
+# ── Payout request ────────────────────────────────────────────────────────────
+
+@router.post("/affiliates/me/request-payout", status_code=201)
+def request_payout(
+    affiliate: Affiliate = Depends(get_current_affiliate),
+    db: Session = Depends(get_db),
+):
+    from datetime import datetime, timezone, timedelta
+    from app.core.email import send_affiliate_payout_requested_email
+
+    if affiliate.status != "active":
+        raise HTTPException(status_code=403, detail="Affiliate account is not active")
+
+    # Check payout method is set
+    payout_address = (
+        affiliate.paypal_email if affiliate.payout_method == "paypal"
+        else affiliate.skrill_email if affiliate.payout_method == "skrill"
+        else affiliate.payoneer_id if affiliate.payout_method == "payoneer"
+        else None
+    )
+    if not affiliate.payout_method or not payout_address:
+        raise HTTPException(status_code=422, detail="Set your payout method in Profile before requesting a payout")
+
+    # Calculate available (approved commissions not yet in a pending request)
+    now = datetime.now(timezone.utc)
+    approved_commissions = db.query(Commission).filter(
+        Commission.affiliate_id == affiliate.id,
+        Commission.status == "approved",
+    ).all()
+    available = sum(float(c.amount) for c in approved_commissions)
+
+    if available < 100.0:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Minimum payout is $100. Your available balance is ${available:.2f}",
+        )
+
+    # Check no pending request already open
+    existing = db.query(PayoutRequest).filter(
+        PayoutRequest.affiliate_id == affiliate.id,
+        PayoutRequest.status == "pending",
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="You already have a pending payout request")
+
+    req = PayoutRequest(
+        affiliate_id=affiliate.id,
+        amount=available,
+        currency="USD",
+        payout_method=affiliate.payout_method,
+        payout_address=payout_address,
+        status="pending",
+    )
+    db.add(req)
+    db.commit()
+    db.refresh(req)
+
+    try:
+        send_affiliate_payout_requested_email(
+            to=affiliate.email,
+            full_name=affiliate.name,
+            amount=available,
+            payout_method=affiliate.payout_method,
+            payout_address=payout_address,
+        )
+    except Exception:
+        pass
+
+    return {
+        "id": req.id,
+        "amount": float(req.amount),
+        "currency": req.currency,
+        "payout_method": req.payout_method,
+        "payout_address": req.payout_address,
+        "status": req.status,
+        "requested_at": req.requested_at,
+    }
+
+
+@router.get("/affiliates/me/payout-requests")
+def get_payout_requests(
+    affiliate: Affiliate = Depends(get_current_affiliate),
+    db: Session = Depends(get_db),
+):
+    requests = db.query(PayoutRequest).filter(
+        PayoutRequest.affiliate_id == affiliate.id,
+    ).order_by(PayoutRequest.requested_at.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "amount": float(r.amount),
+            "currency": r.currency,
+            "payout_method": r.payout_method,
+            "payout_address": r.payout_address,
+            "status": r.status,
+            "admin_notes": r.admin_notes,
+            "requested_at": r.requested_at,
+            "paid_at": r.paid_at,
+        }
+        for r in requests
+    ]
+
+
+# ── Password change ───────────────────────────────────────────────────────────
+
+class PasswordChangeIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.patch("/affiliates/me/password")
+def change_password(
+    data: PasswordChangeIn,
+    affiliate: Affiliate = Depends(get_current_affiliate),
+    db: Session = Depends(get_db),
+):
+    if not affiliate.password_hash or not verify_password(data.current_password, affiliate.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+    affiliate.password_hash = get_password_hash(data.new_password)
+    db.commit()
+    return {"message": "Password updated"}
+
+
+# ── Click tracking (public redirect) ─────────────────────────────────────────
+
+from fastapi.responses import RedirectResponse
+
+@router.get("/affiliates/ref/{code}", include_in_schema=False)
+def affiliate_ref_redirect(code: str, db: Session = Depends(get_db)):
+    affiliate = db.query(Affiliate).filter(
+        Affiliate.referral_code == code,
+        Affiliate.status == "active",
+    ).first()
+    if affiliate:
+        affiliate.total_clicks = (affiliate.total_clicks or 0) + 1
+        db.commit()
+    return RedirectResponse(
+        url=f"https://exiuscart.com/register?ref={code}",
+        status_code=302,
+    )

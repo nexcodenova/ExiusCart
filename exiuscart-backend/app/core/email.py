@@ -365,6 +365,57 @@ def send_affiliate_dashboard_ready_email(to: str, full_name: str, referral_code:
     )
 
 
+def send_affiliate_payout_requested_email(
+    to: str, full_name: str, amount: float, payout_method: str, payout_address: str
+) -> bool:
+    first = (full_name or "there").split()[0]
+    content = f"""
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Payout request received, {first}!</h2>
+      <p style="margin:0 0 16px;color:#94a3b8;line-height:1.7;">
+        We've received your payout request for <strong style="color:#fff;">${amount:.2f} USD</strong>.
+        Our team will process it within <strong style="color:#fff;">3–5 business days</strong>.
+      </p>
+      <div style="background:#1a2540;border:1px solid #2a3a5c;border-radius:12px;padding:20px;margin:0 0 20px;">
+        <p style="margin:0 0 6px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Payout Details</p>
+        <p style="margin:0 0 4px;font-size:14px;color:#94a3b8;">Amount: <strong style="color:#fff;">${amount:.2f} USD</strong></p>
+        <p style="margin:0 0 4px;font-size:14px;color:#94a3b8;">Method: <strong style="color:#fff;">{payout_method.title()}</strong></p>
+        <p style="margin:0;font-size:14px;color:#94a3b8;">To: <strong style="color:#fff;">{payout_address}</strong></p>
+      </div>
+      <p style="margin:0;color:#64748b;font-size:12px;">Questions? <a href="mailto:affiliates@exiuscart.com" style="color:#6B3FD9;">affiliates@exiuscart.com</a></p>"""
+    return send_email(
+        to=to,
+        subject="Payout request received — ExiusCart Affiliates",
+        html_body=_welcome_base(content),
+        text_body=f"Hi {first}! We received your payout request for ${amount:.2f} USD via {payout_method} to {payout_address}. Processing in 3–5 business days.",
+    )
+
+
+def send_affiliate_payout_paid_email(
+    to: str, full_name: str, amount: float, payout_method: str, payout_address: str
+) -> bool:
+    first = (full_name or "there").split()[0]
+    content = f"""
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Your payout has been sent, {first}!</h2>
+      <p style="margin:0 0 16px;color:#94a3b8;line-height:1.7;">
+        We've processed your payout of <strong style="color:#fff;">${amount:.2f} USD</strong>.
+        It should arrive in your account within 1–3 business days depending on your payment provider.
+      </p>
+      <div style="background:#1a2540;border:1px solid #10B981;border-radius:12px;padding:20px;margin:0 0 20px;">
+        <p style="margin:0 0 6px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Payment Summary</p>
+        <p style="margin:0 0 4px;font-size:14px;color:#94a3b8;">Amount: <strong style="color:#10B981;">${amount:.2f} USD</strong></p>
+        <p style="margin:0 0 4px;font-size:14px;color:#94a3b8;">Method: <strong style="color:#fff;">{payout_method.title()}</strong></p>
+        <p style="margin:0;font-size:14px;color:#94a3b8;">Sent to: <strong style="color:#fff;">{payout_address}</strong></p>
+      </div>
+      <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;">Keep sharing your referral link to earn more commissions!</p>
+      <p style="margin:0;color:#64748b;font-size:12px;">Questions? <a href="mailto:affiliates@exiuscart.com" style="color:#6B3FD9;">affiliates@exiuscart.com</a></p>"""
+    return send_email(
+        to=to,
+        subject="Payout sent! 🎉 — ExiusCart Affiliates",
+        html_body=_welcome_base(content),
+        text_body=f"Hi {first}! Your payout of ${amount:.2f} USD has been sent via {payout_method} to {payout_address}. Arrives in 1–3 business days.",
+    )
+
+
 # ── New order notification to seller ─────────────────────────────────────────
 
 def send_new_order_email(

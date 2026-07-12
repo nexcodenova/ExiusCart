@@ -23,6 +23,11 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   useEffect(() => {
     // Pre-fill name/email from localStorage
     const storedName = localStorage.getItem('affiliate_name') || '';
@@ -67,6 +72,31 @@ export default function ProfilePage() {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangingPassword(true);
+    setPasswordMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/affiliates/me/password`, {
+        method: 'PATCH',
+        headers: affiliateHeaders(),
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPasswordMsg({ ok: true, text: 'Password updated successfully.' });
+        setCurrentPassword('');
+        setNewPassword('');
+      } else {
+        setPasswordMsg({ ok: false, text: data.detail || 'Failed to update password.' });
+      }
+    } catch {
+      setPasswordMsg({ ok: false, text: 'Network error. Please try again.' });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -253,24 +283,39 @@ export default function ProfilePage() {
             </ul>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <form onSubmit={handleChangePassword} className="bg-white border border-gray-200 rounded-2xl p-5">
             <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-3">Change Password</p>
             <div className="space-y-3">
               <input
                 type="password"
                 placeholder="Current password"
+                value={currentPassword}
+                onChange={e => setCurrentPassword(e.target.value)}
+                required
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-[#7B4FE9] transition-colors"
               />
               <input
                 type="password"
-                placeholder="New password"
+                placeholder="New password (min 8 characters)"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                required
+                minLength={8}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-[#7B4FE9] transition-colors"
               />
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm py-2.5 rounded-xl transition-all font-medium">
-                Update Password
+              {passwordMsg && (
+                <p className={`text-xs ${passwordMsg.ok ? 'text-emerald-600' : 'text-red-500'}`}>{passwordMsg.text}</p>
+              )}
+              <button
+                type="submit"
+                disabled={changingPassword}
+                className="w-full bg-gray-100 hover:bg-gray-200 disabled:opacity-60 text-gray-700 text-sm py-2.5 rounded-xl transition-all font-medium flex items-center justify-center gap-2"
+              >
+                {changingPassword && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {changingPassword ? 'Updating...' : 'Update Password'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>

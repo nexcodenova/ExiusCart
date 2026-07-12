@@ -118,6 +118,12 @@ export const adminApi = {
     api.put(`/admin/commissions/${commissionId}/approve`),
   payCommission: (commissionId: number) =>
     api.put(`/admin/commissions/${commissionId}/pay`),
+  getPayoutRequests: (status?: string) =>
+    api.get('/admin/payout-requests', { params: status ? { status_filter: status } : {} }),
+  payPayoutRequest: (requestId: number) =>
+    api.put(`/admin/payout-requests/${requestId}/pay`),
+  rejectPayoutRequest: (requestId: number, notes?: string) =>
+    api.put(`/admin/payout-requests/${requestId}/reject`, null, { params: notes ? { notes } : {} }),
 
   // Settings
   getSettings: () => api.get('/admin/settings'),

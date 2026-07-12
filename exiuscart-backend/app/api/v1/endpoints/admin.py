@@ -866,6 +866,95 @@ def update_affiliate_status(
     return {"status": affiliate.status}
 
 
+@router.get("/admin/payout-requests")
+def list_payout_requests(
+    status_filter: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    from app.models.affiliate import PayoutRequest
+    query = db.query(PayoutRequest)
+    if status_filter:
+        query = query.filter(PayoutRequest.status == status_filter)
+    else:
+        query = query.filter(PayoutRequest.status == "pending")
+    requests = query.order_by(PayoutRequest.requested_at.asc()).all()
+    return [
+        {
+            "id": r.id,
+            "affiliate_id": r.affiliate_id,
+            "affiliate_name": r.affiliate.name if r.affiliate else "",
+            "affiliate_email": r.affiliate.email if r.affiliate else "",
+            "payout_method": r.payout_method,
+            "payout_address": r.payout_address,
+            "amount": float(r.amount),
+            "currency": r.currency,
+            "status": r.status,
+            "admin_notes": r.admin_notes,
+            "requested_at": r.requested_at,
+            "paid_at": r.paid_at,
+        }
+        for r in requests
+    ]
+
+
+@router.put("/admin/payout-requests/{request_id}/pay")
+def pay_payout_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    from app.models.affiliate import PayoutRequest, Commission
+    from app.core.email import send_affiliate_payout_paid_email
+    req = db.query(PayoutRequest).filter(PayoutRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Payout request not found")
+    if req.status != "pending":
+        raise HTTPException(status_code=400, detail="Request is not pending")
+
+    req.status = "paid"
+    req.paid_at = datetime.now(timezone.utc)
+
+    # Mark all approved commissions for this affiliate as paid
+    db.query(Commission).filter(
+        Commission.affiliate_id == req.affiliate_id,
+        Commission.status == "approved",
+    ).update({"status": "paid", "paid_at": datetime.now(timezone.utc)})
+
+    db.commit()
+
+    try:
+        if req.affiliate:
+            send_affiliate_payout_paid_email(
+                to=req.affiliate.email,
+                full_name=req.affiliate.name,
+                amount=float(req.amount),
+                payout_method=req.payout_method or "",
+                payout_address=req.payout_address or "",
+            )
+    except Exception:
+        pass
+
+    return {"message": "Payout marked as paid", "id": req.id}
+
+
+@router.put("/admin/payout-requests/{request_id}/reject")
+def reject_payout_request(
+    request_id: int,
+    notes: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    from app.models.affiliate import PayoutRequest
+    req = db.query(PayoutRequest).filter(PayoutRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Payout request not found")
+    req.status = "rejected"
+    req.admin_notes = notes
+    db.commit()
+    return {"message": "Payout request rejected", "id": req.id}
+
+
 @router.put("/admin/commissions/{commission_id}/approve")
 def approve_commission(
     commission_id: int,

@@ -127,6 +127,21 @@ _MIGRATIONS = [
     "ALTER TABLE shops ADD COLUMN IF NOT EXISTS font_family VARCHAR(50);",
     # TheDersi per-channel seller status (approved | suspended | rejected)
     "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS seller_status VARCHAR(20);",
+    # Affiliate click tracking
+    "ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS total_clicks INTEGER DEFAULT 0;",
+    # Affiliate payout requests table
+    """CREATE TABLE IF NOT EXISTS affiliate_payout_requests (
+        id SERIAL PRIMARY KEY,
+        affiliate_id INTEGER NOT NULL REFERENCES affiliates(id),
+        amount NUMERIC(10,2) NOT NULL,
+        currency VARCHAR(10) DEFAULT 'USD',
+        payout_method VARCHAR(20),
+        payout_address VARCHAR(255),
+        status VARCHAR(20) DEFAULT 'pending',
+        admin_notes TEXT,
+        requested_at TIMESTAMPTZ DEFAULT NOW(),
+        paid_at TIMESTAMPTZ
+    );""",
     # Back-fill: free_trial subscription for verified shops that have none
     """INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
        SELECT s.id, 'free_trial', 'monthly', 'pending_approval', 0, COALESCE(s.currency, 'AED'), NOW()

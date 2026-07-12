@@ -70,6 +70,40 @@ export default function AffiliatesPage() {
   const [payingId, setPayingId] = useState<number | null>(null);
   const [approvingId, setApprovingId] = useState<number | null>(null);
 
+  interface PayoutReq {
+    id: number; affiliate_id: number; affiliate_name: string; affiliate_email: string;
+    payout_method: string; payout_address: string; amount: number; currency: string;
+    status: string; admin_notes: string | null; requested_at: string; paid_at: string | null;
+  }
+  const [payoutRequests, setPayoutRequests] = useState<PayoutReq[]>([]);
+  const [loadingPayouts, setLoadingPayouts] = useState(true);
+  const [payoutFilter, setPayoutFilter] = useState('pending');
+  const [processingPayout, setProcessingPayout] = useState<number | null>(null);
+
+  const fetchPayoutRequests = async (status = payoutFilter) => {
+    setLoadingPayouts(true);
+    try {
+      const res = await adminApi.getPayoutRequests(status);
+      setPayoutRequests(res.data);
+    } catch {}
+    finally { setLoadingPayouts(false); }
+  };
+
+  useEffect(() => { fetchPayoutRequests(payoutFilter); }, [payoutFilter]);
+
+  const handlePayPayout = async (id: number) => {
+    setProcessingPayout(id);
+    try { await adminApi.payPayoutRequest(id); fetchPayoutRequests(payoutFilter); }
+    catch {} finally { setProcessingPayout(null); }
+  };
+
+  const handleRejectPayout = async (id: number) => {
+    const notes = window.prompt('Reason for rejection (optional):') ?? undefined;
+    setProcessingPayout(id);
+    try { await adminApi.rejectPayoutRequest(id, notes); fetchPayoutRequests(payoutFilter); }
+    catch {} finally { setProcessingPayout(null); }
+  };
+
   const fetchAffiliates = async () => {
     setLoading(true);
     try {
@@ -466,6 +500,89 @@ export default function AffiliatesPage() {
             })}
           </div>
         )}
+      </div>
+
+      {/* Payout Requests */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-white">Payout Requests</h2>
+            <p className="text-gray-400 text-sm mt-0.5">Affiliates requesting their available balance</p>
+          </div>
+          <select
+            value={payoutFilter}
+            onChange={e => setPayoutFilter(e.target.value)}
+            className="px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none"
+          >
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+
+        <div className="bg-[#151F32] rounded-xl border border-gray-800 overflow-hidden">
+          {loadingPayouts ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="w-6 h-6 animate-spin text-[#6B3FD9]" />
+            </div>
+          ) : payoutRequests.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+              <DollarSign className="w-8 h-8 mb-2 opacity-30" />
+              <p className="text-sm">No {payoutFilter} payout requests</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-800">
+              {payoutRequests.map((req) => (
+                <div key={req.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-white font-semibold text-sm">{req.affiliate_name}</p>
+                      <span className="text-gray-500 text-xs">{req.affiliate_email}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+                      <span className="bg-[#0B1121] px-2 py-1 rounded-md font-mono">{req.payout_method?.toUpperCase()}</span>
+                      <span>{req.payout_address}</span>
+                      <span className="text-white font-semibold">${req.amount.toFixed(2)} {req.currency}</span>
+                      <span>{new Date(req.requested_at).toLocaleDateString()}</span>
+                    </div>
+                    {req.admin_notes && (
+                      <p className="text-xs text-red-400 mt-1">Note: {req.admin_notes}</p>
+                    )}
+                  </div>
+                  {req.status === 'pending' && (
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => handlePayPayout(req.id)}
+                        disabled={processingPayout === req.id}
+                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-semibold px-4 py-2 rounded-lg transition"
+                      >
+                        {processingPayout === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        Mark Paid
+                      </button>
+                      <button
+                        onClick={() => handleRejectPayout(req.id)}
+                        disabled={processingPayout === req.id}
+                        className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold px-4 py-2 rounded-lg transition border border-red-500/20"
+                      >
+                        <X className="w-3.5 h-3.5" /> Reject
+                      </button>
+                    </div>
+                  )}
+                  {req.status === 'paid' && (
+                    <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 shrink-0">
+                      Paid {req.paid_at ? new Date(req.paid_at).toLocaleDateString() : ''}
+                    </span>
+                  )}
+                  {req.status === 'rejected' && (
+                    <span className="text-xs font-medium text-red-400 bg-red-500/10 px-3 py-1.5 rounded-full border border-red-500/20 shrink-0">
+                      Rejected
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

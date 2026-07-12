@@ -12,9 +12,11 @@ export default function MarketingPage() {
     setAffiliateCode(code);
   }, []);
 
-  const referralLink = affiliateCode
-    ? `https://exiuscart.com/register?ref=${affiliateCode}`
+  // Tracking link goes through our API to count clicks, then redirects to the register page
+  const trackingLink = affiliateCode
+    ? `https://api.exiuscart.com/api/v1/affiliates/ref/${affiliateCode}`
     : '';
+  const referralLink = trackingLink;
 
   const copyTexts = affiliateCode ? [
     {

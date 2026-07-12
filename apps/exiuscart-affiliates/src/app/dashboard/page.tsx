@@ -14,7 +14,7 @@ function affiliateHeaders() {
 export default function OverviewPage() {
   const [partnerConfirmed, setPartnerConfirmed] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [statsData, setStatsData] = useState<{ total_signups: number; conversions: number; total_earnings: number; currency: string } | null>(null);
+  const [statsData, setStatsData] = useState<{ total_signups: number; conversions: number; total_earnings: number; total_clicks: number; currency: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function OverviewPage() {
 
   const stats = [
     { label: 'Total Earnings',  value: loading ? '…' : `$${(statsData?.total_earnings ?? 0).toFixed(2)}`, sub: 'Commission earned',      icon: DollarSign,        color: '#7B4FE9' },
-    { label: 'Total Clicks',    value: '—',      sub: 'On your referral link',  icon: MousePointerClick, color: '#3B82F6' },
+    { label: 'Total Clicks',    value: loading ? '…' : String(statsData?.total_clicks ?? 0), sub: 'On your referral link', icon: MousePointerClick, color: '#3B82F6' },
     { label: 'Signups',         value: loading ? '…' : String(statsData?.total_signups ?? 0), sub: 'Via your link', icon: Users, color: '#10B981' },
     { label: 'Conversions',     value: loading ? '…' : String(statsData?.conversions ?? 0), sub: 'Paid customers', icon: TrendingUp, color: '#F59E0B' },
   ];

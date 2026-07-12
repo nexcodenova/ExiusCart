@@ -26,6 +26,7 @@ class Affiliate(Base):
     tier_threshold = Column(Integer, default=10)
     password_hash = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)  # admin notes
+    total_clicks = Column(Integer, default=0)  # incremented on every referral link hit
     # Payout details supplied by the affiliate
     payout_method = Column(String(20), nullable=True)   # paypal | skrill | payoneer
     paypal_email = Column(String(255), nullable=True)
@@ -36,6 +37,7 @@ class Affiliate(Base):
 
     # Relationships
     commissions = relationship("Commission", back_populates="affiliate")
+    payout_requests = relationship("PayoutRequest", back_populates="affiliate")
 
 
 class Commission(Base):
@@ -56,3 +58,20 @@ class Commission(Base):
     # Relationships
     affiliate = relationship("Affiliate", back_populates="commissions")
     shop = relationship("Shop")
+
+
+class PayoutRequest(Base):
+    __tablename__ = "affiliate_payout_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    affiliate_id = Column(Integer, ForeignKey("affiliates.id"), nullable=False)
+    amount = Column(Numeric(10, 2), nullable=False)
+    currency = Column(String(10), default="USD")
+    payout_method = Column(String(20), nullable=True)    # paypal | skrill | payoneer
+    payout_address = Column(String(255), nullable=True)  # email or account ID
+    status = Column(String(20), default="pending")       # pending | paid | rejected
+    admin_notes = Column(Text, nullable=True)
+    requested_at = Column(DateTime(timezone=True), server_default=func.now())
+    paid_at = Column(DateTime(timezone=True), nullable=True)
+
+    affiliate = relationship("Affiliate", back_populates="payout_requests")
