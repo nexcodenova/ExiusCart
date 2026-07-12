@@ -43,6 +43,8 @@ interface ChannelMeta {
   delivery_paid_by: string | null;
   delivery_note: string | null;
   items_detail: any[] | null;
+  platform_discount?: number | null;
+  coupon_code?: string | null;
 }
 
 interface Customer {
@@ -325,6 +327,25 @@ export default function OrderDetailsPage() {
         <InfoRow label="Subtotal" value={fmt(order.subtotal)} />
         {order.gift_wrap && order.gift_wrap_fee > 0 && <InfoRow label="🎁 Gift Wrap Fee" value={fmt(order.gift_wrap_fee)} />}
         {order.discount_amount > 0 && <InfoRow label="Discount" value={`-${fmt(order.discount_amount)}`} />}
+        {order.channel_meta?.platform_discount != null && order.channel_meta.platform_discount > 0 && (
+          <div className="flex items-start gap-2.5 py-2.5 border-b border-border">
+            <div className="flex-1 flex items-start gap-2">
+              <span className="text-sm text-muted-foreground shrink-0">Platform Discount</span>
+              {order.channel_meta.coupon_code && (
+                <span className="text-xs font-mono px-1.5 py-0.5 bg-muted rounded text-muted-foreground">{order.channel_meta.coupon_code}</span>
+              )}
+            </div>
+            <span className="text-sm font-medium text-foreground shrink-0">-{fmt(order.channel_meta.platform_discount)}</span>
+          </div>
+        )}
+        {order.channel_meta?.platform_discount != null && order.channel_meta.platform_discount > 0 && (
+          <div className="flex items-center gap-2 py-2 border-b border-border">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+            <p className="text-xs text-green-600 dark:text-green-400">
+              Platform discount applied: {fmt(order.channel_meta.platform_discount)} — this does not affect your earnings
+            </p>
+          </div>
+        )}
         {!isTheDersi && order.tax_amount > 0 && <InfoRow label="VAT (5%)" value={fmt(order.tax_amount)} />}
         <div className="flex items-center justify-between pt-2.5 mt-0.5">
           <span className="font-semibold text-foreground">Total</span>
