@@ -280,10 +280,7 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
                     <TrendingUp className="w-3.5 h-3.5 text-primary" />
                   </div>
                   <p className="text-lg font-bold text-foreground">{cur} {fmtNum(gross)}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Gross all-time</p>
-                  {commissionRate > 0 && (
-                    <p className="text-[10px] text-muted-foreground/70 mt-1">−{commissionRate}% = {cur} {fmtNum(net(gross))} net</p>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-0.5">All orders, all time</p>
                 </div>
 
                 {/* ② On Hold */}
@@ -296,10 +293,7 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
                     <Lock className="w-3.5 h-3.5 text-amber-500" />
                   </div>
                   <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{cur} {fmtNum(onHoldGross)}</p>
-                  <p className="text-xs text-amber-600/70 dark:text-amber-500 mt-0.5">Releases {nextDate}</p>
-                  {commissionRate > 0 && (
-                    <p className="text-[10px] text-amber-600/60 mt-1">Net {cur} {fmtNum(net(onHoldGross))}</p>
-                  )}
+                  <p className="text-xs text-amber-600/70 dark:text-amber-500 mt-0.5">7-day hold · releases {nextDate}</p>
                 </div>
 
                 {/* ③ Available */}
@@ -313,11 +307,8 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
                   </div>
                   <p className="text-lg font-bold text-green-700 dark:text-green-300">{cur} {fmtNum(availableGross)}</p>
                   <p className="text-xs text-green-600/70 dark:text-green-500 mt-0.5">
-                    {availableGross > 0 ? (todayIsMonday ? 'Ready to request' : `Request on Monday`) : 'Nothing ready yet'}
+                    {availableGross > 0 ? (todayIsMonday ? 'Net · ready to request' : 'Net · request on Monday') : 'Nothing ready yet'}
                   </p>
-                  {commissionRate > 0 && (
-                    <p className="text-[10px] text-green-600/60 mt-1">Net {cur} {fmtNum(net(availableGross))}</p>
-                  )}
                 </div>
 
                 {/* ④ Paid Out */}
@@ -327,8 +318,16 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
                     <CheckCircle2 className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
                   <p className="text-lg font-bold text-foreground">{cur} {fmtNum(totalPaid)}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Already sent to you</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Already sent to your bank</p>
                 </div>
+              </div>
+
+              {/* Net clarification note */}
+              <div className="flex items-center gap-2 mt-2 px-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  All amounts are <strong>net</strong> — TheDersi&apos;s {commissionRate > 0 ? `${commissionRate}% ` : ''}commission and any cancelled or returned orders are already deducted by TheDersi.
+                </p>
               </div>
             </div>
 

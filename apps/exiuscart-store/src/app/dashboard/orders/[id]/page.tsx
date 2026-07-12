@@ -353,35 +353,30 @@ export default function OrderDetailsPage() {
         </div>
       </div>
 
-      {/* TheDersi commission breakdown */}
-      {order.channel_meta && (
-        <div className="bg-card border border-border rounded-2xl px-5 py-4">
-          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Percent className="w-5 h-5 text-muted-foreground" /> Channel Earnings
-          </h2>
-          {order.channel_meta.seller_plan && (
-            <InfoRow label="Your Plan" value={order.channel_meta.seller_plan} />
-          )}
-          {order.channel_meta.commission_rate != null && (
-            <InfoRow label="Commission Rate" value={`${order.channel_meta.commission_rate}%`} />
-          )}
-          {order.channel_meta.commission_amount != null && (
-            <InfoRow label="Commission Amount" value={`-${fmt(order.channel_meta.commission_amount)}`} />
-          )}
+      {/* TheDersi net earnings */}
+      {order.channel_meta && order.channel_meta.seller_net_earnings != null && (
+        <div className="bg-green-500/8 border border-green-500/20 rounded-2xl px-5 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Your TheDersi Earnings</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Net amount — TheDersi&apos;s {order.channel_meta.commission_rate != null ? `${order.channel_meta.commission_rate}% ` : ''}fee already deducted
+              </p>
+            </div>
+            <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {fmt(order.channel_meta.seller_net_earnings)}
+            </span>
+          </div>
           {order.channel_meta.delivery_fee != null && (
-            <InfoRow
-              label={`Delivery Fee (paid by ${order.channel_meta.delivery_paid_by ?? 'N/A'})`}
-              value={fmt(order.channel_meta.delivery_fee)}
-            />
-          )}
-          {order.channel_meta.seller_net_earnings != null && (
-            <div className="flex items-center justify-between pt-2.5 mt-0.5 border-t border-border">
-              <span className="font-semibold text-foreground">Your Net Earnings</span>
-              <span className="text-lg font-bold text-green-600 dark:text-green-400">{fmt(order.channel_meta.seller_net_earnings)}</span>
+            <div className="mt-3 pt-3 border-t border-green-500/20">
+              <InfoRow
+                label={`Delivery Fee (paid by ${order.channel_meta.delivery_paid_by ?? 'N/A'})`}
+                value={fmt(order.channel_meta.delivery_fee)}
+              />
             </div>
           )}
           {order.channel_meta.delivery_note && (
-            <p className="text-xs text-muted-foreground mt-3 bg-muted rounded-lg px-3 py-2">{order.channel_meta.delivery_note}</p>
+            <p className="text-xs text-muted-foreground mt-3 bg-green-500/5 rounded-lg px-3 py-2">{order.channel_meta.delivery_note}</p>
           )}
         </div>
       )}
