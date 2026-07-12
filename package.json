@@ -19,7 +19,7 @@
     "dev:store": "turbo run dev --filter=@exiuscart/store",
     "dev:admin": "turbo run dev --filter=@exiuscart/admin",
     "dev:affiliates": "turbo run dev --filter=@exiuscart/affiliates",
-    "dev:trends": "turbo run dev --filter=@exiuscart/trends",
+    "dev:prodora": "turbo run dev --filter=@prodora/app",
     "dev:api": "cd exiuscart-backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
     "db:migrate": "cd exiuscart-backend && alembic upgrade head",
     "db:makemigrations": "cd exiuscart-backend && alembic revision --autogenerate -m"
