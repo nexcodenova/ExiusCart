@@ -5,7 +5,7 @@ import {
   Plus, Search, Edit, Trash2, Package, X, ChevronDown,
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
-  Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown,
+  Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
 } from 'lucide-react';
 import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
@@ -261,6 +261,15 @@ export default function ProductsPage() {
           <p className="text-muted-foreground text-sm">Manage your product catalog</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => fetchProducts()}
+            className="inline-flex items-center gap-2 border border-border px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition"
+            title="Refresh products"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
           {selectedForPrint.size > 0 && (
             isTheDersiBasic ? (
               <div className="inline-flex items-center gap-2 border border-border text-muted-foreground px-4 py-2.5 rounded-lg text-sm cursor-not-allowed select-none" title="Upgrade to TheDersi Pro to bulk print">

@@ -385,7 +385,7 @@ export default function BillingPage() {
                     </a>
                   ) : isTdDowngrade ? (
                     <a
-                      href={`https://thedersi.lk/seller/upgrade?plan=${plan.upgradeSlug ?? plan.id}&ref=exiuscart`}
+                      href="https://thedersi.lk/seller/account"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-2.5 rounded-xl text-sm font-semibold text-center transition flex items-center justify-center gap-2 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10"

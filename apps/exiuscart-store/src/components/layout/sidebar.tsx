@@ -141,6 +141,11 @@ const GROUPS: MenuGroup[] = [
 // Flat list for mobile bottom nav / external use
 export const menuItems = GROUPS.flatMap(g => g.items);
 
+// Premium-only hrefs — used by mobile nav to gate these items
+export const PREMIUM_HREFS = new Set(
+  GROUPS.filter(g => g.id === 'hr' || g.id === 'services').flatMap(g => g.items.map(i => i.href))
+);
+
 const PREMIUM_GROUPS = new Set(['hr', 'services']);
 
 function isPremiumGroup(groupId: string): boolean {

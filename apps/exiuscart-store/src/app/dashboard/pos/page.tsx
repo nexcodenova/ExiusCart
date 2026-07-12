@@ -1010,9 +1010,14 @@ export default function POSPage() {
 
       {/* Mobile floating cart */}
       {cart.length > 0 && (
-        <div className="fixed bottom-20 left-4 right-4 lg:hidden z-40">
+        <div className="fixed bottom-20 left-4 right-4 lg:hidden z-40 flex gap-2">
+          <button type="button" onClick={holdBill}
+            className="flex items-center gap-2 px-4 py-4 rounded-2xl bg-card border border-border shadow-2xl font-semibold text-sm text-muted-foreground hover:text-foreground transition shrink-0">
+            <PauseCircle className="w-5 h-5" />
+            Hold
+          </button>
           <button type="button" onClick={handleCheckout}
-            className={`w-full rounded-2xl py-4 px-5 flex items-center justify-between shadow-2xl font-semibold transition ${
+            className={`flex-1 rounded-2xl py-4 px-5 flex items-center justify-between shadow-2xl font-semibold transition ${
               isReturnMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'
             }`}>
             <span className="flex items-center gap-2">
