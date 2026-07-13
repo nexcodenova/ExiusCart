@@ -80,7 +80,7 @@ def _check_supplier_allowed(plan: str, supplier_type: str):
 
 def _shop_or_404(shop_id: int, user: User, db: Session):
     from app.models.shop import Shop
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.user_id == user.id).first()
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop
