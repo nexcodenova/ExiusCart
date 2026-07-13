@@ -234,12 +234,23 @@ export default function BillingPage() {
     setUpgradeError('');
     try {
       const { subscriptionApi } = await import('@/lib/api');
+
+      // Real paid upgrades (not downgrades, not free trial) go through Lemon
+      // Squeezy checkout — the plan only activates once payment is confirmed.
+      if (!isDowngradeFlow && (selectedPlan === 'starter' || selectedPlan === 'premium')) {
+        const res = await subscriptionApi.createCheckout(shopId, selectedPlan, 'monthly');
+        window.location.href = res.data.checkout_url;
+        return;
+      }
+
+      // Downgrades (and any other plan changes) stay as an offline request —
+      // no payment is needed to move to a lower/free plan.
       await subscriptionApi.requestUpgrade(shopId, selectedPlan);
       const plan = plans.find(p => p.id === selectedPlan);
       setUpgradeSuccess(
         isDowngradeFlow
           ? `Downgrade to ${plan?.name} requested. Our team will process it within 24 hours.`
-          : `Upgrade to ${plan?.name} requested! Our team will activate it within 24 hours.`
+          : `${plan?.name} requested! Our team will activate it within 24 hours.`
       );
     } catch (err: any) {
       setUpgradeError(err.response?.data?.detail || 'Failed to submit upgrade request');
@@ -803,7 +814,9 @@ export default function BillingPage() {
                   <p className="text-sm text-muted-foreground">
                     {isDowngradeFlow
                       ? "Your downgrade request will be sent to our team. We'll process it and adjust your plan within 24 hours."
-                      : "Your upgrade request will be sent to our team. We'll activate your new plan within 24 hours after payment confirmation."}
+                      : (selectedPlan === 'starter' || selectedPlan === 'premium')
+                        ? "You'll be redirected to a secure checkout page to complete payment. Your plan activates automatically the moment payment is confirmed."
+                        : "Your request will be sent to our team. We'll activate your new plan within 24 hours."}
                   </p>
 
                   {upgradeError && (
@@ -816,7 +829,11 @@ export default function BillingPage() {
                     <button type="button" onClick={confirmUpgrade} disabled={upgradeLoading}
                       className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2">
                       {upgradeLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                      {isDowngradeFlow ? 'Request Downgrade' : 'Request Upgrade'}
+                      {isDowngradeFlow
+                        ? 'Request Downgrade'
+                        : (selectedPlan === 'starter' || selectedPlan === 'premium')
+                          ? 'Continue to Checkout'
+                          : 'Request Upgrade'}
                     </button>
                   </div>
                 </div>

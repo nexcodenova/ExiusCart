@@ -17,9 +17,11 @@ from app.core.email import (
     send_affiliate_approved_email,
 )
 from app.core.security import create_access_token
+from app.core.affiliate_commissions import generate_commission_for_payment
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
+from app.models.subscription_payment import SubscriptionPayment
 from app.models.lead import Lead
 from app.models.affiliate import Affiliate, Commission
 from app.models.product import Product, Category
@@ -330,10 +332,64 @@ def list_subscriptions(
             "status": derived_status,
             "amount_paid": float(sub.amount_paid) if sub.amount_paid else 0,
             "currency": sub.currency,
+            "payment_source": sub.payment_source or "manual",
             "starts_at": sub.starts_at.isoformat() if sub.starts_at else None,
             "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
             "trial_ends_at": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
             "created_at": sub.created_at.isoformat() if sub.created_at else None,
+        })
+    return result
+
+
+@router.get("/admin/subscription-payments")
+def list_subscription_payments(
+    shop_id: Optional[int] = None,
+    source_filter: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    """
+    Full payment ledger — every confirmed payment, real (Lemon Squeezy) or
+    manual (admin-approved), with the exact affiliate commission it generated
+    (if any). This is the single source of truth admins can point to for
+    'did we actually get paid, and what did that cost us in commission'.
+    """
+    query = db.query(SubscriptionPayment).options(joinedload(SubscriptionPayment.shop))
+    if shop_id:
+        query = query.filter(SubscriptionPayment.shop_id == shop_id)
+    if source_filter:
+        query = query.filter(SubscriptionPayment.source == source_filter)
+
+    payments = query.order_by(SubscriptionPayment.created_at.desc()).limit(500).all()
+    payment_ids = [p.id for p in payments]
+    commissions_by_payment = {}
+    if payment_ids:
+        for c in db.query(Commission).options(joinedload(Commission.affiliate)).filter(
+            Commission.subscription_payment_id.in_(payment_ids)
+        ).all():
+            commissions_by_payment[c.subscription_payment_id] = c
+
+    result = []
+    for p in payments:
+        commission = commissions_by_payment.get(p.id)
+        result.append({
+            "id": p.id,
+            "shop_id": p.shop_id,
+            "shop_name": p.shop.name if p.shop else "Unknown",
+            "plan_type": p.plan_type,
+            "billing_type": p.billing_type,
+            "amount": float(p.amount),
+            "currency": p.currency,
+            "source": p.source,
+            "lemon_squeezy_order_id": p.lemon_squeezy_order_id,
+            "confirmed_at": p.confirmed_at.isoformat() if p.confirmed_at else None,
+            "commission": {
+                "affiliate_name": commission.affiliate.name if commission and commission.affiliate else None,
+                "amount": float(commission.amount) if commission else None,
+                "type": commission.commission_type if commission else None,
+                "period_month": commission.period_month if commission else None,
+                "status": commission.status if commission else None,
+            } if commission else None,
         })
     return result
 
@@ -367,55 +423,29 @@ def approve_subscription(
         else:
             sub.expires_at = None  # Lifetime / one-time
 
-    # ── Auto-commission: check if shop owner was referred by an affiliate ──────
-    # No commission on free trials. Two models, chosen by the affiliate at application:
-    #   one_time  — a single flat $75 payout, once per shop per affiliate, ever
-    #   recurring — 50% of subscription value, paid monthly, capped at 12 payments per shop
-    #               (this call only creates payment #1; the monthly scheduler creates #2-12)
+    # ── Record the payment + generate affiliate commission ─────────────────────
+    # Manual admin approval = an offline payment (e.g. bank transfer) the admin is
+    # personally vouching for. It gets logged in the same SubscriptionPayment
+    # ledger as real Lemon Squeezy charges, so affiliate commissions are always
+    # backed by a real payment record — never a blind guess.
     if sub.shop and sub.plan_type != "free_trial":
-        shop_owner = db.query(User).filter(User.id == sub.shop.owner_id).first()
-        if shop_owner and shop_owner.referred_by_code:
-            affiliate = db.query(Affiliate).filter(
-                Affiliate.referral_code == shop_owner.referred_by_code,
-                Affiliate.status == "active",
-            ).first()
-            if affiliate:
-                if affiliate.commission_model == "recurring":
-                    already_recurring = db.query(Commission).filter(
-                        Commission.affiliate_id == affiliate.id,
-                        Commission.shop_id == sub.shop_id,
-                        Commission.commission_type == "recurring",
-                    ).first()
-                    if not already_recurring:
-                        monthly_value = float(sub.amount_paid or 0) / 12 if sub.billing_type == "yearly" else float(sub.amount_paid or 0)
-                        commission_amount = round(monthly_value * 0.5, 2)
-                        if commission_amount > 0:
-                            db.add(Commission(
-                                affiliate_id=affiliate.id,
-                                shop_id=sub.shop_id,
-                                subscription_id=sub.id,
-                                amount=commission_amount,
-                                currency="USD",
-                                status="pending",
-                                commission_type="recurring",
-                                period_month=1,
-                            ))
-                else:
-                    already_commissioned = db.query(Commission).filter(
-                        Commission.affiliate_id == affiliate.id,
-                        Commission.shop_id == sub.shop_id,
-                        Commission.commission_type == "one_time",
-                    ).first()
-                    if not already_commissioned:
-                        db.add(Commission(
-                            affiliate_id=affiliate.id,
-                            shop_id=sub.shop_id,
-                            subscription_id=sub.id,
-                            amount=75.0,
-                            currency="USD",
-                            status="pending",
-                            commission_type="one_time",
-                        ))
+        payment_amount = float(sub.amount_paid or 0)
+        # Normalize to a monthly-equivalent value for recurring commission math
+        monthly_equivalent = payment_amount / 12 if sub.billing_type == "yearly" else payment_amount
+
+        payment = SubscriptionPayment(
+            subscription_id=sub.id,
+            shop_id=sub.shop_id,
+            amount=payment_amount,
+            currency=sub.currency or "AED",
+            plan_type=sub.plan_type,
+            billing_type=sub.billing_type,
+            source="manual",
+        )
+        db.add(payment)
+        db.flush()  # assign payment.id before linking a commission to it
+
+        generate_commission_for_payment(db, sub, monthly_equivalent, payment.id)
 
     db.commit()
 
@@ -435,73 +465,29 @@ def approve_subscription(
     return {"message": "Subscription approved", "id": sub_id}
 
 
-def generate_recurring_affiliate_commissions() -> None:
+def expire_overdue_subscriptions() -> None:
     """
     Called daily by the background scheduler in main.py.
-    For every shop referred by a 'recurring' affiliate, generates that referral's next
-    monthly commission (50% of subscription value) once ~28 days have passed since the
-    last one, capped at 12 total commissions per shop per affiliate.
+    Flips any paid subscription past its expires_at to 'expired' if no renewal
+    payment has come in. Recurring affiliate commissions stop naturally once a
+    subscription is no longer 'active', since commissions are only ever created
+    alongside a real SubscriptionPayment row — never guessed on a timer.
     """
     db = SessionLocal()
     try:
-        recurring_affiliates = db.query(Affiliate).filter(
-            Affiliate.commission_model == "recurring",
-            Affiliate.status == "active",
+        now = datetime.now(timezone.utc)
+        overdue = db.query(Subscription).filter(
+            Subscription.status == "active",
+            Subscription.expires_at.isnot(None),
+            Subscription.expires_at < now,
         ).all()
-
-        for affiliate in recurring_affiliates:
-            referred_users = db.query(User).filter(User.referred_by_code == affiliate.referral_code).all()
-
-            for user in referred_users:
-                shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
-                if not shop:
-                    continue
-
-                sub = db.query(Subscription).filter(
-                    Subscription.shop_id == shop.id,
-                    Subscription.status == "active",
-                ).order_by(Subscription.id.desc()).first()
-                if not sub or sub.plan_type == "free_trial":
-                    continue
-
-                existing = db.query(Commission).filter(
-                    Commission.affiliate_id == affiliate.id,
-                    Commission.shop_id == shop.id,
-                    Commission.commission_type == "recurring",
-                ).order_by(Commission.period_month.desc()).all()
-
-                if not existing or len(existing) >= 12:
-                    continue  # no first payment yet (created at approval), or already capped
-
-                last = existing[0]
-                now = datetime.now(timezone.utc)
-                last_created = last.created_at
-                if last_created and last_created.tzinfo is None:
-                    last_created = last_created.replace(tzinfo=timezone.utc)
-                if not last_created or (now - last_created) < timedelta(days=28):
-                    continue  # not due yet
-
-                next_period = (last.period_month or 0) + 1
-                monthly_value = float(sub.amount_paid or 0) / 12 if sub.billing_type == "yearly" else float(sub.amount_paid or 0)
-                commission_amount = round(monthly_value * 0.5, 2)
-                if commission_amount <= 0:
-                    continue
-
-                db.add(Commission(
-                    affiliate_id=affiliate.id,
-                    shop_id=shop.id,
-                    subscription_id=sub.id,
-                    amount=commission_amount,
-                    currency="USD",
-                    status="pending",
-                    commission_type="recurring",
-                    period_month=next_period,
-                ))
-                logger.info(f"[Affiliate Recurring] affiliate={affiliate.id} shop={shop.id} period={next_period}")
-
-        db.commit()
+        for sub in overdue:
+            sub.status = "expired"
+            logger.info(f"[Subscription Expiry] shop={sub.shop_id} subscription={sub.id} auto-expired")
+        if overdue:
+            db.commit()
     except Exception as e:
-        logger.error(f"[Affiliate Recurring] job error: {e}")
+        logger.error(f"[Subscription Expiry] job error: {e}")
     finally:
         db.close()
 

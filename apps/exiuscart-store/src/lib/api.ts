@@ -262,6 +262,8 @@ export const subscriptionApi = {
   getCurrent: (shopId: string) => api.get(`/shops/${shopId}/subscription`),
   requestUpgrade: (shopId: string, plan: string) =>
     api.post(`/shops/${shopId}/subscription/upgrade`, { plan }),
+  createCheckout: (shopId: string, plan: string, billingType: 'monthly' | 'yearly') =>
+    api.post(`/shops/${shopId}/subscription/checkout`, { plan, billing_type: billingType }),
 };
 
 // ── Shop Fields (Custom Product Fields) ───────────────
@@ -551,6 +553,8 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/${channelId}/thedersi-payouts`),
   requestTheDersiPayout: (shopId: string, channelId: number) =>
     api.post(`/shops/${shopId}/channels/${channelId}/thedersi-request-payout`),
+  toggleTheDersiAutoPayout: (shopId: string, channelId: number, enabled: boolean) =>
+    api.patch(`/shops/${shopId}/channels/${channelId}/thedersi-auto-payout`, { enabled }),
 };
 
 export const usageApi = {

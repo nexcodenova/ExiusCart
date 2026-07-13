@@ -32,6 +32,7 @@ export default function LoginPage() {
       localStorage.setItem('affiliate_token', body.access_token);
       localStorage.setItem('affiliate_id', String(body.affiliate_id));
       localStorage.setItem('affiliate_name', body.name || '');
+      localStorage.setItem('affiliate_email', body.email || '');
       localStorage.setItem('affiliate_code', body.referral_code || '');
       window.location.href = '/dashboard';
     } catch (err: any) {

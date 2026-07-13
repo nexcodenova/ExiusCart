@@ -152,7 +152,8 @@ export default function AffiliatesPage() {
   const expand = async (id: number) => {
     if (expandedId === id) { setExpandedId(null); return; }
     setExpandedId(id);
-    if (detailCache[id]) return;
+    // Always fetch fresh — payout details, commissions, etc. can change on the
+    // affiliate's side between views, so a stale cache would hide real updates.
     setLoadingDetail(id);
     try {
       const res = await adminApi.getAffiliate(id);

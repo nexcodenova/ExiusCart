@@ -152,6 +152,15 @@ _MIGRATIONS = [
     "ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS commission_model VARCHAR(20) DEFAULT 'one_time';",
     "ALTER TABLE commissions ADD COLUMN IF NOT EXISTS commission_type VARCHAR(20) DEFAULT 'one_time';",
     "ALTER TABLE commissions ADD COLUMN IF NOT EXISTS period_month INTEGER;",
+    # Lemon Squeezy payment gateway
+    "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS payment_source VARCHAR(20) DEFAULT 'manual';",
+    "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS lemon_squeezy_subscription_id VARCHAR(100);",
+    "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS lemon_squeezy_customer_id VARCHAR(100);",
+    "CREATE UNIQUE INDEX IF NOT EXISTS ix_subscriptions_ls_sub_id ON subscriptions(lemon_squeezy_subscription_id) WHERE lemon_squeezy_subscription_id IS NOT NULL;",
+    "ALTER TABLE commissions ADD COLUMN IF NOT EXISTS subscription_payment_id INTEGER REFERENCES subscription_payments(id);",
+    # TheDersi auto-payout opt-in
+    "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS auto_payout_enabled BOOLEAN DEFAULT FALSE;",
+    "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS last_auto_payout_attempt_at TIMESTAMPTZ;",
 ]
 
 for _sql in _MIGRATIONS:
@@ -203,18 +212,42 @@ def _run_cj_tracking_scheduler():
 _cj_tracking_thread = threading.Thread(target=_run_cj_tracking_scheduler, daemon=True)
 _cj_tracking_thread.start()
 
-# Start recurring affiliate commission generator (checked daily, fires ~monthly per referral)
-def _run_affiliate_recurring_scheduler():
+# Auto-expire overdue subscriptions (checked daily) — recurring affiliate
+# commissions are now generated only from real payment events (Lemon Squeezy
+# webhook or manual admin approval), never from a blind timer.
+def _run_subscription_expiry_scheduler():
     while True:
         try:
-            from app.api.v1.endpoints.admin import generate_recurring_affiliate_commissions
-            generate_recurring_affiliate_commissions()
+            from app.api.v1.endpoints.admin import expire_overdue_subscriptions
+            expire_overdue_subscriptions()
         except Exception as exc:
-            logger.error(f"[Affiliate Recurring scheduler] {exc}")
+            logger.error(f"[Subscription Expiry scheduler] {exc}")
         time.sleep(24 * 3600)
 
-_affiliate_recurring_thread = threading.Thread(target=_run_affiliate_recurring_scheduler, daemon=True)
-_affiliate_recurring_thread.start()
+_subscription_expiry_thread = threading.Thread(target=_run_subscription_expiry_scheduler, daemon=True)
+_subscription_expiry_thread.start()
+
+# TheDersi auto-payout — fires exactly once a week, at Monday 00:00 Sri Lanka
+# time (UTC+5:30), which is Sunday 18:30 UTC. Only affects sellers who opted in.
+def _run_thedersi_auto_payout_scheduler():
+    from datetime import datetime, timezone, timedelta
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            days_until_sunday = (6 - now.weekday()) % 7  # Monday=0 .. Sunday=6
+            target = (now + timedelta(days=days_until_sunday)).replace(hour=18, minute=30, second=0, microsecond=0)
+            if target <= now:
+                target += timedelta(days=7)
+            time.sleep((target - now).total_seconds())
+
+            from app.api.v1.endpoints.channels import run_thedersi_auto_payouts
+            run_thedersi_auto_payouts()
+        except Exception as exc:
+            logger.error(f"[TheDersi AutoPayout scheduler] {exc}")
+            time.sleep(3600)  # back off an hour on error, then recompute next target
+
+_thedersi_auto_payout_thread = threading.Thread(target=_run_thedersi_auto_payout_scheduler, daemon=True)
+_thedersi_auto_payout_thread.start()
 
 # CORS middleware
 app.add_middleware(

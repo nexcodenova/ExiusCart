@@ -407,6 +407,49 @@ def request_plan_upgrade(
     return {"message": "Upgrade request submitted. Admin will activate it shortly.", "subscription_id": new_sub.id}
 
 
+@router.post("/{shop_id}/subscription/checkout")
+async def create_subscription_checkout(
+    shop_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Creates a Lemon Squeezy checkout session for a paid plan and returns the
+    checkout URL. The seller pays on Lemon Squeezy's hosted page; a webhook then
+    confirms the payment and activates the plan automatically.
+    """
+    from app.core.lemonsqueezy import create_checkout, is_configured
+
+    shop = db.query(Shop).filter(
+        Shop.id == shop_id, Shop.owner_id == current_user.id
+    ).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    plan_id = body.get("plan")
+    billing_type = body.get("billing_type", "monthly")
+    if plan_id not in ("starter", "premium"):
+        raise HTTPException(status_code=400, detail="Lemon Squeezy checkout is only available for Starter and Premium plans.")
+    if billing_type not in ("monthly", "yearly"):
+        raise HTTPException(status_code=400, detail="billing_type must be 'monthly' or 'yearly'.")
+    if not is_configured():
+        raise HTTPException(status_code=503, detail="Online payment is not configured yet. Please contact support.")
+
+    try:
+        checkout_url = await create_checkout(
+            shop_id=shop_id,
+            plan_type=plan_id,
+            billing_type=billing_type,
+            customer_email=current_user.email,
+            customer_name=current_user.full_name or shop.name,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    return {"checkout_url": checkout_url}
+
+
 # ── Reports endpoints ──────────────────────────────────────────────────────────
 
 @router.get("/{shop_id}/reports/sales")

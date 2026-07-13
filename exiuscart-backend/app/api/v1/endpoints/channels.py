@@ -1032,6 +1032,7 @@ def get_thedersi_seller_info(
         "Once the hold ends, funds become payable on the next Monday on or after that date. "
         "Payout requests can only be submitted on Mondays."
     )
+    data["auto_payout_enabled"] = conn.auto_payout_enabled
     return data
 
 
@@ -1111,6 +1112,82 @@ def request_thedersi_payout(
         raise HTTPException(status_code=e.response.status_code, detail="TheDersi returned an error")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not reach TheDersi: {e}")
+
+
+class AutoPayoutToggleIn(BaseModel):
+    enabled: bool
+
+
+@router.patch("/shops/{shop_id}/channels/{channel_id}/thedersi-auto-payout")
+def toggle_thedersi_auto_payout(
+    shop_id: int,
+    channel_id: int,
+    data: AutoPayoutToggleIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Opt-in toggle: when enabled, ExiusCart automatically submits the seller's
+    TheDersi payout request every Monday 00:00 Sri Lanka time — the seller
+    never has to remember to click. Off by default; the seller decides.
+    """
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id,
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.is_active == True,
+        ChannelConnection.channel_type == "thedersi",
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="TheDersi connection not found")
+
+    conn.auto_payout_enabled = data.enabled
+    db.commit()
+    return {"auto_payout_enabled": conn.auto_payout_enabled}
+
+
+def run_thedersi_auto_payouts() -> None:
+    """
+    Weekly job — fires every Monday 00:00 Sri Lanka time (18:30 UTC Sunday).
+    For every TheDersi connection with auto_payout_enabled=True, submits a
+    payout request on the seller's behalf, exactly as if they'd clicked the
+    button themselves. TheDersi's own API decides if there's anything payable
+    and rejects with 400 if not — same as a manual click with nothing available.
+    TheDersi's admin team still reviews and pays each request manually; this
+    job only guarantees the request itself never gets forgotten.
+    """
+    db = SessionLocal()
+    try:
+        connections = db.query(ChannelConnection).filter(
+            ChannelConnection.channel_type == "thedersi",
+            ChannelConnection.is_active == True,
+            ChannelConnection.auto_payout_enabled == True,
+        ).all()
+
+        now = datetime.now(timezone.utc)
+        for conn in connections:
+            api_url = _channel_url(conn)
+            try:
+                with httpx.Client(timeout=10) as client:
+                    r = client.post(
+                        f"{api_url}/seller/payouts",
+                        headers={"X-Api-Key": conn.channel_api_key},
+                    )
+                conn.last_auto_payout_attempt_at = now
+                if r.status_code == 400:
+                    logger.info(f"[TheDersi AutoPayout] shop={conn.shop_id} nothing payable, skipped")
+                elif r.status_code >= 300:
+                    logger.warning(f"[TheDersi AutoPayout] shop={conn.shop_id} failed: {r.status_code} {r.text[:200]}")
+                else:
+                    logger.info(f"[TheDersi AutoPayout] shop={conn.shop_id} payout requested successfully")
+            except Exception as e:
+                logger.error(f"[TheDersi AutoPayout] shop={conn.shop_id} error: {e}")
+
+        db.commit()
+    except Exception as e:
+        logger.error(f"[TheDersi AutoPayout] job error: {e}")
+    finally:
+        db.close()
 
 
 class SetProductChannelCategory(BaseModel):

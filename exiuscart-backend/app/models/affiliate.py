@@ -50,6 +50,7 @@ class Commission(Base):
     affiliate_id = Column(Integer, ForeignKey("affiliates.id"), nullable=False)
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
     subscription_id = Column(Integer, ForeignKey("subscriptions.id"), nullable=True)
+    subscription_payment_id = Column(Integer, ForeignKey("subscription_payments.id"), nullable=True)  # exact payment this commission was earned from
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(String(10), default="AED")
     # pending → (30d lock expires) → pending (shows as pending_approval) → approved → paid

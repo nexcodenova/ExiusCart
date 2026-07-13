@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook
 
 api_router = APIRouter()
 
@@ -35,3 +35,4 @@ api_router.include_router(advanced_reports.router, prefix="", tags=["Advanced Re
 api_router.include_router(dropshipping.router, prefix="", tags=["Dropshipping"])
 api_router.include_router(reviews.router, prefix="", tags=["Reviews"])
 api_router.include_router(popups.router, prefix="", tags=["Storefront Popups"])
+api_router.include_router(lemonsqueezy_webhook.router, prefix="", tags=["Lemon Squeezy Webhook"])

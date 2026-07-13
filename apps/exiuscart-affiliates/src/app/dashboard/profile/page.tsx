@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const [loadingPayout, setLoadingPayout] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [payoutError, setPayoutError] = useState('');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -30,18 +31,21 @@ export default function ProfilePage() {
   const [passwordMsg, setPasswordMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    // Pre-fill name/email from localStorage
-    const storedName = localStorage.getItem('affiliate_name') || '';
-    setName(storedName);
-    const storedEmail = (() => {
-      try { return JSON.parse(atob((localStorage.getItem('affiliate_token') || '').split('.')[1] || 'e30=')).email || ''; } catch { return ''; }
-    })();
-    setEmail(storedEmail);
+    // Pre-fill name/email from localStorage (set at login/setup-password)
+    setName(localStorage.getItem('affiliate_name') || '');
+    setEmail(localStorage.getItem('affiliate_email') || '');
 
-    // Load commission model (locked, set at application time)
+    // Load commission model (locked, set at application time) + self-heal
+    // affiliate_email for sessions logged in before it started being stored.
     fetch(`${API_BASE}/api/v1/affiliates/me/stats`, { headers: affiliateHeaders() })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.commission_model) setCommissionModel(d.commission_model); })
+      .then(d => {
+        if (d?.commission_model) setCommissionModel(d.commission_model);
+        if (d?.email && !localStorage.getItem('affiliate_email')) {
+          localStorage.setItem('affiliate_email', d.email);
+          setEmail(d.email);
+        }
+      })
       .catch(() => {});
 
     // Load payout details from backend
@@ -62,6 +66,7 @@ export default function ProfilePage() {
   const handleSavePayout = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setPayoutError('');
     try {
       const res = await fetch(`${API_BASE}/api/v1/affiliates/me/payout-details`, {
         method: 'PATCH',
@@ -76,7 +81,12 @@ export default function ProfilePage() {
       if (res.ok) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+      } else {
+        const data = await res.json().catch(() => null);
+        setPayoutError(data?.detail || `Failed to save (error ${res.status}). Please try again.`);
       }
+    } catch {
+      setPayoutError('Network error — could not reach the server. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -278,6 +288,12 @@ export default function ProfilePage() {
                   <p className="text-emerald-600 text-xs mt-2 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />
                     Payout details saved and sent to ExiusCart team.
+                  </p>
+                )}
+                {payoutError && (
+                  <p className="text-red-600 text-xs mt-2 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {payoutError}
                   </p>
                 )}
               </>

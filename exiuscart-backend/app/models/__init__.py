@@ -38,3 +38,4 @@ from app.models.wholesale import WholesaleProduct, WholesaleBuyer, WholesaleOrde
 from app.models.dropship import DropshipConnection, DropshipProductLink, DropshipOrder
 from app.models.review import ProductReview
 from app.models.popup import StorefrontPopup
+from app.models.subscription_payment import SubscriptionPayment

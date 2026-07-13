@@ -61,6 +61,8 @@ export const adminApi = {
   // Subscriptions / Payments
   getSubscriptions: (params?: { status_filter?: string; plan_filter?: string }) =>
     api.get('/admin/subscriptions', { params }),
+  getSubscriptionPayments: (params?: { shop_id?: number; source_filter?: string }) =>
+    api.get('/admin/subscription-payments', { params }),
   approveSubscription: (subId: number) =>
     api.put(`/admin/subscriptions/${subId}/approve`),
   rejectSubscription: (subId: number) =>

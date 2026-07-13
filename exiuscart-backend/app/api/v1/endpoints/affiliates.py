@@ -184,6 +184,7 @@ def affiliate_stats(
         "paid_amount": paid_amount,
         "currency": "USD",
         "commission_model": affiliate.commission_model or "one_time",
+        "email": affiliate.email,
     }
 
 

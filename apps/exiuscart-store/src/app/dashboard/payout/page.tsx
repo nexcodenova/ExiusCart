@@ -5,6 +5,7 @@ import {
   Loader2, AlertTriangle, CheckCircle2, Clock,
   Wallet, Tag, Calendar, Lock, TrendingUp, History,
   Link2, ArrowRight, ShoppingCart, RefreshCcw, BarChart3,
+  ToggleLeft, ToggleRight, Zap,
 } from 'lucide-react';
 import { channelsApi, reportsApi } from '@/lib/api';
 import Link from 'next/link';
@@ -30,6 +31,7 @@ interface TheDersiInfo {
   next_payout_date: string | null;
   payout_overdue: boolean;
   payout_note?: string;
+  auto_payout_enabled: boolean;
 }
 
 interface PayoutRecord {
@@ -162,6 +164,7 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
   const [payoutSuccess, setPayoutSuccess] = useState('');
   const [payoutError, setPayoutError] = useState('');
   const [error, setError] = useState('');
+  const [togglingAuto, setTogglingAuto] = useState(false);
 
   const loadPayouts = () => {
     setPayoutsLoading(true);
@@ -198,6 +201,19 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
       setPayoutError(err?.response?.data?.detail ?? 'Could not submit payout request. Try again.');
     } finally {
       setRequesting(false);
+    }
+  };
+
+  const handleToggleAutoPayout = async () => {
+    if (!info) return;
+    setTogglingAuto(true);
+    try {
+      const r = await channelsApi.toggleTheDersiAutoPayout(shopId, connection.id, !info.auto_payout_enabled);
+      setInfo({ ...info, auto_payout_enabled: r.data.auto_payout_enabled });
+    } catch {
+      // silent — toggle just stays as-is, user can retry
+    } finally {
+      setTogglingAuto(false);
     }
   };
 
@@ -387,6 +403,34 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
                 <Calendar className="w-3 h-3 shrink-0" />
                 <span>Bank transfer is sent every <strong>Monday</strong> — requests made any day are queued for the next Monday.</span>
               </div>
+            </div>
+
+            {/* Auto-payout toggle */}
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+              <div className="flex items-start gap-2.5">
+                <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Auto-request every Monday</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    ExiusCart submits your payout request automatically, right at midnight Monday (Sri Lanka time) — you never have to remember to click.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleAutoPayout}
+                disabled={togglingAuto}
+                className="shrink-0 text-primary transition disabled:opacity-50"
+                title={info.auto_payout_enabled ? 'Turn off auto-request' : 'Turn on auto-request'}
+              >
+                {togglingAuto ? (
+                  <Loader2 className="w-7 h-7 animate-spin" />
+                ) : info.auto_payout_enabled ? (
+                  <ToggleRight className="w-8 h-8" />
+                ) : (
+                  <ToggleLeft className="w-8 h-8 text-muted-foreground" />
+                )}
+              </button>
             </div>
 
             {/* Meta row */}

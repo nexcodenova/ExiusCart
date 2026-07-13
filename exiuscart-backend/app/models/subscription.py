@@ -53,6 +53,12 @@ class Subscription(Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Lemon Squeezy payment gateway linkage — set when this subscription is billed
+    # through Lemon Squeezy rather than manually approved by an admin.
+    payment_source = Column(String(20), default="manual")  # manual | lemon_squeezy
+    lemon_squeezy_subscription_id = Column(String(100), unique=True, nullable=True, index=True)
+    lemon_squeezy_customer_id = Column(String(100), nullable=True)
+
     # Foreign Keys
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
     plan_id = Column(Integer, ForeignKey("plans.id"), nullable=True)

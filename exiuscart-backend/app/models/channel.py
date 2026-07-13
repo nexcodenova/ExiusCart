@@ -17,3 +17,9 @@ class ChannelConnection(Base):
     seller_status = Column(String(20), nullable=True)  # approved | suspended | rejected (set by channel partner)
     last_synced_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # TheDersi payout automation — opt-in, off by default. When enabled, ExiusCart
+    # automatically submits the seller's payout request every Monday 00:00 Sri
+    # Lanka time, so a request never gets missed just because the seller forgot.
+    auto_payout_enabled = Column(Boolean, default=False)
+    last_auto_payout_attempt_at = Column(DateTime(timezone=True), nullable=True)
