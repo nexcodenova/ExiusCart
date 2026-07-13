@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pydantic import BaseModel
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 from app.core.database import get_db
 from app.api.v1.endpoints.usage import check_and_log_email
 from app.models.user import User
@@ -431,6 +434,14 @@ async def update_order_status(
             pass
 
     _notify_channel_order(order_id, data.status, db)
+
+    # Request product reviews from the customer once the order is delivered
+    if data.status == "delivered" and previous_status != "delivered":
+        try:
+            from app.api.v1.endpoints.reviews import request_reviews_for_order
+            request_reviews_for_order(order, db)
+        except Exception as e:
+            logger.error(f"[Reviews] Failed to request reviews for order={order_id}: {e}")
 
     return order
 

@@ -97,6 +97,8 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/drip-flows',        label: 'Drip Flows',      icon: GitBranch      },
       { href: '/dashboard/email-marketing',   label: 'Email Marketing', icon: Mail           },
       { href: '/dashboard/sms-marketing',    label: 'SMS Marketing',   icon: MessageSquare  },
+      { href: '/dashboard/popups',           label: 'Smart Upsells',   icon: Sparkles       },
+      { href: '/dashboard/reviews',          label: 'Reviews',         icon: Star           },
       { href: '/dashboard/events',           label: 'Events',          icon: Calendar       },
       { href: '/dashboard/surveys',          label: 'Surveys',         icon: ClipboardCheck },
       { href: '/dashboard/ai-seo',           label: 'AI SEO Tools',    icon: Sparkles       },

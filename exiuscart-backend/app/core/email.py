@@ -1258,3 +1258,77 @@ def send_thedersi_cancellation_email(
         f"⚠️ Order {order_number} Cancelled by TheDersi — Stock Restored",
         html,
     )
+
+
+def send_review_request_email(
+    to_email: str,
+    customer_name: str,
+    shop_name: str,
+    order_number: str,
+    products: list,   # list of dicts: {name, image_url, review_url}
+) -> bool:
+    rows = "".join(
+        f"""<tr>
+          <td style="padding:16px;border-bottom:1px solid #1e2d47;">
+            <table cellpadding="0" cellspacing="0"><tr>
+              <td style="width:56px;">
+                {'<img src="' + p['image_url'] + '" width="48" height="48" style="border-radius:8px;object-fit:cover;display:block;" />' if p.get('image_url') else '<div style="width:48px;height:48px;border-radius:8px;background:#0B1121;"></div>'}
+              </td>
+              <td style="padding-left:14px;vertical-align:middle;">
+                <p style="margin:0;color:#e2e8f0;font-size:14px;font-weight:600;">{p['name']}</p>
+              </td>
+            </tr></table>
+          </td>
+          <td style="padding:16px;border-bottom:1px solid #1e2d47;text-align:right;">
+            <a href="{p['review_url']}"
+               style="display:inline-block;background:#6B3FD9;color:#fff;font-size:12px;font-weight:700;text-decoration:none;padding:9px 18px;border-radius:8px;white-space:nowrap;">
+              Rate this ★
+            </a>
+          </td>
+        </tr>"""
+        for p in products
+    )
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0B1121;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B1121;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#151F32;border-radius:16px;overflow:hidden;border:1px solid #1e2d47;">
+
+        <tr><td style="background:#0B1121;padding:22px 32px;border-bottom:1px solid #1e2d47;">
+          <span style="font-size:22px;font-weight:800;color:#fff;"><span style="color:#6B3FD9;">Exius</span>Cart</span>
+        </td></tr>
+
+        <tr><td style="background:#6B3FD9;padding:18px 32px;">
+          <p style="margin:0;font-size:18px;font-weight:700;color:#fff;">How was your order?</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#c4b5fd;">{shop_name} · {order_number}</p>
+        </td></tr>
+
+        <tr><td style="padding:28px 32px;">
+          <p style="margin:0 0 20px;font-size:14px;color:#e2e8f0;">
+            Hi {customer_name or 'there'}, thanks for your order! Your feedback helps other shoppers — it only takes a minute.
+          </p>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1e2d47;border-radius:10px;overflow:hidden;">
+            {rows}
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px;border-top:1px solid #1e2d47;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#475569;">This email was sent to <strong style="color:#94a3b8;">{to_email}</strong></p>
+          <p style="margin:6px 0 0;font-size:11px;color:#334155;">Powered by <strong style="color:#6B3FD9;">ExiusCart</strong></p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    return send_email(
+        to_email,
+        f"How was your order from {shop_name}?",
+        html,
+    )

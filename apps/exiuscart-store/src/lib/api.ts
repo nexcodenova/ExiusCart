@@ -615,6 +615,48 @@ export const dropshipApi = {
     api.post(`/shops/${shopId}/dropship/cj/import`, { cj_pid: cjPid, selling_price: sellingPrice }),
 };
 
+export const reviewsApi = {
+  list: (shopId: string, params?: { status?: string; product_id?: number }) =>
+    api.get(`/shops/${shopId}/reviews`, { params }),
+  moderate: (shopId: string, reviewId: number, status: 'approved' | 'rejected') =>
+    api.post(`/shops/${shopId}/reviews/${reviewId}/moderate`, { status }),
+  remove: (shopId: string, reviewId: number) =>
+    api.delete(`/shops/${shopId}/reviews/${reviewId}`),
+  requestForOrder: (shopId: string, orderId: string | number) =>
+    api.post(`/shops/${shopId}/orders/${orderId}/request-review`),
+};
+
+export const publicReviewApi = {
+  get: (token: string) => api.get(`/public/review/${token}`),
+  submit: (token: string, data: { rating: number; comment?: string; photo_url?: string }) =>
+    api.post(`/public/review/${token}/submit`, data),
+  uploadPhoto: (token: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post(`/public/review/${token}/photo`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+export const popupsApi = {
+  list: (shopId: string) => api.get(`/shops/${shopId}/popups`),
+  create: (shopId: string, data: {
+    name: string; popup_type: string; title: string; message?: string;
+    button_text?: string; button_link?: string; discount_code?: string;
+    image_url?: string; delay_seconds?: number; is_active?: boolean;
+  }) => api.post(`/shops/${shopId}/popups`, data),
+  update: (shopId: string, popupId: number, data: {
+    name: string; popup_type: string; title: string; message?: string;
+    button_text?: string; button_link?: string; discount_code?: string;
+    image_url?: string; delay_seconds?: number; is_active?: boolean;
+  }) => api.patch(`/shops/${shopId}/popups/${popupId}`, data),
+  toggle: (shopId: string, popupId: number) =>
+    api.post(`/shops/${shopId}/popups/${popupId}/toggle`),
+  remove: (shopId: string, popupId: number) =>
+    api.delete(`/shops/${shopId}/popups/${popupId}`),
+};
+
 export const payrollApi = {
   getStaff: (shopId: string) => api.get(`/shops/${shopId}/payroll/staff`),
   createStaff: (shopId: string, data: any) => api.post(`/shops/${shopId}/payroll/staff`, data),

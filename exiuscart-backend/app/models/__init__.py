@@ -36,3 +36,5 @@ from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.branch import Branch
 from app.models.wholesale import WholesaleProduct, WholesaleBuyer, WholesaleOrder
 from app.models.dropship import DropshipConnection, DropshipProductLink, DropshipOrder
+from app.models.review import ProductReview
+from app.models.popup import StorefrontPopup
