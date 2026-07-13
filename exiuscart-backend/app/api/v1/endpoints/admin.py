@@ -1,6 +1,7 @@
 """
 Super-admin endpoints — all routes require is_superuser.
 """
+import logging
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from pydantic import BaseModel
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.api.v1.deps import get_current_user
 from app.core.email import (
     send_dashboard_live_email,
@@ -26,6 +27,7 @@ from app.models.order import Order
 from app.models.partner import PartnerLicense
 from app.models.admin_settings import AdminSettings
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -366,8 +368,10 @@ def approve_subscription(
             sub.expires_at = None  # Lifetime / one-time
 
     # ── Auto-commission: check if shop owner was referred by an affiliate ──────
-    # One commission per shop per affiliate, ever — regardless of plan changes/upgrades.
-    # No commission on free trials.
+    # No commission on free trials. Two models, chosen by the affiliate at application:
+    #   one_time  — a single flat $75 payout, once per shop per affiliate, ever
+    #   recurring — 50% of subscription value, paid monthly, capped at 12 payments per shop
+    #               (this call only creates payment #1; the monthly scheduler creates #2-12)
     if sub.shop and sub.plan_type != "free_trial":
         shop_owner = db.query(User).filter(User.id == sub.shop.owner_id).first()
         if shop_owner and shop_owner.referred_by_code:
@@ -376,22 +380,42 @@ def approve_subscription(
                 Affiliate.status == "active",
             ).first()
             if affiliate:
-                # Guard: one commission per shop per affiliate, not per subscription
-                already_commissioned = db.query(Commission).filter(
-                    Commission.affiliate_id == affiliate.id,
-                    Commission.shop_id == sub.shop_id,
-                ).first()
-                if not already_commissioned:
-                    commission_amount = 75.0 if sub.billing_type == "yearly" else 25.0
-                    commission = Commission(
-                        affiliate_id=affiliate.id,
-                        shop_id=sub.shop_id,
-                        subscription_id=sub.id,
-                        amount=commission_amount,
-                        currency="USD",
-                        status="pending",
-                    )
-                    db.add(commission)
+                if affiliate.commission_model == "recurring":
+                    already_recurring = db.query(Commission).filter(
+                        Commission.affiliate_id == affiliate.id,
+                        Commission.shop_id == sub.shop_id,
+                        Commission.commission_type == "recurring",
+                    ).first()
+                    if not already_recurring:
+                        monthly_value = float(sub.amount_paid or 0) / 12 if sub.billing_type == "yearly" else float(sub.amount_paid or 0)
+                        commission_amount = round(monthly_value * 0.5, 2)
+                        if commission_amount > 0:
+                            db.add(Commission(
+                                affiliate_id=affiliate.id,
+                                shop_id=sub.shop_id,
+                                subscription_id=sub.id,
+                                amount=commission_amount,
+                                currency="USD",
+                                status="pending",
+                                commission_type="recurring",
+                                period_month=1,
+                            ))
+                else:
+                    already_commissioned = db.query(Commission).filter(
+                        Commission.affiliate_id == affiliate.id,
+                        Commission.shop_id == sub.shop_id,
+                        Commission.commission_type == "one_time",
+                    ).first()
+                    if not already_commissioned:
+                        db.add(Commission(
+                            affiliate_id=affiliate.id,
+                            shop_id=sub.shop_id,
+                            subscription_id=sub.id,
+                            amount=75.0,
+                            currency="USD",
+                            status="pending",
+                            commission_type="one_time",
+                        ))
 
     db.commit()
 
@@ -409,6 +433,77 @@ def approve_subscription(
             )
 
     return {"message": "Subscription approved", "id": sub_id}
+
+
+def generate_recurring_affiliate_commissions() -> None:
+    """
+    Called daily by the background scheduler in main.py.
+    For every shop referred by a 'recurring' affiliate, generates that referral's next
+    monthly commission (50% of subscription value) once ~28 days have passed since the
+    last one, capped at 12 total commissions per shop per affiliate.
+    """
+    db = SessionLocal()
+    try:
+        recurring_affiliates = db.query(Affiliate).filter(
+            Affiliate.commission_model == "recurring",
+            Affiliate.status == "active",
+        ).all()
+
+        for affiliate in recurring_affiliates:
+            referred_users = db.query(User).filter(User.referred_by_code == affiliate.referral_code).all()
+
+            for user in referred_users:
+                shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+                if not shop:
+                    continue
+
+                sub = db.query(Subscription).filter(
+                    Subscription.shop_id == shop.id,
+                    Subscription.status == "active",
+                ).order_by(Subscription.id.desc()).first()
+                if not sub or sub.plan_type == "free_trial":
+                    continue
+
+                existing = db.query(Commission).filter(
+                    Commission.affiliate_id == affiliate.id,
+                    Commission.shop_id == shop.id,
+                    Commission.commission_type == "recurring",
+                ).order_by(Commission.period_month.desc()).all()
+
+                if not existing or len(existing) >= 12:
+                    continue  # no first payment yet (created at approval), or already capped
+
+                last = existing[0]
+                now = datetime.now(timezone.utc)
+                last_created = last.created_at
+                if last_created and last_created.tzinfo is None:
+                    last_created = last_created.replace(tzinfo=timezone.utc)
+                if not last_created or (now - last_created) < timedelta(days=28):
+                    continue  # not due yet
+
+                next_period = (last.period_month or 0) + 1
+                monthly_value = float(sub.amount_paid or 0) / 12 if sub.billing_type == "yearly" else float(sub.amount_paid or 0)
+                commission_amount = round(monthly_value * 0.5, 2)
+                if commission_amount <= 0:
+                    continue
+
+                db.add(Commission(
+                    affiliate_id=affiliate.id,
+                    shop_id=shop.id,
+                    subscription_id=sub.id,
+                    amount=commission_amount,
+                    currency="USD",
+                    status="pending",
+                    commission_type="recurring",
+                    period_month=next_period,
+                ))
+                logger.info(f"[Affiliate Recurring] affiliate={affiliate.id} shop={shop.id} period={next_period}")
+
+        db.commit()
+    except Exception as e:
+        logger.error(f"[Affiliate Recurring] job error: {e}")
+    finally:
+        db.close()
 
 
 @router.put("/admin/subscriptions/{sub_id}/reject")
@@ -765,6 +860,7 @@ def _affiliate_out(affiliate: Affiliate, db: Session) -> dict:
         "referral_link": f"https://exiuscart.com/register?ref={affiliate.referral_code}",
         "affiliate_type": affiliate.affiliate_type,
         "status": affiliate.status,
+        "commission_model": affiliate.commission_model or "one_time",
         "commission_monthly": 25.0,
         "commission_yearly": 75.0,
         "total_earned": float(total_earned),
@@ -816,15 +912,44 @@ def get_affiliate(
     result["commissions"] = [
         {
             "id": c.id,
+            "shop_id": c.shop_id,
             "shop_name": c.shop.name if c.shop else "",
             "amount": float(c.amount),
             "currency": c.currency,
             "status": c.status,
+            "commission_type": c.commission_type or "one_time",
+            "period_month": c.period_month,
             "paid_at": c.paid_at,
             "created_at": c.created_at,
         }
         for c in commissions
     ]
+
+    # ── Referral breakdown — per referred shop: what they're paying, how much this
+    # affiliate has earned from them so far, and (for recurring) how many months are left.
+    by_shop: dict = {}
+    for c in commissions:
+        by_shop.setdefault(c.shop_id, []).append(c)
+
+    referral_breakdown = []
+    for shop_id, shop_commissions in by_shop.items():
+        shop = shop_commissions[0].shop
+        sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+        commission_type = shop_commissions[0].commission_type or "one_time"
+        months_paid = len([c for c in shop_commissions if c.commission_type == "recurring"])
+        referral_breakdown.append({
+            "shop_id": shop_id,
+            "shop_name": shop.name if shop else "",
+            "plan_type": sub.plan_type if sub else None,
+            "billing_type": sub.billing_type if sub else None,
+            "subscription_amount": float(sub.amount_paid) if sub and sub.amount_paid else None,
+            "commission_type": commission_type,
+            "months_paid": months_paid if commission_type == "recurring" else None,
+            "months_remaining": max(0, 12 - months_paid) if commission_type == "recurring" else None,
+            "total_earned_from_referral": sum(float(c.amount) for c in shop_commissions),
+        })
+    result["referral_breakdown"] = sorted(referral_breakdown, key=lambda r: r["total_earned_from_referral"], reverse=True)
+
     return result
 
 
@@ -1000,6 +1125,9 @@ class AffiliateApply(BaseModel):
     how_promote: Optional[str] = None
     # "external" (anyone) or "shop_owner" (existing ExiusCart customer — higher rates)
     affiliate_type: str = "external"
+    # "one_time" ($75 flat) or "recurring" (50% of subscription, monthly, 12mo cap) —
+    # chosen once here and locked forever; never exposed as editable on any affiliate-facing endpoint.
+    commission_model: str = "one_time"
 
 
 def _generate_referral_code(name: str, db: Session) -> str:
@@ -1025,6 +1153,9 @@ def apply_as_affiliate(
       External:    1-10 → 20%,  11+ → 35%
       Shop owner:  1-10 → 25%,  11+ → 40%
     """
+    if data.commission_model not in ("one_time", "recurring"):
+        raise HTTPException(status_code=422, detail="commission_model must be 'one_time' or 'recurring'.")
+
     existing = db.query(Affiliate).filter(Affiliate.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="This email is already registered as an affiliate.")
@@ -1065,6 +1196,7 @@ def apply_as_affiliate(
         commission_rate=base_rate,
         commission_rate_tier2=tier2_rate,
         tier_threshold=10,
+        commission_model=data.commission_model,
     )
     db.add(affiliate)
     db.commit()
@@ -1080,8 +1212,7 @@ def apply_as_affiliate(
         "message": "Your affiliate application has been submitted! We'll review it and get back to you within 24 hours.",
         "referral_code": referral_code,
         "affiliate_type": data.affiliate_type,
-        "commission_monthly": 25.0,
-        "commission_yearly": 75.0,
+        "commission_model": data.commission_model,
     }
 
 

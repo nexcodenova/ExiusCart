@@ -20,6 +20,8 @@ interface Referral {
   commission: number;
   commission_status: string | null;
   commission_currency: string;
+  months_paid: number | null;
+  months_remaining: number | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -161,6 +163,7 @@ export default function ReferralsPage() {
                             <p className="text-gray-900 font-semibold">${r.commission.toFixed(2)}</p>
                             <p className={`text-xs ${r.commission_status === 'paid' ? 'text-green-600' : 'text-yellow-600'}`}>
                               {r.commission_status === 'paid' ? 'Paid' : 'Pending'}
+                              {r.months_paid != null && ` · ${r.months_paid}/12 months`}
                             </p>
                           </div>
                         ) : (
@@ -190,7 +193,10 @@ export default function ReferralsPage() {
                   <div className="flex items-center justify-between text-xs text-gray-400">
                     <span>{r.signed_up ? new Date(r.signed_up).toLocaleDateString() : '—'}</span>
                     {r.commission > 0 && (
-                      <span className="text-gray-900 font-semibold">${r.commission.toFixed(2)}</span>
+                      <span className="text-gray-900 font-semibold">
+                        ${r.commission.toFixed(2)}
+                        {r.months_paid != null && <span className="text-gray-400 font-normal"> · {r.months_paid}/12mo</span>}
+                      </span>
                     )}
                   </div>
                 </div>

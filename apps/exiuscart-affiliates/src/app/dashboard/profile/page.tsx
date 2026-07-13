@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, CreditCard, Save, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { User, CreditCard, Save, AlertCircle, Loader2, CheckCircle2, Lock, Repeat, Zap } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
 
@@ -13,6 +13,7 @@ function affiliateHeaders() {
 export default function ProfilePage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [commissionModel, setCommissionModel] = useState<'one_time' | 'recurring' | null>(null);
 
   const [payoutMethod, setPayoutMethod] = useState<'paypal' | 'skrill' | 'payoneer'>('paypal');
   const [paypalEmail, setPaypalEmail] = useState('');
@@ -36,6 +37,12 @@ export default function ProfilePage() {
       try { return JSON.parse(atob((localStorage.getItem('affiliate_token') || '').split('.')[1] || 'e30=')).email || ''; } catch { return ''; }
     })();
     setEmail(storedEmail);
+
+    // Load commission model (locked, set at application time)
+    fetch(`${API_BASE}/api/v1/affiliates/me/stats`, { headers: affiliateHeaders() })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.commission_model) setCommissionModel(d.commission_model); })
+      .catch(() => {});
 
     // Load payout details from backend
     fetch(`${API_BASE}/api/v1/affiliates/me/payout-details`, { headers: affiliateHeaders() })
@@ -137,6 +144,29 @@ export default function ProfilePage() {
                   className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-gray-500 text-sm cursor-not-allowed"
                 />
               </div>
+              {commissionModel && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1.5 block">Commission Model</label>
+                  <div className="flex items-center justify-between gap-3 bg-gray-100 border border-gray-200 rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {commissionModel === 'recurring' ? (
+                        <Repeat className="w-4 h-4 text-[#7B4FE9]" />
+                      ) : (
+                        <Zap className="w-4 h-4 text-gray-500" />
+                      )}
+                      <span className="text-gray-900 text-sm font-semibold">
+                        {commissionModel === 'recurring' ? 'Recurring — 50% for 12 months' : 'One-Time — $75 flat'}
+                      </span>
+                    </div>
+                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                      <Lock className="w-3 h-3" /> Locked
+                    </span>
+                  </div>
+                  <p className="text-gray-400 text-xs mt-1.5">
+                    This was set when you applied and can&apos;t be changed. Contact support if you need help.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

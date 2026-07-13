@@ -183,6 +183,7 @@ def affiliate_stats(
         "available_amount": available_amount,
         "paid_amount": paid_amount,
         "currency": "USD",
+        "commission_model": affiliate.commission_model or "one_time",
     }
 
 
@@ -231,6 +232,8 @@ def affiliate_referrals(
         .all()
     )
 
+    is_recurring = affiliate.commission_model == "recurring"
+
     result = []
     for user in referred_users:
         shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
@@ -240,12 +243,16 @@ def affiliate_referrals(
                 Subscription.shop_id == shop.id
             ).order_by(Subscription.id.desc()).first()
 
-        commission = None
+        commissions = []
         if shop:
-            commission = db.query(Commission).filter(
+            commissions = db.query(Commission).filter(
                 Commission.affiliate_id == affiliate.id,
                 Commission.shop_id == shop.id,
-            ).first()
+            ).order_by(Commission.period_month.asc()).all()
+
+        total_commission = sum(float(c.amount) for c in commissions)
+        months_paid = len([c for c in commissions if c.commission_type == "recurring"])
+        latest_status = commissions[-1].status if commissions else None
 
         result.append({
             "name": user.full_name,
@@ -254,9 +261,11 @@ def affiliate_referrals(
             "store_name": shop.name if shop else None,
             "plan": sub.plan_type if sub else None,
             "status": sub.status if sub else "registered",
-            "commission": float(commission.amount) if commission else 0,
-            "commission_status": commission.status if commission else None,
-            "commission_currency": commission.currency if commission else "USD",
+            "commission": total_commission,
+            "commission_status": latest_status,
+            "commission_currency": commissions[0].currency if commissions else "USD",
+            "months_paid": months_paid if is_recurring else None,
+            "months_remaining": max(0, 12 - months_paid) if is_recurring else None,
         })
 
     return result

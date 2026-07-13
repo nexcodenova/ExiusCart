@@ -148,6 +148,10 @@ _MIGRATIONS = [
        FROM shops s JOIN users u ON u.id = s.owner_id
        WHERE u.is_verified = TRUE
          AND NOT EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.shop_id = s.id);""",
+    # Affiliate commission model — chosen at application, locked forever
+    "ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS commission_model VARCHAR(20) DEFAULT 'one_time';",
+    "ALTER TABLE commissions ADD COLUMN IF NOT EXISTS commission_type VARCHAR(20) DEFAULT 'one_time';",
+    "ALTER TABLE commissions ADD COLUMN IF NOT EXISTS period_month INTEGER;",
 ]
 
 for _sql in _MIGRATIONS:
@@ -198,6 +202,19 @@ def _run_cj_tracking_scheduler():
 
 _cj_tracking_thread = threading.Thread(target=_run_cj_tracking_scheduler, daemon=True)
 _cj_tracking_thread.start()
+
+# Start recurring affiliate commission generator (checked daily, fires ~monthly per referral)
+def _run_affiliate_recurring_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.admin import generate_recurring_affiliate_commissions
+            generate_recurring_affiliate_commissions()
+        except Exception as exc:
+            logger.error(f"[Affiliate Recurring scheduler] {exc}")
+        time.sleep(24 * 3600)
+
+_affiliate_recurring_thread = threading.Thread(target=_run_affiliate_recurring_scheduler, daemon=True)
+_affiliate_recurring_thread.start()
 
 # CORS middleware
 app.add_middleware(

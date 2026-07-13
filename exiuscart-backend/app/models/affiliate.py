@@ -24,6 +24,9 @@ class Affiliate(Base):
     commission_rate_tier2 = Column(Numeric(5, 2), default=35.00)
     # How many paid referrals per month before tier 2 kicks in (default 10)
     tier_threshold = Column(Integer, default=10)
+    # Commission model chosen at application time — locked forever, never editable by the affiliate.
+    # "one_time" = flat $75 once per referral | "recurring" = 50% of subscription value, monthly, capped at 12 months
+    commission_model = Column(String(20), default="one_time")
     password_hash = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)  # admin notes
     total_clicks = Column(Integer, default=0)  # incremented on every referral link hit
@@ -51,6 +54,9 @@ class Commission(Base):
     currency = Column(String(10), default="AED")
     # pending → (30d lock expires) → pending (shows as pending_approval) → approved → paid
     status = Column(String(20), default="pending")  # pending | approved | paid
+    # "one_time" = single flat payout | "recurring" = one of up to 12 monthly payouts for this referral
+    commission_type = Column(String(20), default="one_time")
+    period_month = Column(Integer, nullable=True)  # 1-12 for recurring commissions, null for one_time
     approved_at = Column(DateTime(timezone=True), nullable=True)
     paid_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

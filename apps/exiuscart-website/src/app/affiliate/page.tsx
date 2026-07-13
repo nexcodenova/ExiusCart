@@ -29,147 +29,134 @@ const RECURRING_RATE = 0.5;
 const RECURRING_MONTHS_CAP = 12;
 const RECURRING_MONTHLY_PER_SELLER = AVG_SUBSCRIPTION_VALUE * RECURRING_RATE;
 
+const PERIOD_OPTIONS = [1, 3, 6, 12, 18, 24];
+
 function EarningsCalculator() {
   const [model, setModel] = useState<'one_time' | 'recurring'>('recurring');
-  const [sellersPerMonth, setSellersPerMonth] = useState(3);
+  const [sellerCount, setSellerCount] = useState(10);
+  const [monthsToProject, setMonthsToProject] = useState(12);
 
-  const totalReferralsYear = sellersPerMonth * 12;
-  const oneTimeYearly = totalReferralsYear * ONE_TIME_AMOUNT;
-  const recurringPerReferralTotal = RECURRING_MONTHLY_PER_SELLER * RECURRING_MONTHS_CAP;
+  const oneTimeTotal = sellerCount * ONE_TIME_AMOUNT;
+  const recurringMonthlyWhileActive = sellerCount * RECURRING_MONTHLY_PER_SELLER;
 
-  // Month-by-month breakdown: how many sellers are actively paying you, and how much
+  // Every seller pays a flat $14/mo for their first 12 months, then $0 after —
+  // this is a fixed headcount, not an ongoing monthly recruiting rate.
+  // Recalculates live any time sellerCount or monthsToProject changes.
   const monthlyBreakdown = useMemo(() =>
-    Array.from({ length: 12 }, (_, i) => {
+    Array.from({ length: monthsToProject }, (_, i) => {
       const month = i + 1;
-      const activeSellers = sellersPerMonth * month; // cohorts referred so far, all still within their 12-mo window
-      return { month, activeSellers, earnings: activeSellers * RECURRING_MONTHLY_PER_SELLER };
-    }), [sellersPerMonth]);
+      const isActive = month <= RECURRING_MONTHS_CAP;
+      return { month, earnings: isActive ? recurringMonthlyWhileActive : 0 };
+    }), [monthsToProject, recurringMonthlyWhileActive]);
 
-  const recurringSteadyMonthly = monthlyBreakdown[11].earnings;
-  const recurringSteadySellers = monthlyBreakdown[11].activeSellers;
-  const recurringYear1Total = monthlyBreakdown.reduce((sum, m) => sum + m.earnings, 0);
-  const maxBar = recurringSteadyMonthly;
+  const recurringTotal = monthlyBreakdown.reduce((sum, m) => sum + m.earnings, 0);
+  const monthsActive = Math.min(monthsToProject, RECURRING_MONTHS_CAP);
 
   const fmt = (n: number) => `$${Math.round(n).toLocaleString()}`;
+  const total = model === 'one_time' ? oneTimeTotal : recurringTotal;
 
   return (
     <section id="calculator" className="bg-[#0F0A1F] py-20 text-white">
-      <div className="mx-auto max-w-4xl px-6">
-        <div className="mx-auto max-w-2xl text-center mb-10">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="mb-10">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm font-medium text-white/80">
             <Calculator className="h-4 w-4" /> Earnings Calculator
           </span>
-          <h2 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">See how much you could earn</h2>
-          <p className="mt-3 text-white/60">Three steps: pick a model, set your referral pace, see your numbers.</p>
+          <h2 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">Calculate your earnings</h2>
+
+          {/* Model toggle */}
+          <div className="mt-6 flex w-fit rounded-xl border border-white/15 bg-white/5 p-1">
+            <button
+              onClick={() => setModel('one_time')}
+              className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition ${model === 'one_time' ? 'bg-white text-slate-900' : 'text-white/60 hover:text-white'}`}
+            >
+              <Zap className="h-4 w-4" /> One-Time
+            </button>
+            <button
+              onClick={() => setModel('recurring')}
+              className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition ${model === 'recurring' ? 'bg-white text-slate-900' : 'text-white/60 hover:text-white'}`}
+            >
+              <Repeat className="h-4 w-4" /> Recurring
+            </button>
+          </div>
         </div>
 
-        {/* Model toggle */}
-        <div className="mx-auto mb-10 flex w-fit rounded-xl border border-white/15 bg-white/5 p-1">
-          <button
-            onClick={() => setModel('one_time')}
-            className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition ${model === 'one_time' ? 'bg-white text-slate-900' : 'text-white/60 hover:text-white'}`}
-          >
-            <Zap className="h-4 w-4" /> One-Time
-          </button>
-          <button
-            onClick={() => setModel('recurring')}
-            className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition ${model === 'recurring' ? 'bg-white text-slate-900' : 'text-white/60 hover:text-white'}`}
-          >
-            <Repeat className="h-4 w-4" /> Recurring
-          </button>
-        </div>
-
-        {/* Step 1 — per referral */}
-        <div className="mx-auto mb-6 max-w-2xl rounded-2xl border border-white/15 bg-white/5 p-5 flex items-center gap-4">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#6B3FD9] text-sm font-bold">1</span>
-          {model === 'one_time' ? (
-            <p className="text-sm text-white/80">
-              Each seller you refer pays you <strong className="text-white">$75</strong>, once — as soon as they activate a paid plan.
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left — inputs */}
+          <div className="rounded-3xl border border-white/15 bg-white/[0.03] p-8">
+            <h3 className="text-xl font-semibold">Sellers you&apos;ll refer</h3>
+            <p className="mt-2 text-sm text-white/50">
+              {model === 'one_time'
+                ? <>Earn a flat <strong className="text-white">$75 USD</strong> per referral.</>
+                : <>Earn <strong className="text-white">{fmt(RECURRING_MONTHLY_PER_SELLER)}/mo</strong> per referral, for 12 months.</>}
             </p>
-          ) : (
-            <p className="text-sm text-white/80">
-              Each seller you refer pays you <strong className="text-white">{fmt(RECURRING_MONTHLY_PER_SELLER)}/mo</strong> (50% of their ~${AVG_SUBSCRIPTION_VALUE}/mo subscription), for up to 12 months —{' '}
-              <strong className="text-[#A78BFA]">{fmt(recurringPerReferralTotal)} total per seller</strong> over the year.
+
+            <p className="mt-8 text-6xl font-extrabold tracking-tight text-[#A78BFA]">
+              {String(sellerCount).padStart(2, '0')}
             </p>
-          )}
-        </div>
+            <input
+              type="range" min={1} max={20} step={1}
+              value={sellerCount}
+              onChange={(e) => setSellerCount(Number(e.target.value))}
+              className="mt-4 w-full accent-[#6B3FD9] h-2"
+            />
 
-        {/* Step 2 — your pace (seller slider) */}
-        <div className="mx-auto mb-6 max-w-2xl rounded-2xl border border-white/15 bg-white/5 p-5">
-          <div className="flex items-start gap-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#6B3FD9] text-sm font-bold">2</span>
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-2 text-sm">
-                <span className="text-white/80">How many new sellers will you refer, each month?</span>
-                <span className="font-bold text-[#A78BFA]">{sellersPerMonth}/mo</span>
+            {model === 'recurring' && (
+              <div className="mt-8 pt-6 border-t border-white/10">
+                <label className="text-sm text-white/60 mb-2 block">Time period</label>
+                <div className="relative">
+                  <select
+                    value={monthsToProject}
+                    onChange={(e) => setMonthsToProject(Number(e.target.value))}
+                    className="w-full appearance-none rounded-xl border border-white/15 bg-white/5 px-4 py-3.5 text-white font-medium focus:outline-none focus:border-[#A78BFA]"
+                  >
+                    {PERIOD_OPTIONS.map((m) => (
+                      <option key={m} value={m} className="bg-[#151020] text-white">
+                        {m === 1 ? '1 month' : `${m} months`}
+                      </option>
+                    ))}
+                  </select>
+                  <Clock className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                </div>
               </div>
-              <input
-                type="range" min={1} max={20} step={1}
-                value={sellersPerMonth}
-                onChange={(e) => setSellersPerMonth(Number(e.target.value))}
-                className="w-full accent-[#6B3FD9]"
-              />
-              <p className="mt-2 text-xs text-white/50">
-                {sellersPerMonth} sellers/mo × 12 months = <strong className="text-white">{totalReferralsYear} sellers referred by the end of the year</strong>
+            )}
+          </div>
+
+          {/* Right — result panel, high contrast */}
+          <div className="rounded-3xl bg-gradient-to-br from-[#6B3FD9] to-[#4C2A9E] p-8 flex flex-col justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/70">
+                {model === 'one_time'
+                  ? `${sellerCount} referral${sellerCount !== 1 ? 's' : ''} × $75 flat`
+                  : `${sellerCount} referral${sellerCount !== 1 ? 's' : ''} × ${fmt(RECURRING_MONTHLY_PER_SELLER)}/mo, ${monthsActive} month${monthsActive !== 1 ? 's' : ''} active`}
+              </p>
+              <p className="mt-3 text-5xl sm:text-6xl font-extrabold tracking-tight text-white">
+                {fmt(total)}
+              </p>
+              <p className="mt-2 text-sm text-white/70">
+                {model === 'one_time'
+                  ? 'Paid once, as soon as each referral converts.'
+                  : `Over ${monthsToProject} month${monthsToProject !== 1 ? 's' : ''}${monthsToProject > RECURRING_MONTHS_CAP ? ` — this group stops paying after month ${RECURRING_MONTHS_CAP}` : ''}.`}
               </p>
             </div>
+
+            {model === 'recurring' && (
+              <div className="mt-8 rounded-2xl bg-black/15 px-5 py-4">
+                <p className="text-xs text-white/60">Steady monthly income while this group is active</p>
+                <p className="mt-1 text-2xl font-bold text-white">{fmt(recurringMonthlyWhileActive)}<span className="text-sm font-normal text-white/60">/mo</span></p>
+              </div>
+            )}
+
+            <a href="#apply" className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-base font-bold text-slate-900 transition hover:bg-white/90">
+              Become an affiliate <ArrowRight className="h-4 w-4" />
+            </a>
           </div>
         </div>
 
-        {/* Step 3 — result */}
-        {model === 'one_time' ? (
-          <div className="mx-auto max-w-2xl rounded-2xl border border-white/15 bg-white/5 p-5 flex items-center gap-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#6B3FD9] text-sm font-bold">3</span>
-            <div className="flex-1">
-              <p className="text-sm text-white/80 mb-3">
-                {totalReferralsYear} sellers × $75 each = your total for the year:
-              </p>
-              <p className="text-5xl font-extrabold tracking-tight text-white">{fmt(oneTimeYearly)}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="mx-auto max-w-2xl rounded-2xl border border-white/15 bg-white/5 p-5">
-            <div className="flex items-start gap-4 mb-6">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#6B3FD9] text-sm font-bold">3</span>
-              <p className="text-sm text-white/80 pt-1.5">
-                Your income builds every month as new referrals stack on top of the ones still paying you:
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
-              <div className="rounded-2xl border border-white/15 bg-white/5 p-6 text-center">
-                <p className="text-sm text-white/60">Total earned in Year 1</p>
-                <p className="mt-2 text-4xl font-extrabold tracking-tight text-white">{fmt(recurringYear1Total)}</p>
-              </div>
-              <div className="relative rounded-2xl border-2 border-[#A78BFA]/50 bg-gradient-to-br from-[#6B3FD9]/20 to-transparent p-6 text-center">
-                <span className="absolute -top-3 right-5 rounded-full bg-[#6B3FD9] px-3 py-1 text-xs font-bold text-white">Keeps growing</span>
-                <p className="text-sm text-white/60">By month 12, every month</p>
-                <p className="mt-2 text-4xl font-extrabold tracking-tight text-[#A78BFA]">{fmt(recurringSteadyMonthly)}<span className="text-lg text-white/50">/mo</span></p>
-                <p className="mt-1 text-xs text-white/40">from {recurringSteadySellers} sellers paying you at once</p>
-              </div>
-            </div>
-
-            {/* Growth bar chart with seller count */}
-            <div className="rounded-2xl border border-white/15 bg-white/5 p-6">
-              <p className="text-xs font-medium text-white/50 uppercase tracking-wide mb-4">Month-by-month: sellers paying you, and what you earn</p>
-              <div className="flex items-end gap-1.5 h-36">
-                {monthlyBreakdown.map((m) => (
-                  <div key={m.month} className="flex-1 flex flex-col items-center gap-1.5 group relative">
-                    <span className="text-[9px] text-white/50 opacity-0 group-hover:opacity-100 transition absolute -top-4">{fmt(m.earnings)}</span>
-                    <div
-                      className="w-full rounded-t-md bg-gradient-to-t from-[#6B3FD9] to-[#A78BFA] transition-all"
-                      style={{ height: `${Math.max(6, (m.earnings / maxBar) * 100)}%` }}
-                    />
-                    <span className="text-[10px] text-white/40">M{m.month}</span>
-                    <span className="text-[9px] text-white/30">{m.activeSellers} sellers</span>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-4 text-center text-xs text-white/40">
-                Hover a bar to see that month&apos;s earnings. Each seller pays for 12 months from when they joined, so your active seller count — and income — keeps climbing as long as you keep referring.
-              </p>
-            </div>
-          </div>
+        {model === 'recurring' && (
+          <p className="mt-4 text-center text-xs text-white/40">
+            Based on 50% of ExiusCart&apos;s average subscription value (~${AVG_SUBSCRIPTION_VALUE}/mo). Each referral pays for exactly 12 months, then stops — refer a new batch any time to start another 12-month stream.
+          </p>
         )}
       </div>
     </section>
@@ -198,12 +185,12 @@ export default function AffiliatePage() {
           phone: formData.phone,
           website: formData.website,
           affiliate_type: 'external',
+          commission_model: formData.commissionModel,
           how_promote: [
             formData.platform && `Platform: ${formData.platform}`,
             formData.audience && `Audience size: ${formData.audience}`,
             formData.country && `Target region: ${formData.country}`,
             formData.experience && `Experience: ${formData.experience}`,
-            `Preferred commission model: ${formData.commissionModel === 'recurring' ? 'Recurring (50% for 12 months)' : 'One-Time ($75 flat)'}`,
             formData.how_promote && `Details: ${formData.how_promote}`,
           ].filter(Boolean).join(' | '),
         }),

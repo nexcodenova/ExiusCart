@@ -10,12 +10,27 @@ import { adminApi } from '@/lib/api';
 
 interface Commission {
   id: number;
+  shop_id: number;
   shop_name: string;
   amount: number;
   currency: string;
   status: 'pending' | 'approved' | 'paid';
+  commission_type: 'one_time' | 'recurring';
+  period_month: number | null;
   paid_at: string | null;
   created_at: string;
+}
+
+interface ReferralBreakdown {
+  shop_id: number;
+  shop_name: string;
+  plan_type: string | null;
+  billing_type: string | null;
+  subscription_amount: number | null;
+  commission_type: 'one_time' | 'recurring';
+  months_paid: number | null;
+  months_remaining: number | null;
+  total_earned_from_referral: number;
 }
 
 interface Affiliate {
@@ -30,6 +45,7 @@ interface Affiliate {
   referral_link: string;
   affiliate_type: 'external' | 'shop_owner';
   status: 'pending' | 'active' | 'suspended';
+  commission_model: 'one_time' | 'recurring';
   commission_monthly: number;
   commission_yearly: number;
   total_earned: number;
@@ -43,6 +59,7 @@ interface Affiliate {
   created_at: string;
   approved_at: string | null;
   commissions?: Commission[];
+  referral_breakdown?: ReferralBreakdown[];
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -269,6 +286,13 @@ export default function AffiliatesPage() {
                         }`}>
                           {affiliate.affiliate_type === 'shop_owner' ? 'Store Owner' : 'External'}
                         </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          affiliate.commission_model === 'recurring'
+                            ? 'bg-[#6B3FD9]/10 text-[#A78BFA] border border-[#6B3FD9]/30'
+                            : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                        }`}>
+                          {affiliate.commission_model === 'recurring' ? 'Recurring 50%' : 'One-Time $75'}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-400 truncate">{affiliate.email}</p>
                       {affiliate.phone && <p className="text-xs text-gray-500">{affiliate.phone}</p>}
@@ -461,6 +485,60 @@ export default function AffiliatesPage() {
                             )}
                           </div>
 
+                          {/* Referral Breakdown — who they brought, what each is paying, what this affiliate has earned */}
+                          <div>
+                            <p className="text-gray-400 text-sm font-medium mb-2">
+                              Referral Breakdown
+                              <span className="text-gray-600 font-normal ml-1.5">
+                                ({detail.referral_breakdown?.length ?? 0} referral{(detail.referral_breakdown?.length ?? 0) !== 1 ? 's' : ''})
+                              </span>
+                            </p>
+                            {!detail.referral_breakdown || detail.referral_breakdown.length === 0 ? (
+                              <p className="text-gray-600 text-sm">No paying referrals yet</p>
+                            ) : (
+                              <div className="overflow-x-auto rounded-lg border border-gray-800">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-[#151F32]">
+                                    <tr>
+                                      <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Shop</th>
+                                      <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Plan</th>
+                                      <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Seller Pays</th>
+                                      <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Model</th>
+                                      <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Months</th>
+                                      <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Earned From This Referral</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-800">
+                                    {detail.referral_breakdown.map((r) => (
+                                      <tr key={r.shop_id} className="bg-[#0B1121]">
+                                        <td className="px-4 py-2.5 text-white font-medium">{r.shop_name}</td>
+                                        <td className="px-4 py-2.5 text-gray-400 capitalize">{r.plan_type?.replace('_', ' ') ?? '—'}</td>
+                                        <td className="px-4 py-2.5 text-right text-gray-300">
+                                          {r.subscription_amount != null ? `${r.subscription_amount.toFixed(2)} ${r.billing_type === 'yearly' ? '/yr' : '/mo'}` : '—'}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center">
+                                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                            r.commission_type === 'recurring'
+                                              ? 'bg-[#6B3FD9]/10 text-[#A78BFA] border border-[#6B3FD9]/30'
+                                              : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                                          }`}>
+                                            {r.commission_type === 'recurring' ? 'Recurring' : 'One-Time'}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-center text-gray-400">
+                                          {r.commission_type === 'recurring' ? `${r.months_paid}/12 paid` : '—'}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-semibold text-white">
+                                          ${r.total_earned_from_referral.toFixed(2)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+
                           {/* Commission History */}
                           <div>
                             <p className="text-gray-400 text-sm font-medium mb-2">Commission History</p>
@@ -479,7 +557,12 @@ export default function AffiliatesPage() {
                                   return (
                                     <div key={c.id} className="flex items-center justify-between bg-[#151F32] rounded-lg px-4 py-3">
                                       <div>
-                                        <p className="text-sm font-medium text-white">{c.shop_name}</p>
+                                        <p className="text-sm font-medium text-white">
+                                          {c.shop_name}
+                                          {c.commission_type === 'recurring' && c.period_month && (
+                                            <span className="ml-2 text-xs font-normal text-[#A78BFA]">Month {c.period_month}/12</span>
+                                          )}
+                                        </p>
                                         <p className="text-xs text-gray-500">
                                           {createdDate.toLocaleDateString()}
                                           {isLocked && ` · Lock expires ${lockUntil.toLocaleDateString()}`}
