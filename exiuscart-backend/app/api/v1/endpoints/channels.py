@@ -72,6 +72,7 @@ class OrderItemIn(BaseModel):
     item_total: Optional[float] = None
     size: Optional[str] = None
     color: Optional[str] = None
+    is_gift: bool = False  # TheDersi checkout free-gift item — always $0, seller still packs & ships it
 
     def parsed_product_id(self) -> Optional[int]:
         """Return integer product id, stripping any non-numeric prefix like 'prod_'."""
@@ -176,6 +177,7 @@ def _product_payload(
         "is_featured": False,
         "is_trending": False,
         "is_bundle": bool(product.is_bundle),
+        "is_gift": bool(product.is_gift),
     }
 
 
@@ -856,7 +858,8 @@ async def receive_order_webhook(
             product_id=product.id,
             quantity=item.quantity,
             unit_price=item.unit_price,
-            total_price=item.item_total or (item.unit_price * item.quantity),
+            total_price=item.item_total if item.item_total is not None else (item.unit_price * item.quantity),
+            is_gift=item.is_gift,
         ))
 
         if order_is_paid:

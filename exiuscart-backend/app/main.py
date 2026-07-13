@@ -161,6 +161,10 @@ _MIGRATIONS = [
     # TheDersi auto-payout opt-in
     "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS auto_payout_enabled BOOLEAN DEFAULT FALSE;",
     "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS last_auto_payout_attempt_at TIMESTAMPTZ;",
+    # Free Gift items (TheDersi checkout) — seller marks a product as a free gift,
+    # order line items carry the flag through so sellers know to still pack/ship it
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS is_gift BOOLEAN NOT NULL DEFAULT FALSE;",
+    "ALTER TABLE order_items ADD COLUMN IF NOT EXISTS is_gift BOOLEAN NOT NULL DEFAULT FALSE;",
 ]
 
 for _sql in _MIGRATIONS:

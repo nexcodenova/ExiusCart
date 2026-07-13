@@ -30,6 +30,7 @@ interface EnrichedItem {
   total_price: number;
   is_bundle: boolean;
   bundle_components: BundleComponentLine[];
+  is_gift: boolean;
 }
 
 interface ChannelMeta {
@@ -279,9 +280,15 @@ export default function OrderDetailsPage() {
                     {item.is_bundle && (
                       <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded font-medium">Bundle</span>
                     )}
+                    {item.is_gift && (
+                      <span className="text-xs px-1.5 py-0.5 bg-pink-500/10 text-pink-600 dark:text-pink-400 rounded font-medium">🎁 Free Gift</span>
+                    )}
                   </div>
                   {item.product_sku && <p className="text-xs text-muted-foreground font-mono">{item.product_sku}</p>}
                   {item.product_id && <p className="text-xs text-muted-foreground/60 font-mono">Product #{item.product_id}</p>}
+                  {item.is_gift && (
+                    <p className="text-xs text-pink-600 dark:text-pink-400 mt-0.5">Free with this order — $0 is intentional, please pack &amp; ship it too.</p>
+                  )}
                   {detail && (detail.size || detail.color) && (
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {detail.color && (

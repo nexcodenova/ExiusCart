@@ -871,6 +871,7 @@ function ProductModal({
     lowStockAlert: p?.low_stock_threshold ?? p?.lowStockAlert ?? 5,
     vatPercent: p?.vat_percent ?? p?.vatPercent ?? 5,
     listOnMarketplace: p?.list_on_marketplace ?? true,
+    isGift: p?.is_gift ?? false,
     supplierId: p?.supplier_id ?? null as number | null,
   });
 
@@ -1083,6 +1084,7 @@ function ProductModal({
         quantity: totalStock,
         low_stock_threshold: formData.lowStockAlert,
         list_on_marketplace: formData.listOnMarketplace,
+        is_gift: formData.isGift,
         supplier_id: formData.supplierId ?? null,
       };
 
@@ -1492,6 +1494,29 @@ function ProductModal({
                       <p className="text-xs text-muted-foreground">{formData.listOnMarketplace ? 'Listed on the marketplace' : 'POS / in-store only'}</p>
                     </div>
                     {formData.listOnMarketplace
+                      ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
+                      : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
+                  </button>
+                </div>
+              )}
+
+              {/* Free Gift item — only relevant for TheDersi-listed products */}
+              {theDersiConnection && formData.listOnMarketplace && (
+                <div className="bg-card border border-border rounded-lg p-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, isGift: !formData.isGift })}
+                    className="w-full flex items-center justify-between gap-3"
+                  >
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-foreground">Is this a free gift item?</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formData.isGift
+                          ? 'Offered as a free gift option at TheDersi checkout — not shown as a normal listing'
+                          : 'Off — this is a regular product'}
+                      </p>
+                    </div>
+                    {formData.isGift
                       ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
                       : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
                   </button>

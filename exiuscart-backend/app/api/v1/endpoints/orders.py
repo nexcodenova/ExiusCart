@@ -484,6 +484,7 @@ async def get_order_details(
             "total_price": float(item.total_price),
             "is_bundle": is_bundle,
             "bundle_components": components,
+            "is_gift": bool(item.is_gift),
         })
 
     # Channel meta (TheDersi commission, delivery, etc.)

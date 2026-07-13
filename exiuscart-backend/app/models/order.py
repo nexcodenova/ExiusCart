@@ -74,6 +74,7 @@ class OrderItem(Base):
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Numeric(10, 2), nullable=False)
     total_price = Column(Numeric(10, 2), nullable=False)
+    is_gift = Column(Boolean, default=False, server_default="false", nullable=False)  # free gift item from TheDersi checkout — always $0, still pack & ship
 
     # Foreign Keys
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
