@@ -23,7 +23,7 @@ from app.models.user import User
 from app.models.order import Order
 from app.models.subscription import Subscription
 from app.models.dropship import DropshipConnection, DropshipProductLink, DropshipOrder
-from app.api.v1.endpoints.auth import get_current_user
+from app.api.v1.deps import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
