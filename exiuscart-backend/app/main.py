@@ -186,6 +186,19 @@ def _run_drip_flow_scheduler():
 _drip_thread = threading.Thread(target=_run_drip_flow_scheduler, daemon=True)
 _drip_thread.start()
 
+# Start CJ tracking sync (every 2 hours)
+def _run_cj_tracking_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.dropshipping import sync_cj_tracking_job
+            sync_cj_tracking_job(SessionLocal)
+        except Exception as exc:
+            logger.error(f"[CJ Tracking scheduler] {exc}")
+        time.sleep(2 * 3600)
+
+_cj_tracking_thread = threading.Thread(target=_run_cj_tracking_scheduler, daemon=True)
+_cj_tracking_thread.start()
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,

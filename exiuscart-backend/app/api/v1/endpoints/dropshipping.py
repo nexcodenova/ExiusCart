@@ -779,3 +779,138 @@ def list_dropship_orders(
         }
         for o in orders
     ]}
+
+
+# ── Background: CJ tracking sync (called by scheduler in main.py) ────────────
+
+def sync_cj_tracking_job(db_session_factory) -> None:
+    """
+    Poll CJ for tracking updates on all processing/sent dropship orders.
+    Called every 2 hours by the background scheduler in main.py.
+    """
+    db = db_session_factory()
+    try:
+        pending = db.query(DropshipOrder).filter(
+            DropshipOrder.supplier_type == "cj",
+            DropshipOrder.status.in_(["processing", "sent"]),
+            DropshipOrder.supplier_order_id.isnot(None),
+        ).all()
+
+        if not pending:
+            return
+
+        logger.info(f"[CJ Tracking] Checking {len(pending)} pending orders")
+
+        # Cache token per shop so we don't re-auth on every order
+        shop_tokens: dict = {}
+
+        for ds_order in pending:
+            shop_id = ds_order.shop_id
+
+            # Get/refresh token for this shop
+            if shop_id not in shop_tokens:
+                conn = db.query(DropshipConnection).filter(
+                    DropshipConnection.shop_id == shop_id,
+                    DropshipConnection.supplier_type == "cj",
+                    DropshipConnection.is_active == True,
+                ).first()
+                if not conn or not conn.supplier_email or not conn.supplier_password_enc:
+                    shop_tokens[shop_id] = None
+                    continue
+
+                now = datetime.now(timezone.utc)
+                if conn.access_token and conn.token_expires_at and conn.token_expires_at > now:
+                    shop_tokens[shop_id] = conn.access_token
+                else:
+                    try:
+                        password = base64.b64decode(conn.supplier_password_enc).decode()
+                        with httpx.Client(timeout=15) as client:
+                            r = client.post(f"{CJ_BASE}/authentication/getAccessToken", json={
+                                "email": conn.supplier_email,
+                                "password": password,
+                            })
+                        data = r.json()
+                        if not data.get("result"):
+                            shop_tokens[shop_id] = None
+                            continue
+                        token = data["data"]["accessToken"]
+                        conn.access_token = token
+                        conn.token_expires_at = datetime.fromisoformat(
+                            data["data"]["expiryDate"].replace("Z", "+00:00")
+                        )
+                        db.commit()
+                        shop_tokens[shop_id] = token
+                    except Exception as e:
+                        logger.error(f"[CJ Tracking] Token refresh failed shop={shop_id}: {e}")
+                        shop_tokens[shop_id] = None
+                        continue
+
+            token = shop_tokens.get(shop_id)
+            if not token:
+                continue
+
+            try:
+                with httpx.Client(timeout=15) as client:
+                    r = client.get(
+                        f"{CJ_BASE}/logistics/track",
+                        params={"orderNum": ds_order.supplier_order_id},
+                        headers={"CJ-Access-Token": token},
+                    )
+                data = r.json()
+
+                if not data.get("result") or not data.get("data"):
+                    continue
+
+                track = data["data"]
+
+                # CJ uses different field names across API versions — handle both
+                tracking_number = (
+                    track.get("trackNumber") or track.get("trackingNumber")
+                    or track.get("trackNum") or track.get("logisticTrackingNumber")
+                )
+                carrier = (
+                    track.get("carrierCode") or track.get("carrier")
+                    or track.get("logisticsName") or track.get("shippingName")
+                )
+                tracking_url = track.get("trackUrl") or track.get("trackingUrl")
+                cj_status = (track.get("orderStatus") or track.get("status") or "").lower()
+
+                if tracking_number:
+                    ds_order.tracking_number = tracking_number
+                if carrier:
+                    ds_order.carrier = carrier
+                if tracking_url:
+                    ds_order.tracking_url = tracking_url
+
+                # Map CJ status → our status
+                if cj_status in ("delivered", "complete", "completed", "finish"):
+                    ds_order.status = "delivered"
+                    if not ds_order.delivered_at:
+                        ds_order.delivered_at = datetime.now(timezone.utc)
+                elif tracking_number and ds_order.status in ("processing", "sent"):
+                    ds_order.status = "shipped"
+                    if not ds_order.shipped_at:
+                        ds_order.shipped_at = datetime.now(timezone.utc)
+
+                # Mirror tracking onto the main order row so sellers see it immediately
+                if tracking_number:
+                    from app.models.order import Order as ShopOrder
+                    order = db.query(ShopOrder).filter(ShopOrder.id == ds_order.order_id).first()
+                    if order and not order.tracking_number:
+                        order.tracking_number = tracking_number
+                        order.carrier = carrier or order.carrier
+
+                db.commit()
+                logger.info(
+                    f"[CJ Tracking] order={ds_order.order_id} "
+                    f"tracking={tracking_number} status={ds_order.status}"
+                )
+
+            except Exception as e:
+                logger.error(f"[CJ Tracking] Failed ds_order={ds_order.id}: {e}")
+                continue
+
+    except Exception as e:
+        logger.error(f"[CJ Tracking] Job error: {e}")
+    finally:
+        db.close()
