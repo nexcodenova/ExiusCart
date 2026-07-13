@@ -8,7 +8,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -313,3 +313,63 @@ def get_product_reviews(product_id: int, db: Session = Depends(get_db)):
             for r in reviews
         ],
     }
+
+
+# ── Embed widget — displays approved reviews on the storefront product page ──
+
+@router.get("/widget/reviews.js")
+def reviews_widget_script():
+    js = """
+(function(){
+  var API = 'https://api.exiuscart.com/api/v1';
+
+  function star(filled) {
+    return '<span style="color:' + (filled ? '#f59e0b' : '#d1d5db') + ';font-size:16px;">\\u2605</span>';
+  }
+
+  function stars(rating) {
+    var html = '';
+    for (var i = 1; i <= 5; i++) html += star(i <= Math.round(rating));
+    return html;
+  }
+
+  function render(container, data) {
+    var html = '<div style="font-family:Arial,sans-serif;max-width:100%;">';
+
+    if (data.count === 0) {
+      html += '<p style="color:#888;font-size:14px;">No reviews yet.</p>';
+    } else {
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">';
+      html += '<span style="font-size:28px;font-weight:800;color:#111;">' + data.avg_rating + '</span>';
+      html += '<div>' + stars(data.avg_rating) + '<div style="font-size:12px;color:#888;margin-top:2px;">' + data.count + ' review' + (data.count !== 1 ? 's' : '') + '</div></div>';
+      html += '</div>';
+
+      data.reviews.forEach(function(r){
+        html += '<div style="border-top:1px solid #eee;padding:14px 0;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+        html += '<span style="font-weight:700;font-size:13px;color:#111;">' + (r.customer_name || 'Anonymous') + '</span>';
+        html += '<span>' + stars(r.rating) + '</span>';
+        html += '</div>';
+        if (r.comment) html += '<p style="margin:0 0 8px;font-size:14px;color:#444;line-height:1.5;">' + r.comment + '</p>';
+        if (r.photo_url) html += '<img src="' + r.photo_url + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;" />';
+        html += '</div>';
+      });
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  function init(container) {
+    var productId = container.getAttribute('data-product-id');
+    if (!productId) return;
+    fetch(API + '/public/products/' + productId + '/reviews')
+      .then(function(r){ return r.json(); })
+      .then(function(data){ render(container, data); })
+      .catch(function(){});
+  }
+
+  document.querySelectorAll('[data-exiuscart-reviews]').forEach(init);
+})();
+"""
+    return Response(content=js, media_type="application/javascript")

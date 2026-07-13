@@ -1,10 +1,40 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Star, CheckCircle2, XCircle, Trash2, MessageSquare } from 'lucide-react';
+import { Loader2, Star, CheckCircle2, XCircle, Trash2, MessageSquare, Copy, Check, Sparkles } from 'lucide-react';
 import { reviewsApi } from '@/lib/api';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
+
+function ReviewsEmbedBox() {
+  const [copied, setCopied] = useState(false);
+  const code = `<div data-exiuscart-reviews data-product-id="YOUR_PRODUCT_ID"></div>\n<script src="https://api.exiuscart.com/api/v1/widget/reviews.js" async></script>`;
+
+  const copy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-primary" />
+        <p className="text-sm font-medium text-foreground">Show reviews on your storefront</p>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Paste this on each product page (in your Custom Website HTML, or Shopify's product template). Replace{' '}
+        <code className="text-foreground">YOUR_PRODUCT_ID</code> with the product's ID — find it in the URL when editing the product in ExiusCart.
+      </p>
+      <div className="flex items-start gap-2 bg-background border border-border rounded-lg px-3 py-2.5">
+        <pre className="text-xs text-foreground flex-1 overflow-x-auto whitespace-pre-wrap break-all">{code}</pre>
+        <button onClick={copy} className="shrink-0 p-1.5 hover:bg-muted rounded-lg transition">
+          {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface Review {
   id: number;
@@ -82,6 +112,8 @@ export default function ReviewsPage() {
           Reviews are requested automatically when an order is marked delivered. Approve reviews to show them on your storefront.
         </p>
       </div>
+
+      <ReviewsEmbedBox />
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

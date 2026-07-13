@@ -10,6 +10,7 @@ import {
 import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
+import { DropshipSupplierSection } from '@/components/dropship-supplier-section';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -1659,6 +1660,13 @@ function ProductModal({
               currentProductId={product?.id}
             />
           </div>
+
+          {/* ── Dropship Supplier — only for existing (saved) products ── */}
+          {product?.id && (
+            <div className="border-t border-border px-6 py-5">
+              <DropshipSupplierSection shopId={shopId} productId={product.id} />
+            </div>
+          )}
         </form>
       </div>
     </div>
