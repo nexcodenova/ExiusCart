@@ -83,7 +83,8 @@ const GROUPS: MenuGroup[] = [
     id: 'channels',
     label: null,
     items: [
-      { href: '/dashboard/channels', label: 'Channels', icon: Link2 },
+      { href: '/dashboard/channels',     label: 'Channels',     icon: Link2  },
+      { href: '/dashboard/dropshipping', label: 'Dropshipping', icon: Truck  },
     ],
   },
   {
@@ -298,8 +299,11 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
               const groupActive = isGroupActive(group);
               const isOpen = openGroups.has(group.id) || collapsed;
 
+              const isTheDersiPlan = plan.startsWith('thedersi');
               if (group.label === null) {
-                return group.items.map(item => {
+                return group.items
+                  .filter(item => !(item.href === '/dashboard/dropshipping' && isTheDersiPlan))
+                  .map(item => {
                   const Icon = item.icon;
                   const active = isItemActive(item);
                   return (

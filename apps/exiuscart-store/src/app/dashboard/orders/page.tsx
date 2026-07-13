@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, BarChart2, RefreshCw } from 'lucide-react';
+import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, BarChart2, RefreshCw, Lock, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { ordersApi } from '@/lib/api';
+import { ordersApi, subscriptionApi, dropshipApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
 
@@ -214,6 +214,118 @@ function CopyBtn({ value }: { value: string }) {
   );
 }
 
+const SUPPLIER_LABELS: Record<string, string> = {
+  cj: 'CJ Dropshipping',
+  zendrop: 'Zendrop',
+  hypersku: 'HyperSKU',
+  wiio: 'Wiio',
+};
+
+interface FulfillModalProps {
+  order: Order;
+  plan: string;
+  connectedSuppliers: string[];
+  shopId: string;
+  onClose: () => void;
+  onFulfilled: () => void;
+}
+
+function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulfilled }: FulfillModalProps) {
+  const isPremium = plan === 'premium';
+  const isStarter = plan === 'starter';
+  const availableSuppliers = isPremium
+    ? connectedSuppliers
+    : isStarter
+      ? connectedSuppliers.filter((s) => s === 'cj')
+      : [];
+  const [selected, setSelected] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleFulfill = async () => {
+    if (!selected) return;
+    setLoading(true);
+    setError('');
+    try {
+      await dropshipApi.fulfillOrder(shopId, String(order.id), selected);
+      setSuccess(true);
+      setTimeout(() => { onFulfilled(); onClose(); }, 1800);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail ?? 'Failed to send order to supplier. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg"><Package className="w-5 h-5 text-primary" /></div>
+            <div>
+              <h2 className="font-semibold text-foreground">Fulfill with Supplier</h2>
+              <p className="text-xs text-muted-foreground">{order.order_number} · {order.items.length} item{order.items.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {success ? (
+            <div className="flex flex-col items-center py-6 gap-3 text-center">
+              <div className="p-3 bg-green-500/10 rounded-full"><CheckCircle2 className="w-8 h-8 text-green-500" /></div>
+              <p className="font-semibold text-foreground">Order sent to supplier!</p>
+              <p className="text-sm text-muted-foreground">Track shipment in <Link href="/dashboard/dropshipping" className="text-primary hover:underline">Dropshipping → Orders</Link>.</p>
+            </div>
+          ) : availableSuppliers.length === 0 ? (
+            <div className="text-center py-6 space-y-3">
+              <div className="p-3 bg-muted rounded-full w-fit mx-auto"><Package className="w-6 h-6 text-muted-foreground" /></div>
+              {isStarter && connectedSuppliers.length > 0 && !connectedSuppliers.includes('cj') ? (
+                <p className="text-sm text-muted-foreground">Your Starter plan only supports CJ Dropshipping. Connect CJ in the Dropshipping section to fulfil orders automatically.</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">No suppliers connected yet. Connect CJ Dropshipping or another supplier first.</p>
+              )}
+              <Link href="/dashboard/dropshipping" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                Go to Dropshipping <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">Select a supplier to forward this order. Tracking updates will sync automatically.</p>
+              <div className="space-y-2">
+                {availableSuppliers.map((s) => (
+                  <button key={s} onClick={() => setSelected(s)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition text-left ${selected === s ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}>
+                    <span className="text-sm font-medium text-foreground">{SUPPLIER_LABELS[s] ?? s}</span>
+                    {selected === s && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
+                  </button>
+                ))}
+                {isStarter && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 pt-1">
+                    <Lock className="w-3 h-3 shrink-0" />
+                    <span>Upgrade to Premium to use Zendrop, HyperSKU & Wiio</span>
+                  </div>
+                )}
+              </div>
+              {error && <p className="text-sm text-red-500 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-muted transition">Cancel</button>
+                <button type="button" onClick={handleFulfill} disabled={!selected || loading}
+                  className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                  <Package className="w-4 h-4" />
+                  {loading ? 'Sending…' : 'Fulfill Order'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,6 +337,9 @@ export default function OrdersPage() {
   const [shipTarget, setShipTarget] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [shopId, setShopId] = useState('');
+  const [plan, setPlan] = useState('');
+  const [connectedSuppliers, setConnectedSuppliers] = useState<string[]>([]);
+  const [fulfillTarget, setFulfillTarget] = useState<Order | null>(null);
   const { fmt } = useCurrency();
 
   // ── Analytics derived from the currently-filtered orders ──────────────────
@@ -255,6 +370,19 @@ export default function OrdersPage() {
   }, [salesOrders]);
 
   useEffect(() => { setShopId(localStorage.getItem('shop_id') ?? ''); }, []);
+
+  useEffect(() => {
+    if (!shopId) return;
+    subscriptionApi.getCurrent(shopId)
+      .then((r) => setPlan(r.data?.plan?.plan_type || ''))
+      .catch(() => {});
+    dropshipApi.getConnections(shopId)
+      .then((r) => {
+        const active = (r.data?.connections ?? []).filter((c: any) => c.is_active).map((c: any) => c.supplier_type as string);
+        setConnectedSuppliers(active);
+      })
+      .catch(() => {});
+  }, [shopId]);
 
   const fetchOrders = useCallback(async () => {
     if (!shopId) return;
@@ -341,6 +469,12 @@ export default function OrdersPage() {
   };
 
   const canShip = (o: Order) => (o.source === 'thedersi' ? ['packing', 'processing'] : ['pending', 'confirmed', 'processing']).includes(o.status);
+
+  const canFulfillOrder = (o: Order) =>
+    !plan.startsWith('thedersi')
+    && o.source !== 'thedersi'
+    && o.source !== 'pos'
+    && !['shipped', 'delivered', 'completed', 'cancelled'].includes(o.status);
 
   return (
     <div className="space-y-6">
@@ -671,17 +805,23 @@ export default function OrdersPage() {
                             )}
                           </div>
                         ) : (
-                          <>
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
                             {canShip(order) && (
                               <button onClick={() => setShipTarget(order)}
                                 className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 rounded-lg transition font-medium">
                                 <Truck className="w-3.5 h-3.5" /> Ship
                               </button>
                             )}
+                            {canFulfillOrder(order) && (
+                              <button onClick={() => setFulfillTarget(order)}
+                                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition font-medium">
+                                <Package className="w-3.5 h-3.5" /> Fulfill
+                              </button>
+                            )}
                             {order.status === 'shipped' && order.tracking_number && (
                               <span className="text-xs text-muted-foreground">Tracking ↓</span>
                             )}
-                          </>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -738,6 +878,17 @@ export default function OrdersPage() {
           shopId={shopId}
           onClose={() => setShipTarget(null)}
           onShipped={handleShipped}
+        />
+      )}
+
+      {fulfillTarget && (
+        <FulfillModal
+          order={fulfillTarget}
+          plan={plan}
+          connectedSuppliers={connectedSuppliers}
+          shopId={shopId}
+          onClose={() => setFulfillTarget(null)}
+          onFulfilled={fetchOrders}
         />
       )}
     </div>

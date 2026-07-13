@@ -512,18 +512,12 @@ export default function ChannelsPage() {
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
-  useEffect(() => {
-    if (!shopId) return;
-    subscriptionApi.getCurrent(shopId)
-      .then((r) => setPlan(r.data?.plan?.plan_type || ''))
-      .catch(() => {});
-  }, [shopId]);
-
   const load = () => {
     if (!shopId) return;
     Promise.all([
       channelsApi.getConnections(shopId).then((r) => setConnections(r.data ?? [])),
       shopifyApi.getStatus(shopId).then((r) => setShopifyConnected(r.data?.connected ?? false)).catch(() => {}),
+      subscriptionApi.getCurrent(shopId).then((r) => setPlan(r.data?.plan?.plan_type || '')).catch(() => {}),
     ]).finally(() => setLoading(false));
   };
 
@@ -538,7 +532,7 @@ export default function ChannelsPage() {
   // Count Shopify separately since it's tracked via a different API
   const totalChannelCount = connections.length + (shopifyConnected ? 1 : 0);
   // Free trial + Starter = max 1 channel; Premium = unlimited
-  const channelLimitReached = !isPremium && !isTheDersiUser && totalChannelCount >= 1;
+  const channelLimitReached = plan !== '' && !isPremium && !isTheDersiUser && totalChannelCount >= 1;
   // Daraz: TheDersi Pro or Premium only
   const canUseDaraz = ['thedersi_pro', 'premium'].includes(plan);
 

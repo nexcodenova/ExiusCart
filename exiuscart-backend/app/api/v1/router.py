@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping
 
 api_router = APIRouter()
 
@@ -32,3 +32,4 @@ api_router.include_router(bundles.router, prefix="", tags=["Bundles"])
 api_router.include_router(expenses.router, prefix="", tags=["Expenses"])
 api_router.include_router(wholesale.router, prefix="", tags=["Wholesale"])
 api_router.include_router(advanced_reports.router, prefix="", tags=["Advanced Reports"])
+api_router.include_router(dropshipping.router, prefix="", tags=["Dropshipping"])

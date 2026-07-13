@@ -578,6 +578,43 @@ export const balanceSheetApi = {
     api.get(`/shops/${shopId}/reports/balance-sheet`, { params: { as_of: asOf } }),
 };
 
+export const dropshipApi = {
+  getConnections: (shopId: string) =>
+    api.get(`/shops/${shopId}/dropship/connections`),
+  connectCJ: (shopId: string, data: { email: string; password: string }) =>
+    api.post(`/shops/${shopId}/dropship/connect/cj`, data),
+  connectApiKey: (shopId: string, data: { supplier_type: string; api_key: string }) =>
+    api.post(`/shops/${shopId}/dropship/connect/apikey`, data),
+  disconnect: (shopId: string, supplierType: string) =>
+    api.delete(`/shops/${shopId}/dropship/connect/${supplierType}`),
+  toggleAutoFulfill: (shopId: string, enabled: boolean) =>
+    api.post(`/shops/${shopId}/dropship/auto-fulfill`, { enabled }),
+  getProductLink: (shopId: string, productId: string) =>
+    api.get(`/shops/${shopId}/products/${productId}/dropship-link`),
+  saveProductLink: (shopId: string, productId: string, data: {
+    supplier_type: string;
+    supplier_product_url?: string;
+    supplier_product_id?: string;
+    supplier_sku?: string;
+    cost_price?: number;
+    shipping_estimate_days?: number;
+    warehouse?: string;
+    is_primary?: boolean;
+  }) => api.post(`/shops/${shopId}/products/${productId}/dropship-link`, data),
+  removeProductLink: (shopId: string, productId: string, supplierType: string) =>
+    api.delete(`/shops/${shopId}/products/${productId}/dropship-link/${supplierType}`),
+  fulfillOrder: (shopId: string, orderId: string | number, supplierType: string) =>
+    api.post(`/shops/${shopId}/orders/${orderId}/dropship-fulfill`, { supplier_type: supplierType }),
+  getDropshipOrders: (shopId: string, params?: { status?: string; supplier_type?: string }) =>
+    api.get(`/shops/${shopId}/dropship/orders`, { params }),
+  cjSearch: (shopId: string, q: string, page = 1) =>
+    api.get(`/shops/${shopId}/dropship/cj/search`, { params: { q, page } }),
+  cjProductDetail: (shopId: string, cjPid: string) =>
+    api.get(`/shops/${shopId}/dropship/cj/product/${cjPid}`),
+  cjImport: (shopId: string, cjPid: string, sellingPrice?: number) =>
+    api.post(`/shops/${shopId}/dropship/cj/import`, { cj_pid: cjPid, selling_price: sellingPrice }),
+};
+
 export const payrollApi = {
   getStaff: (shopId: string) => api.get(`/shops/${shopId}/payroll/staff`),
   createStaff: (shopId: string, data: any) => api.post(`/shops/${shopId}/payroll/staff`, data),

@@ -35,3 +35,4 @@ from app.models.payroll import PayrollStaff, PayrollRun, PayrollItem
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
 from app.models.branch import Branch
 from app.models.wholesale import WholesaleProduct, WholesaleBuyer, WholesaleOrder
+from app.models.dropship import DropshipConnection, DropshipProductLink, DropshipOrder
