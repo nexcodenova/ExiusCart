@@ -565,7 +565,7 @@ export default function ChannelsPage() {
       description: 'Sync your Shopify store — products, orders, and inventory stay in sync automatically.',
       icon: <ShoppingBag className="w-5 h-5 text-[#96BF48]" />,
       badge: shopifyConnected ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: shopifyConnected ? 'Connected' : (isTheDersiUser ? 'TheDersi managed' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badgeLabel: shopifyConnected ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: shopifyConnected
         ? undefined
         : isTheDersiUser
@@ -581,7 +581,7 @@ export default function ChannelsPage() {
       description: 'Connect any website using our API or webhook. Receive orders directly from your own storefront.',
       icon: <Globe className="w-5 h-5 text-sky-400" />,
       badge: isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect'),
-      badgeLabel: isTheDersiUser ? 'TheDersi managed' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
+      badgeLabel: isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
       onAction: isTheDersiUser
         ? () => setDersiBlockChannel('Custom Website')
         : channelLimitReached
