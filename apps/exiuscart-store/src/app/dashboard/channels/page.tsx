@@ -537,6 +537,7 @@ export default function ChannelsPage() {
   const canUseDaraz = ['thedersi_pro', 'premium'].includes(plan);
 
   const availableChannels: ChannelDef[] = [
+    // ── Row 1: TheDersi + Daraz (the two channels TheDersi sellers can use) ──
     {
       id: 'thedersi',
       name: 'TheDersi',
@@ -547,6 +548,17 @@ export default function ChannelsPage() {
       onAction: hasTheDersi ? undefined : (channelLimitReached ? () => setUpgradeLimitModal(true) : () => setShowTheDersiModal(true)),
       actionLabel: channelLimitReached ? 'Upgrade to Premium' : 'Connect TheDersi',
     },
+    {
+      id: 'daraz',
+      name: 'Daraz',
+      description: "Sri Lanka's #1 marketplace. Orders sync to ExiusCart automatically — manage everything from one dashboard.",
+      icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
+      badge: hasDaraz ? 'live' : canUseDaraz ? 'connect' : 'locked',
+      badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : (isTheDersiUser ? 'TheDersi Pro only' : 'Premium only'),
+      onAction: hasDaraz ? undefined : canUseDaraz ? () => setShowDarazModal(true) : () => setDarazLocked(true),
+      actionLabel: 'Connect Daraz',
+    },
+    // ── Row 2: Shopify + Custom Website (direct-ExiusCart channels) ──
     {
       id: 'shopify',
       name: 'Shopify',
@@ -577,23 +589,14 @@ export default function ChannelsPage() {
           : () => setShowCustomWebsiteModal(true),
       actionLabel: isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Website'),
     },
+    // ── Row 3+: Amazon, eBay & all other channels ──
     {
-      id: 'daraz',
-      name: 'Daraz',
-      description: "Sri Lanka's #1 marketplace. Orders sync to ExiusCart automatically — manage everything from one dashboard.",
-      icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
-      badge: hasDaraz ? 'live' : canUseDaraz ? 'connect' : 'locked',
-      badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : 'Paid plan required',
-      onAction: hasDaraz ? undefined : canUseDaraz ? () => setShowDarazModal(true) : () => setDarazLocked(true),
-      actionLabel: 'Connect Daraz',
-    },
-    {
-      id: 'tiktok',
-      name: 'TikTok Shop',
-      description: 'Sell directly on TikTok. Orders sync to ExiusCart, stock stays in sync automatically.',
-      icon: <Music2 className="w-5 h-5 text-[#010101] dark:text-white" />,
+      id: 'amazon',
+      name: 'Amazon',
+      description: 'List and manage your Amazon products and orders through ExiusCart.',
+      icon: <Package className="w-5 h-5 text-orange-400" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('TikTok Shop') : undefined,
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Amazon') : undefined,
     },
     {
       id: 'ebay',
@@ -604,20 +607,20 @@ export default function ChannelsPage() {
       onAction: isTheDersiUser ? () => setDersiBlockChannel('eBay') : undefined,
     },
     {
+      id: 'tiktok',
+      name: 'TikTok Shop',
+      description: 'Sell directly on TikTok. Orders sync to ExiusCart, stock stays in sync automatically.',
+      icon: <Music2 className="w-5 h-5 text-[#010101] dark:text-white" />,
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('TikTok Shop') : undefined,
+    },
+    {
       id: 'woocommerce',
       name: 'WooCommerce',
       description: 'WordPress + WooCommerce integration. Install the ExiusCart plugin to sync products and orders.',
       icon: <ShoppingCart className="w-5 h-5 text-[#7F54B3]" />,
       badge: 'soon',
       onAction: isTheDersiUser ? () => setDersiBlockChannel('WooCommerce') : undefined,
-    },
-    {
-      id: 'amazon',
-      name: 'Amazon',
-      description: 'List and manage your Amazon products and orders through ExiusCart.',
-      icon: <Package className="w-5 h-5 text-orange-400" />,
-      badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Amazon') : undefined,
     },
     {
       id: 'instagram',
@@ -681,7 +684,7 @@ export default function ChannelsPage() {
           {/* All channels grid */}
           <div className="space-y-4">
             <h2 className="text-sm font-medium text-foreground">All Channels</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {availableChannels.map((ch) => (
                 <ChannelTile key={ch.id} ch={ch} />
               ))}
@@ -757,7 +760,7 @@ export default function ChannelsPage() {
             <div>
               <p className="font-semibold text-foreground">{dersiBlockChannel}</p>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                Your plan is managed by TheDersi. To access more channels, upgrade your plan through TheDersi.
+                {dersiBlockChannel} is only available for direct ExiusCart sellers. Your store is managed by TheDersi — you can sell on <strong className="text-foreground">TheDersi</strong>, and on <strong className="text-foreground">Daraz</strong> with TheDersi Pro.
               </p>
             </div>
             <button type="button" onClick={() => setDersiBlockChannel(null)}

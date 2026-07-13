@@ -539,6 +539,48 @@ export default function DropshippingPage() {
   useEffect(() => { load(); }, [shopId]);
 
   const connectedCount = suppliers.filter((s) => s.connected).length;
+  const isTheDersiUser = plan.startsWith('thedersi');
+
+  // While the plan is still loading, show only a spinner — never flash the
+  // supplier cards / "How it works" before we know if the user is a TheDersi seller.
+  if (loading) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm">Loading…</span>
+        </div>
+      </div>
+    );
+  }
+
+  // TheDersi sellers don't get dropshipping — their fulfilment is handled by TheDersi
+  if (isTheDersiUser) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto space-y-8">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Dropshipping Suppliers</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Connect a supplier. ExiusCart forwards orders to them — they pack and ship directly to your customer.
+          </p>
+        </div>
+
+        <div className="border border-border rounded-2xl bg-card p-8 sm:p-10 flex flex-col items-center text-center max-w-xl mx-auto">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
+            <Lock className="w-7 h-7 text-primary" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground">Dropshipping is for direct ExiusCart sellers</h2>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+            Your store is managed by <strong className="text-foreground">TheDersi</strong>, and your orders are fulfilled through TheDersi&apos;s own logistics. Dropshipping suppliers like CJ, Zendrop, HyperSKU &amp; Wiio are only available to sellers on a direct ExiusCart plan (Starter or Premium).
+          </p>
+          <Link href="/dashboard/channels"
+            className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+            Back to Channels
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">

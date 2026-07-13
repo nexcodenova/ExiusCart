@@ -64,6 +64,14 @@ const GROUPS: MenuGroup[] = [
     ],
   },
   {
+    id: 'channels',
+    label: null,
+    items: [
+      { href: '/dashboard/channels',     label: 'Channels',     icon: Link2  },
+      { href: '/dashboard/dropshipping', label: 'Dropshipping', icon: Truck  },
+    ],
+  },
+  {
     id: 'finance',
     label: 'Finance',
     icon: DollarSign,
@@ -77,14 +85,6 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/reports',    label: 'Reports',    icon: BarChart3},
       { href: '/dashboard/payout',     label: 'Payout',     icon: CreditCard },
       { href: '/dashboard/billing',    label: 'Billing',    icon: CreditCard },
-    ],
-  },
-  {
-    id: 'channels',
-    label: null,
-    items: [
-      { href: '/dashboard/channels',     label: 'Channels',     icon: Link2  },
-      { href: '/dashboard/dropshipping', label: 'Dropshipping', icon: Truck  },
     ],
   },
   {
