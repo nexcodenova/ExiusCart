@@ -13,8 +13,6 @@ Supported channels:
   daraz      — Daraz.lk marketplace (paid plans only); credentials stored as app_key|app_secret in channel_api_key
 """
 import os
-import re
-import html as html_module
 import secrets
 import uuid
 import logging
@@ -130,22 +128,6 @@ def _webhook_url(conn: ChannelConnection) -> str:
     return f"{EXIUSCART_BASE.rstrip('/')}/channels/webhook/{conn.webhook_secret}"
 
 
-def _html_description_to_plain_text(html: str) -> str:
-    """Convert our rich-text editor's HTML output to plain text for channels
-    (e.g. TheDersi) whose product pages render descriptions as raw strings
-    instead of parsing HTML — otherwise sellers' formatting shows up as
-    literal <div>/<li> tags on the channel's storefront."""
-    if not html:
-        return ""
-    text = re.sub(r"<li[^>]*>", "- ", html, flags=re.IGNORECASE)
-    text = re.sub(r"</?(?:div|p|h[1-6]|ol|ul)[^>]*>|</li>|<br\s*/?>", "\n", text, flags=re.IGNORECASE)
-    text = re.sub(r"<[^>]+>", "", text)
-    text = html_module.unescape(text)
-    text = re.sub(r"[ \t]+\n", "\n", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
-
-
 def _product_payload(
     product: Product,
     currency: str,
@@ -184,7 +166,7 @@ def _product_payload(
     return {
         "exiuscart_product_id": product.id,
         "name": product.name,
-        "description": _html_description_to_plain_text(product.description or ""),
+        "description": product.description or "",
         "price": selling_price,
         "compare_at_price": compare_at_price,
         "quantity": total_stock,
