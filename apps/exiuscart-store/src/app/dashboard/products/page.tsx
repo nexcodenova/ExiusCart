@@ -11,6 +11,7 @@ import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variants
 import { UsageBanner } from '@/components/usage-banner';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { DropshipSupplierSection } from '@/components/dropship-supplier-section';
+import { RichTextEditor } from '@/components/rich-text-editor';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -539,11 +540,13 @@ export default function ProductsPage() {
                                 ? { label: '✅ Live on TheDersi', cls: 'text-green-600 dark:text-green-400' }
                                 : s.status === 'rejected'
                                 ? { label: '❌ Rejected', cls: 'text-red-500' }
+                                : s.status === 'sync_failed'
+                                ? { label: '⚠️ Failed to send to TheDersi', cls: 'text-red-500' }
                                 : { label: '🟡 Pending Review', cls: 'text-yellow-600 dark:text-yellow-400' };
                               return (
                                 <>
                                   <p className={`text-xs mt-0.5 ${badge.cls}`}>{badge.label}</p>
-                                  {s.status === 'rejected' && s.rejection_reason && (
+                                  {(s.status === 'rejected' || s.status === 'sync_failed') && s.rejection_reason && (
                                     <p className="text-xs mt-0.5 text-red-500 bg-red-500/10 rounded px-1.5 py-0.5 max-w-[220px] leading-snug">{s.rejection_reason}</p>
                                   )}
                                 </>
@@ -655,11 +658,13 @@ export default function ProductsPage() {
                           ? { label: '✅ Live on TheDersi', cls: 'text-green-600 dark:text-green-400' }
                           : s.status === 'rejected'
                           ? { label: '❌ Rejected', cls: 'text-red-500' }
+                          : s.status === 'sync_failed'
+                          ? { label: '⚠️ Failed to send to TheDersi', cls: 'text-red-500' }
                           : { label: '🟡 Pending Review', cls: 'text-yellow-600 dark:text-yellow-400' };
                         return (
                           <>
                             <p className={`text-xs mt-0.5 ${badge.cls}`}>{badge.label}</p>
-                            {s.status === 'rejected' && s.rejection_reason && (
+                            {(s.status === 'rejected' || s.status === 'sync_failed') && s.rejection_reason && (
                               <p className="text-xs mt-0.5 text-red-500 bg-red-500/10 rounded px-1.5 py-0.5 leading-snug">{s.rejection_reason}</p>
                             )}
                           </>
@@ -1213,12 +1218,11 @@ function ProductModal({
               {/* Description */}
               <div>
                 <label className="text-sm text-muted-foreground mb-1.5 block">Description</label>
-                <textarea
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
+                  onChange={(html) => setFormData({ ...formData, description: html })}
                   placeholder="Describe the product — material, style, occasion..."
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground resize-none"
+                  rows={3}
                 />
               </div>
 

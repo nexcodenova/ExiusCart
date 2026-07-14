@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, Package, Tag, Download, ExternalLink, Play, ShoppingCart, Copy, Check } from 'lucide-react';
 import { shoppingApi, Product } from '@/lib/api';
+import DOMPurify from 'dompurify';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -190,9 +191,10 @@ export default function ProductDetailPage() {
               {sku && <p className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded inline-block">SKU: {sku}</p>}
 
               {description && (
-                <p className="text-gray-600 text-sm leading-relaxed border-t border-gray-100 pt-3">
-                  {description}
-                </p>
+                <div
+                  className="text-gray-600 text-sm leading-relaxed border-t border-gray-100 pt-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
+                />
               )}
 
               {/* Dropshipper actions */}

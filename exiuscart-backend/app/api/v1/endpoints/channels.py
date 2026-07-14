@@ -181,13 +181,32 @@ def _product_payload(
     }
 
 
-def _push_one(payload: dict, conn: ChannelConnection) -> str | None:
-    """Push/update a product on the channel. Returns the 'status' field from the
-    channel's response body (e.g. 'pending_review' or 'active'), or None on error."""
+def _parse_push_response(r: httpx.Response) -> dict:
+    """Turn a channel's raw HTTP response into a clear ok/fail result — a non-2xx
+    status is ALWAYS a failure, never silently reinterpreted as 'pending review'."""
+    if 200 <= r.status_code < 300:
+        try:
+            return {"ok": True, "status": r.json().get("status"), "http_status": r.status_code, "error": None}
+        except Exception as exc:
+            logger.error(f"[CHANNEL PUSH] {r.status_code} but response body wasn't valid JSON: {exc} — body: {r.text[:500]}")
+            return {"ok": False, "status": None, "http_status": r.status_code, "error": f"Unreadable success response: {r.text[:300]}"}
+    body_snippet = r.text[:500]
+    logger.error(f"[CHANNEL PUSH] FAILED — HTTP {r.status_code} — body: {body_snippet}")
+    return {"ok": False, "status": None, "http_status": r.status_code, "error": body_snippet or f"HTTP {r.status_code}, no response body"}
+
+
+def _push_one(payload: dict, conn: ChannelConnection) -> dict:
+    """
+    Push/update a product on the channel. Always returns:
+      {"ok": bool, "status": str|None, "http_status": int|None, "error": str|None}
+    "status" (e.g. 'pending_review'/'active') is only meaningful when ok=True.
+    On failure, http_status + error carry the real diagnostic info — never
+    silently defaulted to a fake success state.
+    """
     api_url = _channel_url(conn)
     if not api_url:
         logger.warning(f"[CHANNEL PUSH] No API URL for channel {conn.channel_type} conn={conn.id}")
-        return None
+        return {"ok": False, "status": None, "http_status": None, "error": "No API URL configured for this channel connection"}
     headers = {"X-Api-Key": conn.channel_api_key, "Content-Type": "application/json"}
     pid = payload["exiuscart_product_id"]
     try:
@@ -197,17 +216,11 @@ def _push_one(payload: dict, conn: ChannelConnection) -> str | None:
             if r.status_code == 404:
                 r2 = client.post(f"{api_url}/exiuscart/products", json=payload, headers=headers)
                 logger.info(f"[CHANNEL PUSH] POST {api_url}/exiuscart/products → {r2.status_code}")
-                try:
-                    return r2.json().get("status")
-                except Exception:
-                    return None
-            try:
-                return r.json().get("status")
-            except Exception:
-                return None
+                return _parse_push_response(r2)
+            return _parse_push_response(r)
     except Exception as exc:
         logger.error(f"[CHANNEL PUSH] {api_url} product={pid} error: {exc}")
-        return None
+        return {"ok": False, "status": None, "http_status": None, "error": str(exc)}
 
 
 def _delete_one(product_id: int, conn: ChannelConnection):
@@ -244,7 +257,9 @@ def _bg_full_sync(shop_id: int, conn_id: int):
             ).first()
             cat_id = pcc.channel_category_id if pcc else None
             sub_cat_id = pcc.channel_sub_category_id if pcc else None
-            _push_one(_product_payload(p, shop.currency, conn.channel_type, cat_id, sub_cat_id), conn)
+            result = _push_one(_product_payload(p, shop.currency, conn.channel_type, cat_id, sub_cat_id), conn)
+            if not result["ok"]:
+                logger.error(f"[FULL SYNC] product={p.id} shop={shop_id} channel={conn.channel_type} FAILED: HTTP {result['http_status']} — {result['error']}")
         conn.last_synced_at = datetime.now(timezone.utc)
         db.commit()
     finally:
@@ -274,7 +289,7 @@ def _bg_push_product(product_id: int, shop_id: int):
             ).first()
             cat_id = pcc.channel_category_id if pcc else None
             sub_cat_id = pcc.channel_sub_category_id if pcc else None
-            channel_status = _push_one(
+            push_result = _push_one(
                 _product_payload(product, shop.currency, conn.channel_type, cat_id, sub_cat_id), conn
             )
             if conn.channel_type in MARKETPLACE_CHANNELS:
@@ -282,23 +297,30 @@ def _bg_push_product(product_id: int, shop_id: int):
                     ChannelProductStatus.product_id == product_id,
                     ChannelProductStatus.channel_type == conn.channel_type,
                 ).first()
-                # Use TheDersi's response status directly.
-                # "pending_review" = sensitive fields changed (name/desc/images) → needs admin review.
-                # "active" = non-sensitive update (price/stock/category) → goes live immediately.
-                # None = error or non-marketplace channel → default to pending_review for new products.
-                new_status = channel_status if channel_status in ("pending_review", "active") else "pending_review"
+
+                if push_result["ok"]:
+                    # Use TheDersi's response status directly.
+                    # "pending_review" = sensitive fields changed (name/desc/images) → needs admin review.
+                    # "active" = non-sensitive update (price/stock/category) → goes live immediately.
+                    new_status = push_result["status"] if push_result["status"] in ("pending_review", "active") else "pending_review"
+                    new_rejection_reason = None
+                else:
+                    # Never mislabel a failed request as "pending review" — the seller
+                    # needs to see this actually failed to reach TheDersi at all.
+                    new_status = "sync_failed"
+                    new_rejection_reason = f"HTTP {push_result['http_status'] or 'no response'}: {push_result['error'] or 'unknown error'}"[:500]
+                    logger.error(f"[BG PUSH] product={product_id} channel={conn.channel_type} SYNC FAILED — {new_rejection_reason}")
+
                 if existing:
-                    if channel_status == "active":
-                        existing.status = "active"
-                    else:
-                        existing.status = "pending_review"
-                        existing.rejection_reason = None
+                    existing.status = new_status
+                    existing.rejection_reason = new_rejection_reason
                 else:
                     db.add(ChannelProductStatus(
                         product_id=product_id,
                         shop_id=shop_id,
                         channel_type=conn.channel_type,
                         status=new_status,
+                        rejection_reason=new_rejection_reason,
                     ))
         db.commit()
     except Exception as exc:
@@ -1408,6 +1430,7 @@ def get_product_channel_status(
                 "pending_review": "🟡 Pending review",
                 "approved": "✅ Live",
                 "rejected": "❌ Rejected",
+                "sync_failed": "⚠️ Failed to send to TheDersi",
             }.get(s.status, s.status),
         }
         for s in statuses
