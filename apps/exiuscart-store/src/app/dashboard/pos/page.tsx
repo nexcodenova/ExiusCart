@@ -102,6 +102,7 @@ export default function POSPage() {
   const [showZReport, setShowZReport] = useState(false);
   const [zReport, setZReport] = useState<ZReport | null>(null);
   const [zReportLoading, setZReportLoading] = useState(false);
+  const [showMobileCart, setShowMobileCart] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   const [products, setProducts] = useState<POSProduct[]>([]);
@@ -331,7 +332,7 @@ export default function POSPage() {
   const splitCardAmount = Math.max(0, grandTotal - splitCashAmount);
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
-  const handleCheckout = () => { if (cart.length > 0) setShowCheckout(true); };
+  const handleCheckout = () => { if (cart.length > 0) { setShowCheckout(true); setShowMobileCart(false); } };
 
   const handlePayment = async () => {
     const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
@@ -556,6 +557,24 @@ export default function POSPage() {
             <span>Unlimited POS sales — no monthly limit on in-store transactions</span>
           </div>
 
+          {/* Mobile-only — cart, Z-Report and return mode are only reachable via this button on small screens */}
+          <button type="button" onClick={() => setShowMobileCart(true)}
+            className={`lg:hidden mb-3 w-full flex items-center justify-between px-4 py-3 rounded-lg font-medium transition ${
+              isReturnMode
+                ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'
+                : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400'
+            }`}>
+            <span className="flex items-center gap-2">
+              {isReturnMode ? <RotateCcw className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+              {isReturnMode ? 'Return Mode' : 'Cart'}, Z-Report &amp; Held Bills
+            </span>
+            {cart.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-card font-semibold">
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+            )}
+          </button>
+
           {barcodeFlash && (
             <div className={`mb-3 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${
               barcodeFlash.startsWith('Not found')
@@ -705,8 +724,8 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* ── Cart Section ── */}
-      <div className={`hidden lg:flex lg:w-96 bg-card border rounded-xl flex-col relative overflow-hidden transition-colors ${
+      {/* ── Cart Section — full-screen drawer on mobile, static sidebar on desktop ── */}
+      <div className={`${showMobileCart ? 'fixed inset-0 z-50 flex' : 'hidden'} lg:flex lg:static lg:inset-auto lg:z-auto lg:w-96 bg-card border rounded-xl lg:rounded-xl flex-col relative overflow-hidden transition-colors ${
         isReturnMode ? 'border-red-400 dark:border-red-500/60' : 'border-border'
       }`}>
         {/* Cart Header */}
@@ -765,6 +784,10 @@ export default function POSPage() {
                 </button>
               </>
             )}
+            <button type="button" onClick={() => setShowMobileCart(false)} aria-label="Close cart"
+              className="lg:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 

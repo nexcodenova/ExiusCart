@@ -122,7 +122,10 @@ export function DropshipSupplierSection({ shopId, productId }: Props) {
                       <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
                       <p className="text-sm font-medium text-foreground">{SUPPLIER_LABELS[l.supplier_type] ?? l.supplier_type}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">SKU: {l.supplier_sku}{l.cost_price ? ` · Cost $${l.cost_price.toFixed(2)}` : ''}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {l.supplier_product_id && `CJ ID: ${l.supplier_product_id} · `}
+                      SKU: {l.supplier_sku}{l.cost_price ? ` · Cost $${l.cost_price.toFixed(2)}` : ''}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {l.supplier_product_url && (

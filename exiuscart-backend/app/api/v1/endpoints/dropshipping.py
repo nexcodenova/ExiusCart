@@ -187,8 +187,8 @@ async def cj_search_products(
     token = await _cj_ensure_token(conn, db)
 
     async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(f"{CJ_BASE}/product/query", params={
-            "productName": q,
+        r = await client.get(f"{CJ_BASE}/product/list", params={
+            "productNameEn": q,
             "pageNum": page,
             "pageSize": 20,
         }, headers={"CJ-Access-Token": token})
@@ -227,7 +227,7 @@ async def cj_get_product_detail(
     token = await _cj_ensure_token(conn, db)
 
     async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(f"{CJ_BASE}/product/detail", params={"pid": cj_pid}, headers={"CJ-Access-Token": token})
+        r = await client.get(f"{CJ_BASE}/product/query", params={"pid": cj_pid}, headers={"CJ-Access-Token": token})
 
     data = r.json()
     if not data.get("result"):
@@ -284,7 +284,7 @@ async def cj_import_product(
 
     # Fetch full product detail from CJ
     async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(f"{CJ_BASE}/product/detail", params={"pid": body.cj_pid}, headers={"CJ-Access-Token": token})
+        r = await client.get(f"{CJ_BASE}/product/query", params={"pid": body.cj_pid}, headers={"CJ-Access-Token": token})
 
     cj = r.json()
     if not cj.get("result"):
@@ -292,7 +292,16 @@ async def cj_import_product(
 
     p = cj.get("data", {})
     name = (p.get("productNameEn") or p.get("productName") or "CJ Product").strip()
-    cost = float(p.get("sellPrice") or p.get("suggestSellPrice") or 0)
+
+    # CJ Order API needs the specific variant's vid to place an order — without it,
+    # fulfillment fails later with "no supplier link" even though the product imported
+    # fine. Use the first variant as the default (this import flow creates one
+    # ExiusCart product per CJ product, not one per variant).
+    variants = p.get("variants") or []
+    primary_variant = variants[0] if variants else {}
+    variant_vid = primary_variant.get("vid")
+
+    cost = float(p.get("sellPrice") or p.get("suggestSellPrice") or primary_variant.get("variantSellPrice") or 0)
     price = body.selling_price if body.selling_price else round(cost * 2, 2)
 
     # Create product
@@ -327,10 +336,14 @@ async def cj_import_product(
         product_id=product.id,
         supplier_type="cj",
         supplier_product_id=body.cj_pid,
+        supplier_sku=variant_vid,
         supplier_product_name=name,
         cost_price=cost,
         is_primary=True,
     ))
+
+    if not variant_vid:
+        logger.warning(f"[CJ Import] shop={shop_id} product={product.id} cj_pid={body.cj_pid} — no variants returned, order fulfillment will fail until a supplier SKU is set manually.")
 
     db.commit()
     db.refresh(product)
@@ -851,9 +864,11 @@ def sync_cj_tracking_job(db_session_factory) -> None:
 
             try:
                 with httpx.Client(timeout=15) as client:
+                    # NOTE: exact request param name unconfirmed from public docs (orderNum vs
+                    # orderId) — sending both is harmless since CJ ignores unrecognized params.
                     r = client.get(
-                        f"{CJ_BASE}/logistics/track",
-                        params={"orderNum": ds_order.supplier_order_id},
+                        f"{CJ_BASE}/logistic/trackInfo",
+                        params={"orderNum": ds_order.supplier_order_id, "orderId": ds_order.supplier_order_id},
                         headers={"CJ-Access-Token": token},
                     )
                 data = r.json()

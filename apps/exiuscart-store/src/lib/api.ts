@@ -555,6 +555,8 @@ export const channelsApi = {
     api.post(`/shops/${shopId}/channels/${channelId}/thedersi-request-payout`),
   toggleTheDersiAutoPayout: (shopId: string, channelId: number, enabled: boolean) =>
     api.patch(`/shops/${shopId}/channels/${channelId}/thedersi-auto-payout`, { enabled }),
+  darazAuthorize: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/daraz/authorize`),
 };
 
 export const usageApi = {

@@ -165,6 +165,11 @@ _MIGRATIONS = [
     # order line items carry the flag through so sellers know to still pack/ship it
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS is_gift BOOLEAN NOT NULL DEFAULT FALSE;",
     "ALTER TABLE order_items ADD COLUMN IF NOT EXISTS is_gift BOOLEAN NOT NULL DEFAULT FALSE;",
+    # Daraz OAuth2 connect flow
+    "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS access_token VARCHAR(1000);",
+    "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS refresh_token VARCHAR(1000);",
+    "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;",
+    "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS oauth_state VARCHAR(100);",
 ]
 
 for _sql in _MIGRATIONS:

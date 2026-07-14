@@ -321,16 +321,13 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                 });
               }
 
-              const GroupIcon = group.icon!;
-
               return (
-                <div key={group.id} className="pt-1">
+                <div key={group.id} className="pt-4 first:pt-1">
                   {!collapsed && (
                     <button type="button" onClick={() => toggleGroup(group.id)}
-                      className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-left ${
-                        groupActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      className={`w-full flex items-center gap-2 px-3 py-1 rounded-lg transition-all text-left ${
+                        groupActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                       }`}>
-                      <GroupIcon className={`w-4 h-4 flex-shrink-0 ${group.accent || ''}`} />
                       <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
                       {locked && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">PRO</span>}
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
@@ -338,7 +335,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                   )}
 
                   {(isOpen || collapsed) && (
-                    <div className={collapsed ? 'space-y-0.5 mt-0.5' : 'ml-[15px] mt-1 space-y-0.5 border-l border-border pl-2.5'}>
+                    <div className={collapsed ? 'space-y-0.5 mt-0.5' : 'mt-1 space-y-0.5'}>
                       {group.items.map(item => {
                         const Icon = item.icon;
                         const active = isItemActive(item);

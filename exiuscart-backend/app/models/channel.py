@@ -23,3 +23,10 @@ class ChannelConnection(Base):
     # Lanka time, so a request never gets missed just because the seller forgot.
     auto_payout_enabled = Column(Boolean, default=False)
     last_auto_payout_attempt_at = Column(DateTime(timezone=True), nullable=True)
+
+    # OAuth2 fields — used by channels that authorize per-seller (e.g. Daraz),
+    # as opposed to a single static channel_api_key.
+    access_token = Column(String(1000), nullable=True)
+    refresh_token = Column(String(1000), nullable=True)
+    token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    oauth_state = Column(String(100), nullable=True)  # CSRF token for the in-flight authorize request

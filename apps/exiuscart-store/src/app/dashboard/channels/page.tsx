@@ -139,61 +139,26 @@ function CustomWebsiteModal({ shopId, onConnected, onClose }: {
 
 // ── Daraz connect modal ───────────────────────────────────────────────────────
 
-function DarazConnectModal({ shopId, onConnected, onClose }: {
+function DarazConnectModal({ shopId, onClose }: {
   shopId: string; onConnected: () => void; onClose: () => void;
 }) {
-  const [userId, setUserId] = useState('');
-  const [appKey, setAppKey] = useState('');
-  const [appSecret, setAppSecret] = useState('');
-  const [saving, setSaving] = useState(false);
+  // Daraz uses OAuth — sellers log into their OWN existing Daraz seller
+  // account and approve ExiusCart's app. They never see or enter an App
+  // Key/Secret (that belongs to ExiusCart as the platform, not per-seller).
+  const [hasAccount, setHasAccount] = useState<boolean | null>(null);
+  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
-  const [done, setDone] = useState(false);
 
-  const connect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId.trim() || !appKey.trim() || !appSecret.trim()) return;
-    setSaving(true); setError('');
+  const startAuthorize = async () => {
+    setConnecting(true); setError('');
     try {
-      await channelsApi.connect(shopId, {
-        channel_type: 'daraz',
-        channel_api_key: `${appKey.trim()}|${appSecret.trim()}`,
-        channel_api_url: 'https://api.daraz.lk',
-        channel_seller_id: userId.trim(),
-      });
-      setDone(true);
-      onConnected();
+      const res = await channelsApi.darazAuthorize(shopId);
+      window.location.href = res.data.authorize_url;
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'Connection failed. Check your credentials.');
-    } finally { setSaving(false); }
+      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not start Daraz connection. Try again.');
+      setConnecting(false);
+    }
   };
-
-  if (done) {
-    return (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-card rounded-xl border border-border w-full max-w-md p-6 space-y-5">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-green-500" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">Daraz Connected!</p>
-              <p className="text-xs text-muted-foreground">Orders from Daraz.lk will now sync to your dashboard automatically.</p>
-            </div>
-          </div>
-          <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-            <p><strong className="text-foreground">What happens next:</strong></p>
-            <p>• New Daraz orders appear in your Orders list tagged "Daraz"</p>
-            <p>• Stock deducts automatically when orders come in</p>
-            <p>• Mark as shipped in ExiusCart → Daraz updates too</p>
-          </div>
-          <button onClick={onClose}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-            Done
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -201,45 +166,74 @@ function DarazConnectModal({ shopId, onConnected, onClose }: {
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div>
             <p className="font-semibold text-foreground">Connect Daraz</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Get credentials from open.daraz.com → My Apps</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Sri Lanka's #1 Marketplace</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <form onSubmit={connect} className="p-5 space-y-4">
+
+        <div className="p-5 space-y-4">
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
               {error}
             </div>
           )}
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">Daraz Seller User ID *</label>
-            <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} required
-              placeholder="Your Daraz seller account user ID"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
-          </div>
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">App Key *</label>
-            <input type="text" value={appKey} onChange={(e) => setAppKey(e.target.value)} required
-              placeholder="App Key from Daraz Open Platform"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
-          </div>
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">App Secret *</label>
-            <input type="password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} required
-              placeholder="App Secret from Daraz Open Platform"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
-          </div>
-          <div className="bg-muted/50 rounded-lg px-3 py-2.5 text-xs text-muted-foreground">
-            Get these from <strong className="text-foreground">open.daraz.com</strong> → Register as Developer → Create App → Copy App Key & Secret.
-          </div>
-          <button type="submit" disabled={saving}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {saving ? 'Connecting...' : 'Connect Daraz'}
-          </button>
-        </form>
+
+          {hasAccount === null && (
+            <>
+              <p className="text-sm text-muted-foreground">Do you already have a Daraz seller account?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setHasAccount(true)}
+                  className="py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+                  Yes, I have one
+                </button>
+                <button onClick={() => setHasAccount(false)}
+                  className="py-2.5 bg-muted border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted/70 transition">
+                  Not yet
+                </button>
+              </div>
+            </>
+          )}
+
+          {hasAccount === true && (
+            <>
+              <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+                <p><strong className="text-foreground">What happens next:</strong></p>
+                <p>• You'll be sent to Daraz to log into your own seller account</p>
+                <p>• Approve ExiusCart's access request</p>
+                <p>• You're redirected back here, fully connected</p>
+              </div>
+              <button onClick={startAuthorize} disabled={connecting}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {connecting ? 'Redirecting to Daraz...' : 'Continue to Daraz'}
+              </button>
+              <button onClick={() => setHasAccount(null)} className="w-full text-xs text-muted-foreground hover:text-foreground">
+                ← Back
+              </button>
+            </>
+          )}
+
+          {hasAccount === false && (
+            <>
+              <div className="bg-muted/50 rounded-lg px-4 py-3 text-sm text-muted-foreground">
+                You'll need a Daraz seller account before you can connect. It's free to create — once you're registered and approved as a seller, come back here and connect.
+              </div>
+              <a href="https://sellercenter.daraz.lk/apps/register/index" target="_blank" rel="noopener noreferrer"
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition flex items-center justify-center gap-2">
+                Create Daraz Seller Account <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <button onClick={() => setHasAccount(true)}
+                className="w-full py-2.5 bg-muted border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted/70 transition">
+                I've created my account
+              </button>
+              <button onClick={() => setHasAccount(null)} className="w-full text-xs text-muted-foreground hover:text-foreground">
+                ← Back
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -523,6 +517,16 @@ export default function ChannelsPage() {
 
   useEffect(() => { load(); }, [shopId]);
 
+  const [darazOAuthResult, setDarazOAuthResult] = useState<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('daraz');
+    if (!result) return;
+    setDarazOAuthResult(result);
+    router.replace('/dashboard/channels');
+    load();
+  }, []);
+
   const theDersiConns = connections.filter((c) => c.channel_type === 'thedersi');
   const darazConns = connections.filter((c) => c.channel_type === 'daraz');
   const hasTheDersi = theDersiConns.length > 0;
@@ -640,6 +644,24 @@ export default function ChannelsPage() {
           Connect marketplaces and storefronts to sell everywhere from one dashboard.
         </p>
       </div>
+
+      {darazOAuthResult && (
+        <div className={`flex items-center justify-between gap-4 px-5 py-4 rounded-xl border ${
+          darazOAuthResult === 'connected' ? 'bg-green-500/8 border-green-500/30'
+          : darazOAuthResult === 'pending' ? 'bg-amber-500/8 border-amber-500/30'
+          : 'bg-destructive/8 border-destructive/30'
+        }`}>
+          <p className="text-sm font-medium text-foreground">
+            {darazOAuthResult === 'connected' && 'Daraz connected successfully — your products will start syncing shortly.'}
+            {darazOAuthResult === 'pending' && "Daraz authorization received — we're finishing setup on our end, check back shortly."}
+            {darazOAuthResult === 'denied' && 'Daraz connection was cancelled — you can try again anytime.'}
+            {darazOAuthResult === 'invalid_state' && 'That Daraz connection link expired — please click Connect Daraz and try again.'}
+          </p>
+          <button onClick={() => setDarazOAuthResult(null)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Plan limit banner for free/starter users */}
       {!loading && !isTheDersiUser && !isPremium && plan !== '' && (
