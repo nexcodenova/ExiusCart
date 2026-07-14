@@ -65,7 +65,7 @@ const GROUPS: MenuGroup[] = [
   },
   {
     id: 'channels',
-    label: null,
+    label: 'Channels',
     items: [
       { href: '/dashboard/channels',     label: 'Channels',     icon: Link2  },
       { href: '/dashboard/dropshipping', label: 'Dropshipping', icon: Truck  },
@@ -178,8 +178,15 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setOpenGroups(new Set(JSON.parse(saved)));
-      else {
+      if (saved) {
+        // Union in any group ids the saved list doesn't know about yet (e.g. a
+        // group that's newly labeled/collapsible) so it defaults open instead
+        // of silently collapsed for returning users.
+        const savedIds: string[] = JSON.parse(saved);
+        const knownIds = new Set(savedIds);
+        const newIds = GROUPS.map(g => g.id).filter(id => id !== 'settings' && !knownIds.has(id));
+        setOpenGroups(new Set([...savedIds, ...newIds]));
+      } else {
         // default: all open except settings
         const defaults = GROUPS.map(g => g.id).filter(id => id !== 'settings');
         setOpenGroups(new Set(defaults));
