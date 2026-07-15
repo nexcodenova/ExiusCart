@@ -10,7 +10,7 @@ import {
 import { useTheme } from '@/components/providers/theme-provider';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
 
-const CURRENCIES: Currency[] = ['USD', 'AED', 'LKR', 'EUR', 'INR'];
+const CURRENCIES: Currency[] = ['USD', 'AED', 'EUR', 'LKR', 'INR'];
 
 interface HeaderProps {
   onMenuClick: () => void;
