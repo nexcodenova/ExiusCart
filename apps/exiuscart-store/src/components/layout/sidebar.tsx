@@ -12,7 +12,7 @@ import {
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw,
-  Star, MapPin,
+  Star, MapPin, TrendingUp,
 } from 'lucide-react';
 import { shopApi } from '@/lib/api';
 
@@ -20,6 +20,7 @@ interface MenuItem {
   href: string;
   label: string;
   icon: React.ElementType;
+  external?: boolean;
 }
 interface MenuGroup {
   id: string;
@@ -35,6 +36,7 @@ const GROUPS: MenuGroup[] = [
     label: null,
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: 'https://prodora.exiuscart.com', label: 'Prodora — Winning Products', icon: TrendingUp, external: true },
     ],
   },
   {
@@ -169,6 +171,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [showProdoraBlocked, setShowProdoraBlocked] = useState<'thedersi' | 'free_trial' | null>(null);
   const [shopData, setShopData] = useState<{ name: string; plan: string; daysLeft: number | null } | null>(null);
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     new Set(GROUPS.map(g => g.id)) // all open by default
@@ -315,6 +318,21 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                   .map(item => {
                   const Icon = item.icon;
                   const active = isItemActive(item);
+                  if (item.external) {
+                    return (
+                      <button key={item.href} type="button"
+                        onClick={() => {
+                          if (isTheDersiPlan) setShowProdoraBlocked('thedersi');
+                          else if (plan === 'free_trial') setShowProdoraBlocked('free_trial');
+                          else window.open(item.href, '_blank', 'noopener,noreferrer');
+                        }}
+                        title={collapsed ? item.label : undefined}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 dark:text-indigo-400 hover:from-indigo-500/15 hover:to-purple-500/15 font-semibold text-left">
+                        <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
+                        {!collapsed && <span className="text-sm">{item.label}</span>}
+                      </button>
+                    );
+                  }
                   return (
                     <Link key={item.href} href={item.href} onClick={onMobileClose}
                       title={collapsed ? item.label : undefined}
@@ -483,6 +501,40 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                 Upgrade to Pro
               </Link>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prodora access blocked — TheDersi sellers never get it; free trial needs to upgrade */}
+      {showProdoraBlocked && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowProdoraBlocked(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/15 mb-4 mx-auto">
+              <TrendingUp className="w-6 h-6 text-indigo-400" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground text-center mb-2">Prodora</h3>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              {showProdoraBlocked === 'thedersi'
+                ? 'Prodora is only available for direct ExiusCart sellers. Your store is managed by TheDersi.'
+                : <>Prodora is available on paid ExiusCart plans. Upgrade from your <span className="text-indigo-400 font-semibold">Free Trial</span> to get access.</>}
+            </p>
+            {showProdoraBlocked === 'thedersi' ? (
+              <button type="button" onClick={() => setShowProdoraBlocked(null)}
+                className="w-full py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
+                Got it
+              </button>
+            ) : (
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setShowProdoraBlocked(null)}
+                  className="flex-1 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
+                  Cancel
+                </button>
+                <Link href="/dashboard/billing" onClick={() => setShowProdoraBlocked(null)}
+                  className="flex-1 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold text-center transition">
+                  Upgrade
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}
