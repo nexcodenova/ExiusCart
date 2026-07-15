@@ -14,7 +14,7 @@ import {
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw,
   Star, MapPin, TrendingUp,
 } from 'lucide-react';
-import { shopApi } from '@/lib/api';
+import { shopApi, subscriptionApi } from '@/lib/api';
 
 interface MenuItem {
   href: string;
@@ -172,7 +172,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [showProdoraBlocked, setShowProdoraBlocked] = useState<'thedersi' | 'free_trial' | null>(null);
-  const [shopData, setShopData] = useState<{ name: string; plan: string; daysLeft: number | null } | null>(null);
+  const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null } | null>(null);
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     new Set(GROUPS.map(g => g.id)) // all open by default
   );
@@ -198,18 +198,17 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
   }, []);
 
   useEffect(() => {
-    shopApi.getMyShop().then((res) => {
-      const shop = res.data;
-      const sub = shop.subscription;
-      let daysLeft: number | null = null;
-      if (sub?.expires_at) {
-        const diff = new Date(sub.expires_at).getTime() - Date.now();
-        daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-      }
+    const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') : null;
+    Promise.all([
+      shopApi.getMyShop().catch(() => null),
+      shopId ? subscriptionApi.getCurrent(shopId).catch(() => null) : Promise.resolve(null),
+    ]).then(([shopRes, subRes]) => {
+      const plan = subRes?.data?.plan;
       setShopData({
-        name: shop.name || '',
-        plan: sub?.plan ? (sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1)) : 'Free',
-        daysLeft,
+        name: shopRes?.data?.name || '',
+        plan: plan?.plan_type || 'free_trial',
+        planLabel: plan?.name || 'Free Trial',
+        daysLeft: plan?.daysLeft ?? null,
       });
     }).catch(() => {});
   }, []);
@@ -288,7 +287,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{shopData?.name || '...'}</p>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{shopData?.plan || ''}</span>
+                  <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{shopData?.planLabel || ''}</span>
                   {shopData?.daysLeft != null && (
                     <span className="text-xs text-muted-foreground">• {shopData.daysLeft}d</span>
                   )}
@@ -515,8 +514,8 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
             <h3 className="text-lg font-bold text-foreground text-center mb-2">Prodora</h3>
             <p className="text-sm text-muted-foreground text-center mb-6">
               {showProdoraBlocked === 'thedersi'
-                ? 'Prodora is only available for direct ExiusCart sellers. Your store is managed by TheDersi.'
-                : <>Prodora is available on paid ExiusCart plans. Upgrade from your <span className="text-indigo-400 font-semibold">Free Trial</span> to get access.</>}
+                ? 'This is only for ExiusCart direct users.'
+                : 'This is only for paid users.'}
             </p>
             {showProdoraBlocked === 'thedersi' ? (
               <button type="button" onClick={() => setShowProdoraBlocked(null)}
