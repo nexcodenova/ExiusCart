@@ -42,10 +42,11 @@ export default function AffiliateTermsPage() {
             <ul className="space-y-2 list-none pl-0">
               <li><strong className="text-slate-900">&ldquo;Affiliate&rdquo;</strong> — any individual or entity approved by NexCodeNova to participate in the Program and promote ExiusCart products and services in exchange for commission.</li>
               <li><strong className="text-slate-900">&ldquo;Referral Link&rdquo;</strong> — the unique URL assigned to each Affiliate, containing a tracking parameter (&ldquo;ref code&rdquo;) that identifies traffic and sign-ups originating from that Affiliate.</li>
-              <li><strong className="text-slate-900">&ldquo;Qualified Referral&rdquo;</strong> — a new user who registers on ExiusCart using the Affiliate&apos;s Referral Link, has not previously registered on ExiusCart under any account, and subsequently activates a paid subscription within 90 days of their initial sign-up.</li>
-              <li><strong className="text-slate-900">&ldquo;Commission&rdquo;</strong> — the one-time flat payment made to the Affiliate for each Qualified Referral, as set out in Section 3.</li>
-              <li><strong className="text-slate-900">&ldquo;Lock Period&rdquo;</strong> — the mandatory 45-day holding period applied to every Commission after the referred customer&apos;s first payment, during which the Commission cannot be withdrawn.</li>
-              <li><strong className="text-slate-900">&ldquo;Cookie Window&rdquo;</strong> — the duration for which an Affiliate&apos;s tracking cookie remains active on the referred user&apos;s browser after clicking the Referral Link, currently set to <strong>90 days</strong>.</li>
+              <li><strong className="text-slate-900">&ldquo;Qualified Referral&rdquo;</strong> — a new user who registers on ExiusCart with the Affiliate&apos;s tracking cookie active on their browser (see &ldquo;Cookie Window&rdquo; below), has not previously registered on ExiusCart under any account, and subsequently activates a paid subscription. There is no deadline by which the paid subscription must be activated once the account is registered with the referral attached.</li>
+              <li><strong className="text-slate-900">&ldquo;Commission Model&rdquo;</strong> — the payout structure chosen by the Affiliate at the time of application (&ldquo;One-Time&rdquo; or &ldquo;Recurring&rdquo;), as set out in Section 3. The Commission Model is locked at application and cannot be changed afterward under any circumstances.</li>
+              <li><strong className="text-slate-900">&ldquo;Commission&rdquo;</strong> — the payment made to the Affiliate for a Qualified Referral, calculated according to the Affiliate&apos;s chosen Commission Model, as set out in Section 3.</li>
+              <li><strong className="text-slate-900">&ldquo;Lock Period&rdquo;</strong> — the mandatory 30-day holding period applied to every individual Commission payment after the corresponding customer payment is confirmed, during which that Commission cannot be withdrawn.</li>
+              <li><strong className="text-slate-900">&ldquo;Cookie Window&rdquo;</strong> — the duration for which an Affiliate&apos;s tracking cookie remains active on the referred user&apos;s browser after clicking the Referral Link, currently set to <strong>30 days</strong>. The referred user must complete registration within this window for the referral to attach to their account.</li>
             </ul>
           </section>
 
@@ -66,32 +67,31 @@ export default function AffiliateTermsPage() {
           {/* 3 */}
           <section>
             <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">3. Commission Rates</h2>
-            <p className="mb-3">The Program pays a <strong>one-time flat commission</strong> per Qualified Referral. Commissions are not recurring and are not paid for renewals or subsequent billing cycles of the referred customer.</p>
+            <p className="mb-3">At the time of application, every Affiliate must choose <strong>one</strong> of the two Commission Models below. This choice is <strong>locked permanently</strong> upon approval — it cannot be changed, switched, or reverted at any later date, regardless of reason. Free Trial sign-ups that never activate a paid subscription earn no Commission under either model.</p>
             <div className="overflow-x-auto">
               <table className="w-full border border-slate-200 text-sm">
                 <thead>
                   <tr className="bg-slate-50">
-                    <th className="text-left px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Plan Activated by Referred Customer</th>
-                    <th className="text-left px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">One-Time Commission (USD)</th>
+                    <th className="text-left px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Commission Model</th>
+                    <th className="text-left px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">Rate</th>
+                    <th className="text-left px-4 py-3 border-b border-slate-200 font-semibold text-slate-900">How It Works</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-b border-slate-100">
-                    <td className="px-4 py-3 text-slate-600">Free Trial (no payment made)</td>
-                    <td className="px-4 py-3 font-semibold text-slate-400">$0 — no commission payable</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-4 py-3 text-slate-600">Monthly Plan</td>
-                    <td className="px-4 py-3 font-bold text-slate-900">$25.00</td>
+                    <td className="px-4 py-3 text-slate-900 font-semibold">One-Time</td>
+                    <td className="px-4 py-3 font-bold text-slate-900">$75.00 USD</td>
+                    <td className="px-4 py-3 text-slate-600">A single flat payment, paid once when the referred customer&apos;s first subscription payment is confirmed. No further Commission is paid for that referral regardless of how long the customer remains subscribed.</td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 text-slate-600">Yearly Plan</td>
-                    <td className="px-4 py-3 font-bold text-[#6B3FD9]">$75.00</td>
+                    <td className="px-4 py-3 text-slate-900 font-semibold">Recurring</td>
+                    <td className="px-4 py-3 font-bold text-[#6B3FD9]">50% of payment</td>
+                    <td className="px-4 py-3 text-slate-600">50% of the amount the referred customer actually pays, credited each time a payment is confirmed for that customer, for a maximum of <strong>12 payments</strong> per referral. No Commission is paid for that referral&apos;s 13th payment onward.</td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <p className="mt-3">Commission rates may be modified with 14 days&apos; advance notice to active Affiliates. Referrals that have already been confirmed prior to a rate change will be honoured at the rate in effect at the time of confirmation. The Company reserves the right to introduce promotional commission rates for limited periods without prior notice.</p>
+            <p className="mt-3">Commissions under either model are only generated against a real, confirmed payment from the referred customer — never estimated, projected, or credited in advance of payment. Commission rates may be modified for future applicants with 14 days&apos; advance notice; changes never apply retroactively to an Affiliate&apos;s already-locked Commission Model.</p>
           </section>
 
           {/* 4 */}
@@ -100,7 +100,7 @@ export default function AffiliateTermsPage() {
             <p className="mb-3">The ExiusCart Affiliate Program uses multiple layers of tracking to attribute referrals accurately and to detect fraud.</p>
 
             <h3 className="font-semibold text-slate-900 mt-5 mb-2">4.1 Cookie-Based Tracking</h3>
-            <p className="mb-3">When a user clicks your Referral Link, a first-party cookie containing your affiliate code (&ldquo;ref&rdquo;) is placed on the user&apos;s browser. This cookie has a lifetime of <strong>90 days</strong>. If the user creates an ExiusCart account and activates a paid subscription within 90 days of their first click on your Referral Link, the referral is credited to your account.</p>
+            <p className="mb-3">When a user clicks your Referral Link, a first-party cookie containing your affiliate code (&ldquo;ref&rdquo;) is placed on the user&apos;s browser. This cookie has a lifetime of <strong>30 days</strong>. If the user registers an ExiusCart account within those 30 days, the referral attaches to their account permanently — there is no further deadline for them to activate a paid subscription after registering.</p>
             <ul className="space-y-1.5 list-disc list-inside pl-2 mb-3">
               <li>If the user clears their cookies or uses a different browser or device before signing up, the referral may not be attributed to you.</li>
               <li>Only the <em>last</em> Referral Link clicked before sign-up is credited. If a user clicks multiple Affiliate links, only the most recent one is recorded.</li>
@@ -126,26 +126,26 @@ export default function AffiliateTermsPage() {
             <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">5. Qualified Referral Criteria</h2>
             <p className="mb-3">A referral is a Qualified Referral — and therefore earns Commission — only if <strong>all</strong> of the following conditions are simultaneously satisfied:</p>
             <ol className="space-y-2 list-decimal list-inside pl-2">
-              <li>The referred user clicked your Referral Link within the 90-day Cookie Window before registering.</li>
+              <li>The referred user clicked your Referral Link within the 30-day Cookie Window before registering.</li>
               <li>The referred user is a genuinely new customer with no prior account on ExiusCart under any email address.</li>
-              <li>The referred user activates a paid subscription (Monthly or Yearly) within 90 days of signing up.</li>
+              <li>The referred user activates a paid subscription (Monthly or Yearly) — at any point after registering, with no deadline.</li>
               <li>The referred user&apos;s payment is successfully processed and not subject to an immediate refund or chargeback.</li>
               <li>Your affiliate account is in good standing with no unresolved policy violations at the time the Commission is calculated.</li>
               <li>You have published supporting content (see Section 7) that includes your Referral Link, active and publicly accessible at the time of the referral.</li>
               <li>The partnership label requirement (see Section 8) has been fulfilled and confirmed.</li>
             </ol>
-            <p className="mt-3">The Company&apos;s tracking system is the sole and authoritative source for determining whether a referral qualifies. Disputes regarding tracking must be submitted in writing to affiliates@exiuscart.com within 30 days of the Commission calculation date.</p>
+            <p className="mt-3">The Company&apos;s tracking system is the sole and authoritative source for determining whether a referral qualifies. Disputes regarding tracking must be submitted in writing to support@exiuscart.com within 30 days of the Commission calculation date.</p>
           </section>
 
           {/* 6 */}
           <section>
             <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">6. Lock Period &amp; Commission Crediting</h2>
-            <p className="mb-3">Upon a referred customer making their first qualifying payment, the corresponding Commission enters a <strong>45-day lock period</strong>. During this period:</p>
+            <p className="mb-3">Each individual Commission — whether the single One-Time payment or one of up to 12 monthly Recurring payments — enters a <strong>30-day lock period</strong> upon the corresponding customer payment being confirmed. During this period:</p>
             <ul className="space-y-2 list-disc list-inside pl-2">
               <li>The Commission is visible in your Affiliate dashboard as &ldquo;Pending&rdquo; but cannot be withdrawn or transferred.</li>
-              <li>If the referred customer requests a refund (including under any money-back guarantee) within the 45-day lock period, the Commission is immediately cancelled and permanently forfeited.</li>
-              <li>If a chargeback is initiated by the referred customer at any time — even after the lock period — the Commission may be reversed and deducted from future earnings.</li>
-              <li>After 45 days, provided no refund or chargeback has been processed, the Commission is marked &ldquo;Cleared&rdquo; and becomes available for payout request.</li>
+              <li>If the referred customer requests a refund (including under any money-back guarantee) within the 30-day lock period, that Commission is immediately cancelled and permanently forfeited.</li>
+              <li>If a chargeback is initiated by the referred customer at any time — even after the lock period — the affected Commission may be reversed and deducted from future earnings.</li>
+              <li>After 30 days, provided no refund or chargeback has been processed, the Commission requires final Company approval before it becomes available for payout request. Under the Recurring model, each of the up to 12 monthly Commissions goes through this same 30-day lock and approval process independently.</li>
             </ul>
           </section>
 
@@ -190,7 +190,7 @@ export default function AffiliateTermsPage() {
             <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">9. Payout Conditions</h2>
             <p className="mb-3">Payouts are subject to the following conditions:</p>
             <ul className="space-y-2 list-disc list-inside pl-2">
-              <li><strong>Minimum balance:</strong> Your cleared (post-lock) balance must reach a minimum of <strong>$25.00 USD</strong> before a payout can be requested.</li>
+              <li><strong>Minimum balance:</strong> Your cleared (post-lock, approved) balance must reach a minimum of <strong>$100.00 USD</strong> before a payout can be requested.</li>
               <li><strong>Payout methods:</strong> PayPal, Skrill, or Payoneer only. No bank transfers, cryptocurrency, gift cards, or other methods are available at this time.</li>
               <li><strong>Processing time:</strong> Approved payout requests are processed within <strong>7 business days</strong>. The Company reserves the right to extend this period by up to 14 additional business days during audits, investigations, or high-volume periods.</li>
               <li><strong>Taxes:</strong> You are solely responsible for declaring and paying any taxes applicable to your Commission income in your jurisdiction. The Company does not withhold tax on behalf of Affiliates unless required by applicable law.</li>
@@ -302,7 +302,7 @@ export default function AffiliateTermsPage() {
             <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">19. Contact &amp; Notices</h2>
             <p className="mb-2">For questions about this Agreement, Commission disputes, or to report suspected fraud in the Program:</p>
             <ul className="space-y-1.5 list-none pl-0">
-              <li><strong>Email:</strong> <a href="mailto:affiliates@exiuscart.com" className="text-[#6B3FD9] hover:underline">affiliates@exiuscart.com</a></li>
+              <li><strong>Email:</strong> <a href="mailto:support@exiuscart.com" className="text-[#6B3FD9] hover:underline">support@exiuscart.com</a></li>
               <li><strong>Operated by:</strong> NexCodeNova</li>
               <li><strong>Website:</strong> <a href="https://exiuscart.com" className="text-[#6B3FD9] hover:underline">https://exiuscart.com</a></li>
             </ul>
@@ -314,7 +314,7 @@ export default function AffiliateTermsPage() {
         {/* Footer */}
         <div className="mt-16 pt-8 border-t border-slate-200 text-center">
           <p className="text-xs text-slate-400">ExiusCart Affiliate Program Terms &amp; Conditions — Version effective 1 June 2026</p>
-          <p className="text-xs text-slate-400 mt-1">Operated by NexCodeNova · <a href="mailto:affiliates@exiuscart.com" className="hover:text-slate-600">affiliates@exiuscart.com</a></p>
+          <p className="text-xs text-slate-400 mt-1">Operated by NexCodeNova · <a href="mailto:support@exiuscart.com" className="hover:text-slate-600">support@exiuscart.com</a></p>
           <div className="mt-6">
             <Link href="/affiliate" className="inline-flex items-center gap-2 rounded-xl bg-[#6B3FD9] px-6 py-3 text-sm font-semibold text-white hover:bg-[#5A2EC9] transition">
               Apply to become an affiliate →
