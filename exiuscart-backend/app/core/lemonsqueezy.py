@@ -114,6 +114,35 @@ async def create_checkout(
     return data["data"]["attributes"]["url"]
 
 
+async def get_customer_portal_url(lemon_squeezy_subscription_id: str) -> str:
+    """
+    Fetches the signed, self-service Customer Portal URL for a subscription —
+    lets the seller cancel, pause, or update their payment method directly on
+    Lemon Squeezy's hosted page. Valid for 24 hours per Lemon Squeezy's docs,
+    so this must be fetched fresh each time, never cached/stored.
+    """
+    if not is_configured():
+        raise RuntimeError("Lemon Squeezy is not configured.")
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(
+            f"{LEMONSQUEEZY_API_BASE}/subscriptions/{lemon_squeezy_subscription_id}",
+            headers={
+                "Authorization": f"Bearer {LEMONSQUEEZY_API_KEY}",
+                "Accept": "application/vnd.api+json",
+            },
+        )
+    data = r.json()
+    if r.status_code >= 300:
+        logger.error(f"[LemonSqueezy] fetching subscription {lemon_squeezy_subscription_id} failed: {data}")
+        raise RuntimeError("Could not reach Lemon Squeezy to open the billing portal.")
+
+    url = data.get("data", {}).get("attributes", {}).get("urls", {}).get("customer_portal")
+    if not url:
+        raise RuntimeError("Lemon Squeezy did not return a billing portal URL for this subscription.")
+    return url
+
+
 def verify_webhook_signature(raw_body: bytes, x_signature: str) -> bool:
     """Verify the X-Signature header Lemon Squeezy sends on every webhook."""
     if not LEMONSQUEEZY_WEBHOOK_SECRET:

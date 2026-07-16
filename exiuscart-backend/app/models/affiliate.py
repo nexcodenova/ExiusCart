@@ -58,6 +58,11 @@ class Commission(Base):
     # "one_time" = single flat payout | "recurring" = one of up to 12 monthly payouts for this referral
     commission_type = Column(String(20), default="one_time")
     period_month = Column(Integer, nullable=True)  # 1-12 for recurring commissions, null for one_time
+    # Set the moment a PayoutRequest is created, snapshotting exactly which
+    # commissions it covers — so a later refund/reversal or a newly-approved
+    # commission can never silently change what "mark this request paid"
+    # actually settles.
+    payout_request_id = Column(Integer, ForeignKey("affiliate_payout_requests.id"), nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     paid_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

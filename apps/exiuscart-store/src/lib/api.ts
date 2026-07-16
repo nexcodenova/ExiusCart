@@ -260,10 +260,12 @@ export const staffApi = {
 // ── Subscription ──────────────────────────────────────
 export const subscriptionApi = {
   getCurrent: (shopId: string) => api.get(`/shops/${shopId}/subscription`),
-  requestUpgrade: (shopId: string, plan: string) =>
-    api.post(`/shops/${shopId}/subscription/upgrade`, { plan }),
+  requestUpgrade: (shopId: string, plan: string, billingType: 'monthly' | 'yearly' = 'monthly') =>
+    api.post(`/shops/${shopId}/subscription/upgrade`, { plan, billing_type: billingType }),
   createCheckout: (shopId: string, plan: string, billingType: 'monthly' | 'yearly') =>
     api.post(`/shops/${shopId}/subscription/checkout`, { plan, billing_type: billingType }),
+  getBillingPortal: (shopId: string) =>
+    api.get(`/shops/${shopId}/subscription/portal`),
 };
 
 // ── Shop Fields (Custom Product Fields) ───────────────

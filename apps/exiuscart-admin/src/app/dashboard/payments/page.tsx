@@ -32,6 +32,7 @@ interface PaymentLedgerRow {
   source: 'manual' | 'lemon_squeezy';
   lemon_squeezy_order_id: string | null;
   confirmed_at: string | null;
+  refunded_at: string | null;
   commission: {
     affiliate_name: string | null;
     amount: number | null;
@@ -419,15 +420,27 @@ function PaymentLedgerTable({ ledger, loading, searchQuery, setSearchQuery }: {
                   <tr key={p.id} className="border-b border-gray-800 last:border-0 hover:bg-[#1A2540] transition">
                     <td className="px-6 py-4 font-medium text-white">{p.shop_name}</td>
                     <td className="px-6 py-4 text-gray-300 capitalize">{p.plan_type} · {p.billing_type}</td>
-                    <td className="px-6 py-4 font-semibold text-white">{p.amount.toFixed(2)} {p.currency}</td>
+                    <td className="px-6 py-4">
+                      <span className="font-semibold text-white">{p.amount.toFixed(2)} {p.currency}</span>
+                      {p.refunded_at && (
+                        <span className="block text-xs text-red-400 font-medium mt-0.5">
+                          Refunded {new Date(p.refunded_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4"><SourceBadge source={p.source} /></td>
                     <td className="px-6 py-4">
                       {p.commission ? (
                         <div className="text-sm">
-                          <span className="text-white font-medium">${p.commission.amount?.toFixed(2)}</span>
+                          <span className={p.commission.status === 'reversed' ? 'text-gray-500 line-through' : 'text-white font-medium'}>
+                            ${p.commission.amount?.toFixed(2)}
+                          </span>
                           <span className="text-gray-500"> → {p.commission.affiliate_name}</span>
                           {p.commission.type === 'recurring' && (
                             <span className="ml-1.5 text-xs text-[#A78BFA]">Month {p.commission.period_month}/12</span>
+                          )}
+                          {p.commission.status === 'reversed' && (
+                            <span className="ml-1.5 text-xs text-red-400 font-medium">Reversed</span>
                           )}
                         </div>
                       ) : (

@@ -31,8 +31,25 @@ const PLAN_PRICING: Record<Currency, { starter: number; premium: number; extraSt
   INR: { starter: 999,  premium: 2399, extraStaff: 399 },
 };
 
-const makePlans = (currency: Currency, fmt: (n: number) => string) => {
+// Yearly billing is only wired up to a real Lemon Squeezy checkout for AED
+// and USD (the only two currencies with live LS variants right now).
+// LKR/EUR/INR are display-only currencies today — a shop on one of those
+// still checks out through the AED variant regardless — so we don't offer
+// a fabricated yearly price for them until that's resolved.
+const YEARLY_PRICING: Partial<Record<Currency, { starter: number; premium: number }>> = {
+  AED: { starter: 459, premium: 999 },
+  USD: { starter: 120, premium: 290 },
+};
+
+type BillingPeriod = 'monthly' | 'yearly';
+
+const makePlans = (currency: Currency, fmt: (n: number) => string, period: BillingPeriod) => {
   const p = PLAN_PRICING[currency];
+  const yearly = YEARLY_PRICING[currency];
+  const useYearly = period === 'yearly' && !!yearly;
+  const starterPrice = useYearly ? yearly!.starter : p.starter;
+  const premiumPrice = useYearly ? yearly!.premium : p.premium;
+  const periodLabel = useYearly ? 'year' : 'month';
   return [
     {
       id: 'free_trial',
@@ -58,9 +75,9 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
     {
       id: 'starter',
       name: 'Starter',
-      price: p.starter,
-      priceLabel: fmt(p.starter),
-      period: 'month',
+      price: starterPrice,
+      priceLabel: fmt(starterPrice),
+      period: periodLabel,
       description: 'For growing shops ready to scale',
       badge: 'Most Popular',
       features: [
@@ -80,9 +97,9 @@ const makePlans = (currency: Currency, fmt: (n: number) => string) => {
     {
       id: 'premium',
       name: 'Premium',
-      price: p.premium,
-      priceLabel: fmt(p.premium),
-      period: 'month',
+      price: premiumPrice,
+      priceLabel: fmt(premiumPrice),
+      period: periodLabel,
       description: 'Full power for serious operations',
       badge: null,
       features: [
@@ -186,6 +203,7 @@ export default function BillingPage() {
   const [upgradeError, setUpgradeError] = useState('');
   const [isTheDersiShop, setIsTheDersiShop] = useState(false);
   const [isDowngradeFlow, setIsDowngradeFlow] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
 
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
@@ -208,7 +226,9 @@ export default function BillingPage() {
     });
   }, [shopId]);
 
-  const plans = makePlans(currency, fmt);
+  const yearlyAvailable = !!YEARLY_PRICING[currency];
+  const effectivePeriod: BillingPeriod = yearlyAvailable ? billingPeriod : 'monthly';
+  const plans = makePlans(currency, fmt, effectivePeriod);
   const meta = CURRENCY_META[currency];
 
   const theDersiPlanType = currentPlan?.plan_type ?? 'thedersi_basic';
@@ -238,14 +258,14 @@ export default function BillingPage() {
       // Real paid upgrades (not downgrades, not free trial) go through Lemon
       // Squeezy checkout — the plan only activates once payment is confirmed.
       if (!isDowngradeFlow && (selectedPlan === 'starter' || selectedPlan === 'premium')) {
-        const res = await subscriptionApi.createCheckout(shopId, selectedPlan, 'monthly');
+        const res = await subscriptionApi.createCheckout(shopId, selectedPlan, effectivePeriod);
         window.location.href = res.data.checkout_url;
         return;
       }
 
       // Downgrades (and any other plan changes) stay as an offline request —
       // no payment is needed to move to a lower/free plan.
-      await subscriptionApi.requestUpgrade(shopId, selectedPlan);
+      await subscriptionApi.requestUpgrade(shopId, selectedPlan, effectivePeriod);
       const plan = plans.find(p => p.id === selectedPlan);
       setUpgradeSuccess(
         isDowngradeFlow
@@ -262,6 +282,21 @@ export default function BillingPage() {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '—';
     return new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const [portalLoading, setPortalLoading] = useState(false);
+  const handleManageBilling = async () => {
+    if (!shopId) return;
+    setPortalLoading(true);
+    try {
+      const { subscriptionApi } = await import('@/lib/api');
+      const res = await subscriptionApi.getBillingPortal(shopId);
+      window.location.href = res.data.portal_url;
+    } catch (err: any) {
+      setUpgradeError(err.response?.data?.detail || 'Could not open the billing portal. Please try again.');
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   // ── TheDersi seller experience ─────────────────────────────────────────────
@@ -523,7 +558,7 @@ export default function BillingPage() {
                 <p className="text-muted-foreground text-sm mt-1">
                   {currentPlan.is_trial
                     ? `Free trial${currentPlan.daysLeft != null ? ` · ${currentPlan.daysLeft} day${currentPlan.daysLeft !== 1 ? 's' : ''} left` : ''}`
-                    : `${currentPlan.price} ${currency}/month${currentPlan.nextBilling ? ` · Next billing: ${formatDate(currentPlan.nextBilling)}` : ''}`
+                    : `${currentPlan.price} ${currency}/${currentPlan.billing_type === 'yearly' ? 'year' : 'month'}${currentPlan.nextBilling ? ` · Next billing: ${formatDate(currentPlan.nextBilling)}` : ''}`
                   }
                 </p>
               </div>
@@ -533,6 +568,14 @@ export default function BillingPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition">
                 <Plus className="w-4 h-4" /> Add Staff
               </button>
+              {!currentPlan.is_trial && (
+                <button type="button" onClick={handleManageBilling} disabled={portalLoading}
+                  title="Cancel, pause, or update your payment method on Lemon Squeezy"
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition disabled:opacity-60">
+                  {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+                  Manage Billing
+                </button>
+              )}
               {currentPlan?.plan_type === 'premium' ? (
                 <button type="button" onClick={() => handleUpgrade('starter', true)}
                   className="inline-flex items-center gap-2 px-4 py-2 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-500/10 transition">
@@ -566,11 +609,26 @@ export default function BillingPage() {
 
       {/* Plans */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h2 className="text-lg font-semibold text-foreground">Available Plans</h2>
-          <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-            <span className="text-lg">{meta.flag}</span> Prices in {currency}
-          </span>
+          <div className="flex items-center gap-3">
+            {yearlyAvailable && (
+              <div className="inline-flex items-center bg-muted rounded-lg p-1 text-sm font-medium">
+                <button type="button" onClick={() => setBillingPeriod('monthly')}
+                  className={`px-3 py-1.5 rounded-md transition ${billingPeriod === 'monthly' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                  Monthly
+                </button>
+                <button type="button" onClick={() => setBillingPeriod('yearly')}
+                  className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${billingPeriod === 'yearly' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                  Yearly
+                  <span className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">Save ~15%</span>
+                </button>
+              </div>
+            )}
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <span className="text-lg">{meta.flag}</span> Prices in {currency}
+            </span>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">
@@ -779,7 +837,7 @@ export default function BillingPage() {
                       ) : (
                         <>
                           <p className="text-2xl font-bold text-primary">{plan.priceLabel}</p>
-                          <p className="text-xs text-muted-foreground">{currency}/month</p>
+                          <p className="text-xs text-muted-foreground">{currency}/{plan.period}</p>
                         </>
                       )}
                     </div>

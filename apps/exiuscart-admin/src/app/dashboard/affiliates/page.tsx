@@ -46,8 +46,6 @@ interface Affiliate {
   affiliate_type: 'external' | 'shop_owner';
   status: 'pending' | 'active' | 'suspended';
   commission_model: 'one_time' | 'recurring';
-  commission_monthly: number;
-  commission_yearly: number;
   total_earned: number;
   pending_amount: number;
   referral_count: number;
@@ -324,10 +322,6 @@ export default function AffiliatesPage() {
                       <div>
                         <p className="text-xs text-gray-500">Referrals</p>
                         <p className="text-sm font-semibold text-white">{affiliate.referral_count}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Commission</p>
-                        <p className="text-sm font-semibold text-[#6B3FD9]">${affiliate.commission_monthly} <span className="text-gray-500 font-normal text-xs">/ ${affiliate.commission_yearly}</span></p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Earned</p>

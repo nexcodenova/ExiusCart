@@ -383,6 +383,7 @@ def list_subscription_payments(
             "source": p.source,
             "lemon_squeezy_order_id": p.lemon_squeezy_order_id,
             "confirmed_at": p.confirmed_at.isoformat() if p.confirmed_at else None,
+            "refunded_at": p.refunded_at.isoformat() if p.refunded_at else None,
             "commission": {
                 "affiliate_name": commission.affiliate.name if commission and commission.affiliate else None,
                 "amount": float(commission.amount) if commission else None,
@@ -864,8 +865,6 @@ def _affiliate_out(affiliate: Affiliate, db: Session) -> dict:
         "affiliate_type": affiliate.affiliate_type,
         "status": affiliate.status,
         "commission_model": affiliate.commission_model or "one_time",
-        "commission_monthly": 25.0,
-        "commission_yearly": 75.0,
         "total_earned": float(total_earned),
         "pending_amount": float(pending_amount),
         "referral_count": referral_count,
@@ -1040,14 +1039,32 @@ def pay_payout_request(
     if req.status != "pending":
         raise HTTPException(status_code=400, detail="Request is not pending")
 
+    # Only settle the commissions actually linked to THIS request — not every
+    # currently-approved commission for the affiliate, which could include
+    # ones approved after this request was created (those get their own
+    # future payout request instead of being silently swept in here).
+    linked_commissions = db.query(Commission).filter(
+        Commission.payout_request_id == req.id,
+    ).all()
+    payable = [c for c in linked_commissions if c.status == "approved"]
+    reversed_since_request = [c for c in linked_commissions if c.status == "reversed"]
+    actual_amount = sum(float(c.amount) for c in payable)
+
+    if reversed_since_request:
+        logger.warning(
+            f"[payout] request id={req.id} affiliate_id={req.affiliate_id} — "
+            f"{len(reversed_since_request)} linked commission(s) were refunded/reversed "
+            f"after the request was created; excluding them, paying ${actual_amount:.2f} "
+            f"instead of the originally requested ${float(req.amount):.2f}"
+        )
+
     req.status = "paid"
     req.paid_at = datetime.now(timezone.utc)
+    req.amount = actual_amount
 
-    # Mark all approved commissions for this affiliate as paid
-    db.query(Commission).filter(
-        Commission.affiliate_id == req.affiliate_id,
-        Commission.status == "approved",
-    ).update({"status": "paid", "paid_at": datetime.now(timezone.utc)})
+    for c in payable:
+        c.status = "paid"
+        c.paid_at = datetime.now(timezone.utc)
 
     db.commit()
 

@@ -170,6 +170,12 @@ _MIGRATIONS = [
     "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS refresh_token VARCHAR(1000);",
     "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;",
     "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS oauth_state VARCHAR(100);",
+    # Lemon Squeezy refund handling
+    "ALTER TABLE subscription_payments ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ;",
+    # Link commissions to the exact payout request that covers them, so a
+    # refund/reversal or a newly-approved commission can never change what a
+    # payout actually settles after the fact.
+    "ALTER TABLE commissions ADD COLUMN IF NOT EXISTS payout_request_id INTEGER REFERENCES affiliate_payout_requests(id);",
 ]
 
 for _sql in _MIGRATIONS:

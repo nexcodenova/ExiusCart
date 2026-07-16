@@ -24,7 +24,7 @@ const METRICS = [
 
 // ── Calculator constants ──
 const ONE_TIME_AMOUNT = 75;
-const AVG_SUBSCRIPTION_VALUE = 28; // USD/mo — blended average across ExiusCart paid plans
+const AVG_SUBSCRIPTION_VALUE = 20.5; // USD/mo — simple average of Starter ($12) and Premium ($29), the only two paid plans
 const RECURRING_RATE = 0.5;
 const RECURRING_MONTHS_CAP = 12;
 const RECURRING_MONTHLY_PER_SELLER = AVG_SUBSCRIPTION_VALUE * RECURRING_RATE;
@@ -39,8 +39,9 @@ function EarningsCalculator() {
   const oneTimeTotal = sellerCount * ONE_TIME_AMOUNT;
   const recurringMonthlyWhileActive = sellerCount * RECURRING_MONTHLY_PER_SELLER;
 
-  // Every seller pays a flat $14/mo for their first 12 months, then $0 after —
-  // this is a fixed headcount, not an ongoing monthly recruiting rate.
+  // Every seller pays a flat RECURRING_MONTHLY_PER_SELLER for their first 12
+  // months, then $0 after — this is a fixed headcount, not an ongoing
+  // monthly recruiting rate.
   // Recalculates live any time sellerCount or monthsToProject changes.
   const monthlyBreakdown = useMemo(() =>
     Array.from({ length: monthsToProject }, (_, i) => {

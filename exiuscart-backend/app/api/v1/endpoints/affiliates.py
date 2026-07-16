@@ -295,11 +295,12 @@ def request_payout(
     if not affiliate.payout_method or not payout_address:
         raise HTTPException(status_code=422, detail="Set your payout method in Profile before requesting a payout")
 
-    # Calculate available (approved commissions not yet in a pending request)
+    # Calculate available (approved commissions not yet claimed by a payout request)
     now = datetime.now(timezone.utc)
     approved_commissions = db.query(Commission).filter(
         Commission.affiliate_id == affiliate.id,
         Commission.status == "approved",
+        Commission.payout_request_id.is_(None),
     ).all()
     available = sum(float(c.amount) for c in approved_commissions)
 
@@ -326,6 +327,14 @@ def request_payout(
         status="pending",
     )
     db.add(req)
+    db.flush()  # assign req.id before linking commissions to it
+
+    # Lock in exactly which commissions this request covers — a later refund
+    # (reversing one of these) or a newly-approved commission can never change
+    # what "mark this request paid" actually settles.
+    for c in approved_commissions:
+        c.payout_request_id = req.id
+
     db.commit()
     db.refresh(req)
 

@@ -24,19 +24,40 @@ from app.schemas.shop import ShopCreate, ShopResponse, ShopUpdate
 from app.api.v1.deps import get_current_user
 import math
 
-# Plan catalogue (source of truth)
+# Plan catalogue (source of truth) — prices must mirror
+# apps/exiuscart-website/src/config/pricing.ts exactly.
 PLAN_CATALOGUE = {
     # ExiusCart direct plans
-    "free_trial":      {"name": "Free Trial",  "price": 0,  "staff": 1},
-    "starter":         {"name": "Starter",     "price": 45, "staff": 3},
-    "premium":         {"name": "Premium",     "price": 99, "staff": 0},  # unlimited staff
+    "free_trial": {
+        "name": "Free Trial", "staff": 1,
+        "price": {"monthly": {"AED": 0, "USD": 0}, "yearly": {"AED": 0, "USD": 0}},
+    },
+    "starter": {
+        "name": "Starter", "staff": 3,
+        "price": {"monthly": {"AED": 45, "USD": 12}, "yearly": {"AED": 459, "USD": 120}},
+    },
+    "premium": {
+        "name": "Premium", "staff": 0,  # unlimited staff
+        "price": {"monthly": {"AED": 99, "USD": 29}, "yearly": {"AED": 999, "USD": 290}},
+    },
     # TheDersi partner plans (billed through TheDersi, not ExiusCart)
-    "thedersi_basic":  {"name": "Free Forever (TheDersi)", "price": 0, "staff": 1},
-    "thedersi_pro":    {"name": "Pro (TheDersi)",          "price": 0, "staff": 3},  # starter features + unlimited orders
-    # Legacy names — kept for backward compat
-    "pro":             {"name": "Pro",         "price": 199, "staff": 2},
-    "enterprise":      {"name": "Enterprise",  "price": 399, "staff": 5},
+    "thedersi_basic": {
+        "name": "Free Forever (TheDersi)", "staff": 1,
+        "price": {"monthly": {"AED": 0, "USD": 0}, "yearly": {"AED": 0, "USD": 0}},
+    },
+    "thedersi_pro": {  # starter features + unlimited orders
+        "name": "Pro (TheDersi)", "staff": 3,
+        "price": {"monthly": {"AED": 0, "USD": 0}, "yearly": {"AED": 0, "USD": 0}},
+    },
 }
+
+
+def plan_price(plan_id: str, billing_type: str, currency: str) -> float:
+    """Catalogue price lookup with sane fallbacks for unknown billing_type/currency."""
+    cat = PLAN_CATALOGUE.get(plan_id, {})
+    prices = cat.get("price", {})
+    period = prices.get(billing_type) or prices.get("monthly") or {}
+    return float(period.get(currency, period.get("AED", 0)))
 
 router = APIRouter()
 
@@ -336,11 +357,19 @@ def get_shop_subscription(
                 Order.source != "pos",
             ).count()
 
+        # Prefer the real amount actually charged (handles USD/AED and
+        # monthly/yearly correctly); only fall back to the catalogue list
+        # price for subs that haven't been charged yet (e.g. pending_approval).
+        real_price = float(sub.amount_paid) if sub.amount_paid else plan_price(
+            sub.plan_type, sub.billing_type or "monthly", shop.currency or "AED"
+        )
+
         plan_info = {
             "plan_type": sub.plan_type,
             "source": source,
             "name": cat.get("name", sub.plan_type.replace("_", " ").title()),
-            "price": cat.get("price", float(sub.amount_paid or 0)),
+            "price": real_price,
+            "billing_type": sub.billing_type or "monthly",
             "status": sub.status,
             "is_trial": sub.plan_type == "free_trial" and sub.status == "trial",
             "is_pending_approval": sub.status == "pending_approval",
@@ -363,11 +392,14 @@ def get_shop_subscription(
     history = []
     for s in all_subs:
         cat = PLAN_CATALOGUE.get(s.plan_type, {})
+        history_amount = float(s.amount_paid) if s.amount_paid else plan_price(
+            s.plan_type, s.billing_type or "monthly", s.currency or "AED"
+        )
         history.append({
             "id": s.id,
             "date": s.created_at.isoformat(),
             "description": f"{cat.get('name', s.plan_type.capitalize())} Plan — {s.billing_type}",
-            "amount": float(s.amount_paid or cat.get("price", 0)),
+            "amount": history_amount,
             "status": s.status,
         })
 
@@ -392,14 +424,18 @@ def request_plan_upgrade(
     if plan_id not in PLAN_CATALOGUE:
         raise HTTPException(status_code=400, detail="Invalid plan")
 
-    cat = PLAN_CATALOGUE[plan_id]
+    billing_type = body.get("billing_type") or "monthly"
+    if billing_type not in ("monthly", "yearly"):
+        raise HTTPException(status_code=400, detail="Invalid billing_type")
+
+    shop_currency = shop.currency or "AED"
     new_sub = Subscription(
         shop_id=shop_id,
         plan_type=plan_id,
-        billing_type="monthly",
+        billing_type=billing_type,
         status="pending_approval",
-        amount_paid=cat["price"],
-        currency="AED",
+        amount_paid=plan_price(plan_id, billing_type, shop_currency),
+        currency=shop_currency,
     )
     db.add(new_sub)
     db.commit()
@@ -448,6 +484,41 @@ async def create_subscription_checkout(
         raise HTTPException(status_code=503, detail=str(e))
 
     return {"checkout_url": checkout_url}
+
+
+@router.get("/{shop_id}/subscription/portal")
+async def get_subscription_portal(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns Lemon Squeezy's self-service Customer Portal URL — the seller can
+    cancel, pause, or update their payment method there directly. Only
+    available once a shop has a real Lemon Squeezy-billed subscription; free
+    trial and TheDersi-managed plans have no portal to open.
+    """
+    from app.core.lemonsqueezy import get_customer_portal_url
+
+    shop = db.query(Shop).filter(
+        Shop.id == shop_id, Shop.owner_id == current_user.id
+    ).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id,
+        Subscription.status.in_(["active", "cancelled"]),
+    ).order_by(Subscription.id.desc()).first()
+    if not sub or not sub.lemon_squeezy_subscription_id:
+        raise HTTPException(status_code=404, detail="No Lemon Squeezy subscription found for this shop.")
+
+    try:
+        portal_url = await get_customer_portal_url(sub.lemon_squeezy_subscription_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    return {"portal_url": portal_url}
 
 
 # ── Reports endpoints ──────────────────────────────────────────────────────────

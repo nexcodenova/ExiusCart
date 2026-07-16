@@ -30,6 +30,7 @@ class SubscriptionPayment(Base):
 
     confirmed_at = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    refunded_at = Column(DateTime(timezone=True), nullable=True)
 
     subscription = relationship("Subscription")
     shop = relationship("Shop")

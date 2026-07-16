@@ -20,6 +20,7 @@ from app.core.lemonsqueezy import verify_webhook_signature
 from app.core.affiliate_commissions import generate_commission_for_payment
 from app.models.subscription import Subscription
 from app.models.subscription_payment import SubscriptionPayment
+from app.models.affiliate import Commission
 from app.models.user import User
 from app.models.shop import Shop
 from app.core.email import send_dashboard_live_email, send_welcome_email, send_password_setup_email, send_new_signup_notification
@@ -57,6 +58,8 @@ async def lemonsqueezy_webhook(request: Request, db: Session = Depends(get_db)):
         _handle_subscription_ended(db, resource, event_name)
     elif event_name == "subscription_payment_failed":
         logger.warning(f"[LemonSqueezy] payment failed — subscription_id={attrs.get('subscription_id')}")
+    elif event_name == "subscription_payment_refunded":
+        _handle_payment_refunded(db, resource)
 
     # Always 200 quickly — Lemon Squeezy retries on non-2xx
     return {"received": True}
@@ -256,3 +259,46 @@ def _handle_subscription_ended(db: Session, resource: dict, event_name: str) -> 
     sub.status = "cancelled" if event_name == "subscription_cancelled" else "expired"
     db.commit()
     logger.info(f"[LemonSqueezy] subscription {ls_subscription_id} -> {sub.status}")
+
+
+def _handle_payment_refunded(db: Session, resource: dict) -> None:
+    """
+    Fires when a payment is refunded via Lemon Squeezy (refunds are issued by
+    us, the seller, through Lemon Squeezy's own dashboard — there's no
+    self-service refund button for the payer). Marks the payment refunded and
+    reverses its affiliate commission if one hasn't been paid out yet already.
+    Deliberately does NOT touch the subscription's own status — a refund on a
+    past payment doesn't necessarily mean the subscription itself is currently
+    cancelled; if Lemon Squeezy also cancels it, that arrives separately as its
+    own subscription_cancelled event, already handled above.
+    """
+    ls_order_id = str(resource.get("id", ""))
+    if not ls_order_id:
+        logger.error("[LemonSqueezy] refund event missing order id")
+        return
+
+    payment = db.query(SubscriptionPayment).filter(
+        SubscriptionPayment.lemon_squeezy_order_id == ls_order_id
+    ).first()
+    if not payment:
+        logger.error(f"[LemonSqueezy] refund for order={ls_order_id} but no matching payment on file — needs manual reconciliation")
+        return
+
+    if payment.refunded_at:
+        logger.info(f"[LemonSqueezy] duplicate refund webhook for order={ls_order_id}, skipping")
+        return
+
+    payment.refunded_at = datetime.now(timezone.utc)
+
+    commission = db.query(Commission).filter(
+        Commission.subscription_payment_id == payment.id
+    ).first()
+    if commission:
+        if commission.status == "paid":
+            logger.warning(f"[LemonSqueezy] refund for order={ls_order_id} — linked commission id={commission.id} was ALREADY PAID OUT, needs manual clawback per affiliate terms, not auto-deducted")
+        else:
+            commission.status = "reversed"
+            logger.info(f"[LemonSqueezy] refund for order={ls_order_id} — reversed commission id={commission.id}")
+
+    db.commit()
+    logger.info(f"[LemonSqueezy] payment refunded — order={ls_order_id} shop={payment.shop_id}")
