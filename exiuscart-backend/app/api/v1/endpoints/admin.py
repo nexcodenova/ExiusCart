@@ -474,6 +474,9 @@ def approve_subscription(
                 owner.email,
                 owner.full_name or "",
                 sub.shop.name or "Your Shop",
+                "https://store.exiuscart.com/login",
+                sub.plan_type == "free_trial",
+                sub.plan_type.replace("_", " ").title(),
             )
 
     return {"message": "Subscription approved", "id": sub_id}

@@ -137,7 +137,10 @@ def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attr
             owner = db.query(User).filter(User.id == shop.owner_id).first()
             if owner:
                 try:
-                    send_dashboard_live_email(owner.email, owner.full_name or "", shop.name or "Your Shop")
+                    send_dashboard_live_email(
+                        owner.email, owner.full_name or "", shop.name or "Your Shop",
+                        is_trial=False, plan_label=sub.plan_type.replace("_", " ").title(),
+                    )
                 except Exception:
                     pass
 

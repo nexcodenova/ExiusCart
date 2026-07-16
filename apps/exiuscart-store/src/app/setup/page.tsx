@@ -15,6 +15,7 @@ function SetupForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState('');
   const [done, setDone]           = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
 
   useEffect(() => {
     if (!token) setError('Missing or invalid setup link. Please request a new one.');
@@ -37,6 +38,11 @@ function SetupForm() {
     try {
       const { authApi } = await import('@/lib/api');
       const res = await authApi.setupPassword(token, password);
+      if (res.data?.status === 'pending_approval') {
+        setPendingApproval(true);
+        setDone(true);
+        return;
+      }
       const { access_token, user } = res.data;
       localStorage.setItem('access_token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -64,7 +70,11 @@ function SetupForm() {
             <div className="text-center">
               <CheckCircle className="h-14 w-14 text-green-400 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-white mb-2">Password set!</h2>
-              <p className="text-gray-400 text-sm">Taking you to your dashboard…</p>
+              <p className="text-gray-400 text-sm">
+                {pendingApproval
+                  ? "Your account is still pending admin approval — we'll email you as soon as it's ready to log in."
+                  : 'Taking you to your dashboard…'}
+              </p>
             </div>
           ) : (
             <>

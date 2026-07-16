@@ -324,9 +324,14 @@ class SetupPasswordIn(BaseModel):
 @router.post("/setup-password", response_model=Token)
 def setup_password(data: SetupPasswordIn, db: Session = Depends(get_db)):
     """
-    Redeems a one-time setup link issued during TheDersi provision.
-    Token is a signed JWT (purpose=setup_password, exp=48h).
-    Sets the seller's password and returns an access token so they're immediately logged in.
+    Redeems a one-time setup link (issued during TheDersi provision, or after a
+    pre-signup checkout payment). Token is a signed JWT (purpose=setup_password, exp=48h).
+
+    Setting the password does NOT by itself grant access — if the account's
+    subscription is still pending_approval (e.g. a paid pre-signup awaiting
+    admin review), this only sets the password and returns pending_approval;
+    it does not log them in or send the TheDersi-specific welcome email, which
+    only applies to actual TheDersi-provisioned accounts.
     """
     try:
         payload = jwt.decode(
@@ -349,11 +354,23 @@ def setup_password(data: SetupPasswordIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
 
     user.hashed_password = get_password_hash(data.password)
-    user.is_active = True
     db.commit()
     db.refresh(user)
 
-    _email_pool.submit(send_thedersi_welcome_email, user.email, user.full_name or "")
+    shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
+    sub = (
+        db.query(Subscription).filter(Subscription.shop_id == shop.id).order_by(Subscription.id.desc()).first()
+        if shop else None
+    )
+
+    if sub and sub.status == "pending_approval":
+        return JSONResponse(content={"status": "pending_approval", "email": user.email})
+
+    user.is_active = True
+    db.commit()
+
+    if sub and sub.plan_type and sub.plan_type.startswith("thedersi"):
+        _email_pool.submit(send_thedersi_welcome_email, user.email, user.full_name or "")
 
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token, user=UserResponse.model_validate(user))

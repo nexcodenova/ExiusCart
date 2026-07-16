@@ -6,7 +6,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Eye, EyeOff, Loader2, ArrowLeft, Check, Store, Users, TrendingUp, Shield, Tag, Globe, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowLeft, Check, Tag, Globe, Mail, Lock } from 'lucide-react';
+import { Navbar } from '@/components/layout/navbar';
 
 const COUNTRIES = [
   // Middle East (top — primary market)
@@ -100,13 +101,6 @@ const registerSchema = z
   });
 
 type RegisterForm = z.infer<typeof registerSchema>;
-
-const features = [
-  { icon: Store, text: 'Easy store setup in minutes' },
-  { icon: Users, text: 'Manage staff & teams' },
-  { icon: TrendingUp, text: 'Real-time sales analytics' },
-  { icon: Shield, text: 'Secure payment processing' },
-];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -257,13 +251,13 @@ function RegisterForm() {
 
   if (pendingEmail && !success) {
     return (
-      <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 text-center">
+      <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm text-center">
         <div className="w-16 h-16 bg-[#6B3FD9]/10 rounded-full flex items-center justify-center mx-auto mb-5">
           <Mail className="w-8 h-8 text-[#6B3FD9]" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Check your email</h2>
-        <p className="text-gray-400 text-sm mb-1">We sent a 6-digit code to</p>
-        <p className="text-white font-medium text-sm mb-6">{pendingEmail}</p>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Check your email</h2>
+        <p className="text-gray-500 text-sm mb-1">We sent a 6-digit code to</p>
+        <p className="text-gray-900 font-medium text-sm mb-6">{pendingEmail}</p>
 
         <input
           type="text"
@@ -272,11 +266,11 @@ function RegisterForm() {
           value={otpCode}
           onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
           placeholder="000000"
-          className="w-full text-center text-3xl font-bold tracking-[0.5em] bg-[#0B1121] border border-gray-700 rounded-xl px-4 py-4 text-white placeholder-gray-600 focus:border-[#6B3FD9] focus:ring-1 focus:ring-[#6B3FD9] outline-none transition mb-4"
+          className="w-full text-center text-3xl font-bold tracking-[0.5em] bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-gray-900 placeholder-gray-300 focus:ring-2 focus:ring-[#6B3FD9] outline-none transition mb-4"
         />
 
         {otpError && (
-          <p className="text-red-400 text-sm mb-4">{otpError}</p>
+          <p className="text-red-600 text-sm mb-4">{otpError}</p>
         )}
 
         <button
@@ -290,7 +284,7 @@ function RegisterForm() {
         <p className="text-gray-500 text-sm">
           Didn't receive it?{' '}
           {resendSent ? (
-            <span className="text-green-400">Code resent!</span>
+            <span className="text-emerald-600">Code resent!</span>
           ) : (
             <button
               onClick={handleResendOtp}
@@ -301,22 +295,22 @@ function RegisterForm() {
             </button>
           )}
         </p>
-        <p className="text-gray-600 text-xs mt-3">Code expires in 10 minutes</p>
+        <p className="text-gray-400 text-xs mt-3">Code expires in 10 minutes</p>
       </div>
     );
   }
 
   if (success) {
     return (
-      <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 text-center">
-        <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-green-400" />
+      <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm text-center">
+        <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Check className="w-8 h-8 text-emerald-600" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-3">Email Verified!</h2>
-        <p className="text-gray-400 text-sm mb-4">
+        <h2 className="text-xl font-bold text-gray-900 mb-3">Email Verified!</h2>
+        <p className="text-gray-500 text-sm mb-4">
           Your email has been verified successfully. Our team will review and approve your account shortly. You will receive an email once approved.
         </p>
-        <p className="text-gray-500 text-xs flex items-center justify-center gap-1.5">
+        <p className="text-gray-400 text-xs flex items-center justify-center gap-1.5">
           <Loader2 className="w-3 h-3 animate-spin" /> Redirecting to login...
         </p>
       </div>
@@ -324,21 +318,21 @@ function RegisterForm() {
   }
 
   return (
-    <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 sm:p-8">
-      <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">Create Your Account</h1>
-      <p className="text-gray-400 mb-6 text-sm sm:text-base">
+    <div className="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Create Your Account</h1>
+      <p className="text-gray-500 mb-6 text-sm sm:text-base">
         Start your 14-day free trial today
       </p>
 
       {/* Trial Badge */}
-      <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 mb-4 flex items-center gap-2">
-        <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
-        <p className="text-green-400 text-sm">No credit card required for trial</p>
+      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-4 flex items-center gap-2">
+        <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+        <p className="text-emerald-700 text-sm">No credit card required for trial</p>
       </div>
 
       {/* Referral Badge */}
       {refCode && (
-        <div className="bg-[#6B3FD9]/10 border border-[#6B3FD9]/30 rounded-lg p-3 mb-4 flex items-center gap-2">
+        <div className="bg-[#6B3FD9]/5 border border-[#6B3FD9]/20 rounded-xl p-3 mb-4 flex items-center gap-2">
           <Tag className="w-4 h-4 text-[#6B3FD9] flex-shrink-0" />
           <p className="text-[#6B3FD9] text-sm">
             Referred by <span className="font-semibold">{refCode}</span>
@@ -347,69 +341,70 @@ function RegisterForm() {
       )}
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
-          <p className="text-red-400 text-sm">{error}</p>
+        <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
+          <p className="text-red-600 text-sm">{error}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)}>
+      <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
         <div>
-          <label htmlFor="shopName" className="block text-sm text-gray-400 mb-2">
+          <label htmlFor="shopName" className="text-xs font-medium text-gray-500 mb-1 block">
             Shop Name
           </label>
           <input
             id="shopName"
             type="text"
             {...register('shopName')}
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
             placeholder="Your store name"
           />
           {errors.shopName && (
-            <p className="text-red-400 text-sm mt-1">{errors.shopName.message}</p>
+            <p className="text-red-600 text-sm mt-1">{errors.shopName.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="ownerName" className="block text-sm text-gray-400 mb-2">
+          <label htmlFor="ownerName" className="text-xs font-medium text-gray-500 mb-1 block">
             Your Name
           </label>
           <input
             id="ownerName"
             type="text"
             {...register('ownerName')}
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
             placeholder="Your full name"
           />
           {errors.ownerName && (
-            <p className="text-red-400 text-sm mt-1">{errors.ownerName.message}</p>
+            <p className="text-red-600 text-sm mt-1">{errors.ownerName.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm text-gray-400 mb-2">
+          <label htmlFor="email" className="text-xs font-medium text-gray-500 mb-1 block">
             Email Address
           </label>
           <input
             id="email"
             type="email"
             {...register('email')}
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
             placeholder="you@example.com"
           />
           {errors.email && (
-            <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>
+            <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="phone" className="block text-sm text-gray-400 mb-2">
+          <label htmlFor="phone" className="text-xs font-medium text-gray-500 mb-1 block">
             Phone Number
           </label>
           <div className="flex">
             <select
               value={phoneDialCode}
               onChange={(e) => setPhoneDialCode(e.target.value)}
-              className="bg-[#0B1121] border border-gray-700 border-r-0 rounded-l-lg pl-3 pr-1 py-3 text-white focus:border-[#6B3FD9] focus:outline-none transition text-sm appearance-none cursor-pointer w-28 shrink-0"
+              className="bg-gray-50 border border-gray-200 border-r-0 rounded-l-xl pl-3 pr-1 py-3 text-gray-900 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm appearance-none cursor-pointer w-28 shrink-0"
             >
               {COUNTRIES.map(c => (
                 <option key={c.code} value={c.dialCode}>
@@ -421,25 +416,25 @@ function RegisterForm() {
               id="phone"
               type="tel"
               {...register('phone')}
-              className="flex-1 min-w-0 px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-r-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+              className="flex-1 min-w-0 px-4 py-3 bg-gray-50 border border-gray-200 rounded-r-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
               placeholder="50 123 4567"
             />
           </div>
           {errors.phone && (
-            <p className="text-red-400 text-sm mt-1">{errors.phone.message}</p>
+            <p className="text-red-600 text-sm mt-1">{errors.phone.message}</p>
           )}
         </div>
 
         {/* Country */}
         <div>
-          <label htmlFor="country" className="block text-sm text-gray-400 mb-2 flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5" /> Country <span className="text-red-400">*</span>
+          <label htmlFor="country" className="text-xs font-medium text-gray-500 mb-1 flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5" /> Country <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <select
               id="country"
               {...register('country')}
-              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base appearance-none"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base appearance-none"
             >
               <option value="">Select your country...</option>
               {COUNTRIES.map(c => (
@@ -453,7 +448,7 @@ function RegisterForm() {
             )}
           </div>
           {errors.country && (
-            <p className="text-red-400 text-sm mt-1">{errors.country.message}</p>
+            <p className="text-red-600 text-sm mt-1">{errors.country.message}</p>
           )}
           {countryObj && countryObj.code === 'AE' && (
             <p className="text-[#6B3FD9] text-xs mt-1">Pricing shown in AED • Payments via UAE bank cards</p>
@@ -464,7 +459,7 @@ function RegisterForm() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm text-gray-400 mb-2">
+          <label htmlFor="password" className="text-xs font-medium text-gray-500 mb-1 block">
             Password
           </label>
           <div className="relative">
@@ -472,46 +467,46 @@ function RegisterForm() {
               id="password"
               type={showPassword ? 'text' : 'password'}
               {...register('password')}
-              className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition pr-12 text-sm sm:text-base"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition pr-12 text-sm sm:text-base"
               placeholder="Min 8 characters"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
           {errors.password && (
-            <p className="text-red-400 text-sm mt-1">{errors.password.message}</p>
+            <p className="text-red-600 text-sm mt-1">{errors.password.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm text-gray-400 mb-2">
+          <label htmlFor="confirmPassword" className="text-xs font-medium text-gray-500 mb-1 block">
             Confirm Password
           </label>
           <input
             id="confirmPassword"
             type="password"
             {...register('confirmPassword')}
-            className="w-full px-4 py-3 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
             placeholder="Confirm your password"
           />
           {errors.confirmPassword && (
-            <p className="text-red-400 text-sm mt-1">{errors.confirmPassword.message}</p>
+            <p className="text-red-600 text-sm mt-1">{errors.confirmPassword.message}</p>
           )}
         </div>
 
         {/* Referral Code Field */}
         <div>
-          <label htmlFor="refCode" className="block text-sm text-gray-400 mb-2 flex items-center gap-1.5">
+          <label htmlFor="refCode" className="text-xs font-medium text-gray-500 mb-1 flex items-center gap-1.5">
             Referral Code
             {isRefLocked
               ? <span className="text-[#6B3FD9] text-xs font-medium">(applied)</span>
-              : <span className="text-gray-600">(optional)</span>
+              : <span className="text-gray-400">(optional)</span>
             }
           </label>
           <div className="relative">
@@ -520,10 +515,10 @@ function RegisterForm() {
               type="text"
               {...register('refCode')}
               readOnly={isRefLocked}
-              className={`w-full px-4 py-3 pr-10 rounded-lg text-white placeholder-gray-500 focus:outline-none transition text-sm sm:text-base uppercase ${
+              className={`w-full px-4 py-3 pr-10 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none transition text-sm sm:text-base uppercase ${
                 isRefLocked
-                  ? 'bg-[#6B3FD9]/5 border border-[#6B3FD9]/30 cursor-not-allowed text-[#9B6FFF]'
-                  : 'bg-[#0B1121] border border-gray-700 focus:border-[#6B3FD9]'
+                  ? 'bg-[#6B3FD9]/5 border border-[#6B3FD9]/30 cursor-not-allowed text-[#6B3FD9]'
+                  : 'bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-[#6B3FD9]'
               }`}
               placeholder="e.g., JOHN8F2A"
             />
@@ -532,21 +527,22 @@ function RegisterForm() {
             )}
           </div>
         </div>
+      </div>
 
-        <div className="flex items-start gap-3 pt-2">
+        <div className="flex items-start gap-3 pt-4 max-w-md mx-auto">
           <input
             type="checkbox"
             id="terms"
             required
-            className="w-4 h-4 mt-0.5 rounded border-gray-600 bg-[#0B1121] text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0"
+            className="w-4 h-4 mt-0.5 rounded border-gray-300 bg-gray-50 text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0"
           />
-          <label htmlFor="terms" className="text-sm text-gray-400">
+          <label htmlFor="terms" className="text-sm text-gray-500">
             I agree to the{' '}
-            <Link href="/terms" className="text-[#6B3FD9] hover:text-[#8B5CF6] transition">
+            <Link href="/terms" className="text-[#6B3FD9] hover:text-[#5A2EC9] transition">
               Terms of Service
             </Link>{' '}
             and{' '}
-            <Link href="/privacy" className="text-[#6B3FD9] hover:text-[#8B5CF6] transition">
+            <Link href="/privacy" className="text-[#6B3FD9] hover:text-[#5A2EC9] transition">
               Privacy Policy
             </Link>
           </label>
@@ -555,16 +551,16 @@ function RegisterForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-3 sm:py-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
+          className="block mx-auto max-w-md w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-3 sm:py-4 rounded-2xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
         >
           {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
           Create Account
         </button>
       </form>
 
-      <p className="text-center mt-6 text-gray-400 text-sm sm:text-base">
+      <p className="text-center mt-6 text-gray-500 text-sm sm:text-base">
         Already have an account?{' '}
-        <Link href="/login" className="text-[#6B3FD9] font-semibold hover:text-[#8B5CF6] transition">
+        <Link href="/login" className="text-[#6B3FD9] font-semibold hover:text-[#5A2EC9] transition">
           Sign in
         </Link>
       </p>
@@ -574,73 +570,17 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen bg-[#0B1121] flex">
-      {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#151F32] to-[#0B1121] flex-col justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-[#6B3FD9] rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#6B3FD9] rounded-full blur-3xl" />
-        </div>
+    <div className="min-h-screen bg-[#F5F3EF]">
+      <Navbar />
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <Link href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-800 text-sm mb-6 transition">
+          <ArrowLeft className="w-4 h-4" />
+          Back to home
+        </Link>
 
-        <div className="relative z-10 max-w-md">
-          <Link href="/" className="inline-flex items-center gap-2 mb-12">
-            <span className="text-2xl font-bold text-white tracking-tight">
-              <span className="text-[#6B3FD9]">Exius</span>Cart
-            </span>
-          </Link>
-
-          <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
-            Start Your Business<br />
-            <span className="text-[#6B3FD9]">Journey Today</span>
-          </h1>
-          <p className="text-gray-400 text-lg mb-10">
-            Everything you need to run your shop — products, orders, customers, and more in one place.
-          </p>
-
-          <div className="space-y-5">
-            {features.map((feature, index) => (
-              <div key={index} className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <feature.icon className="w-5 h-5 text-[#6B3FD9]" />
-                </div>
-                <span className="text-gray-300 text-base">{feature.text}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-12 pt-8 border-t border-gray-800">
-            <p className="text-gray-500 text-sm">
-              14-day free trial · No credit card required · Cancel anytime
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Side - Register Form */}
-      <div className="w-full lg:w-1/2 flex flex-col">
-        <header className="p-4 sm:p-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Back to home</span>
-          </Link>
-        </header>
-
-        <main className="flex-1 flex items-center justify-center px-4 py-8">
-          <div className="w-full max-w-md">
-            <Link href="/" className="lg:hidden flex items-center justify-center gap-2 mb-8">
-              <span className="text-2xl font-bold text-white tracking-tight">
-                <span className="text-[#6B3FD9]">Exius</span>Cart
-              </span>
-            </Link>
-
-            <Suspense fallback={null}>
-              <RegisterForm />
-            </Suspense>
-          </div>
-        </main>
+        <Suspense fallback={null}>
+          <RegisterForm />
+        </Suspense>
       </div>
     </div>
   );
