@@ -193,6 +193,52 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
     return Token(access_token=access_token, user=UserResponse.model_validate(user))
 
 
+# ── Pre-signup checkout (pay first, account created after payment) ───────────
+
+class CheckoutSignupIn(BaseModel):
+    business_name: str
+    email: str
+    plan_type: str    # starter | premium
+    billing_type: str  # monthly | yearly
+
+
+@router.post("/checkout-signup")
+async def checkout_signup(data: CheckoutSignupIn, db: Session = Depends(get_db)):
+    """
+    Marketing-site "pay first" flow — no ExiusCart account exists yet. Creates a
+    Lemon Squeezy checkout session with the signup details embedded as custom_data;
+    the webhook (lemonsqueezy_webhook.py) auto-creates the User/Shop/Subscription
+    once payment is confirmed. Rejects if the email is already registered, so the
+    webhook never has to reconcile a collision.
+    """
+    from app.core.lemonsqueezy import create_checkout
+
+    if data.plan_type not in ("starter", "premium"):
+        raise HTTPException(status_code=422, detail="Invalid plan_type")
+    if data.billing_type not in ("monthly", "yearly"):
+        raise HTTPException(status_code=422, detail="Invalid billing_type")
+
+    existing = db.query(User).filter(User.email == data.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail="An account with this email already exists. Please log in and upgrade from your dashboard instead.",
+        )
+
+    try:
+        checkout_url = await create_checkout(
+            plan_type=data.plan_type,
+            billing_type=data.billing_type,
+            customer_email=data.email,
+            customer_name=data.business_name,
+            new_signup_business_name=data.business_name,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    return {"checkout_url": checkout_url}
+
+
 class ResendOTPIn(BaseModel):
     email: str
 

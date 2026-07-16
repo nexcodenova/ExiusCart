@@ -39,6 +39,14 @@ def generate_commission_for_payment(
     if not subscription.shop_id:
         return
 
+    # Idempotency — guards against a double-click on Approve, a retried webhook,
+    # or any other accidental second call for the same payment.
+    if subscription_payment_id and db.query(Commission).filter(
+        Commission.subscription_payment_id == subscription_payment_id
+    ).first():
+        logger.info(f"[Commission] payment={subscription_payment_id} already has a commission, skipping")
+        return
+
     shop = db.query(Shop).filter(Shop.id == subscription.shop_id).first()
     if not shop:
         return

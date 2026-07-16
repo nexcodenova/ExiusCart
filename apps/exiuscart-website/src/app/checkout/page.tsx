@@ -2,28 +2,13 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
-import { ArrowLeft, Check, Lock, CreditCard, ArrowRight } from 'lucide-react';
+import { Suspense, useState } from 'react';
+import { ArrowLeft, Check, Lock, CreditCard, ArrowRight, Loader2, MailCheck } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { useCurrency } from '@/context/currency-context';
 import { pricing } from '@/config/pricing';
 
-// Add your Lemon Squeezy variant checkout URLs to .env.local / Vercel env vars:
-// NEXT_PUBLIC_LS_STARTER_MONTHLY=https://exiuscart.lemonsqueezy.com/checkout/buy/VARIANT_ID
-// NEXT_PUBLIC_LS_STARTER_YEARLY=https://exiuscart.lemonsqueezy.com/checkout/buy/VARIANT_ID
-// NEXT_PUBLIC_LS_PREMIUM_MONTHLY=https://exiuscart.lemonsqueezy.com/checkout/buy/VARIANT_ID
-// NEXT_PUBLIC_LS_PREMIUM_YEARLY=https://exiuscart.lemonsqueezy.com/checkout/buy/VARIANT_ID
-
-const LS_URLS: Record<string, Record<string, string | undefined>> = {
-  starter: {
-    monthly: process.env.NEXT_PUBLIC_LS_STARTER_MONTHLY,
-    yearly:  process.env.NEXT_PUBLIC_LS_STARTER_YEARLY,
-  },
-  premium: {
-    monthly: process.env.NEXT_PUBLIC_LS_PREMIUM_MONTHLY,
-    yearly:  process.env.NEXT_PUBLIC_LS_PREMIUM_YEARLY,
-  },
-};
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
 
 const PLAN_FEATURES: Record<string, string[]> = {
   starter: [
@@ -68,19 +53,53 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const plan = (searchParams.get('plan') || 'starter') as 'starter' | 'premium';
   const billing = (searchParams.get('billing') || 'monthly') as 'monthly' | 'yearly';
+  const paymentStatus = searchParams.get('status'); // 'success' after returning from Lemon Squeezy
   const { currency } = useCurrency();
+
+  const [businessName, setBusinessName] = useState('');
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const prices = pricing[currency];
   const price = billing === 'monthly' ? prices[plan]?.monthly : prices[plan]?.yearly;
   const period = billing === 'monthly' ? '/month' : '/year';
   const planName = plan === 'starter' ? 'Starter' : 'Premium';
   const features = PLAN_FEATURES[plan] || [];
-  const checkoutUrl = LS_URLS[plan]?.[billing];
   const isAed = currency === 'AED';
 
   const yearlySavings = billing === 'yearly'
     ? Math.round(prices[plan].monthly * 12 - prices[plan].yearly)
     : 0;
+
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!businessName.trim() || !email.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/checkout-signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_name: businessName.trim(),
+          email: email.trim(),
+          plan_type: plan,
+          billing_type: billing,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || 'Something went wrong. Please try again.');
+        setSubmitting(false);
+        return;
+      }
+      window.location.href = data.checkout_url;
+    } catch {
+      setError('Could not reach the server. Please try again.');
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F3EF]">
@@ -152,11 +171,21 @@ function CheckoutContent() {
           {/* Right — Payment */}
           <div className="space-y-4">
 
-            {checkoutUrl ? (
-              /* Lemon Squeezy is configured — show checkout button */
-              <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm">
+            {paymentStatus === 'success' ? (
+              /* Returned from Lemon Squeezy after a successful pre-signup payment */
+              <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm text-center">
+                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4 border border-emerald-100 mx-auto">
+                  <MailCheck className="w-6 h-6 text-emerald-600" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Payment received!</h2>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  Check your email for a link to set your password. Your account is being reviewed and you&apos;ll get a second email as soon as it&apos;s approved and your dashboard is ready.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleCheckoutSubmit} className="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm">
                 <h2 className="text-xl font-bold text-gray-900 mb-1">Complete your purchase</h2>
-                <p className="text-sm text-gray-500 mb-6">You will be redirected to our secure payment page.</p>
+                <p className="text-sm text-gray-500 mb-6">You&apos;ll be redirected to our secure payment page.</p>
 
                 <div className="bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-100">
                   <div className="flex justify-between items-center text-sm">
@@ -173,50 +202,49 @@ function CheckoutContent() {
                   )}
                 </div>
 
-                <a
-                  href={checkoutUrl}
-                  className="flex items-center justify-center gap-2 w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-4 rounded-2xl transition-all text-base"
+                {error && (
+                  <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl px-4 py-3 mb-4">
+                    {error}
+                  </div>
+                )}
+
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Business name</label>
+                    <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} required
+                      placeholder="Your shop name"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Email</label>
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                      placeholder="you@example.com"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition" />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex items-center justify-center gap-2 w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-4 rounded-2xl transition-all text-base disabled:opacity-60"
                 >
-                  <CreditCard className="w-5 h-5" />
-                  Pay now
-                  <ArrowRight className="w-4 h-4" />
-                </a>
+                  {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
+                  {submitting ? 'Redirecting…' : 'Pay now'}
+                  {!submitting && <ArrowRight className="w-4 h-4" />}
+                </button>
 
                 <p className="flex items-center justify-center gap-1.5 text-xs text-gray-400 mt-4">
                   <Lock className="w-3.5 h-3.5" />
                   Secured by Lemon Squeezy · SSL encrypted
                 </p>
-              </div>
-            ) : (
-              /* Lemon Squeezy not yet configured */
-              <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm">
-                <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mb-4 border border-amber-100">
-                  <CreditCard className="w-6 h-6 text-amber-500" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Payment coming soon</h2>
-                <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                  Online card payments are being set up. In the meantime, start your <strong>14-day free trial</strong> — all {planName} features are unlocked from day one.
-                </p>
 
-                <Link
-                  href={`/register?plan=${plan}&billing=${billing}`}
-                  className="flex items-center justify-center gap-2 w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-4 rounded-2xl transition-all text-base mb-3"
-                >
-                  Start 14-day free trial
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-
-                <p className="text-center text-xs text-gray-400">
-                  No credit card required · Cancel anytime
-                </p>
-
-                <div className="mt-6 pt-5 border-t border-gray-100">
-                  <p className="text-xs text-gray-500 mb-2">Want to be notified when payments go live?</p>
-                  <Link href="/contact" className="text-sm text-[#6B3FD9] font-semibold hover:underline">
-                    Contact us →
+                <p className="text-center text-xs text-gray-400 mt-4">
+                  Prefer to try first?{' '}
+                  <Link href={`/register?plan=${plan}&billing=${billing}`} className="text-[#6B3FD9] font-semibold hover:underline">
+                    Start a free trial instead
                   </Link>
-                </div>
-              </div>
+                </p>
+              </form>
             )}
 
             {/* Also want bank transfer? */}

@@ -8,6 +8,7 @@ import hmac
 import hashlib
 import logging
 import httpx
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -36,16 +37,20 @@ def get_variant_id(plan_type: str, billing_type: str) -> str:
 
 async def create_checkout(
     *,
-    shop_id: int,
     plan_type: str,
     billing_type: str,
     customer_email: str,
     customer_name: str,
+    shop_id: Optional[int] = None,
+    new_signup_business_name: Optional[str] = None,
 ) -> str:
     """
     Creates a Lemon Squeezy-hosted checkout session and returns the checkout URL.
-    shop_id/plan_type/billing_type are embedded as custom_data so the webhook
-    handler can identify which ExiusCart subscription this payment is for.
+
+    Two callers:
+      - Existing shop upgrading (shop_id set) — webhook finds the subscription by shop_id.
+      - Pre-signup checkout (shop_id=None, new_signup_business_name set) — no ExiusCart
+        account exists yet; the webhook auto-creates User+Shop+Subscription from custom_data.
     """
     if not is_configured():
         raise RuntimeError(
@@ -59,6 +64,18 @@ async def create_checkout(
             "Create the product/variants in Lemon Squeezy and set the variant ID env var."
         )
 
+    custom_data = {
+        "plan_type": plan_type,
+        "billing_type": billing_type,
+    }
+    if shop_id is not None:
+        custom_data["shop_id"] = str(shop_id)
+        redirect_url = "https://store.exiuscart.com/dashboard/billing?checkout=success"
+    else:
+        custom_data["new_signup"] = "true"
+        custom_data["business_name"] = new_signup_business_name or ""
+        redirect_url = "https://exiuscart.com/checkout?status=success"
+
     payload = {
         "data": {
             "type": "checkouts",
@@ -66,14 +83,10 @@ async def create_checkout(
                 "checkout_data": {
                     "email": customer_email,
                     "name": customer_name,
-                    "custom": {
-                        "shop_id": str(shop_id),
-                        "plan_type": plan_type,
-                        "billing_type": billing_type,
-                    },
+                    "custom": custom_data,
                 },
                 "product_options": {
-                    "redirect_url": "https://store.exiuscart.com/dashboard/billing?checkout=success",
+                    "redirect_url": redirect_url,
                 },
             },
             "relationships": {

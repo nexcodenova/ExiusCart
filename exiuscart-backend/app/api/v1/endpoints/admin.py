@@ -428,24 +428,38 @@ def approve_subscription(
     # personally vouching for. It gets logged in the same SubscriptionPayment
     # ledger as real Lemon Squeezy charges, so affiliate commissions are always
     # backed by a real payment record — never a blind guess.
+    #
+    # Exception: pre-signup Lemon Squeezy checkouts (lemonsqueezy_webhook.py ::
+    # _handle_new_signup_payment) already recorded the real payment before this
+    # subscription ever reached pending_approval — reuse that row instead of
+    # logging a second, duplicate "manual" payment for money that was already
+    # charged online.
     if sub.shop and sub.plan_type != "free_trial":
-        payment_amount = float(sub.amount_paid or 0)
+        existing_payment = db.query(SubscriptionPayment).filter(
+            SubscriptionPayment.subscription_id == sub.id
+        ).order_by(SubscriptionPayment.id.desc()).first()
+
+        if existing_payment:
+            payment_id = existing_payment.id
+            payment_amount = float(existing_payment.amount or 0)
+        else:
+            payment_amount = float(sub.amount_paid or 0)
+            payment = SubscriptionPayment(
+                subscription_id=sub.id,
+                shop_id=sub.shop_id,
+                amount=payment_amount,
+                currency=sub.currency or "AED",
+                plan_type=sub.plan_type,
+                billing_type=sub.billing_type,
+                source="manual",
+            )
+            db.add(payment)
+            db.flush()  # assign payment.id before linking a commission to it
+            payment_id = payment.id
+
         # Normalize to a monthly-equivalent value for recurring commission math
         monthly_equivalent = payment_amount / 12 if sub.billing_type == "yearly" else payment_amount
-
-        payment = SubscriptionPayment(
-            subscription_id=sub.id,
-            shop_id=sub.shop_id,
-            amount=payment_amount,
-            currency=sub.currency or "AED",
-            plan_type=sub.plan_type,
-            billing_type=sub.billing_type,
-            source="manual",
-        )
-        db.add(payment)
-        db.flush()  # assign payment.id before linking a commission to it
-
-        generate_commission_for_payment(db, sub, monthly_equivalent, payment.id)
+        generate_commission_for_payment(db, sub, monthly_equivalent, payment_id)
 
     db.commit()
 

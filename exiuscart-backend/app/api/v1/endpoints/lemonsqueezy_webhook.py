@@ -4,7 +4,10 @@ ExiusCart Starter/Premium subscriptions. This is the only event that ever
 activates a Lemon Squeezy-billed subscription or generates a recurring
 affiliate commission; nothing here is guessed on a timer.
 """
+import re
+import uuid
 import json
+import secrets
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -12,13 +15,14 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import get_password_hash
 from app.core.lemonsqueezy import verify_webhook_signature
 from app.core.affiliate_commissions import generate_commission_for_payment
 from app.models.subscription import Subscription
 from app.models.subscription_payment import SubscriptionPayment
 from app.models.user import User
 from app.models.shop import Shop
-from app.core.email import send_dashboard_live_email
+from app.core.email import send_dashboard_live_email, send_welcome_email, send_password_setup_email, send_new_signup_notification
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -45,7 +49,10 @@ async def lemonsqueezy_webhook(request: Request, db: Session = Depends(get_db)):
     logger.info(f"[LemonSqueezy Webhook] event={event_name}")
 
     if event_name == "subscription_payment_success":
-        _handle_payment_success(db, custom_data, resource, attrs)
+        if custom_data.get("new_signup") == "true":
+            _handle_new_signup_payment(db, custom_data, resource, attrs)
+        else:
+            _handle_payment_success(db, custom_data, resource, attrs)
     elif event_name in ("subscription_cancelled", "subscription_expired"):
         _handle_subscription_ended(db, resource, event_name)
     elif event_name == "subscription_payment_failed":
@@ -133,6 +140,107 @@ def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attr
                     send_dashboard_live_email(owner.email, owner.full_name or "", shop.name or "Your Shop")
                 except Exception:
                     pass
+
+
+def _slugify(text: str) -> str:
+    return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
+
+
+def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, attrs: dict) -> None:
+    """
+    Pre-signup checkout — no ExiusCart account existed at checkout time (marketing
+    site "pay first" flow). The completed payment is treated as proof of a real,
+    deliverable email; auto-create User+Shop+Subscription here. Mirrors the
+    free-trial signup flow exactly: status=pending_approval, blocked from login
+    until an admin reviews it — commission generation happens at approval time
+    (app/api/v1/endpoints/admin.py::approve_subscription), not here, so it's never
+    duplicated if this webhook were to retry.
+    """
+    ls_order_id = str(resource.get("id", ""))
+    ls_subscription_id = str(attrs.get("subscription_id", ""))
+    amount = float(attrs.get("total", 0)) / 100
+    currency = attrs.get("currency", "USD")
+    email = attrs.get("user_email", "")
+    buyer_name = attrs.get("user_name") or custom_data.get("business_name") or "Shop Owner"
+    business_name = custom_data.get("business_name") or f"{buyer_name}'s Shop"
+    plan_type = custom_data.get("plan_type")
+    billing_type = custom_data.get("billing_type", "monthly")
+
+    if not ls_order_id or not ls_subscription_id or not email or not plan_type:
+        logger.error(f"[LemonSqueezy] new_signup payment missing required data — order={ls_order_id} email={bool(email)} plan={plan_type}")
+        return
+
+    # Idempotency — Lemon Squeezy may retry the same webhook
+    if db.query(SubscriptionPayment).filter(SubscriptionPayment.lemon_squeezy_order_id == ls_order_id).first():
+        logger.info(f"[LemonSqueezy] duplicate new_signup webhook for order={ls_order_id}, skipping")
+        return
+
+    existing_user = db.query(User).filter(User.email == email).first()
+    if existing_user:
+        logger.error(f"[LemonSqueezy] new_signup payment for email={email} but a User already exists (id={existing_user.id}) — needs manual reconciliation, refusing to auto-link to avoid hijacking an unrelated account")
+        return
+
+    now = datetime.now(timezone.utc)
+    user = User(
+        email=email,
+        hashed_password=get_password_hash(secrets.token_hex(32)),  # unusable placeholder — real password set via the setup link
+        full_name=buyer_name,
+        is_verified=True,  # a completed payment is proof enough of a deliverable email
+    )
+    db.add(user)
+    db.flush()
+
+    shop = Shop(
+        name=business_name,
+        slug=f"{_slugify(business_name)}-{uuid.uuid4().hex[:6]}",
+        owner_id=user.id,
+        currency=currency if currency in ("AED", "USD", "LKR") else "AED",
+    )
+    db.add(shop)
+    db.flush()
+
+    sub = Subscription(
+        shop_id=shop.id,
+        plan_type=plan_type,
+        billing_type=billing_type,
+        status="pending_approval",
+        amount_paid=amount,
+        currency=currency,
+        payment_source="lemon_squeezy",
+        lemon_squeezy_subscription_id=ls_subscription_id,
+        starts_at=now,
+    )
+    if attrs.get("customer_id"):
+        sub.lemon_squeezy_customer_id = str(attrs["customer_id"])
+    db.add(sub)
+    db.flush()
+
+    payment = SubscriptionPayment(
+        subscription_id=sub.id,
+        shop_id=shop.id,
+        amount=amount,
+        currency=currency,
+        plan_type=plan_type,
+        billing_type=billing_type,
+        source="lemon_squeezy",
+        lemon_squeezy_order_id=ls_order_id,
+        lemon_squeezy_subscription_id=ls_subscription_id,
+    )
+    db.add(payment)
+    db.commit()
+
+    logger.info(f"[LemonSqueezy] new signup shop={shop.id} user={user.id} plan={plan_type} amount={amount} {currency} — pending admin approval")
+
+    from app.api.v1.endpoints.partner import _make_setup_link
+    setup_url = _make_setup_link(user.id, user.email)
+    plan_label = plan_type.title()
+
+    try:
+        send_password_setup_email(user.email, user.full_name or "", setup_url)
+        send_welcome_email(user.email, user.full_name or "", f"{plan_label} (Payment Received — Pending Approval)")
+        send_new_signup_notification(user.full_name or "", user.email, shop.name, f"{plan_label} (Paid)")
+    except Exception as e:
+        logger.error(f"[LemonSqueezy] new_signup confirmation emails failed for shop={shop.id}: {e}")
 
 
 def _handle_subscription_ended(db: Session, resource: dict, event_name: str) -> None:
