@@ -1,9 +1,44 @@
 import axios from 'axios';
 
+const TOKEN_KEY = 'prodora_token';
+
 const apiClient = axios.create({
   baseURL: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1`,
   headers: { 'Content-Type': 'application/json' },
 });
+
+apiClient.interceptors.request.use((config) => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      if (typeof window !== 'undefined' && localStorage.getItem(TOKEN_KEY)) {
+        localStorage.removeItem(TOKEN_KEY);
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(err);
+  }
+);
+
+export const prodoraAuth = {
+  requestAccess: async (email: string): Promise<{ name: string }> => {
+    const response = await apiClient.post('/shopping/request-access', { email });
+    localStorage.setItem(TOKEN_KEY, response.data.access_token);
+    return { name: response.data.name };
+  },
+  hasAccess: (): boolean => typeof window !== 'undefined' && !!localStorage.getItem(TOKEN_KEY),
+  logout: () => {
+    if (typeof window !== 'undefined') localStorage.removeItem(TOKEN_KEY);
+  },
+};
 
 export interface Product {
   id: number;

@@ -1,17 +1,102 @@
 """
-Public shopping storefront endpoints — no auth required.
-Powers the exiuscart-shopping frontend at port 3003.
+Prodora storefront endpoints. Product browsing requires a Prodora access
+token — issued only to ExiusCart accounts on an active Starter or Premium
+subscription (see POST /shopping/request-access).
 """
 from typing import Optional
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
 from app.core.database import get_db
+from app.core.security import create_access_token, decode_token
 from app.models.product import Product, Category
 from app.models.shop import Shop
+from app.models.user import User
+from app.models.subscription import Subscription
 
 router = APIRouter()
+
+# Plans that grant Prodora access. Free trial and TheDersi plans are
+# deliberately excluded — Prodora is a Starter/Premium perk only.
+PRODORA_ELIGIBLE_PLANS = ("starter", "premium")
+
+_security = HTTPBearer()
+
+
+class ProdoraAccessRequest(BaseModel):
+    email: EmailStr
+
+
+def _find_eligible_subscription(db: Session, user: User) -> Optional[Subscription]:
+    shop = (
+        db.query(Shop)
+        .filter(Shop.owner_id == user.id, Shop.is_active == True)
+        .order_by(Shop.id.asc())
+        .first()
+    )
+    if not shop:
+        return None
+    return (
+        db.query(Subscription)
+        .filter(
+            Subscription.shop_id == shop.id,
+            Subscription.status == "active",
+            Subscription.plan_type.in_(PRODORA_ELIGIBLE_PLANS),
+        )
+        .order_by(Subscription.created_at.desc())
+        .first()
+    )
+
+
+async def get_prodora_user(
+    credentials: HTTPAuthorizationCredentials = Depends(_security),
+    db: Session = Depends(get_db),
+) -> User:
+    """Re-verifies plan eligibility on every call — a lapsed/downgraded
+    subscription loses Prodora access immediately, not just at token expiry."""
+    payload = decode_token(credentials.credentials)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    user_id = payload.get("sub")
+    user = db.query(User).filter(User.id == int(user_id)).first() if user_id else None
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+    if not _find_eligible_subscription(db, user):
+        raise HTTPException(
+            status_code=403,
+            detail="Prodora is available exclusively to ExiusCart Starter and Premium users.",
+        )
+    return user
+
+
+@router.post("/shopping/request-access")
+def request_prodora_access(body: ProdoraAccessRequest, db: Session = Depends(get_db)):
+    """
+    Email-only access gate. Only ExiusCart accounts with an active Starter
+    or Premium subscription receive a token — free trial and TheDersi
+    accounts are rejected with a clear reason.
+    """
+    user = db.query(User).filter(func.lower(User.email) == body.email.lower()).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="No ExiusCart account found with this email.",
+        )
+
+    if not _find_eligible_subscription(db, user):
+        raise HTTPException(
+            status_code=403,
+            detail="Prodora is available exclusively to ExiusCart Starter and Premium users.",
+        )
+
+    token = create_access_token(data={"sub": str(user.id)}, expires_delta=timedelta(hours=24))
+    return {"access_token": token, "name": user.full_name or user.email}
 
 
 def _product_out(p: Product) -> dict:
@@ -47,9 +132,11 @@ def list_shopping_products(
     trending: Optional[bool] = None,
     featured: Optional[bool] = None,
     db: Session = Depends(get_db),
+    _: User = Depends(get_prodora_user),
 ):
     """
-    Public product listing for the shopping storefront.
+    Product listing for the Prodora storefront. Requires a valid Prodora
+    access token (see POST /shopping/request-access).
     Only returns active products from active shops.
     """
     query = (
@@ -96,6 +183,7 @@ def list_shopping_products(
 def get_shopping_product(
     product_id: int,
     db: Session = Depends(get_db),
+    _: User = Depends(get_prodora_user),
 ):
     product = (
         db.query(Product)
@@ -118,7 +206,7 @@ def get_shopping_product(
 
 
 @router.get("/shopping/categories")
-def list_shopping_categories(db: Session = Depends(get_db)):
+def list_shopping_categories(db: Session = Depends(get_db), _: User = Depends(get_prodora_user)):
     """
     Returns all categories that have at least one active product in an active shop.
     """

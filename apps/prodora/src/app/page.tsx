@@ -1,320 +1,318 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, X, Tag, LayoutGrid } from 'lucide-react';
-import { shoppingApi, Product, Category } from '@/lib/api';
-import ProductCard from '@/components/ProductCard';
+import {
+  Search, TrendingUp, LayoutGrid, Link2, Sparkles, ShieldCheck,
+  ArrowRight, Flame, Package, DollarSign,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Accordion, AccordionItem, AccordionTrigger, AccordionContent,
+} from '@/components/ui/accordion';
+import Navbar from '@/components/layout/Navbar';
+import HeroCTAButtons from '@/components/HeroCTAButtons';
+import OpenLoginButton from '@/components/OpenLoginButton';
 
-function SkeletonCard() {
+const STEPS = [
+  {
+    icon: Search,
+    title: 'Find products',
+    desc: 'Browse a constantly refreshed catalog of trending, ready-to-sell products across every category.',
+    img: '/figma-assets/howitworks-step1-find-products.png',
+  },
+  {
+    icon: Link2,
+    title: 'Copy the supplier link',
+    desc: 'Every product comes with a direct source link — no guesswork on where to fulfill from.',
+    img: '/figma-assets/howitworks-step2-create-store.png',
+  },
+  {
+    icon: Package,
+    title: 'List & start selling',
+    desc: 'Add it to your ExiusCart store in minutes and start taking orders the same day.',
+    img: '/figma-assets/howitworks-step3-start-selling.png',
+  },
+];
+
+const FEATURES = [
+  {
+    icon: Flame,
+    title: 'Trending Now',
+    desc: 'See what’s actually gaining momentum right now, not last season’s picks.',
+  },
+  {
+    icon: LayoutGrid,
+    title: 'Browse by category',
+    desc: 'Filter down to exactly the niche you sell in instead of scrolling everything.',
+  },
+  {
+    icon: Search,
+    title: 'Instant search',
+    desc: 'Find a specific product idea in seconds with fast, live search.',
+  },
+  {
+    icon: DollarSign,
+    title: 'Free for ExiusCart sellers',
+    desc: 'No separate subscription — Prodora is bundled with your ExiusCart account.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Fresh picks, regularly',
+    desc: 'The catalog keeps getting new product picks so you’re never stuck browsing stale listings.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Source links included',
+    desc: 'No dead ends — every listing links straight to where you can fulfill it from.',
+  },
+];
+
+const FAQS = [
+  {
+    q: 'What is Prodora?',
+    a: 'Prodora is a winning-products discovery tool built into ExiusCart. It helps you find trending, ready-to-sell products — complete with supplier links — so you can list them on your own store fast.',
+  },
+  {
+    q: 'Do I need a separate account for Prodora?',
+    a: 'No. Prodora is bundled with your existing ExiusCart account — there’s nothing extra to sign up for.',
+  },
+  {
+    q: 'How often are new products added?',
+    a: 'The catalog is refreshed regularly with new trending picks across categories, so there’s always something new to discover.',
+  },
+  {
+    q: 'Can I fulfill these products automatically?',
+    a: 'Prodora gives you the supplier source link for each product. Automated fulfillment depends on the supplier — pair it with ExiusCart’s dropshipping integrations for a fully automated flow.',
+  },
+];
+
+export default function LandingPage() {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden animate-pulse">
-      <div className="aspect-square bg-gray-100" />
-      <div className="p-3 flex flex-col gap-2">
-        <div className="h-2.5 bg-gray-100 rounded w-1/3" />
-        <div className="h-4 bg-gray-100 rounded w-3/4" />
-        <div className="h-4 bg-gray-100 rounded w-1/2" />
-        <div className="h-5 bg-gray-100 rounded w-2/5 mt-1" />
-      </div>
-    </div>
-  );
-}
+    <div className="min-h-screen bg-background">
+      <Navbar />
 
-function EmptyState({ hasSearch }: { hasSearch: boolean }) {
-  return (
-    <div className="col-span-full flex flex-col items-center justify-center py-24 text-center gap-4">
-      <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-4xl select-none">
-        🛍️
-      </div>
-      <h2 className="text-xl font-bold text-gray-800">
-        {hasSearch ? 'No products found' : 'No products yet'}
-      </h2>
-      <p className="text-gray-400 max-w-xs text-sm">
-        {hasSearch ? 'Try adjusting your search or category filter.' : 'New products are being added. Check back soon!'}
-      </p>
-    </div>
-  );
-}
-
-export default function HomePage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 400);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  useEffect(() => {
-    shoppingApi.getCategories().then(setCategories).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const params: Parameters<typeof shoppingApi.getProducts>[0] = {};
-    if (debouncedSearch) params.search = debouncedSearch;
-    if (activeCategory && activeCategory !== 'all') params.category = activeCategory;
-    shoppingApi
-      .getProducts(params)
-      .then(setProducts)
-      .catch(() => {
-        setError('Could not load products. Please check your connection and try again.');
-        setProducts([]);
-      })
-      .finally(() => setLoading(false));
-  }, [debouncedSearch, activeCategory]);
-
-  const trending = products.filter(p => p.is_trending);
-  const rest = products.filter(p => !p.is_trending);
-  const isFiltered = !!(debouncedSearch || activeCategory !== 'all');
-  const activeCategoryName = categories.find(c => c.slug === activeCategory)?.name;
-
-  return (
-    <div className="min-h-screen bg-[#f3f3f3]">
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="bg-[#FF6000] shadow-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link href="/" className="flex-shrink-0 flex items-center gap-2 mr-2">
-            <Image src="/logo.svg" alt="Prodora" width={30} height={30} />
-            <div className="leading-none">
-              <span className="text-white font-extrabold text-lg tracking-tight block leading-none">
-                Prodora
-              </span>
-              <span className="text-orange-100 text-[10px] font-medium tracking-widest uppercase">
-                by ExiusCart
-              </span>
-            </div>
-          </Link>
-
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search for products..."
-              className="w-full bg-white border border-transparent rounded-lg pl-9 pr-9 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-200 shadow-sm"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile category scroll — hidden on desktop (sidebar handles it) */}
-        {categories.length > 0 && (
-          <div className="lg:hidden bg-white border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-4 flex gap-0 overflow-x-auto scrollbar-none">
-              <MobileCategoryTab label="All" active={activeCategory === 'all'} onClick={() => setActiveCategory('all')} />
-              {categories.map(cat => (
-                <MobileCategoryTab
-                  key={cat.id}
-                  label={cat.name}
-                  active={activeCategory === cat.slug}
-                  onClick={() => setActiveCategory(cat.slug)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* ── Hero Banner ───────────────────────────────────────────────── */}
-      {!isFiltered && !loading && (
-        <div className="bg-gradient-to-r from-[#FF6000] to-[#ff8c3f] text-white">
-          <div className="max-w-7xl mx-auto px-4 py-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-extrabold leading-tight">
-                Discover Winning Products
-                <br />
-                <span className="text-orange-100">Ready to Sell</span>
+      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden">
+        <div className="container pt-14 pb-16 sm:pt-20 sm:pb-20">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            {/* Left column — copy */}
+            <div className="max-w-xl">
+              <Badge className="mb-6">Powered by ExiusCart</Badge>
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.12]">
+                Your #1 winning{' '}
+                <span className="relative whitespace-nowrap text-primary">
+                  product
+                  <svg
+                    className="absolute left-0 -bottom-1 w-full"
+                    height="8"
+                    viewBox="0 0 200 8"
+                    fill="none"
+                    preserveAspectRatio="none"
+                  >
+                    <path d="M1 5.5C40 2 160 1 199 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </span>{' '}
+                research tool
               </h1>
-              <p className="text-orange-100 text-sm mt-2 max-w-sm">
-                Find all kinds of winning products and sell them from your ExiusCart store today.
+              <p className="mt-6 text-lg text-muted-foreground">
+                Browse trending, ready-to-sell products with supplier links included — then import
+                the best products to your ExiusCart store in one click.
+              </p>
+              <HeroCTAButtons />
+              <p className="mt-5 text-sm text-muted-foreground">
+                Free for every ExiusCart seller &middot; No credit card required
               </p>
             </div>
-            <div className="hidden sm:block text-6xl select-none">🔥</div>
+
+            {/* Right column — floating product circle.
+                Product images are placeholders from /figma-assets — swap for real Prodora products.
+                Prices are illustrative sample data. */}
+            <div className="relative hidden lg:block h-[520px]">
+              {/* concentric rings */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full bg-primary/[0.03]" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] rounded-full border border-primary/10" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] h-[240px] rounded-full border border-primary/10" />
+
+              {/* center logo badge */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg z-20">
+                <Image src="/logo.svg" alt="Prodora" width={32} height={32} className="brightness-0 invert" />
+              </div>
+
+              {/* product bubbles */}
+              {[
+                { img: '/figma-assets/hero-product-4.png', pos: 'top-2 right-16', size: 'w-28 h-28' },
+                { img: '/figma-assets/hero-product-5.png', pos: 'top-24 left-4', size: 'w-32 h-32' },
+                { img: '/figma-assets/hero-product-1.png', pos: 'bottom-16 left-10', size: 'w-28 h-28' },
+                { img: '/figma-assets/hero-product-3.png', pos: 'bottom-6 right-24', size: 'w-24 h-24' },
+                { img: '/figma-assets/hero-product-6.png', pos: 'top-8 left-1/2', size: 'w-20 h-20' },
+              ].map((p, i) => (
+                <div
+                  key={i}
+                  className={`absolute ${p.pos} ${p.size} rounded-full bg-white border border-border shadow-[0px_8px_30px_-8px_rgba(0,0,0,0.15)] flex items-center justify-center p-3 z-10`}
+                >
+                  <Image src={p.img} alt="Winning product" width={110} height={110} className="w-full h-full object-contain" />
+                </div>
+              ))}
+
+              {/* floating price pills */}
+              <div className="absolute top-16 right-0 rounded-xl bg-white border border-border shadow-md px-3 py-2 z-20">
+                <p className="text-[10px] text-muted-foreground leading-none">Product cost</p>
+                <p className="text-sm font-bold text-foreground leading-tight mt-0.5">$8.75</p>
+              </div>
+              <div className="absolute bottom-28 right-4 rounded-xl bg-white border border-border shadow-md px-3 py-2 z-20">
+                <p className="text-[10px] text-muted-foreground leading-none">Selling price</p>
+                <p className="text-sm font-bold text-foreground leading-tight mt-0.5">$34.99</p>
+              </div>
+              <div className="absolute bottom-10 left-0 rounded-xl bg-white border border-border shadow-md px-3 py-2 z-20">
+                <p className="text-[10px] text-primary leading-none font-medium">Profit / sale</p>
+                <p className="text-sm font-bold text-primary leading-tight mt-0.5">$26.24</p>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </section>
 
-      {/* ── Layout: Sidebar + Main ─────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-6 items-start">
-
-          {/* ── Left Sidebar — desktop only ───────────────────────── */}
-          <aside className="hidden lg:flex flex-col gap-3 w-52 flex-shrink-0 sticky top-[72px]">
-            {/* Categories card */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-[#FF6000]" />
-                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Categories</span>
-              </div>
-              <div className="p-2">
-                <SidebarCategoryItem
-                  label="All Products"
-                  active={activeCategory === 'all'}
-                  onClick={() => setActiveCategory('all')}
-                />
-                {categories.map(cat => (
-                  <SidebarCategoryItem
-                    key={cat.id}
-                    label={cat.name}
-                    active={activeCategory === cat.slug}
-                    onClick={() => setActiveCategory(cat.slug)}
-                  />
-                ))}
-                {categories.length === 0 && (
-                  <p className="text-xs text-gray-400 px-3 py-2">No categories yet</p>
-                )}
-              </div>
-            </div>
-
-            {/* Dropshipper tip card */}
-            <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Tag className="w-4 h-4 text-[#FF6000]" />
-                <span className="text-xs font-bold text-gray-700">How it works</span>
-              </div>
-              <ul className="text-xs text-gray-500 space-y-1.5">
-                <li>✓ Browse winning products</li>
-                <li>✓ Copy supplier links</li>
-                <li>✓ List on your ExiusCart store</li>
-                <li>✓ Start selling today</li>
-              </ul>
-              <a
-                href="https://store.exiuscart.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 block text-center text-xs font-bold text-white bg-[#FF6000] hover:bg-[#e05500] px-3 py-2 rounded-lg transition"
-              >
-                Open My Store →
-              </a>
-            </div>
-          </aside>
-
-          {/* ── Main Content ──────────────────────────────────────── */}
-          <main className="flex-1 min-w-0 space-y-8">
-            {/* Active filter breadcrumb */}
-            {isFiltered && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-gray-500">
-                  {products.length} product{products.length !== 1 ? 's' : ''}
-                  {activeCategoryName ? ` in "${activeCategoryName}"` : ''}
-                  {debouncedSearch ? ` for "${debouncedSearch}"` : ''}
-                </span>
-                <button
-                  onClick={() => { setActiveCategory('all'); setSearch(''); }}
-                  className="flex items-center gap-1 text-xs text-[#FF6000] hover:underline"
-                >
-                  <X className="w-3 h-3" /> Clear filter
-                </button>
-              </div>
-            )}
-
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center">
-                {error}
-              </div>
-            )}
-
-            {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            ) : products.length === 0 ? (
-              <div className="grid grid-cols-1">
-                <EmptyState hasSearch={isFiltered} />
-              </div>
-            ) : isFiltered ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                {products.map(p => <ProductCard key={p.id} product={p} />)}
-              </div>
-            ) : (
-              <>
-                {trending.length > 0 && (
-                  <section>
-                    <SectionHeader title="🔥 Trending Now" />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                      {trending.map(p => <ProductCard key={p.id} product={p} />)}
-                    </div>
-                  </section>
-                )}
-
-                {rest.length > 0 && (
-                  <section>
-                    <SectionHeader title="All Products" />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                      {rest.map(p => <ProductCard key={p.id} product={p} />)}
-                    </div>
-                  </section>
-                )}
-              </>
-            )}
-          </main>
+      {/* ── Featured In — PLACEHOLDER: swap in real logos when available, or remove this section if none exist yet ── */}
+      <section className="border-t border-border">
+        <div className="container py-10">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-6">
+            As featured in
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-40">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-6 w-24 rounded bg-foreground/20" />
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* ── How it works ─────────────────────────────────────────────── */}
+      <section className="border-t border-border bg-card">
+        <div className="container py-20">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground">How it works</h2>
+            <p className="mt-3 text-muted-foreground">From discovery to your first sale, in three steps.</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-6">
+            {STEPS.map((step, i) => (
+              <div
+                key={step.title}
+                className="rounded-lg border border-border bg-black/[0.02] overflow-hidden flex flex-col"
+              >
+                <div className="p-8 pb-5">
+                  <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mb-4 text-xl font-bold">
+                    {i + 1}
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-2">{step.title}</h3>
+                  <p className="text-[15px] leading-relaxed text-muted-foreground">{step.desc}</p>
+                </div>
+                <div className="mt-auto px-8 pt-2">
+                  <Image
+                    src={step.img}
+                    alt={step.title}
+                    width={480}
+                    height={320}
+                    className="w-full h-auto rounded-t-lg border border-b-0 border-border shadow-sm"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Feature grid ─────────────────────────────────────────────── */}
+      <section className="container py-20">
+        <div className="text-center mb-14">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground">
+            Everything you need to find winners
+          </h2>
+          <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
+            Built for ExiusCart sellers who want to move fast without guessing.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {FEATURES.map(f => (
+            <div
+              key={f.title}
+              className="rounded-2xl border border-border bg-card p-6 hover:shadow-md hover:border-primary/30 transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
+                <f.icon className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-foreground mb-1.5">{f.title}</h3>
+              <p className="text-sm text-muted-foreground">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Pricing (simple, honest — free) ──────────────────────────── */}
+      <section id="pricing" className="border-t border-border bg-card">
+        <div className="container py-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground">Pricing</h2>
+            <p className="mt-3 text-muted-foreground">Simple, because it’s already included.</p>
+          </div>
+          <div className="mx-auto max-w-sm rounded-2xl border-2 border-primary bg-background p-8 text-center shadow-sm">
+            <TrendingUp className="w-8 h-8 text-primary mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-foreground">Prodora</h3>
+            <p className="mt-2 text-4xl font-extrabold text-foreground">
+              Free
+              <span className="text-base font-medium text-muted-foreground"> with ExiusCart</span>
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Every ExiusCart seller gets full access to Prodora at no extra cost.
+            </p>
+            <OpenLoginButton size="lg" className="mt-6 w-full">Get Started Free</OpenLoginButton>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ──────────────────────────────────────────────────────── */}
+      <section className="container py-20">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground">Frequently asked questions</h2>
+        </div>
+        <div className="mx-auto max-w-2xl">
+          <Accordion type="single" collapsible>
+            {FAQS.map((f, i) => (
+              <AccordionItem key={i} value={`item-${i}`}>
+                <AccordionTrigger>{f.q}</AccordionTrigger>
+                <AccordionContent>{f.a}</AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
+      {/* ── CTA band ─────────────────────────────────────────────────── */}
+      <section className="border-t border-border">
+        <div className="container py-16">
+          <div className="rounded-3xl bg-gradient-to-br from-primary to-sky-400 px-6 py-14 sm:py-16 text-center">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+              Ready to find your next winning product?
+            </h2>
+            <p className="mt-3 text-sky-50 max-w-md mx-auto">
+              It’s already included in your ExiusCart account — start browsing now.
+            </p>
+            <OpenLoginButton size="lg" variant="secondary" className="mt-7">
+              Browse Products <ArrowRight className="w-4 h-4" />
+            </OpenLoginButton>
+          </div>
+        </div>
+      </section>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <footer className="bg-white border-t border-gray-200 mt-16">
-        <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
+      <footer className="border-t border-border">
+        <div className="container py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Image src="/logo.svg" alt="Prodora" width={22} height={22} />
-            <span className="font-semibold text-gray-600">Prodora by ExiusCart</span>
+            <span className="font-semibold text-foreground">Prodora by ExiusCart</span>
           </div>
-          <p>© {new Date().getFullYear()} Fairam Private Limited. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Fairam Private Limited. All rights reserved.</p>
         </div>
       </footer>
-    </div>
-  );
-}
-
-function SidebarCategoryItem({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-        active
-          ? 'bg-[#FF6000] text-white font-semibold'
-          : 'text-gray-600 hover:bg-orange-50 hover:text-[#FF6000]'
-      }`}
-    >
-      <span className="truncate">{label}</span>
-    </button>
-  );
-}
-
-function MobileCategoryTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-shrink-0 text-sm font-medium px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
-        active
-          ? 'border-[#FF6000] text-[#FF6000]'
-          : 'border-transparent text-gray-600 hover:text-[#FF6000] hover:border-[#FF6000]/40'
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-lg font-bold text-gray-800">{title}</h2>
     </div>
   );
 }
