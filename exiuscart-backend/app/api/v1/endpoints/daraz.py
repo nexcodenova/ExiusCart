@@ -51,10 +51,20 @@ router = APIRouter()
 
 DARAZ_APP_KEY = os.getenv("DARAZ_APP_KEY", "")
 DARAZ_APP_SECRET = os.getenv("DARAZ_APP_SECRET", "")
-DARAZ_AUTHORIZE_URL = os.getenv("DARAZ_AUTHORIZE_URL", "https://api.daraz.lk/oauth/authorize")
 DARAZ_API_BASE_URL = os.getenv("DARAZ_API_BASE_URL", "https://api.daraz.com/rest")
 
 STOREFRONT_BASE = "https://store.exiuscart.com"
+
+# Daraz has no shared login domain — each market has its own. Only these 5
+# countries actually have a Daraz marketplace; sellers elsewhere (e.g. UAE)
+# genuinely can't connect Daraz at all, not a bug.
+DARAZ_COUNTRY_AUTHORIZE_URLS = {
+    "PK": "https://api.daraz.pk/oauth/authorize",
+    "BD": "https://api.daraz.com.bd/oauth/authorize",
+    "LK": "https://api.daraz.lk/oauth/authorize",
+    "NP": "https://api.daraz.com.np/oauth/authorize",
+    "MM": "https://api.shop.com.mm/oauth/authorize",
+}
 
 
 def _daraz_signed_request(api_path: str, business_params: dict, access_token: str | None = None) -> dict | None:
@@ -99,12 +109,21 @@ def daraz_authorize(
     """Start the Daraz OAuth flow — returns the URL to redirect the seller's
     browser to. The seller must already have their own Daraz seller account;
     this only authorizes ExiusCart's app to access it."""
-    _shop_or_404(shop_id, current_user, db)
+    shop = _shop_or_404(shop_id, current_user, db)
 
     if not DARAZ_APP_KEY:
         raise HTTPException(
             status_code=503,
             detail="Daraz integration isn't configured yet — ExiusCart's app registration with Daraz is still pending.",
+        )
+
+    country_code = (shop.country or "").strip().upper()
+    daraz_authorize_url = DARAZ_COUNTRY_AUTHORIZE_URLS.get(country_code)
+    if not daraz_authorize_url:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Daraz isn't available in your shop's country ({shop.country or 'not set'}). "
+                   f"Daraz only operates in Pakistan, Bangladesh, Sri Lanka, Nepal, and Myanmar.",
         )
 
     existing = db.query(ChannelConnection).filter(
@@ -158,7 +177,7 @@ def daraz_authorize(
         "client_id": DARAZ_APP_KEY,
         "state": state,
     }
-    authorize_url = f"{DARAZ_AUTHORIZE_URL}?{urlencode(params)}"
+    authorize_url = f"{daraz_authorize_url}?{urlencode(params)}"
     return {"authorize_url": authorize_url}
 
 
