@@ -14,21 +14,26 @@ Flow:
   2. Browser redirects to Daraz → seller logs into THEIR Daraz seller account
      → approves access.
   3. Daraz redirects back to GET /channels/daraz/callback?code=...&state=...
-     → we validate state and store the authorization code.
+     → we validate state, then exchange the code for a real access_token via
+       /auth/token/create (see _exchange_code_for_token and _daraz_signed_request).
 
-NOTE — the actual code-for-token exchange (_exchange_code_for_token) is not
-yet implemented. Daraz's exact token endpoint + request-signing spec could
-not be confirmed from public docs (the real docs are behind a login-gated
-JS app); this needs to be filled in from the real open.daraz.com docs once
-the ExiusCart developer account has access. Until then, the callback stores
-the received `code` and marks the connection "pending_token_exchange" rather
-than pretending the exchange succeeded.
+Every Daraz Open Platform API call — including the token exchange itself —
+must be signed: sort all params alphabetically, concatenate as
+"key1value1key2value2...", prepend the API path, HMAC-SHA256 with the App
+Secret, uppercase-hex the digest. This is implemented once in
+_daraz_signed_request and reused for every future Daraz API call (orders,
+products, etc.), not just auth.
 """
 import os
+import time
+import hmac
+import hashlib
 import secrets
 import logging
+from datetime import datetime, timezone, timedelta
 from urllib.parse import urlencode
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -46,9 +51,39 @@ router = APIRouter()
 
 DARAZ_APP_KEY = os.getenv("DARAZ_APP_KEY", "")
 DARAZ_APP_SECRET = os.getenv("DARAZ_APP_SECRET", "")
-DARAZ_AUTHORIZE_URL = os.getenv("DARAZ_AUTHORIZE_URL", "https://auth.daraz.com/oauth/authorize")
+DARAZ_AUTHORIZE_URL = os.getenv("DARAZ_AUTHORIZE_URL", "https://api.daraz.lk/oauth/authorize")
+DARAZ_API_BASE_URL = os.getenv("DARAZ_API_BASE_URL", "https://api.daraz.com/rest")
 
 STOREFRONT_BASE = "https://store.exiuscart.com"
+
+
+def _daraz_signed_request(api_path: str, business_params: dict, access_token: str | None = None) -> dict | None:
+    """Calls any Daraz Open Platform API with correct HMAC-SHA256 signing.
+    api_path is e.g. "/auth/token/create" or "/order/get". Returns the parsed
+    JSON response, or None on a transport/HTTP failure (logs the reason)."""
+    params = {
+        "app_key": DARAZ_APP_KEY,
+        "sign_method": "sha256",
+        "timestamp": str(int(time.time() * 1000)),
+        **business_params,
+    }
+    if access_token:
+        params["access_token"] = access_token
+
+    sorted_keys = sorted(params.keys())
+    concatenated = api_path + "".join(f"{k}{params[k]}" for k in sorted_keys)
+    sign = hmac.new(
+        DARAZ_APP_SECRET.encode("utf-8"), concatenated.encode("utf-8"), hashlib.sha256
+    ).hexdigest().upper()
+    params["sign"] = sign
+
+    url = f"{DARAZ_API_BASE_URL}{api_path}"
+    try:
+        resp = httpx.get(url, params=params, timeout=15)
+        return resp.json()
+    except Exception as e:
+        logger.error(f"[DARAZ API] request to {api_path} failed: {e}")
+        return None
 
 
 def _daraz_callback_url() -> str:
@@ -151,12 +186,13 @@ def daraz_callback(
 
     token_result = _exchange_code_for_token(code)
     if token_result is None:
-        # Token exchange isn't implemented yet (see module docstring) — store
-        # what we have so the connection can be completed once it is, instead
-        # of silently dropping the seller's authorization.
+        # Real Daraz API call failed (bad/expired code, network issue, etc.) —
+        # leave the connection pending rather than silently dropping the
+        # seller's authorization. Safe to retry since the code is still on
+        # this ChannelConnection row.
         conn.seller_status = "pending_token_exchange"
         db.commit()
-        logger.warning(f"[DARAZ OAUTH] shop={conn.shop_id} authorized but token exchange not implemented — code received, connection left pending")
+        logger.warning(f"[DARAZ OAUTH] shop={conn.shop_id} token exchange failed — connection left pending, see error above")
         return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?daraz=pending")
 
     conn.access_token = token_result["access_token"]
@@ -170,7 +206,18 @@ def daraz_callback(
 
 
 def _exchange_code_for_token(code: str):
-    """TODO: implement once Daraz's real token endpoint + signing spec are
-    confirmed from open.daraz.com (see module docstring). Returns None until
-    then so the callback can degrade gracefully instead of guessing."""
-    return None
+    """Exchanges an OAuth authorization code for a real access_token via
+    POST /auth/token/create, per open.daraz.com's Quick Start Guide →
+    Seller authorization introduction. Returns None on failure so the
+    caller can leave the connection "pending" instead of guessing."""
+    data = _daraz_signed_request("/auth/token/create", {"code": code})
+    if not data or "access_token" not in data:
+        logger.error(f"[DARAZ OAUTH] token exchange failed — response: {data}")
+        return None
+
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 0))
+    return {
+        "access_token": data["access_token"],
+        "refresh_token": data.get("refresh_token"),
+        "expires_at": expires_at,
+    }
