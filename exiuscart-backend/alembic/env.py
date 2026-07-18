@@ -2,7 +2,7 @@ import sys
 import os
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
+from sqlalchemy import create_engine
 from sqlalchemy import pool
 
 from alembic import context
@@ -23,9 +23,11 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # DATABASE_URL always comes from the app's own settings (.env locally, real
-# env vars in production) — never hardcoded in alembic.ini, so there's one
-# source of truth and no DB credentials sitting in a committed file.
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# env vars in production) — used directly as a Python string, never routed
+# through config.set_main_option()/ConfigParser, because a real DB password
+# can contain a literal "%" (e.g. URL-encoded characters), which ConfigParser
+# treats as interpolation syntax and rejects.
+DATABASE_URL = settings.DATABASE_URL
 
 target_metadata = Base.metadata
 
@@ -47,9 +49,8 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -66,11 +67,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    connectable = create_engine(DATABASE_URL, poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
         context.configure(
