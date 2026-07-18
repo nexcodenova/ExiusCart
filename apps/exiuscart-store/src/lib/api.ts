@@ -538,8 +538,10 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/${channelId}/categories`),
   setProductCategory: (shopId: string, productId: string, data: {
     channel_connection_id: number;
-    channel_category_id: string;
-    channel_category_name: string;
+    is_listed?: boolean;
+    is_gift?: boolean;
+    channel_category_id?: string;
+    channel_category_name?: string;
   }) => api.put(`/shops/${shopId}/products/${productId}/channel-category`, data),
   getAllChannelStatuses: (shopId: string) =>
     api.get(`/shops/${shopId}/channel-statuses`),

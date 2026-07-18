@@ -5,7 +5,7 @@ import {
   Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Percent,
   Receipt, Printer, Check, ShoppingCart, Package,
   User, Download, Scan, Zap, Loader2, Camera, PauseCircle, PlayCircle, Clock,
-  Star, RotateCcw, MessageSquare, BarChart2, ArrowLeftRight,
+  Star, RotateCcw, MessageSquare, BarChart2, ArrowLeftRight, Gift,
 } from 'lucide-react';
 import { generateInvoicePDF, generateThermalReceipt } from '@/lib/invoice-generator';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
@@ -22,6 +22,7 @@ interface POSProduct {
   barcode?: string;
   sku: string;
   image?: string;
+  isGift: boolean;
 }
 
 interface CartItem {
@@ -200,18 +201,21 @@ export default function POSPage() {
           showVatBreakdown: shop.show_vat_breakdown ?? false,
         });
         const productsRes = await productsApi.getAll(String(shop.id));
-        const rawProducts: POSProduct[] = (productsRes.data || []).map((p: any) => ({
-          id: String(p.id),
-          name: p.name,
-          sellingPrice: p.selling_price ?? Number(p.price) ?? 0,
-          stock: p.quantity ?? p.stock ?? 0,
-          category: p.category?.name || p.category || 'General',
-          barcode: p.barcode || undefined,
-          sku: p.sku || String(p.id),
-          image: p.image_url || undefined,
-        }));
+        const rawProducts: POSProduct[] = (productsRes.data || [])
+          .filter((p: any) => p.pos_enabled !== false) // hide products turned off for POS
+          .map((p: any) => ({
+            id: String(p.id),
+            name: p.name,
+            sellingPrice: p.selling_price ?? Number(p.price) ?? 0,
+            stock: p.quantity ?? p.stock ?? 0,
+            category: p.category?.name || p.category || 'General',
+            barcode: p.barcode || undefined,
+            sku: p.sku || String(p.id),
+            image: p.image_url || undefined,
+            isGift: p.pos_is_gift ?? false,
+          }));
         setProducts(rawProducts);
-        const cats = ['All', ...Array.from(new Set(rawProducts.map((p) => p.category)))];
+        const cats = ['All', 'Gifts', ...Array.from(new Set(rawProducts.map((p) => p.category)))];
         setCategories(cats);
 
         try {
@@ -252,7 +256,12 @@ export default function POSPage() {
       product.name.toLowerCase().includes(q) ||
       (product.barcode || '').includes(q) ||
       product.sku.toLowerCase().includes(q);
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+    const matchesCategory =
+      selectedCategory === 'All'
+        ? true
+        : selectedCategory === 'Gifts'
+        ? product.isGift
+        : product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -679,7 +688,12 @@ export default function POSPage() {
                       !isReturnMode && product.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    <div className="w-full aspect-square bg-muted rounded-xl overflow-hidden mb-2">
+                    <div className="relative w-full aspect-square bg-muted rounded-xl overflow-hidden mb-2">
+                      {product.isGift && (
+                        <span className="absolute top-1.5 left-1.5 z-10 flex items-center gap-1 bg-pink-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full shadow">
+                          <Gift className="w-3 h-3" /> Gift
+                        </span>
+                      )}
                       {product.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={product.image} alt={product.name} className="w-full h-full object-cover" />

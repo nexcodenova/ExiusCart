@@ -6,8 +6,9 @@ import {
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
+  Store, Globe, ShoppingBag,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { DropshipSupplierSection } from '@/components/dropship-supplier-section';
@@ -912,6 +913,38 @@ function ProductModal({
   const [theDersiCategoryName, setTheDersiCategoryName] = useState('');
   const [loadingCategories, setLoadingCategories] = useState(false);
 
+  // Other-channel state (Daraz / Shopify / Custom Website) — kept fully
+  // separate from TheDersi's state above so TheDersi's existing behavior
+  // is never touched. Phase 1 (this): UI + toggle interaction only.
+  // Phase 2 (backend, not yet built): actually wiring these toggles to
+  // control what gets pushed where — see delightful-spinning-wadler.md.
+  const [darazConnection, setDarazConnection] = useState<{ id: number } | null>(null);
+  const [darazCategories, setDarazCategories] = useState<{ id: string; name: string }[]>([]);
+  const [loadingDarazCategories, setLoadingDarazCategories] = useState(false);
+  // Every channel's category field opens the same full-size, searchable
+  // picker (same width/height as the whole modal) instead of a tiny
+  // dropdown — one shared overlay, keyed by which channel triggered it.
+  const [activeCategoryPicker, setActiveCategoryPicker] = useState<'thedersi' | 'daraz' | null>(null);
+  const [categoryPickerSearch, setCategoryPickerSearch] = useState('');
+  const [shopifyConnected, setShopifyConnected] = useState(false);
+  const [customWebsiteConnection, setCustomWebsiteConnection] = useState<{ id: number } | null>(null);
+
+  interface OtherChannelToggle { enabled: boolean; isGift: boolean; categoryId: string; categoryName: string }
+  const [otherChannels, setOtherChannels] = useState<Record<'daraz' | 'shopify' | 'custom', OtherChannelToggle>>({
+    daraz: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
+    shopify: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
+    custom: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
+  });
+  const setOtherChannelEnabled = (key: 'daraz' | 'shopify' | 'custom', enabled: boolean) =>
+    setOtherChannels((prev) => ({ ...prev, [key]: { ...prev[key], enabled } }));
+  const setOtherChannelGift = (key: 'daraz' | 'shopify' | 'custom', isGift: boolean) =>
+    setOtherChannels((prev) => ({ ...prev, [key]: { ...prev[key], isGift } }));
+
+  // POS — real per-product toggle (defaults on, seller can turn it off) +
+  // its own independent gift toggle, same nested pattern as every channel.
+  const [posEnabled, setPosEnabled] = useState(p?.pos_enabled ?? true);
+  const [posIsGift, setPosIsGift] = useState(p?.pos_is_gift ?? false);
+
   const [imageLimit, setImageLimit] = useState(6);
   const variantImageCount = variants.filter(v => v.image_url && v.image_url !== '').length;
   const totalImages = savedImages.length + pendingImages.length + variantImageCount;
@@ -994,6 +1027,74 @@ function ProductModal({
         }
       })
       .catch(() => {});
+  }, [shopId, product?.id]);
+
+  // Other-channel connection status (Daraz / Shopify / Custom Website) — a
+  // separate effect from TheDersi's above, on purpose, so TheDersi's logic
+  // stays untouched.
+  useEffect(() => {
+    if (!shopId) return;
+
+    channelsApi.getConnections(shopId)
+      .then((res) => {
+        const data = res.data ?? [];
+        const daraz = data.find((c: any) => c.channel_type === 'daraz');
+        const custom = data.find((c: any) => c.channel_type === 'custom');
+        if (daraz) {
+          setDarazConnection({ id: daraz.id });
+          setLoadingDarazCategories(true);
+          // Daraz's tree is arbitrarily deep, so the backend flattens it to
+          // leaf-only breadcrumb names (e.g. "Bags > Kids Bags > Backpacks")
+          // — same cache-then-fetch pattern as TheDersi above.
+          channelsApi.syncCategories(shopId, daraz.id)
+            .catch(() => {})
+            .finally(() => {
+              channelsApi.getCategories(shopId, daraz.id)
+                .then((r) => setDarazCategories(r.data ?? []))
+                .catch(() => {})
+                .finally(() => setLoadingDarazCategories(false));
+            });
+        }
+        if (custom) setCustomWebsiteConnection({ id: custom.id });
+
+        if (product?.id) {
+          channelsApi.getProductChannelCategories(shopId, product.id)
+            .then((r) => {
+              const entries = r.data ?? [];
+              if (daraz) {
+                const entry = entries.find((s: any) => s.channel_connection_id === daraz.id);
+                if (entry) {
+                  setOtherChannels((prev) => ({
+                    ...prev,
+                    daraz: {
+                      ...prev.daraz,
+                      enabled: entry.is_listed ?? true,
+                      isGift: entry.is_gift ?? false,
+                      categoryId: entry.channel_category_id ?? '',
+                      categoryName: entry.channel_category_name ?? '',
+                    },
+                  }));
+                }
+              }
+              if (custom) {
+                const entry = entries.find((s: any) => s.channel_connection_id === custom.id);
+                if (entry) {
+                  setOtherChannels((prev) => ({
+                    ...prev,
+                    custom: { ...prev.custom, enabled: entry.is_listed ?? true, isGift: entry.is_gift ?? false },
+                  }));
+                }
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    shopifyApi.getStatus(shopId)
+      .then((res) => setShopifyConnected(res.data?.connected ?? false))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shopId, product?.id]);
 
   // Clean up preview URLs on unmount
@@ -1090,6 +1191,8 @@ function ProductModal({
         low_stock_threshold: formData.lowStockAlert,
         list_on_marketplace: formData.listOnMarketplace,
         is_gift: formData.isGift,
+        pos_enabled: posEnabled,
+        pos_is_gift: posEnabled ? posIsGift : false,
         supplier_id: formData.supplierId ?? null,
       };
 
@@ -1140,14 +1243,45 @@ function ProductModal({
         }))).catch(() => {}));
       }
 
-      // Save TheDersi category if selected and the product is listed
-      if (theDersiConnection && theDersiCategoryId && formData.listOnMarketplace) {
+      // Per-channel listing state — one call per connected channel, so
+      // toggling one channel off only unlists that one, not the others.
+      // TheDersi: unchanged connection, now sends real is_listed/is_gift
+      // instead of only firing when a category happened to be picked.
+      if (theDersiConnection) {
         tasks.push(channelsApi.setProductCategory(shopId, productId, {
           channel_connection_id: theDersiConnection.id,
-          channel_category_id: theDersiCategoryId,
-          channel_category_name: theDersiCategoryName,
+          is_listed: formData.listOnMarketplace,
+          is_gift: formData.isGift,
+          channel_category_id: theDersiCategoryId || undefined,
+          channel_category_name: theDersiCategoryName || undefined,
         }).catch(() => {}));
       }
+
+      // Daraz — real ChannelConnection, real is_listed/is_gift now work.
+      // Category stays empty until Daraz's real category list is wired up.
+      if (darazConnection) {
+        tasks.push(channelsApi.setProductCategory(shopId, productId, {
+          channel_connection_id: darazConnection.id,
+          is_listed: otherChannels.daraz.enabled,
+          is_gift: otherChannels.daraz.isGift,
+          channel_category_id: otherChannels.daraz.categoryId || undefined,
+          channel_category_name: otherChannels.daraz.categoryName || undefined,
+        }).catch(() => {}));
+      }
+
+      // Custom Website — real ChannelConnection, no category concept.
+      if (customWebsiteConnection) {
+        tasks.push(channelsApi.setProductCategory(shopId, productId, {
+          channel_connection_id: customWebsiteConnection.id,
+          is_listed: otherChannels.custom.enabled,
+          is_gift: otherChannels.custom.isGift,
+        }).catch(() => {}));
+      }
+
+      // Shopify is NOT wired here on purpose — it doesn't live in the same
+      // ChannelConnection table as every other channel (separate ShopifyStore
+      // model), so there's no channel_connection_id to save this against yet.
+      // Its toggle stays visual-only until that's addressed separately.
 
       // Save bundle components if bundle is enabled
       if (isBundleEnabled && bundleComponents.length > 0) {
@@ -1167,7 +1301,7 @@ function ProductModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border w-full max-w-5xl max-h-[94vh] flex flex-col">
+      <div className="relative bg-card rounded-xl border border-border w-full max-w-6xl max-h-[94vh] flex flex-col">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
@@ -1178,7 +1312,7 @@ function ProductModal({
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-          <div className="grid lg:grid-cols-[1fr_300px] min-h-0">
+          <div className="grid lg:grid-cols-[1fr_380px] min-h-0">
 
             {/* ── LEFT: Content ──────────────────────────────────────── */}
             <div className="p-6 space-y-6 border-r border-border">
@@ -1465,12 +1599,10 @@ function ProductModal({
                   No custom fields yet. Go to <strong>Settings → Product Fields</strong> to add fields like Brand, IMEI, Color.
                 </p>
               )}
-            </div>
 
-            {/* ── RIGHT: Sidebar ─────────────────────────────────────── */}
-            <div className="p-6 space-y-6 bg-muted/20">
+              <div className="border-t border-border" />
 
-              {/* Category — hidden for TheDersi sellers who use TheDersi categories instead */}
+              {/* Category — hidden for TheDersi sellers who use TheDersi categories instead (unchanged) */}
               {!theDersiConnection && (
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">Category *</label>
@@ -1485,119 +1617,38 @@ function ProductModal({
                 </div>
               )}
 
-              {/* Sell on TheDersi toggle */}
-              {theDersiConnection && (
-                <div className="bg-card border border-border rounded-lg p-3">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, listOnMarketplace: !formData.listOnMarketplace })}
-                    className="w-full flex items-center justify-between gap-3"
-                  >
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-foreground">Sell on TheDersi</p>
-                      <p className="text-xs text-muted-foreground">{formData.listOnMarketplace ? 'Listed on the marketplace' : 'POS / in-store only'}</p>
-                    </div>
-                    {formData.listOnMarketplace
-                      ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
-                      : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
-                  </button>
-                </div>
-              )}
-
-              {/* Free Gift item — only relevant for TheDersi-listed products */}
-              {theDersiConnection && formData.listOnMarketplace && (
-                <div className="bg-card border border-border rounded-lg p-3">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, isGift: !formData.isGift })}
-                    className="w-full flex items-center justify-between gap-3"
-                  >
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-foreground">Is this a free gift item?</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formData.isGift
-                          ? 'Offered as a free gift option at TheDersi checkout — not shown as a normal listing'
-                          : 'Off — this is a regular product'}
-                      </p>
-                    </div>
-                    {formData.isGift
-                      ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
-                      : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
-                  </button>
-                </div>
-              )}
-
-              {/* TheDersi Category — only when listed */}
-              {theDersiConnection && formData.listOnMarketplace && (
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
-                    TheDersi Category
-                    {loadingCategories && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-                  </label>
-                  <select
-                    value={theDersiCategoryId}
-                    onChange={(e) => {
-                      const opt = theDersiCategories.find((c) => c.id === e.target.value);
-                      setTheDersiCategoryId(e.target.value);
-                      setTheDersiCategoryName(opt?.name ?? '');
-                    }}
-                    className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                    disabled={loadingCategories}
-                  >
-                    <option value="">Select TheDersi category</option>
-                    {(() => {
-                      const parents = theDersiCategories.filter(c => !c.parent_id);
-                      const children = (parentId: string) => theDersiCategories.filter(c => c.parent_id === parentId);
-                      return parents.map(cat => {
-                        const subs = children(cat.id);
-                        if (subs.length > 0) {
-                          return (
-                            <optgroup key={cat.id} label={cat.name}>
-                              <option value={cat.id}>{cat.name} — All</option>
-                              {subs.map(sub => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
-                            </optgroup>
-                          );
-                        }
-                        return <option key={cat.id} value={cat.id}>{cat.name}</option>;
-                      });
-                    })()}
-                  </select>
-                  <p className="text-xs text-muted-foreground mt-1.5">Listed under this category on TheDersi.</p>
-                </div>
-              )}
-
-              <div className="border-t border-border" />
-
               {/* Pricing */}
               <div className="space-y-3">
                 <p className="text-sm font-medium text-foreground">Pricing</p>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Cost Price ({sym}) *</label>
-                  <input type="number" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Selling Price ({sym}) *</label>
-                  <input type="number" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">
-                    Original Price ({sym})
-                    <span className="ml-1 font-normal opacity-60">— if on offer</span>
-                  </label>
-                  <input type="number" value={formData.compareAtPrice || ''} onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })} min="0" placeholder={formData.sellingPrice > 0 ? String(Math.round(formData.sellingPrice * 1.3)) : ''} className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Cost Price ({sym}) *</label>
+                    <input type="number" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Selling Price ({sym}) *</label>
+                    <input type="number" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Original Price ({sym})
+                      <span className="ml-1 font-normal opacity-60">— if on offer</span>
+                    </label>
+                    <input type="number" value={formData.compareAtPrice || ''} onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })} min="0" placeholder={formData.sellingPrice > 0 ? String(Math.round(formData.sellingPrice * 1.3)) : ''} className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                  </div>
                 </div>
 
                 {/* Profit preview */}
                 {formData.costPrice > 0 && formData.sellingPrice > 0 && (
-                  <div className="bg-muted rounded-lg p-3 space-y-1.5">
-                    <div className="flex justify-between text-xs">
+                  <div className="bg-muted rounded-lg p-3 flex gap-6">
+                    <div className="flex items-center gap-2 text-xs">
                       <span className="text-muted-foreground">Profit</span>
                       <span className="font-semibold text-green-600 dark:text-green-400">
                         {formData.sellingPrice - formData.costPrice} {sym} ({Math.round(((formData.sellingPrice - formData.costPrice) / formData.costPrice) * 100)}%)
                       </span>
                     </div>
                     {formData.compareAtPrice > formData.sellingPrice && (
-                      <div className="flex justify-between text-xs">
+                      <div className="flex items-center gap-2 text-xs">
                         <span className="text-muted-foreground">Discount</span>
                         <span className="font-semibold text-red-500">
                           {Math.round((1 - formData.sellingPrice / formData.compareAtPrice) * 100)}% OFF
@@ -1613,23 +1664,25 @@ function ProductModal({
               {/* Stock */}
               <div className="space-y-3">
                 <p className="text-sm font-medium text-foreground">Inventory</p>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">
-                    Stock Quantity
-                    {variants.length > 0 && <span className="ml-2 text-primary font-semibold">= {variants.reduce((s, v) => s + v.quantity, 0)} (from variants)</span>}
-                  </label>
-                  <input
-                    type="number"
-                    value={variants.length > 0 ? variants.reduce((s, v) => s + v.quantity, 0) : formData.stock}
-                    onChange={(e) => { if (variants.length === 0) setFormData({ ...formData, stock: Number(e.target.value) }); }}
-                    readOnly={variants.length > 0}
-                    min="0"
-                    className={`w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground ${variants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}`}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Low Stock Alert</label>
-                  <input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Stock Quantity
+                      {variants.length > 0 && <span className="ml-2 text-primary font-semibold">= {variants.reduce((s, v) => s + v.quantity, 0)} (from variants)</span>}
+                    </label>
+                    <input
+                      type="number"
+                      value={variants.length > 0 ? variants.reduce((s, v) => s + v.quantity, 0) : formData.stock}
+                      onChange={(e) => { if (variants.length === 0) setFormData({ ...formData, stock: Number(e.target.value) }); }}
+                      readOnly={variants.length > 0}
+                      min="0"
+                      className={`w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground ${variants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Low Stock Alert</label>
+                    <input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                  </div>
                 </div>
               </div>
 
@@ -1651,6 +1704,322 @@ function ProductModal({
                 {suppliers.length === 0 && (
                   <p className="text-xs text-muted-foreground mt-1.5">No suppliers yet — add them in <strong>Suppliers</strong>.</p>
                 )}
+              </div>
+            </div>
+
+            {/* ── RIGHT: Sidebar ─────────────────────────────────────── */}
+            <div className="p-6 space-y-6 bg-muted/20">
+
+              {/* ── Sales Channels ───────────────────────────────────── */}
+              <div className="space-y-2.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sales Channels</p>
+
+                {/* POS — real toggle, defaults on. Nested gift toggle, same pattern as every other channel. */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                        <Store className="w-4 h-4 text-emerald-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">POS</p>
+                        <p className="text-xs text-muted-foreground">{posEnabled ? 'Available in-store' : 'Not available in-store'}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPosEnabled(!posEnabled)}
+                      className="shrink-0"
+                      aria-label="Toggle POS availability"
+                    >
+                      {posEnabled
+                        ? <ToggleRight className="w-9 h-9 text-primary" />
+                        : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
+                    </button>
+                  </div>
+                  {posEnabled && (
+                    <div className="border-t border-border p-3">
+                      <button
+                        type="button"
+                        onClick={() => setPosIsGift(!posIsGift)}
+                        className="w-full flex items-center justify-between gap-3"
+                      >
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
+                          <p className="text-xs text-muted-foreground">{posIsGift ? 'Given as a free gift in-store' : 'Off — this is a regular product'}</p>
+                        </div>
+                        {posIsGift
+                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* TheDersi — existing toggle/gift/category logic is untouched below, just restyled */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+                        <Globe className="w-4 h-4 text-indigo-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">TheDersi</p>
+                        <p className="text-xs text-muted-foreground">
+                          {theDersiConnection ? (formData.listOnMarketplace ? 'Listed on the marketplace' : 'POS / in-store only') : 'Not connected'}
+                        </p>
+                      </div>
+                    </div>
+                    {theDersiConnection ? (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, listOnMarketplace: !formData.listOnMarketplace })}
+                        className="shrink-0"
+                        aria-label="Toggle TheDersi listing"
+                      >
+                        {formData.listOnMarketplace
+                          ? <ToggleRight className="w-9 h-9 text-primary" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
+                    )}
+                  </div>
+
+                  {/* Free Gift item — only relevant for TheDersi-listed products */}
+                  {theDersiConnection && formData.listOnMarketplace && (
+                    <div className="border-t border-border p-3">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, isGift: !formData.isGift })}
+                        className="w-full flex items-center justify-between gap-3"
+                      >
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-foreground">Is this a free gift item?</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formData.isGift
+                              ? 'Offered as a free gift option at TheDersi checkout — not shown as a normal listing'
+                              : 'Off — this is a regular product'}
+                          </p>
+                        </div>
+                        {formData.isGift
+                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* TheDersi Category — only when listed */}
+                  {theDersiConnection && formData.listOnMarketplace && (
+                    <div className="border-t border-border p-3">
+                      <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                        TheDersi Category
+                        {loadingCategories && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setActiveCategoryPicker('thedersi')}
+                        disabled={loadingCategories}
+                        className="w-full px-3 py-2.5 bg-card border border-border rounded-lg text-left flex items-center justify-between gap-2 disabled:opacity-60 disabled:cursor-not-allowed hover:border-primary/50 transition"
+                      >
+                        <span className={theDersiCategoryName ? 'text-foreground' : 'text-muted-foreground'}>
+                          {loadingCategories ? 'Loading TheDersi categories…' : theDersiCategoryName || 'Select TheDersi category'}
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                      </button>
+                      <p className="text-xs text-muted-foreground mt-1.5">Listed under this category on TheDersi.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Daraz — toggle + real category tree from Daraz's own API */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                        <ShoppingBag className="w-4 h-4 text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Daraz</p>
+                        <p className="text-xs text-muted-foreground">
+                          {darazConnection ? (otherChannels.daraz.enabled ? 'Listed on Daraz' : 'Not listed') : 'Not connected'}
+                        </p>
+                      </div>
+                    </div>
+                    {darazConnection ? (
+                      <button
+                        type="button"
+                        onClick={() => setOtherChannelEnabled('daraz', !otherChannels.daraz.enabled)}
+                        className="shrink-0"
+                        aria-label="Toggle Daraz listing"
+                      >
+                        {otherChannels.daraz.enabled
+                          ? <ToggleRight className="w-9 h-9 text-primary" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
+                    )}
+                  </div>
+                  {darazConnection && otherChannels.daraz.enabled && (
+                    <div className="border-t border-border p-3 space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => setOtherChannelGift('daraz', !otherChannels.daraz.isGift)}
+                        className="w-full flex items-center justify-between gap-3"
+                      >
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
+                          <p className="text-xs text-muted-foreground">{otherChannels.daraz.isGift ? 'Listed as a gift on Daraz' : 'Off — this is a regular product'}</p>
+                        </div>
+                        {otherChannels.daraz.isGift
+                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
+                      </button>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                          Daraz Category
+                          {loadingDarazCategories && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setActiveCategoryPicker('daraz')}
+                          disabled={loadingDarazCategories || darazCategories.length === 0}
+                          className="w-full px-3 py-2.5 bg-card border border-border rounded-lg text-left flex items-center justify-between gap-2 disabled:opacity-60 disabled:cursor-not-allowed hover:border-primary/50 transition"
+                        >
+                          <span className={otherChannels.daraz.categoryName ? 'text-foreground' : 'text-muted-foreground'}>
+                            {loadingDarazCategories
+                              ? 'Loading Daraz categories…'
+                              : darazCategories.length === 0
+                                ? 'Could not load Daraz categories'
+                                : otherChannels.daraz.categoryName || 'Select Daraz category'}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                        </button>
+                        <p className="text-xs text-muted-foreground mt-1.5">Daraz's own category tree — pick the most specific match.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Shopify — toggle + nested gift toggle, no category concept */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                        <ShoppingBag className="w-4 h-4 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Shopify</p>
+                        <p className="text-xs text-muted-foreground">
+                          {shopifyConnected ? (otherChannels.shopify.enabled ? 'Synced to Shopify' : 'Not synced') : 'Not connected'}
+                        </p>
+                      </div>
+                    </div>
+                    {shopifyConnected ? (
+                      <button
+                        type="button"
+                        onClick={() => setOtherChannelEnabled('shopify', !otherChannels.shopify.enabled)}
+                        className="shrink-0"
+                        aria-label="Toggle Shopify listing"
+                      >
+                        {otherChannels.shopify.enabled
+                          ? <ToggleRight className="w-9 h-9 text-primary" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
+                    )}
+                  </div>
+                  {shopifyConnected && otherChannels.shopify.enabled && (
+                    <div className="border-t border-border p-3">
+                      <button
+                        type="button"
+                        onClick={() => setOtherChannelGift('shopify', !otherChannels.shopify.isGift)}
+                        className="w-full flex items-center justify-between gap-3"
+                      >
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
+                          <p className="text-xs text-muted-foreground">{otherChannels.shopify.isGift ? 'Listed as a gift on Shopify' : 'Off — this is a regular product'}</p>
+                        </div>
+                        {otherChannels.shopify.isGift
+                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Custom Website — toggle + nested gift toggle, no category concept */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0">
+                        <Globe className="w-4 h-4 text-sky-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Custom Website</p>
+                        <p className="text-xs text-muted-foreground">
+                          {customWebsiteConnection ? (otherChannels.custom.enabled ? 'Shown on your website' : 'Not shown') : 'Not connected'}
+                        </p>
+                      </div>
+                    </div>
+                    {customWebsiteConnection ? (
+                      <button
+                        type="button"
+                        onClick={() => setOtherChannelEnabled('custom', !otherChannels.custom.enabled)}
+                        className="shrink-0"
+                        aria-label="Toggle Custom Website listing"
+                      >
+                        {otherChannels.custom.enabled
+                          ? <ToggleRight className="w-9 h-9 text-primary" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
+                    )}
+                  </div>
+                  {customWebsiteConnection && otherChannels.custom.enabled && (
+                    <div className="border-t border-border p-3">
+                      <button
+                        type="button"
+                        onClick={() => setOtherChannelGift('custom', !otherChannels.custom.isGift)}
+                        className="w-full flex items-center justify-between gap-3"
+                      >
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
+                          <p className="text-xs text-muted-foreground">{otherChannels.custom.isGift ? 'Listed as a gift on your website' : 'Off — this is a regular product'}</p>
+                        </div>
+                        {otherChannels.custom.isGift
+                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Not connectable yet — honest placeholders, not fake toggles */}
+                {[
+                  { name: 'Amazon' },
+                  { name: 'eBay' },
+                  { name: 'Noon' },
+                  { name: 'WooCommerce' },
+                  { name: 'TikTok Shop' },
+                  { name: 'Instagram Shopping' },
+                ].map((ch) => (
+                  <div key={ch.name} className="bg-muted/40 border border-border rounded-lg p-3 flex items-center justify-between gap-3 opacity-60">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{ch.name}</p>
+                        <p className="text-xs text-muted-foreground">Connect this channel first</p>
+                      </div>
+                    </div>
+                    <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />
+                  </div>
+                ))}
               </div>
 
               <div className="border-t border-border" />
@@ -1697,6 +2066,105 @@ function ProductModal({
             </div>
           )}
         </form>
+
+        {/* Category picker — same for every channel that has categories.
+            Expands to the full modal size (same height/width as the Add
+            Product page) with a search box, instead of a cramped sidebar
+            dropdown — TheDersi's list is short, Daraz's can run to
+            thousands, but both use the same UI. Same chevron reused to
+            open (▼) and close (▲). */}
+        {activeCategoryPicker && (() => {
+          const closePicker = () => { setActiveCategoryPicker(null); setCategoryPickerSearch(''); };
+
+          const items: { id: string; name: string }[] = activeCategoryPicker === 'daraz'
+            ? darazCategories
+            : (() => {
+                // TheDersi's categories are 2 levels (parent/child) — turn
+                // them into the same flat breadcrumb style Daraz uses.
+                const parents = theDersiCategories.filter((c) => !c.parent_id);
+                const children = (parentId: string) => theDersiCategories.filter((c) => c.parent_id === parentId);
+                const flat: { id: string; name: string }[] = [];
+                parents.forEach((parent) => {
+                  const subs = children(parent.id);
+                  if (subs.length > 0) {
+                    flat.push({ id: parent.id, name: `${parent.name} — All` });
+                    subs.forEach((sub) => flat.push({ id: sub.id, name: `${parent.name} > ${sub.name}` }));
+                  } else {
+                    flat.push({ id: parent.id, name: parent.name });
+                  }
+                });
+                return flat;
+              })();
+
+          const selectedId = activeCategoryPicker === 'daraz' ? otherChannels.daraz.categoryId : theDersiCategoryId;
+          const title = activeCategoryPicker === 'daraz' ? 'Select Daraz Category' : 'Select TheDersi Category';
+          const placeholder = activeCategoryPicker === 'daraz' ? 'Search Daraz categories…' : 'Search TheDersi categories…';
+
+          const selectItem = (item: { id: string; name: string }) => {
+            if (activeCategoryPicker === 'daraz') {
+              setOtherChannels((prev) => ({
+                ...prev,
+                daraz: { ...prev.daraz, categoryId: item.id, categoryName: item.name },
+              }));
+            } else {
+              setTheDersiCategoryId(item.id);
+              setTheDersiCategoryName(item.name);
+            }
+            closePicker();
+          };
+
+          const q = categoryPickerSearch.trim().toLowerCase();
+          const filtered = q ? items.filter((c) => c.name.toLowerCase().includes(q)) : items;
+
+          return (
+            <div className="absolute inset-0 z-10 bg-card rounded-xl flex flex-col">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+                <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+                <button
+                  type="button"
+                  onClick={closePicker}
+                  aria-label="Close category picker"
+                  className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
+                >
+                  <ChevronDown className="w-5 h-5 rotate-180" />
+                </button>
+              </div>
+              <div className="px-6 py-4 border-b border-border shrink-0">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={categoryPickerSearch}
+                    onChange={(e) => setCategoryPickerSearch(e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full pl-9 pr-3 py-2.5 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto px-3 py-2">
+                {filtered.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">No categories match "{categoryPickerSearch}"</p>
+                ) : (
+                  filtered.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => selectItem(cat)}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition ${
+                        selectedId === cat.id
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

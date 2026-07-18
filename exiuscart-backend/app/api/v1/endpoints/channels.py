@@ -134,6 +134,7 @@ def _product_payload(
     channel_type: str,
     channel_category_id: str = None,
     channel_sub_category_id: str = None,
+    is_gift: bool = False,
 ) -> dict:
     status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
     category = channel_category_id or None
@@ -177,7 +178,7 @@ def _product_payload(
         "is_featured": False,
         "is_trending": False,
         "is_bundle": bool(product.is_bundle),
-        "is_gift": bool(product.is_gift),
+        "is_gift": bool(is_gift),
     }
 
 
@@ -241,23 +242,38 @@ def _delete_one(product_id: int, conn: ChannelConnection):
 # ── Background tasks (use fresh DB session) ───────────────────────────────────
 
 def _bg_full_sync(shop_id: int, conn_id: int):
+    """Re-push every product already listed on this connection (is_listed=True).
+    Connecting a channel does NOT auto-list every product anymore — a seller
+    opts each product in per channel, so a brand-new connection has nothing
+    to sync yet. This mainly matters for the manual 'sync now' action, to
+    re-push already-listed products in case of drift."""
     db = SessionLocal()
     try:
         conn = db.query(ChannelConnection).filter(ChannelConnection.id == conn_id).first()
         shop = db.query(Shop).filter(Shop.id == shop_id).first()
         if not conn or not shop:
             return
-        products = db.query(Product).filter(
-            Product.shop_id == shop_id, Product.is_active == True
+        listings = db.query(ProductChannelCategory).filter(
+            ProductChannelCategory.channel_connection_id == conn_id,
+            ProductChannelCategory.is_listed == True,
         ).all()
-        for p in products:
-            pcc = db.query(ProductChannelCategory).filter(
-                ProductChannelCategory.product_id == p.id,
-                ProductChannelCategory.channel_connection_id == conn_id,
-            ).first()
-            cat_id = pcc.channel_category_id if pcc else None
-            sub_cat_id = pcc.channel_sub_category_id if pcc else None
-            result = _push_one(_product_payload(p, shop.currency, conn.channel_type, cat_id, sub_cat_id), conn)
+        products_by_id = {
+            p.id: p for p in db.query(Product).filter(
+                Product.id.in_([l.product_id for l in listings]), Product.is_active == True
+            ).all()
+        } if listings else {}
+        for listing in listings:
+            p = products_by_id.get(listing.product_id)
+            if not p:
+                continue
+            result = _push_one(
+                _product_payload(
+                    p, shop.currency, conn.channel_type,
+                    listing.channel_category_id, listing.channel_sub_category_id,
+                    is_gift=listing.is_gift,
+                ),
+                conn,
+            )
             if not result["ok"]:
                 logger.error(f"[FULL SYNC] product={p.id} shop={shop_id} channel={conn.channel_type} FAILED: HTTP {result['http_status']} — {result['error']}")
         conn.last_synced_at = datetime.now(timezone.utc)
@@ -267,7 +283,9 @@ def _bg_full_sync(shop_id: int, conn_id: int):
 
 
 def _bg_push_product(product_id: int, shop_id: int):
-    """Push one product to ALL active channel connections for this shop."""
+    """Push one product to every channel it's actually listed on (is_listed=True
+    on that product's ProductChannelCategory row) — not every active connection.
+    A product with nothing toggled on anywhere simply pushes to nothing."""
     db = SessionLocal()
     try:
         product = db.query(Product).filter(Product.id == product_id).first()
@@ -275,22 +293,33 @@ def _bg_push_product(product_id: int, shop_id: int):
         if not product or not shop:
             logger.warning(f"[BG PUSH] product={product_id} shop={shop_id} not found — skipping")
             return
-        if not product.list_on_marketplace:
-            logger.info(f"[BG PUSH] product={product_id} is POS-only (list_on_marketplace=False) — not pushing to channels")
-            return
-        connections = db.query(ChannelConnection).filter(
-            ChannelConnection.shop_id == shop_id, ChannelConnection.is_active == True
+
+        listings = db.query(ProductChannelCategory).filter(
+            ProductChannelCategory.product_id == product_id,
+            ProductChannelCategory.is_listed == True,
         ).all()
-        logger.info(f"[BG PUSH] product={product_id} shop={shop_id} → {len(connections)} connection(s)")
-        for conn in connections:
-            pcc = db.query(ProductChannelCategory).filter(
-                ProductChannelCategory.product_id == product_id,
-                ProductChannelCategory.channel_connection_id == conn.id,
-            ).first()
-            cat_id = pcc.channel_category_id if pcc else None
-            sub_cat_id = pcc.channel_sub_category_id if pcc else None
+        if not listings:
+            logger.info(f"[BG PUSH] product={product_id} not listed on any channel — nothing to push")
+            return
+
+        connections = {
+            c.id: c for c in db.query(ChannelConnection).filter(
+                ChannelConnection.id.in_([l.channel_connection_id for l in listings]),
+                ChannelConnection.is_active == True,
+            ).all()
+        }
+        logger.info(f"[BG PUSH] product={product_id} shop={shop_id} → {len(connections)} listed connection(s)")
+        for listing in listings:
+            conn = connections.get(listing.channel_connection_id)
+            if not conn:
+                continue  # connection was deactivated since this listing was set
             push_result = _push_one(
-                _product_payload(product, shop.currency, conn.channel_type, cat_id, sub_cat_id), conn
+                _product_payload(
+                    product, shop.currency, conn.channel_type,
+                    listing.channel_category_id, listing.channel_sub_category_id,
+                    is_gift=listing.is_gift,
+                ),
+                conn,
             )
             if conn.channel_type in MARKETPLACE_CHANNELS:
                 existing = db.query(ChannelProductStatus).filter(
@@ -329,13 +358,19 @@ def _bg_push_product(product_id: int, shop_id: int):
         db.close()
 
 
-def _bg_delete_product_and_notify(product_id: int, shop_id: int):
-    """Delete product from all channels — separate from DB delete so it survives process restarts."""
+def _bg_delete_product_and_notify(product_id: int, shop_id: int, channel_connection_id: int = None):
+    """Delete product from channel(s) — separate from DB delete so it survives
+    process restarts. If channel_connection_id is given, only that one
+    connection is notified (a seller un-toggled a single channel). Otherwise
+    every active connection is notified (the product itself was deleted)."""
     db = SessionLocal()
     try:
-        connections = db.query(ChannelConnection).filter(
+        query = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id, ChannelConnection.is_active == True
-        ).all()
+        )
+        if channel_connection_id is not None:
+            query = query.filter(ChannelConnection.id == channel_connection_id)
+        connections = query.all()
         logger.info(f"[BG DELETE] product={product_id} shop={shop_id} → {len(connections)} connection(s)")
         for conn in connections:
             _delete_one(product_id, conn)
@@ -351,24 +386,32 @@ def trigger_product_sync(product_id: int, shop_id: int, background_tasks: Backgr
     background_tasks.add_task(_bg_push_product, product_id, shop_id)
 
 
-def trigger_product_delete(product_id: int, shop_id: int, background_tasks: BackgroundTasks):
-    background_tasks.add_task(_bg_delete_product_and_notify, product_id, shop_id)
+def trigger_product_delete(product_id: int, shop_id: int, background_tasks: BackgroundTasks, channel_connection_id: int = None):
+    background_tasks.add_task(_bg_delete_product_and_notify, product_id, shop_id, channel_connection_id)
 
 
 def _bg_push_stock(product_id: int, shop_id: int):
     """
-    Push updated stock levels to all connected marketplace channels after any
-    inventory change (POS sale, manual adjustment, order fulfillment).
-    Only pushes to marketplace channels (TheDersi) — own-store channels manage stock internally.
+    Push updated stock levels to every marketplace channel this product is
+    actually listed on (is_listed=True), after any inventory change (POS
+    sale, manual adjustment, order fulfillment). Only marketplace channels
+    (TheDersi) need this — own-store channels manage stock internally.
     """
     db = SessionLocal()
     try:
         product = db.query(Product).filter(Product.id == product_id).first()
         if not product:
             return
-        if not product.list_on_marketplace:
-            return  # POS-only product — never on the marketplace, nothing to sync
+        listed_conn_ids = [
+            l.channel_connection_id for l in db.query(ProductChannelCategory).filter(
+                ProductChannelCategory.product_id == product_id,
+                ProductChannelCategory.is_listed == True,
+            ).all()
+        ]
+        if not listed_conn_ids:
+            return
         connections = db.query(ChannelConnection).filter(
+            ChannelConnection.id.in_(listed_conn_ids),
             ChannelConnection.shop_id == shop_id,
             ChannelConnection.is_active == True,
             ChannelConnection.channel_type.in_(MARKETPLACE_CHANNELS),
@@ -945,7 +988,7 @@ def sync_channel_categories(
     Fetch and cache the category list from a connected channel.
     Call this when seller first connects a channel, or to refresh categories.
     """
-    _shop_or_404(shop_id, current_user, db)
+    shop = _shop_or_404(shop_id, current_user, db)
     conn = db.query(ChannelConnection).filter(
         ChannelConnection.id == channel_id,
         ChannelConnection.shop_id == shop_id,
@@ -953,6 +996,32 @@ def sync_channel_categories(
     ).first()
     if not conn:
         raise HTTPException(status_code=404, detail="Channel not found")
+
+    if conn.channel_type == "daraz":
+        # Daraz is OAuth (access_token), not a static API key, and its
+        # category tree comes from Daraz's own API — not TheDersi's
+        # /exiuscart/categories contract — so it gets its own path.
+        from app.api.v1.endpoints.daraz import fetch_daraz_categories
+
+        categories = fetch_daraz_categories(conn.access_token, shop.country)
+        if categories is None:
+            cached = db.query(ChannelCategory).filter(
+                ChannelCategory.channel_connection_id == channel_id
+            ).all()
+            return {"synced": 0, "cached": True, "categories": [c.name for c in cached]}
+
+        db.query(ChannelCategory).filter(
+            ChannelCategory.channel_connection_id == channel_id
+        ).delete()
+        for cat in categories:
+            db.add(ChannelCategory(
+                channel_connection_id=channel_id,
+                channel_category_id=str(cat["category_id"]),
+                name=cat["name"],
+                parent_id=None,
+            ))
+        db.commit()
+        return {"synced": len(categories), "categories": [c["name"] for c in categories]}
 
     api_url = _channel_url(conn)
     if not api_url:
@@ -1217,8 +1286,10 @@ def run_thedersi_auto_payouts() -> None:
 
 class SetProductChannelCategory(BaseModel):
     channel_connection_id: int
-    channel_category_id: str
-    channel_category_name: str
+    is_listed: bool = True
+    is_gift: bool = False
+    channel_category_id: Optional[str] = None
+    channel_category_name: Optional[str] = None
 
 
 @router.put("/shops/{shop_id}/products/{product_id}/channel-category")
@@ -1231,11 +1302,20 @@ def set_product_channel_category(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Assign a channel-specific category to a product.
-    E.g. seller sets TheDersi category = "Festival Wear" for their Blue Saree product.
-    Automatically re-syncs the product to the channel with the updated category.
+    Sets whether a product is listed on a specific channel connection, its
+    gift flag on that channel, and (for channels that have one) its category.
+    E.g. seller lists their Blue Saree on TheDersi under "Festival Wear".
+    Pushes/removes the listing on just this one connection — other channels
+    the product is listed on are untouched.
     """
     _shop_or_404(shop_id, current_user, db)
+
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == data.channel_connection_id,
+        ChannelConnection.shop_id == shop_id,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Channel connection not found for this shop")
 
     existing = db.query(ProductChannelCategory).filter(
         ProductChannelCategory.product_id == product_id,
@@ -1243,20 +1323,27 @@ def set_product_channel_category(
     ).first()
 
     if existing:
+        existing.is_listed = data.is_listed
+        existing.is_gift = data.is_gift
         existing.channel_category_id = data.channel_category_id
         existing.channel_category_name = data.channel_category_name
     else:
         db.add(ProductChannelCategory(
             product_id=product_id,
             channel_connection_id=data.channel_connection_id,
+            is_listed=data.is_listed,
+            is_gift=data.is_gift,
             channel_category_id=data.channel_category_id,
             channel_category_name=data.channel_category_name,
         ))
     db.commit()
 
-    # Re-sync product to channel with updated category
-    trigger_product_sync(product_id, shop_id, background_tasks)
-    return {"message": f"Category set to '{data.channel_category_name}' and product re-synced"}
+    if data.is_listed:
+        trigger_product_sync(product_id, shop_id, background_tasks)
+        return {"message": "Listed and synced to this channel"}
+    else:
+        trigger_product_delete(product_id, shop_id, background_tasks, channel_connection_id=data.channel_connection_id)
+        return {"message": "Unlisted from this channel"}
 
 
 # ── Product approval callback — TheDersi calls this when admin approves/rejects ─
@@ -1394,6 +1481,8 @@ def get_all_product_channel_categories(
         if pid not in result:
             result[pid] = {}
         result[pid][r.channel_connection_id] = {
+            "is_listed": r.is_listed,
+            "is_gift": r.is_gift,
             "channel_category_id": r.channel_category_id,
             "channel_category_name": r.channel_category_name,
         }
@@ -1452,6 +1541,8 @@ def get_product_channel_categories(
     return [
         {
             "channel_connection_id": r.channel_connection_id,
+            "is_listed": r.is_listed,
+            "is_gift": r.is_gift,
             "channel_category_id": r.channel_category_id,
             "channel_category_name": r.channel_category_name,
         }

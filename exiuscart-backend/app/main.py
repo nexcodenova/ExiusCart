@@ -176,6 +176,18 @@ _MIGRATIONS = [
     # refund/reversal or a newly-approved commission can never change what a
     # payout actually settles after the fact.
     "ALTER TABLE commissions ADD COLUMN IF NOT EXISTS payout_request_id INTEGER REFERENCES affiliate_payout_requests(id);",
+    # Per-channel product listing (POS gets its own dedicated columns since
+    # it isn't a ChannelConnection; other channels use product_channel_categories).
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS pos_enabled BOOLEAN DEFAULT TRUE NOT NULL;",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS pos_is_gift BOOLEAN DEFAULT FALSE NOT NULL;",
+    # is_listed defaults TRUE on backfill only, so existing category
+    # assignments (which implied "listed" under the old system) aren't
+    # silently unlisted; new rows going forward start FALSE per the model
+    # until a seller explicitly toggles the channel on.
+    "ALTER TABLE product_channel_categories ADD COLUMN IF NOT EXISTS is_listed BOOLEAN DEFAULT TRUE NOT NULL;",
+    "ALTER TABLE product_channel_categories ADD COLUMN IF NOT EXISTS is_gift BOOLEAN DEFAULT FALSE NOT NULL;",
+    "ALTER TABLE product_channel_categories ALTER COLUMN channel_category_id DROP NOT NULL;",
+    "ALTER TABLE product_channel_categories ALTER COLUMN channel_category_name DROP NOT NULL;",
 ]
 
 for _sql in _MIGRATIONS:

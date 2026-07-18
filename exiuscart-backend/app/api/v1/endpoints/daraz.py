@@ -41,6 +41,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.v1.deps import get_current_user
 from app.models.user import User
+from app.models.shop import Shop
 from app.models.channel import ChannelConnection
 from app.models.subscription import Subscription
 from app.api.v1.endpoints.channels import _shop_or_404, EXIUSCART_BASE
@@ -51,13 +52,13 @@ router = APIRouter()
 
 DARAZ_APP_KEY = os.getenv("DARAZ_APP_KEY", "")
 DARAZ_APP_SECRET = os.getenv("DARAZ_APP_SECRET", "")
-DARAZ_API_BASE_URL = os.getenv("DARAZ_API_BASE_URL", "https://api.daraz.com/rest")
 
 STOREFRONT_BASE = "https://store.exiuscart.com"
 
-# Daraz has no shared login domain — each market has its own. Only these 5
-# countries actually have a Daraz marketplace; sellers elsewhere (e.g. UAE)
-# genuinely can't connect Daraz at all, not a bug.
+# Daraz has no shared domain for login OR the REST API — each market has its
+# own (confirmed live: api.daraz.com resolves to nothing; api.daraz.lk works).
+# Only these 5 countries actually have a Daraz marketplace; sellers elsewhere
+# (e.g. UAE) genuinely can't connect Daraz at all, not a bug.
 DARAZ_COUNTRY_AUTHORIZE_URLS = {
     "PK": "https://api.daraz.pk/oauth/authorize",
     "BD": "https://api.daraz.com.bd/oauth/authorize",
@@ -65,12 +66,29 @@ DARAZ_COUNTRY_AUTHORIZE_URLS = {
     "NP": "https://api.daraz.com.np/oauth/authorize",
     "MM": "https://api.shop.com.mm/oauth/authorize",
 }
+DARAZ_COUNTRY_API_BASE_URLS = {
+    "PK": "https://api.daraz.pk/rest",
+    "BD": "https://api.daraz.com.bd/rest",
+    "LK": "https://api.daraz.lk/rest",
+    "NP": "https://api.daraz.com.np/rest",
+    "MM": "https://api.shop.com.mm/rest",
+}
 
 
-def _daraz_signed_request(api_path: str, business_params: dict, access_token: str | None = None) -> dict | None:
+def _daraz_api_base(country_code: str) -> str:
+    return DARAZ_COUNTRY_API_BASE_URLS.get((country_code or "").strip().upper(), "")
+
+
+def _daraz_signed_request(api_path: str, business_params: dict, country_code: str, access_token: str | None = None) -> dict | None:
     """Calls any Daraz Open Platform API with correct HMAC-SHA256 signing.
-    api_path is e.g. "/auth/token/create" or "/order/get". Returns the parsed
-    JSON response, or None on a transport/HTTP failure (logs the reason)."""
+    api_path is e.g. "/auth/token/create" or "/category/tree/get". country_code
+    picks the right per-market domain (api.daraz.lk etc — there is no shared
+    api.daraz.com). Returns the parsed JSON response, or None on failure."""
+    base = _daraz_api_base(country_code)
+    if not base:
+        logger.error(f"[DARAZ API] no API base URL for country={country_code!r}")
+        return None
+
     params = {
         "app_key": DARAZ_APP_KEY,
         "sign_method": "sha256",
@@ -87,7 +105,7 @@ def _daraz_signed_request(api_path: str, business_params: dict, access_token: st
     ).hexdigest().upper()
     params["sign"] = sign
 
-    url = f"{DARAZ_API_BASE_URL}{api_path}"
+    url = f"{base}{api_path}"
     try:
         resp = httpx.get(url, params=params, timeout=15)
         return resp.json()
@@ -203,7 +221,9 @@ def daraz_callback(
         logger.error(f"[DARAZ OAUTH] callback with unknown/expired state={state[:8]}...")
         return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?daraz=invalid_state")
 
-    token_result = _exchange_code_for_token(code)
+    shop = db.query(Shop).filter(Shop.id == conn.shop_id).first()
+    country_code = (shop.country if shop else "") or ""
+    token_result = _exchange_code_for_token(code, country_code)
     if token_result is None:
         # Real Daraz API call failed (bad/expired code, network issue, etc.) —
         # leave the connection pending rather than silently dropping the
@@ -224,12 +244,12 @@ def daraz_callback(
     return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?daraz=connected")
 
 
-def _exchange_code_for_token(code: str):
+def _exchange_code_for_token(code: str, country_code: str):
     """Exchanges an OAuth authorization code for a real access_token via
     POST /auth/token/create, per open.daraz.com's Quick Start Guide →
     Seller authorization introduction. Returns None on failure so the
     caller can leave the connection "pending" instead of guessing."""
-    data = _daraz_signed_request("/auth/token/create", {"code": code})
+    data = _daraz_signed_request("/auth/token/create", {"code": code}, country_code)
     if not data or "access_token" not in data:
         logger.error(f"[DARAZ OAUTH] token exchange failed — response: {data}")
         return None
@@ -240,3 +260,36 @@ def _exchange_code_for_token(code: str):
         "refresh_token": data.get("refresh_token"),
         "expires_at": expires_at,
     }
+
+
+def _flatten_daraz_categories(nodes: list, breadcrumb: str = "") -> list:
+    """Daraz's category tree is arbitrarily deep (unlike TheDersi's flat
+    2-level list) and only leaf nodes can actually be used to list a
+    product. Walks the tree and returns only leaves, each carrying a
+    breadcrumb name like "Bags and Travel > Kids Bags > Backpacks" so the
+    dropdown stays understandable without showing the whole tree."""
+    leaves = []
+    for node in nodes or []:
+        name = node.get("name", "")
+        path = f"{breadcrumb} > {name}" if breadcrumb else name
+        children = node.get("children") or []
+        if node.get("leaf") and not children:
+            leaves.append({
+                "category_id": node.get("category_id"),
+                "name": path,
+            })
+        else:
+            leaves.extend(_flatten_daraz_categories(children, path))
+    return leaves
+
+
+def fetch_daraz_categories(access_token: str, country_code: str) -> list | None:
+    """Fetches Daraz's full category tree via /category/tree/get and flattens
+    it to leaf-only categories with breadcrumb names. Returns None on a
+    hard API failure (caller should surface "couldn't load categories"),
+    or a (possibly empty) list on success."""
+    data = _daraz_signed_request("/category/tree/get", {}, country_code, access_token=access_token)
+    if not data or "data" not in data:
+        logger.error(f"[DARAZ CATEGORIES] fetch failed — response: {data}")
+        return None
+    return _flatten_daraz_categories(data["data"])

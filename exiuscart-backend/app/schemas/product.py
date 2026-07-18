@@ -43,7 +43,9 @@ class ProductBase(BaseModel):
     category_id: Optional[int] = None
     supplier_id: Optional[int] = None
     list_on_marketplace: bool = True  # off = product stays in POS/inventory only, never sent to TheDersi
-    is_gift: bool = False  # seller offers this as a free gift with orders — only selectable at TheDersi checkout, never a normal browsable listing
+    is_gift: bool = False  # TheDersi-specific: offered as a free gift at TheDersi checkout
+    pos_enabled: bool = True  # available for in-store POS sale
+    pos_is_gift: bool = False  # marked as a gift item specifically for POS
 
 
 class ProductCreate(ProductBase):
@@ -69,6 +71,8 @@ class ProductUpdate(BaseModel):
     is_trending: Optional[bool] = None
     list_on_marketplace: Optional[bool] = None
     is_gift: Optional[bool] = None
+    pos_enabled: Optional[bool] = None
+    pos_is_gift: Optional[bool] = None
 
 
 class SupplierRef(BaseModel):

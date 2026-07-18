@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
 from app.core.database import Base
 
 
@@ -18,14 +18,21 @@ class ChannelCategory(Base):
 
 
 class ProductChannelCategory(Base):
-    """Stores which channel category a seller assigned to each product."""
+    """Per-product, per-channel-connection listing state: is this product
+    listed on this channel at all (is_listed), is it flagged as a gift item
+    on this channel (is_gift), and — for channels that have a category
+    concept (TheDersi, Daraz) — which category. Channels with no category
+    concept (Shopify, Custom Website) just use is_listed/is_gift with the
+    category fields left null."""
     __tablename__ = "product_channel_categories"
 
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     channel_connection_id = Column(Integer, ForeignKey("channel_connections.id"), nullable=False)
-    channel_category_id = Column(String(100), nullable=False)         # TheDersi category ID
-    channel_category_name = Column(String(255), nullable=False)        # "Festival Wear"
+    is_listed = Column(Boolean, default=False, server_default="false", nullable=False)
+    is_gift = Column(Boolean, default=False, server_default="false", nullable=False)
+    channel_category_id = Column(String(100), nullable=True)           # TheDersi/Daraz category ID
+    channel_category_name = Column(String(255), nullable=True)          # "Festival Wear"
     channel_sub_category_id = Column(String(100), nullable=True)       # TheDersi sub-category ID
     channel_sub_category_name = Column(String(255), nullable=True)     # "Summer Dresses"
 
