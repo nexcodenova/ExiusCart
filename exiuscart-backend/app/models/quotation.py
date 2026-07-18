@@ -7,7 +7,10 @@ from app.core.database import Base
 
 class Quotation(Base):
     __tablename__ = "quotations"
-    __table_args__ = (UniqueConstraint("shop_id", "quote_number", name="uq_quotations_shop_quote_number"),)
+    __table_args__ = (
+        UniqueConstraint("shop_id", "quote_number", name="uq_quotations_shop_quote_number"),
+        UniqueConstraint("client_token", name="uq_quotations_client_token"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     quote_number = Column(String(30), nullable=False)
@@ -27,12 +30,12 @@ class Quotation(Base):
     notes = Column(Text, nullable=True)
     terms = Column(Text, nullable=True)
     tax_rate = Column(Numeric(5, 2), nullable=False, default=0, server_default='0')
-    tax_type = Column(String(10), nullable=False, default='fixed', server_default="'fixed'")
+    tax_type = Column(String(10), nullable=False, default='fixed', server_default='fixed')
     payment_schedule = Column(JSONB, nullable=True)
     company_address = Column(Text, nullable=True)
     company_trn = Column(String(100), nullable=True)
     company_bank = Column(Text, nullable=True)
-    client_token = Column(String(64), unique=True, nullable=True, index=True)
+    client_token = Column(String(64), nullable=True)
     client_accepted_at = Column(DateTime(timezone=True), nullable=True)
     client_accepted_name = Column(String(200), nullable=True)
 

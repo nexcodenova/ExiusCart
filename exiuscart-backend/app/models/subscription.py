@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Numeric
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Numeric, Index, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -39,6 +39,16 @@ class Plan(Base):
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
+    __table_args__ = (
+        # Partial unique index — only enforced when set, since most
+        # subscriptions aren't billed through Lemon Squeezy at all.
+        Index(
+            "ix_subscriptions_ls_sub_id",
+            "lemon_squeezy_subscription_id",
+            unique=True,
+            postgresql_where=text("lemon_squeezy_subscription_id IS NOT NULL"),
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     plan_type = Column(String(20), nullable=False)
@@ -56,7 +66,7 @@ class Subscription(Base):
     # Lemon Squeezy payment gateway linkage — set when this subscription is billed
     # through Lemon Squeezy rather than manually approved by an admin.
     payment_source = Column(String(20), default="manual")  # manual | lemon_squeezy
-    lemon_squeezy_subscription_id = Column(String(100), unique=True, nullable=True, index=True)
+    lemon_squeezy_subscription_id = Column(String(100), nullable=True)
     lemon_squeezy_customer_id = Column(String(100), nullable=True)
 
     # Foreign Keys

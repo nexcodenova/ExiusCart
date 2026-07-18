@@ -6,7 +6,9 @@ from app.core.database import Base
 class AdminSettings(Base):
     __tablename__ = "admin_settings"
 
-    id = Column(Integer, primary_key=True, default=1)
+    # Singleton row (always id=1) — no sequence, matching the real table
+    # (a client-side default is enough since only one row ever exists).
+    id = Column(Integer, primary_key=True, default=1, autoincrement=False)
 
     # General
     platform_name = Column(String, default="ExiusCart")

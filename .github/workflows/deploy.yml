@@ -49,14 +49,43 @@ jobs:
           find exiuscart-backend/app -name "*.py" | xargs python3 -m py_compile
           echo "Backend syntax OK"
 
+  # ── Backend test suite ─────────────────────────────────────────────────────
+  test:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: exiuscart_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-dev.txt
+        working-directory: exiuscart-backend
+      - run: pytest
+        working-directory: exiuscart-backend
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/exiuscart_test
+
   # ── Deploy: pull + build on server ────────────────────────────────────────
   # Build runs on the server so Node version matches the runtime exactly.
   # Affiliates removed from server (runs on Vercel) — 1.3 GB free for builds.
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    needs: [typecheck, changes]
-    if: always() && needs.typecheck.result == 'success'
+    needs: [typecheck, test, changes]
+    if: always() && needs.typecheck.result == 'success' && needs.test.result == 'success'
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -91,6 +120,7 @@ jobs:
               cd exiuscart-backend
               source venv/bin/activate
               pip install -r requirements.txt -q
+              alembic upgrade head
               deactivate
               pm2 reload exiuscart-backend --update-env
               cd /var/www/ExiusCart

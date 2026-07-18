@@ -39,3 +39,5 @@ from app.models.dropship import DropshipConnection, DropshipProductLink, Dropshi
 from app.models.review import ProductReview
 from app.models.popup import StorefrontPopup
 from app.models.subscription_payment import SubscriptionPayment
+from app.models.quotation import Quotation
+from app.models.email_log import EmailLog
