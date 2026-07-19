@@ -1,12 +1,20 @@
 'use client';
 
-import { Plus, Trash2, Package } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, Package, Loader2 } from 'lucide-react';
+import { variantsApi } from '@/lib/api';
 
 export interface BundleComponent {
   component_product_id: number;
   component_product_name?: string;
-  variant_size: string;
-  variant_color: string;
+  allowed_variant_ids: number[];
+  quantity: number;
+}
+
+interface Variant {
+  id: number;
+  size: string | null;
+  color: string | null;
   quantity: number;
 }
 
@@ -16,6 +24,7 @@ interface Product {
 }
 
 interface BundleBuilderProps {
+  shopId: string;
   enabled: boolean;
   onToggle: (val: boolean) => void;
   components: BundleComponent[];
@@ -25,12 +34,36 @@ interface BundleBuilderProps {
 }
 
 function emptyComponent(): BundleComponent {
-  return { component_product_id: 0, variant_size: '', variant_color: '', quantity: 1 };
+  return { component_product_id: 0, allowed_variant_ids: [], quantity: 1 };
 }
 
-export function BundleBuilder({ enabled, onToggle, components, onChange, availableProducts, currentProductId }: BundleBuilderProps) {
+function variantLabel(v: Variant): string {
+  return [v.size, v.color].filter(Boolean).join(' / ') || 'Default';
+}
+
+export function BundleBuilder({ shopId, enabled, onToggle, components, onChange, availableProducts, currentProductId }: BundleBuilderProps) {
   const selectable = availableProducts.filter(p => p.id !== currentProductId);
   const noProducts = selectable.length === 0;
+
+  // Variants of each component product currently in the bundle, keyed by
+  // product id — fetched on demand so the seller can tick which real
+  // size/color options a buyer is allowed to choose between for that slot.
+  const [variantsByProduct, setVariantsByProduct] = useState<Record<string, Variant[]>>({});
+  const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    components.forEach((c) => {
+      const key = String(c.component_product_id);
+      if (!c.component_product_id || variantsByProduct[key] !== undefined) return;
+      setLoadingProductId(key);
+      variantsApi.getAll(shopId, key)
+        .then((res) => setVariantsByProduct((prev) => ({ ...prev, [key]: res.data ?? [] })))
+        .catch(() => setVariantsByProduct((prev) => ({ ...prev, [key]: [] })))
+        .finally(() => setLoadingProductId(null));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, components.map(c => c.component_product_id).join(',')]);
 
   function update(index: number, patch: Partial<BundleComponent>) {
     const updated = { ...components[index], ...patch };
@@ -40,6 +73,14 @@ export function BundleBuilder({ enabled, onToggle, components, onChange, availab
       if (alreadyUsed) return;
     }
     onChange(components.map((c, i) => i === index ? updated : c));
+  }
+
+  function toggleVariant(index: number, variantId: number) {
+    const current = components[index].allowed_variant_ids;
+    const next = current.includes(variantId)
+      ? current.filter((id) => id !== variantId)
+      : [...current, variantId];
+    update(index, { allowed_variant_ids: next });
   }
 
   function remove(index: number) {
@@ -85,13 +126,16 @@ export function BundleBuilder({ enabled, onToggle, components, onChange, availab
           {components.map((c, i) => {
             const usedIds = new Set(components.filter((_, j) => j !== i).map(x => String(x.component_product_id)));
             const available = selectable.filter(p => !usedIds.has(String(p.id)) || String(p.id) === String(c.component_product_id));
+            const productKey = String(c.component_product_id);
+            const variants = variantsByProduct[productKey] ?? [];
+            const isLoadingVariants = loadingProductId === productKey;
             return (
-            <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-start">
-              {/* Product selector */}
-              <div className="space-y-1.5">
+            <div key={i} className="border border-border rounded-lg p-3 bg-card space-y-2.5">
+              <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-start">
+                {/* Product selector */}
                 <select
                   value={c.component_product_id || ''}
-                  onChange={e => update(i, { component_product_id: Number(e.target.value) })}
+                  onChange={e => update(i, { component_product_id: Number(e.target.value), allowed_variant_ids: [] })}
                   className="w-full px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
                 >
                   <option value="">Select product…</option>
@@ -99,38 +143,20 @@ export function BundleBuilder({ enabled, onToggle, components, onChange, availab
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
-                <div className="flex gap-1.5">
+
+                {/* Qty */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs text-muted-foreground">Qty</span>
                   <input
-                    type="text"
-                    value={c.variant_size}
-                    onChange={e => update(i, { variant_size: e.target.value })}
-                    placeholder="Size (optional)"
-                    className="flex-1 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs text-foreground focus:ring-2 focus:ring-primary outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={c.variant_color}
-                    onChange={e => update(i, { variant_color: e.target.value })}
-                    placeholder="Color (optional)"
-                    className="flex-1 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs text-foreground focus:ring-2 focus:ring-primary outline-none"
+                    type="number"
+                    min={1}
+                    value={c.quantity}
+                    onChange={e => update(i, { quantity: Math.max(1, Number(e.target.value)) })}
+                    className="w-14 px-2 py-2 bg-card border border-border rounded-lg text-sm text-center text-foreground focus:ring-2 focus:ring-primary outline-none"
                   />
                 </div>
-              </div>
 
-              {/* Qty */}
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-xs text-muted-foreground">Qty</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={c.quantity}
-                  onChange={e => update(i, { quantity: Math.max(1, Number(e.target.value)) })}
-                  className="w-14 px-2 py-2 bg-card border border-border rounded-lg text-sm text-center text-foreground focus:ring-2 focus:ring-primary outline-none"
-                />
-              </div>
-
-              {/* Remove */}
-              <div className="flex flex-col justify-end pb-0.5">
+                {/* Remove */}
                 <button
                   type="button"
                   onClick={() => remove(i)}
@@ -139,6 +165,48 @@ export function BundleBuilder({ enabled, onToggle, components, onChange, availab
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Which real size/color options the buyer may pick between for this slot */}
+              {c.component_product_id > 0 && (
+                <div className="pl-0.5">
+                  {isLoadingVariants ? (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Loading options…
+                    </p>
+                  ) : variants.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">This product has no size/color options — it's added as-is.</p>
+                  ) : (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">
+                        Which options can the buyer choose between? (leave none ticked to just use the product as-is)
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {variants.map((v) => {
+                          const checked = c.allowed_variant_ids.includes(v.id);
+                          const outOfStock = v.quantity <= 0;
+                          return (
+                            <button
+                              key={v.id}
+                              type="button"
+                              disabled={outOfStock}
+                              onClick={() => toggleVariant(i, v.id)}
+                              className={`px-2.5 py-1 rounded-full text-xs border transition ${
+                                outOfStock
+                                  ? 'border-border text-muted-foreground/50 cursor-not-allowed line-through'
+                                  : checked
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-card border-border text-foreground hover:border-primary/50'
+                              }`}
+                            >
+                              {variantLabel(v)}{outOfStock ? ' (out of stock)' : ''}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             );
           })}

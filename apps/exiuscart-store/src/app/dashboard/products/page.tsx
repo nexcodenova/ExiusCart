@@ -988,8 +988,7 @@ function ProductModal({
           .then(res => setBundleComponents((res.data ?? []).map((c: any) => ({
             component_product_id: c.component_product_id,
             component_product_name: c.component_product_name,
-            variant_size: c.variant_size ?? '',
-            variant_color: c.variant_color ?? '',
+            allowed_variant_ids: c.allowed_variant_ids ?? [],
             quantity: c.quantity,
           }))))
           .catch(() => {});
@@ -2050,6 +2049,7 @@ function ProductModal({
           {/* ── Bundle / Kit ── full-width section below both columns ── */}
           <div className="border-t border-border px-6 py-5">
             <BundleBuilder
+              shopId={shopId}
               enabled={isBundleEnabled}
               onToggle={setIsBundleEnabled}
               components={bundleComponents}

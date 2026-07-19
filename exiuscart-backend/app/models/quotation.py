@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Text, Date, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Numeric, Text, Date, DateTime, ForeignKey, UniqueConstraint, Index, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -10,6 +10,13 @@ class Quotation(Base):
     __table_args__ = (
         UniqueConstraint("shop_id", "quote_number", name="uq_quotations_shop_quote_number"),
         UniqueConstraint("client_token", name="uq_quotations_client_token"),
+        # Separate, non-unique partial index for fast "find by token" lookups
+        # — distinct from the uniqueness guarantee above.
+        Index(
+            "ix_quotations_client_token",
+            "client_token",
+            postgresql_where=text("client_token IS NOT NULL"),
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)

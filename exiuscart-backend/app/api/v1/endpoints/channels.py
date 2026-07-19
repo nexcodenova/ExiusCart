@@ -39,6 +39,7 @@ from app.models.channel_order_meta import ChannelOrderMeta
 from app.models.channel_product_status import ChannelProductStatus
 from app.models.channel_category import ChannelCategory, ProductChannelCategory
 from app.models.product_variant import ProductVariant
+from app.models.bundle_component import BundleComponent
 from app.models.subscription import Subscription
 from app.models.thedersi_seller import TheDersiSeller
 
@@ -128,6 +129,35 @@ def _webhook_url(conn: ChannelConnection) -> str:
     return f"{EXIUSCART_BASE.rstrip('/')}/channels/webhook/{conn.webhook_secret}"
 
 
+def _bundle_components_payload(product: Product, db: Session) -> list:
+    """Full breakdown of a bundle's components for channels that can show a
+    real picker (e.g. TheDersi) — each component lists the specific
+    size/color options a buyer may choose between, not just a bundle
+    yes/no flag. Empty "options" means that component has no size/color
+    choice at all — it's just added as-is."""
+    parts = db.query(BundleComponent).filter(BundleComponent.bundle_product_id == product.id).all()
+    result = []
+    for part in parts:
+        comp = db.query(Product).filter(Product.id == part.component_product_id).first()
+        if not comp:
+            continue
+        allowed_ids = part.allowed_variant_ids or []
+        options = []
+        if allowed_ids:
+            variants = db.query(ProductVariant).filter(ProductVariant.id.in_(allowed_ids)).all()
+            options = [
+                {"variant_id": v.id, "size": v.size, "color": v.color, "sku": v.sku, "quantity": v.quantity}
+                for v in variants
+            ]
+        result.append({
+            "component_product_id": comp.id,
+            "component_product_name": comp.name,
+            "quantity": part.quantity,
+            "options": options,
+        })
+    return result
+
+
 def _product_payload(
     product: Product,
     currency: str,
@@ -135,6 +165,7 @@ def _product_payload(
     channel_category_id: str = None,
     channel_sub_category_id: str = None,
     is_gift: bool = False,
+    db: Session = None,
 ) -> dict:
     status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
     category = channel_category_id or None
@@ -178,6 +209,7 @@ def _product_payload(
         "is_featured": False,
         "is_trending": False,
         "is_bundle": bool(product.is_bundle),
+        "bundle_components": _bundle_components_payload(product, db) if (product.is_bundle and db is not None) else [],
         "is_gift": bool(is_gift),
     }
 
@@ -270,7 +302,7 @@ def _bg_full_sync(shop_id: int, conn_id: int):
                 _product_payload(
                     p, shop.currency, conn.channel_type,
                     listing.channel_category_id, listing.channel_sub_category_id,
-                    is_gift=listing.is_gift,
+                    is_gift=listing.is_gift, db=db,
                 ),
                 conn,
             )
@@ -317,7 +349,7 @@ def _bg_push_product(product_id: int, shop_id: int):
                 _product_payload(
                     product, shop.currency, conn.channel_type,
                     listing.channel_category_id, listing.channel_sub_category_id,
-                    is_gift=listing.is_gift,
+                    is_gift=listing.is_gift, db=db,
                 ),
                 conn,
             )

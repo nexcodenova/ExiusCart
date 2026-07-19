@@ -572,8 +572,7 @@ export const bundlesApi = {
     api.get(`/shops/${shopId}/products/${productId}/bundle-components`),
   saveComponents: (shopId: string, productId: string, components: {
     component_product_id: number;
-    variant_size?: string;
-    variant_color?: string;
+    allowed_variant_ids: number[];
     quantity: number;
   }[]) => api.put(`/shops/${shopId}/products/${productId}/bundle-components`, components),
 };
