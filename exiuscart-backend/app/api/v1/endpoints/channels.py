@@ -65,6 +65,11 @@ class ChannelConnectIn(BaseModel):
     channel_seller_id: Optional[str] = None
 
 
+class BundleSelectionIn(BaseModel):
+    component_product_id: int
+    variant_id: int
+
+
 class OrderItemIn(BaseModel):
     exiuscart_product_id: Optional[Union[int, str]] = None  # TheDersi sends int, future may send str
     product_name: Optional[str] = None
@@ -74,6 +79,10 @@ class OrderItemIn(BaseModel):
     size: Optional[str] = None
     color: Optional[str] = None
     is_gift: bool = False  # TheDersi checkout free-gift item — always $0, seller still packs & ships it
+    # Which specific variant the buyer picked per bundle component — one
+    # entry per component that had options to choose from. Empty/absent for
+    # non-bundle items, or if every component was fixed with no choice.
+    bundle_selections: List[BundleSelectionIn] = []
 
     def parsed_product_id(self) -> Optional[int]:
         """Return integer product id, stripping any non-numeric prefix like 'prod_'."""
@@ -819,7 +828,7 @@ async def receive_order_webhook(
                             changed_pids.add(prod.id)
                             if prod.is_bundle:
                                 from app.api.v1.endpoints.bundles import deduct_bundle_components
-                                deduct_bundle_components(prod.id, it.quantity, db)
+                                deduct_bundle_components(prod.id, it.quantity, db, bundle_selections=it.bundle_selections or [])
                 elif old_payment == "paid" and new_payment != "paid":
                     for it in existing_order.items:
                         prod = db.query(Product).filter(Product.id == it.product_id).first()
@@ -957,6 +966,7 @@ async def receive_order_webhook(
             unit_price=item.unit_price,
             total_price=item.item_total if item.item_total is not None else (item.unit_price * item.quantity),
             is_gift=item.is_gift,
+            bundle_selections=[s.model_dump() for s in item.bundle_selections] or None,
         ))
 
         if order_is_paid:
@@ -976,7 +986,10 @@ async def receive_order_webhook(
             stock_changed_product_ids.add(product.id)
             if product.is_bundle:
                 from app.api.v1.endpoints.bundles import deduct_bundle_components
-                deduct_bundle_components(product.id, item.quantity, db)
+                deduct_bundle_components(
+                    product.id, item.quantity, db,
+                    bundle_selections=[s.model_dump() for s in item.bundle_selections],
+                )
 
     # Save channel-specific meta (commission, delivery, variants)
     # channel_order_id already normalized above (incoming_chan_id)

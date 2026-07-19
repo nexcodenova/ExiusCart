@@ -34,15 +34,33 @@ def _get_product(product_id: int, shop_id: int, db: Session) -> Product:
     return p
 
 
-def deduct_bundle_components(bundle_product_id: int, order_qty: int, db: Session) -> None:
-    """Deduct stock from each component when a bundle is sold. Safe to call — no-op if not a bundle."""
+def deduct_bundle_components(bundle_product_id: int, order_qty: int, db: Session, bundle_selections: Optional[list] = None) -> None:
+    """Deduct stock from each component when a bundle is sold. Safe to call — no-op if not a bundle.
+
+    bundle_selections (from the channel's order webhook, e.g. TheDersi) tells us
+    exactly which variant the buyer picked per component — when present, stock
+    comes off that specific variant. A component with no selection (nothing to
+    choose, or a POS sale that never asked) falls back to the base product's
+    total stock, same as before."""
+    selected_variant_by_component = {
+        s["component_product_id"]: s["variant_id"] for s in (bundle_selections or [])
+    }
     components = db.query(BundleComponent).filter(
         BundleComponent.bundle_product_id == bundle_product_id
     ).all()
     for c in components:
-        comp = db.query(Product).filter(Product.id == c.component_product_id).first()
-        if comp:
-            comp.quantity = max(0, comp.quantity - (c.quantity * order_qty))
+        variant_id = selected_variant_by_component.get(c.component_product_id)
+        variant = db.query(ProductVariant).filter(
+            ProductVariant.id == variant_id,
+            ProductVariant.product_id == c.component_product_id,
+        ).first() if variant_id else None
+
+        if variant:
+            variant.quantity = max(0, variant.quantity - (c.quantity * order_qty))
+        else:
+            comp = db.query(Product).filter(Product.id == c.component_product_id).first()
+            if comp:
+                comp.quantity = max(0, comp.quantity - (c.quantity * order_qty))
 
 
 @router.get("/shops/{shop_id}/products/{product_id}/bundle-components")

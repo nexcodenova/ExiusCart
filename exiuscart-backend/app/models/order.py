@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Numeric, Enum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -75,6 +76,13 @@ class OrderItem(Base):
     unit_price = Column(Numeric(10, 2), nullable=False)
     total_price = Column(Numeric(10, 2), nullable=False)
     is_gift = Column(Boolean, default=False, server_default="false", nullable=False)  # free gift item from TheDersi checkout — always $0, still pack & ship
+    # For a bundle item: which specific variant the buyer picked per component
+    # — [{component_product_id, variant_id}]. Set by the channel at order time
+    # (e.g. TheDersi); null/empty for non-bundle items or components with no
+    # size/color choice. Kept on the order item itself (not just the webhook
+    # payload) so a later payment-status change can still deduct the right
+    # variant's stock, and so packing slips show exactly what to ship.
+    bundle_selections = Column(JSONB, nullable=True)
 
     # Foreign Keys
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
