@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 
-const inter = Inter({
-  subsets: ['latin'],
+// Self-hosted (not next/font/google) — the production server's build step
+// can't always reach fonts.googleapis.com, which silently fails the whole
+// build. Same file, just bundled locally so the build never depends on
+// reaching Google's servers at all.
+const inter = localFont({
+  src: './fonts/Inter-Variable.woff2',
+  weight: '100 900',
   variable: '--font-inter',
 });
 

@@ -1,15 +1,21 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Cairo } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 
-const inter = Inter({
-  subsets: ['latin'],
+// Self-hosted (not next/font/google) — the production server's build step
+// can't always reach fonts.googleapis.com, which silently fails the whole
+// build. These are the same Inter/Cairo files, just bundled locally so the
+// build never depends on reaching Google's servers at all.
+const inter = localFont({
+  src: './fonts/Inter-Variable.woff2',
+  weight: '100 900',
   variable: '--font-inter',
 });
 
-const cairo = Cairo({
-  subsets: ['arabic', 'latin'],
+const cairo = localFont({
+  src: './fonts/Cairo-Variable.ttf',
+  weight: '200 1000',
   variable: '--font-cairo',
 });
 
