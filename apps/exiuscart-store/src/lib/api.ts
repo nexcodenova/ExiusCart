@@ -575,6 +575,10 @@ export const channelsApi = {
     api.patch(`/shops/${shopId}/channels/${channelId}/thedersi-auto-payout`, { enabled }),
   darazAuthorize: (shopId: string) =>
     api.get(`/shops/${shopId}/channels/daraz/authorize`),
+  getDarazEarnings: (shopId: string, days: number = 90) =>
+    api.get(`/shops/${shopId}/channels/daraz/earnings`, { params: { days } }),
+  getDarazTransactions: (shopId: string, startTime: string, endTime: string) =>
+    api.get(`/shops/${shopId}/channels/daraz/transactions`, { params: { start_time: startTime, end_time: endTime } }),
 };
 
 export const usageApi = {

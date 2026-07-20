@@ -1,19 +1,31 @@
 // Builds one well-tested, table-based responsive email (inline styles only —
 // email clients don't support stylesheets) from a seller's own content,
-// instead of picking from a small set of fixed hardcoded designs. Kept
-// deliberately simple: fancy fonts/layouts don't render reliably across
-// Gmail/Outlook/Apple Mail, so customization is limited to what's actually
-// safe in an email.
-
-export const EMAIL_FONTS: { key: string; label: string; stack: string }[] = [
+// instead of picking from a small set of fixed hardcoded designs.
+//
+// Fonts: Gmail and some Outlook versions ignore custom web fonts entirely,
+// so every Google Font here is paired with a safe system-font fallback in
+// its own stack (same pattern Mailchimp/Klaviyo use) — clients that support
+// it show the nice font, clients that don't silently fall back to a normal
+// one. Nobody sees a broken email either way.
+export const EMAIL_FONTS: { key: string; label: string; stack: string; googleFont?: string }[] = [
   { key: 'modern', label: 'Modern Sans', stack: "'Segoe UI', Arial, Helvetica, sans-serif" },
   { key: 'classic', label: 'Classic Serif', stack: "Georgia, 'Times New Roman', serif" },
   { key: 'clean', label: 'Clean Sans', stack: 'Verdana, Geneva, sans-serif' },
   { key: 'elegant', label: 'Elegant', stack: "'Trebuchet MS', sans-serif" },
+  { key: 'poppins', label: 'Poppins', stack: "'Poppins', 'Segoe UI', Arial, sans-serif", googleFont: 'Poppins:wght@400;600;700;800' },
+  { key: 'montserrat', label: 'Montserrat', stack: "'Montserrat', 'Segoe UI', Arial, sans-serif", googleFont: 'Montserrat:wght@400;600;700;800' },
+  { key: 'playfair', label: 'Playfair Display', stack: "'Playfair Display', Georgia, serif", googleFont: 'Playfair+Display:wght@400;700;800' },
+  { key: 'lato', label: 'Lato', stack: "'Lato', 'Segoe UI', Arial, sans-serif", googleFont: 'Lato:wght@400;700;900' },
 ];
 
 export function fontStackFor(key: string): string {
   return EMAIL_FONTS.find((f) => f.key === key)?.stack ?? EMAIL_FONTS[0].stack;
+}
+
+function googleFontLinkFor(key: string): string {
+  const font = EMAIL_FONTS.find((f) => f.key === key);
+  if (!font?.googleFont) return '';
+  return `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${font.googleFont}&display=swap">`;
 }
 
 export const BUTTON_SHAPES: { key: string; label: string; radius: string }[] = [
@@ -56,6 +68,7 @@ function esc(s: string): string {
 
 export function buildEmailHtml(f: EmailBuilderFields): string {
   const font = fontStackFor(f.fontKey);
+  const fontLink = googleFontLinkFor(f.fontKey);
   const radius = radiusFor(f.buttonShape);
   const color = f.buttonColor || '#6B3FD9';
   const hero = f.heroImageUrl
@@ -69,7 +82,7 @@ export function buildEmailHtml(f: EmailBuilderFields): string {
     ? `<div style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 28px;">${f.bodyMessage}</div>`
     : '';
 
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">${fontLink}</head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:${font};">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">

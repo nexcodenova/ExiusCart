@@ -276,6 +276,40 @@ def _run_thedersi_auto_payout_scheduler():
 _thedersi_auto_payout_thread = threading.Thread(target=_run_thedersi_auto_payout_scheduler, daemon=True)
 _thedersi_auto_payout_thread.start()
 
+# Daraz order sync — polls every 20 minutes since there's no confirmed
+# webhook/GetOrders integration wired up yet (see sync_daraz_orders).
+def _run_daraz_order_sync_scheduler():
+    from datetime import datetime, timezone, timedelta
+    while True:
+        try:
+            from app.models.channel import ChannelConnection
+            from app.models.shop import Shop
+            from app.api.v1.endpoints.daraz import sync_daraz_orders
+            db = SessionLocal()
+            try:
+                conns = db.query(ChannelConnection).filter(
+                    ChannelConnection.channel_type == "daraz",
+                    ChannelConnection.is_active == True,
+                ).all()
+                end = datetime.now(timezone.utc)
+                start = end - timedelta(days=2)  # overlap window — safe since already-synced orders are skipped
+                for conn in conns:
+                    shop = db.query(Shop).filter(Shop.id == conn.shop_id).first()
+                    if not shop:
+                        continue
+                    try:
+                        sync_daraz_orders(conn, shop, db, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+                    except Exception as exc:
+                        logger.error(f"[Daraz Order Sync] shop={conn.shop_id} {exc}")
+            finally:
+                db.close()
+        except Exception as exc:
+            logger.error(f"[Daraz Order Sync scheduler] {exc}")
+        time.sleep(20 * 60)
+
+_daraz_order_sync_thread = threading.Thread(target=_run_daraz_order_sync_scheduler, daemon=True)
+_daraz_order_sync_thread.start()
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,

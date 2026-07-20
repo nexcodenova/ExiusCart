@@ -530,6 +530,101 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
   );
 }
 
+// ── Daraz Channel Panel ─────────────────────────────────────────────────────
+
+interface DarazStatement {
+  statement_number: string;
+  created_at: string;
+  updated_at: string;
+  opening_balance: string;
+  closing_balance: string;
+  item_revenue: string;
+  other_revenue_total: string;
+  fees_total: string;
+  refunds: string;
+  shipment_fee: string;
+  payout: string;
+  paid: string; // "0" | "1" — Daraz sends this as a string
+}
+
+function DarazEarningsPanel({ connection, shopId }: { connection: ChannelConnection; shopId: string }) {
+  const [statements, setStatements] = useState<DarazStatement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    channelsApi.getDarazEarnings(shopId, 90)
+      .then((r) => setStatements(r.data?.statements ?? []))
+      .catch((e: any) => setError(e?.response?.data?.detail || 'Could not load earnings data from Daraz.'))
+      .finally(() => setLoading(false));
+  }, [shopId, connection.id]);
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="p-5 border-b border-border flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+          <Wallet className="w-5 h-5 text-orange-500" />
+        </div>
+        <div>
+          <p className="font-semibold text-foreground text-sm">Daraz — Earnings</p>
+          <p className="text-xs text-muted-foreground">Payout statements from your Daraz account, last 90 days</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-10 text-muted-foreground gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-sm">Loading earnings from Daraz...</span>
+        </div>
+      ) : error ? (
+        <div className="p-5 flex items-start gap-2 text-sm text-destructive">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
+        </div>
+      ) : statements.length === 0 ? (
+        <p className="p-5 text-sm text-muted-foreground text-center">No Daraz payout statements in the last 90 days yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b border-border">
+                <th className="px-5 py-2.5 font-medium">Statement</th>
+                <th className="px-5 py-2.5 font-medium">Revenue</th>
+                <th className="px-5 py-2.5 font-medium">Fees</th>
+                <th className="px-5 py-2.5 font-medium">Payout</th>
+                <th className="px-5 py-2.5 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {statements.map((s) => (
+                <tr key={s.statement_number} className="border-b border-border last:border-0">
+                  <td className="px-5 py-3">
+                    <p className="text-foreground font-medium">{s.statement_number}</p>
+                    <p className="text-xs text-muted-foreground">{s.created_at?.slice(0, 10)}</p>
+                  </td>
+                  <td className="px-5 py-3 text-foreground">{s.item_revenue}</td>
+                  <td className="px-5 py-3 text-muted-foreground">{s.fees_total}</td>
+                  <td className="px-5 py-3 text-foreground font-medium">{s.payout}</td>
+                  <td className="px-5 py-3">
+                    {s.paid === '1' || s.paid === 'true' ? (
+                      <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Paid
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium">
+                        <Clock className="w-3.5 h-3.5" /> Pending
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PayoutPage() {
@@ -558,6 +653,7 @@ export default function PayoutPage() {
   }, [shopId]);
 
   const theDersiConns = connections.filter((c) => c.channel_type === 'thedersi');
+  const darazConns = connections.filter((c) => c.channel_type === 'daraz');
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
@@ -578,12 +674,17 @@ export default function PayoutPage() {
           {/* POS — always shown */}
           <POSEarningsPanel shopId={shopId} />
 
+          {/* Daraz earnings — only if connected */}
+          {darazConns.map((conn) => (
+            <DarazEarningsPanel key={conn.id} connection={conn} shopId={shopId} />
+          ))}
+
           {/* Channel payouts — only if connected */}
           {theDersiConns.length > 0 ? (
             theDersiConns.map((conn) => (
               <TheDersiPayoutPanel key={conn.id} connection={conn} shopId={shopId} channelRefundAmount={channelRefundAmount} />
             ))
-          ) : (
+          ) : darazConns.length > 0 ? null : (
             <div className="bg-card border border-border rounded-xl p-6 flex flex-col sm:flex-row items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center shrink-0">
                 <Link2 className="w-6 h-6 text-muted-foreground" />

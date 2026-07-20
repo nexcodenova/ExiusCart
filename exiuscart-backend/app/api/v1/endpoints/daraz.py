@@ -293,3 +293,305 @@ def fetch_daraz_categories(access_token: str, country_code: str) -> list | None:
         logger.error(f"[DARAZ CATEGORIES] fetch failed — response: {data}")
         return None
     return _flatten_daraz_categories(data["data"])
+
+
+# ── Product creation — category attributes + brands are simple read calls,
+# same proven shape as /category/tree/get (flat GET params, JSON response),
+# so built with the same confidence. CreateProduct itself is NOT built yet —
+# see the note further down; it needs a live test before shipping.
+
+def fetch_daraz_category_attributes(access_token: str, country_code: str, category_id: str) -> list | None:
+    """GetCategoryAttributes — which fields a specific leaf category requires
+    to create a product (name, isMandatory, inputType, options for
+    select-type fields, etc.) — different per category."""
+    data = _daraz_signed_request(
+        "/category/attributes/get", {"primary_category_id": category_id}, country_code, access_token=access_token,
+    )
+    if not data or "data" not in data:
+        logger.error(f"[DARAZ ATTRIBUTES] fetch failed for category={category_id} — response: {data}")
+        return None
+    return data["data"]
+
+
+def fetch_daraz_brands(access_token: str, country_code: str, name_search: str = "") -> list | None:
+    """GetBrands — Daraz's real brand list, so a seller picks a valid brand
+    ID instead of typing free text Daraz would reject."""
+    params = {"name": name_search} if name_search else {}
+    data = _daraz_signed_request("/brands/get", params, country_code, access_token=access_token)
+    if not data or "data" not in data:
+        logger.error(f"[DARAZ BRANDS] fetch failed — response: {data}")
+        return None
+    return data["data"]
+
+
+# ── Earnings — Daraz's own Finance APIs, real endpoint paths confirmed from
+# Daraz's docs (unlike the product-creation ones below, these were given as
+# literal REST paths, not just action names) ────────────────────────────────
+
+def fetch_daraz_payout_statements(access_token: str, country_code: str, created_after: str) -> list | None:
+    """GetPayoutStatus — periodic settlement statements (opening/closing
+    balance, fees, revenue, what's already been paid) created after the
+    given date (YYYY-MM-DD)."""
+    data = _daraz_signed_request(
+        "/finance/payout/status/get", {"created_after": created_after}, country_code, access_token=access_token,
+    )
+    if not data or "data" not in data:
+        logger.error(f"[DARAZ EARNINGS] payout status fetch failed — response: {data}")
+        return None
+    return data["data"]
+
+
+def fetch_daraz_transactions(access_token: str, country_code: str, start_time: str, end_time: str, offset: int = 0, limit: int = 500) -> list | None:
+    """QueryTransactionDetails — the line-by-line transaction ledger (per
+    order, fees, tax, payment amounts) behind a statement. Daraz caps the
+    start_time/end_time span at under 180 days per call."""
+    data = _daraz_signed_request(
+        "/finance/transaction/details/get",
+        {"start_time": start_time, "end_time": end_time, "offset": str(offset), "limit": str(limit)},
+        country_code, access_token=access_token,
+    )
+    if not data or "data" not in data:
+        logger.error(f"[DARAZ EARNINGS] transaction details fetch failed — response: {data}")
+        return None
+    return data["data"]
+
+
+@router.get("/shops/{shop_id}/channels/daraz/earnings")
+def get_daraz_earnings(
+    shop_id: int,
+    days: int = 90,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Daraz earnings — real payout statements from the seller's connected
+    Daraz account, going back `days` days (Daraz caps a single query under
+    180 days, so this is clamped to stay under that)."""
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "daraz",
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Daraz not connected")
+
+    days = min(max(days, 1), 179)
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    statements = fetch_daraz_payout_statements(conn.access_token, shop.country, since)
+    if statements is None:
+        raise HTTPException(status_code=502, detail="Could not reach Daraz — try again shortly")
+    return {"statements": statements}
+
+
+def fetch_daraz_order(access_token: str, country_code: str, order_id: str) -> dict | None:
+    """GetOrder — full details for one order (buyer, address, payment
+    method, status) given its Daraz order_id."""
+    data = _daraz_signed_request("/order/get", {"order_id": order_id}, country_code, access_token=access_token)
+    if not data or "data" not in data:
+        logger.error(f"[DARAZ ORDERS] GetOrder failed for order_id={order_id} — response: {data}")
+        return None
+    return data["data"]
+
+
+def fetch_daraz_order_items(access_token: str, country_code: str, order_id: str) -> list | None:
+    """GetOrderItems — the products inside one order (SellerSku, quantity,
+    price) given its Daraz order_id."""
+    data = _daraz_signed_request("/order/items/get", {"order_id": order_id}, country_code, access_token=access_token)
+    if not data or "data" not in data:
+        logger.error(f"[DARAZ ORDERS] GetOrderItems failed for order_id={order_id} — response: {data}")
+        return None
+    return data["data"]
+
+
+def discover_daraz_order_ids(access_token: str, country_code: str, start_time: str, end_time: str) -> set:
+    """No direct 'list new orders' endpoint is wired up yet (Daraz's docs
+    call it GetOrders, plural — not yet confirmed). Until then, this uses
+    QueryTransactionDetails (which IS fully confirmed) as a proxy: every
+    order with financial activity in the window shows up with its
+    order_no, which doubles as the Daraz order_id GetOrder/GetOrderItems
+    need. Orders with zero transactions in the window (e.g. still
+    "pending", never paid) won't be caught by this — a real GetOrders
+    integration would be more complete."""
+    transactions = fetch_daraz_transactions(access_token, country_code, start_time, end_time)
+    if not transactions:
+        return set()
+    order_ids = set()
+    for t in transactions:
+        order_no = t.get("order_no")
+        if order_no:
+            order_ids.add(str(order_no))
+    return order_ids
+
+
+def sync_daraz_orders(conn, shop, db: Session, start_time: str, end_time: str) -> int:
+    """Pull in any Daraz orders discovered in the given window that
+    ExiusCart doesn't already have, matching line items to real products
+    by SKU. Returns how many new orders were created."""
+    from app.models.channel_order_meta import ChannelOrderMeta
+    from app.models.order import Order, OrderItem
+    from app.models.product import Product
+    import uuid as _uuid
+
+    order_ids = discover_daraz_order_ids(conn.access_token, shop.country, start_time, end_time)
+    if not order_ids:
+        return 0
+
+    already_known = {
+        m.channel_order_id for m in db.query(ChannelOrderMeta).filter(
+            ChannelOrderMeta.channel_type == "daraz",
+            ChannelOrderMeta.channel_order_id.in_(order_ids),
+        ).all()
+    }
+    new_ids = order_ids - already_known
+    created = 0
+
+    for daraz_order_id in new_ids:
+        order_data = fetch_daraz_order(conn.access_token, shop.country, daraz_order_id)
+        items_data = fetch_daraz_order_items(conn.access_token, shop.country, daraz_order_id)
+        if not order_data or not items_data:
+            logger.warning(f"[DARAZ ORDERS] shop={shop.id} order_id={daraz_order_id} — could not fetch full details, skipping")
+            continue
+
+        subtotal = 0.0
+        order_items_to_add = []
+        for item in items_data:
+            seller_sku = item.get("sku") or item.get("SellerSku")
+            product = db.query(Product).filter(
+                Product.shop_id == shop.id, Product.sku == seller_sku,
+            ).first() if seller_sku else None
+            if not product:
+                logger.warning(f"[DARAZ ORDERS] shop={shop.id} order_id={daraz_order_id} — no product matches SKU {seller_sku!r}, skipping item")
+                continue
+            item_price = float(item.get("item_price") or item.get("paid_price") or 0)
+            subtotal += item_price
+            order_items_to_add.append(OrderItem(
+                product_id=product.id,
+                product_name=product.name,
+                quantity=1,  # Daraz returns one line per unit, not a quantity field
+                unit_price=item_price,
+                total_price=item_price,
+            ))
+
+        if not order_items_to_add:
+            logger.warning(f"[DARAZ ORDERS] shop={shop.id} order_id={daraz_order_id} — no items matched any product, order not created")
+            continue
+
+        order = Order(
+            order_number=f"DRZ-{daraz_order_id}-{str(_uuid.uuid4())[:4].upper()}",
+            source="channel",
+            subtotal=subtotal,
+            total=subtotal,
+            shop_id=shop.id,
+            notes=f"Daraz Order #{daraz_order_id}",
+        )
+        db.add(order)
+        db.flush()
+        for oi in order_items_to_add:
+            oi.order_id = order.id
+            db.add(oi)
+        db.add(ChannelOrderMeta(
+            order_id=order.id,
+            channel_type="daraz",
+            channel_order_id=daraz_order_id,
+        ))
+        created += 1
+
+    if created:
+        db.commit()
+    return created
+
+
+@router.get("/shops/{shop_id}/channels/daraz/category-attributes")
+def get_daraz_category_attributes(
+    shop_id: int,
+    category_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "daraz",
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Daraz not connected")
+    attributes = fetch_daraz_category_attributes(conn.access_token, shop.country, category_id)
+    if attributes is None:
+        raise HTTPException(status_code=502, detail="Could not reach Daraz — try again shortly")
+    return {"attributes": attributes}
+
+
+@router.get("/shops/{shop_id}/channels/daraz/brands")
+def get_daraz_brands(
+    shop_id: int,
+    search: str = "",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "daraz",
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Daraz not connected")
+    brands = fetch_daraz_brands(conn.access_token, shop.country, search)
+    if brands is None:
+        raise HTTPException(status_code=502, detail="Could not reach Daraz — try again shortly")
+    return {"brands": brands}
+
+
+@router.post("/shops/{shop_id}/channels/daraz/sync-orders")
+def sync_daraz_orders_now(
+    shop_id: int,
+    days: int = 7,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually pull in any Daraz orders from the last `days` days that
+    ExiusCart doesn't already have. See sync_daraz_orders — until a
+    confirmed GetOrders endpoint is wired up, this discovers orders via
+    QueryTransactionDetails instead, so an order with zero payment
+    activity in the window won't show up yet."""
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "daraz",
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Daraz not connected")
+
+    days = min(max(days, 1), 179)
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=days)
+    created = sync_daraz_orders(conn, shop, db, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
+    return {"orders_created": created}
+
+
+@router.get("/shops/{shop_id}/channels/daraz/transactions")
+def get_daraz_transactions(
+    shop_id: int,
+    start_time: str,
+    end_time: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Line-item transaction detail behind a Daraz earnings statement —
+    start_time/end_time as YYYY-MM-DD, span under 180 days."""
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "daraz",
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Daraz not connected")
+
+    transactions = fetch_daraz_transactions(conn.access_token, shop.country, start_time, end_time)
+    if transactions is None:
+        raise HTTPException(status_code=502, detail="Could not reach Daraz — try again shortly")
+    return {"transactions": transactions}
