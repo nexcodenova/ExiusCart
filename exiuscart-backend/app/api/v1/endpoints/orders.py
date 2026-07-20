@@ -19,7 +19,7 @@ from app.models.customer import Customer
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrderIn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
-from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_new_order_email, send_low_stock_alert_email
+from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_new_order_email, send_low_stock_alert_email, with_thedersi_footer
 from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
 from app.models.subscription import Subscription
 from app.models.bundle_component import BundleComponent
@@ -624,6 +624,7 @@ async def send_invoice(
         order_already_paid=(order.payment_status == "paid"),
         gift_wrap_fee=float(order.gift_wrap_fee or 0),
     )
+    html = with_thedersi_footer(html, shop_id)
 
     # Check invoice email limit before sending
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
