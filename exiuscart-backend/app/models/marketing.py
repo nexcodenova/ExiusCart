@@ -79,6 +79,10 @@ class EmailCampaign(Base):
     name = Column(String(255), nullable=False)
     subject = Column(String(500), nullable=False)
     body_html = Column(Text, nullable=True)
+    # The builder's own field values (heading, colors, font, etc.) — kept
+    # alongside body_html so re-opening a saved campaign can restore the
+    # editable fields instead of just a rendered HTML blob.
+    builder_fields = Column(JSON, nullable=True)
     status = Column(String(20), default="draft")  # draft | sent | scheduled
     recipients_count = Column(Integer, default=0)
     opened_count = Column(Integer, default=0)

@@ -14,6 +14,7 @@ from app.models.marketing import (
     ShopLead, DripFlow, DripFlowStep, DripFlowEnrollment,
 )
 from app.models.subscription import Subscription
+from app.models.email_template import EmailTemplate
 from app.api.v1.deps import get_current_user
 
 SOCIAL_LEAD_PLANS = {"premium", "lifetime", "thedersi_pro"}
@@ -253,6 +254,7 @@ def create_email_campaign(shop_id: int, body: dict, current_user: User = Depends
         name=body.get("name", "").strip(),
         subject=body.get("subject", "").strip(),
         body_html=body.get("body_html") or None,
+        builder_fields=body.get("builder_fields") or None,
         status="draft",
     )
     db.add(c); db.commit(); db.refresh(c)
@@ -264,7 +266,7 @@ def update_email_campaign(shop_id: int, cid: int, body: dict, current_user: User
     _shop(shop_id, current_user, db)
     c = db.query(EmailCampaign).filter(EmailCampaign.id == cid, EmailCampaign.shop_id == shop_id).first()
     if not c: raise HTTPException(status_code=404, detail="Campaign not found")
-    for f in ("name", "subject", "body_html", "status"):
+    for f in ("name", "subject", "body_html", "builder_fields", "status"):
         if f in body: setattr(c, f, body[f])
     if body.get("status") == "sent" and not c.sent_at:
         c.sent_at = datetime.now(timezone.utc)
@@ -338,6 +340,59 @@ def send_email_campaign(shop_id: int, cid: int, current_user: User = Depends(get
     db.commit()
 
     return {"sent": sent_count, "total_customers": len(customers), "limited_to": len(to_send)}
+
+
+# ── Email builder — image upload + reusable saved templates ────────────────────
+
+@router.get("/shops/{shop_id}/marketing/email-image/presign")
+def presign_marketing_image(
+    shop_id: int,
+    content_type: str = Query("image/jpeg"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Presigned PUT URL so the browser uploads a campaign hero image
+    directly to R2 — not tied to any product."""
+    _shop(shop_id, current_user, db)
+    from app.core.storage import generate_marketing_presigned_url
+    ext = content_type.split("/")[-1].replace("jpeg", "jpg")
+    return generate_marketing_presigned_url(shop_id, ext, content_type)
+
+
+@router.get("/shops/{shop_id}/marketing/email-templates")
+def list_email_templates(shop_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    return db.query(EmailTemplate).filter(EmailTemplate.shop_id == shop_id).order_by(EmailTemplate.created_at.desc()).all()
+
+
+@router.post("/shops/{shop_id}/marketing/email-templates", status_code=201)
+def save_email_template(shop_id: int, body: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Template name is required")
+    t = EmailTemplate(
+        shop_id=shop_id,
+        name=name,
+        heading=body.get("heading"),
+        subtitle=body.get("subtitle"),
+        hero_image_url=body.get("hero_image_url"),
+        button_text=body.get("button_text"),
+        button_color=body.get("button_color"),
+        button_shape=body.get("button_shape"),
+        font_key=body.get("font_key"),
+    )
+    db.add(t); db.commit(); db.refresh(t)
+    return t
+
+
+@router.delete("/shops/{shop_id}/marketing/email-templates/{template_id}", status_code=204)
+def delete_email_template(shop_id: int, template_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _shop(shop_id, current_user, db)
+    t = db.query(EmailTemplate).filter(EmailTemplate.id == template_id, EmailTemplate.shop_id == shop_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    db.delete(t); db.commit()
 
 
 # ── SMS Campaigns ──────────────────────────────────────────────────────────────

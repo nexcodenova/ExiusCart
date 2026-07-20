@@ -97,6 +97,26 @@ def generate_presigned_url(shop_id: int, product_id: int, ext: str, content_type
     return {"presigned_url": presigned_url, "public_url": public_url}
 
 
+def generate_marketing_presigned_url(shop_id: int, ext: str, content_type: str = "image/jpeg", expires: int = 300) -> dict:
+    """Presigned PUT URL for a marketing email image — not tied to any
+    product, unlike generate_presigned_url."""
+    filename = f"{uuid.uuid4()}.{ext}"
+    key = f"marketing/{shop_id}/{filename}"
+    client = _get_r2_client()
+    presigned_url = client.generate_presigned_url(
+        "put_object",
+        Params={
+            "Bucket": _R2_BUCKET,
+            "Key": key,
+            "ContentType": content_type,
+            "CacheControl": "public, max-age=31536000",
+        },
+        ExpiresIn=expires,
+    )
+    public_url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    return {"presigned_url": presigned_url, "public_url": public_url}
+
+
 def delete_image(url: str) -> None:
     """Delete image from Cloudflare R2 by its public URL."""
     if not url or not _R2_ACCOUNT_ID:

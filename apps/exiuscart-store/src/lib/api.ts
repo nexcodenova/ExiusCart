@@ -315,6 +315,20 @@ export const marketingApi = {
   updateEmailCampaign: (shopId: string, cid: number, data: any) => api.put(`/shops/${shopId}/marketing/email/${cid}`, data),
   deleteEmailCampaign: (shopId: string, cid: number) => api.delete(`/shops/${shopId}/marketing/email/${cid}`),
   sendEmailCampaign: (shopId: string, cid: number) => api.post(`/shops/${shopId}/marketing/email/${cid}/send`, {}),
+  // Email builder — image upload + reusable templates
+  uploadEmailImage: async (shopId: string, file: File) => {
+    const { data } = await api.get(`/shops/${shopId}/marketing/email-image/presign`, {
+      params: { content_type: file.type || 'image/jpeg' },
+    });
+    await uploadToR2(data.presigned_url, file);
+    return { data: { url: data.public_url } };
+  },
+  getEmailTemplates: (shopId: string) => api.get(`/shops/${shopId}/marketing/email-templates`),
+  saveEmailTemplate: (shopId: string, data: {
+    name: string; heading?: string; subtitle?: string; hero_image_url?: string;
+    button_text?: string; button_color?: string; button_shape?: string; font_key?: string;
+  }) => api.post(`/shops/${shopId}/marketing/email-templates`, data),
+  deleteEmailTemplate: (shopId: string, id: number) => api.delete(`/shops/${shopId}/marketing/email-templates/${id}`),
   // SMS Campaigns
   getSmsCampaigns: (shopId: string) => api.get(`/shops/${shopId}/marketing/sms`),
   createSmsCampaign: (shopId: string, data: any) => api.post(`/shops/${shopId}/marketing/sms`, data),

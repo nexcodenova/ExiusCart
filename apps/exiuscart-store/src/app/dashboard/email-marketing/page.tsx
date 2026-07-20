@@ -1,8 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Mail, Send, Trash2, Edit2, Eye, X, Loader2, LayoutTemplate, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, Mail, Send, Trash2, Edit2, Eye, X, Loader2, CheckCircle, AlertCircle, Upload, Bookmark, ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { marketingApi, usageApi } from '@/lib/api';
+import { EMPTY_EMAIL_FIELDS, EMAIL_FONTS, BUTTON_SHAPES, buildEmailHtml } from '@/lib/email-builder';
+import { RichTextEditor } from '@/components/rich-text-editor';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -11,241 +13,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-500',
 };
 
-const EMPTY = { name: '', subject: '', body_html: '', ctaLink: 'https://thedersi.lk/new-arrivals', heroImage: '' };
-
-interface Template { id: string; label: string; desc: string; subject: string; body: string; headerBg: string; }
-
-const EMAIL_TEMPLATES: Template[] = [
-  {
-    id: 'dark-promo',
-    label: 'Dark Promo',
-    desc: 'Bold dark hero with discount code',
-    headerBg: 'linear-gradient(135deg,#111827,#1f2937)',
-    subject: '🎉 Exclusive Offer Just for You!',
-    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-<tr><td style="background:#111827;border-radius:16px 16px 0 0;padding:52px 48px 44px;text-align:center;">
-  <p style="color:#9ca3af;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:0 0 16px;">Exclusive Offer</p>
-  <h1 style="color:#ffffff;font-size:40px;font-weight:900;margin:0 0 12px;line-height:1.15;">Big Savings<br/>Are Here 🎁</h1>
-  <p style="color:#6b7280;font-size:16px;margin:0;line-height:1.6;">A limited-time deal for our valued customers.</p>
-</td></tr>
-
-__HERO__
-
-<tr><td style="background:#1f2937;padding:32px 48px;">
-  <div style="border:2px dashed #374151;border-radius:12px;padding:28px;text-align:center;">
-    <p style="color:#9ca3af;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin:0 0 10px;">Your Promo Code</p>
-    <h2 style="color:#f9fafb;font-size:38px;font-weight:900;letter-spacing:8px;margin:0 0 10px;font-family:monospace;">SAVE20</h2>
-    <p style="color:#6b7280;font-size:14px;margin:0;">20% off your entire order · Limited time</p>
-  </div>
-</td></tr>
-
-<tr><td style="background:#ffffff;padding:40px 48px;">
-  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
-  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 28px;">We appreciate your loyalty and want to reward you with an exclusive deal. Use the code above at checkout to enjoy <strong>20% off</strong> your next purchase. This offer won't last long!</p>
-  <div style="text-align:center;margin:0 0 28px;">
-    <a href="__CTA__" style="display:inline-block;background:#111827;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Shop the Sale →</a>
-  </div>
-  <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">Offer valid for a limited time. Cannot be combined with other offers.</p>
-</td></tr>
-
-<tr><td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;border-top:1px solid #e5e7eb;">
-  <p style="color:#9ca3af;font-size:12px;margin:0;">You're receiving this because you're a valued customer.</p>
-  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">To unsubscribe, reply to this email.</p>
-</td></tr>
-
-</table></td></tr></table></body></html>`,
-  },
-  {
-    id: 'flash-sale',
-    label: 'Flash Sale',
-    desc: 'Red urgent sale, ends tonight',
-    headerBg: 'linear-gradient(135deg,#dc2626,#b91c1c)',
-    subject: '⚡ Flash Sale — Ends Tonight!',
-    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#fff1f1;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#fff1f1;padding:32px 16px;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-<tr><td style="background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:16px 16px 0 0;padding:44px 48px;text-align:center;">
-  <p style="color:#fca5a5;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:0 0 12px;">⚡ Limited Time Only</p>
-  <h1 style="color:#ffffff;font-size:52px;font-weight:900;margin:0 0 8px;line-height:1.1;">FLASH SALE</h1>
-  <h2 style="color:#fef2f2;font-size:28px;font-weight:700;margin:0 0 20px;">Up to 50% OFF</h2>
-  <div style="display:inline-block;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px 24px;">
-    <p style="color:#fff;font-size:14px;font-weight:600;margin:0;">⏰ Ends Tonight at Midnight</p>
-  </div>
-</td></tr>
-
-__HERO__
-
-<tr><td style="background:#ffffff;padding:40px 48px;">
-  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
-  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 24px;">Our <strong style="color:#dc2626;">biggest flash sale</strong> is live right now! For a few hours only, we're slashing prices on selected products. This is your chance to grab what you've been eyeing at an unbeatable price.</p>
-  <div style="background:#fff7f7;border:1px solid #fee2e2;border-left:4px solid #dc2626;border-radius:4px 8px 8px 4px;padding:16px 20px;margin:0 0 28px;">
-    <p style="color:#b91c1c;font-size:15px;font-weight:700;margin:0 0 4px;">⚡ Stock is limited — once it's gone, it's gone!</p>
-    <p style="color:#ef4444;font-size:14px;margin:0;">Don't wait — these prices won't last past midnight.</p>
-  </div>
-  <div style="text-align:center;margin:0 0 28px;">
-    <a href="__CTA__" style="display:inline-block;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#ffffff;font-size:17px;font-weight:800;text-decoration:none;padding:18px 52px;border-radius:10px;">Grab the Deal Now →</a>
-  </div>
-  <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">Sale applies to selected items only. While stocks last.</p>
-</td></tr>
-
-<tr><td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;border-top:1px solid #e5e7eb;">
-  <p style="color:#9ca3af;font-size:12px;margin:0;">You're receiving this because you're a valued customer.</p>
-  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">To unsubscribe, reply to this email.</p>
-</td></tr>
-
-</table></td></tr></table></body></html>`,
-  },
-  {
-    id: 'new-arrivals',
-    label: 'New Arrivals',
-    desc: 'Purple gradient, new collection',
-    headerBg: 'linear-gradient(135deg,#6B3FD9,#8b5cf6)',
-    subject: '✨ New Products Just Arrived!',
-    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f8f7ff;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f7ff;padding:32px 16px;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-<tr><td style="background:linear-gradient(135deg,#6B3FD9,#8b5cf6);border-radius:16px 16px 0 0;padding:48px 48px 40px;text-align:center;">
-  <p style="color:rgba(255,255,255,0.7);font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:0 0 14px;">Just Landed</p>
-  <h1 style="color:#ffffff;font-size:40px;font-weight:900;margin:0 0 12px;line-height:1.2;">New Arrivals ✨</h1>
-  <p style="color:rgba(255,255,255,0.8);font-size:17px;margin:0;">Fresh styles, just in. Be the first to shop.</p>
-</td></tr>
-
-__HERO__
-
-<tr><td style="background:#ffffff;padding:40px 48px;">
-  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
-  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 24px;">We're excited to announce that our latest collection has just arrived! Fresh designs, premium quality, and styles you'll love. Be the first to get your hands on these before they sell out.</p>
-  <div style="background:#faf8ff;border-radius:12px;padding:24px;margin:0 0 28px;border:1px solid #ede9fe;">
-    <p style="color:#6B3FD9;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 16px;">🆕 New this season</p>
-    <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td style="width:50%;padding:0 12px 0 0;vertical-align:top;">
-        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">✓ &nbsp;Fresh seasonal styles</p>
-        <p style="color:#374151;font-size:14px;line-height:1.7;margin:4px 0 0;">✓ &nbsp;Limited edition pieces</p>
-      </td>
-      <td style="width:50%;padding:0 0 0 12px;vertical-align:top;">
-        <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">✓ &nbsp;Premium quality</p>
-        <p style="color:#374151;font-size:14px;line-height:1.7;margin:4px 0 0;">✓ &nbsp;Introductory prices</p>
-      </td>
-    </tr></table>
-  </div>
-  <div style="text-align:center;margin:0 0 28px;">
-    <a href="__CTA__" style="display:inline-block;background:linear-gradient(135deg,#6B3FD9,#8b5cf6);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Shop New Arrivals →</a>
-  </div>
-  <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">New stock is limited. Shop early to avoid missing out!</p>
-</td></tr>
-
-<tr><td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;border-top:1px solid #e5e7eb;">
-  <p style="color:#9ca3af;font-size:12px;margin:0;">You're receiving this because you're a valued customer.</p>
-  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">To unsubscribe, reply to this email.</p>
-</td></tr>
-
-</table></td></tr></table></body></html>`,
-  },
-  {
-    id: 'thank-you',
-    label: 'Thank You',
-    desc: 'Warm loyalty reward with gift code',
-    headerBg: 'linear-gradient(135deg,#d97706,#f59e0b)',
-    subject: '💛 Thank You for Your Support!',
-    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#fffbeb;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;padding:32px 16px;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-<tr><td style="background:linear-gradient(135deg,#d97706,#f59e0b);border-radius:16px 16px 0 0;padding:48px 48px 40px;text-align:center;">
-  <h1 style="color:#ffffff;font-size:44px;font-weight:900;margin:0 0 10px;">Thank You! 💛</h1>
-  <p style="color:rgba(255,255,255,0.9);font-size:17px;margin:0;">We appreciate your continued support.</p>
-</td></tr>
-
-__HERO__
-
-<tr><td style="background:#ffffff;padding:40px 48px;">
-  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 20px;">Hi there,</p>
-  <p style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 24px;">Your support means the world to us. Customers like you are exactly why we do what we do — and we want to show our appreciation with a little something special.</p>
-  <div style="background:#fffbeb;border:2px solid #fbbf24;border-radius:12px;padding:28px;text-align:center;margin:0 0 28px;">
-    <p style="color:#92400e;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:0 0 10px;">A gift just for you</p>
-    <h2 style="color:#78350f;font-size:36px;font-weight:900;letter-spacing:6px;margin:0 0 10px;font-family:monospace;">THANKS10</h2>
-    <p style="color:#a16207;font-size:14px;margin:0;">10% off your next order — no minimum spend</p>
-  </div>
-  <div style="text-align:center;margin:0 0 28px;">
-    <a href="__CTA__" style="display:inline-block;background:linear-gradient(135deg,#d97706,#f59e0b);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Redeem My Gift →</a>
-  </div>
-  <p style="color:#9ca3af;font-size:13px;text-align:center;margin:0;">Code valid for 30 days. One use per customer.</p>
-</td></tr>
-
-<tr><td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;border-top:1px solid #e5e7eb;">
-  <p style="color:#9ca3af;font-size:12px;margin:0;">You're receiving this because you're a valued customer.</p>
-  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">To unsubscribe, reply to this email.</p>
-</td></tr>
-
-</table></td></tr></table></body></html>`,
-  },
-  {
-    id: 'dark-newsletter',
-    label: 'Dark Newsletter',
-    desc: 'Full dark theme — like a brand email',
-    headerBg: 'linear-gradient(135deg,#0f0f0f,#1a1a1a)',
-    subject: '📣 What\'s New This Month',
-    body: `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0f0f0f;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;padding:32px 16px;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-<tr><td style="background:#0f0f0f;padding:24px 48px;text-align:center;border-radius:16px 16px 0 0;">
-  <p style="color:#f9fafb;font-size:22px;font-weight:800;margin:0;letter-spacing:-0.5px;">Your Shop Name</p>
-</td></tr>
-
-<tr><td style="background:#1a1a1a;padding:56px 48px;text-align:center;">
-  <p style="color:#6b7280;font-size:12px;letter-spacing:3px;text-transform:uppercase;margin:0 0 16px;">Monthly Update</p>
-  <h1 style="color:#f9fafb;font-size:44px;font-weight:900;margin:0 0 16px;line-height:1.15;">More Time<br/>to Save More</h1>
-  <p style="color:#9ca3af;font-size:16px;margin:0 0 32px;line-height:1.7;">Discover our latest offers and exclusive deals,<br/>crafted just for you.</p>
-  <a href="__CTA__" style="display:inline-block;background:#f9fafb;color:#111827;font-size:15px;font-weight:800;text-decoration:none;padding:16px 40px;border-radius:10px;">Explore Now →</a>
-</td></tr>
-
-__HERO__
-
-<tr><td style="height:1px;background:#1f2937;"></td></tr>
-
-<tr><td style="background:#111827;padding:40px 48px;">
-  <h2 style="color:#f9fafb;font-size:22px;font-weight:700;margin:0 0 16px;">What's New This Season</h2>
-  <p style="color:#9ca3af;font-size:15px;line-height:1.8;margin:0 0 24px;">We've been working hard to bring you the best products and offers. Here's a quick look at what to explore this month:</p>
-  <table width="100%" cellpadding="0" cellspacing="0"><tr>
-    <td style="width:50%;padding:0 10px 0 0;vertical-align:top;">
-      <div style="background:#1f2937;border-radius:10px;padding:20px;">
-        <p style="font-size:22px;margin:0 0 8px;">🛍️</p>
-        <p style="color:#f9fafb;font-size:14px;font-weight:600;margin:0 0 6px;">New Collection</p>
-        <p style="color:#6b7280;font-size:13px;margin:0;line-height:1.6;">Fresh products just added to the store.</p>
-      </div>
-    </td>
-    <td style="width:50%;padding:0 0 0 10px;vertical-align:top;">
-      <div style="background:#1f2937;border-radius:10px;padding:20px;">
-        <p style="font-size:22px;margin:0 0 8px;">⭐</p>
-        <p style="color:#f9fafb;font-size:14px;font-weight:600;margin:0 0 6px;">Exclusive Deals</p>
-        <p style="color:#6b7280;font-size:13px;margin:0;line-height:1.6;">Limited-time prices you won't find anywhere.</p>
-      </div>
-    </td>
-  </tr></table>
-</td></tr>
-
-<tr><td style="background:#111827;padding:0 48px 40px;text-align:center;">
-  <a href="__CTA__" style="display:inline-block;background:#6B3FD9;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:10px;">Visit Our Store →</a>
-</td></tr>
-
-<tr><td style="background:#0f0f0f;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;">
-  <p style="color:#374151;font-size:12px;margin:0;">You're receiving this as a valued customer. To unsubscribe, reply to this email.</p>
-</td></tr>
-
-</table></td></tr></table></body></html>`,
-  },
-];
+const EMPTY = { name: '', subject: '', ...EMPTY_EMAIL_FIELDS };
 
 export default function EmailMarketingPage() {
   const [shopId, setShopId] = useState('');
@@ -261,6 +29,13 @@ export default function EmailMarketingPage() {
   const [sendResult, setSendResult] = useState<{ sent: number; total_customers: number } | null>(null);
   const [sendError, setSendError] = useState('');
 
+  // Seller's own saved, reusable templates + hero image upload
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+
   // Usage / plan info
   const [usageMarketing, setUsageMarketing] = useState<{ used: number; limit: number | null } | null>(null);
 
@@ -272,12 +47,14 @@ export default function EmailMarketingPage() {
   const load = async () => {
     if (!shopId) return;
     try {
-      const [camRes, usageRes] = await Promise.all([
+      const [camRes, usageRes, tplRes] = await Promise.all([
         marketingApi.getEmailCampaigns(shopId),
         usageApi.get(shopId),
+        marketingApi.getEmailTemplates(shopId),
       ]);
       setCampaigns(camRes.data ?? []);
       setUsageMarketing(usageRes.data?.emails?.marketing ?? null);
+      setTemplates(tplRes.data ?? []);
     } catch {}
     finally { setLoading(false); }
   };
@@ -285,25 +62,73 @@ export default function EmailMarketingPage() {
   useEffect(() => { load(); }, [shopId]);
 
   const openNew = () => { setEditing(null); setForm(EMPTY); setShowTemplates(false); setShowModal(true); };
-  const openEdit = (c: any) => { setEditing(c); setForm({ name: c.name, subject: c.subject, body_html: c.body_html || '', ctaLink: 'https://thedersi.lk/new-arrivals', heroImage: '' }); setShowTemplates(false); setShowModal(true); };
-
-  const applyTemplate = (t: Template) => {
-    const heroHtml = form.heroImage
-      ? `<tr><td style="padding:0;"><img src="${form.heroImage}" alt="" style="width:100%;max-height:340px;object-fit:cover;display:block;" /></td></tr>`
-      : '';
-    const applied = t.body
-      .replace(/__CTA__/g, form.ctaLink || 'https://thedersi.lk/new-arrivals')
-      .replace('__HERO__', heroHtml);
-    setForm(f => ({ ...f, subject: t.subject, body_html: applied }));
+  const openEdit = (c: any) => {
+    setEditing(c);
+    setForm({ name: c.name, subject: c.subject, ...EMPTY_EMAIL_FIELDS, ...(c.builder_fields || {}) });
     setShowTemplates(false);
+    setShowModal(true);
+  };
+
+  // Load a saved template's look into the builder — button link stays
+  // whatever the seller already typed, since that's specific to this
+  // campaign, not something worth locking into a reusable template.
+  const applyTemplate = (t: any) => {
+    setForm((f) => ({
+      ...f,
+      heading: t.heading || '',
+      subtitle: t.subtitle || '',
+      heroImageUrl: t.hero_image_url || '',
+      buttonText: t.button_text || f.buttonText,
+      buttonColor: t.button_color || f.buttonColor,
+      buttonShape: t.button_shape || f.buttonShape,
+      fontKey: t.font_key || f.fontKey,
+    }));
+    setShowTemplates(false);
+  };
+
+  const saveAsTemplate = async () => {
+    if (!newTemplateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      await marketingApi.saveEmailTemplate(shopId, {
+        name: newTemplateName.trim(),
+        heading: form.heading,
+        subtitle: form.subtitle,
+        hero_image_url: form.heroImageUrl,
+        button_text: form.buttonText,
+        button_color: form.buttonColor,
+        button_shape: form.buttonShape,
+        font_key: form.fontKey,
+      });
+      setNewTemplateName('');
+      setShowSaveTemplate(false);
+      load();
+    } catch {}
+    finally { setSavingTemplate(false); }
+  };
+
+  const deleteTemplate = async (id: number) => {
+    if (!confirm('Delete this template?')) return;
+    try { await marketingApi.deleteEmailTemplate(shopId, id); load(); } catch {}
+  };
+
+  const uploadHero = async (file: File) => {
+    setUploadingHero(true);
+    try {
+      const res = await marketingApi.uploadEmailImage(shopId, file);
+      setForm((f) => ({ ...f, heroImageUrl: res.data?.url || f.heroImageUrl }));
+    } catch {}
+    finally { setUploadingHero(false); }
   };
 
   const save = async () => {
     if (!form.name.trim() || !form.subject.trim()) return;
     setSaving(true);
     try {
-      if (editing) { await marketingApi.updateEmailCampaign(shopId, editing.id, form); }
-      else { await marketingApi.createEmailCampaign(shopId, form); }
+      const { name, subject, ...builderFields } = form;
+      const payload = { name, subject, body_html: buildEmailHtml(builderFields), builder_fields: builderFields };
+      if (editing) { await marketingApi.updateEmailCampaign(shopId, editing.id, payload); }
+      else { await marketingApi.createEmailCampaign(shopId, payload); }
       setShowModal(false);
       load();
     } catch {}
@@ -474,97 +299,213 @@ export default function EmailMarketingPage() {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-card rounded-xl border border-border w-full max-w-2xl max-h-[92vh] flex flex-col">
+          <div className="bg-card rounded-xl border border-border w-full max-w-5xl max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
               <h2 className="text-lg font-semibold text-foreground">{editing ? 'Edit Campaign' : 'New Email Campaign'}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition"><X className="w-5 h-5" /></button>
             </div>
 
-            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+            <div className="grid lg:grid-cols-2 overflow-y-auto flex-1 min-h-0">
 
-              {/* Store link + hero image — used when applying templates */}
-              <div className="grid grid-cols-1 gap-4 p-4 bg-muted/40 border border-border rounded-xl">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider -mb-1">Template Settings — fill before applying a template</p>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">Button Link (Shop / Product URL)</label>
-                  <input
-                    value={form.ctaLink}
-                    onChange={e => setForm(f => ({ ...f, ctaLink: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
-                    placeholder="https://thedersi.lk/new-arrivals"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">This URL goes into all "Shop Now" / CTA buttons in the template.</p>
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">Hero Image URL <span className="text-muted-foreground/60">(optional)</span></label>
-                  <input
-                    value={form.heroImage}
-                    onChange={e => setForm(f => ({ ...f, heroImage: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
-                    placeholder="https://thedersi.lk/images/product.jpg"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Paste any image URL (product photo, banner). It will appear below the email header.</p>
-                </div>
-              </div>
+              {/* ── LEFT: form ── */}
+              <div className="p-6 space-y-5 border-r border-border">
 
-              {/* Template picker toggle */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowTemplates(v => !v)}
-                  className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 font-medium transition"
-                >
-                  <LayoutTemplate className="w-4 h-4" />
-                  {showTemplates ? 'Hide templates' : 'Start from a template'}
-                </button>
-                {showTemplates && (
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    {EMAIL_TEMPLATES.map(t => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => applyTemplate(t)}
-                        className="text-left border border-border rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-sm transition group"
-                      >
-                        <div className="h-10 w-full" style={{ background: t.headerBg }} />
-                        <div className="p-3 bg-muted/30 group-hover:bg-muted/60 transition">
-                          <p className="text-sm font-medium text-foreground group-hover:text-primary transition">{t.label}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
+                {/* My Templates */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplates(v => !v)}
+                    className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 font-medium transition"
+                  >
+                    <Bookmark className="w-4 h-4" />
+                    {showTemplates ? 'Hide my templates' : `My Templates (${templates.length})`}
+                  </button>
+                  {showTemplates && (
+                    <div className="mt-3 space-y-2">
+                      {templates.length === 0 && (
+                        <p className="text-xs text-muted-foreground">No saved templates yet — build one below, then "Save as Template" to reuse it next time.</p>
+                      )}
+                      {templates.map((t) => (
+                        <div key={t.id} className="flex items-center gap-2 border border-border rounded-lg p-2.5 hover:border-primary/50 transition">
+                          <button type="button" onClick={() => applyTemplate(t)} className="flex-1 text-left flex items-center gap-2.5 min-w-0">
+                            <span className="w-8 h-8 rounded-lg shrink-0 border border-border" style={{ background: t.button_color || '#6B3FD9' }} />
+                            <span className="text-sm text-foreground truncate">{t.name}</span>
+                          </button>
+                          <button type="button" onClick={() => deleteTemplate(t.id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded transition shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
-                      </button>
-                    ))}
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Campaign Name *</label>
+                    <input
+                      value={form.name}
+                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                      placeholder="Summer Sale Campaign"
+                    />
                   </div>
-                )}
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Subject Line *</label>
+                    <input
+                      value={form.subject}
+                      onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                      placeholder="Don't miss our biggest sale!"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">Hero Image <span className="text-muted-foreground/60">(optional)</span></label>
+                  <div className="flex items-center gap-3">
+                    {form.heroImageUrl ? (
+                      <img src={form.heroImageUrl} alt="" className="w-16 h-16 rounded-lg object-cover border border-border shrink-0" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground shrink-0">
+                        <ImageIcon className="w-5 h-5" />
+                      </div>
+                    )}
+                    <label className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-foreground hover:bg-muted cursor-pointer transition">
+                      {uploadingHero ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {uploadingHero ? 'Uploading…' : 'Upload'}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={uploadingHero}
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadHero(f); e.target.value = ''; }} />
+                    </label>
+                    {form.heroImageUrl && (
+                      <button type="button" onClick={() => setForm(f => ({ ...f, heroImageUrl: '' }))} className="text-xs text-muted-foreground hover:text-destructive transition">Remove</button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">Heading</label>
+                  <input
+                    value={form.heading}
+                    onChange={e => setForm(f => ({ ...f, heading: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="50% OFF Today Only"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">Subtitle</label>
+                  <input
+                    value={form.subtitle}
+                    onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="Our biggest sale of the year"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">Message</label>
+                  <RichTextEditor
+                    value={form.bodyMessage}
+                    onChange={(html) => setForm(f => ({ ...f, bodyMessage: html }))}
+                    placeholder="A short message to your customers..."
+                    rows={4}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Button Text</label>
+                    <input
+                      value={form.buttonText}
+                      onChange={e => setForm(f => ({ ...f, buttonText: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                      placeholder="Shop Now"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Button Link</label>
+                    <input
+                      value={form.buttonLink}
+                      onChange={e => setForm(f => ({ ...f, buttonLink: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                      placeholder="https://thedersi.lk/new-arrivals"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-[auto_1fr_1fr] gap-4 items-end">
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Color</label>
+                    <input
+                      type="color"
+                      value={form.buttonColor}
+                      onChange={e => setForm(f => ({ ...f, buttonColor: e.target.value }))}
+                      className="w-11 h-10 rounded-lg border border-border cursor-pointer bg-transparent p-0.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Button Shape</label>
+                    <div className="flex gap-1.5">
+                      {BUTTON_SHAPES.map((s) => (
+                        <button
+                          key={s.key}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, buttonShape: s.key }))}
+                          className={`flex-1 px-2 py-2 text-xs border rounded-lg transition ${form.buttonShape === s.key ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Font</label>
+                    <select
+                      value={form.fontKey}
+                      onChange={e => setForm(f => ({ ...f, fontKey: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                    >
+                      {EMAIL_FONTS.map((fnt) => <option key={fnt.key} value={fnt.key}>{fnt.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Save as template */}
+                <div className="pt-1">
+                  {!showSaveTemplate ? (
+                    <button type="button" onClick={() => setShowSaveTemplate(true)} className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 font-medium transition">
+                      <Bookmark className="w-4 h-4" /> Save as Template
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={newTemplateName}
+                        onChange={e => setNewTemplateName(e.target.value)}
+                        placeholder="Template name"
+                        className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={saveAsTemplate}
+                        disabled={savingTemplate || !newTemplateName.trim()}
+                        className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-50 inline-flex items-center gap-1.5"
+                      >
+                        {savingTemplate && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Save
+                      </button>
+                      <button type="button" onClick={() => { setShowSaveTemplate(false); setNewTemplateName(''); }} className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition"><X className="w-4 h-4" /></button>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Campaign Name *</label>
-                <input
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
-                  placeholder="Summer Sale Campaign"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Subject Line *</label>
-                <input
-                  value={form.subject}
-                  onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
-                  placeholder="Don't miss our biggest sale of the year!"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Email Body (HTML)</label>
-                <textarea
-                  value={form.body_html}
-                  onChange={e => setForm(f => ({ ...f, body_html: e.target.value }))}
-                  rows={10}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono focus:ring-2 focus:ring-primary outline-none resize-y"
-                  placeholder="<h1>Hello!</h1><p>Your message here...</p>"
-                />
-                <p className="text-xs text-muted-foreground mt-1">HTML is rendered as-is. Use templates above for a quick start.</p>
+              {/* ── RIGHT: live preview ── */}
+              <div className="p-6 bg-muted/20 flex flex-col min-h-[400px]">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Live Preview</p>
+                <div className="flex-1 border border-border rounded-lg overflow-hidden bg-white">
+                  <iframe
+                    title="Email preview"
+                    srcDoc={buildEmailHtml(form)}
+                    className="w-full h-full border-0"
+                    style={{ minHeight: 500 }}
+                  />
+                </div>
               </div>
             </div>
 
