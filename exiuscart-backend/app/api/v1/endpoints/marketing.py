@@ -158,9 +158,10 @@ def process_drip_flows(db: Session):
             elif step.step_type == "send_email":
                 lead = enrollment.lead
                 if lead and lead.email:
-                    from app.core.email import send_email as _send_email
+                    from app.core.email import send_email as _send_email, with_thedersi_footer
                     subj = (cfg.get("subject") or "").replace("{name}", lead.name or "there")
                     body = (cfg.get("body_html") or f"<p>Hi {lead.name or 'there'},</p>").replace("{name}", lead.name or "there")
+                    body = with_thedersi_footer(body, lead.shop_id)
                     ok = _send_email(to=lead.email, subject=subj, html_body=body)
                     if ok:
                         enrollment.emails_sent = (enrollment.emails_sent or 0) + 1
