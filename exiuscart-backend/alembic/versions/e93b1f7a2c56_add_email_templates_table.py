@@ -18,24 +18,27 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        'email_templates',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('shop_id', sa.Integer(), nullable=False),
-        sa.Column('name', sa.String(length=200), nullable=False),
-        sa.Column('heading', sa.String(length=300), nullable=True),
-        sa.Column('subtitle', sa.Text(), nullable=True),
-        sa.Column('hero_image_url', sa.String(length=1000), nullable=True),
-        sa.Column('button_text', sa.String(length=100), nullable=True),
-        sa.Column('button_color', sa.String(length=7), nullable=True),
-        sa.Column('button_shape', sa.String(length=20), nullable=True),
-        sa.Column('font_key', sa.String(length=30), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-        sa.ForeignKeyConstraint(['shop_id'], ['shops.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-    )
-    op.create_index(op.f('ix_email_templates_id'), 'email_templates', ['id'], unique=False)
-    op.create_index(op.f('ix_email_templates_shop_id'), 'email_templates', ['shop_id'], unique=False)
+    # IF NOT EXISTS throughout — app startup's own Base.metadata.create_all()
+    # also creates any new table it sees in the models, and can race this
+    # migration (whichever runs first wins), so this must tolerate the table
+    # already being there, same as the old hand-written migrations always did.
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS email_templates (
+            id SERIAL PRIMARY KEY,
+            shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+            name VARCHAR(200) NOT NULL,
+            heading VARCHAR(300),
+            subtitle TEXT,
+            hero_image_url VARCHAR(1000),
+            button_text VARCHAR(100),
+            button_color VARCHAR(7),
+            button_shape VARCHAR(20),
+            font_key VARCHAR(30),
+            created_at TIMESTAMPTZ DEFAULT now()
+        );
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_email_templates_id ON email_templates (id);")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_email_templates_shop_id ON email_templates (shop_id);")
 
 
 def downgrade() -> None:

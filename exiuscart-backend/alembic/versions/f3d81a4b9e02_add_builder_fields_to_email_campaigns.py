@@ -18,7 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('email_campaigns', sa.Column('builder_fields', sa.JSON(), nullable=True))
+    op.execute("ALTER TABLE email_campaigns ADD COLUMN IF NOT EXISTS builder_fields JSON;")
 
 
 def downgrade() -> None:
