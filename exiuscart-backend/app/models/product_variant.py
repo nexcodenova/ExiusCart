@@ -14,6 +14,10 @@ class ProductVariant(Base):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     size = Column(String(50), nullable=True)    # "S", "M", "L", "XL", "Free Size"
     color = Column(String(100), nullable=True)  # "Blue", "Red", "Navy Blue"
+    # Actual swatch color, e.g. "#FF0000" — auto-guessed from `color` for common
+    # names, or picked by the seller directly for anything unusual ("Rose Gold").
+    # Null means no swatch could be shown (name not recognized, none picked).
+    color_hex = Column(String(7), nullable=True)
     sku = Column(String(100), nullable=True)    # optional variant-level SKU
     quantity = Column(Integer, default=0)
     price = Column(Numeric(10, 2), nullable=True)  # None = use parent product price

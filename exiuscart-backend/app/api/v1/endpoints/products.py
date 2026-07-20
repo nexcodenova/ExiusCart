@@ -344,6 +344,7 @@ async def delete_product(
 class VariantIn(BaseModel):
     size: Optional[str] = None
     color: Optional[str] = None
+    color_hex: Optional[str] = None
     sku: Optional[str] = None
     quantity: int = 0
     price: Optional[float] = None
@@ -354,6 +355,7 @@ class VariantOut(BaseModel):
     id: int
     size: Optional[str]
     color: Optional[str]
+    color_hex: Optional[str] = None
     sku: Optional[str]
     quantity: int
     price: Optional[float]
@@ -396,6 +398,7 @@ def save_variants(
             product_id=product_id,
             size=v.size,
             color=v.color,
+            color_hex=v.color_hex,
             sku=v.sku,
             quantity=v.quantity,
             price=v.price,

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Package, Loader2 } from 'lucide-react';
 import { variantsApi } from '@/lib/api';
+import { ColorSwatch } from '@/components/color-swatch';
 
 export interface BundleComponent {
   component_product_id: number;
@@ -15,6 +16,7 @@ interface Variant {
   id: number;
   size: string | null;
   color: string | null;
+  color_hex?: string | null;
   quantity: number;
 }
 
@@ -190,7 +192,7 @@ export function BundleBuilder({ shopId, enabled, onToggle, components, onChange,
                               type="button"
                               disabled={outOfStock}
                               onClick={() => toggleVariant(i, v.id)}
-                              className={`px-2.5 py-1 rounded-full text-xs border transition ${
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border transition ${
                                 outOfStock
                                   ? 'border-border text-muted-foreground/50 cursor-not-allowed line-through'
                                   : checked
@@ -198,6 +200,7 @@ export function BundleBuilder({ shopId, enabled, onToggle, components, onChange,
                                     : 'bg-card border-border text-foreground hover:border-primary/50'
                               }`}
                             >
+                              {v.color && <ColorSwatch name={v.color} hex={v.color_hex} size={12} />}
                               {variantLabel(v)}{outOfStock ? ' (out of stock)' : ''}
                             </button>
                           );

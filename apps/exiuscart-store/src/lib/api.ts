@@ -511,7 +511,7 @@ export const variantsApi = {
   getAll: (shopId: string, productId: string) =>
     api.get(`/shops/${shopId}/products/${productId}/variants`),
   save: (shopId: string, productId: string, variants: {
-    size?: string; color?: string; sku?: string; quantity: number; price?: number; image_url?: string;
+    size?: string; color?: string; color_hex?: string; sku?: string; quantity: number; price?: number; image_url?: string;
   }[]) => api.put(`/shops/${shopId}/products/${productId}/variants`, variants),
   uploadImage: async (shopId: string, productId: string, file: File) => {
     const { data } = await api.get(`/shops/${shopId}/products/${productId}/variant-image/presign`, {

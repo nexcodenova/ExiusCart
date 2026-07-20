@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
+import { colorNameToHex } from '@/lib/color-utils';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { DropshipSupplierSection } from '@/components/dropship-supplier-section';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -896,8 +897,8 @@ function ProductModal({
   const [error, setError] = useState('');
 
   // Variants state
-  interface Variant { id?: number; size: string; color: string; sku: string; quantity: number; price: string; image_url: string; _pendingFile?: File; _previewUrl?: string; }
-  const emptyVariant = (): Variant => ({ size: '', color: '', sku: '', quantity: 0, price: '', image_url: '' });
+  interface Variant { id?: number; size: string; color: string; color_hex: string; sku: string; quantity: number; price: string; image_url: string; _pendingFile?: File; _previewUrl?: string; }
+  const emptyVariant = (): Variant => ({ size: '', color: '', color_hex: '', sku: '', quantity: 0, price: '', image_url: '' });
   const [variants, setVariants] = useState<Variant[]>([]);
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
   const [variantImageError, setVariantImageError] = useState<string>('');
@@ -976,7 +977,7 @@ function ProductModal({
 
       variantsApi.getAll(shopId, product.id)
         .then((res) => setVariants((res.data ?? []).map((v: any) => ({
-          id: v.id, size: v.size ?? '', color: v.color ?? '',
+          id: v.id, size: v.size ?? '', color: v.color ?? '', color_hex: v.color_hex ?? '',
           sku: v.sku ?? '', quantity: v.quantity ?? 0,
           price: v.price != null ? String(v.price) : '',
           image_url: v.image_url ?? '',
@@ -1235,6 +1236,7 @@ function ProductModal({
         tasks.push(variantsApi.save(shopId, productId, resolvedVariants.map((v) => ({
           size: v.size || undefined,
           color: v.color || undefined,
+          color_hex: v.color_hex || undefined,
           sku: v.sku || undefined,
           quantity: v.quantity,
           price: v.price !== '' ? Number(v.price) : undefined,
@@ -1463,7 +1465,16 @@ function ProductModal({
                           </div>
                           <div className="col-span-3">
                             {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Color</label>}
-                            <input type="text" value={v.color} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, color: e.target.value } : r))} placeholder="Red / Blue" className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="color"
+                                value={v.color_hex || colorNameToHex(v.color) || '#cccccc'}
+                                onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, color_hex: e.target.value } : r))}
+                                title="Pick the exact shade — only needed if the name alone doesn't say enough (e.g. 'Rose Gold')"
+                                className="w-8 h-8 shrink-0 rounded-lg border border-border cursor-pointer bg-transparent p-0.5"
+                              />
+                              <input type="text" value={v.color} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, color: e.target.value } : r))} placeholder="Red / Blue" className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                            </div>
                           </div>
                           <div className="col-span-2">
                             {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Stock</label>}

@@ -155,7 +155,7 @@ def _bundle_components_payload(product: Product, db: Session) -> list:
         if allowed_ids:
             variants = db.query(ProductVariant).filter(ProductVariant.id.in_(allowed_ids)).all()
             options = [
-                {"variant_id": v.id, "size": v.size, "color": v.color, "sku": v.sku, "quantity": v.quantity}
+                {"variant_id": v.id, "size": v.size, "color": v.color, "color_hex": v.color_hex, "sku": v.sku, "quantity": v.quantity}
                 for v in variants
             ]
         result.append({
@@ -184,6 +184,7 @@ def _product_payload(
         {
             "size": v.size,
             "color": v.color,
+            "color_hex": v.color_hex,
             "sku": v.sku,
             "quantity": v.quantity,
             "price": float(v.price) if v.price is not None else None,

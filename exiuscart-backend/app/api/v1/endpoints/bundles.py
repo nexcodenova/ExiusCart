@@ -86,7 +86,7 @@ def get_bundle_components(
             "component_product_name": comp_product.name if comp_product else "Unknown",
             "allowed_variant_ids": allowed_ids,
             "allowed_variants": [
-                {"id": v.id, "size": v.size, "color": v.color, "quantity": v.quantity}
+                {"id": v.id, "size": v.size, "color": v.color, "color_hex": v.color_hex, "quantity": v.quantity}
                 for v in allowed_variants
             ],
             "quantity": c.quantity,
