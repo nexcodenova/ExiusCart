@@ -68,6 +68,71 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
         return False
 
 
+# ── TheDersi footer — appended to customer-facing emails (quotations,
+# payment reminders, recurring invoices, review requests, marketing
+# campaigns) sent on behalf of a TheDersi-affiliated seller. Real company
+# info supplied directly by TheDersi — not invented. The QR (same for both
+# iOS and Android, per TheDersi) is generated on the fly from the real
+# https://thedersi.lk/app link via a public QR API (api.qrserver.com) —
+# no image upload/hosting needed on our side. If that service is ever down,
+# only the QR image fails to render; nothing else in the email breaks.
+_THEDERSI_APP_URL = "https://thedersi.lk/app"
+
+def is_thedersi_shop(shop_id: int) -> bool:
+    """True if this shop has an active TheDersi channel connection."""
+    if not shop_id:
+        return False
+    from app.models.channel import ChannelConnection
+    db = SessionLocal()
+    try:
+        return db.query(ChannelConnection).filter(
+            ChannelConnection.shop_id == shop_id,
+            ChannelConnection.channel_type == "thedersi",
+            ChannelConnection.is_active == True,
+        ).first() is not None
+    finally:
+        db.close()
+
+
+def thedersi_footer_html() -> str:
+    from urllib.parse import quote
+    qr_src = f"https://api.qrserver.com/v1/create-qr-code/?size=110x110&data={quote(_THEDERSI_APP_URL, safe='')}"
+    qr_cell = f"""
+        <td style="padding:0 16px;text-align:center;">
+          <img src="{qr_src}" alt="Scan to download the TheDersi app" width="88" height="88" style="display:block;border-radius:8px;margin:0 auto;" />
+          <p style="margin:8px 0 0;font-size:11px;color:#9ca3af;">{{label}}</p>
+        </td>"""
+    return f"""
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;margin:0 auto;border-top:1px solid #e5e7eb;">
+      <tr><td style="padding:24px 32px;text-align:center;">
+        <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">Get the TheDersi app</p>
+        <table cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr>
+          {qr_cell.format(label="Scan for iOS")}
+          {qr_cell.format(label="Scan for Android")}
+        </tr></table>
+        <p style="margin:16px 0 0;font-size:11px;line-height:1.6;color:#9ca3af;">
+          TheDersi is a marketplace operated by Fairam Private Limited, a company incorporated under the laws of Sri Lanka
+          (Company Registration No. PV 00362065).<br/>
+          Registered office: No. 83/B, Arafa School Road, Kurinchakerny-03, Kinniya 31100, Sri Lanka.
+        </p>
+      </td></tr>
+    </table>"""
+
+
+def with_thedersi_footer(html: str, shop_id: Optional[int]) -> str:
+    """Appends the TheDersi footer to an email's HTML, but only if this shop
+    is actually TheDersi-affiliated — every other shop's emails are
+    unaffected."""
+    if not shop_id or not is_thedersi_shop(shop_id):
+        return html
+    footer = thedersi_footer_html()
+    # Insert right before </body> so it renders as part of the same email,
+    # not appended as visible raw text after a closing tag.
+    if "</body>" in html:
+        return html.replace("</body>", f"{footer}</body>")
+    return html + footer
+
+
 # ── OTP email ─────────────────────────────────────────────────────────────────
 
 def send_otp_email(to: str, full_name: str, otp_code: str) -> bool:
@@ -776,6 +841,7 @@ def send_quotation_email(
     notes: Optional[str],
     currency: str = "USD",
     client_link: Optional[str] = None,
+    shop_id: Optional[int] = None,
 ) -> None:
     def fmt(v: float) -> str:
         return f"{currency} {v:,.2f}"
@@ -911,7 +977,7 @@ def send_quotation_email(
 </body>
 </html>"""
 
-    send_email(to_email, f"Quotation {quote_number} from {shop_name}", html)
+    send_email(to_email, f"Quotation {quote_number} from {shop_name}", with_thedersi_footer(html, shop_id))
 
 
 # ── Payment Reminder email ─────────────────────────────────────────────────────
@@ -927,6 +993,7 @@ def send_payment_reminder_email(
     reminder_count: int,
     currency: str = "USD",
     client_link: Optional[str] = None,
+    shop_id: Optional[int] = None,
 ) -> None:
     def fmt(v: float) -> str:
         return f"{currency} {v:,.2f}"
@@ -998,7 +1065,7 @@ def send_payment_reminder_email(
     send_email(
         to_email,
         f"[Reminder {ordinal}] Payment Due – {quote_number} from {shop_name}",
-        html,
+        with_thedersi_footer(html, shop_id),
     )
 
 
@@ -1097,6 +1164,7 @@ def send_recurring_invoice_email(
     total: float,
     notes: Optional[str],
     currency: str = "USD",
+    shop_id: Optional[int] = None,
 ) -> None:
     """Reuses quotation email layout but branded as a recurring invoice."""
     def fmt(v: float) -> str:
@@ -1190,7 +1258,7 @@ def send_recurring_invoice_email(
   </table>
 </body></html>"""
 
-    send_email(to_email, f"Invoice {invoice_number} from {shop_name}", html)
+    send_email(to_email, f"Invoice {invoice_number} from {shop_name}", with_thedersi_footer(html, shop_id))
 
 
 # ── TheDersi Order Cancellation — seller notification ─────────────────────────
@@ -1283,6 +1351,7 @@ def send_review_request_email(
     shop_name: str,
     order_number: str,
     products: list,   # list of dicts: {name, image_url, review_url}
+    shop_id: Optional[int] = None,
 ) -> bool:
     rows = "".join(
         f"""<tr>
@@ -1347,5 +1416,5 @@ def send_review_request_email(
     return send_email(
         to_email,
         f"How was your order from {shop_name}?",
-        html,
+        with_thedersi_footer(html, shop_id),
     )

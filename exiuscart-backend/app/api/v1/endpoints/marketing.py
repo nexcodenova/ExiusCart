@@ -295,7 +295,7 @@ def send_email_campaign(shop_id: int, cid: int, current_user: User = Depends(get
     from app.models.email_usage_log import EmailUsageLog
     from app.models.customer import Customer
     from app.api.v1.endpoints.usage import EMAIL_LIMITS, _get_limit, _month_start
-    from app.core.email import send_email as _send_email
+    from app.core.email import send_email as _send_email, with_thedersi_footer
     from sqlalchemy import func as sql_func
 
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
@@ -327,9 +327,11 @@ def send_email_campaign(shop_id: int, cid: int, current_user: User = Depends(get
 
     to_send = customers if remaining is None else customers[:remaining]
 
+    body_html = with_thedersi_footer(c.body_html or f"<p>{c.name}</p>", shop_id)
+
     sent_count = 0
     for customer in to_send:
-        ok = _send_email(to=customer.email, subject=c.subject, html_body=c.body_html or f"<p>{c.name}</p>")
+        ok = _send_email(to=customer.email, subject=c.subject, html_body=body_html)
         if ok:
             db.add(EmailUsageLog(shop_id=shop_id, email_type="marketing", recipient_email=customer.email, reference_id=c.id))
             sent_count += 1
@@ -351,9 +353,18 @@ def presign_marketing_image(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Presigned PUT URL so the browser uploads a campaign hero image
-    directly to R2 — not tied to any product."""
+    """Presigned PUT URL so the browser uploads a campaign image (hero or
+    any of the extra slots) directly to R2 — not tied to any product.
+    Gated to paid plans, same limit table the campaign send itself uses."""
     _shop(shop_id, current_user, db)
+
+    from app.models.subscription import Subscription as _Subscription
+    from app.api.v1.endpoints.usage import EMAIL_LIMITS, _get_limit
+    sub = db.query(_Subscription).filter(_Subscription.shop_id == shop_id).first()
+    plan = sub.plan_type if sub else None
+    if _get_limit(EMAIL_LIMITS["marketing"], plan) == 0:
+        raise HTTPException(status_code=403, detail="Email images are not available on your plan. Upgrade to Starter or above.")
+
     from app.core.storage import generate_marketing_presigned_url
     ext = content_type.split("/")[-1].replace("jpeg", "jpg")
     return generate_marketing_presigned_url(shop_id, ext, content_type)
@@ -377,6 +388,8 @@ def save_email_template(shop_id: int, body: dict, current_user: User = Depends(g
         heading=body.get("heading"),
         subtitle=body.get("subtitle"),
         hero_image_url=body.get("hero_image_url"),
+        mid_image_url=body.get("mid_image_url"),
+        button_image_url=body.get("button_image_url"),
         button_text=body.get("button_text"),
         button_color=body.get("button_color"),
         button_shape=body.get("button_shape"),

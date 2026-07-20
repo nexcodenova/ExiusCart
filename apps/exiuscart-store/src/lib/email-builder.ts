@@ -43,6 +43,8 @@ export interface EmailBuilderFields {
   subtitle: string;
   bodyMessage: string;
   heroImageUrl: string;
+  midImageUrl: string;
+  buttonImageUrl: string;
   buttonText: string;
   buttonLink: string;
   buttonColor: string;
@@ -55,6 +57,8 @@ export const EMPTY_EMAIL_FIELDS: EmailBuilderFields = {
   subtitle: '',
   bodyMessage: '',
   heroImageUrl: '',
+  midImageUrl: '',
+  buttonImageUrl: '',
   buttonText: 'Shop Now',
   buttonLink: '',
   buttonColor: '#6B3FD9',
@@ -81,6 +85,12 @@ export function buildEmailHtml(f: EmailBuilderFields): string {
   const body = !messageEmpty
     ? `<div style="color:#374151;font-size:16px;line-height:1.8;margin:0 0 28px;">${f.bodyMessage}</div>`
     : '';
+  const midImage = f.midImageUrl
+    ? `<img src="${f.midImageUrl}" alt="" style="width:100%;border-radius:12px;display:block;margin:0 0 28px;" />`
+    : '';
+  const buttonImage = f.buttonImageUrl
+    ? `<img src="${f.buttonImageUrl}" alt="" style="width:100%;border-radius:12px;display:block;margin:0 0 24px;" />`
+    : '';
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">${fontLink}</head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:${font};">
@@ -96,6 +106,8 @@ ${hero}
 
 <tr><td style="background:#ffffff;padding:40px 48px;">
   ${body}
+  ${midImage}
+  ${buttonImage}
   <div style="text-align:center;">
     <a href="${f.buttonLink || '#'}" style="display:inline-block;background:${color};color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 48px;border-radius:${radius};">${esc(f.buttonText) || 'Shop Now'}</a>
   </div>

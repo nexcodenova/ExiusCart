@@ -326,6 +326,7 @@ export const marketingApi = {
   getEmailTemplates: (shopId: string) => api.get(`/shops/${shopId}/marketing/email-templates`),
   saveEmailTemplate: (shopId: string, data: {
     name: string; heading?: string; subtitle?: string; hero_image_url?: string;
+    mid_image_url?: string; button_image_url?: string;
     button_text?: string; button_color?: string; button_shape?: string; font_key?: string;
   }) => api.post(`/shops/${shopId}/marketing/email-templates`, data),
   deleteEmailTemplate: (shopId: string, id: number) => api.delete(`/shops/${shopId}/marketing/email-templates/${id}`),
@@ -579,6 +580,14 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/daraz/earnings`, { params: { days } }),
   getDarazTransactions: (shopId: string, startTime: string, endTime: string) =>
     api.get(`/shops/${shopId}/channels/daraz/transactions`, { params: { start_time: startTime, end_time: endTime } }),
+  getDarazCategoryAttributes: (shopId: string, categoryId: string) =>
+    api.get(`/shops/${shopId}/channels/daraz/category-attributes`, { params: { category_id: categoryId } }),
+  getDarazBrands: (shopId: string, search: string = '') =>
+    api.get(`/shops/${shopId}/channels/daraz/brands`, { params: { search } }),
+  createDarazListing: (shopId: string, productId: number | string, data: { category_id: string; attribute_values: Record<string, any>; brand?: string }) =>
+    api.post(`/shops/${shopId}/channels/daraz/products/${productId}/create`, data),
+  getDarazListingStatus: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/channels/daraz/products/${productId}/qc-status`),
 };
 
 export const usageApi = {

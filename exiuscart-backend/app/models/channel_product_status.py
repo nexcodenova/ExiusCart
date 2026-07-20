@@ -14,6 +14,9 @@ class ChannelProductStatus(Base):
     status = Column(String(30), nullable=False, default="pending_review")
     # pending_review | approved | rejected
     rejection_reason = Column(String(500), nullable=True)
+    # The channel's own ID for this listing once created (e.g. Daraz's
+    # item_id) — needed to check QC status or update the listing later.
+    external_item_id = Column(String(100), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (

@@ -29,9 +29,10 @@ export default function EmailMarketingPage() {
   const [sendResult, setSendResult] = useState<{ sent: number; total_customers: number } | null>(null);
   const [sendError, setSendError] = useState('');
 
-  // Seller's own saved, reusable templates + hero image upload
+  // Seller's own saved, reusable templates + image uploads (hero, mid-email, above-button)
   const [templates, setTemplates] = useState<any[]>([]);
-  const [uploadingHero, setUploadingHero] = useState(false);
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -78,6 +79,8 @@ export default function EmailMarketingPage() {
       heading: t.heading || '',
       subtitle: t.subtitle || '',
       heroImageUrl: t.hero_image_url || '',
+      midImageUrl: t.mid_image_url || '',
+      buttonImageUrl: t.button_image_url || '',
       buttonText: t.button_text || f.buttonText,
       buttonColor: t.button_color || f.buttonColor,
       buttonShape: t.button_shape || f.buttonShape,
@@ -95,6 +98,8 @@ export default function EmailMarketingPage() {
         heading: form.heading,
         subtitle: form.subtitle,
         hero_image_url: form.heroImageUrl,
+        mid_image_url: form.midImageUrl,
+        button_image_url: form.buttonImageUrl,
         button_text: form.buttonText,
         button_color: form.buttonColor,
         button_shape: form.buttonShape,
@@ -112,13 +117,17 @@ export default function EmailMarketingPage() {
     try { await marketingApi.deleteEmailTemplate(shopId, id); load(); } catch {}
   };
 
-  const uploadHero = async (file: File) => {
-    setUploadingHero(true);
+  const uploadSlot = async (slot: 'heroImageUrl' | 'midImageUrl' | 'buttonImageUrl', file: File) => {
+    setUploadingSlot(slot);
+    setUploadError('');
     try {
       const res = await marketingApi.uploadEmailImage(shopId, file);
-      setForm((f) => ({ ...f, heroImageUrl: res.data?.url || f.heroImageUrl }));
-    } catch {}
-    finally { setUploadingHero(false); }
+      setForm((f) => ({ ...f, [slot]: res.data?.url || f[slot] }));
+    } catch (err: any) {
+      setUploadError(err?.response?.data?.detail ?? 'Failed to upload image.');
+    } finally {
+      setUploadingSlot(null);
+    }
   };
 
   const save = async () => {
@@ -158,6 +167,41 @@ export default function EmailMarketingPage() {
   const preview = campaigns.find(c => c.id === previewId);
   const marketingLocked = usageMarketing?.limit === 0;
   const marketingFull = usageMarketing !== null && usageMarketing.limit !== null && usageMarketing.used >= usageMarketing.limit;
+
+  // One image slot (hero / mid-email / above-button) — upload requires a paid
+  // plan since the whole marketing feature does; shown greyed out with an
+  // Upgrade link otherwise, same pattern as the New Campaign / Send gates above.
+  const ImageSlotField = ({ slot, label, hint }: { slot: 'heroImageUrl' | 'midImageUrl' | 'buttonImageUrl'; label: string; hint: string }) => (
+    <div>
+      <label className="text-sm text-muted-foreground mb-1.5 block">{label} <span className="text-muted-foreground/60">{hint}</span></label>
+      {marketingLocked ? (
+        <div className="flex items-center gap-3 px-3 py-2.5 bg-muted/50 border border-dashed border-border rounded-lg">
+          <ImageIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground flex-1">Image upload needs a paid plan.</p>
+          <Link href="/dashboard/billing" className="text-xs text-primary hover:text-primary/80 font-medium shrink-0">Upgrade</Link>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          {form[slot] ? (
+            <img src={form[slot]} alt="" className="w-16 h-16 rounded-lg object-cover border border-border shrink-0" />
+          ) : (
+            <div className="w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground shrink-0">
+              <ImageIcon className="w-5 h-5" />
+            </div>
+          )}
+          <label className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-foreground hover:bg-muted cursor-pointer transition">
+            {uploadingSlot === slot ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {uploadingSlot === slot ? 'Uploading…' : 'Upload'}
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={!!uploadingSlot}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSlot(slot, f); e.target.value = ''; }} />
+          </label>
+          {form[slot] && (
+            <button type="button" onClick={() => setForm(f => ({ ...f, [slot]: '' }))} className="text-xs text-muted-foreground hover:text-destructive transition">Remove</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -359,27 +403,15 @@ export default function EmailMarketingPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">Hero Image <span className="text-muted-foreground/60">(optional)</span></label>
-                  <div className="flex items-center gap-3">
-                    {form.heroImageUrl ? (
-                      <img src={form.heroImageUrl} alt="" className="w-16 h-16 rounded-lg object-cover border border-border shrink-0" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground shrink-0">
-                        <ImageIcon className="w-5 h-5" />
-                      </div>
-                    )}
-                    <label className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-foreground hover:bg-muted cursor-pointer transition">
-                      {uploadingHero ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      {uploadingHero ? 'Uploading…' : 'Upload'}
-                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={uploadingHero}
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadHero(f); e.target.value = ''; }} />
-                    </label>
-                    {form.heroImageUrl && (
-                      <button type="button" onClick={() => setForm(f => ({ ...f, heroImageUrl: '' }))} className="text-xs text-muted-foreground hover:text-destructive transition">Remove</button>
-                    )}
+                {uploadError && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                    <p className="text-xs text-red-600 dark:text-red-400 flex-1">{uploadError}</p>
+                    <button type="button" onClick={() => setUploadError('')} className="p-0.5 hover:bg-muted rounded text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
                   </div>
-                </div>
+                )}
+
+                <ImageSlotField slot="heroImageUrl" label="Hero Image" hint="(optional) — top banner" />
 
                 <div>
                   <label className="text-sm text-muted-foreground mb-1.5 block">Heading</label>
@@ -408,6 +440,10 @@ export default function EmailMarketingPage() {
                     rows={4}
                   />
                 </div>
+
+                <ImageSlotField slot="midImageUrl" label="Mid-Email Image" hint="(optional) — shown below your message" />
+
+                <ImageSlotField slot="buttonImageUrl" label="Image Above Button" hint="(optional) — shown just above the Shop Now button" />
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>

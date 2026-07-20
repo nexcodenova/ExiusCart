@@ -28,6 +28,7 @@ import os
 import time
 import hmac
 import hashlib
+import json
 import secrets
 import logging
 from datetime import datetime, timezone, timedelta
@@ -36,6 +37,7 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -43,6 +45,8 @@ from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.channel import ChannelConnection
+from app.models.product import Product
+from app.models.channel_product_status import ChannelProductStatus
 from app.models.subscription import Subscription
 from app.api.v1.endpoints.channels import _shop_or_404, EXIUSCART_BASE
 
@@ -79,11 +83,14 @@ def _daraz_api_base(country_code: str) -> str:
     return DARAZ_COUNTRY_API_BASE_URLS.get((country_code or "").strip().upper(), "")
 
 
-def _daraz_signed_request(api_path: str, business_params: dict, country_code: str, access_token: str | None = None) -> dict | None:
+def _daraz_signed_request(api_path: str, business_params: dict, country_code: str, access_token: str | None = None, method: str = "GET") -> dict | None:
     """Calls any Daraz Open Platform API with correct HMAC-SHA256 signing.
     api_path is e.g. "/auth/token/create" or "/category/tree/get". country_code
     picks the right per-market domain (api.daraz.lk etc — there is no shared
-    api.daraz.com). Returns the parsed JSON response, or None on failure."""
+    api.daraz.com). Returns the parsed JSON response, or None on failure.
+    method="POST" is used for write operations (CreateProduct etc.) — the
+    signed params move to the form body instead of the query string, same
+    signature either way."""
     base = _daraz_api_base(country_code)
     if not base:
         logger.error(f"[DARAZ API] no API base URL for country={country_code!r}")
@@ -107,7 +114,10 @@ def _daraz_signed_request(api_path: str, business_params: dict, country_code: st
 
     url = f"{base}{api_path}"
     try:
-        resp = httpx.get(url, params=params, timeout=15)
+        if method == "POST":
+            resp = httpx.post(url, data=params, timeout=30)
+        else:
+            resp = httpx.get(url, params=params, timeout=15)
         return resp.json()
     except Exception as e:
         logger.error(f"[DARAZ API] request to {api_path} failed: {e}")
@@ -322,6 +332,207 @@ def fetch_daraz_brands(access_token: str, country_code: str, name_search: str = 
         logger.error(f"[DARAZ BRANDS] fetch failed — response: {data}")
         return None
     return data["data"]
+
+
+# ── UNVERIFIED — best-informed implementation, not confirmed working ────────
+# Daraz's docs for MigrateImage/CreateProduct only show XML examples (no
+# literal REST path, no JSON contract) — unlike category/tree/get, GetOrder,
+# and the Finance endpoints above, which were either empirically tested or
+# given explicit paths. Daraz runs on the same underlying platform as Lazada
+# (confirmed by the IopClient/IopRequest Java SDK class names in Daraz's own
+# Order/Finance docs), whose modern Open Platform APIs accept the complex
+# nested payload as a single JSON-encoded business parameter rather than
+# literal XML — matching what we already found empirically for category/
+# tree/get (docs show XML, live behaviour is JSON). This is the same
+# convention applied here, but it has NOT been tested against a real
+# connected Daraz account yet. Test this before trusting it in production —
+# see the docstrings below for exactly what to check.
+
+def migrate_daraz_image(access_token: str, country_code: str, image_url: str) -> dict | None:
+    """MigrateImage — uploads an image (by URL) to Daraz's own image
+    repository; CreateProduct needs Daraz-hosted image URLs, not arbitrary
+    external ones. Returns {"Url": ..., "Code": ...} on success.
+    UNVERIFIED: path /image/migrate and the "Image" param name are inferred
+    from Lazada Open Platform convention, not confirmed against Daraz."""
+    payload = json.dumps({"Image": {"Url": image_url}})
+    data = _daraz_signed_request("/image/migrate", {"Image": payload}, country_code, access_token=access_token, method="POST")
+    if not data or "data" not in data:
+        logger.error(f"[DARAZ IMAGE] migrate failed for url={image_url} — response: {data}")
+        return None
+    return data["data"]
+
+
+def create_daraz_product(access_token: str, country_code: str, product: dict) -> dict | None:
+    """CreateProduct — creates the real listing. `product` matches the
+    structure Daraz's docs show: {"PrimaryCategory": id, "Attributes": {...},
+    "Skus": [{...}]}. Returns the response data (includes item_id on
+    success) or None on failure.
+    UNVERIFIED: path /product/create and sending the whole structure as one
+    JSON-encoded "Product" parameter are inferred, not confirmed against
+    Daraz — test with one real product before relying on this."""
+    payload = json.dumps({"Product": product})
+    data = _daraz_signed_request("/product/create", {"Product": payload}, country_code, access_token=access_token, method="POST")
+    if not data:
+        logger.error(f"[DARAZ PRODUCT] create failed for category={product.get('PrimaryCategory')} — no response")
+        return None
+    if "data" not in data and "code" in data and str(data.get("code")) not in ("0", "success"):
+        logger.error(f"[DARAZ PRODUCT] create rejected — response: {data}")
+        return None
+    return data.get("data", data)
+
+
+def fetch_daraz_qc_status(access_token: str, country_code: str, item_id: str) -> dict | None:
+    """GetQcStatus — Daraz reviews every new listing before it goes live;
+    this checks whether it's still pending, approved, or rejected (and why).
+    UNVERIFIED: path /product/qc/status/get is inferred from the naming
+    convention of the other confirmed endpoints, not confirmed against Daraz."""
+    data = _daraz_signed_request("/product/qc/status/get", {"item_id": item_id}, country_code, access_token=access_token)
+    if not data or "data" not in data:
+        logger.error(f"[DARAZ PRODUCT] QC status fetch failed for item_id={item_id} — response: {data}")
+        return None
+    return data["data"]
+
+
+class DarazListingRequest(BaseModel):
+    category_id: str
+    attribute_values: dict = {}  # {attribute_name: value} for whatever GetCategoryAttributes required for this category
+    brand: str = ""              # brand NAME (Daraz's own CreateProduct example sends the name, not the numeric BrandId)
+
+
+@router.post("/shops/{shop_id}/channels/daraz/products/{product_id}/create")
+def create_daraz_listing(
+    shop_id: int,
+    product_id: int,
+    payload: DarazListingRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Actually creates the listing on Daraz — the piece that was missing
+    before (toggling Daraz on for a product only saved intent, nothing was
+    ever sent to Daraz). See create_daraz_product's docstring: the wire
+    format here is unverified, test with one real product first."""
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "daraz",
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Daraz not connected")
+
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # 1. Migrate images to Daraz's own repository first — CreateProduct
+    # needs Daraz-hosted URLs, not arbitrary external ones.
+    image_urls = [img.url for img in (product.images or []) if img.url]
+    if not image_urls and product.image_url:
+        image_urls = [product.image_url]
+    if not image_urls:
+        raise HTTPException(status_code=400, detail="This product has no images — Daraz requires at least one")
+
+    daraz_image_urls = []
+    for url in image_urls[:8]:  # Daraz allows up to 8 images per SKU
+        migrated = migrate_daraz_image(conn.access_token, shop.country, url)
+        if migrated and migrated.get("Url"):
+            daraz_image_urls.append(migrated["Url"])
+    if not daraz_image_urls:
+        raise HTTPException(status_code=502, detail="Could not upload any images to Daraz — try again shortly")
+
+    # 2. Build Attributes: the product's own name/description plus whatever
+    # category-specific fields the seller filled in (brand, material,
+    # warranty, etc. — varies per category, see GetCategoryAttributes).
+    attributes = {
+        "name": product.name,
+        "short_description": product.description or product.name,
+        "description": product.description or "",
+        **payload.attribute_values,
+    }
+    if payload.brand:
+        attributes["brand"] = payload.brand
+
+    # 3. One Sku per real variant (size/color), or one Sku from the base
+    # product if it has none.
+    skus = []
+    variants = product.variants or []
+    if variants:
+        for v in variants:
+            sku_images = daraz_image_urls
+            if v.image_url:
+                migrated_variant_img = migrate_daraz_image(conn.access_token, shop.country, v.image_url)
+                if migrated_variant_img and migrated_variant_img.get("Url"):
+                    sku_images = [migrated_variant_img["Url"]] + daraz_image_urls
+            skus.append({
+                "SellerSku": v.sku or f"{product.sku or product.id}-{v.id}",
+                "quantity": v.quantity or 0,
+                "price": float(v.price if v.price is not None else product.price),
+                "color_family": v.color or "",
+                "Images": {"Image": sku_images[:8]},
+            })
+    else:
+        skus.append({
+            "SellerSku": product.sku or str(product.id),
+            "quantity": product.quantity or 0,
+            "price": float(product.price),
+            "Images": {"Image": daraz_image_urls},
+        })
+
+    daraz_product = {
+        "PrimaryCategory": payload.category_id,
+        "Attributes": attributes,
+        "Skus": {"Sku": skus},
+    }
+
+    result = create_daraz_product(conn.access_token, shop.country, daraz_product)
+    if result is None:
+        raise HTTPException(status_code=502, detail="Daraz rejected the listing — check server logs for the exact reason")
+
+    item_id = str(result.get("item_id") or result.get("ItemId") or "")
+
+    status_row = db.query(ChannelProductStatus).filter(
+        ChannelProductStatus.product_id == product_id,
+        ChannelProductStatus.channel_type == "daraz",
+    ).first()
+    if not status_row:
+        status_row = ChannelProductStatus(product_id=product_id, shop_id=shop_id, channel_type="daraz")
+        db.add(status_row)
+    status_row.status = "pending_review"
+    status_row.external_item_id = item_id or None
+    db.commit()
+
+    return {"item_id": item_id, "status": "pending_review"}
+
+
+@router.get("/shops/{shop_id}/channels/daraz/products/{product_id}/qc-status")
+def get_daraz_listing_status(
+    shop_id: int,
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Checks Daraz's real QC review status for a listing already created
+    via create_daraz_listing."""
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "daraz",
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Daraz not connected")
+
+    status_row = db.query(ChannelProductStatus).filter(
+        ChannelProductStatus.product_id == product_id,
+        ChannelProductStatus.channel_type == "daraz",
+    ).first()
+    if not status_row or not status_row.external_item_id:
+        raise HTTPException(status_code=404, detail="This product hasn't been listed on Daraz yet")
+
+    qc = fetch_daraz_qc_status(conn.access_token, shop.country, status_row.external_item_id)
+    if qc is None:
+        raise HTTPException(status_code=502, detail="Could not reach Daraz — try again shortly")
+    return {"qc_status": qc, "item_id": status_row.external_item_id}
 
 
 # ── Earnings — Daraz's own Finance APIs, real endpoint paths confirmed from

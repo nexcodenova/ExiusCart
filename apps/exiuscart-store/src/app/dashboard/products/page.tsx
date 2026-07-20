@@ -11,6 +11,7 @@ import {
 import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { colorNameToHex } from '@/lib/color-utils';
+import { DarazListingFields } from '@/components/daraz-listing-fields';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { DropshipSupplierSection } from '@/components/dropship-supplier-section';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -930,6 +931,13 @@ function ProductModal({
   const [shopifyConnected, setShopifyConnected] = useState(false);
   const [customWebsiteConnection, setCustomWebsiteConnection] = useState<{ id: number } | null>(null);
 
+  // Daraz — actually creating the listing (separate from just toggling it on)
+  const [darazAttributeValues, setDarazAttributeValues] = useState<Record<string, string>>({});
+  const [darazBrand, setDarazBrand] = useState('');
+  const [darazListingStatus, setDarazListingStatus] = useState<{ item_id: string; status: string } | null>(null);
+  const [listingDaraz, setListingDaraz] = useState(false);
+  const [darazListingError, setDarazListingError] = useState('');
+
   interface OtherChannelToggle { enabled: boolean; isGift: boolean; categoryId: string; categoryName: string }
   const [otherChannels, setOtherChannels] = useState<Record<'daraz' | 'shopify' | 'custom', OtherChannelToggle>>({
     daraz: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
@@ -1042,6 +1050,11 @@ function ProductModal({
         const custom = data.find((c: any) => c.channel_type === 'custom');
         if (daraz) {
           setDarazConnection({ id: daraz.id });
+          if (product?.id) {
+            channelsApi.getDarazListingStatus(shopId, product.id)
+              .then((r) => setDarazListingStatus({ item_id: r.data?.item_id, status: r.data?.qc_status?.status ?? 'pending_review' }))
+              .catch(() => {}); // 404 = not listed yet, fine
+          }
           setLoadingDarazCategories(true);
           // Daraz's tree is arbitrarily deep, so the backend flattens it to
           // leaf-only breadcrumb names (e.g. "Bags > Kids Bags > Backpacks")
@@ -1163,6 +1176,24 @@ function ProductModal({
       ? current.filter((v) => v !== option)
       : [...current, option];
     setAttrValues((prev) => ({ ...prev, [key]: updated.join(',') }));
+  };
+
+  const handleListOnDaraz = async () => {
+    if (!product?.id || !otherChannels.daraz.categoryId) return;
+    setListingDaraz(true);
+    setDarazListingError('');
+    try {
+      const res = await channelsApi.createDarazListing(shopId, product.id, {
+        category_id: otherChannels.daraz.categoryId,
+        attribute_values: darazAttributeValues,
+        brand: darazBrand,
+      });
+      setDarazListingStatus({ item_id: res.data?.item_id, status: res.data?.status ?? 'pending_review' });
+    } catch (err: any) {
+      setDarazListingError(err?.response?.data?.detail ?? 'Could not create the Daraz listing. Try again.');
+    } finally {
+      setListingDaraz(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1908,6 +1939,47 @@ function ProductModal({
                         </button>
                         <p className="text-xs text-muted-foreground mt-1.5">Daraz's own category tree — pick the most specific match.</p>
                       </div>
+
+                      {product?.id && otherChannels.daraz.categoryId && (
+                        <DarazListingFields
+                          shopId={shopId}
+                          categoryId={otherChannels.daraz.categoryId}
+                          values={darazAttributeValues}
+                          brand={darazBrand}
+                          onChange={(vals, b) => { setDarazAttributeValues(vals); setDarazBrand(b); }}
+                        />
+                      )}
+
+                      {product?.id && otherChannels.daraz.categoryId && (
+                        <div className="border-t border-border pt-3">
+                          {darazListingStatus ? (
+                            <div className={`flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 ${
+                              darazListingStatus.status === 'approved' ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                              : darazListingStatus.status === 'rejected' ? 'bg-red-500/10 text-destructive'
+                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                            }`}>
+                              {darazListingStatus.status === 'approved' ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                              {darazListingStatus.status === 'approved' ? 'Live on Daraz'
+                                : darazListingStatus.status === 'rejected' ? 'Rejected by Daraz — check Daraz seller center for the reason'
+                                : "Submitted — waiting for Daraz's review"}
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleListOnDaraz}
+                                disabled={listingDaraz || !darazBrand}
+                                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                              >
+                                {listingDaraz && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {listingDaraz ? 'Creating listing on Daraz…' : 'List on Daraz'}
+                              </button>
+                              {!darazBrand && <p className="text-xs text-muted-foreground mt-1.5 text-center">Pick a brand above first.</p>}
+                              {darazListingError && <p className="text-xs text-destructive mt-1.5">{darazListingError}</p>}
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

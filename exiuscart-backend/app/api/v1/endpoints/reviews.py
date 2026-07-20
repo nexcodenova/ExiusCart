@@ -99,6 +99,7 @@ def request_reviews_for_order(order: Order, db: Session) -> None:
             shop_name=shop.name if shop else "the shop",
             order_number=order.order_number,
             products=email_products,
+            shop_id=shop.id if shop else None,
         )
     except Exception as e:
         logger.error(f"[ReviewRequest] Failed to send email for order={order.id}: {e}")

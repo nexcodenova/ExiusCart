@@ -261,6 +261,7 @@ def send_quotation(
         notes=q.notes,
         currency=shop.currency or "USD",
         client_link=client_link,
+        shop_id=shop_id,
     )
     return {"sent": True}
 
@@ -299,5 +300,6 @@ def send_reminder(
         reminder_count=q.reminder_count,
         currency=shop.currency or "USD",
         client_link=client_link,
+        shop_id=shop_id,
     )
     return {"sent": True, "reminder_count": q.reminder_count}

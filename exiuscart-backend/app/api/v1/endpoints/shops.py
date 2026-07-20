@@ -1777,6 +1777,7 @@ def send_recurring_invoice_now(
         total=float(ri.total),
         notes=ri.notes,
         currency=shop.currency or "USD",
+        shop_id=shop_id,
     )
     ri.last_sent_at = datetime.now(timezone.utc)
     ri.send_count = (ri.send_count or 0) + 1

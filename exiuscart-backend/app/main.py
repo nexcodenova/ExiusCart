@@ -59,6 +59,7 @@ def _process_due_recurring_invoices():
                     total=float(ri.total),
                     notes=ri.notes,
                     currency=shop.currency or "USD",
+                    shop_id=ri.shop_id,
                 )
                 ri.last_sent_at = datetime.now(timezone.utc)
                 ri.send_count = count

@@ -17,6 +17,8 @@ class EmailTemplate(Base):
     heading = Column(String(300), nullable=True)
     subtitle = Column(Text, nullable=True)
     hero_image_url = Column(String(1000), nullable=True)
+    mid_image_url = Column(String(1000), nullable=True)
+    button_image_url = Column(String(1000), nullable=True)
     button_text = Column(String(100), nullable=True)
     button_color = Column(String(7), nullable=True)     # "#RRGGBB"
     button_shape = Column(String(20), nullable=True)     # "pill" | "rounded" | "square"
