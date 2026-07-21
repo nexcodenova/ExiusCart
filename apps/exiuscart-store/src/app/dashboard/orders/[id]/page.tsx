@@ -114,6 +114,7 @@ export default function OrderDetailsPage() {
   const { fmt } = useCurrency();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<{ status: number | null; detail: string } | null>(null);
   const [sendingInvoice, setSendingInvoice] = useState(false);
   const [invoiceSent, setInvoiceSent] = useState(false);
   const [invoiceError, setInvoiceError] = useState('');
@@ -130,9 +131,16 @@ export default function OrderDetailsPage() {
 
   useEffect(() => {
     if (!shopId || !orderId) return;
+    setLoadError(null);
     ordersApi.getDetails(shopId, orderId)
       .then(res => setOrder(res.data))
-      .catch(() => setOrder(null))
+      .catch((err: any) => {
+        setOrder(null);
+        setLoadError({
+          status: err?.response?.status ?? null,
+          detail: err?.response?.data?.detail || err?.message || 'Unknown error',
+        });
+      })
       .finally(() => setLoading(false));
   }, [shopId, orderId]);
 
@@ -207,10 +215,18 @@ export default function OrderDetailsPage() {
   }
 
   if (!order) {
+    const isRealNotFound = loadError?.status === 404;
     return (
       <div className="max-w-3xl mx-auto py-16 text-center">
         <Package className="w-14 h-14 mx-auto text-muted-foreground opacity-40 mb-4" />
-        <h2 className="text-lg font-semibold text-foreground mb-2">Order not found</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-2">
+          {isRealNotFound ? 'Order not found' : 'Could not load this order'}
+        </h2>
+        {loadError && !isRealNotFound && (
+          <p className="text-sm text-muted-foreground mb-4">
+            {loadError.status ? `Server error (${loadError.status}): ` : ''}{loadError.detail}
+          </p>
+        )}
         <Link href="/dashboard/orders" className="text-sm text-primary hover:underline">← Back to orders</Link>
       </div>
     );
