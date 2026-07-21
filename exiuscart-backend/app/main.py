@@ -312,10 +312,19 @@ _daraz_order_sync_thread = threading.Thread(target=_run_daraz_order_sync_schedul
 _daraz_order_sync_thread.start()
 
 # CORS middleware
+# allow_origins=["*"] together with allow_credentials=True is invalid per the CORS
+# spec — browsers require an exact origin (not a wildcard) on any credentialed
+# response. Starlette papers over this on the OPTIONS preflight (reflects the real
+# origin), but the actual GET/POST response still gets a literal "*", which every
+# browser then rejects — silently breaking every authenticated cross-origin call.
+# Auth here is a Bearer token in the Authorization header (see api.ts), never
+# cookies, so credentials were never actually needed: allow_credentials=False lets
+# the wildcard stay valid, which the public review widget (embedded on arbitrary
+# seller websites, not just our own domains) genuinely relies on.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend domains
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
