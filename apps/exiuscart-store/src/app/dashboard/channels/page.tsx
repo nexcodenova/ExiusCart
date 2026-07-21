@@ -5,8 +5,9 @@ import {
   Link2, Loader2, CheckCircle2,
   Copy, Check, X, ExternalLink,
   ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2,
+  Warehouse, RefreshCw, AlertCircle,
 } from 'lucide-react';
-import { channelsApi, shopifyApi, subscriptionApi } from '@/lib/api';
+import { channelsApi, shopifyApi, subscriptionApi, noonApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -16,6 +17,7 @@ interface ChannelConnection {
   id: number;
   channel_type: string;
   channel_seller_id?: string;
+  channel_warehouse_code?: string | null;
   webhook_url: string;
   seller_status?: string | null;
 }
@@ -267,6 +269,240 @@ function DarazCard({ connection }: { connection: ChannelConnection }) {
 }
 
 
+// ── Noon connect modal ──────────────────────────────────────────────────────
+//
+// Noon has no OAuth click-to-connect yet (unlike Daraz) — becoming an
+// approved "integrator" needs Noon's partnership team to say yes directly,
+// no self-serve signup exists for it. Until that's granted, each seller
+// generates their own service-account key on Noon's own Partners dashboard
+// and pastes it in here — same idea as TheDersi's API key, just 4 fields
+// instead of 1, because Noon's key is a full private key pair, not a single
+// token. After connecting, the seller picks their own warehouse (their own
+// licensed space, or Noon's own consolidation center if they don't have a
+// UAE/KSA trade license) — never assumed on ExiusCart's side.
+
+function NoonConnectModal({ shopId, onConnected, onClose, initialStep = 'form' }: {
+  shopId: string; onConnected: () => void; onClose: () => void; initialStep?: 'form' | 'warehouse';
+}) {
+  const [step, setStep] = useState<'form' | 'warehouse'>(initialStep);
+  const [keyId, setKeyId] = useState('');
+  const [privateKey, setPrivateKey] = useState('');
+  const [channelIdentifier, setChannelIdentifier] = useState('');
+  const [projectCode, setProjectCode] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState('');
+
+  const [warehouses, setWarehouses] = useState<{ warehouse_code: string; name?: string }[]>([]);
+  const [loadingWarehouses, setLoadingWarehouses] = useState(false);
+  const [selectedWarehouse, setSelectedWarehouse] = useState('');
+  const [savingWarehouse, setSavingWarehouse] = useState(false);
+
+  useEffect(() => {
+    if (initialStep === 'warehouse') loadWarehouses();
+  }, []);
+
+  const connect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keyId.trim() || !privateKey.trim() || !channelIdentifier.trim() || !projectCode.trim()) return;
+    setConnecting(true); setError('');
+    try {
+      await noonApi.connect(shopId, {
+        key_id: keyId.trim(),
+        private_key: privateKey.trim(),
+        channel_identifier: channelIdentifier.trim(),
+        project_code: projectCode.trim(),
+      });
+      setStep('warehouse');
+      loadWarehouses();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Connection failed — double-check your credentials and try again.');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const loadWarehouses = async () => {
+    setLoadingWarehouses(true);
+    try {
+      const r = await noonApi.listWarehouses(shopId);
+      setWarehouses(r.data?.warehouses ?? []);
+    } catch {
+      setWarehouses([]);
+    } finally {
+      setLoadingWarehouses(false);
+    }
+  };
+
+  const saveWarehouse = async () => {
+    if (!selectedWarehouse) return;
+    setSavingWarehouse(true);
+    try {
+      await noonApi.setWarehouse(shopId, selectedWarehouse);
+      onConnected();
+      onClose();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Could not save warehouse. Try again.');
+    } finally {
+      setSavingWarehouse(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-card rounded-xl border border-border w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <p className="font-semibold text-foreground">Connect Noon</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {step === 'form' ? 'Paste your own Noon service account key' : 'Choose your warehouse'}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {step === 'form' && (
+          <form onSubmit={connect} className="p-5 space-y-4">
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                {error}
+              </div>
+            )}
+            <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+              <p><strong className="text-foreground">Don't have these yet?</strong></p>
+              <p>1. Go to your Noon Partners dashboard → API Users → Add Service Account</p>
+              <p>2. Download the credentials JSON — it has all 4 fields below</p>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1.5 block">Key ID *</label>
+              <input type="text" value={keyId} onChange={(e) => setKeyId(e.target.value)} required
+                placeholder="noon-partners-key-id-..."
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1.5 block">Private Key *</label>
+              <textarea value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} required rows={4}
+                placeholder="-----BEGIN PRIVATE KEY-----..."
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-xs font-mono" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1.5 block">Channel Identifier *</label>
+              <input type="text" value={channelIdentifier} onChange={(e) => setChannelIdentifier(e.target.value)} required
+                placeholder="yourkey@p123456.idp.noon.partners"
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1.5 block">Project Code *</label>
+              <input type="text" value={projectCode} onChange={(e) => setProjectCode(e.target.value)} required
+                placeholder="PRJ123456"
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+            </div>
+            <button type="submit" disabled={connecting}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+              {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {connecting ? 'Verifying...' : 'Connect Noon'}
+            </button>
+          </form>
+        )}
+
+        {step === 'warehouse' && (
+          <div className="p-5 space-y-4">
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                {error}
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
+              <CheckCircle2 className="w-4 h-4" /> Connected — now pick your warehouse
+            </div>
+
+            {loadingWarehouses ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" /> <span className="text-sm">Loading your warehouses...</span>
+              </div>
+            ) : warehouses.length === 0 ? (
+              <div className="bg-amber-500/8 border border-amber-500/20 rounded-lg px-4 py-3 space-y-2">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm font-medium">
+                  <AlertCircle className="w-4 h-4" /> No warehouse set up yet
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  You need at least one warehouse on your Noon account before products/stock can sync — either your own licensed location, or Noon's own consolidation center if you don't have a UAE/KSA trade license. Set this up on your Noon Partners dashboard, then refresh below.
+                </p>
+                <button type="button" onClick={loadWarehouses}
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium">
+                  <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {warehouses.map((w) => (
+                  <label key={w.warehouse_code}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer transition ${
+                      selectedWarehouse === w.warehouse_code ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                    }`}>
+                    <input type="radio" name="warehouse" value={w.warehouse_code}
+                      checked={selectedWarehouse === w.warehouse_code}
+                      onChange={() => setSelectedWarehouse(w.warehouse_code)} />
+                    <Warehouse className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground truncate">{w.name || w.warehouse_code}</p>
+                      <p className="text-xs text-muted-foreground font-mono truncate">{w.warehouse_code}</p>
+                    </div>
+                  </label>
+                ))}
+                <button type="button" onClick={saveWarehouse} disabled={!selectedWarehouse || savingWarehouse}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2 mt-2">
+                  {savingWarehouse && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {savingWarehouse ? 'Saving...' : 'Save & Finish'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Noon connected card ─────────────────────────────────────────────────────
+
+function NoonCard({ connection, onManageWarehouse }: { connection: ChannelConnection; onManageWarehouse: () => void }) {
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+            <ShoppingBag className="w-4 h-4 text-yellow-500" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground text-sm">Noon</p>
+            <p className="text-xs text-muted-foreground">UAE / KSA / GCC Marketplace</p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+          <CheckCircle2 className="w-3 h-3" /> Connected
+        </span>
+      </div>
+      <div className="p-5 text-sm text-muted-foreground space-y-2">
+        <p>Account: <strong className="text-foreground font-mono text-xs">{connection.channel_seller_id}</strong></p>
+        {connection.channel_warehouse_code ? (
+          <p className="flex items-center gap-1.5">
+            <Warehouse className="w-3.5 h-3.5" /> Warehouse: <strong className="text-foreground font-mono text-xs">{connection.channel_warehouse_code}</strong>
+          </p>
+        ) : (
+          <div className="flex items-center justify-between gap-3 bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-amber-600 dark:text-amber-400">No warehouse selected — products/stock can't sync yet</p>
+            <button onClick={onManageWarehouse} className="shrink-0 text-xs text-primary hover:text-primary/80 font-medium whitespace-nowrap">
+              Choose
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── TheDersi connect modal ────────────────────────────────────────────────────
 
 function TheDersiConnectModal({ shopId, onConnected, onClose }: {
@@ -498,8 +734,11 @@ export default function ChannelsPage() {
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
   const [showCustomWebsiteModal, setShowCustomWebsiteModal] = useState(false);
   const [showDarazModal, setShowDarazModal] = useState(false);
+  const [showNoonModal, setShowNoonModal] = useState(false);
+  const [noonModalStep, setNoonModalStep] = useState<'form' | 'warehouse'>('form');
   const [dersiBlockChannel, setDersiBlockChannel] = useState<string | null>(null);
   const [darazLocked, setDarazLocked] = useState(false);
+  const [noonLocked, setNoonLocked] = useState(false);
   const [upgradeLimitModal, setUpgradeLimitModal] = useState(false);
   const [shopifyConnected, setShopifyConnected] = useState(false);
   const [plan, setPlan] = useState('');
@@ -529,8 +768,10 @@ export default function ChannelsPage() {
 
   const theDersiConns = connections.filter((c) => c.channel_type === 'thedersi');
   const darazConns = connections.filter((c) => c.channel_type === 'daraz');
+  const noonConns = connections.filter((c) => c.channel_type === 'noon');
   const hasTheDersi = theDersiConns.length > 0;
   const hasDaraz = darazConns.length > 0;
+  const hasNoon = noonConns.length > 0;
   const isTheDersiUser = plan.startsWith('thedersi');
   const isPremium = plan === 'premium';
   // Count Shopify separately since it's tracked via a different API
@@ -539,6 +780,8 @@ export default function ChannelsPage() {
   const channelLimitReached = plan !== '' && !isPremium && !isTheDersiUser && totalChannelCount >= 1;
   // Daraz: TheDersi Pro or Premium only
   const canUseDaraz = ['thedersi_pro', 'premium'].includes(plan);
+  // Noon: same plan gate as Daraz for now (TheDersi Pro or Premium)
+  const canUseNoon = ['thedersi_pro', 'premium'].includes(plan);
 
   const availableChannels: ChannelDef[] = [
     // ── Row 1: TheDersi + Daraz (the two channels TheDersi sellers can use) ──
@@ -561,6 +804,16 @@ export default function ChannelsPage() {
       badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : (isTheDersiUser ? 'TheDersi Pro only' : 'Premium only'),
       onAction: hasDaraz ? undefined : canUseDaraz ? () => setShowDarazModal(true) : () => setDarazLocked(true),
       actionLabel: 'Connect Daraz',
+    },
+    {
+      id: 'noon',
+      name: 'Noon',
+      description: "UAE/KSA/GCC's biggest marketplace. Paste your own Noon service account key to connect — products, stock, and orders sync to ExiusCart.",
+      icon: <ShoppingBag className="w-5 h-5 text-yellow-500" />,
+      badge: hasNoon ? 'live' : canUseNoon ? 'connect' : 'locked',
+      badgeLabel: hasNoon ? 'Connected' : canUseNoon ? 'Available' : (isTheDersiUser ? 'TheDersi Pro only' : 'Premium only'),
+      onAction: hasNoon ? undefined : canUseNoon ? () => { setNoonModalStep('form'); setShowNoonModal(true); } : () => setNoonLocked(true),
+      actionLabel: 'Connect Noon',
     },
     // ── Row 2: Shopify + Custom Website (direct-ExiusCart channels) ──
     {
@@ -691,7 +944,7 @@ export default function ChannelsPage() {
       ) : (
         <>
           {/* Active connected channel cards */}
-          {(theDersiConns.length > 0 || darazConns.length > 0) && (
+          {(theDersiConns.length > 0 || darazConns.length > 0 || noonConns.length > 0) && (
             <div className="space-y-4">
               <h2 className="text-sm font-medium text-foreground">Connected</h2>
               {theDersiConns.map((conn) => (
@@ -699,6 +952,10 @@ export default function ChannelsPage() {
               ))}
               {darazConns.map((conn) => (
                 <DarazCard key={conn.id} connection={conn} />
+              ))}
+              {noonConns.map((conn) => (
+                <NoonCard key={conn.id} connection={conn}
+                  onManageWarehouse={() => { setNoonModalStep('warehouse'); setShowNoonModal(true); }} />
               ))}
             </div>
           )}
@@ -737,6 +994,43 @@ export default function ChannelsPage() {
           onConnected={() => load()}
           onClose={() => { setShowDarazModal(false); load(); }}
         />
+      )}
+
+      {showNoonModal && (
+        <NoonConnectModal
+          shopId={shopId}
+          initialStep={noonModalStep}
+          onConnected={() => load()}
+          onClose={() => { setShowNoonModal(false); load(); }}
+        />
+      )}
+
+      {noonLocked && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center shrink-0">
+                <ShoppingBag className="w-5 h-5 text-yellow-500" />
+              </div>
+              <button type="button" onClick={() => setNoonLocked(false)}
+                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Noon Integration</p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                {isTheDersiUser
+                  ? 'Noon sync is available on TheDersi Pro. Upgrade your TheDersi plan to connect your Noon seller account.'
+                  : 'Noon sync is available on Premium plans. Upgrade to ExiusCart Premium to connect your Noon seller account.'}
+              </p>
+            </div>
+            <button type="button" onClick={() => setNoonLocked(false)}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+              Got it
+            </button>
+          </div>
+        </div>
       )}
 
       {darazLocked && (

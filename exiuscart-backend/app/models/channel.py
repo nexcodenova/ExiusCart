@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -9,9 +9,16 @@ class ChannelConnection(Base):
     id = Column(Integer, primary_key=True, index=True)
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
     channel_type = Column(String(50), nullable=False)       # "thedersi" | "shopify" | "woocommerce"
-    channel_api_key = Column(String(500), nullable=True)    # API key to call channel's product API
+    channel_api_key = Column(Text, nullable=True)            # API key to call channel's product API —
+                                                              # for Noon this holds a JSON blob (key_id,
+                                                              # private_key, channel_identifier, project_code)
+                                                              # since the RSA private key alone is ~1750 chars
     channel_api_url = Column(String(500), nullable=True)    # override default channel API URL
     channel_seller_id = Column(String(100), nullable=True)  # seller ID on the channel
+    channel_warehouse_code = Column(String(100), nullable=True)  # Noon: seller's own chosen warehouse
+                                                                   # (their own licensed space, or Noon's
+                                                                   # own consolidation center) — fetched
+                                                                   # from their account, never assumed
     webhook_secret = Column(String(100), nullable=False, unique=True)  # channel calls this back
     is_active = Column(Boolean, default=True)
     seller_status = Column(String(20), nullable=True)  # approved | suspended | rejected (set by channel partner)

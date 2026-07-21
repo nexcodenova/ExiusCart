@@ -590,6 +590,24 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/daraz/products/${productId}/qc-status`),
 };
 
+// Noon — per-seller service account (no OAuth click-to-connect yet; seller
+// pastes their own key generated on Noon's own Partners dashboard).
+export const noonApi = {
+  connect: (shopId: string, data: {
+    key_id: string; private_key: string; channel_identifier: string; project_code: string;
+  }) => api.post(`/shops/${shopId}/channels/noon/connect`, data),
+  disconnect: (shopId: string) =>
+    api.delete(`/shops/${shopId}/channels/noon/disconnect`),
+  listWarehouses: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/noon/warehouses`),
+  setWarehouse: (shopId: string, warehouseCode: string) =>
+    api.post(`/shops/${shopId}/channels/noon/warehouse`, { warehouse_code: warehouseCode }),
+  getCategories: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/noon/categories`),
+  getCategoryAttributes: (shopId: string, categoryCode: string) =>
+    api.get(`/shops/${shopId}/channels/noon/categories/${categoryCode}/attributes`),
+};
+
 export const usageApi = {
   get: (shopId: string) => api.get(`/shops/${shopId}/usage`),
 };

@@ -21,12 +21,6 @@ class Settings(BaseSettings):
     THEDERSI_HMAC_SECRET: str = ""
     THEDERSI_WEBHOOK_URL: str = "https://thedersi.lk/api/exiuscart/webhook"
 
-    # Noon partner integration (single ExiusCart-wide service account, not per-seller)
-    NOON_KEY_ID: str = ""
-    NOON_PRIVATE_KEY: str = ""
-    NOON_CHANNEL_IDENTIFIER: str = ""
-    NOON_PROJECT_CODE: str = ""
-
     class Config:
         env_file = ".env"
         case_sensitive = True
