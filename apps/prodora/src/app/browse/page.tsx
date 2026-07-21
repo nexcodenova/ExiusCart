@@ -97,7 +97,7 @@ export default function HomePage() {
       <header className="bg-[#FF6000] shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/" className="flex-shrink-0 flex items-center gap-2 mr-2">
-            <Image src="/logo.svg" alt="Prodora" width={30} height={30} />
+            <Image src="/prodora-logo.png" alt="Prodora" width={30} height={30} />
             <div className="leading-none">
               <span className="text-white font-extrabold text-lg tracking-tight block leading-none">
                 Prodora
@@ -286,7 +286,7 @@ export default function HomePage() {
       <footer className="bg-white border-t border-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Prodora" width={22} height={22} />
+            <Image src="/prodora-logo.png" alt="Prodora" width={22} height={22} />
             <span className="font-semibold text-gray-600">Prodora by ExiusCart</span>
           </div>
           <p>© {new Date().getFullYear()} Fairam Private Limited. All rights reserved.</p>

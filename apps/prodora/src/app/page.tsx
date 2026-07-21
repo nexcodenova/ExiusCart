@@ -135,7 +135,7 @@ export default function LandingPage() {
 
               {/* center logo badge */}
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg z-20">
-                <Image src="/logo.svg" alt="Prodora" width={32} height={32} className="brightness-0 invert" />
+                <Image src="/prodora-logo.png" alt="Prodora" width={32} height={32} className="brightness-0 invert" />
               </div>
 
               {/* product bubbles */}
@@ -307,7 +307,7 @@ export default function LandingPage() {
       <footer className="border-t border-border">
         <div className="container py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Prodora" width={22} height={22} />
+            <Image src="/prodora-logo.png" alt="Prodora" width={22} height={22} />
             <span className="font-semibold text-foreground">Prodora by ExiusCart</span>
           </div>
           <p>&copy; {new Date().getFullYear()} Fairam Private Limited. All rights reserved.</p>

@@ -12,7 +12,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-border/80 bg-background/95 backdrop-blur-md">
       <div className="container flex h-20 items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <Image src="/logo.svg" alt="Prodora" width={38} height={38} />
+          <Image src="/prodora-logo.png" alt="Prodora" width={38} height={38} />
           <span className="text-[22px] font-bold tracking-tight text-foreground">Prodora</span>
         </Link>
 

@@ -12,9 +12,15 @@ import {
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw,
-  Star, MapPin, TrendingUp,
+  Star, MapPin,
 } from 'lucide-react';
 import { shopApi, subscriptionApi } from '@/lib/api';
+
+// Renders like a lucide icon (accepts className) so it drops straight into
+// MenuItem.icon slots, but shows Prodora's real mark instead of a generic one.
+function ProdoraIcon({ className }: { className?: string }) {
+  return <img src="/prodora-logo.png" alt="" className={className} />;
+}
 
 interface MenuItem {
   href: string;
@@ -36,7 +42,7 @@ const GROUPS: MenuGroup[] = [
     label: null,
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: 'https://prodora.exiuscart.com', label: 'Prodora — Winning Products', icon: TrendingUp, external: true },
+      { href: 'https://prodora.exiuscart.com', label: 'Prodora — Winning Products', icon: ProdoraIcon, external: true },
     ],
   },
   {
@@ -509,7 +515,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowProdoraBlocked(null)}>
           <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/15 mb-4 mx-auto">
-              <TrendingUp className="w-6 h-6 text-indigo-400" />
+              <ProdoraIcon className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-foreground text-center mb-2">Prodora</h3>
             <p className="text-sm text-muted-foreground text-center mb-6">

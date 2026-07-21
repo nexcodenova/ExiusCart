@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   title: 'Prodora — Discover Winning Products',
   description: 'Find winning products ready to sell. Powered by ExiusCart.',
   icons: {
-    icon: '/logo.svg',
-    shortcut: '/logo.svg',
-    apple: '/logo.svg',
+    icon: '/prodora-logo.png',
+    shortcut: '/prodora-logo.png',
+    apple: '/prodora-logo.png',
   },
 };
 
