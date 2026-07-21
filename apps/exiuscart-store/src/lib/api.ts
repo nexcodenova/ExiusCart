@@ -606,6 +606,10 @@ export const noonApi = {
     api.get(`/shops/${shopId}/channels/noon/categories`),
   getCategoryAttributes: (shopId: string, categoryCode: string) =>
     api.get(`/shops/${shopId}/channels/noon/categories/${categoryCode}/attributes`),
+  createListing: (shopId: string, productId: number | string, data: {
+    category_code: string; brand: string;
+    attributes: Record<string, { value: string; language?: string; sort?: number }[]>;
+  }) => api.post(`/shops/${shopId}/channels/noon/products/${productId}/create`, data),
 };
 
 export const usageApi = {

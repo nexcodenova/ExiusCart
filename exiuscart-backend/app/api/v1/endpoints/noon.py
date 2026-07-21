@@ -286,43 +286,57 @@ def get_noon_category_attributes(
 # Pricing (a separate "Pricing" service) and "Offer" (making a listing
 # actually live/purchasable) are NOT yet confirmed — still pending.
 
-class NoonSkuIn(BaseModel):
-    partner_sku: str
-    size: Optional[str] = None
-
-
-class NoonImageIn(BaseModel):
-    url: str
-    sort: int = 1
-
-
 class NoonAttributeValueIn(BaseModel):
     value: str
     language: Optional[str] = None  # LANGUAGE_UNSPECIFIED | LANGUAGE_EN | LANGUAGE_AR
     sort: Optional[int] = None
 
 
-class NoonCreateProductIn(BaseModel):
-    skus: list[NoonSkuIn]
-    brand: str
+class NoonCreateListingIn(BaseModel):
     category_code: str
-    images: list[NoonImageIn]
+    brand: str
     attributes: dict[str, list[NoonAttributeValueIn]]  # attribute_code -> values
 
 
-@router.post("/shops/{shop_id}/channels/noon/products/create")
+@router.post("/shops/{shop_id}/channels/noon/products/{product_id}/create")
 def create_noon_product(
     shop_id: int,
-    data: NoonCreateProductIn,
+    product_id: int,
+    data: NoonCreateListingIn,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Creates the Noon listing for an existing ExiusCart product — SKUs and
+    images are pulled from the product itself (its own variants/images),
+    same UX as Daraz's create-listing endpoint: the seller only supplies
+    category + brand + category-specific attributes, not raw SKU/image data."""
+    from app.models.product import Product
+
     _shop_or_404(shop_id, current_user, db)
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    image_urls = [img.url for img in (product.images or []) if img.url]
+    if not image_urls and product.image_url:
+        image_urls = [product.image_url]
+    if not image_urls:
+        raise HTTPException(status_code=400, detail="This product has no images — Noon requires at least one")
+
+    variants = product.variants or []
+    if variants:
+        skus = [
+            {"partner_sku": v.sku or f"{product.sku or product.id}-{v.id}", "size": v.size}
+            for v in variants
+        ]
+    else:
+        skus = [{"partner_sku": product.sku or f"EXIUSCART-{product.id}"}]
+
     payload = {
-        "skus": [s.model_dump(exclude_none=True) for s in data.skus],
+        "skus": [{k: v for k, v in s.items() if v} for s in skus],
         "brand": data.brand,
         "category": data.category_code,
-        "images": [i.model_dump() for i in data.images],
+        "images": [{"url": url, "sort": i + 1} for i, url in enumerate(image_urls[:8])],
         "attributes": {
             attr_code: {"values": [v.model_dump(exclude_none=True) for v in values]}
             for attr_code, values in data.attributes.items()
@@ -384,4 +398,57 @@ def update_noon_stock(
     resp = _noon_request_for_shop(shop_id, db, "POST", "/stock/v1/stock-update", json=payload)
     if resp.status_code != 200:
         raise HTTPException(status_code=502, detail=f"Noon stock update failed: {resp.status_code} {resp.text[:500]}")
+    return resp.json()
+
+
+# ── Earnings / payouts (confirmed working, 2026-07-21) ───────────────────────
+#
+# Not a live query like Daraz — Noon delivers finance data as an async CSV
+# export: request it (with a date range), poll until export_status is
+# COMPLETE, then the response includes a pre-signed download_url straight to
+# the CSV. Confirmed the whole round trip live: create -> COMPLETE on the
+# very first status check -> real download_url returned.
+
+EARNINGS_EXPORT_CATEGORY = "noon_financeweb_transactionviewreportonitemlevel"
+
+
+class NoonEarningsRequestIn(BaseModel):
+    from_date: str  # "YYYY-MM-DD"
+    to_date: str
+
+
+@router.post("/shops/{shop_id}/channels/noon/earnings/request")
+def request_noon_earnings_export(
+    shop_id: int,
+    data: NoonEarningsRequestIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Kicks off an earnings/transactions export for a date range. Returns an
+    export_code — poll GET .../earnings/{export_code}/status until COMPLETE."""
+    _shop_or_404(shop_id, current_user, db)
+    payload = {
+        "export_category_code": EARNINGS_EXPORT_CATEGORY,
+        "params": {"from_date": data.from_date, "to_date": data.to_date},
+    }
+    resp = _noon_request_for_shop(shop_id, db, "POST", "/impex/v1/export/create", json=payload)
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Noon earnings export failed: {resp.status_code} {resp.text[:400]}")
+    return resp.json()
+
+
+@router.get("/shops/{shop_id}/channels/noon/earnings/{export_code}/status")
+def get_noon_earnings_export_status(
+    shop_id: int,
+    export_code: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """export_status is one of PENDING/PROCESSING/COMPLETE/FAILED (exact enum
+    not fully confirmed — only COMPLETE has been observed live so far).
+    download_url (a pre-signed CSV link) is present once COMPLETE."""
+    _shop_or_404(shop_id, current_user, db)
+    resp = _noon_request_for_shop(shop_id, db, "POST", "/impex/v1/export/status", json={"export_code": export_code})
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Noon export status check failed: {resp.status_code} {resp.text[:400]}")
     return resp.json()

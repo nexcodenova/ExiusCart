@@ -8,10 +8,11 @@ import {
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
   Store, Globe, ShoppingBag,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { colorNameToHex } from '@/lib/color-utils';
 import { DarazListingFields } from '@/components/daraz-listing-fields';
+import { NoonListingFields, NoonAttributeValues } from '@/components/noon-listing-fields';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { DropshipSupplierSection } from '@/components/dropship-supplier-section';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -938,6 +939,18 @@ function ProductModal({
   const [listingDaraz, setListingDaraz] = useState(false);
   const [darazListingError, setDarazListingError] = useState('');
 
+  // Noon — separate from otherChannels (Noon's category is a flat searched
+  // code, not a tree pick, and creation is synchronous — no pending-review
+  // step like Daraz, Noon's response is a direct success/fail).
+  const [noonConnection, setNoonConnection] = useState<{ id: number } | null>(null);
+  const [noonEnabled, setNoonEnabled] = useState(false);
+  const [noonCategoryCode, setNoonCategoryCode] = useState('');
+  const [noonBrand, setNoonBrand] = useState('');
+  const [noonAttributeValues, setNoonAttributeValues] = useState<NoonAttributeValues>({});
+  const [noonListingStatus, setNoonListingStatus] = useState<{ skuParent: string } | null>(null);
+  const [listingNoon, setListingNoon] = useState(false);
+  const [noonListingError, setNoonListingError] = useState('');
+
   interface OtherChannelToggle { enabled: boolean; isGift: boolean; categoryId: string; categoryName: string }
   const [otherChannels, setOtherChannels] = useState<Record<'daraz' | 'shopify' | 'custom', OtherChannelToggle>>({
     daraz: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
@@ -1070,6 +1083,9 @@ function ProductModal({
         }
         if (custom) setCustomWebsiteConnection({ id: custom.id });
 
+        const noon = data.find((c: any) => c.channel_type === 'noon');
+        if (noon) setNoonConnection({ id: noon.id });
+
         if (product?.id) {
           channelsApi.getProductChannelCategories(shopId, product.id)
             .then((r) => {
@@ -1193,6 +1209,28 @@ function ProductModal({
       setDarazListingError(err?.response?.data?.detail ?? 'Could not create the Daraz listing. Try again.');
     } finally {
       setListingDaraz(false);
+    }
+  };
+
+  const handleListOnNoon = async () => {
+    if (!product?.id || !noonCategoryCode || !noonBrand) return;
+    setListingNoon(true);
+    setNoonListingError('');
+    try {
+      const res = await noonApi.createListing(shopId, product.id, {
+        category_code: noonCategoryCode,
+        brand: noonBrand,
+        attributes: noonAttributeValues,
+      });
+      if (res.data?.status?.status_code && res.data.status.status_code !== 'OK') {
+        setNoonListingError(res.data.status.message || 'Noon rejected this listing.');
+      } else {
+        setNoonListingStatus({ skuParent: res.data?.sku_parent });
+      }
+    } catch (err: any) {
+      setNoonListingError(err?.response?.data?.detail ?? 'Could not create the Noon listing. Try again.');
+    } finally {
+      setListingNoon(false);
     }
   };
 
@@ -1976,6 +2014,82 @@ function ProductModal({
                               </button>
                               {!darazBrand && <p className="text-xs text-muted-foreground mt-1.5 text-center">Pick a brand above first.</p>}
                               {darazListingError && <p className="text-xs text-destructive mt-1.5">{darazListingError}</p>}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Noon — toggle + searched flat category (no OAuth connect yet,
+                    seller pastes their own key from the Channels page) */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
+                        <ShoppingBag className="w-4 h-4 text-yellow-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Noon</p>
+                        <p className="text-xs text-muted-foreground">
+                          {noonConnection ? (noonEnabled ? 'Listed on Noon' : 'Not listed') : 'Not connected'}
+                        </p>
+                      </div>
+                    </div>
+                    {noonConnection ? (
+                      <button
+                        type="button"
+                        onClick={() => setNoonEnabled(!noonEnabled)}
+                        className="shrink-0"
+                        aria-label="Toggle Noon listing"
+                      >
+                        {noonEnabled
+                          ? <ToggleRight className="w-9 h-9 text-primary" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
+                    )}
+                  </div>
+                  {noonConnection && noonEnabled && (
+                    <div className="border-t border-border p-3 space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-foreground mb-1 block">Brand *</label>
+                        <input type="text" value={noonBrand} onChange={(e) => setNoonBrand(e.target.value)}
+                          placeholder="Brand name shown on Noon"
+                          className="w-full px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                      </div>
+
+                      {product?.id && (
+                        <NoonListingFields
+                          shopId={shopId}
+                          categoryCode={noonCategoryCode}
+                          onCategorySelect={setNoonCategoryCode}
+                          values={noonAttributeValues}
+                          onChange={setNoonAttributeValues}
+                        />
+                      )}
+
+                      {product?.id && noonCategoryCode && (
+                        <div className="border-t border-border pt-3">
+                          {noonListingStatus ? (
+                            <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-green-500/10 text-green-600 dark:text-green-400">
+                              <CheckCircle className="w-3.5 h-3.5" /> Live on Noon
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleListOnNoon}
+                                disabled={listingNoon || !noonBrand}
+                                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                              >
+                                {listingNoon && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {listingNoon ? 'Creating listing on Noon…' : 'List on Noon'}
+                              </button>
+                              {!noonBrand && <p className="text-xs text-muted-foreground mt-1.5 text-center">Enter a brand above first.</p>}
+                              {noonListingError && <p className="text-xs text-destructive mt-1.5">{noonListingError}</p>}
                             </>
                           )}
                         </div>
