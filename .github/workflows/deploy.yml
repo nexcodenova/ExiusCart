@@ -97,48 +97,16 @@ jobs:
           script: |
             set -e
             cd /var/www/ExiusCart
+            # deploy.sh is the single source of truth for how to build/reload
+            # each app safely (zero-downtime staged builds, only reloads on a
+            # successful build, runs Alembic + legacy SQL migrations, only
+            # rebuilds what actually changed). Previously this workflow had
+            # its own separate, unsafe inline copy (rm -rf .next right before
+            # building, so a live request could hit a half-deleted .next and
+            # 500) that also ran independently of the webhook-triggered
+            # deploy on the same server — the two racing each other, both
+            # writing into the same folder, is what was actually corrupting
+            # builds. Only one pipeline should ever deploy this server now.
+            export BEFORE_SHA=$(git rev-parse HEAD)
             git pull origin main
-
-            export NEXT_PUBLIC_API_URL="https://api.exiuscart.com"
-            export NEXT_TELEMETRY_DISABLED=1
-
-            # DB migrations
-            ENV_FILE="exiuscart-backend/.env"
-            if [ -f "$ENV_FILE" ]; then
-              DB_URL=$(grep ^DATABASE_URL "$ENV_FILE" | cut -d= -f2-)
-              if [ -n "$DB_URL" ]; then
-                for migration in exiuscart-backend/migrations/*.sql; do
-                  [ -f "$migration" ] || continue
-                  echo "Applying: $(basename "$migration")"
-                  psql "$DB_URL" -f "$migration" || true
-                done
-              fi
-            fi
-
-            # Backend
-            if echo "${{ needs.changes.outputs.backend }}" | grep -q "true"; then
-              cd exiuscart-backend
-              source venv/bin/activate
-              pip install -r requirements.txt -q
-              alembic upgrade head
-              deactivate
-              pm2 reload exiuscart-backend --update-env
-              cd /var/www/ExiusCart
-            fi
-
-            # Store — clear .next fully before build to avoid ENOENT corruption
-            if echo "${{ needs.changes.outputs.store }}" | grep -q "true"; then
-              rm -rf apps/exiuscart-store/.next
-              npm run build --workspace=apps/exiuscart-store
-              pm2 reload exiuscart-store --update-env
-            fi
-
-            # Admin
-            if echo "${{ needs.changes.outputs.admin }}" | grep -q "true"; then
-              rm -rf apps/exiuscart-admin/.next
-              npm run build --workspace=apps/exiuscart-admin
-              pm2 reload exiuscart-admin --update-env
-            fi
-
-            pm2 save
-            echo "=== Deploy complete ==="
+            bash deploy.sh

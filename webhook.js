@@ -1,18 +1,15 @@
 const http = require('http');
 const { exec } = require('child_process');
 
-// Delegates to deploy.sh, which is the actual source of truth for how to
-// build/reload each app safely (clears .next before building, only reloads
-// pm2 on a successful build, runs Alembic + legacy SQL migrations, and only
-// rebuilds apps that actually changed). BEFORE_SHA is captured here — before
-// the pull — and passed through so deploy.sh can diff against everything
-// this pull brought in, not just the single most recent commit.
-const DEPLOY_CMD = [
-  'cd /var/www/ExiusCart',
-  'export BEFORE_SHA=$(git rev-parse HEAD)',
-  "GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519' git pull",
-  'bash deploy.sh',
-].join(' && ');
+// ExiusCart deploys via GitHub Actions now (.github/workflows/deploy.yml —
+// runs tests + typecheck before deploying, which this path never did), not
+// this webhook. The two running independently, both writing into
+// /var/www/ExiusCart on every push, is what was actually corrupting builds
+// today — not just duplicate webhook deliveries. Left as a no-op rather
+// than deleted so a leftover GitHub webhook delivery to /webhook doesn't
+// error, and so this is easy to find if anyone goes looking for why
+// deploys "stopped happening" here.
+const EXIUSCART_DEPLOY_DISABLED = true;
 
 const THEDERSI_CMD = [
   'set -e',
@@ -30,24 +27,12 @@ const THEDERSI_CMD = [
 // `npm run build`s writing into the same app directory is exactly what was
 // corrupting builds and 500ing the live site. One in-flight guard per
 // target closes that.
-let exiuscartDeploying = false;
 let thedersiDeploying = false;
 
 http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/webhook') {
-    if (exiuscartDeploying) {
-      console.log('[ExiusCart] Deploy already in progress — ignoring duplicate trigger:', new Date().toISOString());
-      res.end('already deploying');
-      return;
-    }
-    exiuscartDeploying = true;
-    res.end('ok');
-    console.log('[ExiusCart] Deploy started:', new Date().toISOString());
-    exec(DEPLOY_CMD, { shell: '/bin/bash' }, (err) => {
-      exiuscartDeploying = false;
-      if (err) console.error('[ExiusCart] Deploy error:', err.message);
-      else console.log('[ExiusCart] Deploy done:', new Date().toISOString());
-    });
+    res.end('disabled — ExiusCart deploys via GitHub Actions now');
+    console.log('[ExiusCart] Ignored — this path is disabled, deploy runs via GitHub Actions:', new Date().toISOString());
 
   } else if (req.method === 'POST' && req.url === '/thedersi') {
     if (thedersiDeploying) {

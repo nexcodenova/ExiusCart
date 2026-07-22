@@ -122,10 +122,7 @@ if echo "$CHANGED" | grep -q "apps/exiuscart-admin/" || [ "$CHANGED" = "all" ]; 
   build_app "apps/exiuscart-admin" "exiuscart-admin" ""
 fi
 
-# ── Affiliates ────────────────────────────────────────────────────────────────
-if echo "$CHANGED" | grep -q "apps/exiuscart-affiliates/" || [ "$CHANGED" = "all" ]; then
-  build_app "apps/exiuscart-affiliates" "exiuscart-affiliates" ""
-fi
+# Affiliates runs on Vercel now, not this server — no build step here.
 
 pm2 save
 echo "=== Deploy Complete ==="
