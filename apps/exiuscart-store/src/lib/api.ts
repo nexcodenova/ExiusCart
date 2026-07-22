@@ -17,9 +17,11 @@ api.interceptors.request.use((config) => {
 });
 
 // Force logout on 401 (expired/invalid token) or 403 account deactivated.
-// Also: surface a trial_expired rejection (402, from actions like adding a
-// product or completing a sale) as an instant lock-modal trigger instead of
-// a generic failed-request error — trial-banner.tsx listens for this event.
+// Also: a trial_expired rejection (402, from require_active_trial in the
+// backend) means the dashboard layout's own expiry check is stale — e.g. a
+// tab left open from before the trial ran out — so reload to pick up the
+// full lock screen (dashboard/layout.tsx) instead of leaving a confusing
+// generic error on whatever action was attempted.
 api.interceptors.response.use(
   (res) => res,
   (error) => {
@@ -35,7 +37,7 @@ api.interceptors.response.use(
         window.location.href = isDeactivated ? '/login?reason=deactivated' : '/login';
       }
       if (status === 402 && detail?.error === 'trial_expired') {
-        window.dispatchEvent(new CustomEvent('trial-expired'));
+        window.location.reload();
       }
     }
     return Promise.reject(error);
