@@ -49,6 +49,7 @@ from jose import jwt
 from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.thedersi import is_thedersi_shop
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.channel import ChannelConnection
@@ -159,6 +160,15 @@ def connect_noon(
     them with a real login before saving, so a typo doesn't get stored as if
     it worked."""
     _shop_or_404(shop_id, current_user, db)
+
+    # Noon is direct-ExiusCart only — TheDersi sellers get TheDersi + Daraz
+    # and nothing else. Enforced here, not just hidden in the UI, since the
+    # frontend gate alone can be bypassed by calling this endpoint directly.
+    # Detected via an active TheDersi connection, not plan_type — TheDersi's
+    # Growth/Premium tier maps to plan_type='starter', same as a direct
+    # customer, so a plan_type check alone would miss those sellers.
+    if is_thedersi_shop(shop_id, db):
+        raise HTTPException(status_code=403, detail="Noon isn't available on TheDersi plans — TheDersi sellers can use TheDersi and Daraz.")
 
     creds = data.model_dump()
     try:
@@ -298,6 +308,20 @@ class NoonCreateListingIn(BaseModel):
     attributes: dict[str, list[NoonAttributeValueIn]]  # attribute_code -> values
 
 
+def _log_sync(db: Session, shop_id: int, action: str, success: bool, product_id: Optional[int] = None,
+              external_id: Optional[str] = None, error_message: Optional[str] = None) -> None:
+    """Durable record of a sync attempt — separate from ChannelProductStatus
+    (which only tracks current state), so a failed attempt stays visible
+    even after the seller navigates away, instead of vanishing with the
+    transient UI error message."""
+    from app.models.channel_sync_log import ChannelSyncLog
+    db.add(ChannelSyncLog(
+        shop_id=shop_id, product_id=product_id, channel_type="noon", action=action,
+        success=success, external_id=external_id, error_message=(error_message or "")[:2000] or None,
+    ))
+    db.commit()
+
+
 @router.post("/shops/{shop_id}/channels/noon/products/{product_id}/create")
 def create_noon_product(
     shop_id: int,
@@ -344,8 +368,15 @@ def create_noon_product(
     }
     resp = _noon_request_for_shop(shop_id, db, "POST", "/content/v1/product/upsert", json=payload)
     if resp.status_code != 200:
+        _log_sync(db, shop_id, "create_listing", False, product_id=product_id, error_message=f"{resp.status_code}: {resp.text[:500]}")
         raise HTTPException(status_code=502, detail=f"Noon product upsert failed: {resp.status_code} {resp.text[:500]}")
-    return resp.json()
+
+    result = resp.json()
+    status_info = result.get("status") or {}
+    ok = status_info.get("status_code", "OK") == "OK"
+    _log_sync(db, shop_id, "create_listing", ok, product_id=product_id,
+              external_id=result.get("sku_parent"), error_message=None if ok else status_info.get("message"))
+    return result
 
 
 class NoonDimensionsIn(BaseModel):
@@ -434,6 +465,33 @@ def request_noon_earnings_export(
     resp = _noon_request_for_shop(shop_id, db, "POST", "/impex/v1/export/create", json=payload)
     if resp.status_code != 200:
         raise HTTPException(status_code=502, detail=f"Noon earnings export failed: {resp.status_code} {resp.text[:400]}")
+    return resp.json()
+
+
+# ── Pricing (confirmed working, 2026-07-21) ─────────────────────────────────
+#
+# Separate from product content — the actual sale price. Requires a
+# country_code (one of 'ae', 'sa', 'eg' — confirmed via a live 400 response).
+# Without this, a product exists in the catalog but has no sellable price.
+
+class NoonPriceItemIn(BaseModel):
+    partner_sku: str
+    price: float
+    country_code: str  # 'ae' | 'sa' | 'eg'
+
+
+@router.post("/shops/{shop_id}/channels/noon/pricing")
+def upsert_noon_pricing(
+    shop_id: int,
+    items: list[NoonPriceItemIn],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _shop_or_404(shop_id, current_user, db)
+    payload = {"items": [i.model_dump() for i in items]}
+    resp = _noon_request_for_shop(shop_id, db, "POST", "/pricing/v1/pricing/upsert", json=payload)
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Noon pricing upsert failed: {resp.status_code} {resp.text[:500]}")
     return resp.json()
 
 

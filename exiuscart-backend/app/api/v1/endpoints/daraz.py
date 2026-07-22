@@ -41,6 +41,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.thedersi import is_thedersi_shop
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -172,7 +173,7 @@ def daraz_authorize(
                 "plan": plan_type,
                 "message": (
                     "Daraz sync is available on TheDersi Pro. Upgrade your TheDersi plan to connect Daraz."
-                    if plan_type.startswith("thedersi")
+                    if is_thedersi_shop(shop_id, db)
                     else "Daraz sync is available on Premium. Upgrade to connect your Daraz seller account."
                 ),
             },

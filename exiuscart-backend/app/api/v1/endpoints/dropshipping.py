@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.thedersi import is_thedersi_shop
 from app.models.user import User
 from app.models.order import Order
 from app.models.subscription import Subscription
@@ -55,18 +56,23 @@ def _get_plan(shop_id: int, db: Session) -> str:
     return sub.plan_type if sub else "free_trial"
 
 
-def _check_supplier_allowed(plan: str, supplier_type: str):
+def _check_supplier_allowed(plan: str, supplier_type: str, shop_id: int, db: Session):
+    # Checked via an active TheDersi connection, not plan_type — TheDersi's
+    # Growth/Premium tier maps to plan_type='starter', which PLAN_ALLOWED_
+    # SUPPLIERS would otherwise let through to CJ (starter customers' own
+    # CJ access), even though TheDersi sellers' fulfilment is always
+    # TheDersi's, never a dropship supplier.
+    if is_thedersi_shop(shop_id, db):
+        raise HTTPException(status_code=403, detail={
+            "error": "not_available",
+            "message": "Dropshipping suppliers are not available on TheDersi plans. Your fulfilment is managed by TheDersi.",
+        })
     allowed = PLAN_ALLOWED_SUPPLIERS.get(plan, set())
     if supplier_type not in allowed:
         if plan in ("free_trial",):
             raise HTTPException(status_code=403, detail={
                 "error": "plan_required",
                 "message": "Dropshipping is available on Starter (CJ only) and Premium plans. Upgrade to get started.",
-            })
-        if plan.startswith("thedersi"):
-            raise HTTPException(status_code=403, detail={
-                "error": "not_available",
-                "message": "Dropshipping suppliers are not available on TheDersi plans. Your fulfilment is managed by TheDersi.",
             })
         if supplier_type != "cj" and plan == "starter":
             raise HTTPException(status_code=403, detail={
@@ -180,7 +186,7 @@ async def cj_search_products(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if plan.startswith("thedersi") or plan == "free_trial":
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="CJ product browse is not available on your plan.")
 
     conn = await _get_cj_conn_or_400(shop_id, db)
@@ -220,7 +226,7 @@ async def cj_get_product_detail(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if plan.startswith("thedersi") or plan == "free_trial":
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Not available on your plan.")
 
     conn = await _get_cj_conn_or_400(shop_id, db)
@@ -269,7 +275,7 @@ async def cj_import_product(
 
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if plan.startswith("thedersi") or plan == "free_trial":
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
 
     # Check product limit
@@ -420,7 +426,7 @@ async def connect_cj(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    _check_supplier_allowed(plan, "cj")
+    _check_supplier_allowed(plan, "cj", shop_id, db)
 
     # Get CJ token to verify credentials
     token_data = await _cj_get_token(data.email, data.password)
@@ -464,7 +470,7 @@ def connect_apikey(
     if data.supplier_type not in ("zendrop", "hypersku", "wiio"):
         raise HTTPException(status_code=400, detail="Use /connect/cj for CJ Dropshipping.")
     plan = _get_plan(shop_id, db)
-    _check_supplier_allowed(plan, data.supplier_type)
+    _check_supplier_allowed(plan, data.supplier_type, shop_id, db)
 
     existing = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop_id,
@@ -570,7 +576,7 @@ def save_product_link(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    _check_supplier_allowed(plan, data.supplier_type)
+    _check_supplier_allowed(plan, data.supplier_type, shop_id, db)
 
     existing = db.query(DropshipProductLink).filter(
         DropshipProductLink.shop_id == shop_id,
@@ -638,7 +644,7 @@ async def fulfill_order(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    _check_supplier_allowed(plan, data.supplier_type)
+    _check_supplier_allowed(plan, data.supplier_type, shop_id, db)
 
     order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
     if not order:

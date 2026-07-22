@@ -234,6 +234,36 @@ def _do_provision(
         db.add(shop)
         db.flush()
 
+        # TheDersi itself is fashion-only, but TheDersi sellers also get a
+        # Daraz connection (a general marketplace) — so a TheDersi seller can
+        # easily sell electronics or perfume there too, not just clothing.
+        # Same starter categories + category-scoped fashion fields as direct
+        # ExiusCart shops (see shops.py create_shop) — Material/Pattern/etc.
+        # only show up when a product is actually tagged Fashion & Apparel.
+        from app.models.product import Category as ProductCategory
+        from app.models.product_fields import ShopField
+        default_categories = [
+            ("Fashion & Apparel", 10), ("Electronics", 20), ("Beauty & Personal Care", 30),
+            ("Home & Living", 40), ("Other", 50),
+        ]
+        category_rows = {}
+        for cat_name, sort_order in default_categories:
+            cat = ProductCategory(shop_id=shop.id, name=cat_name, slug=_make_slug(cat_name), sort_order=sort_order)
+            db.add(cat)
+            category_rows[cat_name] = cat
+        db.flush()  # assigns cat.id before we reference it below
+
+        fashion_category_id = category_rows["Fashion & Apparel"].id
+        fashion_fields = [
+            ("Material", "material", "text", 10), ("Pattern", "pattern", "text", 20),
+            ("Occasion", "occasion", "text", 30), ("Style", "style", "text", 40),
+            ("Sleeve Length", "sleeve_length", "text", 50), ("Fit", "fit", "text", 60),
+            ("Fabric", "fabric", "text", 70), ("Country of Origin", "country_of_origin", "text", 80),
+            ("Delivery Time", "delivery_time", "text", 90),
+        ]
+        for label, field_key, field_type, sort_order in fashion_fields:
+            db.add(ShopField(shop_id=shop.id, category_id=fashion_category_id, label=label, field_key=field_key, field_type=field_type, sort_order=sort_order))
+
     # ── Provision subscription + channel connection ───────────────────────────
     sub  = _provision_subscription(shop, plan_type, db)
     conn = _upsert_channel_connection(shop.id, thedersi_api_key or "", thedersi_seller_id, db)

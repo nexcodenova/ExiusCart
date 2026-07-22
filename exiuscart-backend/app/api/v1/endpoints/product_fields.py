@@ -355,6 +355,22 @@ def presign_variant_image(
     return generate_presigned_url(shop_id, product_id, ext, content_type)
 
 
+@router.get("/shops/{shop_id}/products/{product_id}/size-chart/presign")
+def presign_size_chart_image(
+    shop_id: int,
+    product_id: int,
+    content_type: str = Query("image/jpeg"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Presigned PUT URL for the product's single size chart image — a
+    separate field on Product, not counted against the gallery image limit."""
+    get_shop_or_404(shop_id, db, current_user)
+    get_product_or_404(product_id, shop_id, db)
+    ext = content_type.split("/")[-1].replace("jpeg", "jpg")
+    return generate_presigned_url(shop_id, product_id, ext, content_type)
+
+
 @router.post("/shops/{shop_id}/products/{product_id}/images", response_model=ImageOut, status_code=201)
 async def upload_image(
     shop_id: int,

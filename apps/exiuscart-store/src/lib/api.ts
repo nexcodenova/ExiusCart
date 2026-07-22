@@ -270,8 +270,8 @@ export const subscriptionApi = {
 
 // ── Shop Fields (Custom Product Fields) ───────────────
 export const fieldsApi = {
-  getAll: (shopId: string) =>
-    api.get(`/shops/${shopId}/fields`),
+  getAll: (shopId: string, categoryId?: number | string | null) =>
+    api.get(`/shops/${shopId}/fields`, { params: categoryId ? { category_id: categoryId } : {} }),
   create: (shopId: string, data: {
     label: string; field_key: string; field_type: string;
     options?: string[]; is_required?: boolean; sort_order?: number;
@@ -519,6 +519,13 @@ export const imagesApi = {
     api.put(`/shops/${shopId}/products/${productId}/images/${imageId}/primary`, {}),
   getLimit: (shopId: string) =>
     api.get(`/shops/${shopId}/image-limit`),
+  uploadSizeChart: async (shopId: string, productId: string, file: File) => {
+    const { data } = await api.get(`/shops/${shopId}/products/${productId}/size-chart/presign`, {
+      params: { content_type: file.type || 'image/jpeg' },
+    });
+    await uploadToR2(data.presigned_url, file);
+    return { data: { url: data.public_url } };
+  },
 };
 
 // ── Product Variants ───────────────────────────────────
@@ -541,6 +548,8 @@ export const variantsApi = {
 export const channelsApi = {
   getConnections: (shopId: string) =>
     api.get(`/shops/${shopId}/channels`),
+  getSyncLogs: (shopId: string, params?: { channel_type?: string; success?: boolean; limit?: number }) =>
+    api.get(`/shops/${shopId}/channel-sync-logs`, { params }),
   connect: (shopId: string, data: {
     channel_type: string;
     channel_api_key: string;
@@ -610,6 +619,8 @@ export const noonApi = {
     category_code: string; brand: string;
     attributes: Record<string, { value: string; language?: string; sort?: number }[]>;
   }) => api.post(`/shops/${shopId}/channels/noon/products/${productId}/create`, data),
+  setPricing: (shopId: string, items: { partner_sku: string; price: number; country_code: string }[]) =>
+    api.post(`/shops/${shopId}/channels/noon/pricing`, items),
 };
 
 export const usageApi = {

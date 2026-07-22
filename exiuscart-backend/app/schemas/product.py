@@ -66,6 +66,7 @@ class ProductUpdate(BaseModel):
     supplier_id: Optional[int] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None
+    size_chart_url: Optional[str] = None
     is_active: Optional[bool] = None
     is_featured: Optional[bool] = None
     is_trending: Optional[bool] = None
@@ -89,6 +90,7 @@ class ProductResponse(ProductBase):
     shop_id: int
     image_url: Optional[str] = None
     video_url: Optional[str] = None
+    size_chart_url: Optional[str] = None
     is_active: bool
     is_featured: bool
     is_trending: bool = False

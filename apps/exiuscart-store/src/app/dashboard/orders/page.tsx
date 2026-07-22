@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, BarChart2, RefreshCw, Lock, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { ordersApi, subscriptionApi, dropshipApi } from '@/lib/api';
+import { ordersApi, subscriptionApi, dropshipApi, channelsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
 
@@ -338,6 +338,7 @@ export default function OrdersPage() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [shopId, setShopId] = useState('');
   const [plan, setPlan] = useState('');
+  const [hasTheDersi, setHasTheDersi] = useState(false);
   const [connectedSuppliers, setConnectedSuppliers] = useState<string[]>([]);
   const [fulfillTarget, setFulfillTarget] = useState<Order | null>(null);
   const { fmt } = useCurrency();
@@ -375,6 +376,12 @@ export default function OrdersPage() {
     if (!shopId) return;
     subscriptionApi.getCurrent(shopId)
       .then((r) => setPlan(r.data?.plan?.plan_type || ''))
+      .catch(() => {});
+    // Detected via an active TheDersi connection, not plan_type —
+    // TheDersi's Growth/Premium tier maps to plan_type='starter', same as
+    // a direct customer, so a plan-string check alone misses them.
+    channelsApi.getConnections(shopId)
+      .then((r) => setHasTheDersi((r.data ?? []).some((c: any) => c.channel_type === 'thedersi')))
       .catch(() => {});
     dropshipApi.getConnections(shopId)
       .then((r) => {
@@ -471,7 +478,7 @@ export default function OrdersPage() {
   const canShip = (o: Order) => (o.source === 'thedersi' ? ['packing', 'processing'] : ['pending', 'confirmed', 'processing']).includes(o.status);
 
   const canFulfillOrder = (o: Order) =>
-    !plan.startsWith('thedersi')
+    !hasTheDersi
     && o.source !== 'thedersi'
     && o.source !== 'pos'
     && !['shipped', 'delivered', 'completed', 'cancelled'].includes(o.status);

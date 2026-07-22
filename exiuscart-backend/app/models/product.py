@@ -42,6 +42,7 @@ class Product(Base):
     quantity = Column(Integer, default=0)
     low_stock_threshold = Column(Integer, default=5)
     image_url = Column(String(500), nullable=True)
+    size_chart_url = Column(String(500), nullable=True)  # optional — one size chart image per product
     video_url = Column(String(500), nullable=True)   # short product video (TikTok-style)
     source_url = Column(String(1000), nullable=True) # supplier source link (AliExpress, CJ, etc.)
     is_active = Column(Boolean, default=True)

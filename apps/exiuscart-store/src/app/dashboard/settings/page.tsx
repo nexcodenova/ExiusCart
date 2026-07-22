@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { shopApi, subscriptionApi } from '@/lib/api';
+import { shopApi, channelsApi } from '@/lib/api';
 import {
   Settings,
   Shield,
@@ -81,10 +81,12 @@ export default function SettingsPage() {
     }).catch(() => {});
 
     if (shopId) {
-      subscriptionApi.getCurrent(shopId)
+      // Detected via an active TheDersi connection, not plan_type —
+      // TheDersi's Growth/Premium tier maps to plan_type='starter', same
+      // as a direct customer, so a plan-string check alone misses them.
+      channelsApi.getConnections(shopId)
         .then((r) => {
-          const plan = r.data?.plan?.plan_type || '';
-          const isDersi = plan.startsWith('thedersi');
+          const isDersi = (r.data ?? []).some((c: any) => c.channel_type === 'thedersi');
           setIsTheDersiSeller(isDersi);
           if (isDersi) {
             setSettings((prev) => ({ ...prev, currency: 'LKR' }));

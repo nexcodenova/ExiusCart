@@ -35,6 +35,23 @@ THEDERSI_TIER_MAP: dict = {
     "standard":     {"plan_type": "starter"},      # backward compat
 }
 
+def is_thedersi_shop(shop_id: int, db) -> bool:
+    """True if this shop has an active TheDersi channel connection.
+
+    This is the reliable way to detect a TheDersi-provisioned seller —
+    plan_type alone is NOT enough. TheDersi's Growth/Premium tier maps to
+    plan_type='starter' (see THEDERSI_TIER_MAP above), the exact same
+    plan_type a direct ExiusCart Starter customer gets, so any
+    `plan_type.startswith("thedersi")` check silently misses those sellers.
+    """
+    from app.models.channel import ChannelConnection
+    return db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "thedersi",
+        ChannelConnection.is_active == True,
+    ).first() is not None
+
+
 # Monthly order limits per plan (None = unlimited)
 # Counts channel/online orders only — POS is always unlimited regardless of plan
 MONTHLY_ORDER_LIMITS: dict = {

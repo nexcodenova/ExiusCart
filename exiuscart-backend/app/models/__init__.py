@@ -20,6 +20,7 @@ from app.models.partner import PartnerLicense
 from app.models.channel import ChannelConnection
 from app.models.channel_order_meta import ChannelOrderMeta
 from app.models.channel_product_status import ChannelProductStatus
+from app.models.channel_sync_log import ChannelSyncLog
 from app.models.channel_category import ChannelCategory, ProductChannelCategory
 from app.models.product_variant import ProductVariant
 from app.models.thedersi_seller import TheDersiSeller

@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db, SessionLocal
-from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature
+from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature, is_thedersi_shop
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -523,8 +523,10 @@ def connect_channel(
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
 
-    # TheDersi users: only TheDersi channel + Daraz (Pro only)
-    if plan_type.startswith("thedersi"):
+    # TheDersi users: only TheDersi channel + Daraz (Pro only). Detected via
+    # an active TheDersi connection, not plan_type — TheDersi's Growth/
+    # Premium tier maps to plan_type='starter', same as a direct customer.
+    if is_thedersi_shop(shop_id, db):
         if data.channel_type not in ("thedersi", "daraz"):
             raise HTTPException(
                 status_code=403,
@@ -1592,6 +1594,50 @@ def get_product_channel_categories(
             "is_gift": r.is_gift,
             "channel_category_id": r.channel_category_id,
             "channel_category_name": r.channel_category_name,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/shops/{shop_id}/channel-sync-logs")
+def get_channel_sync_logs(
+    shop_id: int,
+    channel_type: Optional[str] = None,
+    success: Optional[bool] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """History of every channel sync attempt (listing creation, stock push,
+    price update, etc.) — durable even after a transient UI error message
+    disappears. Powers the Channel Listings dashboard. Channel-agnostic —
+    any integration can write to ChannelSyncLog, not just Noon."""
+    from app.models.channel_sync_log import ChannelSyncLog
+
+    _shop_or_404(shop_id, current_user, db)
+    query = db.query(ChannelSyncLog).filter(ChannelSyncLog.shop_id == shop_id)
+    if channel_type:
+        query = query.filter(ChannelSyncLog.channel_type == channel_type)
+    if success is not None:
+        query = query.filter(ChannelSyncLog.success == success)
+    rows = query.order_by(ChannelSyncLog.created_at.desc()).limit(min(limit, 500)).all()
+
+    product_ids = list({r.product_id for r in rows if r.product_id})
+    products = {}
+    if product_ids:
+        products = {p.id: p.name for p in db.query(Product).filter(Product.id.in_(product_ids)).all()}
+
+    return [
+        {
+            "id": r.id,
+            "product_id": r.product_id,
+            "product_name": products.get(r.product_id),
+            "channel_type": r.channel_type,
+            "action": r.action,
+            "success": r.success,
+            "external_id": r.external_id,
+            "error_message": r.error_message,
+            "created_at": r.created_at,
         }
         for r in rows
     ]

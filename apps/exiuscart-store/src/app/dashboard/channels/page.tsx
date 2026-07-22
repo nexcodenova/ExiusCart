@@ -738,7 +738,6 @@ export default function ChannelsPage() {
   const [noonModalStep, setNoonModalStep] = useState<'form' | 'warehouse'>('form');
   const [dersiBlockChannel, setDersiBlockChannel] = useState<string | null>(null);
   const [darazLocked, setDarazLocked] = useState(false);
-  const [noonLocked, setNoonLocked] = useState(false);
   const [upgradeLimitModal, setUpgradeLimitModal] = useState(false);
   const [shopifyConnected, setShopifyConnected] = useState(false);
   const [plan, setPlan] = useState('');
@@ -772,7 +771,10 @@ export default function ChannelsPage() {
   const hasTheDersi = theDersiConns.length > 0;
   const hasDaraz = darazConns.length > 0;
   const hasNoon = noonConns.length > 0;
-  const isTheDersiUser = plan.startsWith('thedersi');
+  // Detected via an active TheDersi connection, not plan_type — TheDersi's
+  // Growth/Premium tier maps to plan='starter', same as a direct customer,
+  // so a plan-string check alone would miss those sellers.
+  const isTheDersiUser = hasTheDersi;
   const isPremium = plan === 'premium';
   // Count Shopify separately since it's tracked via a different API
   const totalChannelCount = connections.length + (shopifyConnected ? 1 : 0);
@@ -780,8 +782,8 @@ export default function ChannelsPage() {
   const channelLimitReached = plan !== '' && !isPremium && !isTheDersiUser && totalChannelCount >= 1;
   // Daraz: TheDersi Pro or Premium only
   const canUseDaraz = ['thedersi_pro', 'premium'].includes(plan);
-  // Noon: same plan gate as Daraz for now (TheDersi Pro or Premium)
-  const canUseNoon = ['thedersi_pro', 'premium'].includes(plan);
+  // Noon is direct-ExiusCart only — TheDersi sellers (Basic or Pro) get
+  // TheDersi + Daraz and nothing else, same rule as Shopify/Custom Website.
 
   const availableChannels: ChannelDef[] = [
     // ── Row 1: TheDersi + Daraz (the two channels TheDersi sellers can use) ──
@@ -810,10 +812,16 @@ export default function ChannelsPage() {
       name: 'Noon',
       description: "UAE/KSA/GCC's biggest marketplace. Paste your own Noon service account key to connect — products, stock, and orders sync to ExiusCart.",
       icon: <ShoppingBag className="w-5 h-5 text-yellow-500" />,
-      badge: hasNoon ? 'live' : canUseNoon ? 'connect' : 'locked',
-      badgeLabel: hasNoon ? 'Connected' : canUseNoon ? 'Available' : (isTheDersiUser ? 'TheDersi Pro only' : 'Premium only'),
-      onAction: hasNoon ? undefined : canUseNoon ? () => { setNoonModalStep('form'); setShowNoonModal(true); } : () => setNoonLocked(true),
-      actionLabel: 'Connect Noon',
+      badge: hasNoon ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: hasNoon ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: hasNoon
+        ? undefined
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('Noon')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => { setNoonModalStep('form'); setShowNoonModal(true); },
+      actionLabel: hasNoon ? 'Connected' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Noon')),
     },
     // ── Row 2: Shopify + Custom Website (direct-ExiusCart channels) ──
     {
@@ -1003,34 +1011,6 @@ export default function ChannelsPage() {
           onConnected={() => load()}
           onClose={() => { setShowNoonModal(false); load(); }}
         />
-      )}
-
-      {noonLocked && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center shrink-0">
-                <ShoppingBag className="w-5 h-5 text-yellow-500" />
-              </div>
-              <button type="button" onClick={() => setNoonLocked(false)}
-                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">Noon Integration</p>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                {isTheDersiUser
-                  ? 'Noon sync is available on TheDersi Pro. Upgrade your TheDersi plan to connect your Noon seller account.'
-                  : 'Noon sync is available on Premium plans. Upgrade to ExiusCart Premium to connect your Noon seller account.'}
-              </p>
-            </div>
-            <button type="button" onClick={() => setNoonLocked(false)}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-              Got it
-            </button>
-          </div>
-        </div>
       )}
 
       {darazLocked && (

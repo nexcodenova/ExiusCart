@@ -11,10 +11,10 @@ import {
   UserCheck, Paintbrush, GitBranch, Shield, ChevronDown,
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
-  DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw,
+  DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw, ListChecks,
   Star, MapPin,
 } from 'lucide-react';
-import { shopApi, subscriptionApi } from '@/lib/api';
+import { shopApi, subscriptionApi, channelsApi } from '@/lib/api';
 
 // Renders like a lucide icon (accepts className) so it drops straight into
 // MenuItem.icon slots, but shows Prodora's real mark instead of a generic one.
@@ -75,8 +75,9 @@ const GROUPS: MenuGroup[] = [
     id: 'channels',
     label: 'Channels',
     items: [
-      { href: '/dashboard/channels',     label: 'Channels',     icon: Link2  },
-      { href: '/dashboard/dropshipping', label: 'Dropshipping', icon: Truck  },
+      { href: '/dashboard/channels',         label: 'Channels',         icon: Link2      },
+      { href: '/dashboard/channel-listings', label: 'Channel Listings', icon: ListChecks },
+      { href: '/dashboard/dropshipping',     label: 'Dropshipping',     icon: Truck      },
     ],
   },
   {
@@ -178,7 +179,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [showProdoraBlocked, setShowProdoraBlocked] = useState<'thedersi' | 'free_trial' | null>(null);
-  const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null } | null>(null);
+  const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null; isTheDersi: boolean } | null>(null);
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     new Set(GROUPS.map(g => g.id)) // all open by default
   );
@@ -208,13 +209,18 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
     Promise.all([
       shopApi.getMyShop().catch(() => null),
       shopId ? subscriptionApi.getCurrent(shopId).catch(() => null) : Promise.resolve(null),
-    ]).then(([shopRes, subRes]) => {
+      shopId ? channelsApi.getConnections(shopId).catch(() => null) : Promise.resolve(null),
+    ]).then(([shopRes, subRes, connRes]) => {
       const plan = subRes?.data?.plan;
       setShopData({
         name: shopRes?.data?.name || '',
         plan: plan?.plan_type || 'free_trial',
         planLabel: plan?.name || 'Free Trial',
         daysLeft: plan?.daysLeft ?? null,
+        // Detected via an active TheDersi connection, not plan_type —
+        // TheDersi's Growth/Premium tier maps to plan_type='starter', same
+        // as a direct customer, so a plan-string check alone misses them.
+        isTheDersi: ((connRes as any)?.data ?? []).some((c: any) => c.channel_type === 'thedersi'),
       });
     }).catch(() => {});
   }, []);
@@ -316,7 +322,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
               const groupActive = isGroupActive(group);
               const isOpen = openGroups.has(group.id) || collapsed;
 
-              const isTheDersiPlan = plan.startsWith('thedersi');
+              const isTheDersiPlan = shopData?.isTheDersi ?? false;
               if (group.label === null) {
                 return group.items
                   .filter(item => !(item.href === '/dashboard/dropshipping' && isTheDersiPlan))

@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.email import send_welcome_email, send_thedersi_welcome_email, send_otp_email, send_new_signup_notification
+from app.core.thedersi import is_thedersi_shop
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
@@ -369,7 +370,10 @@ def setup_password(data: SetupPasswordIn, db: Session = Depends(get_db)):
     user.is_active = True
     db.commit()
 
-    if sub and sub.plan_type and sub.plan_type.startswith("thedersi"):
+    # Detected via an active TheDersi connection, not plan_type — TheDersi's
+    # Growth/Premium tier maps to plan_type='starter', same as a direct
+    # customer, so a plan_type check alone would miss those sellers.
+    if shop and is_thedersi_shop(shop.id, db):
         _email_pool.submit(send_thedersi_welcome_email, user.email, user.full_name or "")
 
     access_token = create_access_token(data={"sub": str(user.id)})

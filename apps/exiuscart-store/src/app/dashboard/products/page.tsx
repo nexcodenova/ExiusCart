@@ -54,12 +54,13 @@ interface ProductImage {
   is_primary: boolean;
 }
 
-const DEFAULT_CATEGORIES = ['General', 'Other'];
+interface ProductCategory { id: number; name: string; }
+const DEFAULT_CATEGORIES: ProductCategory[] = [{ id: -1, name: 'General' }, { id: -2, name: 'Other' }];
 
 export default function ProductsPage() {
   const { sym } = useCurrency();
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState<ProductCategory[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -116,7 +117,7 @@ export default function ProductsPage() {
   useEffect(() => {
     if (!shopId) return;
     productsApi.getCategories(shopId)
-      .then((res) => setCategories(res.data?.length ? res.data : DEFAULT_CATEGORIES))
+      .then((res) => setCategories(res.data?.length ? res.data.map((c: any) => ({ id: c.id, name: c.name })) : DEFAULT_CATEGORIES))
       .catch(() => {});
   }, [shopId]);
 
@@ -399,7 +400,7 @@ export default function ProductsPage() {
               className="appearance-none w-full sm:w-48 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
             >
               <option value="All">All Categories</option>
-              {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+              {categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
           </div>
@@ -857,7 +858,7 @@ function ProductModal({
 }: {
   product: Product | null;
   shopId: string;
-  categories: string[];
+  categories: ProductCategory[];
   allProducts: Product[];
   channelStatus?: { status: string; rejection_reason?: string };
   onClose: () => void;
@@ -872,7 +873,7 @@ function ProductModal({
     sku: p?.sku ?? '',
     barcode: p?.barcode ?? '',
     description: p?.description ?? '',
-    category: p?.category?.name ?? (typeof p?.category === 'string' ? p?.category : '') ?? categories[0] ?? '',
+    category: p?.category?.name ?? (typeof p?.category === 'string' ? p?.category : '') ?? categories[0]?.name ?? '',
     costPrice: p?.cost_price ?? p?.costPrice ?? 0,
     sellingPrice: p?.price ?? p?.sellingPrice ?? 0,
     compareAtPrice: p?.compare_at_price ?? p?.compareAtPrice ?? 0,
@@ -894,6 +895,10 @@ function ProductModal({
   const [savedImages, setSavedImages] = useState<ProductImage[]>([]);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
+
+  // Size chart — one optional image, separate from the product photo gallery
+  const [sizeChartUrl, setSizeChartUrl] = useState(p?.size_chart_url ?? '');
+  const [uploadingSizeChart, setUploadingSizeChart] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -946,6 +951,7 @@ function ProductModal({
   const [noonEnabled, setNoonEnabled] = useState(false);
   const [noonCategoryCode, setNoonCategoryCode] = useState('');
   const [noonBrand, setNoonBrand] = useState('');
+  const [noonCountry, setNoonCountry] = useState<'ae' | 'sa' | 'eg'>('ae');
   const [noonAttributeValues, setNoonAttributeValues] = useState<NoonAttributeValues>({});
   const [noonListingStatus, setNoonListingStatus] = useState<{ skuParent: string } | null>(null);
   const [listingNoon, setListingNoon] = useState(false);
@@ -971,13 +977,26 @@ function ProductModal({
   const variantImageCount = variants.filter(v => v.image_url && v.image_url !== '').length;
   const totalImages = savedImages.length + pendingImages.length + variantImageCount;
 
-  // Load custom fields, existing product data, and TheDersi categories on mount
+  // Category → controls which custom fields (Material, Pattern, etc.) and
+  // the size chart upload show up. Applies to every seller, TheDersi
+  // included — TheDersi's own platform is fashion-only, but TheDersi
+  // sellers also get a Daraz connection (a general marketplace), so a
+  // TheDersi shop can easily have non-fashion products too.
+  const selectedCategoryObj = categories.find((c) => c.name === formData.category) ?? null;
+  const isFashionCategory = selectedCategoryObj?.name === 'Fashion & Apparel';
+
+  // Custom fields are scoped to the selected category (global fields always
+  // included by the backend) — refetch whenever the category changes.
   useEffect(() => {
     if (!shopId) return;
-
-    fieldsApi.getAll(shopId)
+    fieldsApi.getAll(shopId, selectedCategoryObj?.id ?? undefined)
       .then((res) => setCustomFields(res.data ?? []))
       .catch(() => {});
+  }, [shopId, selectedCategoryObj?.id]);
+
+  // Load existing product data and TheDersi categories on mount
+  useEffect(() => {
+    if (!shopId) return;
 
     suppliersApi.getAll(shopId)
       .then((res) => setSuppliers((res.data ?? []).map((s: any) => ({ id: s.id, name: s.name }))))
@@ -1226,6 +1245,17 @@ function ProductModal({
         setNoonListingError(res.data.status.message || 'Noon rejected this listing.');
       } else {
         setNoonListingStatus({ skuParent: res.data?.sku_parent });
+        // Product content alone has no sale price — set it for every SKU
+        // Noon just created, same price ExiusCart already has per variant.
+        const createdSkus: { partner_sku: string }[] = res.data?.variants ?? [];
+        if (createdSkus.length > 0) {
+          const priceItems = createdSkus.map((s) => {
+            const variant = variants.find((v) => (v.sku || `${formData.sku || product.id}-${v.id}`) === s.partner_sku);
+            const price = variant?.price ? Number(variant.price) : formData.sellingPrice;
+            return { partner_sku: s.partner_sku, price, country_code: noonCountry };
+          });
+          noonApi.setPricing(shopId, priceItems).catch(() => {});
+        }
       }
     } catch (err: any) {
       setNoonListingError(err?.response?.data?.detail ?? 'Could not create the Noon listing. Try again.');
@@ -1258,6 +1288,7 @@ function ProductModal({
         cost_price: formData.costPrice > 0 ? formData.costPrice : null,
         quantity: totalStock,
         low_stock_threshold: formData.lowStockAlert,
+        category_id: selectedCategoryObj?.id ?? null,
         list_on_marketplace: formData.listOnMarketplace,
         is_gift: formData.isGift,
         pos_enabled: posEnabled,
@@ -1488,6 +1519,46 @@ function ProductModal({
                 <p className="text-xs text-muted-foreground mt-1.5">Up to {imageLimit} images total (main + variants) · Max 5MB each · First image is primary.</p>
               </div>
 
+              {/* Size Chart — one optional image, fashion products only */}
+              {product?.id && isFashionCategory && (
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Size Chart <span className="text-muted-foreground/60">(optional)</span></label>
+                  <div className="flex items-center gap-3">
+                    {sizeChartUrl ? (
+                      <img src={sizeChartUrl} alt="Size chart" className="w-20 h-20 rounded-lg object-cover border border-border shrink-0" />
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground shrink-0">
+                        <ImageIcon className="w-5 h-5" />
+                      </div>
+                    )}
+                    <label className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-foreground hover:bg-muted cursor-pointer transition">
+                      {uploadingSizeChart ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {uploadingSizeChart ? 'Uploading…' : 'Upload'}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={uploadingSizeChart}
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!f || !product?.id) return;
+                          setUploadingSizeChart(true);
+                          try {
+                            const res = await imagesApi.uploadSizeChart(shopId, String(product.id), f);
+                            const url = res.data?.url || '';
+                            setSizeChartUrl(url);
+                            await productsApi.update(shopId, String(product.id), { size_chart_url: url });
+                          } catch {}
+                          finally { setUploadingSizeChart(false); }
+                        }} />
+                    </label>
+                    {sizeChartUrl && (
+                      <button type="button" onClick={async () => {
+                        setSizeChartUrl('');
+                        if (product?.id) await productsApi.update(shopId, String(product.id), { size_chart_url: '' }).catch(() => {});
+                      }} className="text-xs text-muted-foreground hover:text-destructive transition">Remove</button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* SKU + Barcode */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1681,20 +1752,30 @@ function ProductModal({
 
               <div className="border-t border-border" />
 
-              {/* Category — hidden for TheDersi sellers who use TheDersi categories instead (unchanged) */}
-              {!theDersiConnection && (
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Category *</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    required
-                    className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                  >
-                    {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                  </select>
-                </div>
-              )}
+              {/* ExiusCart category — separate from TheDersi's own category
+                  picker further down (that one decides shelf placement on
+                  thedersi.lk). This one decides which fields show up below,
+                  so it applies to every seller, TheDersi included: a
+                  TheDersi shop's Daraz connection can list non-fashion
+                  products even though TheDersi itself is fashion-only. */}
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  Category *{theDersiConnection && <span className="text-muted-foreground font-normal"> (for ExiusCart — TheDersi's own category is set below)</span>}
+                </label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  required
+                  className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                >
+                  {categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {isFashionCategory
+                    ? 'Fashion & Apparel — fields like Material, Pattern, and a size chart will show up below.'
+                    : 'Add fields specific to this category anytime in Settings → Product Fields.'}
+                </p>
+              </div>
 
               {/* Pricing */}
               <div className="space-y-3">
@@ -2054,11 +2135,22 @@ function ProductModal({
                   </div>
                   {noonConnection && noonEnabled && (
                     <div className="border-t border-border p-3 space-y-3">
-                      <div>
-                        <label className="text-xs font-medium text-foreground mb-1 block">Brand *</label>
-                        <input type="text" value={noonBrand} onChange={(e) => setNoonBrand(e.target.value)}
-                          placeholder="Brand name shown on Noon"
-                          className="w-full px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                      <div className="grid grid-cols-[1fr_auto] gap-2">
+                        <div>
+                          <label className="text-xs font-medium text-foreground mb-1 block">Brand *</label>
+                          <input type="text" value={noonBrand} onChange={(e) => setNoonBrand(e.target.value)}
+                            placeholder="Brand name shown on Noon"
+                            className="w-full px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-foreground mb-1 block">Country</label>
+                          <select value={noonCountry} onChange={(e) => setNoonCountry(e.target.value as 'ae' | 'sa' | 'eg')}
+                            className="px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none">
+                            <option value="ae">UAE</option>
+                            <option value="sa">Saudi Arabia</option>
+                            <option value="eg">Egypt</option>
+                          </select>
+                        </div>
                       </div>
 
                       {product?.id && (

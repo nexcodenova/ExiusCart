@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, X, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Search, ShoppingBag, ChevronRight, AlertCircle } from 'lucide-react';
-import { dropshipApi } from '@/lib/api';
+import { dropshipApi, channelsApi } from '@/lib/api';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -523,6 +523,7 @@ export default function DropshippingPage() {
   const [shopId, setShopId] = useState('');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [plan, setPlan] = useState('');
+  const [hasTheDersi, setHasTheDersi] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
@@ -530,8 +531,15 @@ export default function DropshippingPage() {
   const load = () => {
     if (!shopId) return;
     setLoading(true);
-    dropshipApi.getConnections(shopId)
-      .then((r) => { setSuppliers(r.data?.suppliers ?? []); setPlan(r.data?.plan ?? ''); })
+    Promise.all([
+      dropshipApi.getConnections(shopId),
+      channelsApi.getConnections(shopId),
+    ])
+      .then(([supRes, connRes]) => {
+        setSuppliers(supRes.data?.suppliers ?? []);
+        setPlan(supRes.data?.plan ?? '');
+        setHasTheDersi((connRes.data ?? []).some((c: any) => c.channel_type === 'thedersi'));
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
@@ -539,7 +547,10 @@ export default function DropshippingPage() {
   useEffect(() => { load(); }, [shopId]);
 
   const connectedCount = suppliers.filter((s) => s.connected).length;
-  const isTheDersiUser = plan.startsWith('thedersi');
+  // Detected via an active TheDersi connection, not plan_type — TheDersi's
+  // Growth/Premium tier maps to plan='starter', same as a direct customer,
+  // so a plan-string check alone would miss those sellers.
+  const isTheDersiUser = hasTheDersi;
 
   // While the plan is still loading, show only a spinner — never flash the
   // supplier cards / "How it works" before we know if the user is a TheDersi seller.

@@ -96,6 +96,39 @@ async def create_shop(
     db.add(new_shop)
     db.commit()
     db.refresh(new_shop)
+
+    # Starter categories so the category picker is meaningful from day one —
+    # same list as the one-time backfill migration for existing shops
+    # (e7f21a9c3b45). Direct-ExiusCart shops only (TheDersi shops are
+    # provisioned through partner.py and never hit this endpoint).
+    from app.models.product import Category as ProductCategory
+    default_categories = [
+        ("Fashion & Apparel", 10), ("Electronics", 20), ("Beauty & Personal Care", 30),
+        ("Home & Living", 40), ("Other", 50),
+    ]
+    category_rows = {}
+    for name, sort_order in default_categories:
+        cat = ProductCategory(shop_id=new_shop.id, name=name, slug=generate_slug(name), sort_order=sort_order)
+        db.add(cat)
+        category_rows[name] = cat
+    db.flush()  # assigns cat.id before we reference it below
+
+    # Starter set of fashion attributes, scoped to the "Fashion & Apparel"
+    # category so non-fashion sellers (electronics, perfume, etc.) never see
+    # them on their own products. Optional either way.
+    from app.models.product_fields import ShopField
+    fashion_category_id = category_rows["Fashion & Apparel"].id
+    fashion_fields = [
+        ("Material", "material", "text", 10), ("Pattern", "pattern", "text", 20),
+        ("Occasion", "occasion", "text", 30), ("Style", "style", "text", 40),
+        ("Sleeve Length", "sleeve_length", "text", 50), ("Fit", "fit", "text", 60),
+        ("Fabric", "fabric", "text", 70), ("Country of Origin", "country_of_origin", "text", 80),
+        ("Delivery Time", "delivery_time", "text", 90),
+    ]
+    for label, field_key, field_type, sort_order in fashion_fields:
+        db.add(ShopField(shop_id=new_shop.id, category_id=fashion_category_id, label=label, field_key=field_key, field_type=field_type, sort_order=sort_order))
+    db.commit()
+
     return new_shop
 
 
