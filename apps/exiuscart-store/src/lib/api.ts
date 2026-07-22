@@ -687,6 +687,8 @@ export const dropshipApi = {
     api.get(`/shops/${shopId}/dropship/cj/product/${cjPid}`),
   cjImport: (shopId: string, cjPid: string, sellingPrice?: number) =>
     api.post(`/shops/${shopId}/dropship/cj/import`, { cj_pid: cjPid, selling_price: sellingPrice }),
+  cjShippingEstimate: (shopId: string, productId: number, countryCode: string) =>
+    api.get(`/shops/${shopId}/dropship/cj/shipping-estimate`, { params: { product_id: productId, country_code: countryCode } }),
 };
 
 export const reviewsApi = {

@@ -262,6 +262,60 @@ async def cj_get_product_detail(
     }
 
 
+@router.get("/shops/{shop_id}/dropship/cj/shipping-estimate")
+async def cj_shipping_estimate(
+    shop_id: int,
+    product_id: int,
+    country_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Estimate CJ shipping cost for a product to a destination country, before
+    committing to fulfil an order, using CJ's freight-calculate endpoint.
+
+    UNVERIFIED — built from CJ's publicly documented API shape
+    (developers.cjdropshipping.com), not live-tested against a real CJ
+    account (no test credentials available in this session, unlike Noon
+    earlier). Confirm this actually returns sensible numbers with a real
+    connected CJ account before relying on it.
+    """
+    _shop_or_404(shop_id, current_user, db)
+    conn = await _get_cj_conn_or_400(shop_id, db)
+    token = await _cj_ensure_token(conn, db)
+
+    link = db.query(DropshipProductLink).filter(
+        DropshipProductLink.product_id == product_id,
+        DropshipProductLink.supplier_type == "cj",
+    ).first()
+    if not link or not link.supplier_sku:
+        raise HTTPException(status_code=400, detail="This product has no CJ supplier link.")
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post(f"{CJ_BASE}/logistic/freightCalculate", json={
+                "startCountryCode": "CN",
+                "endCountryCode": country_code.upper(),
+                "products": [{"vid": link.supplier_sku, "quantity": 1}],
+            }, headers={"CJ-Access-Token": token})
+        data = r.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"CJ API error: {str(e)}")
+
+    if not data.get("result"):
+        raise HTTPException(status_code=502, detail=data.get("message", "CJ could not calculate shipping for this destination."))
+
+    options = []
+    for opt in (data.get("data") or []):
+        options.append({
+            "logistic_name": opt.get("logisticName") or opt.get("logisticAging") or opt.get("name") or "Standard Shipping",
+            "price": float(opt.get("logisticPrice") or opt.get("price") or 0),
+            "days": opt.get("logisticAging") or opt.get("aging") or None,
+        })
+
+    return {"options": options, "product_cost": float(link.cost_price or 0)}
+
+
 @router.post("/shops/{shop_id}/dropship/cj/import")
 async def cj_import_product(
     shop_id: int,
@@ -743,12 +797,21 @@ async def fulfill_order(
             })
 
         cj_order_id = result["data"].get("orderId", "")
+        # CJ's create-order response sometimes includes what it actually
+        # charged directly — field name unconfirmed from public docs, so try
+        # the common variants. If none are present, sync_cj_tracking_job
+        # picks it up later once CJ finalizes the order.
+        charged = (
+            result["data"].get("orderAmount") or result["data"].get("payAmount")
+            or result["data"].get("totalAmount")
+        )
         ds_order = DropshipOrder(
             shop_id=shop_id,
             order_id=order_id,
             supplier_type="cj",
             supplier_order_id=cj_order_id,
             status="processing",
+            cost_paid=float(charged) if charged else None,
         )
         db.add(ds_order)
         order.fulfillment_status = "sent"
@@ -895,6 +958,19 @@ def sync_cj_tracking_job(db_session_factory) -> None:
                 )
                 tracking_url = track.get("trackUrl") or track.get("trackingUrl")
                 cj_status = (track.get("orderStatus") or track.get("status") or "").lower()
+
+                # Backfill cost_paid if it wasn't available at order-creation
+                # time — same unconfirmed-field-name situation as above.
+                if ds_order.cost_paid is None:
+                    charged = (
+                        track.get("orderAmount") or track.get("payAmount")
+                        or track.get("totalAmount") or track.get("productAmount")
+                    )
+                    if charged:
+                        try:
+                            ds_order.cost_paid = float(charged)
+                        except (TypeError, ValueError):
+                            pass
 
                 if tracking_number:
                     ds_order.tracking_number = tracking_number

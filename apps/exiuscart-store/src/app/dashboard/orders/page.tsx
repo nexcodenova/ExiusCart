@@ -243,6 +243,45 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // CJ shipping estimate — shown before confirming, so the seller can see
+  // roughly what CJ will charge instead of finding out after the fact.
+  // Unverified against a real CJ account — shown as an estimate, not a promise.
+  const [shippingEstimates, setShippingEstimates] = useState<Record<number, { logistic_name: string; price: number; days: number | string | null }[]>>({});
+  const [loadingEstimate, setLoadingEstimate] = useState(false);
+  const [estimateError, setEstimateError] = useState('');
+
+  useEffect(() => {
+    if (selected !== 'cj') return;
+    let countryCode = '';
+    try {
+      const addr = order.shipping_address ? JSON.parse(order.shipping_address) : null;
+      countryCode = addr?.country_code || addr?.country || '';
+    } catch {}
+    if (!countryCode) return;
+
+    const productIds = Array.from(new Set(order.items.map((i) => i.product_id).filter((id): id is number => id != null)));
+    if (productIds.length === 0) return;
+
+    setLoadingEstimate(true);
+    setEstimateError('');
+    Promise.all(productIds.map((pid) =>
+      dropshipApi.cjShippingEstimate(shopId, pid, countryCode)
+        .then((res) => [pid, res.data?.options ?? []] as const)
+        .catch(() => [pid, null] as const)
+    )).then((results) => {
+      const next: Record<number, { logistic_name: string; price: number; days: number | string | null }[]> = {};
+      let anyFailed = false;
+      for (const [pid, options] of results) {
+        if (options) next[pid] = options;
+        else anyFailed = true;
+      }
+      setShippingEstimates(next);
+      if (anyFailed && Object.keys(next).length === 0) {
+        setEstimateError('Could not fetch a shipping estimate from CJ for this destination.');
+      }
+    }).finally(() => setLoadingEstimate(false));
+  }, [selected, order, shopId]);
+
   const handleFulfill = async () => {
     if (!selected) return;
     setLoading(true);
@@ -309,6 +348,38 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
                   </div>
                 )}
               </div>
+
+              {selected === 'cj' && (
+                <div className="bg-muted/50 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-medium text-foreground">Estimated CJ shipping cost</p>
+                  {loadingEstimate ? (
+                    <p className="text-xs text-muted-foreground">Checking with CJ…</p>
+                  ) : estimateError ? (
+                    <p className="text-xs text-muted-foreground">{estimateError} You'll see the real amount once CJ ships it.</p>
+                  ) : Object.keys(shippingEstimates).length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No estimate available for this order's destination.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {Object.entries(shippingEstimates).map(([pid, options]) => (
+                        <div key={pid} className="text-xs text-muted-foreground">
+                          {options.length === 0 ? (
+                            'No shipping options returned for this product.'
+                          ) : (
+                            options.slice(0, 3).map((opt, i) => (
+                              <div key={i} className="flex items-center justify-between">
+                                <span>{opt.logistic_name}{opt.days ? ` · ~${opt.days} days` : ''}</span>
+                                <span className="font-medium text-foreground">${opt.price.toFixed(2)}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      ))}
+                      <p className="text-[11px] text-muted-foreground/70 pt-1">Estimate only — the amount actually charged may differ slightly.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {error && <p className="text-sm text-red-500 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-muted transition">Cancel</button>
