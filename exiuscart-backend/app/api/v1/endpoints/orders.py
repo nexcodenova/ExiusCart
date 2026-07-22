@@ -23,6 +23,7 @@ from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_n
 from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
 from app.models.subscription import Subscription
 from app.models.bundle_component import BundleComponent
+from app.models.product_variant import ProductVariant
 from app.models.channel import ChannelConnection
 
 router = APIRouter()
@@ -465,14 +466,22 @@ async def get_order_details(
         is_bundle = bool(product and product.is_bundle)
         components = []
         if is_bundle:
+            # The buyer's actual per-component pick lives on the order item
+            # (bundle_selections), not on BundleComponent — that only holds
+            # the SET of variants a buyer could choose between, not which
+            # one they picked for this specific order.
+            selections = item.bundle_selections or []
+            variant_id_by_component = {s.get("component_product_id"): s.get("variant_id") for s in selections}
             for c in db.query(BundleComponent).filter(BundleComponent.bundle_product_id == product.id).all():
                 cp = db.query(Product).filter(Product.id == c.component_product_id).first()
+                variant_id = variant_id_by_component.get(c.component_product_id)
+                variant = db.query(ProductVariant).filter(ProductVariant.id == variant_id).first() if variant_id else None
                 components.append({
                     "product_name": cp.name if cp else f"Product #{c.component_product_id}",
                     "qty_per_bundle": c.quantity,
                     "total_qty": c.quantity * item.quantity,
-                    "variant_size": c.variant_size,
-                    "variant_color": c.variant_color,
+                    "variant_size": variant.size if variant else None,
+                    "variant_color": variant.color if variant else None,
                 })
         enriched_items.append({
             "id": item.id,

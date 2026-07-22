@@ -1,14 +1,17 @@
 const http = require('http');
 const { exec } = require('child_process');
 
+// Delegates to deploy.sh, which is the actual source of truth for how to
+// build/reload each app safely (clears .next before building, only reloads
+// pm2 on a successful build, runs Alembic + legacy SQL migrations, and only
+// rebuilds apps that actually changed). BEFORE_SHA is captured here — before
+// the pull — and passed through so deploy.sh can diff against everything
+// this pull brought in, not just the single most recent commit.
 const DEPLOY_CMD = [
   'cd /var/www/ExiusCart',
+  'export BEFORE_SHA=$(git rev-parse HEAD)',
   "GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519' git pull",
-  'cd exiuscart-backend && source venv/bin/activate && pip install -r requirements.txt -q && deactivate',
-  'pm2 restart exiuscart-backend --update-env',
-  'cd /var/www/ExiusCart/apps/exiuscart-store && npm install --silent && NEXT_PUBLIC_API_URL=https://api.exiuscart.com npm run build && pm2 restart exiuscart-store --update-env',
-  'cd /var/www/ExiusCart/apps/exiuscart-admin && npm install --silent && NEXT_PUBLIC_API_URL=https://api.exiuscart.com npm run build && pm2 restart exiuscart-admin --update-env',
-  'cd /var/www/ExiusCart/apps/exiuscart-affiliates && npm install --silent && NEXT_PUBLIC_API_URL=https://api.exiuscart.com npm run build && pm2 restart exiuscart-affiliates --update-env',
+  'bash deploy.sh',
 ].join(' && ');
 
 const THEDERSI_CMD = [

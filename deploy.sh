@@ -8,7 +8,12 @@ PROJECT_DIR="/var/www/ExiusCart"
 echo "=== ExiusCart Deploy Started ==="
 cd "$PROJECT_DIR"
 
-CHANGED=$(git diff HEAD~1 --name-only 2>/dev/null || echo "all")
+# webhook.js sets BEFORE_SHA to HEAD *before* the pull, so this diffs against
+# everything the pull actually brought in — a push with several commits
+# bundled together no longer has its earlier commits silently skipped by
+# only looking at the single most recent one (the old `HEAD~1` behavior).
+# Falls back to HEAD~1 for a manual run where BEFORE_SHA isn't set.
+CHANGED=$(git diff "${BEFORE_SHA:-HEAD~1}" HEAD --name-only 2>/dev/null || echo "all")
 
 export NEXT_PUBLIC_API_URL="https://api.exiuscart.com"
 export NEXT_TELEMETRY_DISABLED=1
@@ -51,6 +56,17 @@ build_app() {
 echo "--- Running DB migrations ---"
 ENV_FILE="$PROJECT_DIR/exiuscart-backend/.env"
 if [ -f "$ENV_FILE" ]; then
+  # Real schema/data migrations live here (alembic/versions/*.py) — this was
+  # never run automatically before, relying on someone remembering to SSH in
+  # and run it by hand. Safe to run every deploy: a no-op when already at head.
+  cd "$PROJECT_DIR/exiuscart-backend"
+  source venv/bin/activate
+  alembic upgrade head && echo "Alembic migrations applied ✓" || echo "Warning: alembic upgrade head failed — check manually"
+  deactivate
+  cd "$PROJECT_DIR"
+
+  # Legacy one-off SQL migrations (predates the switch to Alembic) — kept for
+  # any of these still pending on a given environment.
   DB_URL=$(grep ^DATABASE_URL "$ENV_FILE" | cut -d= -f2-)
   if [ -n "$DB_URL" ]; then
     for migration in "$PROJECT_DIR/exiuscart-backend/migrations/"*.sql; do
@@ -58,9 +74,9 @@ if [ -f "$ENV_FILE" ]; then
       echo "Applying: $(basename "$migration")"
       psql "$DB_URL" -f "$migration" || echo "Warning: migration may already be applied or failed: $(basename "$migration")"
     done
-    echo "Migrations done ✓"
+    echo "Legacy SQL migrations done ✓"
   else
-    echo "DATABASE_URL not found in .env — skipping migrations"
+    echo "DATABASE_URL not found in .env — skipping legacy SQL migrations"
   fi
 else
   echo ".env not found — skipping migrations"
