@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Package, Tag, Download, ExternalLink, Play, ShoppingCart, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Package, Tag, Download, ExternalLink, Play, ShoppingCart, Copy, Check, Loader2, CheckCircle2 } from 'lucide-react';
 import { shoppingApi, Product } from '@/lib/api';
 import DOMPurify from 'dompurify';
 
@@ -15,6 +15,9 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState<{ product_id: number } | null>(null);
+  const [importError, setImportError] = useState('');
 
   const productId = Number(params.id);
 
@@ -40,6 +43,20 @@ export default function ProductDetailPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}
+  };
+
+  const handleImport = async () => {
+    if (!productId) return;
+    setImporting(true);
+    setImportError('');
+    try {
+      const res = await shoppingApi.importProduct(productId);
+      setImported({ product_id: res.product_id });
+    } catch (err: any) {
+      setImportError(err?.response?.data?.detail || 'Could not add this product to your store. Please try again.');
+    } finally {
+      setImporting(false);
+    }
   };
 
   if (loading) {
@@ -210,15 +227,28 @@ export default function ProductDetailPage() {
                     Get This Product from Supplier
                   </a>
                 )}
-                <a
-                  href="https://store.exiuscart.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm border-2 border-[#FF6000] text-[#FF6000] hover:bg-[#FF6000] hover:text-white active:scale-95 transition w-full"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Add to My ExiusCart Store
-                </a>
+                {imported ? (
+                  <a
+                    href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm bg-green-600 text-white active:scale-95 transition w-full"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Added — Open in ExiusCart
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleImport}
+                    disabled={importing}
+                    className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm border-2 border-[#FF6000] text-[#FF6000] hover:bg-[#FF6000] hover:text-white active:scale-95 transition w-full disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-[#FF6000]"
+                  >
+                    {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+                    {importing ? 'Adding to your store…' : 'Add to My ExiusCart Store'}
+                  </button>
+                )}
+                {importError && <p className="text-xs text-red-500 text-center">{importError}</p>}
               </div>
             </div>
           </div>

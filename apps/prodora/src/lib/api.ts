@@ -87,4 +87,9 @@ export const shoppingApi = {
     const response = await apiClient.get('/shopping/categories');
     return response.data;
   },
+
+  importProduct: async (id: number): Promise<{ product_id: number; name: string; shop_id: number }> => {
+    const response = await apiClient.post(`/shopping/products/${id}/import`);
+    return response.data;
+  },
 };

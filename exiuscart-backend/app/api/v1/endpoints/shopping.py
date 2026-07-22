@@ -5,6 +5,8 @@ subscription (see POST /shopping/request-access).
 """
 from typing import Optional
 from datetime import timedelta
+import uuid
+from slugify import slugify
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
@@ -14,6 +16,7 @@ from sqlalchemy import func
 from app.core.database import get_db
 from app.core.security import create_access_token, decode_token
 from app.models.product import Product, Category
+from app.models.product_fields import ProductImage
 from app.models.shop import Shop
 from app.models.user import User
 from app.models.subscription import Subscription
@@ -203,6 +206,80 @@ def get_shopping_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return _product_out(product)
+
+
+@router.post("/shopping/products/{product_id}/import")
+def import_shopping_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_prodora_user),
+):
+    """
+    One-click import: copies a Prodora catalog product into the calling
+    seller's own ExiusCart shop as a real, editable product — pre-filled
+    with name, price, description, and photo. Previously "Add to My
+    ExiusCart Store" was just a link to log in; the seller had to rebuild
+    the whole listing by hand.
+    """
+    source = (
+        db.query(Product)
+        .join(Shop, Product.shop_id == Shop.id)
+        .options(joinedload(Product.category))
+        .filter(
+            Product.id == product_id,
+            Product.is_active == True,
+            Shop.is_active == True,
+            Shop.slug == "exiuscart-dropshipping-system",
+        )
+        .first()
+    )
+    if not source:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    shop = (
+        db.query(Shop)
+        .filter(Shop.owner_id == user.id, Shop.is_active == True)
+        .order_by(Shop.id.asc())
+        .first()
+    )
+    if not shop:
+        raise HTTPException(status_code=404, detail="No active ExiusCart shop found for this account")
+
+    # Match by category name into the seller's own categories — the source
+    # category_id belongs to the curated catalog shop, not this seller's
+    # shop, so it can't be copied directly (categories are shop-scoped).
+    category_id = None
+    if source.category:
+        match = db.query(Category).filter(
+            Category.shop_id == shop.id, Category.name == source.category.name
+        ).first()
+        if match:
+            category_id = match.id
+
+    new_product = Product(
+        shop_id=shop.id,
+        category_id=category_id,
+        name=source.name,
+        description=source.description,
+        price=source.price,
+        cost_price=source.cost_price,
+        sku=f"{(source.sku or 'PRODORA')}-{uuid.uuid4().hex[:6]}",
+        quantity=0,
+        low_stock_threshold=5,
+        slug=f"{slugify(source.name)}-{uuid.uuid4().hex[:6]}",
+        image_url=source.image_url,
+        video_url=source.video_url,
+        source_url=source.source_url,
+    )
+    db.add(new_product)
+    db.flush()
+
+    if source.image_url:
+        db.add(ProductImage(product_id=new_product.id, url=source.image_url, sort_order=0, is_primary=True))
+
+    db.commit()
+    db.refresh(new_product)
+    return {"product_id": new_product.id, "name": new_product.name, "shop_id": shop.id}
 
 
 @router.get("/shopping/categories")
