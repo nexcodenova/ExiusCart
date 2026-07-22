@@ -18,27 +18,39 @@ CHANGED=$(git diff "${BEFORE_SHA:-HEAD~1}" HEAD --name-only 2>/dev/null || echo 
 export NEXT_PUBLIC_API_URL="https://api.exiuscart.com"
 export NEXT_TELEMETRY_DISABLED=1
 
-# Helper: build a Next.js app safely.
-# Clears only the stale-build problem files (not the whole .next),
-# builds, and only reloads pm2 when the build actually succeeds.
-# If the build fails the OLD .next stays intact so the live site keeps running.
+# Helper: build a Next.js app with zero-downtime, atomic swap.
+# Builds into .next-staging (each app's next.config.js reads NEXT_DIST_DIR
+# for exactly this) while the OLD .next stays fully intact and serving
+# traffic the entire time — unlike rm -rf .next beforehand, there is no
+# window where a live request can land on a half-built/missing .next and
+# 500 (that's what was happening: an in-progress build deleted .next while
+# the still-running old process tried to read a manifest that no longer
+# existed). Only after a successful build do we swap it in and reload pm2.
 build_app() {
   local APP_DIR="$1"
   local PM2_NAME="$2"
   local PORT="$3"   # optional — only used when starting fresh
 
   echo "--- Building $PM2_NAME ---"
+  cd "$PROJECT_DIR/$APP_DIR"
+
+  rm -rf .next-staging
+  NEXT_DIST_DIR=.next-staging npm run build || true
+  if [ ! -f .next-staging/BUILD_ID ]; then
+    echo "$PM2_NAME build failed — old .next left untouched, site keeps running on it"
+    rm -rf .next-staging
+    cd "$PROJECT_DIR"
+    return 0
+  fi
+
+  rm -rf .next-old
+  [ -d .next ] && mv .next .next-old
+  mv .next-staging .next
+  rm -rf .next-old
+
   cd "$PROJECT_DIR"
 
-  # Always clear .next fully before building to avoid ENOENT / corrupt state.
-  # The live server keeps running on its existing process during the build;
-  # pm2 reload below is what switches traffic to the new build.
-  rm -rf "$APP_DIR/.next" 2>/dev/null || true
-
-  # Build — if this fails set -e exits here.
-  npm run build --workspace="$APP_DIR"
-
-  # Build succeeded — reload (or start) pm2
+  # Reload (or start) pm2
   if pm2 describe "$PM2_NAME" > /dev/null 2>&1; then
     pm2 reload "$PM2_NAME" --update-env
   else
