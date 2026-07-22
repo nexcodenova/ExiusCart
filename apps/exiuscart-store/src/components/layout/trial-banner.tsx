@@ -37,14 +37,23 @@ export function TrialBanner() {
     });
   }, []);
 
-  // Expired trials keep dashboard access (nothing is actually blocked) but
-  // get interrupted with an upgrade prompt every minute — dismissible each
-  // time, reappears on its own rather than staying gone for the session.
+  // Expired trials can still browse the dashboard, and get interrupted with
+  // an upgrade prompt every minute regardless — dismissible each time,
+  // reappears on its own. But actions that grow the business for free
+  // (adding a product, completing a sale — enforced server-side, see
+  // require_active_trial in the backend) are actually blocked: the API
+  // interceptor fires 'trial-expired' the instant one of those is rejected,
+  // popping this same modal immediately instead of waiting for the timer.
   useEffect(() => {
     if (!plan?.is_expired) return;
     setShowLock(true);
     const interval = setInterval(() => setShowLock(true), LOCK_RENAG_MS);
-    return () => clearInterval(interval);
+    const onBlocked = () => setShowLock(true);
+    window.addEventListener('trial-expired', onBlocked);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('trial-expired', onBlocked);
+    };
   }, [plan?.is_expired]);
 
   const lockModal = plan?.is_expired && showLock && (

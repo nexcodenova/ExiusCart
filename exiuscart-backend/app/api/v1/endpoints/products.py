@@ -5,6 +5,7 @@ from slugify import slugify
 from pydantic import BaseModel
 import uuid
 from app.core.database import get_db
+from app.core.trial import require_active_trial
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product, Category
@@ -200,6 +201,8 @@ async def create_product(
     shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
+
+    require_active_trial(shop_id, db)
 
     subscription = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
     if subscription:

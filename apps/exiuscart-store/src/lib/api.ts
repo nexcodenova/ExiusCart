@@ -16,7 +16,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Force logout on 401 (expired/invalid token) or 403 account deactivated
+// Force logout on 401 (expired/invalid token) or 403 account deactivated.
+// Also: surface a trial_expired rejection (402, from actions like adding a
+// product or completing a sale) as an instant lock-modal trigger instead of
+// a generic failed-request error — trial-banner.tsx listens for this event.
 api.interceptors.response.use(
   (res) => res,
   (error) => {
@@ -30,6 +33,9 @@ api.interceptors.response.use(
         localStorage.removeItem('access_token');
         localStorage.removeItem('shop_id');
         window.location.href = isDeactivated ? '/login?reason=deactivated' : '/login';
+      }
+      if (status === 402 && detail?.error === 'trial_expired') {
+        window.dispatchEvent(new CustomEvent('trial-expired'));
       }
     }
     return Promise.reject(error);

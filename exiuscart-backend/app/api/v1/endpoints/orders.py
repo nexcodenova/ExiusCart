@@ -21,6 +21,7 @@ from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
 from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_new_order_email, send_low_stock_alert_email, with_thedersi_footer
 from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
+from app.core.trial import require_active_trial
 from app.models.subscription import Subscription
 from app.models.bundle_component import BundleComponent
 from app.models.product_variant import ProductVariant
@@ -86,6 +87,11 @@ async def create_order(
     shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
+
+    # Applies to POS sales too, unlike the monthly order limit below — an
+    # expired trial shouldn't be able to keep selling for free through POS
+    # just because POS is exempt from the monthly count.
+    require_active_trial(shop_id, db)
 
     # ── Monthly order limit check — POS is always unlimited ──────────────────
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
