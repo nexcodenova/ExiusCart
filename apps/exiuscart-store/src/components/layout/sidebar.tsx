@@ -14,7 +14,7 @@ import {
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw, ListChecks,
   Star, MapPin,
 } from 'lucide-react';
-import { shopApi, subscriptionApi, channelsApi } from '@/lib/api';
+import { shopApi, subscriptionApi, channelsApi, usersApi } from '@/lib/api';
 
 // Renders like a lucide icon (accepts className) so it drops straight into
 // MenuItem.icon slots, but shows Prodora's real mark instead of a generic one.
@@ -180,6 +180,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [showProdoraBlocked, setShowProdoraBlocked] = useState<'thedersi' | 'free_trial' | null>(null);
   const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null; isTheDersi: boolean } | null>(null);
+  const [userEmail, setUserEmail] = useState('');
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     new Set(GROUPS.map(g => g.id)) // all open by default
   );
@@ -210,7 +211,9 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
       shopApi.getMyShop().catch(() => null),
       shopId ? subscriptionApi.getCurrent(shopId).catch(() => null) : Promise.resolve(null),
       shopId ? channelsApi.getConnections(shopId).catch(() => null) : Promise.resolve(null),
-    ]).then(([shopRes, subRes, connRes]) => {
+      usersApi.getMe().catch(() => null),
+    ]).then(([shopRes, subRes, connRes, meRes]) => {
+      setUserEmail((meRes as any)?.data?.email || '');
       const plan = subRes?.data?.plan;
       setShopData({
         name: shopRes?.data?.name || '',
@@ -335,7 +338,17 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                         onClick={() => {
                           if (isTheDersiPlan) setShowProdoraBlocked('thedersi');
                           else if (plan === 'free_trial') setShowProdoraBlocked('free_trial');
-                          else window.open(item.href, '_blank', 'noopener,noreferrer');
+                          else {
+                            // Pass the account email through so Prodora can
+                            // open straight into its "confirm to continue"
+                            // login step pre-filled, instead of landing on
+                            // a bare homepage the seller has to click around
+                            // on and retype an email they never typed here.
+                            const url = userEmail
+                              ? `${item.href}?email=${encodeURIComponent(userEmail)}`
+                              : item.href;
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                          }
                         }}
                         title={collapsed ? item.label : undefined}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 dark:text-indigo-400 hover:from-indigo-500/15 hover:to-purple-500/15 font-semibold text-left">

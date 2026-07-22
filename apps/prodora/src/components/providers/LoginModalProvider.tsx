@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,22 @@ export default function LoginModalProvider({ children }: { children: React.React
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Coming from the ExiusCart dashboard's Prodora link — the account email
+  // is already known, so open straight into this step pre-filled instead of
+  // landing on a bare homepage the seller has to click around on and retype
+  // an email they never had to type in the first place. Plain browser API
+  // (not useSearchParams) since this provider wraps the whole app in the
+  // root layout and shouldn't force every page into dynamic rendering.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const emailFromLink = params.get('email');
+    if (emailFromLink) {
+      setEmail(emailFromLink);
+      setShow(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

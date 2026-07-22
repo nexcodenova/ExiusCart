@@ -46,6 +46,11 @@ export const authApi = {
     api.post('/auth/setup-password', { token, password }),
 };
 
+// ── Users ─────────────────────────────────────────────
+export const usersApi = {
+  getMe: () => api.get('/users/me'),
+};
+
 // ── Shop ──────────────────────────────────────────────
 export const shopApi = {
   getMyShop: () => api.get('/shops/me'),
