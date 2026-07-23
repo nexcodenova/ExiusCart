@@ -10,7 +10,7 @@ function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
 // Update these when you have affiliate signup links
 const SIGNUP_LINKS: Record<string, string> = {
-  cj:       'https://app.cjdropshipping.com/register.html',
+  cj:       'https://www.cjdropshipping.com/register.html?token=bce7840c-d60b-46e7-b39c-872e1572796c',  // affiliate — 2% of referred sellers' CJ revenue for 1yr
   zendrop:  'https://app.zendrop.com/signup',
   hypersku: 'https://www.hypersku.com/register',
   wiio:     'https://wiio.com/register',

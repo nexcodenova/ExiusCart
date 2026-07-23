@@ -31,7 +31,7 @@ router = APIRouter()
 
 # ── Supplier signup links (affiliate — update these when you have the links) ──
 SUPPLIER_SIGNUP_LINKS = {
-    "cj":       "https://app.cjdropshipping.com/register.html",   # replace with affiliate link
+    "cj":       "https://www.cjdropshipping.com/register.html?token=bce7840c-d60b-46e7-b39c-872e1572796c",  # CJ affiliate — 2% of referred sellers' CJ revenue for 1yr
     "zendrop":  "https://app.zendrop.com/signup",                 # replace with affiliate link
     "hypersku": "https://www.hypersku.com/register",              # replace with affiliate link
     "wiio":     "https://wiio.com/register",                      # replace with affiliate link
