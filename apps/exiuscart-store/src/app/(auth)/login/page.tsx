@@ -14,7 +14,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('reason') === 'deactivated') {
+    const reason = params.get('reason');
+    if (reason === 'refunded') {
+      setError('Your account was refunded and has been blocked. Contact support for details.');
+      window.history.replaceState(null, '', window.location.pathname);
+    } else if (reason === 'deactivated') {
       setError('Your account has been deactivated. Please contact support.');
       window.history.replaceState(null, '', window.location.pathname);
     }

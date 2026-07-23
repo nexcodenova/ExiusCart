@@ -13,6 +13,10 @@ class User(Base):
     full_name = Column(String(255), nullable=False)
     phone = Column(String(20), nullable=True)
     is_active = Column(Boolean, default=True)
+    # Set alongside is_active=False so the login screen can show a specific
+    # reason ("refunded" vs a future "tos_violation" etc.) instead of one
+    # generic "deactivated" message for every case.
+    deactivation_reason = Column(String(30), nullable=True)
     is_superuser = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=True, server_default='true', nullable=False)
     referred_by_code = Column(String(20), nullable=True)  # affiliate referral code used at signup

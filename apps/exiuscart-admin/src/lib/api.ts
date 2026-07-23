@@ -65,6 +65,8 @@ export const adminApi = {
     api.get('/admin/subscription-payments', { params }),
   approveSubscription: (subId: number) =>
     api.put(`/admin/subscriptions/${subId}/approve`),
+  refundPayment: (paymentId: number) =>
+    api.put(`/admin/subscription-payments/${paymentId}/refund`),
   rejectSubscription: (subId: number) =>
     api.put(`/admin/subscriptions/${subId}/reject`),
   updateSubscription: (subId: number, data: {

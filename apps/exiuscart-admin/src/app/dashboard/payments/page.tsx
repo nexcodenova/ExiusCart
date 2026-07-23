@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   Search, CheckCircle, XCircle, Clock, CreditCard,
-  TrendingUp, AlertCircle, Check, X, Loader2, Zap, UserCheck, Receipt,
+  TrendingUp, AlertCircle, Check, X, Loader2, Zap, UserCheck, Receipt, Ban,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
@@ -351,10 +351,37 @@ function PaymentLedgerTable({ ledger, loading, searchQuery, setSearchQuery }: {
   searchQuery: string;
   setSearchQuery: (v: string) => void;
 }) {
-  const filtered = ledger.filter((p) => p.shop_name.toLowerCase().includes(searchQuery.toLowerCase()));
-  const totalLemonSqueezy = ledger.filter((p) => p.source === 'lemon_squeezy').reduce((s, p) => s + p.amount, 0);
-  const totalManual = ledger.filter((p) => p.source === 'manual').reduce((s, p) => s + p.amount, 0);
-  const totalCommissionOwed = ledger.reduce((s, p) => s + (p.commission?.amount ?? 0), 0);
+  const [rows, setRows] = useState(ledger);
+  const [refundingId, setRefundingId] = useState<number | null>(null);
+  const [refundError, setRefundError] = useState('');
+
+  useEffect(() => { setRows(ledger); }, [ledger]);
+
+  const filtered = rows.filter((p) => p.shop_name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const totalLemonSqueezy = rows.filter((p) => p.source === 'lemon_squeezy').reduce((s, p) => s + p.amount, 0);
+  const totalManual = rows.filter((p) => p.source === 'manual').reduce((s, p) => s + p.amount, 0);
+  const totalCommissionOwed = rows.reduce((s, p) => s + (p.commission?.amount ?? 0), 0);
+
+  const handleRefund = async (payment: PaymentLedgerRow) => {
+    if (!window.confirm(
+      `Refund ${payment.amount.toFixed(2)} ${payment.currency} for "${payment.shop_name}"?\n\n` +
+      `This only records the refund in ExiusCart — issue the actual refund on Lemon Squeezy's dashboard first if you haven't already.\n\n` +
+      `This will immediately BLOCK the shop owner's account (they'll see "refunded, contact support" on next login) and reverse the affiliate commission for this payment.`
+    )) return;
+
+    setRefundingId(payment.id);
+    setRefundError('');
+    try {
+      await adminApi.refundPayment(payment.id);
+      setRows((prev) => prev.map((p) => p.id === payment.id
+        ? { ...p, refunded_at: new Date().toISOString(), commission: p.commission ? { ...p.commission, status: 'reversed' } : null }
+        : p));
+    } catch (err: any) {
+      setRefundError(err?.response?.data?.detail || 'Refund failed — please try again.');
+    } finally {
+      setRefundingId(null);
+    }
+  };
 
   return (
     <>
@@ -392,6 +419,12 @@ function PaymentLedgerTable({ ledger, loading, searchQuery, setSearchQuery }: {
         </div>
       </div>
 
+      {refundError && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 text-red-400 text-sm">
+          {refundError}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center h-48">
           <Loader2 className="w-8 h-8 text-[#6B3FD9] animate-spin" />
@@ -413,6 +446,7 @@ function PaymentLedgerTable({ ledger, loading, searchQuery, setSearchQuery }: {
                   <th className="px-6 py-4 font-medium">Source</th>
                   <th className="px-6 py-4 font-medium">Affiliate Commission</th>
                   <th className="px-6 py-4 font-medium">Date</th>
+                  <th className="px-6 py-4 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -449,6 +483,18 @@ function PaymentLedgerTable({ ledger, loading, searchQuery, setSearchQuery }: {
                     </td>
                     <td className="px-6 py-4 text-gray-400 text-sm">
                       {p.confirmed_at ? new Date(p.confirmed_at).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-6 py-4">
+                      {p.refunded_at ? (
+                        <span className="text-gray-600 text-sm">—</span>
+                      ) : (
+                        <button type="button" onClick={() => handleRefund(p)} disabled={refundingId === p.id}
+                          title="Mark this payment refunded — blocks the account and reverses the commission"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition text-xs font-medium disabled:opacity-50">
+                          {refundingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+                          Refund
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

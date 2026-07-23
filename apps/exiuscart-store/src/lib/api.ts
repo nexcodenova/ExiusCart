@@ -28,13 +28,14 @@ api.interceptors.response.use(
     if (typeof window !== 'undefined') {
       const status = error.response?.status;
       const detail = error.response?.data?.detail ?? '';
+      const isRefunded = status === 403 && detail?.error === 'account_refunded';
       const isDeactivated =
         status === 403 &&
         (detail === 'User is deactivated' || detail === 'Account is deactivated');
-      if (status === 401 || isDeactivated) {
+      if (status === 401 || isDeactivated || isRefunded) {
         localStorage.removeItem('access_token');
         localStorage.removeItem('shop_id');
-        window.location.href = isDeactivated ? '/login?reason=deactivated' : '/login';
+        window.location.href = isRefunded ? '/login?reason=refunded' : isDeactivated ? '/login?reason=deactivated' : '/login';
       }
       if (status === 402 && detail?.error === 'trial_expired') {
         window.location.reload();

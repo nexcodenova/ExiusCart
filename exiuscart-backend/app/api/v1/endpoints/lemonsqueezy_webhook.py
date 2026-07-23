@@ -20,7 +20,7 @@ from app.core.lemonsqueezy import verify_webhook_signature
 from app.core.affiliate_commissions import generate_commission_for_payment
 from app.models.subscription import Subscription
 from app.models.subscription_payment import SubscriptionPayment
-from app.models.affiliate import Commission
+from app.models.affiliate import Affiliate, Commission
 from app.models.user import User
 from app.models.shop import Shop
 from app.core.email import send_dashboard_live_email, send_welcome_email, send_password_setup_email, send_new_signup_notification
@@ -249,6 +249,9 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
         logger.error(f"[LemonSqueezy] new_signup confirmation emails failed for shop={shop.id}: {e}")
 
 
+ONE_TIME_COMMISSION_REVERSAL_WINDOW_DAYS = 45
+
+
 def _handle_subscription_ended(db: Session, resource: dict, event_name: str) -> None:
     ls_subscription_id = str(resource.get("id", ""))
     if not ls_subscription_id:
@@ -257,6 +260,33 @@ def _handle_subscription_ended(db: Session, resource: dict, event_name: str) -> 
     if not sub:
         return
     sub.status = "cancelled" if event_name == "subscription_cancelled" else "expired"
+
+    # A referral who churns almost immediately shouldn't leave the affiliate
+    # holding a flat $75 for it — but one who stuck around a while was a
+    # real, earned referral, so past this window it's final either way.
+    # Recurring commissions need no equivalent here: they already stop
+    # naturally since a new one is only ever created alongside a real new
+    # payment, never guessed on a timer.
+    shop = db.query(Shop).filter(Shop.id == sub.shop_id).first()
+    owner = db.query(User).filter(User.id == shop.owner_id).first() if shop else None
+    if owner and owner.referred_by_code:
+        affiliate = db.query(Affiliate).filter(
+            Affiliate.referral_code == owner.referred_by_code,
+        ).first()
+        if affiliate and affiliate.commission_model == "one_time":
+            commission = db.query(Commission).filter(
+                Commission.affiliate_id == affiliate.id,
+                Commission.shop_id == sub.shop_id,
+                Commission.commission_type == "one_time",
+            ).first()
+            if commission and commission.status not in ("reversed", "paid"):
+                age_days = (datetime.now(timezone.utc) - commission.created_at).days
+                if age_days < ONE_TIME_COMMISSION_REVERSAL_WINDOW_DAYS:
+                    commission.status = "reversed"
+                    logger.info(f"[LemonSqueezy] shop={sub.shop_id} cancelled at {age_days}d — reversed one-time commission id={commission.id}")
+                else:
+                    logger.info(f"[LemonSqueezy] shop={sub.shop_id} cancelled at {age_days}d — past {ONE_TIME_COMMISSION_REVERSAL_WINDOW_DAYS}d window, commission id={commission.id} kept")
+
     db.commit()
     logger.info(f"[LemonSqueezy] subscription {ls_subscription_id} -> {sub.status}")
 

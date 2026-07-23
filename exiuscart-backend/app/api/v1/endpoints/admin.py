@@ -395,6 +395,51 @@ def list_subscription_payments(
     return result
 
 
+@router.put("/admin/subscription-payments/{payment_id}/refund")
+def refund_subscription_payment(
+    payment_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_superuser),
+):
+    """
+    Marks a payment refunded, blocks the shop owner's account, and reverses
+    the affiliate commission it generated (if any) — unconditionally, no
+    45-day grace period like the cancellation path has, since money was
+    actually returned here.
+
+    The refund itself still has to be issued on Lemon Squeezy's own
+    dashboard first (their API doesn't support triggering one) — this
+    button is ExiusCart's side of the bookkeeping once that's done.
+    """
+    payment = db.query(SubscriptionPayment).filter(SubscriptionPayment.id == payment_id).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    if payment.refunded_at:
+        raise HTTPException(status_code=400, detail="This payment is already marked refunded")
+
+    payment.refunded_at = datetime.now(timezone.utc)
+
+    shop = db.query(Shop).filter(Shop.id == payment.shop_id).first()
+    if shop:
+        owner = db.query(User).filter(User.id == shop.owner_id).first()
+        if owner:
+            owner.is_active = False
+            owner.deactivation_reason = "refunded"
+
+    commission = db.query(Commission).filter(Commission.subscription_payment_id == payment.id).first()
+    if commission and commission.status != "reversed":
+        commission.status = "reversed"
+
+    db.commit()
+    logger.info(f"[Admin Refund] payment={payment_id} shop={payment.shop_id} refunded by admin={admin.id}, account blocked")
+    return {
+        "refunded": True,
+        "payment_id": payment.id,
+        "account_blocked": bool(shop),
+        "commission_reversed": bool(commission and commission.status == "reversed"),
+    }
+
+
 @router.put("/admin/subscriptions/{sub_id}/approve")
 def approve_subscription(
     sub_id: int,
@@ -490,12 +535,18 @@ def expire_overdue_subscriptions() -> None:
     payment has come in. Recurring affiliate commissions stop naturally once a
     subscription is no longer 'active', since commissions are only ever created
     alongside a real SubscriptionPayment row — never guessed on a timer.
+
+    Includes 'cancelled' subscriptions, not just 'active' ones — a customer
+    who explicitly cancels correctly keeps access until their already-paid
+    period ends (handled elsewhere), but nothing was ever cutting that
+    access off once that date actually passed. Left them with permanent
+    free access after cancelling. This job is what finally closes that.
     """
     db = SessionLocal()
     try:
         now = datetime.now(timezone.utc)
         overdue = db.query(Subscription).filter(
-            Subscription.status == "active",
+            Subscription.status.in_(["active", "cancelled"]),
             Subscription.expires_at.isnot(None),
             Subscription.expires_at < now,
         ).all()
