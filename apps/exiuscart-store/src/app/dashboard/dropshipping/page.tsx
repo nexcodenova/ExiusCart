@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, X, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Search, ShoppingBag, ChevronRight, AlertCircle } from 'lucide-react';
+import { CheckCircle2, X, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Search, ShoppingBag, ChevronRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { dropshipApi, channelsApi } from '@/lib/api';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -34,6 +34,7 @@ function CJConnectModal({ shopId, onConnected, onClose }: {
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -72,9 +73,16 @@ function CJConnectModal({ shopId, onConnected, onClose }: {
           </div>
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">CJ Account Password *</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-              placeholder="Your CJ password"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+            <div className="relative">
+              <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required
+                placeholder="Your CJ password"
+                className="w-full px-3 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+              <button type="button" onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 leading-relaxed">
             Your credentials are encrypted and stored securely. They are never shown again after saving.
@@ -103,6 +111,7 @@ function ApiKeyModal({ supplier, shopId, onConnected, onClose }: {
   supplier: Supplier; shopId: string; onConnected: () => void; onClose: () => void;
 }) {
   const [apiKey, setApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -135,9 +144,16 @@ function ApiKeyModal({ supplier, shopId, onConnected, onClose }: {
           )}
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">{supplier.name} API Key *</label>
-            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
-              placeholder="Paste your API key here"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+            <div className="relative">
+              <input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
+                placeholder="Paste your API key here"
+                className="w-full px-3 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+              <button type="button" onClick={() => setShowApiKey((v) => !v)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showApiKey ? 'Hide API key' : 'Show API key'}>
+                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5">
             Find your API key in your {supplier.name} dashboard under Settings → API or Developer.

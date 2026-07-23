@@ -8,7 +8,6 @@ Plan limits:
   thedersi_* → no dropshipping (fulfilled by TheDersi)
 """
 
-import base64
 import logging
 import httpx
 from datetime import datetime, timezone
@@ -20,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.thedersi import is_thedersi_shop
+from app.core.encryption import encrypt, decrypt
 from app.models.user import User
 from app.models.order import Order
 from app.models.subscription import Subscription
@@ -126,7 +126,7 @@ async def _cj_ensure_token(conn: DropshipConnection, db: Session) -> str:
             "error": "cj_reconnect_required",
             "message": "CJ session expired. Please reconnect your CJ account.",
         })
-    password = base64.b64decode(conn.supplier_password_enc).decode()
+    password = decrypt(conn.supplier_password_enc)
     token_data = await _cj_get_token(conn.supplier_email, password)
     conn.access_token = token_data["accessToken"]
     conn.token_expires_at = datetime.fromisoformat(token_data["expiryDate"].replace("Z", "+00:00"))
@@ -495,7 +495,7 @@ async def connect_cj(
         DropshipConnection.supplier_type == "cj",
     ).first()
 
-    enc_password = base64.b64encode(data.password.encode()).decode()
+    enc_password = encrypt(data.password)
     expires = datetime.fromisoformat(token_data["expiryDate"].replace("Z", "+00:00"))
 
     if existing:
@@ -535,14 +535,15 @@ def connect_apikey(
         DropshipConnection.shop_id == shop_id,
         DropshipConnection.supplier_type == data.supplier_type,
     ).first()
+    enc_key = encrypt(data.api_key)
     if existing:
-        existing.api_key = data.api_key
+        existing.api_key = enc_key
         existing.is_active = True
     else:
         conn = DropshipConnection(
             shop_id=shop_id,
             supplier_type=data.supplier_type,
-            api_key=data.api_key,
+            api_key=enc_key,
         )
         db.add(conn)
     db.commit()
@@ -910,7 +911,7 @@ def sync_cj_tracking_job(db_session_factory) -> None:
                     shop_tokens[shop_id] = conn.access_token
                 else:
                     try:
-                        password = base64.b64decode(conn.supplier_password_enc).decode()
+                        password = decrypt(conn.supplier_password_enc)
                         with httpx.Client(timeout=15) as client:
                             r = client.post(f"{CJ_BASE}/authentication/getAccessToken", json={
                                 "email": conn.supplier_email,
