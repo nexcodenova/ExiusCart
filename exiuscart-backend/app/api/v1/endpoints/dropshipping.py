@@ -102,6 +102,11 @@ async def _cj_get_token(email: str, password: str) -> dict:
         })
     data = r.json()
     if not data.get("result"):
+        # Log CJ's actual response — the frontend only ever sees a generic
+        # message, so this is the only way to see the real rejection reason
+        # (e.g. API access not enabled, wrong endpoint, rate limit, etc.)
+        # when a real, verified account still fails to connect.
+        logger.error(f"[CJ Auth] login failed for email={email} — status={r.status_code} response={data}")
         raise HTTPException(status_code=400, detail={
             "error": "cj_auth_failed",
             "message": "Could not connect to CJ Dropshipping. Check your email and password.",
