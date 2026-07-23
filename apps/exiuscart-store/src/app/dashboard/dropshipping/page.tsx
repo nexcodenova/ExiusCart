@@ -32,9 +32,8 @@ interface Supplier {
 function CJConnectModal({ shopId, onConnected, onClose }: {
   shopId: string; onConnected: () => void; onClose: () => void;
 }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -42,10 +41,10 @@ function CJConnectModal({ shopId, onConnected, onClose }: {
     e.preventDefault();
     setSaving(true); setError('');
     try {
-      await dropshipApi.connectCJ(shopId, { email, password });
+      await dropshipApi.connectCJ(shopId, { api_key: apiKey });
       onConnected();
     } catch (err: any) {
-      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Connection failed. Check your email and password.');
+      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Connection failed. Check your API key.');
     } finally { setSaving(false); }
   };
 
@@ -55,7 +54,7 @@ function CJConnectModal({ shopId, onConnected, onClose }: {
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div>
             <p className="font-semibold text-foreground">Connect CJ Dropshipping</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Enter your CJ account credentials</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Paste your CJ API key</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
             <X className="w-4 h-4" />
@@ -66,26 +65,25 @@ function CJConnectModal({ shopId, onConnected, onClose }: {
             <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{error}</div>
           )}
           <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">CJ Account Email *</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-              placeholder="your@email.com"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
-          </div>
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">CJ Account Password *</label>
+            <label className="text-sm text-muted-foreground mb-1.5 block">CJ API Key *</label>
             <div className="relative">
-              <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required
-                placeholder="Your CJ password"
+              <input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
+                placeholder="CJUserNum@api@..."
                 className="w-full px-3 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
-              <button type="button" onClick={() => setShowPassword((v) => !v)}
+              <button type="button" onClick={() => setShowApiKey((v) => !v)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                aria-label={showApiKey ? 'Hide API key' : 'Show API key'}>
+                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
           <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 leading-relaxed">
-            Your credentials are encrypted and stored securely. They are never shown again after saving.
+            CJ requires an API key, not your account password. Generate one at{' '}
+            <a href="https://www.cjdropshipping.com/my.html#/authorize/API" target="_blank" rel="noopener noreferrer"
+              className="text-primary underline hover:text-primary/80">
+              My CJ → API management
+            </a>{' '}
+            → Add API → Type: &quot;API Key&quot;. It&apos;s encrypted and stored securely, and never shown again after saving.
           </p>
           <button type="submit" disabled={saving}
             className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">

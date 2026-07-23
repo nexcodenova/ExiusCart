@@ -664,7 +664,7 @@ export const balanceSheetApi = {
 export const dropshipApi = {
   getConnections: (shopId: string) =>
     api.get(`/shops/${shopId}/dropship/connections`),
-  connectCJ: (shopId: string, data: { email: string; password: string }) =>
+  connectCJ: (shopId: string, data: { api_key: string }) =>
     api.post(`/shops/${shopId}/dropship/connect/cj`, data),
   connectApiKey: (shopId: string, data: { supplier_type: string; api_key: string }) =>
     api.post(`/shops/${shopId}/dropship/connect/apikey`, data),
