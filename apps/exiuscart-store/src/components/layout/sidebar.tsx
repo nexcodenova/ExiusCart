@@ -12,7 +12,7 @@ import {
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw, ListChecks,
-  Star, MapPin,
+  Star, MapPin, ShoppingBag,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi, usersApi } from '@/lib/api';
 
@@ -77,7 +77,8 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/dashboard/channels',         label: 'Channels',         icon: Link2      },
       { href: '/dashboard/channel-listings', label: 'Channel Listings', icon: ListChecks },
-      { href: '/dashboard/dropshipping',     label: 'Dropshipping',     icon: Truck      },
+      { href: '/dashboard/dropshipping',        label: 'Suppliers',       icon: Truck       },
+      { href: '/dashboard/dropshipping/import', label: 'Import Products', icon: ShoppingBag },
     ],
   },
   {
@@ -254,9 +255,15 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
   }
 
   function isItemActive(item: MenuItem) {
-    return item.href === '/dashboard'
-      ? pathname === item.href
-      : pathname.startsWith(item.href);
+    if (item.href === '/dashboard') return pathname === item.href;
+    if (!(pathname === item.href || pathname.startsWith(item.href + '/'))) return false;
+    // Nested routes (e.g. /dashboard/dropshipping and /dashboard/dropshipping/import)
+    // both prefix-match on the import page — only the longest (most specific) wins.
+    const allHrefs = GROUPS.flatMap(g => g.items.map(i => i.href));
+    const longestMatch = allHrefs
+      .filter(h => pathname === h || pathname.startsWith(h + '/'))
+      .sort((a, b) => b.length - a.length)[0];
+    return item.href === longestMatch;
   }
 
   return (
