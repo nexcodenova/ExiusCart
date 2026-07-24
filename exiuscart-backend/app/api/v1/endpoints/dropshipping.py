@@ -92,6 +92,20 @@ def _shop_or_404(shop_id: int, user: User, db: Session):
     return shop
 
 
+def _parse_cj_price(raw) -> float:
+    """CJ returns prices as plain numbers for single-variant products but as a
+    range string like '0.57 -- 1.14' for multi-variant ones — take the low end."""
+    if raw is None or raw == "":
+        return 0.0
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    s = str(raw).split("--")[0].strip()
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
 # ── CJ token management ───────────────────────────────────────────────────────
 
 async def _cj_get_token(api_key: str) -> dict:
@@ -218,7 +232,7 @@ async def cj_search_products(
             "pid": p.get("pid") or p.get("productId", ""),
             "name": p.get("productNameEn") or p.get("productName", ""),
             "image": p.get("productImage") or p.get("productImageUrl", ""),
-            "cost_price": float(p.get("sellPrice") or p.get("minSellPrice") or 0),
+            "cost_price": _parse_cj_price(p.get("sellPrice") or p.get("minSellPrice")),
             "category": p.get("categoryName", ""),
         }
         for p in cj_list
@@ -263,7 +277,7 @@ async def cj_get_product_detail(
             "name": p.get("productNameEn") or p.get("productName", ""),
             "description": p.get("description") or "",
             "images": images[:10],
-            "cost_price": float(p.get("sellPrice") or p.get("suggestSellPrice") or 0),
+            "cost_price": _parse_cj_price(p.get("sellPrice") or p.get("suggestSellPrice")),
             "category": p.get("categoryName", ""),
             "sku": p.get("productSku") or "",
             "variants": p.get("variants") or [],
@@ -370,7 +384,7 @@ async def cj_import_product(
     primary_variant = variants[0] if variants else {}
     variant_vid = primary_variant.get("vid")
 
-    cost = float(p.get("sellPrice") or p.get("suggestSellPrice") or primary_variant.get("variantSellPrice") or 0)
+    cost = _parse_cj_price(p.get("sellPrice") or p.get("suggestSellPrice") or primary_variant.get("variantSellPrice"))
     price = body.selling_price if body.selling_price else round(cost * 2, 2)
 
     # Create product
