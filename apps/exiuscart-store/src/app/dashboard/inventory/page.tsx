@@ -38,7 +38,7 @@ export default function InventoryPage() {
     try {
       const res = await productsApi.getAll(shopId);
       setItems(res.data.map((p: any) => ({
-        id: p.id, name: p.name, sku: p.sku, category: p.category,
+        id: p.id, name: p.name, sku: p.sku, category: p.category?.name ?? (typeof p.category === 'string' ? p.category : ''),
         stock: p.stock ?? p.quantity ?? 0,
         minStock: p.lowStockAlert ?? p.low_stock_threshold ?? 5,
         cost: p.costPrice ?? p.cost_price ?? 0,

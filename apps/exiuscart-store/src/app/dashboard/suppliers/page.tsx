@@ -86,8 +86,8 @@ export default function SuppliersPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Suppliers</h1>
-            <p className="text-muted-foreground text-sm">Manage your product suppliers</p>
+            <h1 className="text-2xl font-bold text-foreground">Local Suppliers</h1>
+            <p className="text-muted-foreground text-sm">Manage the local/wholesale suppliers you buy stock from</p>
           </div>
           <button type="button" onClick={openAdd}
             className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition">

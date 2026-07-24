@@ -24,7 +24,7 @@ interface Product {
   name: string;
   sku: string;
   barcode?: string;
-  category: string;
+  category: string | { id: number; name: string } | null;
   costPrice: number;
   sellingPrice: number;
   stock: number;
@@ -575,8 +575,11 @@ export default function ProductsPage() {
                               </div>
                             );
                           }
-                          if (product.category) {
-                            return <span className="text-sm text-foreground">{product.category}</span>;
+                          const categoryName = typeof product.category === 'string'
+                            ? product.category
+                            : product.category?.name;
+                          if (categoryName) {
+                            return <span className="text-sm text-foreground">{categoryName}</span>;
                           }
                           return <span className="text-sm text-muted-foreground/40">—</span>;
                         })()}

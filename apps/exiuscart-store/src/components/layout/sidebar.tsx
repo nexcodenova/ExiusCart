@@ -68,7 +68,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/products',   label: 'Products',   icon: Package },
       { href: '/dashboard/inventory',  label: 'Inventory',  icon: Boxes   },
       { href: '/dashboard/purchases',  label: 'Purchases',  icon: Truck   },
-      { href: '/dashboard/suppliers',  label: 'Suppliers',  icon: Store   },
+      { href: '/dashboard/suppliers',  label: 'Local Suppliers', icon: Store },
     ],
   },
   {
