@@ -45,6 +45,25 @@ class Product(Base):
     size_chart_url = Column(String(500), nullable=True)  # optional — one size chart image per product
     video_url = Column(String(500), nullable=True)   # short product video (TikTok-style)
     source_url = Column(String(1000), nullable=True) # supplier source link (AliExpress, CJ, etc.)
+
+    # Prodora catalog — winning-product research metrics, all optional/admin-entered.
+    # Never fabricated: frontend hides a metric entirely when its column is null.
+    winning_score = Column(Integer, nullable=True)          # 0-100
+    trend_percent = Column(Numeric(6, 2), nullable=True)    # e.g. +68.00
+    competition_level = Column(String(20), nullable=True)   # "Low" / "Medium" / "High"
+    saturation_level = Column(String(20), nullable=True)    # "Low" / "Medium" / "High"
+    orders_count = Column(Integer, nullable=True)
+    supplier_name = Column(String(255), nullable=True)
+    supplier_rating = Column(Numeric(3, 2), nullable=True)  # e.g. 4.80
+    processing_time = Column(String(50), nullable=True)     # e.g. "1-3 Days"
+    shipping_time = Column(String(50), nullable=True)       # e.g. "7-12 Days"
+    warehouse_country = Column(String(100), nullable=True)
+    ad_facebook_url = Column(String(1000), nullable=True)
+    ad_tiktok_url = Column(String(1000), nullable=True)
+    ad_instagram_url = Column(String(1000), nullable=True)
+    ad_pinterest_url = Column(String(1000), nullable=True)
+    specs_json = Column(Text, nullable=True)                 # free-form key/value spec pairs, JSON-encoded
+    tags = Column(String(500), nullable=True)                # comma-separated feature tags
     is_active = Column(Boolean, default=True)
     is_featured = Column(Boolean, default=False)
     is_trending = Column(Boolean, default=False)     # pinned to "Trending" section

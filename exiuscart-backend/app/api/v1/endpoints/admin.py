@@ -2,6 +2,7 @@
 Super-admin endpoints — all routes require is_superuser.
 """
 import logging
+import httpx
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
@@ -11,6 +12,9 @@ from pydantic import BaseModel
 
 from app.core.database import get_db, SessionLocal
 from app.api.v1.deps import get_current_user
+from app.core.encryption import encrypt
+from app.models.dropship import DropshipConnection
+from app.api.v1.endpoints.dropshipping import _cj_get_token, _cj_ensure_token, _parse_cj_price, CJ_BASE
 from app.core.email import (
     send_dashboard_live_email,
     send_affiliate_pending_email,
@@ -1307,6 +1311,7 @@ def _shopping_product_out(p: Product) -> dict:
         "cost_price": float(p.cost_price) if p.cost_price else None,
         "currency": "USD",
         "image_url": p.image_url,
+        "images": [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else [],
         "video_url": p.video_url,
         "source_url": getattr(p, "source_url", None),
         "is_active": p.is_active,
@@ -1319,10 +1324,55 @@ def _shopping_product_out(p: Product) -> dict:
         "shop_id": p.shop_id,
         "shop_name": p.shop.name if p.shop else None,
         "created_at": p.created_at,
+        "variants": [{"color": v.color, "color_hex": v.color_hex} for v in p.variants] if p.variants else [],
+        "winning_score": p.winning_score,
+        "trend_percent": float(p.trend_percent) if p.trend_percent is not None else None,
+        "competition_level": p.competition_level,
+        "saturation_level": p.saturation_level,
+        "orders_count": p.orders_count,
+        "supplier_name": p.supplier_name,
+        "supplier_rating": float(p.supplier_rating) if p.supplier_rating is not None else None,
+        "processing_time": p.processing_time,
+        "shipping_time": p.shipping_time,
+        "warehouse_country": p.warehouse_country,
+        "ad_facebook_url": p.ad_facebook_url,
+        "ad_tiktok_url": p.ad_tiktok_url,
+        "ad_instagram_url": p.ad_instagram_url,
+        "ad_pinterest_url": p.ad_pinterest_url,
+        "specs_json": p.specs_json,
+        "tags": p.tags,
     }
 
 
-class ShoppingProductCreate(BaseModel):
+class ShoppingProductVariantIn(BaseModel):
+    color: Optional[str] = None
+    color_hex: Optional[str] = None
+
+
+# Optional Prodora "winning product" fields — always admin-entered, never
+# fabricated. Frontend hides each block/row when its field is null.
+class ShoppingProductExtras(BaseModel):
+    images: Optional[List[str]] = None
+    variants: Optional[List[ShoppingProductVariantIn]] = None
+    winning_score: Optional[int] = None
+    trend_percent: Optional[float] = None
+    competition_level: Optional[str] = None
+    saturation_level: Optional[str] = None
+    orders_count: Optional[int] = None
+    supplier_name: Optional[str] = None
+    supplier_rating: Optional[float] = None
+    processing_time: Optional[str] = None
+    shipping_time: Optional[str] = None
+    warehouse_country: Optional[str] = None
+    ad_facebook_url: Optional[str] = None
+    ad_tiktok_url: Optional[str] = None
+    ad_instagram_url: Optional[str] = None
+    ad_pinterest_url: Optional[str] = None
+    specs_json: Optional[str] = None
+    tags: Optional[str] = None
+
+
+class ShoppingProductCreate(ShoppingProductExtras):
     name: str
     description: Optional[str] = None
     price: float                          # selling price in USD shown to dropshippers
@@ -1337,7 +1387,7 @@ class ShoppingProductCreate(BaseModel):
     is_active: bool = True
 
 
-class ShoppingProductUpdate(BaseModel):
+class ShoppingProductUpdate(ShoppingProductExtras):
     name: Optional[str] = None
     description: Optional[str] = None
     price: Optional[float] = None
@@ -1400,6 +1450,38 @@ async def admin_upload_shopping_image(
     return {"url": url}
 
 
+SHOPPING_EXTRA_SCALAR_FIELDS = [
+    "winning_score", "trend_percent", "competition_level", "saturation_level",
+    "orders_count", "supplier_name", "supplier_rating", "processing_time",
+    "shipping_time", "warehouse_country", "ad_facebook_url", "ad_tiktok_url",
+    "ad_instagram_url", "ad_pinterest_url", "specs_json", "tags",
+]
+
+
+def _apply_shopping_extras(db: Session, product: Product, payload: dict) -> None:
+    """Applies the optional Prodora research fields — winning metrics, supplier
+    info, ad links, gallery images, variants. `payload` is a model_dump(exclude_unset=True)
+    dict so only fields the caller actually sent get touched."""
+    from app.models.product_fields import ProductImage
+    from app.models.product_variant import ProductVariant
+
+    for field in SHOPPING_EXTRA_SCALAR_FIELDS:
+        if field in payload:
+            setattr(product, field, payload[field])
+
+    if payload.get("images") is not None:
+        db.query(ProductImage).filter(ProductImage.product_id == product.id).delete()
+        for i, url in enumerate([u for u in payload["images"] if u][:6]):
+            db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
+
+    if payload.get("variants") is not None:
+        db.query(ProductVariant).filter(ProductVariant.product_id == product.id).delete()
+        for v in payload["variants"]:
+            color = v.get("color") if isinstance(v, dict) else None
+            if color:
+                db.add(ProductVariant(product_id=product.id, color=color, color_hex=v.get("color_hex")))
+
+
 def _get_or_create_system_shop(db: Session, admin_user: User) -> Shop:
     """Get or create the dedicated ExiusCart Dropshipping system shop."""
     shop = db.query(Shop).filter(Shop.slug == "exiuscart-dropshipping-system").first()
@@ -1446,6 +1528,8 @@ def admin_create_shopping_product(
         is_active=data.is_active,
     )
     db.add(product)
+    db.flush()
+    _apply_shopping_extras(db, product, data.model_dump(exclude_unset=True))
     db.commit()
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
@@ -1463,7 +1547,8 @@ def admin_update_shopping_product(
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    for field, value in data.model_dump(exclude_unset=True).items():
+    payload = data.model_dump(exclude_unset=True)
+    for field, value in payload.items():
         if field == "category_name":
             if value:
                 product.category_id = _get_or_create_category(db, product.shop_id, value).id
@@ -1473,6 +1558,7 @@ def admin_update_shopping_product(
                        "image_url", "video_url", "source_url",
                        "is_featured", "is_trending", "is_active"):
             setattr(product, field, value)
+    _apply_shopping_extras(db, product, payload)
     db.commit()
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
@@ -1514,6 +1600,244 @@ def admin_list_categories(
         query = query.filter(Category.shop_id == shop_id)
     cats = query.order_by(Category.name).all()
     return [{"id": c.id, "name": c.name, "slug": c.slug, "shop_id": c.shop_id} for c in cats]
+
+
+# ── Admin — CJ Dropshipping as a source for the Prodora catalog ─────────────
+# Reuses the same DropshipConnection model and CJ helper functions (token
+# handling, price parsing) already built for sellers, just scoped to the
+# internal "exiuscart-dropshipping-system" shop instead of a real seller's.
+
+class CJConnectAdminIn(BaseModel):
+    api_key: str
+
+
+class CJImportAdminIn(BaseModel):
+    cj_pid: str
+    price: Optional[float] = None
+    category_name: Optional[str] = None
+
+
+def _get_system_cj_connection(db: Session, shop: Shop) -> DropshipConnection:
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop.id,
+        DropshipConnection.supplier_type == "cj",
+        DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail="CJ Dropshipping is not connected.")
+    return conn
+
+
+@router.get("/admin/shopping/cj/status")
+def admin_cj_status(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop.id,
+        DropshipConnection.supplier_type == "cj",
+        DropshipConnection.is_active == True,
+    ).first()
+    return {"connected": conn is not None}
+
+
+@router.post("/admin/shopping/cj/connect")
+async def admin_connect_cj(
+    data: CJConnectAdminIn,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_system_shop(db, current_admin)
+    token_data = await _cj_get_token(data.api_key)
+
+    enc_key = encrypt(data.api_key)
+    expires = datetime.fromisoformat(token_data["accessTokenExpiryDate"].replace("Z", "+00:00"))
+
+    existing = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop.id,
+        DropshipConnection.supplier_type == "cj",
+    ).first()
+    if existing:
+        existing.api_key = enc_key
+        existing.access_token = token_data["accessToken"]
+        existing.token_expires_at = expires
+        existing.is_active = True
+    else:
+        db.add(DropshipConnection(
+            shop_id=shop.id,
+            supplier_type="cj",
+            api_key=enc_key,
+            access_token=token_data["accessToken"],
+            token_expires_at=expires,
+        ))
+    db.commit()
+    return {"connected": True}
+
+
+@router.get("/admin/shopping/cj/search")
+async def admin_cj_search(
+    q: str = "",
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = _get_system_cj_connection(db, shop)
+    token = await _cj_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{CJ_BASE}/product/list", params={
+            "productNameEn": q,
+            "pageNum": page,
+            "pageSize": 20,
+        }, headers={"CJ-Access-Token": token})
+
+    data = r.json()
+    if not data.get("result"):
+        raise HTTPException(status_code=502, detail=f"CJ API error: {data.get('message', 'Unknown error')}")
+
+    cj_list = data.get("data", {}).get("list") or []
+    products = [
+        {
+            "pid": p.get("pid") or p.get("productId", ""),
+            "name": p.get("productNameEn") or p.get("productName", ""),
+            "image": p.get("productImage") or p.get("productImageUrl", ""),
+            "cost_price": _parse_cj_price(p.get("sellPrice") or p.get("minSellPrice")),
+            "category": p.get("categoryName", ""),
+        }
+        for p in cj_list
+    ]
+    return {"products": products, "total": data.get("data", {}).get("total", 0), "page": page}
+
+
+@router.post("/admin/shopping/cj/import", status_code=201)
+async def admin_cj_import(
+    body: CJImportAdminIn,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = _get_system_cj_connection(db, shop)
+    token = await _cj_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{CJ_BASE}/product/query", params={"pid": body.cj_pid}, headers={"CJ-Access-Token": token})
+    cj = r.json()
+    if not cj.get("result"):
+        raise HTTPException(status_code=502, detail="Failed to fetch product from CJ. Please try again.")
+
+    p = cj.get("data", {})
+    name = (p.get("productNameEn") or p.get("productName") or "CJ Product").strip()
+    cost = _parse_cj_price(p.get("sellPrice") or p.get("suggestSellPrice"))
+    price = body.price if body.price else round(cost * 2, 2)
+
+    images = []
+    for img in (p.get("productImageSet") or p.get("imageSet") or []):
+        url = img if isinstance(img, str) else (img.get("imageUrl") or img.get("url") or "")
+        if url:
+            images.append(url)
+    if not images and p.get("productImage"):
+        images.append(p["productImage"])
+
+    cat_id = None
+    cat_name = body.category_name or p.get("categoryName")
+    if cat_name:
+        cat_id = _get_or_create_category(db, shop.id, cat_name).id
+
+    product = Product(
+        name=name,
+        slug=_slugify_unique(name),
+        description=p.get("description") or name,
+        price=price,
+        cost_price=cost,
+        sku=p.get("productSku") or body.cj_pid[:50],
+        image_url=images[0] if images else None,
+        source_url=f"https://cjdropshipping.com/product-detail.html?pid={body.cj_pid}",
+        quantity=0,
+        category_id=cat_id,
+        shop_id=shop.id,
+        is_featured=False,
+        is_trending=False,
+        is_active=True,
+        # Real fields straight from CJ's own response — not guessed.
+        supplier_name=p.get("supplierName") or "CJ Dropshipping",
+        warehouse_country=(p.get("variants") or [{}])[0].get("areaCountryCode") or None,
+    )
+    db.add(product)
+    db.flush()
+
+    from app.models.product_fields import ProductImage
+    from app.models.product_variant import ProductVariant
+
+    for i, url in enumerate(images[:6]):
+        db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
+
+    # CJ variant names are a free-text combo (e.g. "Blue Triangle-25X23CM"),
+    # not a clean color field — stored as a readable label, no fabricated hex.
+    seen_variants = set()
+    for v in (p.get("variants") or []):
+        label = (v.get("variantKey") or v.get("variantNameEn") or "").strip()
+        if label and label not in seen_variants:
+            seen_variants.add(label)
+            db.add(ProductVariant(product_id=product.id, color=label[:100], sku=v.get("variantSku")))
+
+    db.commit()
+    product = db.query(Product).options(
+        joinedload(Product.shop), joinedload(Product.category)
+    ).filter(Product.id == product.id).first()
+    return _shopping_product_out(product)
+
+
+# ── Admin — Meta Ad Library search (real ads, Facebook + Instagram) ─────────
+# Meta's Ad Library API (/ads_archive) is free, public, and needs no app
+# review since it only serves already-public archive data — but it does
+# need a real access token from a verified Meta developer account, which
+# only the user can generate (identity verification is required on Meta's
+# side). Until META_AD_LIBRARY_TOKEN is set, this returns a clear "not
+# configured" error instead of silently failing or faking results.
+import os as _os
+
+META_AD_LIBRARY_TOKEN = _os.getenv("META_AD_LIBRARY_TOKEN", "")
+META_GRAPH_BASE = "https://graph.facebook.com/v21.0"
+
+
+@router.get("/admin/shopping/meta-ads/search")
+async def admin_meta_ads_search(
+    q: str,
+    country: str = "US",
+    _: User = Depends(require_superuser),
+):
+    if not META_AD_LIBRARY_TOKEN:
+        raise HTTPException(status_code=400, detail={
+            "error": "meta_not_configured",
+            "message": "Meta Ad Library isn't connected yet. Generate a long-lived access token from a verified Meta developer account and set META_AD_LIBRARY_TOKEN on the server.",
+        })
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{META_GRAPH_BASE}/ads_archive", params={
+            "search_terms": q,
+            "ad_reached_countries": f'["{country}"]',
+            "ad_active_status": "ACTIVE",
+            "fields": "id,ad_snapshot_url,page_name,ad_creative_bodies,publisher_platforms",
+            "limit": 20,
+            "access_token": META_AD_LIBRARY_TOKEN,
+        })
+    data = r.json()
+    if "error" in data:
+        raise HTTPException(status_code=502, detail=f"Meta Ad Library error: {data['error'].get('message', 'Unknown error')}")
+
+    ads = [
+        {
+            "id": a.get("id"),
+            "page_name": a.get("page_name"),
+            "snapshot_url": a.get("ad_snapshot_url"),
+            "body": (a.get("ad_creative_bodies") or [None])[0],
+            "platforms": a.get("publisher_platforms") or [],
+        }
+        for a in (data.get("data") or [])
+    ]
+    return {"ads": ads}
 
 
 # ── NexCode Nova — One-time Client Codes ─────────────────────────────────────

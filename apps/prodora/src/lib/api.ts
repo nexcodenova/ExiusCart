@@ -40,6 +40,11 @@ export const prodoraAuth = {
   },
 };
 
+export interface ProductVariant {
+  color: string | null;
+  color_hex: string | null;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -48,15 +53,34 @@ export interface Product {
   discount_pct?: number | null;
   currency: string;
   image_url?: string;
+  images?: string[];
   video_url?: string;
   source_url?: string | null;
   is_trending: boolean;
   is_featured: boolean;
   category_name?: string;
   category_slug?: string;
+  category_id?: number | null;
   stock: number;
   description?: string;
   sku?: string;
+  variants?: ProductVariant[];
+  winning_score?: number | null;
+  trend_percent?: number | null;
+  competition_level?: string | null;
+  saturation_level?: string | null;
+  orders_count?: number | null;
+  supplier_name?: string | null;
+  supplier_rating?: number | null;
+  processing_time?: string | null;
+  shipping_time?: string | null;
+  warehouse_country?: string | null;
+  ad_facebook_url?: string | null;
+  ad_tiktok_url?: string | null;
+  ad_instagram_url?: string | null;
+  ad_pinterest_url?: string | null;
+  specs_json?: string | null;
+  tags?: string | null;
 }
 
 export interface Category {
@@ -90,6 +114,11 @@ export const shoppingApi = {
 
   importProduct: async (id: number): Promise<{ product_id: number; name: string; shop_id: number }> => {
     const response = await apiClient.post(`/shopping/products/${id}/import`);
+    return response.data;
+  },
+
+  getRelatedProducts: async (id: number): Promise<Product[]> => {
+    const response = await apiClient.get(`/shopping/products/${id}/related`);
     return response.data;
   },
 };

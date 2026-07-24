@@ -20,11 +20,11 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="relative overflow-hidden bg-gray-50" style={{ paddingTop: '100%' }}>
           {/* Discount badge */}
           {discount_pct && discount_pct > 0 ? (
-            <span className="absolute top-2 left-2 z-10 text-xs font-bold px-2 py-1 rounded bg-[#FF6000] text-white shadow-sm">
+            <span className="absolute top-2 left-2 z-10 text-xs font-bold px-2 py-1 rounded bg-[#2563EB] text-white shadow-sm">
               %{discount_pct} OFF
             </span>
           ) : is_trending ? (
-            <span className="absolute top-2 left-2 z-10 text-xs font-bold px-2 py-1 rounded bg-orange-500 text-white shadow-sm">
+            <span className="absolute top-2 left-2 z-10 text-xs font-bold px-2 py-1 rounded bg-blue-500 text-white shadow-sm">
               Trending
             </span>
           ) : is_featured ? (
@@ -58,7 +58,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             </span>
           )}
 
-          <h3 className="text-sm text-gray-800 line-clamp-2 leading-snug flex-1 group-hover:text-[#FF6000] transition-colors">
+          <h3 className="text-sm text-gray-800 line-clamp-2 leading-snug flex-1 group-hover:text-[#2563EB] transition-colors">
             {name}
           </h3>
 
@@ -71,7 +71,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             )}
 
             {/* Selling price */}
-            <p className={`font-bold text-base ${discount_pct ? 'text-[#FF6000]' : 'text-gray-900'}`}>
+            <p className={`font-bold text-base ${discount_pct ? 'text-[#2563EB]' : 'text-gray-900'}`}>
               {fmt(price)} <span className="text-xs font-normal text-gray-500">{currency}</span>
             </p>
           </div>

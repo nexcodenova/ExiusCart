@@ -117,6 +117,7 @@ def _product_out(p: Product) -> dict:
         "discount_pct": discount_pct,
         "currency": "USD",
         "image_url": p.image_url,
+        "images": [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else [],
         "video_url": getattr(p, "video_url", None),
         "source_url": getattr(p, "source_url", None),
         "is_trending": p.is_trending,
@@ -125,6 +126,24 @@ def _product_out(p: Product) -> dict:
         "sku": p.sku,
         "category_name": p.category.name if p.category else None,
         "category_slug": p.category.slug if p.category else None,
+        "category_id": p.category_id,
+        "variants": [{"color": v.color, "color_hex": v.color_hex} for v in p.variants] if p.variants else [],
+        "winning_score": p.winning_score,
+        "trend_percent": float(p.trend_percent) if p.trend_percent is not None else None,
+        "competition_level": p.competition_level,
+        "saturation_level": p.saturation_level,
+        "orders_count": p.orders_count,
+        "supplier_name": p.supplier_name,
+        "supplier_rating": float(p.supplier_rating) if p.supplier_rating is not None else None,
+        "processing_time": p.processing_time,
+        "shipping_time": p.shipping_time,
+        "warehouse_country": p.warehouse_country,
+        "ad_facebook_url": p.ad_facebook_url,
+        "ad_tiktok_url": p.ad_tiktok_url,
+        "ad_instagram_url": p.ad_instagram_url,
+        "ad_pinterest_url": p.ad_pinterest_url,
+        "specs_json": p.specs_json,
+        "tags": p.tags,
     }
 
 
@@ -208,6 +227,36 @@ def get_shopping_product(
     return _product_out(product)
 
 
+@router.get("/shopping/products/{product_id}/related")
+def get_related_shopping_products(
+    product_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_prodora_user),
+):
+    """Same-category products, excluding this one, for the 'Related Winning
+    Products' rail — reuses the same active/shop filter as the main listing."""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product or not product.category_id:
+        return []
+
+    rows = (
+        db.query(Product)
+        .join(Shop, Product.shop_id == Shop.id)
+        .options(joinedload(Product.shop), joinedload(Product.category))
+        .filter(
+            Product.category_id == product.category_id,
+            Product.id != product_id,
+            Product.is_active == True,
+            Shop.is_active == True,
+            Shop.slug == "exiuscart-dropshipping-system",
+        )
+        .order_by(Product.is_trending.desc(), Product.created_at.desc())
+        .limit(8)
+        .all()
+    )
+    return [_product_out(p) for p in rows]
+
+
 @router.post("/shopping/products/{product_id}/import")
 def import_shopping_product(
     product_id: int,
@@ -274,7 +323,10 @@ def import_shopping_product(
     db.add(new_product)
     db.flush()
 
-    if source.image_url:
+    if source.images:
+        for img in sorted(source.images, key=lambda i: i.sort_order):
+            db.add(ProductImage(product_id=new_product.id, url=img.url, sort_order=img.sort_order, is_primary=img.is_primary))
+    elif source.image_url:
         db.add(ProductImage(product_id=new_product.id, url=source.image_url, sort_order=0, is_primary=True))
 
     db.commit()

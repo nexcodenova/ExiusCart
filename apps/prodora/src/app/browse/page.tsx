@@ -92,9 +92,9 @@ export default function HomePage() {
   const activeCategoryName = categories.find(c => c.slug === activeCategory)?.name;
 
   return (
-    <div className="min-h-screen bg-[#f3f3f3]">
+    <div className="min-h-screen bg-[#F8FAFC]">
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="bg-[#FF6000] shadow-md sticky top-0 z-50">
+      <header className="bg-[#2563EB] shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/" className="flex-shrink-0 flex items-center gap-2 mr-2">
             <Image src="/prodora-logo.png" alt="Prodora" width={30} height={30} />
@@ -102,7 +102,7 @@ export default function HomePage() {
               <span className="text-white font-extrabold text-lg tracking-tight block leading-none">
                 Prodora
               </span>
-              <span className="text-orange-100 text-[10px] font-medium tracking-widest uppercase">
+              <span className="text-blue-100 text-[10px] font-medium tracking-widest uppercase">
                 by ExiusCart
               </span>
             </div>
@@ -115,7 +115,7 @@ export default function HomePage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search for products..."
-              className="w-full bg-white border border-transparent rounded-lg pl-9 pr-9 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-200 shadow-sm"
+              className="w-full bg-white border border-transparent rounded-lg pl-9 pr-9 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
             />
             {search && (
               <button
@@ -148,15 +148,13 @@ export default function HomePage() {
 
       {/* ── Hero Banner ───────────────────────────────────────────────── */}
       {!isFiltered && !loading && (
-        <div className="bg-gradient-to-r from-[#FF6000] to-[#ff8c3f] text-white">
+        <div className="bg-gradient-to-r from-[#2563EB] to-[#60A5FA] text-white">
           <div className="max-w-7xl mx-auto px-4 py-8 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-extrabold leading-tight">
-                Discover Winning Products
-                <br />
-                <span className="text-orange-100">Ready to Sell</span>
+                Browse Winning Products
               </h1>
-              <p className="text-orange-100 text-sm mt-2 max-w-sm">
+              <p className="text-blue-100 text-sm mt-2 max-w-sm">
                 Find all kinds of winning products and sell them from your ExiusCart store today.
               </p>
             </div>
@@ -174,7 +172,7 @@ export default function HomePage() {
             {/* Categories card */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-[#FF6000]" />
+                <LayoutGrid className="w-4 h-4 text-[#2563EB]" />
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Categories</span>
               </div>
               <div className="p-2">
@@ -198,9 +196,9 @@ export default function HomePage() {
             </div>
 
             {/* Dropshipper tip card */}
-            <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Tag className="w-4 h-4 text-[#FF6000]" />
+                <Tag className="w-4 h-4 text-[#2563EB]" />
                 <span className="text-xs font-bold text-gray-700">How it works</span>
               </div>
               <ul className="text-xs text-gray-500 space-y-1.5">
@@ -213,7 +211,7 @@ export default function HomePage() {
                 href="https://store.exiuscart.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 block text-center text-xs font-bold text-white bg-[#FF6000] hover:bg-[#e05500] px-3 py-2 rounded-lg transition"
+                className="mt-3 block text-center text-xs font-bold text-white bg-[#2563EB] hover:bg-[#1E4FC2] px-3 py-2 rounded-lg transition"
               >
                 Open My Store →
               </a>
@@ -232,7 +230,7 @@ export default function HomePage() {
                 </span>
                 <button
                   onClick={() => { setActiveCategory('all'); setSearch(''); }}
-                  className="flex items-center gap-1 text-xs text-[#FF6000] hover:underline"
+                  className="flex items-center gap-1 text-xs text-[#2563EB] hover:underline"
                 >
                   <X className="w-3 h-3" /> Clear filter
                 </button>
@@ -302,8 +300,8 @@ function SidebarCategoryItem({ label, active, onClick }: { label: string; active
       onClick={onClick}
       className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
         active
-          ? 'bg-[#FF6000] text-white font-semibold'
-          : 'text-gray-600 hover:bg-orange-50 hover:text-[#FF6000]'
+          ? 'bg-[#2563EB] text-white font-semibold'
+          : 'text-gray-600 hover:bg-blue-50 hover:text-[#2563EB]'
       }`}
     >
       <span className="truncate">{label}</span>
@@ -317,8 +315,8 @@ function MobileCategoryTab({ label, active, onClick }: { label: string; active: 
       onClick={onClick}
       className={`flex-shrink-0 text-sm font-medium px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
         active
-          ? 'border-[#FF6000] text-[#FF6000]'
-          : 'border-transparent text-gray-600 hover:text-[#FF6000] hover:border-[#FF6000]/40'
+          ? 'border-[#2563EB] text-[#2563EB]'
+          : 'border-transparent text-gray-600 hover:text-[#2563EB] hover:border-[#2563EB]/40'
       }`}
     >
       {label}
