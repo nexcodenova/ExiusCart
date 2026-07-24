@@ -23,7 +23,7 @@ export const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/leads', label: 'Leads', icon: UserPlus },
   { href: '/dashboard/affiliates', label: 'Affiliates', icon: Link2 },
-  { href: '/dashboard/shopping', label: 'Shopping', icon: ShoppingBag },
+  { href: '/dashboard/shopping', label: 'Prodora', icon: ShoppingBag },
   { href: '/dashboard/shops', label: 'Stores', icon: Store },
   { href: '/dashboard/users', label: 'Users', icon: Users },
   { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: Package },

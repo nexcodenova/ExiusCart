@@ -276,15 +276,15 @@ export default function TrendingDropshippingPage() {
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-[#6B3FD9]" />
-            Trending Dropshipping Products
+            Prodora Products
           </h1>
           <p className="text-gray-400 text-sm mt-1">
-            Products you add here appear on the ExiusCart Trends dropshipping storefront
+            Products you add here appear on the Prodora dropshipping storefront
           </p>
         </div>
         <div className="flex items-center gap-2">
           <a
-            href="https://trends.exiuscart.com"
+            href="https://prodora.exiuscart.com"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-2 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-[#6B3FD9]/50 transition text-sm"
