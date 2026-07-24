@@ -240,6 +240,49 @@ async def cj_search_products(
     return {"products": products, "total": data.get("data", {}).get("total", 0), "page": page}
 
 
+@router.get("/shops/{shop_id}/dropship/cj/my-products")
+async def cj_my_products(
+    shop_id: int,
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """The seller's own curated shortlist from CJ's site (Product Sourcing →
+    My Product) — already vetted by them, so no search-relevance issues."""
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+        raise HTTPException(status_code=403, detail="CJ product browse is not available on your plan.")
+
+    conn = await _get_cj_conn_or_400(shop_id, db)
+    token = await _cj_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{CJ_BASE}/product/myProduct/query", params={
+            "pageNum": page,
+            "pageSize": 20,
+        }, headers={"CJ-Access-Token": token})
+
+    data = r.json()
+    if not data.get("result"):
+        raise HTTPException(status_code=502, detail=f"CJ API error: {data.get('message', 'Unknown error')}")
+
+    d = data.get("data") or {}
+    cj_list = d.get("content") or d.get("list") or []
+    products = [
+        {
+            "pid": p.get("productId") or p.get("pid", ""),
+            "name": p.get("nameEn") or p.get("productNameEn") or p.get("productName", ""),
+            "image": p.get("bigImage") or p.get("productImage", ""),
+            "cost_price": _parse_cj_price(p.get("sellPrice")),
+            "category": p.get("categoryName", ""),
+        }
+        for p in cj_list
+    ]
+    total = d.get("totalRecords") or d.get("total") or 0
+    return {"products": products, "total": total, "page": page}
+
+
 @router.get("/shops/{shop_id}/dropship/cj/product/{cj_pid}")
 async def cj_get_product_detail(
     shop_id: int,

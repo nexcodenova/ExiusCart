@@ -692,6 +692,8 @@ export const dropshipApi = {
     api.get(`/shops/${shopId}/dropship/orders`, { params }),
   cjSearch: (shopId: string, q: string, page = 1) =>
     api.get(`/shops/${shopId}/dropship/cj/search`, { params: { q, page } }),
+  cjMyProducts: (shopId: string, page = 1) =>
+    api.get(`/shops/${shopId}/dropship/cj/my-products`, { params: { page } }),
   cjProductDetail: (shopId: string, cjPid: string) =>
     api.get(`/shops/${shopId}/dropship/cj/product/${cjPid}`),
   cjImport: (shopId: string, cjPid: string, sellingPrice?: number) =>
