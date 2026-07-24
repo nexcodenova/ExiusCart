@@ -146,32 +146,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Revenue period breakdown ── */}
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Revenue</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <PeriodCard label="Today" value={L ? '—' : fmt(stats?.sales ?? 0, 0)} delta={stats?.salesChange} icon={Wallet} color="indigo" />
-          <PeriodCard label="This week" value={L ? '—' : fmt(stats?.thisWeekRevenue ?? 0, 0)} icon={CalendarDays} color="violet" />
-          <PeriodCard label="This month" value={L ? '—' : fmt(stats?.thisMonthRevenue ?? 0, 0)}
-            sub={stats?.revenueMoM !== undefined && stats.revenueMoM !== 0 ? `${stats.revenueMoM > 0 ? '+' : ''}${stats.revenueMoM}% MoM` : undefined}
-            delta={stats?.revenueMoM} icon={TrendingUp} color="emerald" />
-          <PeriodCard label="This year" value={L ? '—' : fmt(stats?.thisYearRevenue ?? 0, 0)} icon={BarChart3} color="amber" />
-          <PeriodCard label="All time" value={L ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)} icon={BadgeDollarSign} color="rose" />
-        </div>
-      </div>
-
-      {/* ── Orders period breakdown ── */}
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Orders</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <PeriodCard label="Today" value={L ? '—' : String(stats?.orders ?? 0)} sub={stats?.todayAvgOrder ? `Avg ${fmt(stats.todayAvgOrder, 0)}` : undefined} icon={ShoppingBag} color="indigo" plain />
-          <PeriodCard label="This week" value={L ? '—' : String(stats?.thisWeekOrders ?? 0)} icon={CalendarDays} color="violet" plain />
-          <PeriodCard label="This month" value={L ? '—' : String(stats?.monthlyRevenue12m?.at(-1)?.orders ?? 0)} icon={TrendingUp} color="emerald" plain />
-          <PeriodCard label="This year" value={L ? '—' : String(stats?.thisYearOrders ?? 0)} icon={BarChart3} color="amber" plain />
-          <PeriodCard label="All time" value={L ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()} icon={Boxes} color="rose" plain />
-        </div>
-      </div>
-
       {/* ── 12-month revenue chart + channel ── */}
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
@@ -285,6 +259,32 @@ export default function DashboardPage() {
               })}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ── Revenue period breakdown ── */}
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Revenue</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <PeriodCard label="Today" value={L ? '—' : fmt(stats?.sales ?? 0, 0)} delta={stats?.salesChange} icon={Wallet} color="indigo" />
+          <PeriodCard label="This week" value={L ? '—' : fmt(stats?.thisWeekRevenue ?? 0, 0)} icon={CalendarDays} color="violet" />
+          <PeriodCard label="This month" value={L ? '—' : fmt(stats?.thisMonthRevenue ?? 0, 0)}
+            sub={stats?.revenueMoM !== undefined && stats.revenueMoM !== 0 ? `${stats.revenueMoM > 0 ? '+' : ''}${stats.revenueMoM}% MoM` : undefined}
+            delta={stats?.revenueMoM} icon={TrendingUp} color="emerald" />
+          <PeriodCard label="This year" value={L ? '—' : fmt(stats?.thisYearRevenue ?? 0, 0)} icon={BarChart3} color="amber" />
+          <PeriodCard label="All time" value={L ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)} icon={BadgeDollarSign} color="rose" />
+        </div>
+      </div>
+
+      {/* ── Orders period breakdown ── */}
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Orders</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <PeriodCard label="Today" value={L ? '—' : String(stats?.orders ?? 0)} sub={stats?.todayAvgOrder ? `Avg ${fmt(stats.todayAvgOrder, 0)}` : undefined} icon={ShoppingBag} color="indigo" plain />
+          <PeriodCard label="This week" value={L ? '—' : String(stats?.thisWeekOrders ?? 0)} icon={CalendarDays} color="violet" plain />
+          <PeriodCard label="This month" value={L ? '—' : String(stats?.monthlyRevenue12m?.at(-1)?.orders ?? 0)} icon={TrendingUp} color="emerald" plain />
+          <PeriodCard label="This year" value={L ? '—' : String(stats?.thisYearOrders ?? 0)} icon={BarChart3} color="amber" plain />
+          <PeriodCard label="All time" value={L ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()} icon={Boxes} color="rose" plain />
         </div>
       </div>
 
