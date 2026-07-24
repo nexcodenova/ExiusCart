@@ -17,13 +17,14 @@ const SIGNUP_LINKS: Record<string, string> = {
 };
 
 // Per-brand accent so the supplier grid reads at a glance instead of every
-// card looking identical. Real logos where we have a usable square mark
-// (/public/dropshipping) — HyperSKU's and Wiio's only assets are wide
-// wordmarks that don't fit a small square slot, so those fall back to icons.
-const SUPPLIER_STYLE: Record<string, { icon: React.ElementType; color: string; bg: string; logo?: string }> = {
-  cj:       { icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10', logo: '/dropshipping/cj_logo.png' },
-  zendrop:  { icon: Zap,     color: 'text-violet-500', bg: 'bg-violet-500/10', logo: '/dropshipping/zendrop_logo.png' },
-  hypersku: { icon: Boxes,   color: 'text-teal-500',   bg: 'bg-teal-500/10'   },
+// card looking identical. CJ/Zendrop use their real logo full-bleed (own
+// background baked in); HyperSKU uses a cropped icon-only mark (its source
+// file is a wide wordmark, cropped down to just the peak symbol) centered
+// on our own tint, same treatment as Wiio's lucide-icon fallback.
+const SUPPLIER_STYLE: Record<string, { icon: React.ElementType; color: string; bg: string; logo?: string; logoFit?: 'cover' | 'contain' }> = {
+  cj:       { icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10', logo: '/dropshipping/cj_logo.png',       logoFit: 'cover'   },
+  zendrop:  { icon: Zap,     color: 'text-violet-500', bg: 'bg-violet-500/10', logo: '/dropshipping/zendrop_logo.png', logoFit: 'cover'   },
+  hypersku: { icon: Boxes,   color: 'text-teal-500',   bg: 'bg-teal-500/10',   logo: '/dropshipping/hypersku_icon.png', logoFit: 'contain' },
   wiio:     { icon: Layers,  color: 'text-rose-500',   bg: 'bg-rose-500/10'   },
 };
 
@@ -223,10 +224,11 @@ function SupplierCard({ supplier, shopId, plan, onRefresh }: {
       }`}>
         <div className="flex items-start justify-between gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
-            supplier.locked ? 'bg-muted' : style.logo ? '' : style.bg
+            supplier.locked ? 'bg-muted' : style.logo && style.logoFit === 'cover' ? '' : style.bg
           }`}>
             {style.logo && !supplier.locked ? (
-              <Image src={style.logo} alt={supplier.name} width={40} height={40} className="w-full h-full object-cover" />
+              <Image src={style.logo} alt={supplier.name} width={40} height={40}
+                className={style.logoFit === 'contain' ? 'w-2/3 h-2/3 object-contain' : 'w-full h-full object-cover'} />
             ) : (
               <SupplierIcon className={`w-5 h-5 ${supplier.locked ? 'text-muted-foreground' : style.color}`} />
             )}
