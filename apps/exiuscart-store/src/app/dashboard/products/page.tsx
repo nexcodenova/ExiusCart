@@ -1625,7 +1625,7 @@ function ProductModal({
                           </div>
                           <div className="col-span-3">
                             {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Price (blank = default)</label>}
-                            <input type="number" value={v.price} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, price: e.target.value } : r))} placeholder={String(formData.sellingPrice)} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                            <input type="number" step="0.01" value={v.price} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, price: e.target.value } : r))} placeholder={String(formData.sellingPrice)} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
                           </div>
                           <div className="col-span-1 flex justify-end">
                             {i === 0 && <div className="mb-1 h-4" />}
@@ -1708,7 +1708,34 @@ function ProductModal({
                 )}
               </section>
 
-              {/* Custom Fields */}
+              {/* ExiusCart category — separate from TheDersi's own category
+                  picker further down (that one decides shelf placement on
+                  thedersi.lk). This one decides which fields show up below,
+                  so it applies to every seller, TheDersi included: a
+                  TheDersi shop's Daraz connection can list non-fashion
+                  products even though TheDersi itself is fashion-only.
+                  Comes before Custom Fields so the cause (category picked)
+                  reads above its effect (matching fields appear below). */}
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  Category *{theDersiConnection && <span className="text-muted-foreground font-normal"> (for ExiusCart — TheDersi's own category is set below)</span>}
+                </label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  required
+                  className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                >
+                  {categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {isFashionCategory
+                    ? 'Fashion & Apparel — fields like Material, Pattern, and a size chart will show up below.'
+                    : 'Add fields specific to this category anytime in Settings → Product Fields.'}
+                </p>
+              </div>
+
+              {/* Custom Fields — specific to whichever category is selected above */}
               {customFields.length > 0 ? (
                 <section className="space-y-4">
                   <p className="text-sm font-medium text-foreground">Additional Details</p>
@@ -1755,49 +1782,24 @@ function ProductModal({
 
               <div className="border-t border-border" />
 
-              {/* ExiusCart category — separate from TheDersi's own category
-                  picker further down (that one decides shelf placement on
-                  thedersi.lk). This one decides which fields show up below,
-                  so it applies to every seller, TheDersi included: a
-                  TheDersi shop's Daraz connection can list non-fashion
-                  products even though TheDersi itself is fashion-only. */}
-              <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">
-                  Category *{theDersiConnection && <span className="text-muted-foreground font-normal"> (for ExiusCart — TheDersi's own category is set below)</span>}
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  required
-                  className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                >
-                  {categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  {isFashionCategory
-                    ? 'Fashion & Apparel — fields like Material, Pattern, and a size chart will show up below.'
-                    : 'Add fields specific to this category anytime in Settings → Product Fields.'}
-                </p>
-              </div>
-
               {/* Pricing */}
               <div className="space-y-3">
                 <p className="text-sm font-medium text-foreground">Pricing</p>
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Cost Price ({sym}) *</label>
-                    <input type="number" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                    <input type="number" step="0.01" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Selling Price ({sym}) *</label>
-                    <input type="number" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                    <input type="number" step="0.01" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">
                       Original Price ({sym})
                       <span className="ml-1 font-normal opacity-60">— if on offer</span>
                     </label>
-                    <input type="number" value={formData.compareAtPrice || ''} onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })} min="0" placeholder={formData.sellingPrice > 0 ? String(Math.round(formData.sellingPrice * 1.3)) : ''} className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                    <input type="number" step="0.01" value={formData.compareAtPrice || ''} onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })} min="0" placeholder={formData.sellingPrice > 0 ? String(Math.round(formData.sellingPrice * 1.3)) : ''} className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
                   </div>
                 </div>
 

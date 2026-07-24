@@ -9,6 +9,7 @@ Plan limits:
 """
 
 import logging
+import re
 import httpx
 from datetime import datetime, timezone
 from typing import Optional
@@ -94,14 +95,19 @@ def _shop_or_404(shop_id: int, user: User, db: Session):
 
 def _parse_cj_price(raw) -> float:
     """CJ returns prices as plain numbers for single-variant products but as a
-    range string like '0.57 -- 1.14' for multi-variant ones — take the low end."""
+    range string for multi-variant ones — take the low end. Different endpoints
+    format the range differently ('0.57 -- 1.14' on /product/list vs
+    '1.55-3.35' on /product/myProduct/query), so pull the leading number
+    out with a regex instead of splitting on one specific separator."""
     if raw is None or raw == "":
         return 0.0
     if isinstance(raw, (int, float)):
         return float(raw)
-    s = str(raw).split("--")[0].strip()
+    match = re.match(r"[\d.]+", str(raw).strip())
+    if not match:
+        return 0.0
     try:
-        return float(s)
+        return float(match.group())
     except ValueError:
         return 0.0
 
