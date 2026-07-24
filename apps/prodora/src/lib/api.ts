@@ -72,9 +72,13 @@ export interface Product {
   orders_count?: number | null;
   supplier_name?: string | null;
   supplier_rating?: number | null;
+  fulfillment_rate?: number | null;
   processing_time?: string | null;
   shipping_time?: string | null;
   warehouse_country?: string | null;
+  shipping_cost?: number | null;
+  demand_trend_json?: string | null;
+  top_countries_json?: string | null;
   ad_facebook_url?: string | null;
   ad_tiktok_url?: string | null;
   ad_instagram_url?: string | null;

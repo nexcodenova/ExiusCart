@@ -55,9 +55,13 @@ class Product(Base):
     orders_count = Column(Integer, nullable=True)
     supplier_name = Column(String(255), nullable=True)
     supplier_rating = Column(Numeric(3, 2), nullable=True)  # e.g. 4.80
+    fulfillment_rate = Column(Numeric(5, 2), nullable=True) # e.g. 99.20 (%)
     processing_time = Column(String(50), nullable=True)     # e.g. "1-3 Days"
     shipping_time = Column(String(50), nullable=True)       # e.g. "7-12 Days"
     warehouse_country = Column(String(100), nullable=True)
+    shipping_cost = Column(Numeric(10, 2), nullable=True)   # per-unit, for the cost/profit breakdown
+    demand_trend_json = Column(Text, nullable=True)   # [{label, value}, ...] admin-entered trend points
+    top_countries_json = Column(Text, nullable=True)  # [{country, code, percent}, ...] admin-entered
     ad_facebook_url = Column(String(1000), nullable=True)
     ad_tiktok_url = Column(String(1000), nullable=True)
     ad_instagram_url = Column(String(1000), nullable=True)

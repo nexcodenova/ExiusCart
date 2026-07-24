@@ -1332,9 +1332,13 @@ def _shopping_product_out(p: Product) -> dict:
         "orders_count": p.orders_count,
         "supplier_name": p.supplier_name,
         "supplier_rating": float(p.supplier_rating) if p.supplier_rating is not None else None,
+        "fulfillment_rate": float(p.fulfillment_rate) if p.fulfillment_rate is not None else None,
         "processing_time": p.processing_time,
         "shipping_time": p.shipping_time,
         "warehouse_country": p.warehouse_country,
+        "shipping_cost": float(p.shipping_cost) if p.shipping_cost is not None else None,
+        "demand_trend_json": p.demand_trend_json,
+        "top_countries_json": p.top_countries_json,
         "ad_facebook_url": p.ad_facebook_url,
         "ad_tiktok_url": p.ad_tiktok_url,
         "ad_instagram_url": p.ad_instagram_url,
@@ -1361,9 +1365,13 @@ class ShoppingProductExtras(BaseModel):
     orders_count: Optional[int] = None
     supplier_name: Optional[str] = None
     supplier_rating: Optional[float] = None
+    fulfillment_rate: Optional[float] = None
     processing_time: Optional[str] = None
     shipping_time: Optional[str] = None
     warehouse_country: Optional[str] = None
+    shipping_cost: Optional[float] = None
+    demand_trend_json: Optional[str] = None
+    top_countries_json: Optional[str] = None
     ad_facebook_url: Optional[str] = None
     ad_tiktok_url: Optional[str] = None
     ad_instagram_url: Optional[str] = None
@@ -1452,8 +1460,9 @@ async def admin_upload_shopping_image(
 
 SHOPPING_EXTRA_SCALAR_FIELDS = [
     "winning_score", "trend_percent", "competition_level", "saturation_level",
-    "orders_count", "supplier_name", "supplier_rating", "processing_time",
-    "shipping_time", "warehouse_country", "ad_facebook_url", "ad_tiktok_url",
+    "orders_count", "supplier_name", "supplier_rating", "fulfillment_rate",
+    "processing_time", "shipping_time", "warehouse_country", "shipping_cost",
+    "demand_trend_json", "top_countries_json", "ad_facebook_url", "ad_tiktok_url",
     "ad_instagram_url", "ad_pinterest_url", "specs_json", "tags",
 ]
 

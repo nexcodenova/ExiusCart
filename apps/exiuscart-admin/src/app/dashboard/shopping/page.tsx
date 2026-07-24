@@ -41,9 +41,13 @@ interface ShoppingProduct {
   orders_count: number | null;
   supplier_name: string | null;
   supplier_rating: number | null;
+  fulfillment_rate: number | null;
   processing_time: string | null;
   shipping_time: string | null;
   warehouse_country: string | null;
+  shipping_cost: number | null;
+  demand_trend_json: string | null;
+  top_countries_json: string | null;
   ad_facebook_url: string | null;
   ad_tiktok_url: string | null;
   ad_instagram_url: string | null;
@@ -72,9 +76,11 @@ const emptyForm = {
   orders_count: '',
   supplier_name: '',
   supplier_rating: '',
+  fulfillment_rate: '',
   processing_time: '',
   shipping_time: '',
   warehouse_country: '',
+  shipping_cost: '',
   ad_facebook_url: '',
   ad_tiktok_url: '',
   ad_instagram_url: '',
@@ -387,6 +393,8 @@ export default function TrendingDropshippingPage() {
   const [extraImages, setExtraImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<{ color: string; color_hex: string }[]>([]);
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([]);
+  const [demandTrend, setDemandTrend] = useState<{ label: string; value: string }[]>([]);
+  const [topCountries, setTopCountries] = useState<{ country: string; code: string; percent: string }[]>([]);
 
   // Meta Ad Library search (Facebook/Instagram — real ads, see admin_meta_ads_search)
   const [showMetaSearch, setShowMetaSearch] = useState<'facebook' | 'instagram' | null>(null);
@@ -432,6 +440,8 @@ export default function TrendingDropshippingPage() {
     setExtraImages([]);
     setVariants([]);
     setSpecs([]);
+    setDemandTrend([]);
+    setTopCountries([]);
     setModalError('');
     setShowModal(true);
     setTimeout(() => firstInputRef.current?.focus(), 80);
@@ -459,9 +469,11 @@ export default function TrendingDropshippingPage() {
       orders_count: p.orders_count != null ? String(p.orders_count) : '',
       supplier_name: p.supplier_name || '',
       supplier_rating: p.supplier_rating != null ? String(p.supplier_rating) : '',
+      fulfillment_rate: p.fulfillment_rate != null ? String(p.fulfillment_rate) : '',
       processing_time: p.processing_time || '',
       shipping_time: p.shipping_time || '',
       warehouse_country: p.warehouse_country || '',
+      shipping_cost: p.shipping_cost != null ? String(p.shipping_cost) : '',
       ad_facebook_url: p.ad_facebook_url || '',
       ad_tiktok_url: p.ad_tiktok_url || '',
       ad_instagram_url: p.ad_instagram_url || '',
@@ -476,6 +488,14 @@ export default function TrendingDropshippingPage() {
       const parsed = p.specs_json ? JSON.parse(p.specs_json) : {};
       setSpecs(Object.entries(parsed).map(([key, value]) => ({ key, value: String(value) })));
     } catch { setSpecs([]); }
+    try {
+      const parsed = p.demand_trend_json ? JSON.parse(p.demand_trend_json) : [];
+      setDemandTrend(Array.isArray(parsed) ? parsed.map((d: any) => ({ label: String(d.label ?? ''), value: String(d.value ?? '') })) : []);
+    } catch { setDemandTrend([]); }
+    try {
+      const parsed = p.top_countries_json ? JSON.parse(p.top_countries_json) : [];
+      setTopCountries(Array.isArray(parsed) ? parsed.map((c: any) => ({ country: String(c.country ?? ''), code: String(c.code ?? ''), percent: String(c.percent ?? '') })) : []);
+    } catch { setTopCountries([]); }
     setModalError('');
     setShowModal(true);
     setTimeout(() => firstInputRef.current?.focus(), 80);
@@ -515,6 +535,8 @@ export default function TrendingDropshippingPage() {
       }
 
       const specsObj = specs.filter((s) => s.key.trim()).reduce((acc, s) => ({ ...acc, [s.key.trim()]: s.value }), {} as Record<string, string>);
+      const demandTrendArr = demandTrend.filter((d) => d.label.trim() && d.value.trim()).map((d) => ({ label: d.label.trim(), value: parseFloat(d.value) }));
+      const topCountriesArr = topCountries.filter((c) => c.country.trim() && c.percent.trim()).map((c) => ({ country: c.country.trim(), code: c.code.trim().toUpperCase(), percent: parseFloat(c.percent) }));
 
       const payload = {
         name: form.name.trim(),
@@ -538,9 +560,13 @@ export default function TrendingDropshippingPage() {
         orders_count: form.orders_count ? parseInt(form.orders_count, 10) : null,
         supplier_name: form.supplier_name.trim() || null,
         supplier_rating: form.supplier_rating ? parseFloat(form.supplier_rating) : null,
+        fulfillment_rate: form.fulfillment_rate ? parseFloat(form.fulfillment_rate) : null,
         processing_time: form.processing_time.trim() || null,
         shipping_time: form.shipping_time.trim() || null,
         warehouse_country: form.warehouse_country.trim() || null,
+        shipping_cost: form.shipping_cost ? parseFloat(form.shipping_cost) : null,
+        demand_trend_json: demandTrendArr.length ? JSON.stringify(demandTrendArr) : null,
+        top_countries_json: topCountriesArr.length ? JSON.stringify(topCountriesArr) : null,
         ad_facebook_url: form.ad_facebook_url.trim() || null,
         ad_tiktok_url: form.ad_tiktok_url.trim() || null,
         ad_instagram_url: form.ad_instagram_url.trim() || null,
@@ -1207,6 +1233,20 @@ export default function TrendingDropshippingPage() {
                       className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Fulfillment Rate (%)</label>
+                    <input type="number" min="0" max="100" step="0.1" value={form.fulfillment_rate}
+                      onChange={(e) => setForm((f) => ({ ...f, fulfillment_rate: e.target.value }))}
+                      placeholder="e.g. 99.2"
+                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Shipping Cost ($ per unit)</label>
+                    <input type="number" min="0" step="0.01" value={form.shipping_cost}
+                      onChange={(e) => setForm((f) => ({ ...f, shipping_cost: e.target.value }))}
+                      placeholder="Used for the profit breakdown"
+                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                  </div>
+                  <div>
                     <label className="text-xs text-gray-500 mb-1 block">Processing Time</label>
                     <input type="text" value={form.processing_time}
                       onChange={(e) => setForm((f) => ({ ...f, processing_time: e.target.value }))}
@@ -1310,6 +1350,49 @@ export default function TrendingDropshippingPage() {
                     placeholder="BPA Free, Leak Proof, Eco Friendly"
                     className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
+              </div>
+
+              {/* Demand Trend */}
+              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-2">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Demand Trend</p>
+                <p className="text-xs text-gray-600 -mt-1">Optional — real data points (e.g. weekly order counts) for the trend chart. Leave empty to hide it.</p>
+                {demandTrend.map((d, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input type="text" value={d.label}
+                      onChange={(e) => setDemandTrend((arr) => arr.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                      placeholder="e.g. May 17" className="w-1/3 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    <input type="number" value={d.value}
+                      onChange={(e) => setDemandTrend((arr) => arr.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
+                      placeholder="Value" className="flex-1 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    <button type="button" onClick={() => setDemandTrend((arr) => arr.filter((_, j) => j !== i))}
+                      className="px-2 text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setDemandTrend((arr) => [...arr, { label: '', value: '' }])}
+                  className="text-xs text-[#6B3FD9] hover:underline">+ Add data point</button>
+              </div>
+
+              {/* Top Countries */}
+              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-2">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Top Countries</p>
+                <p className="text-xs text-gray-600 -mt-1">Optional — real buyer geography breakdown, if you have it. Leave empty to hide it.</p>
+                {topCountries.map((c, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input type="text" value={c.country}
+                      onChange={(e) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, country: e.target.value } : x))}
+                      placeholder="United States" className="flex-1 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    <input type="text" value={c.code} maxLength={2}
+                      onChange={(e) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, code: e.target.value } : x))}
+                      placeholder="US" className="w-16 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    <input type="number" value={c.percent} min="0" max="100"
+                      onChange={(e) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, percent: e.target.value } : x))}
+                      placeholder="%" className="w-20 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    <button type="button" onClick={() => setTopCountries((arr) => arr.filter((_, j) => j !== i))}
+                      className="px-2 text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setTopCountries((arr) => [...arr, { country: '', code: '', percent: '' }])}
+                  className="text-xs text-[#6B3FD9] hover:underline">+ Add country</button>
               </div>
 
               {/* Flags */}
