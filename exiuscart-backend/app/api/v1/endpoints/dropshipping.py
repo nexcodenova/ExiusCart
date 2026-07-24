@@ -116,7 +116,7 @@ async def _cj_get_token(api_key: str) -> dict:
             "error": "cj_auth_failed",
             "message": "Could not connect to CJ Dropshipping. Check your API key.",
         })
-    return data["data"]  # { accessToken, refreshToken, expiryDate }
+    return data["data"]  # { accessToken, accessTokenExpiryDate, refreshToken, refreshTokenExpiryDate, openId, createDate }
 
 
 async def _cj_ensure_token(conn: DropshipConnection, db: Session) -> str:
@@ -134,7 +134,7 @@ async def _cj_ensure_token(conn: DropshipConnection, db: Session) -> str:
     api_key = decrypt(conn.api_key)
     token_data = await _cj_get_token(api_key)
     conn.access_token = token_data["accessToken"]
-    conn.token_expires_at = datetime.fromisoformat(token_data["expiryDate"].replace("Z", "+00:00"))
+    conn.token_expires_at = datetime.fromisoformat(token_data["accessTokenExpiryDate"].replace("Z", "+00:00"))
     db.commit()
     return conn.access_token
 
@@ -500,7 +500,7 @@ async def connect_cj(
     ).first()
 
     enc_key = encrypt(data.api_key)
-    expires = datetime.fromisoformat(token_data["expiryDate"].replace("Z", "+00:00"))
+    expires = datetime.fromisoformat(token_data["accessTokenExpiryDate"].replace("Z", "+00:00"))
 
     if existing:
         existing.api_key = enc_key
@@ -925,7 +925,7 @@ def sync_cj_tracking_job(db_session_factory) -> None:
                         token = data["data"]["accessToken"]
                         conn.access_token = token
                         conn.token_expires_at = datetime.fromisoformat(
-                            data["data"]["expiryDate"].replace("Z", "+00:00")
+                            data["data"]["accessTokenExpiryDate"].replace("Z", "+00:00")
                         )
                         db.commit()
                         shop_tokens[shop_id] = token
