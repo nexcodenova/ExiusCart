@@ -1102,6 +1102,17 @@ export default function TrendingDropshippingPage() {
                         {/* Actions */}
                         <td className="px-4 py-4">
                           <div className="flex items-center justify-end gap-2">
+                            {p.source_url && (
+                              <a
+                                href={p.source_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 text-gray-500 hover:text-[#6B3FD9] hover:bg-gray-800 rounded-lg transition inline-flex"
+                                title="Open real CJ product page"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            )}
                             <button
                               type="button"
                               onClick={() => openEdit(p)}
@@ -1158,6 +1169,12 @@ export default function TrendingDropshippingPage() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
+                    {p.source_url && (
+                      <a href={p.source_url} target="_blank" rel="noopener noreferrer"
+                        className="p-1.5 text-gray-500 hover:text-[#6B3FD9] rounded-lg inline-flex" title="Open real CJ product page">
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
                     <button type="button" onClick={() => openEdit(p)} className="p-1.5 text-gray-500 hover:text-white rounded-lg">
                       <Pencil className="w-4 h-4" />
                     </button>
