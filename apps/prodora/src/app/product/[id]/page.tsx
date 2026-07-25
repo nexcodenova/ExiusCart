@@ -125,7 +125,9 @@ export default function ProductDetailPage() {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      // Copies the real, publicly-viewable CJ product page — not our own
+      // Prodora URL, which requires being logged into Prodora to open.
+      await navigator.clipboard.writeText(product?.source_url || window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}
@@ -535,7 +537,7 @@ export default function ProductDetailPage() {
                 <button type="button" onClick={handleCopyLink}
                   className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:border-gray-300 transition w-full">
                   {copied ? <Check className="w-4 h-4 text-[#16A34A]" /> : <Copy className="w-4 h-4" />}
-                  {copied ? 'Link copied!' : 'Copy Product Link'}
+                  {copied ? 'Link copied!' : product?.source_url ? 'Copy CJ Product Link' : 'Copy Product Link'}
                 </button>
                 {importError && <p className="text-xs text-red-500 text-center">{importError}</p>}
               </div>
