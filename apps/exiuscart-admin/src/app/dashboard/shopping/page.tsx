@@ -218,6 +218,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   const [loadingTrending, setLoadingTrending] = useState(false);
   const [trendingLoaded, setTrendingLoaded] = useState(false);
   const [trendingPage, setTrendingPage] = useState(1);
+  const [trendingHasMore, setTrendingHasMore] = useState(true);
 
   // Categories tab
   const [cjCategories, setCjCategories] = useState<{ id: string; name: string; path: string }[]>([]);
@@ -273,7 +274,17 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   const loadTrending = (page: number) => {
     setLoadingTrending(true);
     adminApi.cjTrending(page)
-      .then((r: any) => { setTrendingProducts(r.data?.products ?? []); setTrendingPage(page); })
+      .then((r: any) => {
+        const items = r.data?.products ?? [];
+        if (items.length === 0 && page > 1) {
+          // Past the end of CJ's trending list — keep showing the last real page instead of blanking it.
+          setTrendingHasMore(false);
+          return;
+        }
+        setTrendingProducts(items);
+        setTrendingPage(page);
+        setTrendingHasMore(items.length >= 20);
+      })
       .catch(() => {})
       .finally(() => { setLoadingTrending(false); setTrendingLoaded(true); });
   };
@@ -551,12 +562,17 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
             )}
 
             {activeTab === 'trending' && !loadingTrending && trendingProducts.length > 0 && (
-              <div className="flex items-center justify-center gap-3 pt-1">
-                <button type="button" disabled={trendingPage <= 1} onClick={() => loadTrending(trendingPage - 1)}
-                  className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Previous</button>
-                <span className="text-xs text-gray-500">Page {trendingPage}</span>
-                <button type="button" onClick={() => loadTrending(trendingPage + 1)}
-                  className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white">Next</button>
+              <div className="flex flex-col items-center gap-2 pt-1">
+                <div className="flex items-center gap-3">
+                  <button type="button" disabled={trendingPage <= 1} onClick={() => loadTrending(trendingPage - 1)}
+                    className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Previous</button>
+                  <span className="text-xs text-gray-500">Page {trendingPage}</span>
+                  <button type="button" disabled={!trendingHasMore} onClick={() => loadTrending(trendingPage + 1)}
+                    className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Next</button>
+                </div>
+                {!trendingHasMore && (
+                  <p className="text-xs text-gray-600">That&apos;s everything in CJ&apos;s current trending list.</p>
+                )}
               </div>
             )}
 
