@@ -206,7 +206,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'search' | 'my'>('my');
+  const [activeTab, setActiveTab] = useState<'search' | 'my' | 'trending'>('trending');
   const [inputVal, setInputVal] = useState('');
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<CJProduct[]>([]);
@@ -214,6 +214,12 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   const [myProducts, setMyProducts] = useState<CJProduct[]>([]);
   const [loadingMy, setLoadingMy] = useState(false);
   const [myLoaded, setMyLoaded] = useState(false);
+  const [trendingProducts, setTrendingProducts] = useState<CJProduct[]>([]);
+  const [loadingTrending, setLoadingTrending] = useState(false);
+  const [trendingLoaded, setTrendingLoaded] = useState(false);
+  const [trendingPage, setTrendingPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkImporting, setBulkImporting] = useState(false);
   const [importingPid, setImportingPid] = useState<string | null>(null);
   const [importedCount, setImportedCount] = useState(0);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -254,6 +260,20 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
       .finally(() => { setLoadingMy(false); setMyLoaded(true); });
   }, [activeTab, myLoaded, connected]);
 
+  const loadTrending = (page: number) => {
+    setLoadingTrending(true);
+    adminApi.cjTrending(page)
+      .then((r: any) => { setTrendingProducts(r.data?.products ?? []); setTrendingPage(page); })
+      .catch(() => {})
+      .finally(() => { setLoadingTrending(false); setTrendingLoaded(true); });
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'trending' || trendingLoaded || !connected) return;
+    loadTrending(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, trendingLoaded, connected]);
+
   const handleImport = async (p: CJProduct) => {
     setImportingPid(p.pid);
     try {
@@ -265,7 +285,29 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
     } finally { setImportingPid(null); }
   };
 
-  const displayProducts = activeTab === 'search' ? products : myProducts;
+  const toggleSelect = (pid: string) => {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(pid)) next.delete(pid); else next.add(pid);
+      return next;
+    });
+  };
+
+  const handleBulkImport = async () => {
+    if (selected.size === 0) return;
+    setBulkImporting(true);
+    try {
+      const res = await adminApi.cjImportBulk(Array.from(selected));
+      const importedIds: number[] = res.data?.imported ?? [];
+      setImportedCount((c) => c + importedIds.length);
+      setSelected(new Set());
+      onImported();
+    } catch {
+      // leave selection so they can retry
+    } finally { setBulkImporting(false); }
+  };
+
+  const displayProducts = activeTab === 'search' ? products : activeTab === 'trending' ? trendingProducts : myProducts;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -311,6 +353,12 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
           <div className="p-5 space-y-4">
             {/* Tabs */}
             <div className="flex gap-1 border-b border-gray-800">
+              <button onClick={() => setActiveTab('trending')}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition flex items-center gap-1.5 ${
+                  activeTab === 'trending' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                }`}>
+                <Flame className="w-3.5 h-3.5" /> Trending
+              </button>
               <button onClick={() => setActiveTab('my')}
                 className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
                   activeTab === 'my' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -354,6 +402,12 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
               </p>
             )}
 
+            {activeTab === 'trending' && (
+              <p className="text-xs text-gray-500 -mt-2">
+                CJ&apos;s own curated hot-products feed — real data CJ maintains, refreshed on their side. Select several and import them all at once.
+              </p>
+            )}
+
             {importedCount > 0 && (
               <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2.5 text-sm text-green-400">
                 <Check className="w-4 h-4" /> {importedCount} product{importedCount > 1 ? 's' : ''} imported into Prodora
@@ -376,10 +430,39 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
               </div>
             )}
 
+            {activeTab === 'trending' && loadingTrending && (
+              <div className="flex items-center justify-center py-16 text-gray-500 gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" /> <span className="text-sm">Loading trending products…</span>
+              </div>
+            )}
+
+            {/* Bulk selection bar — Trending & My CJ Products only */}
+            {activeTab !== 'search' && selected.size > 0 && (
+              <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-[#151F32] border border-[#6B3FD9]/40 rounded-lg px-4 py-2.5">
+                <span className="text-sm text-white">{selected.size} selected</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-white">Clear</button>
+                  <button onClick={handleBulkImport} disabled={bulkImporting}
+                    className="text-xs px-3 py-1.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg font-medium disabled:opacity-60 flex items-center gap-1.5">
+                    {bulkImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    {bulkImporting ? 'Importing…' : `Import Selected (${selected.size})`}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {displayProducts.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {displayProducts.map((p) => (
-                  <div key={p.pid} className="bg-[#0B1121] border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+                  <div key={p.pid} className={`relative bg-[#0B1121] border rounded-xl overflow-hidden flex flex-col transition ${selected.has(p.pid) ? 'border-[#6B3FD9]' : 'border-gray-800'}`}>
+                    {activeTab !== 'search' && (
+                      <button type="button" onClick={() => toggleSelect(p.pid)}
+                        className={`absolute top-2 left-2 z-10 w-5 h-5 rounded border flex items-center justify-center transition ${
+                          selected.has(p.pid) ? 'bg-[#6B3FD9] border-[#6B3FD9]' : 'bg-black/50 border-gray-500 hover:border-white'
+                        }`}>
+                        {selected.has(p.pid) && <Check className="w-3.5 h-3.5 text-white" />}
+                      </button>
+                    )}
                     <div className="relative aspect-square bg-gray-900">
                       {p.image
                         ? <Image src={p.image} alt={p.name} fill className="object-cover" unoptimized />
@@ -401,6 +484,16 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {activeTab === 'trending' && !loadingTrending && trendingProducts.length > 0 && (
+              <div className="flex items-center justify-center gap-3 pt-1">
+                <button type="button" disabled={trendingPage <= 1} onClick={() => loadTrending(trendingPage - 1)}
+                  className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Previous</button>
+                <span className="text-xs text-gray-500">Page {trendingPage}</span>
+                <button type="button" onClick={() => loadTrending(trendingPage + 1)}
+                  className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white">Next</button>
               </div>
             )}
 

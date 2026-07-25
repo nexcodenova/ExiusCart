@@ -1720,6 +1720,43 @@ async def admin_cj_search(
     return {"products": products, "total": data.get("data", {}).get("total", 0), "page": page}
 
 
+@router.get("/admin/shopping/cj/trending")
+async def admin_cj_trending(
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    """CJ's own curated hot-products feed (searchType=2 on /product/list) —
+    real data CJ maintains, not scraped. Verified against their live API docs."""
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = _get_system_cj_connection(db, shop)
+    token = await _cj_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{CJ_BASE}/product/list", params={
+            "searchType": 2,
+            "pageNum": page,
+            "pageSize": 20,
+        }, headers={"CJ-Access-Token": token})
+
+    data = r.json()
+    if not data.get("result"):
+        raise HTTPException(status_code=502, detail=f"CJ API error: {data.get('message', 'Unknown error')}")
+
+    cj_list = data.get("data", {}).get("list") or []
+    products = [
+        {
+            "pid": p.get("pid") or p.get("productId", ""),
+            "name": p.get("productNameEn") or p.get("productName", ""),
+            "image": p.get("productImage") or p.get("productImageUrl", ""),
+            "cost_price": _parse_cj_price(p.get("sellPrice") or p.get("minSellPrice")),
+            "category": p.get("categoryName", ""),
+        }
+        for p in cj_list
+    ]
+    return {"products": products, "total": data.get("data", {}).get("total", 0), "page": page}
+
+
 @router.get("/admin/shopping/cj/my-products")
 async def admin_cj_my_products(
     page: int = 1,
@@ -1758,18 +1795,9 @@ async def admin_cj_my_products(
     return {"products": products, "total": total, "page": page}
 
 
-@router.post("/admin/shopping/cj/import", status_code=201)
-async def admin_cj_import(
-    body: CJImportAdminIn,
-    db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
-):
-    shop = _get_or_create_system_shop(db, current_admin)
-    conn = _get_system_cj_connection(db, shop)
-    token = await _cj_ensure_token(conn, db)
-
+async def _cj_import_one(db: Session, shop: Shop, token: str, cj_pid: str, price: Optional[float] = None, category_name: Optional[str] = None) -> Product:
     async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(f"{CJ_BASE}/product/query", params={"pid": body.cj_pid}, headers={"CJ-Access-Token": token})
+        r = await client.get(f"{CJ_BASE}/product/query", params={"pid": cj_pid}, headers={"CJ-Access-Token": token})
     cj = r.json()
     if not cj.get("result"):
         raise HTTPException(status_code=502, detail="Failed to fetch product from CJ. Please try again.")
@@ -1777,7 +1805,7 @@ async def admin_cj_import(
     p = cj.get("data", {})
     name = (p.get("productNameEn") or p.get("productName") or "CJ Product").strip()
     cost = _parse_cj_price(p.get("sellPrice") or p.get("suggestSellPrice"))
-    price = body.price if body.price else round(cost * 2, 2)
+    final_price = price if price else round(cost * 2, 2)
 
     images = []
     for img in (p.get("productImageSet") or p.get("imageSet") or []):
@@ -1788,7 +1816,7 @@ async def admin_cj_import(
         images.append(p["productImage"])
 
     cat_id = None
-    cat_name = body.category_name or p.get("categoryName")
+    cat_name = category_name or p.get("categoryName")
     if cat_name:
         cat_id = _get_or_create_category(db, shop.id, cat_name).id
 
@@ -1796,11 +1824,11 @@ async def admin_cj_import(
         name=name,
         slug=_slugify_unique(name),
         description=p.get("description") or name,
-        price=price,
+        price=final_price,
         cost_price=cost,
-        sku=p.get("productSku") or body.cj_pid[:50],
+        sku=p.get("productSku") or cj_pid[:50],
         image_url=images[0] if images else None,
-        source_url=f"https://cjdropshipping.com/product-detail.html?pid={body.cj_pid}",
+        source_url=f"https://cjdropshipping.com/product-detail.html?pid={cj_pid}",
         quantity=0,
         category_id=cat_id,
         shop_id=shop.id,
@@ -1829,11 +1857,54 @@ async def admin_cj_import(
             seen_variants.add(label)
             db.add(ProductVariant(product_id=product.id, color=label[:100], sku=v.get("variantSku")))
 
+    return product
+
+
+@router.post("/admin/shopping/cj/import", status_code=201)
+async def admin_cj_import(
+    body: CJImportAdminIn,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = _get_system_cj_connection(db, shop)
+    token = await _cj_ensure_token(conn, db)
+
+    product = await _cj_import_one(db, shop, token, body.cj_pid, body.price, body.category_name)
     db.commit()
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
     ).filter(Product.id == product.id).first()
     return _shopping_product_out(product)
+
+
+class CJBulkImportIn(BaseModel):
+    cj_pids: List[str]
+
+
+@router.post("/admin/shopping/cj/import-bulk", status_code=201)
+async def admin_cj_import_bulk(
+    body: CJBulkImportIn,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    """Imports several CJ products in one call — for the Trending/My CJ
+    Products tabs' multi-select. Each pid succeeds or fails independently
+    so one bad pid doesn't block the rest of the batch."""
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = _get_system_cj_connection(db, shop)
+    token = await _cj_ensure_token(conn, db)
+
+    imported, failed = [], []
+    for pid in body.cj_pids[:50]:
+        try:
+            product = await _cj_import_one(db, shop, token, pid)
+            db.commit()
+            imported.append(product.id)
+        except Exception:
+            db.rollback()
+            failed.append(pid)
+    return {"imported": imported, "failed": failed}
 
 
 # ── Admin — Meta Ad Library search (real ads, Facebook + Instagram) ─────────
