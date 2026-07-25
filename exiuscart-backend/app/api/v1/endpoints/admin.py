@@ -1720,6 +1720,44 @@ async def admin_cj_search(
     return {"products": products, "total": data.get("data", {}).get("total", 0), "page": page}
 
 
+@router.get("/admin/shopping/cj/my-products")
+async def admin_cj_my_products(
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    """The curated shortlist from CJ's own site (Product Sourcing -> My
+    Product) — already vetted, so no search-relevance issues like /cj/search."""
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = _get_system_cj_connection(db, shop)
+    token = await _cj_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{CJ_BASE}/product/myProduct/query", params={
+            "pageNum": page,
+            "pageSize": 20,
+        }, headers={"CJ-Access-Token": token})
+
+    data = r.json()
+    if not data.get("result"):
+        raise HTTPException(status_code=502, detail=f"CJ API error: {data.get('message', 'Unknown error')}")
+
+    d = data.get("data") or {}
+    cj_list = d.get("content") or d.get("list") or []
+    products = [
+        {
+            "pid": p.get("productId") or p.get("pid", ""),
+            "name": p.get("nameEn") or p.get("productNameEn") or p.get("productName", ""),
+            "image": p.get("bigImage") or p.get("productImage", ""),
+            "cost_price": _parse_cj_price(p.get("sellPrice")),
+            "category": p.get("categoryName", ""),
+        }
+        for p in cj_list
+    ]
+    total = d.get("totalRecords") or d.get("total") or 0
+    return {"products": products, "total": total, "page": page}
+
+
 @router.post("/admin/shopping/cj/import", status_code=201)
 async def admin_cj_import(
     body: CJImportAdminIn,

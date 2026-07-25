@@ -97,6 +97,7 @@ export const adminApi = {
   cjStatus: () => api.get('/admin/shopping/cj/status'),
   cjConnect: (apiKey: string) => api.post('/admin/shopping/cj/connect', { api_key: apiKey }),
   cjSearch: (q: string, page = 1) => api.get('/admin/shopping/cj/search', { params: { q, page } }),
+  cjMyProducts: (page = 1) => api.get('/admin/shopping/cj/my-products', { params: { page } }),
   cjImport: (cjPid: string, price?: number, categoryName?: string) =>
     api.post('/admin/shopping/cj/import', { cj_pid: cjPid, price, category_name: categoryName }),
   metaAdsSearch: (q: string, country = 'US') =>
