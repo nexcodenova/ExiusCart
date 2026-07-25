@@ -1185,7 +1185,16 @@ export default function TrendingDropshippingPage() {
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Extra Gallery Images</p>
                 <p className="text-xs text-gray-600 -mt-1">Optional — paste more image URLs for the product gallery, in addition to the primary image above.</p>
                 {extraImages.map((url, i) => (
-                  <div key={i} className="flex gap-2">
+                  <div key={i} className="flex gap-2 items-center">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-900 border border-gray-700 shrink-0">
+                      {url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={url} alt="" className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-4 h-4 text-gray-700" /></div>
+                      )}
+                    </div>
                     <input type="url" value={url}
                       onChange={(e) => setExtraImages((arr) => arr.map((u, j) => j === i ? e.target.value : u))}
                       placeholder="https://..."
