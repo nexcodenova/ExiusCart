@@ -206,7 +206,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'search' | 'my' | 'trending'>('trending');
+  const [activeTab, setActiveTab] = useState<'search' | 'my' | 'trending' | 'category'>('trending');
   const [inputVal, setInputVal] = useState('');
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<CJProduct[]>([]);
@@ -218,6 +218,16 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   const [loadingTrending, setLoadingTrending] = useState(false);
   const [trendingLoaded, setTrendingLoaded] = useState(false);
   const [trendingPage, setTrendingPage] = useState(1);
+
+  // Categories tab
+  const [cjCategories, setCjCategories] = useState<{ id: string; name: string; path: string }[]>([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [categoryProducts, setCategoryProducts] = useState<CJProduct[]>([]);
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [loadingCategory, setLoadingCategory] = useState(false);
+  const [categoryHasMore, setCategoryHasMore] = useState(true);
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkImporting, setBulkImporting] = useState(false);
   const [importingPid, setImportingPid] = useState<string | null>(null);
@@ -274,6 +284,35 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, trendingLoaded, connected]);
 
+  useEffect(() => {
+    if (activeTab !== 'category' || categoriesLoaded || !connected) return;
+    adminApi.cjCategories()
+      .then((r: any) => setCjCategories(r.data?.categories ?? []))
+      .catch(() => {})
+      .finally(() => setCategoriesLoaded(true));
+  }, [activeTab, categoriesLoaded, connected]);
+
+  const loadCategoryProducts = (categoryId: string, page: number, append: boolean) => {
+    if (!categoryId) return;
+    setLoadingCategory(true);
+    adminApi.cjByCategory(categoryId, page)
+      .then((r: any) => {
+        const items: CJProduct[] = r.data?.products ?? [];
+        setCategoryProducts((prev) => append ? [...prev, ...items] : items);
+        setCategoryPage(page);
+        setCategoryHasMore(items.length >= 20);
+      })
+      .catch(() => setCategoryHasMore(false))
+      .finally(() => setLoadingCategory(false));
+  };
+
+  const handleSelectCategory = (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    setCategoryProducts([]);
+    setSelected(new Set());
+    if (categoryId) loadCategoryProducts(categoryId, 1, false);
+  };
+
   const handleImport = async (p: CJProduct) => {
     setImportingPid(p.pid);
     try {
@@ -307,7 +346,10 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
     } finally { setBulkImporting(false); }
   };
 
-  const displayProducts = activeTab === 'search' ? products : activeTab === 'trending' ? trendingProducts : myProducts;
+  const displayProducts = activeTab === 'search' ? products
+    : activeTab === 'trending' ? trendingProducts
+    : activeTab === 'category' ? categoryProducts
+    : myProducts;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -365,6 +407,12 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
                 }`}>
                 My CJ Products
               </button>
+              <button onClick={() => setActiveTab('category')}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
+                  activeTab === 'category' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                }`}>
+                Categories
+              </button>
               <button onClick={() => setActiveTab('search')}
                 className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
                   activeTab === 'search' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -406,6 +454,21 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
               <p className="text-xs text-gray-500 -mt-2">
                 CJ&apos;s own curated hot-products feed — real data CJ maintains, refreshed on their side. Select several and import them all at once.
               </p>
+            )}
+
+            {activeTab === 'category' && (
+              <div className="space-y-2">
+                <select value={selectedCategoryId} onChange={(e) => handleSelectCategory(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-[#6B3FD9] outline-none">
+                  <option value="">
+                    {categoriesLoaded ? 'Select a category…' : 'Loading categories…'}
+                  </option>
+                  {cjCategories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.path}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500">CJ&apos;s real category tree — all products in the category, not just trending ones.</p>
+              </div>
             )}
 
             {importedCount > 0 && (
@@ -499,6 +562,31 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
 
             {activeTab === 'search' && !loading && query && products.length === 0 && (
               <div className="text-center py-10 text-sm text-gray-500">No products found for &ldquo;{query}&rdquo;. Try a different keyword.</div>
+            )}
+
+            {activeTab === 'category' && !selectedCategoryId && (
+              <div className="text-center py-16 text-sm text-gray-500">Pick a category above to see all its products.</div>
+            )}
+
+            {activeTab === 'category' && loadingCategory && categoryProducts.length === 0 && (
+              <div className="flex items-center justify-center py-16 text-gray-500 gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" /> <span className="text-sm">Loading products…</span>
+              </div>
+            )}
+
+            {activeTab === 'category' && selectedCategoryId && !loadingCategory && categoryProducts.length === 0 && (
+              <div className="text-center py-16 text-sm text-gray-500">No products found in this category.</div>
+            )}
+
+            {activeTab === 'category' && categoryProducts.length > 0 && (
+              <div className="flex justify-center pt-1">
+                <button type="button" disabled={loadingCategory || !categoryHasMore}
+                  onClick={() => loadCategoryProducts(selectedCategoryId, categoryPage + 1, true)}
+                  className="text-xs px-4 py-2 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:border-gray-500 disabled:opacity-40 flex items-center gap-1.5">
+                  {loadingCategory ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  {!categoryHasMore ? 'No more products' : loadingCategory ? 'Loading…' : 'Load More'}
+                </button>
+              </div>
             )}
           </div>
         )}

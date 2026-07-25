@@ -1757,6 +1757,73 @@ async def admin_cj_trending(
     return {"products": products, "total": data.get("data", {}).get("total", 0), "page": page}
 
 
+@router.get("/admin/shopping/cj/categories")
+async def admin_cj_categories(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    """CJ's real 3-level category tree (verified via /product/getCategory) —
+    flattened to the leaf (3rd level) categories, since only those carry a
+    categoryId usable to filter /product/list."""
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = _get_system_cj_connection(db, shop)
+    token = await _cj_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{CJ_BASE}/product/getCategory", headers={"CJ-Access-Token": token})
+    data = r.json()
+    if not data.get("result"):
+        raise HTTPException(status_code=502, detail=f"CJ API error: {data.get('message', 'Unknown error')}")
+
+    categories = []
+    for lvl1 in (data.get("data") or []):
+        first_name = lvl1.get("categoryFirstName", "")
+        for lvl2 in (lvl1.get("categoryFirstList") or []):
+            second_name = lvl2.get("categorySecondName", "")
+            for lvl3 in (lvl2.get("categorySecondList") or []):
+                cid = lvl3.get("categoryId")
+                cname = lvl3.get("categoryName")
+                if cid and cname:
+                    categories.append({"id": cid, "name": cname, "path": f"{first_name} > {second_name} > {cname}"})
+    return {"categories": categories}
+
+
+@router.get("/admin/shopping/cj/by-category")
+async def admin_cj_by_category(
+    category_id: str,
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = _get_system_cj_connection(db, shop)
+    token = await _cj_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{CJ_BASE}/product/list", params={
+            "categoryId": category_id,
+            "pageNum": page,
+            "pageSize": 20,
+        }, headers={"CJ-Access-Token": token})
+
+    data = r.json()
+    if not data.get("result"):
+        raise HTTPException(status_code=502, detail=f"CJ API error: {data.get('message', 'Unknown error')}")
+
+    cj_list = data.get("data", {}).get("list") or []
+    products = [
+        {
+            "pid": p.get("pid") or p.get("productId", ""),
+            "name": p.get("productNameEn") or p.get("productName", ""),
+            "image": p.get("productImage") or p.get("productImageUrl", ""),
+            "cost_price": _parse_cj_price(p.get("sellPrice") or p.get("minSellPrice")),
+            "category": p.get("categoryName", ""),
+        }
+        for p in cj_list
+    ]
+    return {"products": products, "total": data.get("data", {}).get("total", 0), "page": page}
+
+
 @router.get("/admin/shopping/cj/my-products")
 async def admin_cj_my_products(
     page: int = 1,

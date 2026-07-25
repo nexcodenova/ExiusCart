@@ -99,6 +99,8 @@ export const adminApi = {
   cjSearch: (q: string, page = 1) => api.get('/admin/shopping/cj/search', { params: { q, page } }),
   cjMyProducts: (page = 1) => api.get('/admin/shopping/cj/my-products', { params: { page } }),
   cjTrending: (page = 1) => api.get('/admin/shopping/cj/trending', { params: { page } }),
+  cjCategories: () => api.get('/admin/shopping/cj/categories'),
+  cjByCategory: (categoryId: string, page = 1) => api.get('/admin/shopping/cj/by-category', { params: { category_id: categoryId, page } }),
   cjImportBulk: (cjPids: string[]) => api.post('/admin/shopping/cj/import-bulk', { cj_pids: cjPids }),
   cjImport: (cjPid: string, price?: number, categoryName?: string) =>
     api.post('/admin/shopping/cj/import', { cj_pid: cjPid, price, category_name: categoryName }),
