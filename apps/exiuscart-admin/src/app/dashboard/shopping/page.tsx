@@ -140,10 +140,10 @@ function QuickToggle({
 // see admin_meta_ads_search in admin.py. Requires META_AD_LIBRARY_TOKEN to
 // be configured server-side; shows a clear "not connected" message otherwise.
 
-function MetaAdSearchPanel({ query, setQuery, ads, loading, error, onSearch, onPick, onClose }: {
+function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, onSearch, onPick, onClose }: {
   query: string; setQuery: (v: string) => void;
   ads: { id: string; page_name: string; snapshot_url: string; body: string | null }[];
-  loading: boolean; error: string;
+  loading: boolean; error: string; hasSearched: boolean;
   onSearch: () => void; onPick: (url: string) => void; onClose: () => void;
 }) {
   return (
@@ -178,8 +178,11 @@ function MetaAdSearchPanel({ query, setQuery, ads, loading, error, onSearch, onP
           ))}
         </div>
       )}
-      {!loading && !error && ads.length === 0 && query && (
-        <p className="text-xs text-gray-500">No results yet — try searching.</p>
+      {!loading && !error && ads.length === 0 && !hasSearched && (
+        <p className="text-xs text-gray-500">Type a product or brand name and press search.</p>
+      )}
+      {!loading && !error && ads.length === 0 && hasSearched && (
+        <p className="text-xs text-gray-500">No ads found for &ldquo;{query}&rdquo;. Try a different keyword.</p>
       )}
     </div>
   );
@@ -652,6 +655,7 @@ export default function TrendingDropshippingPage() {
   const [metaAds, setMetaAds] = useState<{ id: string; page_name: string; snapshot_url: string; body: string | null }[]>([]);
   const [metaLoading, setMetaLoading] = useState(false);
   const [metaError, setMetaError] = useState('');
+  const [metaHasSearched, setMetaHasSearched] = useState(false);
 
   // delete confirm
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -838,11 +842,17 @@ export default function TrendingDropshippingPage() {
     }
   };
 
+  const handleMetaQueryChange = (v: string) => {
+    setMetaQuery(v);
+    setMetaHasSearched(false);
+  };
+
   const runMetaSearch = async () => {
     if (!metaQuery.trim()) return;
     setMetaLoading(true);
     setMetaError('');
     setMetaAds([]);
+    setMetaHasSearched(true);
     try {
       const res = await adminApi.metaAdsSearch(metaQuery.trim());
       setMetaAds(res.data?.ads ?? []);
@@ -859,6 +869,7 @@ export default function TrendingDropshippingPage() {
     setShowMetaSearch(null);
     setMetaAds([]);
     setMetaQuery('');
+    setMetaHasSearched(false);
   };
 
   // ── Quick toggles ──────────────────────────────────────────────────────────
@@ -1554,7 +1565,7 @@ export default function TrendingDropshippingPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs text-gray-500">Facebook Ad URL</label>
-                    <button type="button" onClick={() => { setShowMetaSearch('facebook'); setMetaAds([]); setMetaError(''); }}
+                    <button type="button" onClick={() => { setShowMetaSearch('facebook'); setMetaAds([]); setMetaError(''); setMetaHasSearched(false); }}
                       className="text-xs text-[#6B3FD9] hover:underline">Search Meta Ads</button>
                   </div>
                   <input type="url" value={form.ad_facebook_url}
@@ -1562,15 +1573,15 @@ export default function TrendingDropshippingPage() {
                     placeholder="https://www.facebook.com/ads/library/?id=..."
                     className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   {showMetaSearch === 'facebook' && (
-                    <MetaAdSearchPanel query={metaQuery} setQuery={setMetaQuery} ads={metaAds} loading={metaLoading}
-                      error={metaError} onSearch={runMetaSearch} onPick={pickMetaAd} onClose={() => setShowMetaSearch(null)} />
+                    <MetaAdSearchPanel query={metaQuery} setQuery={handleMetaQueryChange} ads={metaAds} loading={metaLoading}
+                      error={metaError} hasSearched={metaHasSearched} onSearch={runMetaSearch} onPick={pickMetaAd} onClose={() => setShowMetaSearch(null)} />
                   )}
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs text-gray-500">Instagram Ad URL</label>
-                    <button type="button" onClick={() => { setShowMetaSearch('instagram'); setMetaAds([]); setMetaError(''); }}
+                    <button type="button" onClick={() => { setShowMetaSearch('instagram'); setMetaAds([]); setMetaError(''); setMetaHasSearched(false); }}
                       className="text-xs text-[#6B3FD9] hover:underline">Search Meta Ads</button>
                   </div>
                   <input type="url" value={form.ad_instagram_url}
@@ -1578,8 +1589,8 @@ export default function TrendingDropshippingPage() {
                     placeholder="https://www.facebook.com/ads/library/?id=..."
                     className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   {showMetaSearch === 'instagram' && (
-                    <MetaAdSearchPanel query={metaQuery} setQuery={setMetaQuery} ads={metaAds} loading={metaLoading}
-                      error={metaError} onSearch={runMetaSearch} onPick={pickMetaAd} onClose={() => setShowMetaSearch(null)} />
+                    <MetaAdSearchPanel query={metaQuery} setQuery={handleMetaQueryChange} ads={metaAds} loading={metaLoading}
+                      error={metaError} hasSearched={metaHasSearched} onSearch={runMetaSearch} onPick={pickMetaAd} onClose={() => setShowMetaSearch(null)} />
                   )}
                 </div>
 
