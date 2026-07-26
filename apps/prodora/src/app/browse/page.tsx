@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { Suspense, useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { Search, X, Tag, LayoutGrid } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, X } from 'lucide-react';
 import { shoppingApi, prodoraAuth, Product, Category } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
+import Sidebar from '@/components/Sidebar';
 
 function SkeletonCard() {
   return (
@@ -38,15 +39,17 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   );
 }
 
-export default function HomePage() {
+function BrowseContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const view = searchParams.get('view') || 'all';
+
   const [authorized, setAuthorized] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -73,7 +76,8 @@ export default function HomePage() {
     setError(null);
     const params: Parameters<typeof shoppingApi.getProducts>[0] = {};
     if (debouncedSearch) params.search = debouncedSearch;
-    if (activeCategory && activeCategory !== 'all') params.category = activeCategory;
+    if (view === 'trending') params.trending = true;
+    else if (view !== 'all') params.category = view;
     shoppingApi
       .getProducts(params)
       .then(setProducts)
@@ -82,252 +86,103 @@ export default function HomePage() {
         setProducts([]);
       })
       .finally(() => setLoading(false));
-  }, [authorized, debouncedSearch, activeCategory]);
+  }, [authorized, debouncedSearch, view]);
 
   if (!authorized) return null;
 
-  const trending = products.filter(p => p.is_trending);
-  const rest = products.filter(p => !p.is_trending);
-  const isFiltered = !!(debouncedSearch || activeCategory !== 'all');
-  const activeCategoryName = categories.find(c => c.slug === activeCategory)?.name;
+  const activeCategoryName = categories.find(c => c.slug === view)?.name;
+  const heading = view === 'trending' ? '🔥 Trending' : activeCategoryName || 'All Products';
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="bg-[#2563EB] shadow-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link href="/" className="flex-shrink-0 flex items-center gap-2 mr-2">
-            <Image src="/prodora-logo.png" alt="Prodora" width={30} height={30} />
-            <div className="leading-none">
-              <span className="text-white font-extrabold text-lg tracking-tight block leading-none">
-                Prodora
-              </span>
-              <span className="text-blue-100 text-[10px] font-medium tracking-widest uppercase">
-                by ExiusCart
-              </span>
-            </div>
-          </Link>
+      <Sidebar />
 
-          <div className="flex-1 relative">
+      <main className="lg:pl-60">
+        <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+
+          {/* Mobile category/trending tabs — sidebar is desktop-only */}
+          <div className="lg:hidden -mx-4 px-4 flex gap-0 overflow-x-auto scrollbar-none border-b border-gray-200 pb-px">
+            <MobileTab href="/browse" label="All" active={view === 'all'} />
+            <MobileTab href="/browse?view=trending" label="🔥 Trending" active={view === 'trending'} />
+            {categories.map(cat => (
+              <MobileTab key={cat.id} href={`/browse?view=${cat.slug}`} label={cat.name} active={view === cat.slug} />
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search for products..."
-              className="w-full bg-white border border-transparent rounded-lg pl-9 pr-9 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm"
+              className="w-full bg-white border border-[#E5E7EB] rounded-lg pl-9 pr-9 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
             {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
-        </div>
 
-        {/* Mobile category scroll — hidden on desktop (sidebar handles it) */}
-        {categories.length > 0 && (
-          <div className="lg:hidden bg-white border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-4 flex gap-0 overflow-x-auto scrollbar-none">
-              <MobileCategoryTab label="All" active={activeCategory === 'all'} onClick={() => setActiveCategory('all')} />
-              {categories.map(cat => (
-                <MobileCategoryTab
-                  key={cat.id}
-                  label={cat.name}
-                  active={activeCategory === cat.slug}
-                  onClick={() => setActiveCategory(cat.slug)}
-                />
-              ))}
-            </div>
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-bold text-gray-800">{heading}</h1>
+            <span className="text-sm text-gray-400">{!loading && `${products.length} product${products.length !== 1 ? 's' : ''}`}</span>
           </div>
-        )}
-      </header>
 
-      {/* ── Hero Banner ───────────────────────────────────────────────── */}
-      {!isFiltered && !loading && (
-        <div className="bg-gradient-to-r from-[#2563EB] to-[#60A5FA] text-white">
-          <div className="max-w-7xl mx-auto px-4 py-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-extrabold leading-tight">
-                Browse Winning Products
-              </h1>
-              <p className="text-blue-100 text-sm mt-2 max-w-sm">
-                Find all kinds of winning products and sell them from your ExiusCart store today.
-              </p>
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center">
+              {error}
             </div>
-            <div className="hidden sm:block text-6xl select-none">🔥</div>
+          )}
+
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="grid grid-cols-1">
+              <EmptyState hasSearch={!!debouncedSearch} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              {products.map(p => <ProductCard key={p.id} product={p} />)}
+            </div>
+          )}
+        </div>
+
+        <footer className="border-t border-gray-200 mt-12">
+          <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
+            <div className="flex items-center gap-2">
+              <Image src="/prodora-logo.png" alt="Prodora" width={22} height={22} />
+              <span className="font-semibold text-gray-600">Prodora by ExiusCart</span>
+            </div>
+            <p>© {new Date().getFullYear()} Fairam Private Limited. All rights reserved.</p>
           </div>
-        </div>
-      )}
-
-      {/* ── Layout: Sidebar + Main ─────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-6 items-start">
-
-          {/* ── Left Sidebar — desktop only ───────────────────────── */}
-          <aside className="hidden lg:flex flex-col gap-3 w-52 flex-shrink-0 sticky top-[72px]">
-            {/* Categories card */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-[#2563EB]" />
-                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Categories</span>
-              </div>
-              <div className="p-2">
-                <SidebarCategoryItem
-                  label="All Products"
-                  active={activeCategory === 'all'}
-                  onClick={() => setActiveCategory('all')}
-                />
-                {categories.map(cat => (
-                  <SidebarCategoryItem
-                    key={cat.id}
-                    label={cat.name}
-                    active={activeCategory === cat.slug}
-                    onClick={() => setActiveCategory(cat.slug)}
-                  />
-                ))}
-                {categories.length === 0 && (
-                  <p className="text-xs text-gray-400 px-3 py-2">No categories yet</p>
-                )}
-              </div>
-            </div>
-
-            {/* Dropshipper tip card */}
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Tag className="w-4 h-4 text-[#2563EB]" />
-                <span className="text-xs font-bold text-gray-700">How it works</span>
-              </div>
-              <ul className="text-xs text-gray-500 space-y-1.5">
-                <li>✓ Browse winning products</li>
-                <li>✓ Copy supplier links</li>
-                <li>✓ List on your ExiusCart store</li>
-                <li>✓ Start selling today</li>
-              </ul>
-              <a
-                href="https://store.exiuscart.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 block text-center text-xs font-bold text-white bg-[#2563EB] hover:bg-[#1E4FC2] px-3 py-2 rounded-lg transition"
-              >
-                Open My Store →
-              </a>
-            </div>
-          </aside>
-
-          {/* ── Main Content ──────────────────────────────────────── */}
-          <main className="flex-1 min-w-0 space-y-8">
-            {/* Active filter breadcrumb */}
-            {isFiltered && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-gray-500">
-                  {products.length} product{products.length !== 1 ? 's' : ''}
-                  {activeCategoryName ? ` in "${activeCategoryName}"` : ''}
-                  {debouncedSearch ? ` for "${debouncedSearch}"` : ''}
-                </span>
-                <button
-                  onClick={() => { setActiveCategory('all'); setSearch(''); }}
-                  className="flex items-center gap-1 text-xs text-[#2563EB] hover:underline"
-                >
-                  <X className="w-3 h-3" /> Clear filter
-                </button>
-              </div>
-            )}
-
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center">
-                {error}
-              </div>
-            )}
-
-            {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            ) : products.length === 0 ? (
-              <div className="grid grid-cols-1">
-                <EmptyState hasSearch={isFiltered} />
-              </div>
-            ) : isFiltered ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                {products.map(p => <ProductCard key={p.id} product={p} />)}
-              </div>
-            ) : (
-              <>
-                {trending.length > 0 && (
-                  <section>
-                    <SectionHeader title="🔥 Trending Now" />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                      {trending.map(p => <ProductCard key={p.id} product={p} />)}
-                    </div>
-                  </section>
-                )}
-
-                {rest.length > 0 && (
-                  <section>
-                    <SectionHeader title="All Products" />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                      {rest.map(p => <ProductCard key={p.id} product={p} />)}
-                    </div>
-                  </section>
-                )}
-              </>
-            )}
-          </main>
-        </div>
-      </div>
-
-      {/* ── Footer ───────────────────────────────────────────────────── */}
-      <footer className="bg-white border-t border-gray-200 mt-16">
-        <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
-          <div className="flex items-center gap-2">
-            <Image src="/prodora-logo.png" alt="Prodora" width={22} height={22} />
-            <span className="font-semibold text-gray-600">Prodora by ExiusCart</span>
-          </div>
-          <p>© {new Date().getFullYear()} Fairam Private Limited. All rights reserved.</p>
-        </div>
-      </footer>
+        </footer>
+      </main>
     </div>
   );
 }
 
-function SidebarCategoryItem({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function MobileTab({ href, label, active }: { href: string; label: string; active: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-        active
-          ? 'bg-[#2563EB] text-white font-semibold'
-          : 'text-gray-600 hover:bg-blue-50 hover:text-[#2563EB]'
-      }`}
-    >
-      <span className="truncate">{label}</span>
-    </button>
-  );
-}
-
-function MobileCategoryTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
+    <Link
+      href={href}
       className={`flex-shrink-0 text-sm font-medium px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
-        active
-          ? 'border-[#2563EB] text-[#2563EB]'
-          : 'border-transparent text-gray-600 hover:text-[#2563EB] hover:border-[#2563EB]/40'
+        active ? 'border-[#2563EB] text-[#2563EB]' : 'border-transparent text-gray-600 hover:text-[#2563EB] hover:border-[#2563EB]/40'
       }`}
     >
       {label}
-    </button>
+    </Link>
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+export default function HomePage() {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-lg font-bold text-gray-800">{title}</h2>
-    </div>
+    <Suspense fallback={null}>
+      <BrowseContent />
+    </Suspense>
   );
 }

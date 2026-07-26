@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,6 +10,7 @@ import {
   Music2, ChevronRight, Trophy, Globe2,
 } from 'lucide-react';
 import { shoppingApi, Product } from '@/lib/api';
+import Sidebar from '@/components/Sidebar';
 import DOMPurify from 'dompurify';
 
 function fmt(n: number) {
@@ -94,7 +95,7 @@ function RelatedProductCard({ product }: { product: Product }) {
   );
 }
 
-export default function ProductDetailPage() {
+function ProductDetailContent() {
   const params = useParams();
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
@@ -150,29 +151,35 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
-        <div className="bg-white border-b border-[#E5E7EB] px-4 py-3">
-          <div className="max-w-6xl mx-auto h-5 w-24 bg-gray-100 rounded animate-pulse" />
-        </div>
-        <div className="max-w-6xl mx-auto px-4 py-6 animate-pulse grid lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2 aspect-square bg-gray-100 rounded-2xl" />
-          <div className="space-y-4">
-            <div className="h-4 bg-gray-100 rounded w-1/3" />
-            <div className="h-40 bg-gray-100 rounded" />
+        <Sidebar />
+        <main className="lg:pl-60">
+          <div className="bg-white border-b border-[#E5E7EB] px-4 py-3">
+            <div className="max-w-6xl mx-auto h-5 w-24 bg-gray-100 rounded animate-pulse" />
           </div>
-        </div>
+          <div className="max-w-6xl mx-auto px-4 py-6 animate-pulse grid lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-2 aspect-square bg-gray-100 rounded-2xl" />
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-100 rounded w-1/3" />
+              <div className="h-40 bg-gray-100 rounded" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
 
   if (notFound || !product) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-5 px-4 text-center">
-        <Package className="w-16 h-16 text-gray-300" />
-        <h1 className="text-2xl font-bold text-[#111827]">Product not found</h1>
-        <p className="text-[#6B7280]">This product may have been removed or doesn&apos;t exist.</p>
-        <Link href="/" className="flex items-center gap-2 px-5 py-2.5 bg-[#2563EB] text-white font-semibold rounded-xl hover:bg-[#1E4FC2] transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Prodora
-        </Link>
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <Sidebar />
+        <main className="lg:pl-60 flex flex-col items-center justify-center gap-5 px-4 text-center min-h-screen">
+          <Package className="w-16 h-16 text-gray-300" />
+          <h1 className="text-2xl font-bold text-[#111827]">Product not found</h1>
+          <p className="text-[#6B7280]">This product may have been removed or doesn&apos;t exist.</p>
+          <Link href="/browse" className="flex items-center gap-2 px-5 py-2.5 bg-[#2563EB] text-white font-semibold rounded-xl hover:bg-[#1E4FC2] transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Prodora
+          </Link>
+        </main>
       </div>
     );
   }
@@ -209,6 +216,8 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      <Sidebar />
+      <main className="lg:pl-60">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-2 text-sm text-[#6B7280]">
@@ -589,6 +598,15 @@ export default function ProductDetailPage() {
       <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-[#6B7280]">
         © {new Date().getFullYear()} Fairam Private Limited &nbsp;·&nbsp; Prodora by ExiusCart
       </footer>
+      </main>
     </div>
+  );
+}
+
+export default function ProductDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProductDetailContent />
+    </Suspense>
   );
 }

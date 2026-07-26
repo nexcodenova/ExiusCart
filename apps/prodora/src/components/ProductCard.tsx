@@ -62,16 +62,13 @@ export default function ProductCard({ product }: ProductCardProps) {
             {name}
           </h3>
 
-          <div className="mt-auto pt-1">
-            {/* Original price strikethrough */}
-            {cost_price && cost_price > price && (
-              <p className="text-xs text-gray-400 line-through">
-                {fmt(cost_price)} {currency}
+          <div className="mt-auto pt-1 space-y-0.5">
+            {cost_price != null && (
+              <p className="text-[11px] text-gray-400">
+                Cost <span className="font-medium text-gray-500">{fmt(cost_price)}</span>
               </p>
             )}
-
-            {/* Selling price */}
-            <p className={`font-bold text-base ${discount_pct ? 'text-[#2563EB]' : 'text-gray-900'}`}>
+            <p className="font-bold text-base text-gray-900">
               {fmt(price)} <span className="text-xs font-normal text-gray-500">{currency}</span>
             </p>
           </div>
