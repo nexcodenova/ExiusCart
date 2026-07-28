@@ -7,7 +7,7 @@ import {
   ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2,
   Warehouse, RefreshCw, AlertCircle,
 } from 'lucide-react';
-import { channelsApi, shopifyApi, subscriptionApi, noonApi } from '@/lib/api';
+import { channelsApi, shopifyApi, subscriptionApi, noonApi, ebayApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -503,6 +503,247 @@ function NoonCard({ connection, onManageWarehouse }: { connection: ChannelConnec
   );
 }
 
+// ── eBay connect modal ─────────────────────────────────────────────────────
+//
+// eBay uses OAuth — same idea as Daraz, but without the "do you have an
+// account" branch, since eBay accounts are close to universal and the
+// login/signup screen itself is handled by eBay's own consent flow.
+
+function EbayConnectModal({ shopId, onClose }: {
+  shopId: string; onConnected: () => void; onClose: () => void;
+}) {
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState('');
+
+  const startAuthorize = async () => {
+    setConnecting(true); setError('');
+    try {
+      const res = await ebayApi.authorize(shopId);
+      window.location.href = res.data.authorize_url;
+    } catch (err: any) {
+      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not start eBay connection. Try again.');
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-card rounded-xl border border-border w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <p className="font-semibold text-foreground">Connect eBay</p>
+            <p className="text-xs text-muted-foreground mt-0.5">List products and manage orders on eBay</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+              {error}
+            </div>
+          )}
+          <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+            <p><strong className="text-foreground">What happens next:</strong></p>
+            <p>• You'll be sent to eBay to log into your own account</p>
+            <p>• Approve ExiusCart's access request</p>
+            <p>• You're redirected back here — then choose your Business Policies to finish setup</p>
+          </div>
+          <button onClick={startAuthorize} disabled={connecting}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+            {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+            {connecting ? 'Redirecting to eBay...' : 'Continue to eBay'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── eBay Business Policies modal ────────────────────────────────────────────
+//
+// eBay requires every listing to reference a payment/fulfillment/return
+// policy ID. These can't be created on the seller's behalf — they encode
+// real shipping-cost/return-window decisions — so this fetches the
+// seller's existing policies and lets them pick, same "fetch a live
+// option, never fabricate" idea as Noon's warehouse picker above.
+
+function EbayBusinessPoliciesModal({ shopId, onSaved, onClose }: {
+  shopId: string; onSaved: () => void; onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [noPolicies, setNoPolicies] = useState(false);
+  const [payments, setPayments] = useState<{ id: string; name: string }[]>([]);
+  const [fulfillments, setFulfillments] = useState<{ id: string; name: string }[]>([]);
+  const [returns, setReturns] = useState<{ id: string; name: string }[]>([]);
+  const [paymentId, setPaymentId] = useState('');
+  const [fulfillmentId, setFulfillmentId] = useState('');
+  const [returnId, setReturnId] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true); setError(''); setNoPolicies(false);
+    try {
+      const r = await ebayApi.getBusinessPolicies(shopId);
+      setPayments(r.data?.payment ?? []);
+      setFulfillments(r.data?.fulfillment ?? []);
+      setReturns(r.data?.return ?? []);
+      const sel = r.data?.selected ?? {};
+      setPaymentId(sel.payment_policy_id ?? '');
+      setFulfillmentId(sel.fulfillment_policy_id ?? '');
+      setReturnId(sel.return_policy_id ?? '');
+    } catch (err: any) {
+      if (err?.response?.data?.detail?.error === 'no_business_policies') {
+        setNoPolicies(true);
+      } else {
+        setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not load Business Policies.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    if (!paymentId || !fulfillmentId || !returnId) return;
+    setSaving(true); setError('');
+    try {
+      await ebayApi.saveBusinessPolicies(shopId, {
+        payment_policy_id: paymentId,
+        fulfillment_policy_id: fulfillmentId,
+        return_policy_id: returnId,
+      });
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not save Business Policies.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-card rounded-xl border border-border w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <p className="font-semibold text-foreground">eBay Business Policies</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Choose your payment, shipping & return policies</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> <span className="text-sm">Loading your policies...</span>
+            </div>
+          ) : noPolicies ? (
+            <div className="bg-amber-500/8 border border-amber-500/20 rounded-lg px-4 py-3 space-y-2">
+              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm font-medium">
+                <AlertCircle className="w-4 h-4" /> No Business Policies set up yet
+              </div>
+              <p className="text-xs text-muted-foreground">
+                eBay requires at least one payment, fulfillment (shipping), and return policy before you can list products. Set these up on eBay first, then refresh below.
+              </p>
+              <a href="https://www.ebay.com/help/selling/business-policies/business-policies-setup" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium">
+                Set up Business Policies on eBay <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <button type="button" onClick={load}
+                className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium">
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+              </button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Payment Policy *</label>
+                <select value={paymentId} onChange={(e) => setPaymentId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm">
+                  <option value="">Select...</option>
+                  {payments.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Fulfillment (Shipping) Policy *</label>
+                <select value={fulfillmentId} onChange={(e) => setFulfillmentId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm">
+                  <option value="">Select...</option>
+                  {fulfillments.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Return Policy *</label>
+                <select value={returnId} onChange={(e) => setReturnId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm">
+                  <option value="">Select...</option>
+                  {returns.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <button type="button" onClick={save} disabled={!paymentId || !fulfillmentId || !returnId || saving}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {saving ? 'Saving...' : 'Save Policies'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── eBay connected card ─────────────────────────────────────────────────────
+
+function EbayCard({ connection, policiesConfigured, onManagePolicies }: {
+  connection: ChannelConnection; policiesConfigured: boolean | null; onManagePolicies: () => void;
+}) {
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-[#E53238]/10 flex items-center justify-center">
+            <Tag className="w-4 h-4 text-[#E53238]" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground text-sm">eBay</p>
+            <p className="text-xs text-muted-foreground">Global Marketplace</p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+          <CheckCircle2 className="w-3 h-3" /> Connected
+        </span>
+      </div>
+      <div className="p-5 text-sm text-muted-foreground space-y-2">
+        <p>Seller: <strong className="text-foreground">{connection.channel_seller_id || 'eBay account connected'}</strong></p>
+        {policiesConfigured === false ? (
+          <div className="flex items-center justify-between gap-3 bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-amber-600 dark:text-amber-400">Business Policies not set — products can't be listed yet</p>
+            <button onClick={onManagePolicies} className="shrink-0 text-xs text-primary hover:text-primary/80 font-medium whitespace-nowrap">
+              Choose
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs">Orders syncing from eBay automatically</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── TheDersi connect modal ────────────────────────────────────────────────────
 
 function TheDersiConnectModal({ shopId, onConnected, onClose }: {
@@ -736,6 +977,10 @@ export default function ChannelsPage() {
   const [showDarazModal, setShowDarazModal] = useState(false);
   const [showNoonModal, setShowNoonModal] = useState(false);
   const [noonModalStep, setNoonModalStep] = useState<'form' | 'warehouse'>('form');
+  const [showEbayModal, setShowEbayModal] = useState(false);
+  const [showEbayPoliciesModal, setShowEbayPoliciesModal] = useState(false);
+  const [ebayPoliciesConfigured, setEbayPoliciesConfigured] = useState<boolean | null>(null);
+  const [ebayLocked, setEbayLocked] = useState(false);
   const [dersiBlockChannel, setDersiBlockChannel] = useState<string | null>(null);
   const [darazLocked, setDarazLocked] = useState(false);
   const [upgradeLimitModal, setUpgradeLimitModal] = useState(false);
@@ -747,7 +992,21 @@ export default function ChannelsPage() {
   const load = () => {
     if (!shopId) return;
     Promise.all([
-      channelsApi.getConnections(shopId).then((r) => setConnections(r.data ?? [])),
+      channelsApi.getConnections(shopId).then((r) => {
+        const conns: ChannelConnection[] = r.data ?? [];
+        setConnections(conns);
+        const ebayConn = conns.find((c) => c.channel_type === 'ebay');
+        if (ebayConn) {
+          ebayApi.getBusinessPolicies(shopId)
+            .then((pr) => {
+              const sel = pr.data?.selected ?? {};
+              setEbayPoliciesConfigured(!!(sel.payment_policy_id && sel.fulfillment_policy_id && sel.return_policy_id));
+            })
+            .catch((err) => {
+              setEbayPoliciesConfigured(err?.response?.data?.detail?.error === 'no_business_policies' ? false : null);
+            });
+        }
+      }),
       shopifyApi.getStatus(shopId).then((r) => setShopifyConnected(r.data?.connected ?? false)).catch(() => {}),
       subscriptionApi.getCurrent(shopId).then((r) => setPlan(r.data?.plan?.plan_type || '')).catch(() => {}),
     ]).finally(() => setLoading(false));
@@ -765,12 +1024,27 @@ export default function ChannelsPage() {
     load();
   }, []);
 
+  const [ebayOAuthResult, setEbayOAuthResult] = useState<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('ebay');
+    if (!result) return;
+    setEbayOAuthResult(result);
+    router.replace('/dashboard/channels');
+    load();
+    // Freshly connected — walk straight into picking Business Policies,
+    // since a listing can't happen without them.
+    if (result === 'connected') setShowEbayPoliciesModal(true);
+  }, []);
+
   const theDersiConns = connections.filter((c) => c.channel_type === 'thedersi');
   const darazConns = connections.filter((c) => c.channel_type === 'daraz');
   const noonConns = connections.filter((c) => c.channel_type === 'noon');
+  const ebayConns = connections.filter((c) => c.channel_type === 'ebay');
   const hasTheDersi = theDersiConns.length > 0;
   const hasDaraz = darazConns.length > 0;
   const hasNoon = noonConns.length > 0;
+  const hasEbay = ebayConns.length > 0;
   // Detected via an active TheDersi connection, not plan_type — TheDersi's
   // Growth/Premium tier maps to plan='starter', same as a direct customer,
   // so a plan-string check alone would miss those sellers.
@@ -784,6 +1058,10 @@ export default function ChannelsPage() {
   const canUseDaraz = ['thedersi_pro', 'premium'].includes(plan);
   // Noon is direct-ExiusCart only — TheDersi sellers (Basic or Pro) get
   // TheDersi + Daraz and nothing else, same rule as Shopify/Custom Website.
+  // eBay follows that same "ExiusCart direct only" rule (unlike Daraz) —
+  // its Business-Policies + multi-marketplace flow doesn't fit TheDersi's
+  // managed-seller model, so it's gated exactly like Shopify/Custom Website.
+  const canUseEbay = plan === 'premium' && !isTheDersiUser;
 
   const availableChannels: ChannelDef[] = [
     // ── Row 1: TheDersi + Daraz (the two channels TheDersi sellers can use) ──
@@ -868,8 +1146,16 @@ export default function ChannelsPage() {
       name: 'eBay',
       description: 'List products on eBay and manage all orders directly from ExiusCart.',
       icon: <Tag className="w-5 h-5 text-[#E53238]" />,
-      badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('eBay') : undefined,
+      badge: hasEbay ? 'live' : (isTheDersiUser ? 'locked' : (canUseEbay ? 'connect' : 'locked')),
+      badgeLabel: hasEbay ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (canUseEbay ? 'Available' : 'Premium only')),
+      onAction: hasEbay
+        ? undefined
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('eBay')
+          : canUseEbay
+            ? () => setShowEbayModal(true)
+            : () => setEbayLocked(true),
+      actionLabel: hasEbay ? 'Connected' : (isTheDersiUser ? 'Learn more' : (canUseEbay ? 'Connect eBay' : 'Upgrade to Premium')),
     },
     {
       id: 'tiktok',
@@ -924,6 +1210,24 @@ export default function ChannelsPage() {
         </div>
       )}
 
+      {ebayOAuthResult && (
+        <div className={`flex items-center justify-between gap-4 px-5 py-4 rounded-xl border ${
+          ebayOAuthResult === 'connected' ? 'bg-green-500/8 border-green-500/30'
+          : ebayOAuthResult === 'pending' ? 'bg-amber-500/8 border-amber-500/30'
+          : 'bg-destructive/8 border-destructive/30'
+        }`}>
+          <p className="text-sm font-medium text-foreground">
+            {ebayOAuthResult === 'connected' && "eBay connected — now choose your Business Policies to start listing."}
+            {ebayOAuthResult === 'pending' && "eBay authorization received — we're finishing setup on our end, check back shortly."}
+            {ebayOAuthResult === 'denied' && 'eBay connection was cancelled — you can try again anytime.'}
+            {ebayOAuthResult === 'invalid_state' && 'That eBay connection link expired — please click Connect eBay and try again.'}
+          </p>
+          <button onClick={() => setEbayOAuthResult(null)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Plan limit banner for free/starter users */}
       {!loading && !isTheDersiUser && !isPremium && plan !== '' && (
         <div className={`flex items-center justify-between gap-4 px-5 py-4 rounded-xl border ${channelLimitReached ? 'bg-amber-500/8 border-amber-500/30' : 'bg-muted/60 border-border'}`}>
@@ -952,7 +1256,7 @@ export default function ChannelsPage() {
       ) : (
         <>
           {/* Active connected channel cards */}
-          {(theDersiConns.length > 0 || darazConns.length > 0 || noonConns.length > 0) && (
+          {(theDersiConns.length > 0 || darazConns.length > 0 || noonConns.length > 0 || ebayConns.length > 0) && (
             <div className="space-y-4">
               <h2 className="text-sm font-medium text-foreground">Connected</h2>
               {theDersiConns.map((conn) => (
@@ -964,6 +1268,10 @@ export default function ChannelsPage() {
               {noonConns.map((conn) => (
                 <NoonCard key={conn.id} connection={conn}
                   onManageWarehouse={() => { setNoonModalStep('warehouse'); setShowNoonModal(true); }} />
+              ))}
+              {ebayConns.map((conn) => (
+                <EbayCard key={conn.id} connection={conn} policiesConfigured={ebayPoliciesConfigured}
+                  onManagePolicies={() => setShowEbayPoliciesModal(true)} />
               ))}
             </div>
           )}
@@ -1011,6 +1319,48 @@ export default function ChannelsPage() {
           onConnected={() => load()}
           onClose={() => { setShowNoonModal(false); load(); }}
         />
+      )}
+
+      {showEbayModal && (
+        <EbayConnectModal
+          shopId={shopId}
+          onConnected={() => load()}
+          onClose={() => { setShowEbayModal(false); load(); }}
+        />
+      )}
+
+      {showEbayPoliciesModal && (
+        <EbayBusinessPoliciesModal
+          shopId={shopId}
+          onSaved={() => { setEbayPoliciesConfigured(true); load(); }}
+          onClose={() => setShowEbayPoliciesModal(false)}
+        />
+      )}
+
+      {ebayLocked && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#E53238]/10 flex items-center justify-center shrink-0">
+                <Tag className="w-5 h-5 text-[#E53238]" />
+              </div>
+              <button type="button" onClick={() => setEbayLocked(false)}
+                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">eBay Integration</p>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                eBay sync is available on Premium plans. Upgrade to ExiusCart Premium to connect your eBay seller account.
+              </p>
+            </div>
+            <Link href="/dashboard/billing" onClick={() => setEbayLocked(false)}
+              className="block w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition text-center">
+              Upgrade to Premium
+            </Link>
+          </div>
+        </div>
       )}
 
       {darazLocked && (

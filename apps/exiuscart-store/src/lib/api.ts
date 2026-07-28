@@ -637,6 +637,33 @@ export const noonApi = {
     api.post(`/shops/${shopId}/channels/noon/pricing`, items),
 };
 
+// eBay — OAuth click-to-connect (same pattern as Daraz), plus a Business
+// Policies picker step that's unique to eBay's listing requirements.
+export const ebayApi = {
+  authorize: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/ebay/authorize`),
+  getBusinessPolicies: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/ebay/business-policies`),
+  saveBusinessPolicies: (shopId: string, data: { payment_policy_id: string; fulfillment_policy_id: string; return_policy_id: string }) =>
+    api.patch(`/shops/${shopId}/channels/ebay/business-policies`, data),
+  getCategoryAttributes: (shopId: string, categoryId: string) =>
+    api.get(`/shops/${shopId}/channels/ebay/category-attributes`, { params: { category_id: categoryId } }),
+  createListing: (shopId: string, productId: number | string, data: {
+    category_id: string; aspect_values: Record<string, string[]>; condition?: string;
+    payment_policy_id?: string; fulfillment_policy_id?: string; return_policy_id?: string;
+  }) => api.post(`/shops/${shopId}/channels/ebay/products/${productId}/create`, data),
+  getListingStatus: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/channels/ebay/products/${productId}/listing`),
+  syncOrdersNow: (shopId: string, days: number = 7) =>
+    api.post(`/shops/${shopId}/channels/ebay/sync-orders`, null, { params: { days } }),
+  fulfillOrder: (shopId: string, orderId: number | string, data: { tracking_number: string; carrier_code: string }) =>
+    api.post(`/shops/${shopId}/channels/ebay/orders/${orderId}/fulfill`, data),
+  getEarnings: (shopId: string, days: number = 90) =>
+    api.get(`/shops/${shopId}/channels/ebay/earnings`, { params: { days } }),
+  getTransactions: (shopId: string, startTime: string, endTime: string) =>
+    api.get(`/shops/${shopId}/channels/ebay/transactions`, { params: { start_time: startTime, end_time: endTime } }),
+};
+
 export const usageApi = {
   get: (shopId: string) => api.get(`/shops/${shopId}/usage`),
 };

@@ -6,12 +6,13 @@ import {
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
-  Store, Globe, ShoppingBag,
+  Store, Globe, ShoppingBag, Tag,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { colorNameToHex } from '@/lib/color-utils';
 import { DarazListingFields } from '@/components/daraz-listing-fields';
+import { EbayListingFields } from '@/components/ebay-listing-fields';
 import { NoonListingFields, NoonAttributeValues } from '@/components/noon-listing-fields';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { DropshipSupplierSection } from '@/components/dropship-supplier-section';
@@ -935,7 +936,7 @@ function ProductModal({
   // Every channel's category field opens the same full-size, searchable
   // picker (same width/height as the whole modal) instead of a tiny
   // dropdown — one shared overlay, keyed by which channel triggered it.
-  const [activeCategoryPicker, setActiveCategoryPicker] = useState<'thedersi' | 'daraz' | null>(null);
+  const [activeCategoryPicker, setActiveCategoryPicker] = useState<'thedersi' | 'daraz' | 'ebay' | null>(null);
   const [categoryPickerSearch, setCategoryPickerSearch] = useState('');
   const [shopifyConnected, setShopifyConnected] = useState(false);
   const [customWebsiteConnection, setCustomWebsiteConnection] = useState<{ id: number } | null>(null);
@@ -946,6 +947,18 @@ function ProductModal({
   const [darazListingStatus, setDarazListingStatus] = useState<{ item_id: string; status: string } | null>(null);
   const [listingDaraz, setListingDaraz] = useState(false);
   const [darazListingError, setDarazListingError] = useState('');
+
+  // eBay channel category state — mirrors Daraz's split-out state exactly.
+  // eBay's publish is synchronous (unlike Daraz's pending-review flow), so
+  // ebayListingStatus only ever needs a plain "listed" flag, no QC polling.
+  const [ebayConnection, setEbayConnection] = useState<{ id: number } | null>(null);
+  const [ebayCategories, setEbayCategories] = useState<{ id: string; name: string }[]>([]);
+  const [loadingEbayCategories, setLoadingEbayCategories] = useState(false);
+  const [ebayAspectValues, setEbayAspectValues] = useState<Record<string, string>>({});
+  const [ebayCondition, setEbayCondition] = useState('NEW');
+  const [ebayListingStatus, setEbayListingStatus] = useState<{ listing_ids: string[] } | null>(null);
+  const [listingEbay, setListingEbay] = useState(false);
+  const [ebayListingError, setEbayListingError] = useState('');
 
   // Noon — separate from otherChannels (Noon's category is a flat searched
   // code, not a tree pick, and creation is synchronous — no pending-review
@@ -961,14 +974,15 @@ function ProductModal({
   const [noonListingError, setNoonListingError] = useState('');
 
   interface OtherChannelToggle { enabled: boolean; isGift: boolean; categoryId: string; categoryName: string }
-  const [otherChannels, setOtherChannels] = useState<Record<'daraz' | 'shopify' | 'custom', OtherChannelToggle>>({
+  const [otherChannels, setOtherChannels] = useState<Record<'daraz' | 'shopify' | 'custom' | 'ebay', OtherChannelToggle>>({
     daraz: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
     shopify: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
     custom: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
+    ebay: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
   });
-  const setOtherChannelEnabled = (key: 'daraz' | 'shopify' | 'custom', enabled: boolean) =>
+  const setOtherChannelEnabled = (key: 'daraz' | 'shopify' | 'custom' | 'ebay', enabled: boolean) =>
     setOtherChannels((prev) => ({ ...prev, [key]: { ...prev[key], enabled } }));
-  const setOtherChannelGift = (key: 'daraz' | 'shopify' | 'custom', isGift: boolean) =>
+  const setOtherChannelGift = (key: 'daraz' | 'shopify' | 'custom' | 'ebay', isGift: boolean) =>
     setOtherChannels((prev) => ({ ...prev, [key]: { ...prev[key], isGift } }));
 
   // POS — real per-product toggle (defaults on, seller can turn it off) +
@@ -1108,6 +1122,27 @@ function ProductModal({
         const noon = data.find((c: any) => c.channel_type === 'noon');
         if (noon) setNoonConnection({ id: noon.id });
 
+        const ebay = data.find((c: any) => c.channel_type === 'ebay');
+        if (ebay) {
+          setEbayConnection({ id: ebay.id });
+          if (product?.id) {
+            ebayApi.getListingStatus(shopId, product.id)
+              .then((r) => setEbayListingStatus({ listing_ids: [r.data?.listing_id].filter(Boolean) }))
+              .catch(() => {}); // 404 = not listed yet, fine
+          }
+          setLoadingEbayCategories(true);
+          // eBay's tree is arbitrarily deep too — same cache-then-fetch
+          // pattern as Daraz above, just via the Taxonomy API.
+          channelsApi.syncCategories(shopId, ebay.id)
+            .catch(() => {})
+            .finally(() => {
+              channelsApi.getCategories(shopId, ebay.id)
+                .then((r) => setEbayCategories(r.data ?? []))
+                .catch(() => {})
+                .finally(() => setLoadingEbayCategories(false));
+            });
+        }
+
         if (product?.id) {
           channelsApi.getProductChannelCategories(shopId, product.id)
             .then((r) => {
@@ -1133,6 +1168,20 @@ function ProductModal({
                   setOtherChannels((prev) => ({
                     ...prev,
                     custom: { ...prev.custom, enabled: entry.is_listed ?? true, isGift: entry.is_gift ?? false },
+                  }));
+                }
+              }
+              if (ebay) {
+                const entry = entries.find((s: any) => s.channel_connection_id === ebay.id);
+                if (entry) {
+                  setOtherChannels((prev) => ({
+                    ...prev,
+                    ebay: {
+                      ...prev.ebay,
+                      enabled: entry.is_listed ?? true,
+                      categoryId: entry.channel_category_id ?? '',
+                      categoryName: entry.channel_category_name ?? '',
+                    },
                   }));
                 }
               }
@@ -1231,6 +1280,25 @@ function ProductModal({
       setDarazListingError(err?.response?.data?.detail ?? 'Could not create the Daraz listing. Try again.');
     } finally {
       setListingDaraz(false);
+    }
+  };
+
+  const handleListOnEbay = async () => {
+    if (!product?.id || !otherChannels.ebay.categoryId) return;
+    setListingEbay(true);
+    setEbayListingError('');
+    try {
+      const res = await ebayApi.createListing(shopId, product.id, {
+        category_id: otherChannels.ebay.categoryId,
+        aspect_values: Object.fromEntries(Object.entries(ebayAspectValues).map(([k, v]) => [k, [v]])),
+        condition: ebayCondition,
+      });
+      setEbayListingStatus({ listing_ids: res.data?.listing_ids ?? [] });
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setEbayListingError(typeof detail === 'string' ? detail : detail?.message ?? 'Could not create the eBay listing. Try again.');
+    } finally {
+      setListingEbay(false);
     }
   };
 
@@ -1370,6 +1438,17 @@ function ProductModal({
           is_gift: otherChannels.daraz.isGift,
           channel_category_id: otherChannels.daraz.categoryId || undefined,
           channel_category_name: otherChannels.daraz.categoryName || undefined,
+        }).catch(() => {}));
+      }
+
+      // eBay — real ChannelConnection, real is_listed now works. Category
+      // stays whatever the seller picked in the eBay category picker.
+      if (ebayConnection) {
+        tasks.push(channelsApi.setProductCategory(shopId, productId, {
+          channel_connection_id: ebayConnection.id,
+          is_listed: otherChannels.ebay.enabled,
+          channel_category_id: otherChannels.ebay.categoryId || undefined,
+          channel_category_name: otherChannels.ebay.categoryName || undefined,
         }).catch(() => {}));
       }
 
@@ -2108,6 +2187,98 @@ function ProductModal({
                   )}
                 </div>
 
+                {/* eBay — toggle + real category tree from eBay's Taxonomy API.
+                    eBay's publish is synchronous (no pending-review step like
+                    Daraz), so success here means the listing is already live. */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-[#E53238]/10 flex items-center justify-center shrink-0">
+                        <Tag className="w-4 h-4 text-[#E53238]" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">eBay</p>
+                        <p className="text-xs text-muted-foreground">
+                          {ebayConnection ? (otherChannels.ebay.enabled ? 'Listed on eBay' : 'Not listed') : 'Not connected'}
+                        </p>
+                      </div>
+                    </div>
+                    {ebayConnection ? (
+                      <button
+                        type="button"
+                        onClick={() => setOtherChannelEnabled('ebay', !otherChannels.ebay.enabled)}
+                        className="shrink-0"
+                        aria-label="Toggle eBay listing"
+                      >
+                        {otherChannels.ebay.enabled
+                          ? <ToggleRight className="w-9 h-9 text-primary" />
+                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
+                    )}
+                  </div>
+                  {ebayConnection && otherChannels.ebay.enabled && (
+                    <div className="border-t border-border p-3 space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                          eBay Category
+                          {loadingEbayCategories && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setActiveCategoryPicker('ebay')}
+                          disabled={loadingEbayCategories || ebayCategories.length === 0}
+                          className="w-full px-3 py-2.5 bg-card border border-border rounded-lg text-left flex items-center justify-between gap-2 disabled:opacity-60 disabled:cursor-not-allowed hover:border-primary/50 transition"
+                        >
+                          <span className={otherChannels.ebay.categoryName ? 'text-foreground' : 'text-muted-foreground'}>
+                            {loadingEbayCategories
+                              ? 'Loading eBay categories…'
+                              : ebayCategories.length === 0
+                                ? 'Could not load eBay categories'
+                                : otherChannels.ebay.categoryName || 'Select eBay category'}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                        </button>
+                        <p className="text-xs text-muted-foreground mt-1.5">eBay's own category tree — pick the most specific match.</p>
+                      </div>
+
+                      {product?.id && otherChannels.ebay.categoryId && (
+                        <EbayListingFields
+                          shopId={shopId}
+                          categoryId={otherChannels.ebay.categoryId}
+                          values={ebayAspectValues}
+                          condition={ebayCondition}
+                          onChange={(vals, cond) => { setEbayAspectValues(vals); setEbayCondition(cond); }}
+                        />
+                      )}
+
+                      {product?.id && otherChannels.ebay.categoryId && (
+                        <div className="border-t border-border pt-3">
+                          {ebayListingStatus?.listing_ids?.length ? (
+                            <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-green-500/10 text-green-600 dark:text-green-400">
+                              <CheckCircle className="w-3.5 h-3.5" /> Live on eBay
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleListOnEbay}
+                                disabled={listingEbay}
+                                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                              >
+                                {listingEbay && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {listingEbay ? 'Creating listing on eBay…' : 'List on eBay'}
+                              </button>
+                              {ebayListingError && <p className="text-xs text-destructive mt-1.5">{ebayListingError}</p>}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Noon — toggle + searched flat category (no OAuth connect yet,
                     seller pastes their own key from the Channels page) */}
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
@@ -2372,6 +2543,8 @@ function ProductModal({
 
           const items: { id: string; name: string }[] = activeCategoryPicker === 'daraz'
             ? darazCategories
+            : activeCategoryPicker === 'ebay'
+            ? ebayCategories
             : (() => {
                 // TheDersi's categories are 2 levels (parent/child) — turn
                 // them into the same flat breadcrumb style Daraz uses.
@@ -2390,15 +2563,26 @@ function ProductModal({
                 return flat;
               })();
 
-          const selectedId = activeCategoryPicker === 'daraz' ? otherChannels.daraz.categoryId : theDersiCategoryId;
-          const title = activeCategoryPicker === 'daraz' ? 'Select Daraz Category' : 'Select TheDersi Category';
-          const placeholder = activeCategoryPicker === 'daraz' ? 'Search Daraz categories…' : 'Search TheDersi categories…';
+          const selectedId = activeCategoryPicker === 'daraz' ? otherChannels.daraz.categoryId
+            : activeCategoryPicker === 'ebay' ? otherChannels.ebay.categoryId
+            : theDersiCategoryId;
+          const title = activeCategoryPicker === 'daraz' ? 'Select Daraz Category'
+            : activeCategoryPicker === 'ebay' ? 'Select eBay Category'
+            : 'Select TheDersi Category';
+          const placeholder = activeCategoryPicker === 'daraz' ? 'Search Daraz categories…'
+            : activeCategoryPicker === 'ebay' ? 'Search eBay categories…'
+            : 'Search TheDersi categories…';
 
           const selectItem = (item: { id: string; name: string }) => {
             if (activeCategoryPicker === 'daraz') {
               setOtherChannels((prev) => ({
                 ...prev,
                 daraz: { ...prev.daraz, categoryId: item.id, categoryName: item.name },
+              }));
+            } else if (activeCategoryPicker === 'ebay') {
+              setOtherChannels((prev) => ({
+                ...prev,
+                ebay: { ...prev.ebay, categoryId: item.id, categoryName: item.name },
               }));
             } else {
               setTheDersiCategoryId(item.id);

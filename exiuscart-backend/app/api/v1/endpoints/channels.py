@@ -1072,6 +1072,33 @@ def sync_channel_categories(
         db.commit()
         return {"synced": len(categories), "categories": [c["name"] for c in categories]}
 
+    if conn.channel_type == "ebay":
+        # eBay is OAuth too, and its category tree comes from the Taxonomy
+        # API, keyed by marketplace rather than by country domain like
+        # Daraz — same "own path, own fetch function" shape either way.
+        from app.api.v1.endpoints.ebay import fetch_ebay_categories, _ebay_marketplace_id
+
+        marketplace_id = _ebay_marketplace_id(shop.country)
+        categories = fetch_ebay_categories(marketplace_id, conn, db)
+        if categories is None:
+            cached = db.query(ChannelCategory).filter(
+                ChannelCategory.channel_connection_id == channel_id
+            ).all()
+            return {"synced": 0, "cached": True, "categories": [c.name for c in cached]}
+
+        db.query(ChannelCategory).filter(
+            ChannelCategory.channel_connection_id == channel_id
+        ).delete()
+        for cat in categories:
+            db.add(ChannelCategory(
+                channel_connection_id=channel_id,
+                channel_category_id=str(cat["category_id"]),
+                name=cat["name"],
+                parent_id=None,
+            ))
+        db.commit()
+        return {"synced": len(categories), "categories": [c["name"] for c in categories]}
+
     api_url = _channel_url(conn)
     if not api_url:
         raise HTTPException(status_code=400, detail="No API URL configured for this channel")
