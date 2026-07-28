@@ -12,7 +12,7 @@ class ShopBase(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     country: str = "UAE"
-    currency: str = "AED"
+    currency: str = "USD"
     tax_number: Optional[str] = None
 
 

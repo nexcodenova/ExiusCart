@@ -19,7 +19,7 @@ class Shop(Base):
     address = Column(Text, nullable=True)
     city = Column(String(100), nullable=True)
     country = Column(String(100), default="UAE")
-    currency = Column(String(10), default="AED")
+    currency = Column(String(10), default="USD")
     tax_number = Column(String(50), nullable=True)
     vat_enabled = Column(Boolean, default=False)
     vat_rate = Column(Numeric(5, 2), default=0.00)

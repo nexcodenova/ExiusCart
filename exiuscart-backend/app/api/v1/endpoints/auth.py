@@ -75,7 +75,10 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     if True:
         shop_name = user_data.shop_name or f"{display_name}'s Shop"
         slug = f"{_slugify(shop_name)}-{uuid.uuid4().hex[:6]}"
-        currency = "LKR" if is_thedersi_staff else ("AED" if user_data.country == "AE" else "USD")
+        # Direct ExiusCart signups always default to USD, regardless of
+        # country — sellers can change this anytime in Settings. Only
+        # @thedersi.lk staff accounts default to LKR (TheDersi's own market).
+        currency = "LKR" if is_thedersi_staff else "USD"
         shop = Shop(
             name=shop_name,
             slug=slug,

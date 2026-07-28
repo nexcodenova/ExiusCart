@@ -200,7 +200,7 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
         name=business_name,
         slug=f"{_slugify(business_name)}-{uuid.uuid4().hex[:6]}",
         owner_id=user.id,
-        currency=currency if currency in ("AED", "USD", "LKR") else "AED",
+        currency=currency if currency in ("AED", "USD", "LKR") else "USD",
     )
     db.add(shop)
     db.flush()

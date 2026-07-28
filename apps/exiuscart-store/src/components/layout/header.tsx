@@ -20,6 +20,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { setTheme, resolvedTheme } = useTheme();
   const { currency, setCurrency } = useCurrency();
   const [activeBranchName, setActiveBranchName] = useState<string | null>(null);
+  const [planLabel, setPlanLabel] = useState<string | null>(null);
+  const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [showCurrencyDrop, setShowCurrencyDrop] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -40,7 +42,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   }, []);
 
   useEffect(() => {
-    import('@/lib/api').then(({ shopApi, channelsApi }) => {
+    import('@/lib/api').then(({ shopApi, channelsApi, subscriptionApi }) => {
       const shopId = localStorage.getItem('shop_id');
       shopApi.getAllBranches().then((res) => {
         if (shopId) {
@@ -53,6 +55,11 @@ export function Header({ onMenuClick }: HeaderProps) {
           const hasTheDersi = res.data?.some((c: any) => c.channel_type === 'thedersi') ?? false;
           setIsTheDersiShop(hasTheDersi);
           if (hasTheDersi) setCurrency('LKR');
+        }).catch(() => {});
+        subscriptionApi.getCurrent(shopId).then((res) => {
+          const plan = res.data?.plan;
+          setPlanLabel(plan?.name || null);
+          setDaysLeft(plan?.daysLeft ?? null);
         }).catch(() => {});
       }
     });
@@ -105,12 +112,25 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Search className="w-5 h-5" />
         </button>
 
-        {/* Active branch */}
+        {/* Active branch — also carries the shop's plan + days left, moved
+            here from the sidebar's old shop-info block */}
         {activeBranchName && (
           <Link href="/dashboard/branches"
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 rounded-xl text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition">
             <GitBranch className="w-3.5 h-3.5" />
             <span className="max-w-[120px] truncate">{activeBranchName}</span>
+            {planLabel && (
+              <>
+                <span className="opacity-40">·</span>
+                <span>{planLabel}</span>
+              </>
+            )}
+            {daysLeft != null && (
+              <>
+                <span className="opacity-40">·</span>
+                <span className="opacity-70">{daysLeft}d</span>
+              </>
+            )}
           </Link>
         )}
 

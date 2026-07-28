@@ -46,7 +46,7 @@ export default function SettingsPage() {
 
   const [settings, setSettings] = useState({
     language: 'en',
-    currency: 'AED',
+    currency: 'USD',
     timezone: 'Asia/Dubai',
     theme: 'system',
     vatEnabled: false,
@@ -66,7 +66,7 @@ export default function SettingsPage() {
       const shop = res.data;
       setSettings((prev) => ({
         ...prev,
-        currency: shop.currency ?? 'AED',
+        currency: shop.currency ?? 'USD',
         vatEnabled: shop.vat_enabled ?? false,
         vatRate: shop.vat_rate ?? 0,
         vatLabel: shop.vat_label ?? 'VAT',
