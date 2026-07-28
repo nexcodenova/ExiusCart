@@ -172,8 +172,6 @@ interface SidebarProps {
   onMobileClose: () => void;
 }
 
-const STORAGE_KEY = 'sidebar_open_groups';
-
 export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -182,18 +180,10 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
   const [showProdoraBlocked, setShowProdoraBlocked] = useState<'thedersi' | 'free_trial' | null>(null);
   const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null; isTheDersi: boolean } | null>(null);
   const [userEmail, setUserEmail] = useState('');
-  // Every group starts collapsed — just the group name, nothing expanded —
-  // until the seller explicitly clicks one open. Whatever they've opened
-  // before is remembered via localStorage; anything never touched stays
-  // collapsed, including any newly-added group.
+  // Every group always starts collapsed — just the group name, nothing
+  // expanded — on every page load and every login, no exceptions. Clicking
+  // a group only opens it for the current session; it's not remembered.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setOpenGroups(new Set(JSON.parse(saved)));
-    } catch {}
-  }, []);
 
   useEffect(() => {
     const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') : null;
@@ -230,7 +220,6 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(next))); } catch {}
       return next;
     });
   }
