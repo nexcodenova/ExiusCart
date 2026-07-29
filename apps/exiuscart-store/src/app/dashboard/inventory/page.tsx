@@ -29,6 +29,7 @@ export default function InventoryPage() {
   const [adjustReason, setAdjustReason] = useState('');
   const [newPrice, setNewPrice] = useState<string>('');
   const [savingPrice, setSavingPrice] = useState(false);
+  const [generatingSkus, setGeneratingSkus] = useState(false);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const { sym } = useCurrency();
 
@@ -38,7 +39,7 @@ export default function InventoryPage() {
     try {
       const res = await productsApi.getAll(shopId);
       setItems(res.data.map((p: any) => ({
-        id: p.id, name: p.name, sku: p.sku, category: p.category?.name ?? (typeof p.category === 'string' ? p.category : ''),
+        id: p.id, name: p.name, sku: p.sku ?? '', category: p.category?.name ?? (typeof p.category === 'string' ? p.category : ''),
         stock: p.stock ?? p.quantity ?? 0,
         minStock: p.lowStockAlert ?? p.low_stock_threshold ?? 5,
         cost: p.costPrice ?? p.cost_price ?? 0,
@@ -88,6 +89,17 @@ export default function InventoryPage() {
   const outOfStock = items.filter(i => i.stock === 0).length;
   const lowStock = items.filter(i => i.stock > 0 && i.stock <= i.minStock).length;
   const inventoryValue = items.reduce((sum, i) => sum + i.price * i.stock, 0);
+  const missingSkuCount = items.filter(i => !i.sku).length;
+
+  const handleGenerateSkus = async () => {
+    if (!shopId) return;
+    setGeneratingSkus(true);
+    try {
+      await productsApi.backfillSkus(shopId);
+      await fetchInventory();
+    } catch {}
+    setGeneratingSkus(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -97,20 +109,40 @@ export default function InventoryPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total SKUs', icon: Package, value: loading ? '—' : String(items.length), color: '' },
           { label: 'Low Stock', icon: AlertTriangle, value: loading ? '—' : String(lowStock), color: 'text-orange-600 dark:text-orange-400' },
           { label: 'Out of Stock', icon: PackageX, value: loading ? '—' : String(outOfStock), color: 'text-red-600 dark:text-red-400' },
           { label: 'Inventory Value', icon: DollarSign, value: loading ? '—' : `${inventoryValue.toLocaleString()} ${sym}`, color: '' },
         ].map(({ label, icon: Icon, value, color }) => (
-          <div key={label} className="bg-card rounded-2xl border border-border p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Icon className="h-5 w-5 text-foreground/70" /></div>
-            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-            <p className={`mt-0.5 text-2xl font-bold tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
+          <div key={label} className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className="h-4 w-4 text-foreground/70" /></div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground truncate">{label}</p>
+              <p className={`text-lg font-bold leading-tight tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
+            </div>
           </div>
         ))}
       </div>
+
+      {/* Missing SKU banner */}
+      {!loading && missingSkuCount > 0 && (
+        <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-sm text-orange-600 dark:text-orange-400">
+            <span className="font-semibold">{missingSkuCount}</span> product{missingSkuCount !== 1 ? 's' : ''} {missingSkuCount !== 1 ? "don't" : "doesn't"} have a SKU yet.
+          </p>
+          <button
+            type="button"
+            onClick={handleGenerateSkus}
+            disabled={generatingSkus}
+            className="inline-flex items-center gap-2 text-xs px-3 py-1.5 bg-orange-500/15 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-500/25 transition font-medium disabled:opacity-50"
+          >
+            {generatingSkus && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Generate missing SKUs
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-card rounded-2xl border border-border p-4 flex flex-col sm:flex-row gap-4">
@@ -161,6 +193,7 @@ export default function InventoryPage() {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">#</th>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">Product</th>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">SKU</th>
                   <th className="text-left p-4 text-sm font-medium text-muted-foreground">Category</th>
@@ -172,18 +205,23 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((item) => {
+                {filtered.map((item, index) => {
                   const isOut = item.stock === 0;
                   const isLow = item.stock > 0 && item.stock <= item.minStock;
                   return (
                     <tr key={item.id} className="hover:bg-muted/30 transition">
+                      <td className="p-4"><span className="text-sm text-muted-foreground tabular-nums">{index + 1}</span></td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           {(isOut || isLow) && <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${isOut ? 'text-red-500' : 'text-orange-500'}`} />}
                           <span className="font-medium text-foreground">{item.name}</span>
                         </div>
                       </td>
-                      <td className="p-4"><span className="text-sm text-muted-foreground font-mono">{item.sku}</span></td>
+                      <td className="p-4">
+                        {item.sku
+                          ? <span className="text-sm text-muted-foreground font-mono">{item.sku}</span>
+                          : <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">Missing</span>}
+                      </td>
                       <td className="p-4"><span className="text-sm text-foreground">{item.category}</span></td>
                       <td className="p-4 text-center">
                         <span className={`text-sm font-semibold px-2 py-1 rounded-full ${isOut ? 'bg-red-500/10 text-red-600 dark:text-red-400' : isLow ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400' : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>

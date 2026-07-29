@@ -84,17 +84,19 @@ export default function CustomersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total customers', icon: Users, value: loading ? '—' : String(customers.length) },
           { label: 'VIP customers', icon: Star, value: loading ? '—' : String(vipCount) },
           { label: 'Total revenue', icon: Wallet, value: loading ? '—' : `${totalRevenue.toLocaleString()} ${sym}` },
           { label: 'Avg. spent', icon: TrendingUp, value: loading || customers.length === 0 ? '—' : `${Math.round(totalRevenue / customers.length).toLocaleString()} ${sym}` },
         ].map(({ label, icon: Icon, value }) => (
-          <div key={label} className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Icon className="h-5 w-5 text-foreground/70" /></div>
-            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-            <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
+          <div key={label} className="rounded-xl border border-border bg-card p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className="h-4 w-4 text-foreground/70" /></div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground truncate">{label}</p>
+              <p className="text-lg font-bold leading-tight tracking-tight tabular-nums text-foreground">{value}</p>
+            </div>
           </div>
         ))}
       </div>

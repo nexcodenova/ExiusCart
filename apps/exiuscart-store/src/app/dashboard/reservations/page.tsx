@@ -151,20 +151,22 @@ export default function ReservationsPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Active reservations', icon: BookmarkCheck, value: loading ? '—' : String(summary?.total_active ?? 0), color: '' },
           { label: 'Soft holds (2-day)', icon: Clock, value: loading ? '—' : String(summary?.soft_holds ?? 0), sub: loading ? '' : `${summary?.soft_hold_qty ?? 0} units`, color: 'text-yellow-600 dark:text-yellow-400' },
           { label: 'Confirmed', icon: Lock, value: loading ? '—' : String(summary?.confirmed ?? 0), sub: loading ? '' : `${summary?.confirmed_qty ?? 0} units`, color: 'text-indigo-600 dark:text-indigo-400' },
           { label: 'Expiring today', icon: AlertTriangle, value: loading ? '—' : String(summary?.expiring_today ?? 0), color: (summary?.expiring_today ?? 0) > 0 ? 'text-red-500' : '' },
         ].map(({ label, icon: Icon, value, sub, color }) => (
-          <div key={label} className="bg-card rounded-2xl border border-border p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-              <Icon className="h-5 w-5 text-foreground/70" />
+          <div key={label} className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+              <Icon className="h-4 w-4 text-foreground/70" />
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-            <p className={`mt-0.5 text-2xl font-bold tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
-            {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground truncate">{label}</p>
+              <p className={`text-lg font-bold leading-tight tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
+              {sub && <p className="text-[11px] text-muted-foreground truncate">{sub}</p>}
+            </div>
           </div>
         ))}
       </div>

@@ -94,6 +94,13 @@
   * {
     @apply border-border;
   }
+  html, body {
+    /* Defensive: any single element that's a few px too wide on a small
+       viewport shouldn't be able to scroll the whole page sideways.
+       overflow-x only — leaves vertical scroll (and position: sticky,
+       which tracks the nearest vertical scroll container) untouched. */
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;

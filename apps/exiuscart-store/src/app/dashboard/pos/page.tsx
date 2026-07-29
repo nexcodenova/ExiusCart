@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Percent,
+  Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Percent, Landmark,
   Receipt, Printer, Check, ShoppingCart, Package,
   User, Download, Scan, Zap, Loader2, Camera, PauseCircle, PlayCircle, Clock,
   Star, RotateCcw, MessageSquare, BarChart2, ArrowLeftRight, Gift,
@@ -62,12 +62,19 @@ interface ShopData {
   showVatBreakdown: boolean;
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  card: 'Card',
+  bank_transfer: 'Bank Transfer',
+};
+
 interface ZReport {
   date: string;
   transactions: number;
   totalSales: number;
   cashSales: number;
   cardSales: number;
+  bankTransferSales: number;
   splitSales: number;
   avgOrder: number;
   totalItems: number;
@@ -85,7 +92,7 @@ export default function POSPage() {
   const [serviceChargeType, setServiceChargeType] = useState<'percent' | 'fixed'>('percent');
   const [showCheckout, setShowCheckout] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'split'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer' | 'split'>('cash');
   const [splitCashAmount, setSplitCashAmount] = useState(0);
   const [isReturnMode, setIsReturnMode] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -404,7 +411,7 @@ export default function POSPage() {
         return isToday && (o.source === 'pos' || o.source === 'pos_return');
       });
 
-      let totalSales = 0, cashSales = 0, cardSales = 0, splitSales = 0, totalItems = 0, returns = 0;
+      let totalSales = 0, cashSales = 0, cardSales = 0, bankTransferSales = 0, splitSales = 0, totalItems = 0, returns = 0;
       for (const o of todayOrders) {
         const amount = parseFloat(o.total || 0);
         totalItems += (o.items || []).reduce((s: number, i: any) => s + Math.abs(i.quantity || 1), 0);
@@ -415,6 +422,7 @@ export default function POSPage() {
           const notes = o.notes || '';
           if (notes.includes('Payment: split')) splitSales += amount;
           else if (notes.includes('Payment: card')) cardSales += amount;
+          else if (notes.includes('Payment: bank_transfer')) bankTransferSales += amount;
           else cashSales += amount;
         }
       }
@@ -425,6 +433,7 @@ export default function POSPage() {
         totalSales,
         cashSales,
         cardSales,
+        bankTransferSales,
         splitSales,
         avgOrder: txCount > 0 ? totalSales / txCount : 0,
         totalItems,
@@ -540,6 +549,7 @@ export default function POSPage() {
                   <ZStat label="Total Sales" value={`${sym}${zReport.totalSales.toFixed(2)}`} highlight />
                   <ZStat label="Cash" value={`${sym}${zReport.cashSales.toFixed(2)}`} />
                   <ZStat label="Card" value={`${sym}${zReport.cardSales.toFixed(2)}`} />
+                  {zReport.bankTransferSales > 0 && <ZStat label="Bank Transfer" value={`${sym}${zReport.bankTransferSales.toFixed(2)}`} />}
                   {zReport.splitSales > 0 && <ZStat label="Split" value={`${sym}${zReport.splitSales.toFixed(2)}`} />}
                   <ZStat label="Avg Order" value={`${sym}${zReport.avgOrder.toFixed(2)}`} />
                   <ZStat label="Items Sold" value={String(zReport.totalItems)} />
@@ -1103,8 +1113,8 @@ export default function POSPage() {
               {/* Payment Method */}
               <div>
                 <h3 className="text-sm font-medium text-foreground mb-3">Payment Method</h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['cash', 'card', 'split'] as const).map(method => (
+                <div className="grid grid-cols-4 gap-2">
+                  {(['cash', 'card', 'bank_transfer', 'split'] as const).map(method => (
                     <button key={method} type="button" onClick={() => setPaymentMethod(method)}
                       className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition ${
                         paymentMethod === method
@@ -1113,9 +1123,10 @@ export default function POSPage() {
                       }`}>
                       {method === 'cash' && <Banknote className={`w-6 h-6 ${paymentMethod === 'cash' ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'}`} />}
                       {method === 'card' && <CreditCard className={`w-6 h-6 ${paymentMethod === 'card' ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'}`} />}
+                      {method === 'bank_transfer' && <Landmark className={`w-6 h-6 ${paymentMethod === 'bank_transfer' ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'}`} />}
                       {method === 'split' && <ArrowLeftRight className={`w-6 h-6 ${paymentMethod === 'split' ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'}`} />}
-                      <span className={`text-xs font-medium capitalize ${paymentMethod === method ? 'text-indigo-600 dark:text-indigo-400' : 'text-foreground'}`}>
-                        {method}
+                      <span className={`text-xs font-medium ${paymentMethod === method ? 'text-indigo-600 dark:text-indigo-400' : 'text-foreground'}`}>
+                        {PAYMENT_METHOD_LABELS[method] ?? method}
                       </span>
                     </button>
                   ))}
@@ -1262,7 +1273,7 @@ export default function POSPage() {
                   {isReturnMode ? 'Refund via ' : 'Paid via '}
                   {paymentMethod === 'split'
                     ? `Split (${sym}${splitCashAmount.toFixed(2)} cash + ${sym}${splitCardAmount.toFixed(2)} card)`
-                    : paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)
+                    : PAYMENT_METHOD_LABELS[paymentMethod] ?? paymentMethod
                   }
                 </p>
               </div>

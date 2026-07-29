@@ -48,6 +48,8 @@ interface Order {
   carrier: string | null;
   shipped_at: string | null;
   estimated_delivery: string | null;
+  fulfillment_supplier: string | null;
+  fulfillment_status: string | null;
   items: OrderItem[];
   created_at: string;
 }
@@ -219,6 +221,23 @@ const SUPPLIER_LABELS: Record<string, string> = {
   zendrop: 'Zendrop',
   hypersku: 'HyperSKU',
   wiio: 'Wiio',
+};
+
+// Short form for the compact Fulfillment table badge — SUPPLIER_LABELS'
+// full names ("CJ Dropshipping") don't fit a dense table cell.
+const SUPPLIER_SHORT: Record<string, string> = {
+  cj: 'CJ',
+  zendrop: 'Zendrop',
+  hypersku: 'HyperSKU',
+  wiio: 'Wiio',
+};
+
+const FULFILLMENT_STYLES: Record<string, string> = {
+  pending: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+  processing: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  shipped: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+  delivered: 'bg-green-500/10 text-green-600 dark:text-green-400',
+  failed: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
 
 interface FulfillModalProps {
@@ -404,6 +423,7 @@ export default function OrdersPage() {
   const [exporting, setExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [channelFilter, setChannelFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState(MONTH_OPTIONS[0].value);
   const [shipTarget, setShipTarget] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
@@ -469,6 +489,7 @@ export default function OrdersPage() {
     try {
       const res = await ordersApi.getAll(shopId, {
         status: statusFilter !== 'all' ? statusFilter : undefined,
+        source: channelFilter !== 'all' ? channelFilter : undefined,
         search: searchQuery || undefined,
         month: monthFilter || undefined,
       });
@@ -481,7 +502,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [shopId, searchQuery, statusFilter, monthFilter]);
+  }, [shopId, searchQuery, statusFilter, channelFilter, monthFilter]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
@@ -597,50 +618,47 @@ export default function OrdersPage() {
       </p>
 
       {/* ── Revenue Overview ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Revenue — hero card */}
-        <div className="col-span-2 lg:col-span-1 rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-indigo-600/10 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 bg-indigo-500/15 rounded-xl">
-              <TrendingUp className="h-4 w-4 text-indigo-500" />
-            </div>
-            <p className="text-sm text-muted-foreground font-medium">Total Revenue</p>
+        <div className="col-span-2 lg:col-span-1 rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-indigo-600/10 p-3 flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/15">
+            <TrendingUp className="h-4 w-4 text-indigo-500" />
           </div>
-          <p className="text-3xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400 tabular-nums">
-            {loading ? '—' : fmt(totalRevenue)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1.5">{salesOrders.length} order{salesOrders.length !== 1 ? 's' : ''} · {monthFilter ? 'this period' : 'all time'}</p>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground font-medium truncate">Total Revenue</p>
+            <p className="text-lg font-bold leading-tight tracking-tight text-indigo-600 dark:text-indigo-400 tabular-nums">
+              {loading ? '—' : fmt(totalRevenue)}
+            </p>
+            <p className="text-[11px] text-muted-foreground truncate">{salesOrders.length} order{salesOrders.length !== 1 ? 's' : ''} · {monthFilter ? 'this period' : 'all time'}</p>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 bg-muted rounded-xl"><BarChart2 className="h-4 w-4 text-foreground/60" /></div>
-            <p className="text-sm text-muted-foreground">Avg Order Value</p>
+        <div className="rounded-xl border border-border bg-card p-3 flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted"><BarChart2 className="h-4 w-4 text-foreground/60" /></div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Avg Order Value</p>
+            <p className="text-lg font-bold leading-tight tracking-tight tabular-nums text-foreground">{loading ? '—' : fmt(avgOrderValue)}</p>
           </div>
-          <p className="text-2xl font-bold tracking-tight tabular-nums text-foreground">{loading ? '—' : fmt(avgOrderValue)}</p>
-          <p className="text-xs text-muted-foreground mt-1.5">Per transaction</p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 bg-green-500/10 rounded-xl"><CheckCircle2 className="h-4 w-4 text-green-500" /></div>
-            <p className="text-sm text-muted-foreground">Collected Revenue</p>
+        <div className="rounded-xl border border-border bg-card p-3 flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-500/10"><CheckCircle2 className="h-4 w-4 text-green-500" /></div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Collected Revenue</p>
+            <p className="text-lg font-bold leading-tight tracking-tight tabular-nums text-green-600 dark:text-green-400">{loading ? '—' : fmt(completedRevenue)}</p>
           </div>
-          <p className="text-2xl font-bold tracking-tight tabular-nums text-green-600 dark:text-green-400">{loading ? '—' : fmt(completedRevenue)}</p>
-          <p className="text-xs text-muted-foreground mt-1.5">Delivered & completed</p>
         </div>
 
-        <div className={`rounded-2xl border bg-card p-5 ${pendingCount > 0 ? 'border-yellow-500/30' : 'border-border'}`}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className={`p-2 rounded-xl ${pendingCount > 0 ? 'bg-yellow-500/10' : 'bg-muted'}`}>
-              <Package className={`h-4 w-4 ${pendingCount > 0 ? 'text-yellow-500' : 'text-foreground/60'}`} />
-            </div>
-            <p className="text-sm text-muted-foreground">Needs Attention</p>
+        <div className={`rounded-xl border bg-card p-3 flex items-center gap-3 ${pendingCount > 0 ? 'border-yellow-500/30' : 'border-border'}`}>
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${pendingCount > 0 ? 'bg-yellow-500/10' : 'bg-muted'}`}>
+            <Package className={`h-4 w-4 ${pendingCount > 0 ? 'text-yellow-500' : 'text-foreground/60'}`} />
           </div>
-          <p className={`text-2xl font-bold tracking-tight tabular-nums ${pendingCount > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-foreground'}`}>
-            {loading ? '—' : pendingCount}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1.5">Pending orders</p>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Needs Attention</p>
+            <p className={`text-lg font-bold leading-tight tracking-tight tabular-nums ${pendingCount > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-foreground'}`}>
+              {loading ? '—' : pendingCount}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -656,8 +674,8 @@ export default function OrdersPage() {
               const meta = CHANNEL_META[channel] ?? { label: channel, bg: 'bg-muted', text: 'text-foreground', dot: 'bg-gray-400', border: 'border-border' };
               const pct = totalRevenue > 0 ? (stats.revenue / totalRevenue) * 100 : 0;
               return (
-                <div key={channel} className={`rounded-2xl border ${meta.border} bg-card p-4`}>
-                  <div className="flex items-center justify-between mb-3">
+                <div key={channel} className={`rounded-xl border ${meta.border} bg-card p-3`}>
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className={`w-2.5 h-2.5 rounded-full ${meta.dot} shrink-0`} />
                       <p className={`text-xs font-semibold ${meta.text}`}>{meta.label}</p>
@@ -666,12 +684,12 @@ export default function OrdersPage() {
                       {pct.toFixed(0)}%
                     </span>
                   </div>
-                  <p className="text-xl font-bold text-foreground tabular-nums">{fmt(stats.revenue)}</p>
+                  <p className="text-lg font-bold text-foreground tabular-nums">{fmt(stats.revenue)}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{stats.orders} order{stats.orders !== 1 ? 's' : ''}</p>
 
                   {/* POS payment breakdown */}
                   {channel === 'pos' && stats.orders > 0 && (
-                    <div className="mt-3 pt-3 border-t border-border flex gap-3 text-xs text-muted-foreground">
+                    <div className="mt-2 pt-2 border-t border-border flex gap-3 text-xs text-muted-foreground">
                       {stats.cash > 0 && (
                         <span className="flex items-center gap-1">
                           <Banknote className="w-3 h-3" /> {stats.cash}
@@ -691,7 +709,7 @@ export default function OrdersPage() {
                   )}
 
                   {/* Revenue bar */}
-                  <div className="mt-3 h-1 bg-muted rounded-full overflow-hidden">
+                  <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
                     <div className={`h-full ${meta.dot} rounded-full transition-all`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -729,6 +747,20 @@ export default function OrdersPage() {
         </div>
         <div className="relative">
           <select
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value)}
+            aria-label="Filter by channel"
+            className="appearance-none w-full sm:w-48 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+          >
+            <option value="all">All Channels</option>
+            {Object.entries(CHANNEL_META).map(([key, meta]) => (
+              <option key={key} value={key}>{meta.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+        </div>
+        <div className="relative">
+          <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label="Filter by status"
@@ -759,12 +791,12 @@ export default function OrdersPage() {
           <div className="p-16 text-center">
             <ShoppingCart className="w-14 h-14 text-muted-foreground mx-auto mb-4 opacity-40" />
             <h3 className="font-semibold text-foreground mb-1">
-              {searchQuery || statusFilter !== 'all' ? 'No orders found' : 'No orders yet'}
+              {searchQuery || statusFilter !== 'all' || channelFilter !== 'all' ? 'No orders found' : 'No orders yet'}
             </h3>
             <p className="text-sm text-muted-foreground mb-5">
-              {searchQuery || statusFilter !== 'all' ? 'Try adjusting your search or filters' : 'Orders will appear here once you make your first sale'}
+              {searchQuery || statusFilter !== 'all' || channelFilter !== 'all' ? 'Try adjusting your search or filters' : 'Orders will appear here once you make your first sale'}
             </p>
-            {!searchQuery && statusFilter === 'all' && (
+            {!searchQuery && statusFilter === 'all' && channelFilter === 'all' && (
               <Link href="/dashboard/pos" className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition">
                 <ShoppingCart className="w-4 h-4" /> Go to POS
               </Link>
@@ -775,31 +807,48 @@ export default function OrdersPage() {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Order</th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground hidden sm:table-cell">Source</th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Date</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total</th>
-                  <th className="text-center p-4 text-sm font-medium text-muted-foreground hidden md:table-cell">Payment</th>
-                  <th className="text-center p-4 text-sm font-medium text-muted-foreground">Status</th>
-                  <th className="text-center p-4 text-sm font-medium text-muted-foreground">Actions</th>
+                  <th className="text-left p-3 text-xs font-medium text-muted-foreground">Order</th>
+                  <th className="text-left p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">Customer</th>
+                  <th className="text-left p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">Items</th>
+                  <th className="text-left p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">Channel</th>
+                  <th className="text-right p-3 text-xs font-medium text-muted-foreground">Total</th>
+                  <th className="text-center p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">Payment</th>
+                  <th className="text-center p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">Fulfillment</th>
+                  <th className="text-center p-3 text-xs font-medium text-muted-foreground">Status</th>
+                  <th className="text-center p-3 text-xs font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {orders.map((order) => (
                   <>
                     <tr key={order.id} className="hover:bg-muted/30 transition cursor-pointer" onClick={() => window.location.href = `/dashboard/orders/${order.id}`}>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-muted rounded-lg">
-                            {order.status === 'shipped' ? <Truck className="w-4 h-4 text-cyan-500" /> : <FileText className="w-4 h-4 text-muted-foreground" />}
+                      <td className="p-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-1.5 bg-muted rounded-lg">
+                            {order.status === 'shipped' ? <Truck className="w-3.5 h-3.5 text-cyan-500" /> : <FileText className="w-3.5 h-3.5 text-muted-foreground" />}
                           </div>
                           <div>
                             <p className="text-sm font-medium text-foreground">{order.order_number}</p>
-                            <p className="text-xs text-muted-foreground">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(order.created_at).toLocaleDateString('en-GB')} · {new Date(order.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 hidden sm:table-cell">
+                      <td className="p-3 hidden md:table-cell">
+                        {order.customer_name ? (
+                          <div>
+                            <p className="text-xs text-foreground font-medium">{order.customer_name}</p>
+                            {order.customer_phone && <p className="text-xs text-muted-foreground">{order.customer_phone}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="p-3 hidden sm:table-cell">
+                        <span className="text-xs text-muted-foreground">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</span>
+                      </td>
+                      <td className="p-3 hidden sm:table-cell">
                         {order.source === 'pos' ? (
                           <div className="flex flex-col gap-1">
                             <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 self-start">POS</span>
@@ -814,25 +863,15 @@ export default function OrdersPage() {
                               return <p className={`text-xs capitalize font-medium ${cls}`}>{method}</p>;
                             })()}
                           </div>
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            {(() => {
-                              const meta = CHANNEL_META[order.source] ?? { label: order.source, bg: 'bg-muted', text: 'text-muted-foreground', dot: 'bg-gray-400', border: 'border-border' };
-                              return <span className={`text-xs px-2 py-1 rounded-full self-start ${meta.bg} ${meta.text}`}>{meta.label}</span>;
-                            })()}
-                            {order.customer_name && <p className="text-xs text-foreground font-medium">{order.customer_name}</p>}
-                            {order.customer_phone && <p className="text-xs text-muted-foreground">{order.customer_phone}</p>}
-                          </div>
-                        )}
+                        ) : (() => {
+                          const meta = CHANNEL_META[order.source] ?? { label: order.source, bg: 'bg-muted', text: 'text-muted-foreground', dot: 'bg-gray-400', border: 'border-border' };
+                          return <span className={`text-xs px-2 py-1 rounded-full self-start ${meta.bg} ${meta.text}`}>{meta.label}</span>;
+                        })()}
                       </td>
-                      <td className="p-4">
-                        <p className="text-sm text-foreground">{new Date(order.created_at).toLocaleDateString('en-GB')}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
-                      </td>
-                      <td className="p-4 text-right">
+                      <td className="p-3 text-right">
                         <span className="text-sm font-semibold text-foreground">{fmt(order.total)}</span>
                       </td>
-                      <td className="p-4 text-center hidden md:table-cell">
+                      <td className="p-3 text-center hidden md:table-cell">
                         <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${
                           order.payment_status === 'paid' ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                           : order.payment_status === 'pending' ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
@@ -840,12 +879,23 @@ export default function OrdersPage() {
                           : 'bg-red-500/10 text-red-500'
                         }`}>{order.payment_status}</span>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-3 text-center hidden sm:table-cell">
+                        {order.fulfillment_supplier ? (
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${FULFILLMENT_STYLES[order.fulfillment_status ?? ''] ?? 'bg-muted text-muted-foreground'}`}>
+                            {order.fulfillment_status === 'delivered' ? 'Delivered'
+                              : order.fulfillment_status === 'failed' ? 'Failed'
+                              : `Sent · ${SUPPLIER_SHORT[order.fulfillment_supplier] ?? order.fulfillment_supplier}`}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
                         <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${STATUS_STYLES[order.status] ?? 'bg-muted text-muted-foreground'}`}>
                           {order.status}
                         </span>
                       </td>
-                      <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
+                      <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
                         {updatingId === order.id ? (
                           <span className="text-xs text-muted-foreground">Updating…</span>
                         ) : order.source === 'thedersi' ? (
@@ -907,7 +957,7 @@ export default function OrdersPage() {
                     {/* Tracking info row for shipped orders */}
                     {order.status === 'shipped' && order.tracking_number && (
                       <tr key={`${order.id}-tracking`} className="bg-cyan-500/5 border-b border-cyan-500/10">
-                        <td colSpan={7} className="px-6 py-3">
+                        <td colSpan={9} className="px-6 py-3">
                           <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
                             <div className="flex items-center gap-1.5">
                               <Truck className="w-3.5 h-3.5 text-cyan-500" />

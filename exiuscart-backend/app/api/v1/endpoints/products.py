@@ -225,8 +225,36 @@ async def create_product(
     db.commit()
     db.refresh(new_product)
 
+    if not new_product.sku:
+        new_product.sku = f"SKU{new_product.id:06d}"
+        db.commit()
+        db.refresh(new_product)
+
     trigger_product_sync(new_product.id, shop_id, background_tasks)
     return new_product
+
+
+@router.post("/shops/{shop_id}/products/backfill-skus")
+async def backfill_product_skus(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """One-click fix for products created before SKUs were required (or
+    imported via CSV without one) — assigns each a stable SKU derived from
+    its own id, same format new products get automatically."""
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    missing = db.query(Product).filter(
+        Product.shop_id == shop_id,
+        (Product.sku == None) | (Product.sku == "")
+    ).all()
+    for p in missing:
+        p.sku = f"SKU{p.id:06d}"
+    db.commit()
+    return {"updated": len(missing)}
 
 
 @router.get("/shops/{shop_id}/products", response_model=List[ProductResponse])

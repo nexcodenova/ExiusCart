@@ -160,7 +160,7 @@ export default function AccountingPage() {
                 </div>
               )}
 
-              <div className={`grid gap-4 ${(!isTheDersiSeller || vatEnabled) ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4'}`}>
+              <div className={`grid gap-3 ${(!isTheDersiSeller || vatEnabled) ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4'}`}>
                 {[
                   { label: 'Total Revenue',   value: fmt(totalRevenue),  icon: TrendingUp,    color: 'text-green-500',  bg: 'bg-green-500/10',  show: true },
                   { label: 'Total Orders',    value: totalOrders.toString(),  icon: FileText,      color: 'text-blue-500',   bg: 'bg-blue-500/10',   show: true },
@@ -168,12 +168,14 @@ export default function AccountingPage() {
                   { label: 'VAT Payable',     value: fmt(totalRevenue * 0.05 / 1.05), icon: Receipt, color: 'text-orange-500', bg: 'bg-orange-500/10', show: !isTheDersiSeller || vatEnabled },
                   { label: 'Refund Amount',   value: summary ? fmt(summary.refund_amount) : '—', icon: RefreshCcw, color: 'text-red-500', bg: 'bg-red-500/10', show: true },
                 ].filter((s) => s.show).map((s) => (
-                  <div key={s.label} className="bg-card rounded-xl border border-border p-5">
-                    <div className={`w-10 h-10 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
-                      <s.icon className={`w-5 h-5 ${s.color}`} />
+                  <div key={s.label} className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+                    <div className={`w-9 h-9 shrink-0 rounded-lg ${s.bg} flex items-center justify-center`}>
+                      <s.icon className={`w-4 h-4 ${s.color}`} />
                     </div>
-                    <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-                    <p className="text-xl font-bold text-foreground">{s.value}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground truncate">{s.label}</p>
+                      <p className="text-lg font-bold leading-tight text-foreground">{s.value}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -315,7 +317,7 @@ export default function AccountingPage() {
 
               {plData && (
                 <>
-                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                     {[
                       { label: 'Revenue', value: fmt(plData.revenue ?? 0), color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/10', icon: TrendingUp },
                       { label: 'Cost of Goods', value: fmt(plData.cost_of_goods ?? 0), color: 'text-red-500', bg: 'bg-red-500/10', icon: TrendingDown },
@@ -323,12 +325,14 @@ export default function AccountingPage() {
                       { label: 'Total Expenses', value: fmt(plData.total_expenses ?? 0), color: 'text-orange-500', bg: 'bg-orange-500/10', icon: TrendingDown },
                       { label: 'Net Profit', value: fmt(plData.net_profit ?? 0), color: (plData.net_profit ?? 0) >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-red-500', bg: (plData.net_profit ?? 0) >= 0 ? 'bg-indigo-500/10' : 'bg-red-500/10', icon: BarChart3 },
                     ].map(s => (
-                      <div key={s.label} className="bg-card rounded-xl border border-border p-5">
-                        <div className={`w-10 h-10 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
-                          <s.icon className={`w-5 h-5 ${s.color}`} />
+                      <div key={s.label} className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+                        <div className={`w-9 h-9 shrink-0 rounded-lg ${s.bg} flex items-center justify-center`}>
+                          <s.icon className={`w-4 h-4 ${s.color}`} />
                         </div>
-                        <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-                        <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground truncate">{s.label}</p>
+                          <p className={`text-base font-bold leading-tight ${s.color}`}>{s.value}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -475,19 +479,21 @@ export default function AccountingPage() {
               ) : cashFlow ? (
                 <>
                   {/* Summary cards */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     {[
                       { label: 'Total Inflows',  value: fmt(cashFlow.total_inflows),  icon: ArrowUpRight,   color: 'text-green-500',  bg: 'bg-green-500/10'  },
                       { label: 'Total Outflows', value: fmt(cashFlow.total_outflows), icon: ArrowDownRight, color: 'text-red-500',    bg: 'bg-red-500/10'    },
                       { label: 'Expenses',       value: fmt(cashFlow.total_expenses), icon: Receipt,        color: 'text-orange-500', bg: 'bg-orange-500/10' },
                       { label: 'Net Cash Flow',  value: fmt(cashFlow.net_cash_flow),  icon: Droplets,       color: cashFlow.net_cash_flow >= 0 ? 'text-green-600' : 'text-red-500', bg: cashFlow.net_cash_flow >= 0 ? 'bg-green-500/10' : 'bg-red-500/10' },
                     ].map((s) => (
-                      <div key={s.label} className="bg-card rounded-xl border border-border p-5">
-                        <div className={`w-10 h-10 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
-                          <s.icon className={`w-5 h-5 ${s.color}`} />
+                      <div key={s.label} className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+                        <div className={`w-9 h-9 shrink-0 rounded-lg ${s.bg} flex items-center justify-center`}>
+                          <s.icon className={`w-4 h-4 ${s.color}`} />
                         </div>
-                        <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-                        <p className="text-xl font-bold text-foreground">{s.value}</p>
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
+                          <p className="text-lg font-bold leading-tight text-foreground">{s.value}</p>
+                        </div>
                       </div>
                     ))}
                   </div>

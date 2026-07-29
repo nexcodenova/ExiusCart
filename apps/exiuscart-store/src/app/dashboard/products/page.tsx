@@ -200,6 +200,7 @@ export default function ProductsPage() {
   const lowStockCount = products.filter((p) => p.stock > 0 && p.stock <= p.lowStockAlert).length;
   const outOfStockCount = products.filter((p) => p.stock === 0).length;
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
+  const [channelFilter, setChannelFilter] = useState<'all' | 'thedersi' | 'daraz' | 'ebay' | 'unlisted'>('all');
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [planType, setPlanType] = useState<string>('');
@@ -247,11 +248,17 @@ export default function ProductsPage() {
     setSelectedForPrint(new Set());
   };
 
-  const filteredProducts = stockFilter === 'low'
+  const stockFiltered = stockFilter === 'low'
     ? products.filter(p => p.stock > 0 && p.stock <= p.lowStockAlert)
     : stockFilter === 'out'
     ? products.filter(p => p.stock === 0)
     : products;
+
+  const filteredProducts = channelFilter === 'unlisted'
+    ? stockFiltered.filter(p => !channelStatuses[p.id] || Object.keys(channelStatuses[p.id]).length === 0)
+    : channelFilter !== 'all'
+    ? stockFiltered.filter(p => !!channelStatuses[p.id]?.[channelFilter])
+    : stockFiltered;
 
   const displayedProducts = [...filteredProducts].sort((a, b) => {
     if (sortBy === 'revenue') return (perfData[b.id]?.revenue ?? 0) - (perfData[a.id]?.revenue ?? 0);
@@ -332,17 +339,19 @@ export default function ProductsPage() {
       <UsageBanner shopId={shopId} show={['products', 'orders']} />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total products', icon: Package, value: loading ? '—' : String(products.length), color: '' },
           { label: 'Categories', icon: Star, value: String(categories.length), color: '' },
           { label: 'Low stock', icon: AlertCircle, value: loading ? '—' : String(lowStockCount), color: lowStockCount > 0 ? 'text-orange-600 dark:text-orange-400' : '' },
           { label: 'Out of stock', icon: AlertCircle, value: loading ? '—' : String(outOfStockCount), color: outOfStockCount > 0 ? 'text-red-600 dark:text-red-400' : '' },
         ].map(({ label, icon: Icon, value, color }) => (
-          <div key={label} className="bg-card rounded-2xl border border-border p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted"><Icon className="h-5 w-5 text-foreground/70" /></div>
-            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-            <p className={`mt-0.5 text-2xl font-bold tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
+          <div key={label} className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className="h-4 w-4 text-foreground/70" /></div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground truncate">{label}</p>
+              <p className={`text-lg font-bold leading-tight tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -405,6 +414,21 @@ export default function ProductsPage() {
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
           </div>
+          <div className="relative">
+            <select
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value as typeof channelFilter)}
+              aria-label="Filter by channel"
+              className="appearance-none w-full sm:w-48 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
+            >
+              <option value="all">All Channels</option>
+              <option value="thedersi">TheDersi</option>
+              <option value="daraz">Daraz</option>
+              <option value="ebay">eBay</option>
+              <option value="unlisted">Not listed anywhere</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+          </div>
           {/* Sort + Stock quick-filters */}
           <div className="flex gap-2 flex-wrap items-center">
             <div className="relative">
@@ -448,17 +472,23 @@ export default function ProductsPage() {
           <div className="p-16 text-center">
             <Package className="w-14 h-14 text-muted-foreground mx-auto mb-4 opacity-40" />
             <h3 className="font-semibold text-foreground mb-1">
-              {searchQuery || selectedCategory !== 'All' || stockFilter !== 'all' ? 'No products found' : 'No products yet'}
+              {searchQuery || selectedCategory !== 'All' || stockFilter !== 'all' || channelFilter !== 'all' ? 'No products found' : 'No products yet'}
             </h3>
             <p className="text-sm text-muted-foreground mb-5">
               {stockFilter !== 'all'
                 ? 'No products match this stock filter'
+                : channelFilter !== 'all'
+                ? 'No products match this channel filter'
                 : searchQuery || selectedCategory !== 'All'
                 ? 'Try adjusting your search or filters'
                 : 'Add your first product to start selling'}
             </p>
             {stockFilter !== 'all' ? (
               <button type="button" onClick={() => setStockFilter('all')} className="inline-flex items-center gap-2 border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition">
+                Clear filter
+              </button>
+            ) : channelFilter !== 'all' ? (
+              <button type="button" onClick={() => setChannelFilter('all')} className="inline-flex items-center gap-2 border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition">
                 Clear filter
               </button>
             ) : !searchQuery && selectedCategory === 'All' && (

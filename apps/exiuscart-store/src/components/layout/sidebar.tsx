@@ -14,19 +14,12 @@ import {
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw, ListChecks,
   Star, MapPin, ShoppingBag,
 } from 'lucide-react';
-import { shopApi, subscriptionApi, channelsApi, usersApi } from '@/lib/api';
-
-// Renders like a lucide icon (accepts className) so it drops straight into
-// MenuItem.icon slots, but shows Prodora's real mark instead of a generic one.
-function ProdoraIcon({ className }: { className?: string }) {
-  return <img src="/prodora-logo.png" alt="" className={className} />;
-}
+import { shopApi, subscriptionApi, channelsApi } from '@/lib/api';
 
 interface MenuItem {
   href: string;
   label: string;
   icon: React.ElementType;
-  external?: boolean;
 }
 interface MenuGroup {
   id: string;
@@ -42,7 +35,6 @@ const GROUPS: MenuGroup[] = [
     label: null,
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: 'https://prodora.exiuscart.com', label: 'Prodora', icon: ProdoraIcon, external: true },
     ],
   },
   {
@@ -177,9 +169,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
-  const [showProdoraBlocked, setShowProdoraBlocked] = useState<'thedersi' | 'free_trial' | null>(null);
   const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null; isTheDersi: boolean } | null>(null);
-  const [userEmail, setUserEmail] = useState('');
   // Every group always starts collapsed — just the group name, nothing
   // expanded — on every page load and every login, no exceptions. Clicking
   // a group only opens it for the current session; it's not remembered.
@@ -191,9 +181,7 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
       shopApi.getMyShop().catch(() => null),
       shopId ? subscriptionApi.getCurrent(shopId).catch(() => null) : Promise.resolve(null),
       shopId ? channelsApi.getConnections(shopId).catch(() => null) : Promise.resolve(null),
-      usersApi.getMe().catch(() => null),
-    ]).then(([shopRes, subRes, connRes, meRes]) => {
-      setUserEmail((meRes as any)?.data?.email || '');
+    ]).then(([shopRes, subRes, connRes]) => {
       const plan = subRes?.data?.plan;
       setShopData({
         name: shopRes?.data?.name || '',
@@ -296,31 +284,6 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
                   .map(item => {
                   const Icon = item.icon;
                   const active = isItemActive(item);
-                  if (item.external) {
-                    return (
-                      <button key={item.href} type="button"
-                        onClick={() => {
-                          if (isTheDersiPlan) setShowProdoraBlocked('thedersi');
-                          else if (plan === 'free_trial') setShowProdoraBlocked('free_trial');
-                          else {
-                            // Pass the account email through so Prodora can
-                            // open straight into its "confirm to continue"
-                            // login step pre-filled, instead of landing on
-                            // a bare homepage the seller has to click around
-                            // on and retype an email they never typed here.
-                            const url = userEmail
-                              ? `${item.href}?email=${encodeURIComponent(userEmail)}`
-                              : item.href;
-                            window.open(url, '_blank', 'noopener,noreferrer');
-                          }
-                        }}
-                        title={collapsed ? item.label : undefined}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-400 hover:from-indigo-500/15 hover:to-purple-500/15 font-semibold text-left">
-                        <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
-                        {!collapsed && <span className="text-sm">{item.label}</span>}
-                      </button>
-                    );
-                  }
                   return (
                     <Link key={item.href} href={item.href} onClick={onMobileClose}
                       title={collapsed ? item.label : undefined}
@@ -493,39 +456,6 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
         </div>
       )}
 
-      {/* Prodora access blocked — TheDersi sellers never get it; free trial needs to upgrade */}
-      {showProdoraBlocked && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowProdoraBlocked(null)}>
-          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/15 mb-4 mx-auto">
-              <ProdoraIcon className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-foreground text-center mb-2">Prodora</h3>
-            <p className="text-sm text-muted-foreground text-center mb-6">
-              {showProdoraBlocked === 'thedersi'
-                ? 'This is only for ExiusCart direct users.'
-                : 'This is only for paid users.'}
-            </p>
-            {showProdoraBlocked === 'thedersi' ? (
-              <button type="button" onClick={() => setShowProdoraBlocked(null)}
-                className="w-full py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
-                Got it
-              </button>
-            ) : (
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setShowProdoraBlocked(null)}
-                  className="flex-1 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
-                  Cancel
-                </button>
-                <Link href="/dashboard/billing" onClick={() => setShowProdoraBlocked(null)}
-                  className="flex-1 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold text-center transition">
-                  Upgrade
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </>
   );
 }

@@ -29,6 +29,7 @@ const ACTION_LABELS: Record<string, string> = {
   update_stock: 'Update Stock',
   update_price: 'Update Price',
   sync_order: 'Sync Order',
+  listing_status: 'Listing Status',
 };
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || ''; }

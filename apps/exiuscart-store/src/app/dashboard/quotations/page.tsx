@@ -129,20 +129,22 @@ export default function QuotationsPage() {
 
       <UsageBanner shopId={shopId} show={['quotation_emails']} />
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Total quotes', icon: FileText, value: quotations.length, color: '' },
           { label: 'Pending', icon: Clock, value: quotations.filter(q => q.status === 'pending').length, color: 'text-yellow-600 dark:text-yellow-400' },
           { label: 'Accepted', icon: CheckCircle2, value: quotations.filter(q => q.status === 'accepted').length, color: 'text-green-600 dark:text-green-400' },
         ].map(({ label, icon: Icon, value, color }) => (
-          <div key={label} className="bg-card rounded-2xl border border-border p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-              <Icon className="h-5 w-5 text-foreground/70" />
+          <div key={label} className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+              <Icon className="h-4 w-4 text-foreground/70" />
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-            <p className={`mt-0.5 text-2xl font-bold tracking-tight tabular-nums ${color || 'text-foreground'}`}>
-              {loading ? '—' : value}
-            </p>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground truncate">{label}</p>
+              <p className={`text-lg font-bold leading-tight tracking-tight tabular-nums ${color || 'text-foreground'}`}>
+                {loading ? '—' : value}
+              </p>
+            </div>
           </div>
         ))}
       </div>

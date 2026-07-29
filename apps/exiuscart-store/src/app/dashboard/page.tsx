@@ -3,14 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  ShoppingBag, Package, Users, ArrowUp, ArrowDown, AlertTriangle,
+  ShoppingBag, Users, AlertTriangle,
   ShoppingCart, Plus, FileText, BarChart3, Wallet, TrendingUp,
-  Activity, Target, XCircle, UserPlus, CalendarDays, Boxes,
-  RefreshCw, Star, Layers, BadgeDollarSign, Clock, ArrowUpRight, ArrowDownRight,
+  Activity, XCircle, CalendarDays, Boxes,
+  RefreshCw, Star, Layers, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Cell, PieChart, Pie, ComposedChart, Area, Line,
+  Tooltip, Cell, PieChart, Pie, ComposedChart, Area, Line, ReferenceLine,
 } from 'recharts';
 import { dashboardApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
@@ -65,7 +65,8 @@ function buildHourly(data: { hour: number; orders: number; sales: number }[]) {
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const { fmt } = useCurrency();
+  const { fmt, sym } = useCurrency();
+  const compactFmt = (n: number) => `${sym}${new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(n)}`;
 
   useEffect(() => {
     const shopId = localStorage.getItem('shop_id');
@@ -91,7 +92,19 @@ export default function DashboardPage() {
   const channelTotal = channelPie.reduce((s, d) => s + d.value, 0);
 
   const hourly = buildHourly(stats?.hourlyOrders ?? []);
-  const maxMonthRev = Math.max(...(stats?.monthlyRevenue12m ?? []).map(m => m.revenue), 1);
+  const monthly12m = stats?.monthlyRevenue12m ?? [];
+  const maxMonthRev = Math.max(...monthly12m.map(m => m.revenue), 1);
+  const monthlyTotalRev = monthly12m.reduce((s, m) => s + m.revenue, 0);
+  const monthlyAvgRev = monthly12m.length ? monthlyTotalRev / monthly12m.length : 0;
+  const monthlyFirstHalf = monthly12m.slice(0, Math.floor(monthly12m.length / 2));
+  const monthlySecondHalf = monthly12m.slice(Math.floor(monthly12m.length / 2));
+  const monthlyFirstHalfAvg = monthlyFirstHalf.length ? monthlyFirstHalf.reduce((s, m) => s + m.revenue, 0) / monthlyFirstHalf.length : 0;
+  const monthlySecondHalfAvg = monthlySecondHalf.length ? monthlySecondHalf.reduce((s, m) => s + m.revenue, 0) / monthlySecondHalf.length : 0;
+  const monthlyTrendDelta = monthlyFirstHalfAvg > 0 ? Math.round(((monthlySecondHalfAvg - monthlyFirstHalfAvg) / monthlyFirstHalfAvg) * 100) : null;
+
+  const monthlyOrdersFirstHalfAvg = monthlyFirstHalf.length ? monthlyFirstHalf.reduce((s, m) => s + m.orders, 0) / monthlyFirstHalf.length : 0;
+  const monthlyOrdersSecondHalfAvg = monthlySecondHalf.length ? monthlySecondHalf.reduce((s, m) => s + m.orders, 0) / monthlySecondHalf.length : 0;
+  const monthlyOrdersTrendDelta = monthlyOrdersFirstHalfAvg > 0 ? Math.round(((monthlyOrdersSecondHalfAvg - monthlyOrdersFirstHalfAvg) / monthlyOrdersFirstHalfAvg) * 100) : null;
 
   const L = loading;
 
@@ -119,187 +132,228 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Lifetime banner ── */}
-      <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-500/5 to-violet-500/5 p-5">
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <Star className="h-4 w-4 text-indigo-500" />
-          <span className="text-sm font-semibold text-foreground">All-time totals</span>
-          {stats?.memberSince && <span className="text-xs text-muted-foreground ml-1">since {stats.memberSince}</span>}
-        </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div>
-            <p className="text-xs text-muted-foreground">Total revenue</p>
-            <p className="text-2xl font-bold tabular-nums text-indigo-600 dark:text-indigo-400">{L ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Total orders</p>
-            <p className="text-2xl font-bold tabular-nums text-foreground">{L ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Total customers</p>
-            <p className="text-2xl font-bold tabular-nums text-foreground">{L ? '—' : (stats?.customers ?? 0).toLocaleString()}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Active products</p>
-            <p className="text-2xl font-bold tabular-nums text-foreground">{L ? '—' : (stats?.products ?? 0).toLocaleString()}</p>
-          </div>
-        </div>
+      {/* ── Overview ── */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <PeriodCard label="Total Revenue" value={L ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)} delta={monthlyTrendDelta ?? undefined} icon={Wallet} color="indigo" />
+        <PeriodCard label="Total Orders" value={L ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()} delta={monthlyOrdersTrendDelta ?? undefined} icon={ShoppingBag} color="violet" plain />
+        <PeriodCard label="Total Customers" value={L ? '—' : (stats?.customers ?? 0).toLocaleString()} icon={Users} color="emerald" plain />
+        <PeriodCard label="Active Products" value={L ? '—' : (stats?.products ?? 0).toLocaleString()} icon={Boxes} color="amber" plain />
       </div>
 
-      {/* ── 12-month revenue chart + channel ── */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
-          <div className="mb-5 flex items-start justify-between">
-            <div>
-              <h2 className="font-semibold text-foreground">Monthly revenue — last 12 months</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">Bar height = revenue · label = MoM growth %</p>
-            </div>
+      {/* ── Revenue trend + channel/status donuts ── */}
+      <div className="grid gap-5 lg:grid-cols-4">
+      <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-foreground">Revenue trend</h2>
+            <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums text-foreground">{L ? '—' : fmt(monthlyTotalRev, 0)}</p>
+            {!L && monthlyTrendDelta !== null && (
+              <p className={`mt-0.5 flex items-center gap-1 text-xs font-medium ${monthlyTrendDelta >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
+                {monthlyTrendDelta >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                {Math.abs(monthlyTrendDelta)}% vs first half of period
+              </p>
+            )}
           </div>
-          {L || !stats?.monthlyRevenue12m?.length ? (
-            <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
-          ) : (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={stats.monthlyRevenue12m} margin={{ top: 16, right: 4, left: -16, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.01} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="4 4" stroke="#94a3b8" strokeOpacity={0.15} vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={52} />
-                  <Tooltip content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null;
-                    const d = payload[0].payload;
-                    return (
-                      <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
-                        <p className="font-semibold text-foreground mb-1">{label}</p>
-                        <p className="text-muted-foreground">Revenue: <span className="font-semibold text-foreground">{fmt(d.revenue, 0)}</span></p>
-                        <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{d.orders}</span></p>
-                        {d.growth !== 0 && <p className={`font-semibold ${d.growth > 0 ? 'text-emerald-500' : 'text-red-500'}`}>{d.growth > 0 ? '+' : ''}{d.growth}% MoM</p>}
-                      </div>
-                    );
-                  }} />
-                  <Bar dataKey="revenue" radius={[4, 4, 0, 0]} maxBarSize={32}>
-                    {stats.monthlyRevenue12m.map((m, i) => (
-                      <Cell key={i} fill={i === stats.monthlyRevenue12m!.length - 1 ? '#6366f150' : '#6366f118'} />
-                    ))}
-                  </Bar>
-                  <Area type="monotone" dataKey="revenue" fill="url(#revGradient)" stroke="#6366f1" strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: '#6366f1' }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-          {/* Monthly table summary */}
-          {stats?.monthlyRevenue12m && stats.monthlyRevenue12m.some(m => m.revenue > 0) && (
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border text-left text-muted-foreground">
-                    <th className="pb-1.5 font-medium">Month</th>
-                    <th className="pb-1.5 text-right font-medium">Revenue</th>
-                    <th className="pb-1.5 text-right font-medium">Orders</th>
-                    <th className="pb-1.5 text-right font-medium">Growth</th>
+          <div className="flex items-center gap-4 text-xs">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="h-2.5 w-2.5 rounded-sm bg-indigo-500" /> Revenue
+            </span>
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> Orders
+            </span>
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" /> Growth %
+            </span>
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="h-px w-5 border-t-2 border-dashed border-indigo-400 opacity-60" /> Monthly avg
+            </span>
+          </div>
+        </div>
+        {L || !monthly12m.length ? (
+          <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
+        ) : (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={monthly12m} margin={{ top: 6, right: 8, left: -16, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 4" stroke="#94a3b8" strokeOpacity={0.18} vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} minTickGap={24} />
+                <YAxis yAxisId="l" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={52} />
+                <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={32} allowDecimals={false} />
+                <YAxis yAxisId="g" hide domain={['dataMin - 15', 'dataMax + 15']} />
+                <Tooltip content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload;
+                  return (
+                    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
+                      <p className="font-semibold text-foreground mb-1">{label}</p>
+                      <p className="text-muted-foreground">Revenue: <span className="font-semibold text-foreground">{fmt(d.revenue, 0)}</span></p>
+                      <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{d.orders}</span></p>
+                      {d.growth !== 0 && <p className={`font-semibold ${d.growth > 0 ? 'text-emerald-500' : 'text-red-500'}`}>{d.growth > 0 ? '+' : ''}{d.growth}% MoM</p>}
+                    </div>
+                  );
+                }} />
+                <ReferenceLine yAxisId="l" y={monthlyAvgRev} stroke="#6366f1" strokeDasharray="6 3" strokeOpacity={0.45} />
+                <Area yAxisId="r" type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={2} fill="url(#ordersGradient)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
+                <Line yAxisId="g" type="linear" dataKey="growth" stroke="#f59e0b" strokeWidth={1.5} strokeOpacity={0.85} dot={{ r: 2, fill: '#f59e0b', strokeWidth: 0 }} activeDot={{ r: 4, fill: '#f59e0b' }} />
+                <Line yAxisId="l" type="linear" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#6366f1' }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        {/* Monthly table summary */}
+        {stats?.monthlyRevenue12m && stats.monthlyRevenue12m.some(m => m.revenue > 0) && (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border text-left text-muted-foreground">
+                  <th className="pb-1.5 font-medium">Month</th>
+                  <th className="pb-1.5 text-right font-medium">Revenue</th>
+                  <th className="pb-1.5 text-right font-medium">Orders</th>
+                  <th className="pb-1.5 text-right font-medium">Growth</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {[...stats.monthlyRevenue12m].reverse().slice(0, 6).map((m, i) => (
+                  <tr key={i}>
+                    <td className="py-1.5 font-medium text-foreground">{m.month}</td>
+                    <td className="py-1.5 text-right tabular-nums text-foreground">{fmt(m.revenue, 0)}</td>
+                    <td className="py-1.5 text-right tabular-nums text-muted-foreground">{m.orders}</td>
+                    <td className={`py-1.5 text-right tabular-nums font-semibold ${m.growth > 0 ? 'text-emerald-500' : m.growth < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                      {m.growth > 0 ? '+' : ''}{m.growth !== 0 ? `${m.growth}%` : '—'}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {[...stats.monthlyRevenue12m].reverse().slice(0, 6).map((m, i) => (
-                    <tr key={i}>
-                      <td className="py-1.5 font-medium text-foreground">{m.month}</td>
-                      <td className="py-1.5 text-right tabular-nums text-foreground">{fmt(m.revenue, 0)}</td>
-                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">{m.orders}</td>
-                      <td className={`py-1.5 text-right tabular-nums font-semibold ${m.growth > 0 ? 'text-emerald-500' : m.growth < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                        {m.growth > 0 ? '+' : ''}{m.growth !== 0 ? `${m.growth}%` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Revenue by channel */}
-        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-          <div className="mb-4 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            <h2 className="font-semibold text-foreground">Revenue by channel</h2>
-            <span className="ml-auto text-xs text-muted-foreground">30 days</span>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {channelTotal === 0 ? (
-            <div className="flex h-44 items-center justify-center text-sm text-muted-foreground">No sales in last 30 days</div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-baseline justify-between mb-1">
-                <span className="text-xs text-muted-foreground">Total</span>
-                <span className="text-lg font-bold tabular-nums text-foreground">{fmt(channelTotal, 0)}</span>
+        )}
+      </div>
+
+      {/* Revenue by channel */}
+      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Revenue by channel</h2>
+          <span className="ml-auto text-xs text-muted-foreground">30 days</span>
+        </div>
+        {channelTotal === 0 ? (
+          <div className="flex h-44 items-center justify-center text-sm text-muted-foreground">No sales in last 30 days</div>
+        ) : (
+          <div className="space-y-2">
+            <div className="relative mx-auto h-40 w-40 mb-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={channelPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none">
+                    {channelPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v: any, n: any) => [fmt(v, 0), n]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-[10px] text-muted-foreground">Total</span>
+                <span className="text-sm font-bold tabular-nums text-foreground">{compactFmt(channelTotal)}</span>
               </div>
-              {channelPie.sort((a, b) => b.value - a.value).map(c => {
-                const pct = channelTotal > 0 ? (c.value / channelTotal) * 100 : 0;
-                return (
-                  <div key={c.name}>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="flex items-center gap-2 font-medium text-foreground">
-                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: c.color }} />
-                        {c.name}
-                      </span>
-                      <span className="flex items-center gap-3 tabular-nums text-xs">
-                        <span className="text-muted-foreground">{c.orders} orders</span>
-                        <span className="font-semibold text-foreground">{fmt(c.value, 0)}</span>
-                        <span className="text-muted-foreground w-8 text-right">{Math.round(pct)}%</span>
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: c.color }} />
-                    </div>
-                  </div>
-                );
-              })}
             </div>
-          )}
-        </div>
+            {channelPie.sort((a, b) => b.value - a.value).map(c => {
+              const pct = channelTotal > 0 ? (c.value / channelTotal) * 100 : 0;
+              return (
+                <div key={c.name} className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 font-medium text-foreground truncate">
+                    <span className="h-2 w-2 rounded-full shrink-0" style={{ background: c.color }} />
+                    <span className="truncate">{c.name}</span>
+                  </span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">{Math.round(pct)}%</span>
+                </div>
+              );
+            })}
+            {stats?.topProducts?.[0] && (
+              <div className="mt-3 border-t border-border pt-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Top product</p>
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className="truncate text-xs font-medium text-foreground">{stats.topProducts[0].name}</span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{fmt(stats.topProducts[0].revenue, 0)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ── Revenue period breakdown ── */}
+      {/* Orders by status */}
+      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Orders by status</h2>
+          <span className="ml-auto text-xs text-muted-foreground">All time</span>
+        </div>
+        {totalOrders === 0 ? (
+          <div className="flex h-44 items-center justify-center text-sm text-muted-foreground">No orders yet</div>
+        ) : (
+          <div className="space-y-2">
+            <div className="relative mx-auto h-40 w-40 mb-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={statusPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none">
+                    {statusPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v: any, n: any) => [v, n]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-[10px] text-muted-foreground">Total</span>
+                <span className="text-sm font-bold text-foreground">{totalOrders}</span>
+              </div>
+            </div>
+            {statusPie.map(s => (
+              <div key={s.name} className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 text-muted-foreground capitalize truncate">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: s.color }} />
+                  <span className="truncate">{s.name}</span>
+                </span>
+                <span className="shrink-0 tabular-nums text-foreground font-semibold">{Math.round((s.value / totalOrders) * 100)}%</span>
+              </div>
+            ))}
+            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Products</p>
+                <p className="text-xs font-medium tabular-nums text-foreground">{(stats?.products ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Avg order</p>
+                <p className="text-xs font-medium tabular-nums text-foreground">{fmt(stats?.avgOrderValue ?? 0, 0)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      </div>
+
+      {/* ── Performance by period ── */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Revenue</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <PeriodCard label="Today" value={L ? '—' : fmt(stats?.sales ?? 0, 0)} delta={stats?.salesChange} icon={Wallet} color="indigo" />
-          <PeriodCard label="This week" value={L ? '—' : fmt(stats?.thisWeekRevenue ?? 0, 0)} icon={CalendarDays} color="violet" />
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Performance</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <PeriodCard label="Today" value={L ? '—' : fmt(stats?.sales ?? 0, 0)}
+            sub={`${stats?.orders ?? 0} order${(stats?.orders ?? 0) !== 1 ? 's' : ''}`} delta={stats?.salesChange} icon={Wallet} color="indigo" />
+          <PeriodCard label="This week" value={L ? '—' : fmt(stats?.thisWeekRevenue ?? 0, 0)}
+            sub={`${stats?.thisWeekOrders ?? 0} order${(stats?.thisWeekOrders ?? 0) !== 1 ? 's' : ''}`} icon={CalendarDays} color="violet" />
           <PeriodCard label="This month" value={L ? '—' : fmt(stats?.thisMonthRevenue ?? 0, 0)}
-            sub={stats?.revenueMoM !== undefined && stats.revenueMoM !== 0 ? `${stats.revenueMoM > 0 ? '+' : ''}${stats.revenueMoM}% MoM` : undefined}
+            sub={`${stats?.monthlyRevenue12m?.at(-1)?.orders ?? 0} order${(stats?.monthlyRevenue12m?.at(-1)?.orders ?? 0) !== 1 ? 's' : ''}`}
             delta={stats?.revenueMoM} icon={TrendingUp} color="emerald" />
-          <PeriodCard label="This year" value={L ? '—' : fmt(stats?.thisYearRevenue ?? 0, 0)} icon={BarChart3} color="amber" />
-          <PeriodCard label="All time" value={L ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)} icon={BadgeDollarSign} color="rose" />
+          <PeriodCard label="This year" value={L ? '—' : fmt(stats?.thisYearRevenue ?? 0, 0)}
+            sub={`${stats?.thisYearOrders ?? 0} order${(stats?.thisYearOrders ?? 0) !== 1 ? 's' : ''}`} icon={BarChart3} color="amber" />
         </div>
-      </div>
-
-      {/* ── Orders period breakdown ── */}
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Orders</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <PeriodCard label="Today" value={L ? '—' : String(stats?.orders ?? 0)} sub={stats?.todayAvgOrder ? `Avg ${fmt(stats.todayAvgOrder, 0)}` : undefined} icon={ShoppingBag} color="indigo" plain />
-          <PeriodCard label="This week" value={L ? '—' : String(stats?.thisWeekOrders ?? 0)} icon={CalendarDays} color="violet" plain />
-          <PeriodCard label="This month" value={L ? '—' : String(stats?.monthlyRevenue12m?.at(-1)?.orders ?? 0)} icon={TrendingUp} color="emerald" plain />
-          <PeriodCard label="This year" value={L ? '—' : String(stats?.thisYearOrders ?? 0)} icon={BarChart3} color="amber" plain />
-          <PeriodCard label="All time" value={L ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()} icon={Boxes} color="rose" plain />
-        </div>
-      </div>
-
-      {/* ── Today's live view ── */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <SmallKpi icon={Wallet} label="Today's revenue" value={L ? '—' : fmt(stats?.sales ?? 0, 0)} delta={stats?.salesChange} />
-        <SmallKpi icon={ShoppingBag} label="Today's orders" value={L ? '—' : String(stats?.orders ?? 0)} />
-        <SmallKpi icon={Target} label="Avg order today" value={L ? '—' : fmt(stats?.todayAvgOrder ?? 0, 0)} />
-        <SmallKpi icon={UserPlus} label="New customers" value={L ? '—' : String(stats?.newCustomersMonth ?? 0)} sub="this month" />
       </div>
 
       {/* ── Business health ── */}
       <div>
         <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Business health</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <HealthCard label="Fulfillment rate" value={`${stats?.fulfillmentRate ?? 0}%`} sub="Delivered / total" good={(stats?.fulfillmentRate ?? 0) >= 80} icon={TrendingUp} />
           <HealthCard label="Cancellation rate" value={`${stats?.cancellationRate ?? 0}%`} sub="Last 30 days" good={(stats?.cancellationRate ?? 0) < 5} icon={XCircle} invert />
           <HealthCard label="Repeat customers" value={`${stats?.repeatCustomerRate ?? 0}%`} sub="Ordered 2+ times" good={(stats?.repeatCustomerRate ?? 0) >= 20} icon={Users} />
@@ -309,9 +363,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Order activity (hourly) + status donut ── */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
+      {/* ── Order activity (hourly) + day of week ── */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
           <div className="mb-4 flex items-center gap-2">
             <Activity className="h-4 w-4 text-muted-foreground" />
             <h2 className="font-semibold text-foreground">Order activity</h2>
@@ -344,79 +398,39 @@ export default function DashboardPage() {
 
         <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
           <div className="mb-4 flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <h2 className="font-semibold text-foreground">Orders by status</h2>
-            <span className="ml-auto text-xs text-muted-foreground">All time</span>
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <h2 className="font-semibold text-foreground">Orders by day of week</h2>
+            <span className="ml-auto text-xs text-muted-foreground">Last 30 days</span>
           </div>
-          {totalOrders === 0 ? (
-            <div className="flex h-44 items-center justify-center text-sm text-muted-foreground">No orders yet</div>
-          ) : (
-            <>
-              <div className="relative mx-auto h-36 w-36">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={statusPie} dataKey="value" innerRadius={40} outerRadius={60} paddingAngle={2} stroke="none">
-                      {statusPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v: any, n: any) => [v, n]} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xs text-muted-foreground">Total</span>
-                  <span className="text-base font-bold text-foreground">{totalOrders}</span>
-                </div>
-              </div>
-              <div className="mt-3 space-y-1.5">
-                {statusPie.map(s => (
-                  <div key={s.name} className="flex items-center gap-2 text-xs">
-                    <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: s.color }} />
-                    <span className="text-muted-foreground capitalize flex-1">{s.name}</span>
-                    <span className="font-semibold text-foreground tabular-nums">{s.value}</span>
-                    <span className="text-muted-foreground w-8 text-right">{Math.round((s.value / totalOrders) * 100)}%</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+          <div className="h-44">
+            {(stats?.dailyBreakdown ?? []).every(d => d.orders === 0) ? (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No orders yet</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats?.dailyBreakdown ?? []} margin={{ top: 4, right: 4, left: -28, bottom: 0 }} barSize={28}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.12} vertical={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
+                        <p className="font-medium text-foreground mb-1">{label}</p>
+                        <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{payload[0]?.value}</span></p>
+                      </div>
+                    );
+                  }} />
+                  <Bar dataKey="orders" radius={[4, 4, 0, 0]}>
+                    {(stats?.dailyBreakdown ?? []).map((d, i) => {
+                      const maxO = Math.max(...(stats?.dailyBreakdown ?? []).map(x => x.orders), 1);
+                      return <Cell key={i} fill={d.orders === maxO ? '#6366f1' : '#6366f120'} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
-      </div>
-
-      {/* ── Day of week ── */}
-      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">Orders by day of week</h2>
-          <span className="ml-auto text-xs text-muted-foreground">Last 30 days</span>
-        </div>
-        <div className="h-40">
-          {(stats?.dailyBreakdown ?? []).every(d => d.orders === 0) ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No orders yet</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.dailyBreakdown ?? []} margin={{ top: 4, right: 4, left: -28, bottom: 0 }} barSize={28}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.12} vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null;
-                  return (
-                    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
-                      <p className="font-medium text-foreground mb-1">{label}</p>
-                      <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{payload[0]?.value}</span></p>
-                    </div>
-                  );
-                }} />
-                <Bar dataKey="orders" radius={[4, 4, 0, 0]}>
-                  {(stats?.dailyBreakdown ?? []).map((d, i) => {
-                    const maxO = Math.max(...(stats?.dailyBreakdown ?? []).map(x => x.orders), 1);
-                    return <Cell key={i} fill={d.orders === maxO ? '#6366f1' : '#6366f120'} />;
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-        <p className="mt-2 text-xs text-center text-muted-foreground">Highlighted bar = busiest day — use this to plan promotions &amp; staffing</p>
       </div>
 
       {/* ── Top customers + recent orders ── */}
@@ -552,42 +566,21 @@ function PeriodCard({ icon: Icon, label, value, sub, delta, color, plain, value2
     rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
   };
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconMap[color]}`}>
+    <div className="rounded-xl border border-border bg-card p-3 flex items-center gap-3">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconMap[color]}`}>
         <Icon className="h-4 w-4" />
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">{label}</p>
-      <p className={`mt-0.5 text-xl font-bold tabular-nums ${plain ? 'text-foreground' : colorMap[color]}`}>{value}</p>
-      {delta !== undefined && delta !== 0 && (
-        <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${delta > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-          {delta > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-          {Math.abs(delta)}%
-        </span>
-      )}
-      {sub && !delta && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-    </div>
-  );
-}
-
-function SmallKpi({ icon: Icon, label, value, sub, delta }: {
-  icon: React.ElementType; label: string; value: string; sub?: string; delta?: number;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-          <Icon className="h-4 w-4 text-foreground/70" />
-        </div>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground truncate">{label}</p>
+        <p className={`text-lg font-bold leading-tight tabular-nums ${plain ? 'text-foreground' : colorMap[color]}`}>{value}</p>
         {delta !== undefined && delta !== 0 && (
-          <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold ${delta >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
-            {delta >= 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+          <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${delta > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+            {delta > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
             {Math.abs(delta)}%
           </span>
         )}
+        {sub && !delta && <p className="text-[11px] text-muted-foreground truncate">{sub}</p>}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-xl font-bold tabular-nums text-foreground">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -598,13 +591,15 @@ function HealthCard({ icon: Icon, label, value, sub, good, invert }: {
   const color = good ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500';
   const bg = good ? 'bg-emerald-500/10' : 'bg-red-500/10';
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${bg}`}>
+    <div className="rounded-xl border border-border bg-card p-3 flex items-center gap-3">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${bg}`}>
         <Icon className={`h-4 w-4 ${color}`} />
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">{label}</p>
-      <p className={`mt-0.5 text-xl font-bold tabular-nums ${color}`}>{value}</p>
-      <p className="text-xs text-muted-foreground">{sub}</p>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground truncate">{label}</p>
+        <p className={`text-lg font-bold leading-tight tabular-nums ${color}`}>{value}</p>
+        <p className="text-[11px] text-muted-foreground truncate">{sub}</p>
+      </div>
     </div>
   );
 }

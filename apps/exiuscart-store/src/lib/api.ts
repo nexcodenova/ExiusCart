@@ -99,11 +99,13 @@ export const productsApi = {
     api.get(`/shops/${shopId}/products/categories`),
   bulkImport: (shopId: string, rows: any[]) =>
     api.post(`/shops/${shopId}/products/bulk-import`, rows),
+  backfillSkus: (shopId: string) =>
+    api.post(`/shops/${shopId}/products/backfill-skus`),
 };
 
 // ── Orders ────────────────────────────────────────────
 export const ordersApi = {
-  getAll: (shopId: string, params?: { status?: string; search?: string; month?: string; limit?: number }) =>
+  getAll: (shopId: string, params?: { status?: string; search?: string; month?: string; source?: string; limit?: number }) =>
     api.get(`/shops/${shopId}/orders`, { params }),
   getOne: (shopId: string, orderId: string) =>
     api.get(`/shops/${shopId}/orders/${orderId}`),

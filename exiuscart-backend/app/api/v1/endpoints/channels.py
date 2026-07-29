@@ -1500,6 +1500,14 @@ async def update_product_channel_status(
     record.rejection_reason = payload.rejection_reason
     db.commit()
 
+    from app.models.channel_sync_log import ChannelSyncLog
+    db.add(ChannelSyncLog(
+        shop_id=record.shop_id, product_id=payload.exiuscart_product_id, channel_type=payload.channel,
+        action="listing_status", success=(payload.status == "approved"),
+        error_message=(payload.rejection_reason or "")[:2000] or None,
+    ))
+    db.commit()
+
     return {
         "success": True,
         "product_id": payload.exiuscart_product_id,

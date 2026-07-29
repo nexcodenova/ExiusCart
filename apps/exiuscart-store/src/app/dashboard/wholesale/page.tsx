@@ -294,20 +294,22 @@ export default function WholesalePage() {
           {tab === 'overview' && (
             <div className="space-y-6">
               {/* Stat cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: 'Total Revenue', value: fmt(stats?.total_revenue ?? 0), sub: `${fmt(stats?.this_month_revenue ?? 0)} this month`, icon: DollarSign, color: 'text-green-500 bg-green-500/10' },
                   { label: 'Total Orders', value: stats?.total_orders ?? 0, sub: `${stats?.pending_orders ?? 0} pending`, icon: ShoppingBag, color: 'text-blue-500 bg-blue-500/10' },
                   { label: 'Active Buyers', value: stats?.active_buyers ?? 0, sub: 'approved resellers', icon: Users, color: 'text-purple-500 bg-purple-500/10' },
                   { label: 'Avg. Order Value', value: fmt(stats?.avg_order_value ?? 0), sub: `${stats?.total_products ?? 0} products in catalogue`, icon: TrendingUp, color: 'text-indigo-500 bg-indigo-500/10' },
                 ].map(card => (
-                  <div key={card.label} className="bg-card border border-border rounded-2xl p-5">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${card.color} mb-3`}>
-                      <card.icon className="w-5 h-5" />
+                  <div key={card.label} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
+                    <div className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center ${card.color}`}>
+                      <card.icon className="w-4 h-4" />
                     </div>
-                    <p className="text-2xl font-bold text-foreground">{card.value}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{card.label}</p>
-                    <p className="text-xs text-muted-foreground mt-1 opacity-70">{card.sub}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground truncate">{card.label}</p>
+                      <p className="text-lg font-bold leading-tight text-foreground">{card.value}</p>
+                      <p className="text-[11px] text-muted-foreground truncate opacity-70">{card.sub}</p>
+                    </div>
                   </div>
                 ))}
               </div>

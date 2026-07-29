@@ -67,6 +67,13 @@ class OrderResponse(BaseModel):
     delivery_charge: Optional[Decimal] = None
     shipped_at: Optional[datetime] = None
     estimated_delivery: Optional[str] = None
+    # Dropship supplier fulfillment — sourced from DropshipOrder (the
+    # reliable record created by fulfill_order), not the Order columns of
+    # the same name, which only track ExiusCart's own last-known status.
+    # None for orders never sent to a supplier (POS, TheDersi, or a direct
+    # order not yet fulfilled).
+    fulfillment_supplier: Optional[str] = None
+    fulfillment_status: Optional[str] = None
     items: List[OrderItemResponse] = []
     created_at: datetime
 

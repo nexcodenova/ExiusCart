@@ -18,7 +18,7 @@ interface HeaderProps {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const { setTheme, resolvedTheme } = useTheme();
-  const { currency, setCurrency } = useCurrency();
+  const { currency, setCurrency, syncCurrency } = useCurrency();
   const [activeBranchName, setActiveBranchName] = useState<string | null>(null);
   const [planLabel, setPlanLabel] = useState<string | null>(null);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
@@ -28,6 +28,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [isTheDersiShop, setIsTheDersiShop] = useState(false);
+  const [planType, setPlanType] = useState('');
+  const [showProdoraBlocked, setShowProdoraBlocked] = useState<'thedersi' | 'free_trial' | null>(null);
 
   const currencyRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -54,12 +56,13 @@ export function Header({ onMenuClick }: HeaderProps) {
         channelsApi.getConnections(shopId).then((res) => {
           const hasTheDersi = res.data?.some((c: any) => c.channel_type === 'thedersi') ?? false;
           setIsTheDersiShop(hasTheDersi);
-          if (hasTheDersi) setCurrency('LKR');
+          if (hasTheDersi) syncCurrency('LKR');
         }).catch(() => {});
         subscriptionApi.getCurrent(shopId).then((res) => {
           const plan = res.data?.plan;
           setPlanLabel(plan?.name || null);
           setDaysLeft(plan?.daysLeft ?? null);
+          setPlanType((plan?.plan_type || 'free_trial').toLowerCase());
         }).catch(() => {});
       }
     });
@@ -79,6 +82,17 @@ export function Header({ onMenuClick }: HeaderProps) {
   const toggleTheme = () => setTheme(resolvedTheme === 'light' ? 'dark' : 'light');
   const initials = userName ? userName.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : '';
 
+  function openProdora() {
+    if (isTheDersiShop) { setShowProdoraBlocked('thedersi'); return; }
+    if (planType === 'free_trial') { setShowProdoraBlocked('free_trial'); return; }
+    // Pass the account email through so Prodora can open straight into its
+    // "confirm to continue" login step pre-filled, same as the old sidebar link.
+    const url = userEmail
+      ? `https://prodora.exiuscart.com?email=${encodeURIComponent(userEmail)}`
+      : 'https://prodora.exiuscart.com';
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
   function logout() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
@@ -86,7 +100,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6">
+    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
       {/* Mobile logo (replaces hamburger — sidebar is desktop-only) */}
       <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
         <Image src="/logo.svg" alt="ExiusCart" width={26} height={26} />
@@ -112,6 +126,20 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Search className="w-5 h-5" />
         </button>
 
+        {/* Prodora cross-sell — moved here from the sidebar so it reads as
+            an invitation to a separate product, not a regular nav link.
+            Mobile: just the logo (matches the other icon-only mobile
+            header buttons). sm+: full box with the "Prodora" label. */}
+        <button type="button" onClick={openProdora} aria-label="Prodora"
+          className="sm:hidden p-1.5 hover:bg-muted rounded-lg transition">
+          <img src="/prodora-logo.png" alt="" className="w-5 h-5 rounded-md" />
+        </button>
+        <button type="button" onClick={openProdora}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition">
+          <img src="/prodora-logo.png" alt="" className="w-4 h-4 shrink-0 rounded-md" />
+          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Prodora</span>
+        </button>
+
         {/* Active branch — also carries the shop's plan + days left, moved
             here from the sidebar's old shop-info block */}
         {activeBranchName && (
@@ -122,7 +150,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             {planLabel && (
               <>
                 <span className="opacity-40">·</span>
-                <span>{planLabel}</span>
+                <span className="text-[10px]">{planLabel}</span>
               </>
             )}
             {daysLeft != null && (
@@ -221,6 +249,43 @@ export function Header({ onMenuClick }: HeaderProps) {
           )}
         </div>
       </div>
+
+      {/* Prodora access blocked — TheDersi sellers never get it; free trial needs to upgrade */}
+      {showProdoraBlocked && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowProdoraBlocked(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/15 mb-4 mx-auto overflow-hidden">
+              <img src="/prodora-logo.png" alt="" className="w-7 h-7 rounded-sm" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground text-center mb-2">Prodora</h3>
+            <p className="text-sm text-muted-foreground text-center mb-3">
+              Thousands of winning products to sell — each comes with ready-made marketing videos, product images, and real customer reviews, so you can list and start selling right away.
+            </p>
+            <p className="text-sm font-medium text-foreground text-center mb-6">
+              {showProdoraBlocked === 'thedersi'
+                ? 'This is only for ExiusCart direct users.'
+                : 'This is only for paid users.'}
+            </p>
+            {showProdoraBlocked === 'thedersi' ? (
+              <button type="button" onClick={() => setShowProdoraBlocked(null)}
+                className="w-full py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
+                Got it
+              </button>
+            ) : (
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setShowProdoraBlocked(null)}
+                  className="flex-1 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
+                  Cancel
+                </button>
+                <Link href="/dashboard/billing" onClick={() => setShowProdoraBlocked(null)}
+                  className="flex-1 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold text-center transition">
+                  Upgrade
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

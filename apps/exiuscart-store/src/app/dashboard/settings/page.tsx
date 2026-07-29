@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { shopApi, channelsApi } from '@/lib/api';
+import { useCurrency } from '@/components/providers/currency-provider';
 import {
   Settings,
   Shield,
@@ -26,6 +27,7 @@ import {
 type SettingsTab = 'general' | 'tax' | 'storefront' | 'security' | 'notifications';
 
 export default function SettingsPage() {
+  const { syncCurrency } = useCurrency();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [taxSaving, setTaxSaving] = useState(false);
   const [taxSaved, setTaxSaved] = useState(false);
@@ -99,7 +101,12 @@ export default function SettingsPage() {
   const handleSaveGeneral = async () => {
     setGeneralSaving(true);
     try {
-      await shopApi.updateShop({ currency: isTheDersiSeller ? 'LKR' : settings.currency });
+      const currency = isTheDersiSeller ? 'LKR' : settings.currency;
+      await shopApi.updateShop({ currency });
+      // Reflect the change everywhere immediately (header, dashboard
+      // figures, every page using useCurrency) without needing a reload —
+      // already saved above, so just sync the shared local state.
+      syncCurrency(currency);
       setGeneralSaved(true);
       setTimeout(() => setGeneralSaved(false), 3000);
     } catch {

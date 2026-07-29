@@ -84,6 +84,18 @@ def _daraz_api_base(country_code: str) -> str:
     return DARAZ_COUNTRY_API_BASE_URLS.get((country_code or "").strip().upper(), "")
 
 
+def _log_sync(db: Session, shop_id: int, action: str, success: bool, product_id: int | None = None,
+              external_id: str | None = None, error_message: str | None = None) -> None:
+    """Durable record of a sync attempt, shown on the Channel Listings page —
+    same pattern as noon.py's _log_sync."""
+    from app.models.channel_sync_log import ChannelSyncLog
+    db.add(ChannelSyncLog(
+        shop_id=shop_id, product_id=product_id, channel_type="daraz", action=action,
+        success=success, external_id=external_id, error_message=(error_message or "")[:2000] or None,
+    ))
+    db.commit()
+
+
 def _daraz_signed_request(api_path: str, business_params: dict, country_code: str, access_token: str | None = None, method: str = "GET") -> dict | None:
     """Calls any Daraz Open Platform API with correct HMAC-SHA256 signing.
     api_path is e.g. "/auth/token/create" or "/category/tree/get". country_code
@@ -439,6 +451,7 @@ def create_daraz_listing(
         if migrated and migrated.get("Url"):
             daraz_image_urls.append(migrated["Url"])
     if not daraz_image_urls:
+        _log_sync(db, shop_id, "create_listing", False, product_id=product_id, error_message="Could not upload any images to Daraz")
         raise HTTPException(status_code=502, detail="Could not upload any images to Daraz — try again shortly")
 
     # 2. Build Attributes: the product's own name/description plus whatever
@@ -487,6 +500,7 @@ def create_daraz_listing(
 
     result = create_daraz_product(conn.access_token, shop.country, daraz_product)
     if result is None:
+        _log_sync(db, shop_id, "create_listing", False, product_id=product_id, error_message="Daraz rejected the listing — check server logs for the exact reason")
         raise HTTPException(status_code=502, detail="Daraz rejected the listing — check server logs for the exact reason")
 
     item_id = str(result.get("item_id") or result.get("ItemId") or "")
@@ -501,6 +515,8 @@ def create_daraz_listing(
     status_row.status = "pending_review"
     status_row.external_item_id = item_id or None
     db.commit()
+
+    _log_sync(db, shop_id, "create_listing", True, product_id=product_id, external_id=item_id or None)
 
     return {"item_id": item_id, "status": "pending_review"}
 

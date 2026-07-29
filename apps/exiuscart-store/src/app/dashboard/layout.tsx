@@ -17,6 +17,14 @@ import { applyBrandColor } from '@/lib/brand-color';
 // the version that can't be missed.
 const ALLOWED_WHEN_EXPIRED = ['/dashboard/billing'];
 
+// Standalone printable documents (invoice, quotation print, payment
+// receipt, packing slip, barcode sheet) — each is a fully self-contained
+// page with its own print stylesheet and an auto-triggered window.print(),
+// never meant to sit inside the dashboard shell. Without this, the
+// Header/Sidebar/MobileBottomNav were rendering right into the printed
+// page and the PDF export, which is what this checks skip.
+const PRINT_ONLY_PATTERN = /\/(invoice|print|payment-receipt|packing-slip|barcode)(\/|$)/;
+
 export default function DashboardLayout({
   children,
 }: {
@@ -58,6 +66,10 @@ export default function DashboardLayout({
   }, []);
 
   if (!authed) return <div className="min-h-screen bg-background" />;
+
+  if (PRINT_ONLY_PATTERN.test(pathname)) {
+    return <CurrencyProvider>{children}</CurrencyProvider>;
+  }
 
   if (trialExpired && !ALLOWED_WHEN_EXPIRED.includes(pathname)) {
     return (

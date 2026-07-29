@@ -235,7 +235,7 @@ export default function OrderDetailsPage() {
   const isTheDersi = order.source === 'thedersi' || order.channel_meta?.channel_type === 'thedersi';
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 py-4">
+    <div className="max-w-6xl mx-auto space-y-5 py-4">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => router.back()} className="p-2 hover:bg-muted rounded-lg transition">
@@ -267,6 +267,101 @@ export default function OrderDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* Actions — moved up front so exporting/messaging never needs a scroll to the bottom */}
+      <div className="flex flex-wrap gap-2.5">
+        {order.payment_status === 'paid' && order.status !== 'cancelled' && (
+          refundDone ? (
+            <span className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 font-medium">
+              <RefreshCcw className="w-4 h-4" /> Refunded
+            </span>
+          ) : (
+            <button
+              onClick={openReturnModal}
+              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 transition font-medium"
+            >
+              <RefreshCcw className="w-4 h-4" /> Return / Refund
+            </button>
+          )
+        )}
+
+        <button
+          onClick={handleSendInvoice}
+          disabled={sendingInvoice}
+          className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg transition font-medium ${
+            invoiceSent
+              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+              : 'bg-primary/10 text-primary hover:bg-primary/20'
+          } disabled:opacity-50`}
+        >
+          {invoiceSent ? <Check className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+          {invoiceSent ? 'Invoice sent!' : sendingInvoice ? 'Sending...' : 'Send Invoice'}
+        </button>
+        <button
+          onClick={() => window.open(`/dashboard/orders/${orderId}/invoice`, '_blank')}
+          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition font-medium"
+        >
+          <Download className="w-4 h-4" /> Download PDF
+        </button>
+        <button
+          onClick={() => window.open(`/dashboard/orders/${orderId}/packing-slip`, '_blank')}
+          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition font-medium"
+        >
+          <Printer className="w-4 h-4" /> Packing Slip
+        </button>
+        <button
+          onClick={() => window.open(`/dashboard/orders/${orderId}/payment-receipt`, '_blank')}
+          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-700 dark:text-green-400 transition font-medium"
+        >
+          <Printer className="w-4 h-4" /> Payment Receipt
+        </button>
+
+        {/* WhatsApp — status-aware smart message */}
+        {order.customer?.phone && (
+          <button
+            onClick={() => {
+              const phone = order.customer!.phone!.replace(/\D/g, '');
+              const name = order.customer!.name ?? 'there';
+              let msg = '';
+              if (order.status === 'shipped') {
+                msg = `Hi ${name}, your order *${order.order_number}* has been shipped!`
+                  + (order.carrier ? `\n📦 Carrier: ${order.carrier}` : '')
+                  + (order.tracking_number ? `\n🔍 Tracking: ${order.tracking_number}` : '')
+                  + (order.estimated_delivery ? `\n🗓 Est. Delivery: ${order.estimated_delivery}` : '')
+                  + `\n\nThank you for shopping with us!`;
+              } else if (order.status === 'delivered' || order.status === 'completed') {
+                msg = `Hi ${name}, your order *${order.order_number}* has been delivered! 🎉\n\nWe hope you love your purchase. Feel free to reach out if you need anything!`;
+              } else if (order.status === 'pending') {
+                msg = `Hi ${name}, we've received your order *${order.order_number}* (${fmt(order.total)}). We'll confirm it shortly — thank you!`;
+              } else if (order.status === 'processing') {
+                msg = `Hi ${name}, your order *${order.order_number}* is being prepared. We'll notify you once it ships!`;
+              } else {
+                msg = `Hi ${name}, your order *${order.order_number}* has been confirmed. Total: ${fmt(order.total)}. Thank you for your purchase!`;
+              }
+              window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+            }}
+            className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] transition font-medium"
+          >
+            <MessageCircle className="w-4 h-4" />
+            WhatsApp
+            {order.status === 'shipped' && <span className="text-xs bg-[#25D366]/20 px-1.5 py-0.5 rounded-full">+ tracking</span>}
+          </button>
+        )}
+
+        {order.tracking_number && (
+          <Link href={`/dashboard/orders/${orderId}/tracking`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition ml-auto">
+            <Truck className="w-4 h-4" /> View tracking
+          </Link>
+        )}
+      </div>
+
+      {invoiceError && (
+        <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-xl px-4 py-3">{invoiceError}</div>
+      )}
+
+      {/* Main content: items/pricing/notes on the left, at-a-glance info in a sidebar on the right */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+      <div className="lg:col-span-2 space-y-5">
 
       {/* Order Items */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -376,17 +471,61 @@ export default function OrderDetailsPage() {
         </div>
       </div>
 
+      {/* Gift Wrap */}
+      {order.gift_wrap && (
+        <div className="bg-pink-500/5 border border-pink-500/30 rounded-2xl px-5 py-4">
+          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            🎁 Gift Order
+          </h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Gift Wrapping</span>
+              <span className="font-medium text-pink-600 dark:text-pink-400">Included</span>
+            </div>
+            {order.gift_wrap_fee > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Gift Wrap Fee</span>
+                <span className="font-medium text-foreground">LKR {order.gift_wrap_fee.toLocaleString()}</span>
+              </div>
+            )}
+            {order.gift_message && (
+              <div className="mt-3 p-3 bg-pink-500/10 rounded-xl border border-pink-500/20">
+                <p className="text-xs text-muted-foreground mb-1 font-medium uppercase tracking-wide">Gift Message</p>
+                <p className="text-sm text-foreground italic">&ldquo;{order.gift_message}&rdquo;</p>
+              </div>
+            )}
+            <p className="text-xs text-pink-600 dark:text-pink-400 mt-2 font-medium">
+              ⚠ Pack this order as a gift and include the message card
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Notes */}
+      {order.notes && (
+        <div className="bg-card border border-border rounded-2xl px-5 py-4">
+          <h2 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-muted-foreground" /> Notes
+          </h2>
+          <p className="text-sm text-muted-foreground">{order.notes}</p>
+        </div>
+      )}
+
+      </div>
+      {/* end left column */}
+
+      {/* Right sidebar — at-a-glance info, stays put while the left column scrolls */}
+      <div className="lg:col-span-1 space-y-5 lg:sticky lg:top-6">
+
       {/* TheDersi net earnings */}
       {order.channel_meta && order.channel_meta.seller_net_earnings != null && (
         <div className="bg-green-500/8 border border-green-500/20 rounded-2xl px-5 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Your TheDersi Earnings</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Net amount — TheDersi&apos;s {order.channel_meta.commission_rate != null ? `${order.channel_meta.commission_rate}% ` : ''}fee already deducted
-              </p>
-            </div>
-            <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Your TheDersi Earnings</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Net amount — TheDersi&apos;s {order.channel_meta.commission_rate != null ? `${order.channel_meta.commission_rate}% ` : ''}fee already deducted
+            </p>
+            <span className="text-2xl font-bold text-green-600 dark:text-green-400 block mt-2">
               {fmt(order.channel_meta.seller_net_earnings)}
             </span>
           </div>
@@ -443,45 +582,10 @@ export default function OrderDetailsPage() {
         </div>
       )}
 
-      {/* Gift Wrap */}
-      {order.gift_wrap && (
-        <div className="bg-pink-500/5 border border-pink-500/30 rounded-2xl px-5 py-4">
-          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-            🎁 Gift Order
-          </h2>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Gift Wrapping</span>
-              <span className="font-medium text-pink-600 dark:text-pink-400">Included</span>
-            </div>
-            {order.gift_wrap_fee > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Gift Wrap Fee</span>
-                <span className="font-medium text-foreground">LKR {order.gift_wrap_fee.toLocaleString()}</span>
-              </div>
-            )}
-            {order.gift_message && (
-              <div className="mt-3 p-3 bg-pink-500/10 rounded-xl border border-pink-500/20">
-                <p className="text-xs text-muted-foreground mb-1 font-medium uppercase tracking-wide">Gift Message</p>
-                <p className="text-sm text-foreground italic">&ldquo;{order.gift_message}&rdquo;</p>
-              </div>
-            )}
-            <p className="text-xs text-pink-600 dark:text-pink-400 mt-2 font-medium">
-              ⚠ Pack this order as a gift and include the message card
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Notes */}
-      {order.notes && (
-        <div className="bg-card border border-border rounded-2xl px-5 py-4">
-          <h2 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-muted-foreground" /> Notes
-          </h2>
-          <p className="text-sm text-muted-foreground">{order.notes}</p>
-        </div>
-      )}
+      </div>
+      {/* end right sidebar */}
+      </div>
+      {/* end two-column grid */}
 
       {/* Return / Refund modal */}
       {showReturnModal && order && (
@@ -622,101 +726,10 @@ export default function OrderDetailsPage() {
         </div>
       )}
 
-      {/* Email invoice */}
-      {invoiceError && (
-        <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-xl px-4 py-3">{invoiceError}</div>
-      )}
-
-      {/* Footer actions */}
-      <div className="flex flex-wrap gap-3 pb-4">
+      <div className="pb-2">
         <Link href="/dashboard/orders" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
           <ArrowLeft className="w-4 h-4" /> Back to orders
         </Link>
-
-        {/* Return / Refund — for any paid order not yet cancelled */}
-        {order.payment_status === 'paid' && order.status !== 'cancelled' && (
-          refundDone ? (
-            <span className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 font-medium">
-              <RefreshCcw className="w-4 h-4" /> Refunded
-            </span>
-          ) : (
-            <button
-              onClick={openReturnModal}
-              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 transition font-medium"
-            >
-              <RefreshCcw className="w-4 h-4" /> Return / Refund
-            </button>
-          )
-        )}
-
-        <button
-          onClick={handleSendInvoice}
-          disabled={sendingInvoice}
-          className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg transition font-medium ${
-            invoiceSent
-              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-              : 'bg-primary/10 text-primary hover:bg-primary/20'
-          } disabled:opacity-50`}
-        >
-          {invoiceSent ? <Check className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
-          {invoiceSent ? 'Invoice sent!' : sendingInvoice ? 'Sending...' : 'Send Invoice'}
-        </button>
-        <button
-          onClick={() => window.open(`/dashboard/orders/${orderId}/invoice`, '_blank')}
-          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition font-medium"
-        >
-          <Download className="w-4 h-4" /> Download PDF
-        </button>
-        <button
-          onClick={() => window.open(`/dashboard/orders/${orderId}/packing-slip`, '_blank')}
-          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition font-medium"
-        >
-          <Printer className="w-4 h-4" /> Packing Slip
-        </button>
-        <button
-          onClick={() => window.open(`/dashboard/orders/${orderId}/payment-receipt`, '_blank')}
-          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-700 dark:text-green-400 transition font-medium"
-        >
-          <Printer className="w-4 h-4" /> Payment Receipt
-        </button>
-
-        {/* WhatsApp — status-aware smart message */}
-        {order.customer?.phone && (
-          <button
-            onClick={() => {
-              const phone = order.customer!.phone!.replace(/\D/g, '');
-              const name = order.customer!.name ?? 'there';
-              let msg = '';
-              if (order.status === 'shipped') {
-                msg = `Hi ${name}, your order *${order.order_number}* has been shipped!`
-                  + (order.carrier ? `\n📦 Carrier: ${order.carrier}` : '')
-                  + (order.tracking_number ? `\n🔍 Tracking: ${order.tracking_number}` : '')
-                  + (order.estimated_delivery ? `\n🗓 Est. Delivery: ${order.estimated_delivery}` : '')
-                  + `\n\nThank you for shopping with us!`;
-              } else if (order.status === 'delivered' || order.status === 'completed') {
-                msg = `Hi ${name}, your order *${order.order_number}* has been delivered! 🎉\n\nWe hope you love your purchase. Feel free to reach out if you need anything!`;
-              } else if (order.status === 'pending') {
-                msg = `Hi ${name}, we've received your order *${order.order_number}* (${fmt(order.total)}). We'll confirm it shortly — thank you!`;
-              } else if (order.status === 'processing') {
-                msg = `Hi ${name}, your order *${order.order_number}* is being prepared. We'll notify you once it ships!`;
-              } else {
-                msg = `Hi ${name}, your order *${order.order_number}* has been confirmed. Total: ${fmt(order.total)}. Thank you for your purchase!`;
-              }
-              window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-            }}
-            className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] transition font-medium"
-          >
-            <MessageCircle className="w-4 h-4" />
-            WhatsApp
-            {order.status === 'shipped' && <span className="text-xs bg-[#25D366]/20 px-1.5 py-0.5 rounded-full">+ tracking</span>}
-          </button>
-        )}
-
-        {order.tracking_number && (
-          <Link href={`/dashboard/orders/${orderId}/tracking`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition ml-auto">
-            <Truck className="w-4 h-4" /> View tracking
-          </Link>
-        )}
       </div>
     </div>
   );

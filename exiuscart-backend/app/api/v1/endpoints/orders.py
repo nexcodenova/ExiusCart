@@ -26,6 +26,7 @@ from app.models.subscription import Subscription
 from app.models.bundle_component import BundleComponent
 from app.models.product_variant import ProductVariant
 from app.models.channel import ChannelConnection
+from app.models.dropship import DropshipOrder
 
 router = APIRouter()
 
@@ -316,6 +317,19 @@ async def get_orders(
                 c = customers[o.customer_id]
                 o.customer_name = c.name
                 o.customer_phone = c.phone
+
+    # Attach dropship fulfillment info (which supplier, and its real status)
+    # without N+1 — sourced from DropshipOrder, the record fulfill_order
+    # actually maintains correctly, not the thinner Order columns of the
+    # same name. Orders never sent to a supplier just get None/None.
+    order_ids = [o.id for o in orders]
+    if order_ids:
+        dropship_orders = db.query(DropshipOrder).filter(DropshipOrder.order_id.in_(order_ids)).all()
+        by_order_id = {d.order_id: d for d in dropship_orders}
+        for o in orders:
+            d = by_order_id.get(o.id)
+            o.fulfillment_supplier = d.supplier_type if d else None
+            o.fulfillment_status = d.status if d else None
     return orders
 
 

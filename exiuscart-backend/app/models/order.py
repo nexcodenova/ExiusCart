@@ -54,6 +54,11 @@ class Order(Base):
     delivery_charge = Column(Numeric(10, 2), nullable=True)  # what customer pays for delivery (set at ship time)
     shipped_at = Column(DateTime(timezone=True), nullable=True)
     estimated_delivery = Column(String(50), nullable=True)  # e.g. "2026-06-15"
+    # Dropship supplier fulfillment (set by fulfill_order in dropshipping.py).
+    # Column already existed in the DB via create_dropship_tables.sql but was
+    # never mapped here, so that write silently never persisted — mapped now.
+    fulfillment_status = Column(String(30), default="unfulfilled")  # unfulfilled/sent/processing/shipped/delivered/failed
+    fulfillment_mode = Column(String(20), default="manual")         # manual/auto
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
