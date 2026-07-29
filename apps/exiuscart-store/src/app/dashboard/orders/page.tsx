@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, BarChart2, RefreshCw, Lock, ChevronRight } from 'lucide-react';
+import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, Landmark, BarChart2, RefreshCw, Lock, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi, subscriptionApi, dropshipApi, channelsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
@@ -445,16 +445,17 @@ export default function OrdersPage() {
   );
 
   const channelBreakdown = useMemo(() => {
-    const map: Record<string, { orders: number; revenue: number; cash: number; card: number; split: number }> = {};
+    const map: Record<string, { orders: number; revenue: number; cash: number; card: number; bankTransfer: number; split: number }> = {};
     for (const o of salesOrders) {
       const src = o.source || 'other';
-      if (!map[src]) map[src] = { orders: 0, revenue: 0, cash: 0, card: 0, split: 0 };
+      if (!map[src]) map[src] = { orders: 0, revenue: 0, cash: 0, card: 0, bankTransfer: 0, split: 0 };
       map[src].orders += 1;
       map[src].revenue += Number(o.total);
       if (src === 'pos') {
         const n = o.notes || '';
         if (n.includes('Payment: split')) map[src].split += 1;
         else if (n.includes('Payment: card')) map[src].card += 1;
+        else if (n.includes('Payment: bank_transfer')) map[src].bankTransfer += 1;
         else map[src].cash += 1;
       }
     }
@@ -698,6 +699,11 @@ export default function OrdersPage() {
                       {stats.card > 0 && (
                         <span className="flex items-center gap-1">
                           <CreditCard className="w-3 h-3" /> {stats.card}
+                        </span>
+                      )}
+                      {stats.bankTransfer > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Landmark className="w-3 h-3" /> {stats.bankTransfer}
                         </span>
                       )}
                       {stats.split > 0 && (
