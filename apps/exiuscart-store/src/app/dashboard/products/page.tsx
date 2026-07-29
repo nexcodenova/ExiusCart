@@ -20,6 +20,15 @@ import { RichTextEditor } from '@/components/rich-text-editor';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency } from '@/components/providers/currency-provider';
 
+// Same format the backend auto-assigns to products saved with a blank SKU
+// (SKU{id:06d}) isn't usable here since there's no id yet before saving —
+// this gives a human-readable placeholder instead, editable before save.
+function generateSku(name: string): string {
+  const prefix = (name || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'PRD';
+  const suffix = Math.floor(Math.random() * 900 + 100);
+  return `${prefix}-${suffix}`;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -1675,7 +1684,13 @@ function ProductModal({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-muted-foreground mb-1.5 block">SKU</label>
-                  <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="IPH15PM-256" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                  <div className="flex gap-2">
+                    <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="IPH15PM-256" className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                    <button type="button" onClick={() => setFormData({ ...formData, sku: generateSku(formData.name) })} className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap">
+                      Generate
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Leave blank to auto-generate one when you save.</p>
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground mb-1.5 block">Barcode</label>

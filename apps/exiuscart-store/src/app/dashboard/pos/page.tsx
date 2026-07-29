@@ -714,7 +714,7 @@ export default function POSPage() {
                       )}
                     </div>
                     <h3 className="font-medium text-foreground text-sm line-clamp-2">{product.name}</h3>
-                    <p className="text-xs text-muted-foreground/60 font-mono mb-2">#{product.id}</p>
+                    <p className="text-xs text-muted-foreground/60 font-mono mb-2 truncate">#{product.id}{product.sku && product.sku !== product.id ? ` · ${product.sku}` : ''}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-indigo-600 dark:text-indigo-400 font-bold">{product.sellingPrice} {sym}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
