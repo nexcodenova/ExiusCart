@@ -6,6 +6,7 @@ import { Footer } from '@/components/layout/footer';
 import { PricingPreview } from '@/components/ui/pricing-preview';
 import { PromoBanner } from '@/components/ui/promo-banner';
 import { LiveStats } from '@/components/ui/live-stats';
+import { IntegrationsGrid } from '@/components/ui/integrations-grid';
 
 export const metadata: Metadata = {
   title: 'ExiusCart - Smart Business Management for Small Shops | POS, Invoicing & Inventory',
@@ -28,8 +29,7 @@ export default function HomePage() {
       <section
         className="relative w-full flex"
         style={{
-          marginTop: '64px',
-          height: 'calc(100vh - 64px)',
+          height: '100vh',
           backgroundColor: '#04060f',
         }}
       >
@@ -54,7 +54,7 @@ export default function HomePage() {
         <div className="absolute inset-0 lg:hidden" style={{ background: 'linear-gradient(180deg, rgba(4,6,15,0.92) 45%, rgba(4,6,15,0.2) 75%, transparent 100%)' }} />
 
         {/* Desktop text */}
-        <div className="relative z-10 hidden lg:flex flex-col justify-center px-16 max-w-lg">
+        <div className="relative z-10 hidden lg:flex flex-col justify-center px-16 max-w-lg" style={{ paddingTop: '96px' }}>
           <p className="text-white/50 text-sm font-medium tracking-widest uppercase mb-3">All-in-One</p>
           <h1 className="text-5xl xl:text-[3.25rem] font-bold leading-[1.1] mb-5">
             <span className="text-[#7B4FE9]">Business<br />Management</span>
@@ -84,7 +84,7 @@ export default function HomePage() {
         </div>
 
         {/* Mobile hero */}
-        <div className="relative z-10 lg:hidden flex flex-col w-full pt-6 px-5">
+        <div className="relative z-10 lg:hidden flex flex-col w-full px-5" style={{ paddingTop: '96px' }}>
           <div className="inline-flex items-center gap-2 self-start mb-6 px-4 py-2 rounded-full border border-[#7B4FE9]/50 bg-[#7B4FE9]/10">
             <span className="text-yellow-400 text-sm">★</span>
             <span className="text-white/80 text-sm font-medium">All-in-One Business Management</span>
@@ -212,6 +212,23 @@ export default function HomePage() {
           </div>
 
         </div>
+      </section>
+
+      {/* ── Integrations — horizontal scroll-through strip ── */}
+      <section className="bg-[#F5F3EF]">
+        <div className="pt-20 lg:pt-24 pb-10 px-6 text-center max-w-2xl mx-auto">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6B3FD9] mb-5">
+            Connected everywhere
+          </p>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.05] tracking-tight mb-6">
+            Every channel,<br />one hub.
+          </h2>
+          <p className="text-gray-500 text-lg leading-relaxed">
+            ExiusCart and Prodora at the center — every marketplace and channel around them stays in sync automatically.
+          </p>
+        </div>
+
+        <IntegrationsGrid />
       </section>
 
       {/* ── Custom Website — Paddle-inspired SaaS section ── */}

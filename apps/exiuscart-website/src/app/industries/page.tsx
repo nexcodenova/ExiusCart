@@ -8,7 +8,6 @@ import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 
 const CARD_BG = '#EDEBE6';
-
 const SHOPIFY_TABS = [
   {
     id: 'shopify',
@@ -257,7 +256,7 @@ export default function IndustriesPage() {
             <div
               key={ind.id}
               className="sticky top-0 h-screen px-3 sm:px-5 lg:px-8"
-              style={{ zIndex: i + 1, paddingTop: '64px', paddingBottom: '10px' }}
+              style={{ zIndex: i + 1, paddingTop: '96px', paddingBottom: '10px' }}
             >
               <div
                 className="w-full h-full max-w-7xl mx-auto rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl flex flex-col lg:flex-row"

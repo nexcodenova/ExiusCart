@@ -157,7 +157,7 @@ export default function FeaturesPage() {
             className="sticky top-0 h-screen px-3 sm:px-5 lg:px-8"
             style={{
               zIndex: i + 1,
-              paddingTop: '64px',
+              paddingTop: '96px',
               paddingBottom: '10px',
             }}
           >
