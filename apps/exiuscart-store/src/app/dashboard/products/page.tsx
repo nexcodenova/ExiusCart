@@ -208,6 +208,18 @@ export default function ProductsPage() {
 
   const lowStockCount = products.filter((p) => p.stock > 0 && p.stock <= p.lowStockAlert).length;
   const outOfStockCount = products.filter((p) => p.stock === 0).length;
+  const missingSkuCount = products.filter((p) => !p.sku).length;
+  const [generatingSkus, setGeneratingSkus] = useState(false);
+
+  const handleGenerateSkus = async () => {
+    if (!shopId) return;
+    setGeneratingSkus(true);
+    try {
+      await productsApi.backfillSkus(shopId);
+      await fetchProducts();
+    } catch {}
+    setGeneratingSkus(false);
+  };
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [channelFilter, setChannelFilter] = useState<'all' | 'thedersi' | 'daraz' | 'ebay' | 'unlisted'>('all');
   const [alertDismissed, setAlertDismissed] = useState(false);
@@ -394,6 +406,24 @@ export default function ProductsPage() {
           </div>
           <button onClick={() => setAlertDismissed(true)} className="p-1 hover:bg-muted rounded transition shrink-0">
             <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      )}
+
+      {/* Missing SKU banner */}
+      {!loading && missingSkuCount > 0 && (
+        <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-sm text-orange-600 dark:text-orange-400">
+            <span className="font-semibold">{missingSkuCount}</span> product{missingSkuCount !== 1 ? 's' : ''} {missingSkuCount !== 1 ? "don't" : "doesn't"} have a SKU yet.
+          </p>
+          <button
+            type="button"
+            onClick={handleGenerateSkus}
+            disabled={generatingSkus}
+            className="inline-flex items-center gap-2 text-xs px-3 py-1.5 bg-orange-500/15 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-500/25 transition font-medium disabled:opacity-50"
+          >
+            {generatingSkus && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Generate missing SKUs
           </button>
         </div>
       )}
@@ -600,7 +630,11 @@ export default function ProductsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="p-4"><span className="text-sm text-muted-foreground font-mono">{product.sku}</span></td>
+                      <td className="p-4">
+                        {product.sku
+                          ? <span className="text-sm text-muted-foreground font-mono">{product.sku}</span>
+                          : <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">Missing</span>}
+                      </td>
                       <td className="p-4">
                         {(() => {
                           const catEntries = channelCategories[product.id]
@@ -699,7 +733,10 @@ export default function ProductsPage() {
                         {perfData[product.id]?.heat === 'hot' && <Flame className="w-3.5 h-3.5 text-red-500 shrink-0" />}
                         {perfData[product.id]?.heat === 'moving' && <TrendingUp className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{product.sku}<span className="text-muted-foreground/50"> · #{product.id}</span></p>
+                      <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                        {product.sku || <span className="text-orange-600 dark:text-orange-400 font-sans font-medium">Missing SKU</span>}
+                        <span className="text-muted-foreground/50"> · #{product.id}</span>
+                      </p>
                       {channelStatuses[product.id]?.thedersi && (() => {
                         const s = channelStatuses[product.id].thedersi;
                         const badge = s.status === 'approved'
