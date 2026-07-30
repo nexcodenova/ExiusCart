@@ -65,7 +65,7 @@ const CARDS: IntegrationCard[] = [
 function Card({ card }: { card: IntegrationCard }) {
   return (
     <div
-      className="shrink-0 w-[280px] sm:w-[320px] lg:w-[360px] rounded-3xl p-6 lg:p-7 flex flex-col transition-transform duration-300 hover:-translate-y-1.5"
+      className="shrink-0 w-[90vw] sm:w-[330px] lg:w-[360px] rounded-3xl p-6 lg:p-7 flex flex-col transition-transform duration-300 hover:-translate-y-1.5"
       style={{ background: '#EDEBE6', border: '1px solid #DDD6C7' }}
     >
       {/* Top — big headline, same color across every card */}
@@ -133,13 +133,30 @@ export function IntegrationsGrid() {
 
   return (
     <div ref={wrapperRef} style={{ height: `calc(100vh + ${maxTranslate}px)` }}>
-      <div ref={trackRef} className="sticky top-0 h-screen flex items-start pt-6 lg:pt-10 overflow-hidden">
-        <div
-          ref={rowRef}
-          className="flex gap-4 lg:gap-6 px-6 will-change-transform"
-          style={{ transform: `translateX(-${translate}px)` }}
-        >
-          {CARDS.map(card => <Card key={card.id} card={card} />)}
+      <div ref={trackRef} className="sticky top-0 h-screen flex flex-col overflow-hidden">
+        {/* Mobile-only: heading stays pinned together with the cards for
+            the whole scroll-jack, since mobile shows one card at a time
+            and loses context otherwise. Hidden from sm up — desktop/tablet
+            keep the original heading back in page.tsx as normal-flow
+            content above this section, since that view already shows
+            several cards at once and never needed the pin. */}
+        <div className="sm:hidden shrink-0 pt-24 pb-4 px-6 text-center max-w-2xl mx-auto">
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#6B3FD9] mb-2">
+            Connected everywhere
+          </p>
+          <h2 className="text-4xl font-black text-gray-900 leading-[1.05] tracking-tight">
+            Every channel,<br />one hub.
+          </h2>
+        </div>
+
+        <div className="flex-1 flex items-center sm:items-start sm:pt-16 lg:pt-10 overflow-hidden">
+          <div
+            ref={rowRef}
+            className="flex gap-4 lg:gap-6 px-6 will-change-transform"
+            style={{ transform: `translateX(-${translate}px)` }}
+          >
+            {CARDS.map(card => <Card key={card.id} card={card} />)}
+          </div>
         </div>
       </div>
     </div>

@@ -214,9 +214,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Integrations — horizontal scroll-through strip ── */}
+      {/* ── Integrations — horizontal scroll-through strip ──
+          Heading below is desktop/tablet only (hidden on mobile) — on
+          mobile this same heading lives inside IntegrationsGrid's sticky
+          track instead, since that view shows one card at a time and
+          needs the heading pinned alongside it while scrolling. */}
       <section className="bg-[#F5F3EF]">
-        <div className="pt-20 lg:pt-24 pb-10 px-6 text-center max-w-2xl mx-auto">
+        <div className="hidden sm:block pt-20 lg:pt-24 pb-10 px-6 text-center max-w-2xl mx-auto">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6B3FD9] mb-5">
             Connected everywhere
           </p>
