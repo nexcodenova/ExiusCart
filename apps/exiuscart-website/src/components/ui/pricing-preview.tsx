@@ -31,6 +31,10 @@ export function PricingPreview() {
   const premiumMonthly = prices.premium.monthly;
   const priceDisplay = currency === 'USD' ? `$${starterMonthly}` : `AED ${starterMonthly}`;
   const premiumDisplay = currency === 'USD' ? `$${premiumMonthly}` : `AED ${premiumMonthly}`;
+  // The illustration has the starter price baked in as pixels, so it needs
+  // a matching version per currency — otherwise a USD visitor would see
+  // "AED 45/mo" on the front and the correct "$12/mo" only after flipping.
+  const frontImage = currency === 'USD' ? '/integration/pricing-usd.jpg' : '/integration/pricing.jpg';
 
   return (
     <div
@@ -46,7 +50,7 @@ export function PricingPreview() {
         {/* Front — illustration */}
         <div className="absolute inset-0 [backface-visibility:hidden] rounded-2xl overflow-hidden border border-gray-800 bg-[#F5F3EF]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/integration/pricing.jpg" alt="ExiusCart pricing" className="w-full h-full object-contain" />
+          <img src={frontImage} alt="ExiusCart pricing" className="w-full h-full object-contain" />
           <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold text-center py-2.5">
             See full pricing & plans →
           </div>

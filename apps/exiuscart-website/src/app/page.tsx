@@ -9,11 +9,11 @@ import { LiveStats } from '@/components/ui/live-stats';
 import { IntegrationsGrid } from '@/components/ui/integrations-grid';
 
 export const metadata: Metadata = {
-  title: 'ExiusCart - Smart Business Management for Small Shops | POS, Invoicing & Inventory',
-  description: 'All-in-one business solution for shops worldwide. Create VAT invoices, track inventory, manage orders. Affordable pricing starting from AED 45/month.',
+  title: 'ExiusCart - All-in-One POS, Inventory & Multichannel Selling Platform',
+  description: 'ExiusCart is an all-in-one business platform for sellers worldwide: POS, inventory, VAT-compliant invoicing, HR, and marketing, connecting every sales channel — your own website, Daraz, eBay, Shopify, and TheDersi. Includes Prodora product sourcing from verified suppliers like CJ Dropshipping, Alibaba, and AliExpress. Plans start from $12/month.',
   openGraph: {
-    title: 'ExiusCart - Smart Business Management for Small Shops',
-    description: 'All-in-one business solution for shops worldwide. POS, invoicing, inventory & order management.',
+    title: 'ExiusCart - All-in-One POS, Inventory & Multichannel Selling Platform',
+    description: 'POS, inventory, invoicing, HR, marketing, and every sales channel — plus Prodora product sourcing — in one platform, worldwide. From $12/month.',
     url: 'https://exiuscart.com',
     siteName: 'ExiusCart',
     type: 'website',

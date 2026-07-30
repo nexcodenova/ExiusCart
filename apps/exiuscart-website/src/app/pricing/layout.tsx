@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Pricing | Plans from AED 45/month | ExiusCart',
-  description: 'ExiusCart pricing plans for small businesses worldwide. Monthly plans from AED 45/month. 14-day free trial, no credit card required.',
+  title: 'Pricing | Plans from $12/month | ExiusCart',
+  description: 'ExiusCart pricing plans for small businesses worldwide. Monthly plans from $12/month. 14-day free trial, no credit card required.',
   openGraph: {
-    title: 'ExiusCart Pricing | Plans from AED 45/month',
+    title: 'ExiusCart Pricing | Plans from $12/month',
     description: 'Affordable pricing for businesses worldwide. Monthly or yearly plans. 14-day free trial.',
     url: 'https://exiuscart.com/pricing',
     siteName: 'ExiusCart',
