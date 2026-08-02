@@ -33,12 +33,13 @@ eBay API call (orders, inventory, finances) is built on.
 import os
 import json
 import base64
+import hashlib
 import secrets
 import logging
 from datetime import datetime, timezone, timedelta
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -62,6 +63,15 @@ EBAY_ENV = os.getenv("EBAY_ENV", "sandbox")
 EBAY_APP_ID = os.getenv("EBAY_APP_ID", "")
 EBAY_CERT_ID = os.getenv("EBAY_CERT_ID", "")
 EBAY_RU_NAME = os.getenv("EBAY_RU_NAME", "")
+
+# eBay refuses to activate any Production keyset until this exact URL is
+# registered (with EBAY_DELETION_VERIFICATION_TOKEN) under "Marketplace
+# Account Deletion/Closure Notifications" in the Developer Portal — see
+# ebay_account_deletion_challenge/notify below. The URL is hardcoded (not
+# read from a request) because eBay's challenge-response hash must be
+# computed over the exact string registered, byte for byte.
+EBAY_DELETION_VERIFICATION_TOKEN = os.getenv("EBAY_DELETION_VERIFICATION_TOKEN", "")
+EBAY_DELETION_ENDPOINT_URL = "https://api.exiuscart.com/api/v1/channels/ebay/account-deletion"
 
 EBAY_AUTH_BASE = "https://auth.sandbox.ebay.com" if EBAY_ENV == "sandbox" else "https://auth.ebay.com"
 EBAY_API_BASE = "https://api.sandbox.ebay.com" if EBAY_ENV == "sandbox" else "https://api.ebay.com"
@@ -308,6 +318,44 @@ def ebay_callback(
     conn.seller_status = "approved"
     db.commit()
     return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?ebay=connected")
+
+
+# ── Marketplace Account Deletion/Closure Notifications ──────────────────────
+# eBay requires every Production keyset to prove it can receive these before
+# eBay will activate it, since ExiusCart stores real eBay data (tokens) —
+# opting out is only for apps that store nothing. Two calls, both public
+# (eBay itself calls these, not a logged-in user):
+#   1. GET  — eBay's one-time ownership challenge, sent the moment this URL
+#      is saved in the Developer Portal.
+#   2. POST — the real notification, sent later whenever an eBay user who
+#      connected through us deletes their eBay account.
+
+@router.get("/channels/ebay/account-deletion")
+def ebay_account_deletion_challenge(challenge_code: str):
+    if not EBAY_DELETION_VERIFICATION_TOKEN:
+        raise HTTPException(status_code=503, detail="Deletion endpoint isn't configured yet")
+    digest = hashlib.sha256(
+        (challenge_code + EBAY_DELETION_VERIFICATION_TOKEN + EBAY_DELETION_ENDPOINT_URL).encode("utf-8")
+    ).hexdigest()
+    return {"challengeResponse": digest}
+
+
+@router.post("/channels/ebay/account-deletion")
+async def ebay_account_deletion_notify(request: Request):
+    """We store eBay tokens per shop connection, not per eBay end-user, so
+    there's no direct field yet to auto-match a deleted eBay account to a
+    specific connection. Logged here (with the identifiers eBay sends) so
+    any matching connection can be found and purged manually until that
+    matching is built. Must ack fast — eBay expects 200 back quickly, no
+    heavy work in the request itself."""
+    payload = await request.json()
+    notification = payload.get("notification") or {}
+    data = notification.get("data") or {}
+    logger.warning(
+        f"[EBAY ACCOUNT DELETION] notificationId={notification.get('notificationId')} "
+        f"username={data.get('username')} userId={data.get('userId')} eiasToken={data.get('eiasToken')}"
+    )
+    return {"status": "ok"}
 
 
 def _get_ebay_connection(shop_id: int, db: Session) -> ChannelConnection:
