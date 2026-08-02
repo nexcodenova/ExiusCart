@@ -85,24 +85,24 @@ EBAY_SCOPES = " ".join([
     "https://api.ebay.com/oauth/api_scope/sell.finances",
 ])
 
-# Prioritized per the earlier US/UK/Canada market-fit decision for this
-# seller base — extend this dict as more marketplaces are needed.
+# eBay doesn't require a seller to be physically in a given marketplace's
+# country to list there — dropshippers commonly run a store on eBay.com
+# while sourcing/shipping from a supplier warehouse elsewhere (eBay's own
+# item-location policy just requires the listing to state where the item
+# actually ships from, not where the seller is registered). So this maps a
+# few shop countries to their own local eBay site where that's the more
+# natural choice, and everyone else defaults to EBAY_US — the largest,
+# most universal site — rather than being blocked outright.
 EBAY_MARKETPLACE_BY_COUNTRY = {
     "US": "EBAY_US",
     "GB": "EBAY_GB",
     "CA": "EBAY_CA",
 }
+EBAY_DEFAULT_MARKETPLACE = "EBAY_US"
 
 
 def _ebay_marketplace_id(country_code: str) -> str:
-    marketplace_id = EBAY_MARKETPLACE_BY_COUNTRY.get((country_code or "").strip().upper())
-    if not marketplace_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"eBay isn't available in your shop's country ({country_code or 'not set'}) yet. "
-                   f"Currently supported: US, UK, Canada.",
-        )
-    return marketplace_id
+    return EBAY_MARKETPLACE_BY_COUNTRY.get((country_code or "").strip().upper(), EBAY_DEFAULT_MARKETPLACE)
 
 
 def _ebay_token_request(grant_type: str, **params) -> dict | None:
