@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint
 from app.core.database import Base
 
 
@@ -9,7 +9,12 @@ class ChannelCategory(Base):
     id = Column(Integer, primary_key=True, index=True)
     channel_connection_id = Column(Integer, ForeignKey("channel_connections.id"), nullable=False)
     channel_category_id = Column(String(100), nullable=False)  # TheDersi's own category ID/slug
-    name = Column(String(255), nullable=False)                  # "Festival Wear"
+    # Text, not a bounded VARCHAR — eBay's category names are full
+    # breadcrumb paths ("Collectibles > ... > Other Exploration Missions"),
+    # much longer than TheDersi's flat names ("Festival Wear") this column
+    # was originally sized for. See migration widening this alongside
+    # channel_connections.access_token for the same underlying reason.
+    name = Column(Text, nullable=False)
     parent_id = Column(String(100), nullable=True)              # for nested categories
 
     __table_args__ = (
@@ -32,9 +37,9 @@ class ProductChannelCategory(Base):
     is_listed = Column(Boolean, default=False, server_default="false", nullable=False)
     is_gift = Column(Boolean, default=False, server_default="false", nullable=False)
     channel_category_id = Column(String(100), nullable=True)           # TheDersi/Daraz category ID
-    channel_category_name = Column(String(255), nullable=True)          # "Festival Wear"
+    channel_category_name = Column(Text, nullable=True)                 # "Festival Wear"
     channel_sub_category_id = Column(String(100), nullable=True)       # TheDersi sub-category ID
-    channel_sub_category_name = Column(String(255), nullable=True)     # "Summer Dresses"
+    channel_sub_category_name = Column(Text, nullable=True)            # "Summer Dresses"
 
     __table_args__ = (
         UniqueConstraint("product_id", "channel_connection_id", name="uq_product_conn_cat"),
