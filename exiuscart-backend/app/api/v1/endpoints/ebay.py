@@ -79,6 +79,10 @@ EBAY_API_BASE = "https://api.sandbox.ebay.com" if EBAY_ENV == "sandbox" else "ht
 STOREFRONT_BASE = "https://store.exiuscart.com"
 
 EBAY_SCOPES = " ".join([
+    # Base scope — required by the Taxonomy API (category tree lookup) on
+    # top of the specific sell.* scopes below, which only cover
+    # inventory/account/fulfillment/finances, not category browsing.
+    "https://api.ebay.com/oauth/api_scope",
     "https://api.ebay.com/oauth/api_scope/sell.inventory",
     "https://api.ebay.com/oauth/api_scope/sell.account",
     "https://api.ebay.com/oauth/api_scope/sell.fulfillment",
