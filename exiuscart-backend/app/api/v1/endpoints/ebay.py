@@ -178,6 +178,13 @@ def _ebay_ensure_token(conn: ChannelConnection, db: Session) -> str:
     return conn.access_token
 
 
+EBAY_CONTENT_LANGUAGE_BY_MARKETPLACE = {
+    "EBAY_US": "en-US",
+    "EBAY_GB": "en-GB",
+    "EBAY_CA": "en-CA",
+}
+
+
 def _ebay_api_request(method: str, path: str, conn: ChannelConnection, db: Session, marketplace_id: str, **kwargs) -> httpx.Response | None:
     """The one function every eBay Sell API call goes through — ensures a
     fresh token, sets the required headers, hits EBAY_API_BASE + path.
@@ -187,6 +194,10 @@ def _ebay_api_request(method: str, path: str, conn: ChannelConnection, db: Sessi
         "Authorization": f"Bearer {token}",
         "X-EBAY-C-MARKETPLACE-ID": marketplace_id,
         "Content-Type": "application/json",
+        # Required by the Inventory API on inventory_item/offer writes —
+        # omitting it fails with errorId 25709 "Invalid value for header
+        # Content-Language" (confirmed from a real failed listing attempt).
+        "Content-Language": EBAY_CONTENT_LANGUAGE_BY_MARKETPLACE.get(marketplace_id, "en-US"),
         **kwargs.pop("headers", {}),
     }
     url = f"{EBAY_API_BASE}{path}"
