@@ -383,7 +383,7 @@ def fetch_ebay_business_policies(marketplace_id: str, conn: ChannelConnection, d
     ):
         resp = _ebay_api_request("GET", path, conn, db, marketplace_id, params={"marketplace_id": marketplace_id})
         if resp is None or resp.status_code >= 300:
-            logger.error(f"[EBAY POLICIES] {kind}_policy fetch failed — status={resp.status_code if resp else None}")
+            logger.error(f"[EBAY POLICIES] {kind}_policy fetch failed — status={resp.status_code if resp else None} body={resp.text[:500] if resp is not None else None}")
             return None
         data = resp.json()
         key = {"payment": "paymentPolicies", "fulfillment": "fulfillmentPolicies", "return": "returnPolicies"}[kind]
@@ -474,7 +474,7 @@ def fetch_ebay_category_tree_id(marketplace_id: str, conn: ChannelConnection, db
         params={"marketplace_id": marketplace_id},
     )
     if resp is None or resp.status_code >= 300:
-        logger.error(f"[EBAY CATEGORIES] get_default_category_tree_id failed — status={resp.status_code if resp else None}")
+        logger.error(f"[EBAY CATEGORIES] get_default_category_tree_id failed — status={resp.status_code if resp else None} body={resp.text[:500] if resp is not None else None}")
         return None
     return resp.json().get("categoryTreeId")
 
@@ -488,7 +488,7 @@ def fetch_ebay_categories(marketplace_id: str, conn: ChannelConnection, db: Sess
         return None
     resp = _ebay_api_request("GET", f"/commerce/taxonomy/v1/category_tree/{tree_id}", conn, db, marketplace_id)
     if resp is None or resp.status_code >= 300:
-        logger.error(f"[EBAY CATEGORIES] category_tree fetch failed — status={resp.status_code if resp else None}")
+        logger.error(f"[EBAY CATEGORIES] category_tree fetch failed — status={resp.status_code if resp else None} body={resp.text[:500] if resp is not None else None}")
         return None
     data = resp.json()
     root = data.get("rootCategoryNode", {})
@@ -507,7 +507,7 @@ def fetch_ebay_item_aspects(marketplace_id: str, category_id: str, conn: Channel
         conn, db, marketplace_id, params={"category_id": category_id},
     )
     if resp is None or resp.status_code >= 300:
-        logger.error(f"[EBAY ASPECTS] fetch failed for category={category_id} — status={resp.status_code if resp else None}")
+        logger.error(f"[EBAY ASPECTS] fetch failed for category={category_id} — status={resp.status_code if resp else None} body={resp.text[:500] if resp is not None else None}")
         return None
     data = resp.json()
     normalized = []
