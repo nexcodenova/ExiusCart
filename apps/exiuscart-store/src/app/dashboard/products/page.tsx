@@ -20,6 +20,18 @@ import { RichTextEditor } from '@/components/rich-text-editor';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency } from '@/components/providers/currency-provider';
 
+const CHANNEL_LABELS: Record<string, string> = {
+  thedersi: 'TheDersi',
+  daraz: 'Daraz',
+  ebay: 'eBay',
+  noon: 'Noon',
+  shopify: 'Shopify',
+  custom: 'Custom Website',
+};
+function channelLabel(channelType: string): string {
+  return CHANNEL_LABELS[channelType] ?? channelType;
+}
+
 // Same format the backend auto-assigns to products saved with a blank SKU
 // (SKU{id:06d}) isn't usable here since there's no id yet before saving —
 // this gives a human-readable placeholder instead, editable before save.
@@ -87,8 +99,8 @@ export default function ProductsPage() {
 
   // Channel status map: { product_id: { thedersi: { status, rejection_reason } } }
   const [channelStatuses, setChannelStatuses] = useState<Record<string, Record<string, { status: string; rejection_reason?: string }>>>({});
-  // Channel category map: { product_id: { connection_id: { channel_category_id, channel_category_name } } }
-  const [channelCategories, setChannelCategories] = useState<Record<string, Record<string, { channel_category_id: string; channel_category_name: string }>>>({});
+  // Channel category map: { product_id: { connection_id: { channel_type, channel_category_id, channel_category_name } } }
+  const [channelCategories, setChannelCategories] = useState<Record<string, Record<string, { channel_type: string; channel_category_id: string; channel_category_name: string }>>>({});
 
   useEffect(() => {
     if (!shopId) return;
@@ -640,12 +652,15 @@ export default function ProductsPage() {
                           const catEntries = channelCategories[product.id]
                             ? Object.values(channelCategories[product.id])
                             : [];
-                          const theDersiCat = catEntries[0];
-                          if (theDersiCat) {
+                          const firstCat = catEntries[0];
+                          if (firstCat) {
                             return (
                               <div>
-                                <span className="text-sm text-foreground">{theDersiCat.channel_category_name}</span>
-                                <p className="text-xs text-indigo-500/80 mt-0.5">TheDersi</p>
+                                <span className="text-sm text-foreground">{firstCat.channel_category_name}</span>
+                                <p className="text-xs text-indigo-500/80 mt-0.5">
+                                  {channelLabel(firstCat.channel_type)}
+                                  {catEntries.length > 1 && ` +${catEntries.length - 1} more`}
+                                </p>
                               </div>
                             );
                           }

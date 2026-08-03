@@ -1549,22 +1549,28 @@ def get_all_product_channel_categories(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Returns all TheDersi category assignments for a shop's products in one call.
-    Returns: { product_id: { channel_connection_id: {channel_category_id, channel_category_name} } }
+    Returns every channel's category assignment for a shop's products in one
+    call. Returns: { product_id: { channel_connection_id: {channel_type,
+    channel_category_id, channel_category_name} } }
+    channel_type is included so callers can label each entry by its real
+    channel instead of assuming — a product can have a different category
+    on each connected channel (TheDersi, Daraz, eBay, ...).
     """
     _shop_or_404(shop_id, current_user, db)
     rows = (
-        db.query(ProductChannelCategory)
+        db.query(ProductChannelCategory, ChannelConnection.channel_type)
         .join(Product, Product.id == ProductChannelCategory.product_id)
+        .join(ChannelConnection, ChannelConnection.id == ProductChannelCategory.channel_connection_id)
         .filter(Product.shop_id == shop_id)
         .all()
     )
     result: dict = {}
-    for r in rows:
+    for r, channel_type in rows:
         pid = str(r.product_id)
         if pid not in result:
             result[pid] = {}
         result[pid][r.channel_connection_id] = {
+            "channel_type": channel_type,
             "is_listed": r.is_listed,
             "is_gift": r.is_gift,
             "channel_category_id": r.channel_category_id,
