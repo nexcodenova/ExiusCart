@@ -155,9 +155,10 @@ function DarazConnectModal({ shopId, onClose }: {
     setConnecting(true); setError('');
     try {
       const res = await channelsApi.darazAuthorize(shopId);
-      window.location.href = res.data.authorize_url;
+      window.open(res.data.authorize_url, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
       setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not start Daraz connection. Try again.');
+    } finally {
       setConnecting(false);
     }
   };
@@ -202,14 +203,14 @@ function DarazConnectModal({ shopId, onClose }: {
             <>
               <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
                 <p><strong className="text-foreground">What happens next:</strong></p>
-                <p>• You'll be sent to Daraz to log into your own seller account</p>
+                <p>• Daraz opens in a new tab — log into your own seller account there</p>
                 <p>• Approve ExiusCart's access request</p>
-                <p>• You're redirected back here, fully connected</p>
+                <p>• Come back to this tab — it'll be connected once you're done</p>
               </div>
               <button onClick={startAuthorize} disabled={connecting}
                 className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
                 {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {connecting ? 'Redirecting to Daraz...' : 'Continue to Daraz'}
+                {connecting ? 'Opening Daraz...' : 'Continue to Daraz'}
               </button>
               <button onClick={() => setHasAccount(null)} className="w-full text-xs text-muted-foreground hover:text-foreground">
                 ← Back
@@ -519,9 +520,10 @@ function EbayConnectModal({ shopId, onClose }: {
     setConnecting(true); setError('');
     try {
       const res = await ebayApi.authorize(shopId);
-      window.location.href = res.data.authorize_url;
+      window.open(res.data.authorize_url, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
       setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not start eBay connection. Try again.');
+    } finally {
       setConnecting(false);
     }
   };
@@ -547,14 +549,14 @@ function EbayConnectModal({ shopId, onClose }: {
           )}
           <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
             <p><strong className="text-foreground">What happens next:</strong></p>
-            <p>• You'll be sent to eBay to log into your own account</p>
+            <p>• eBay opens in a new tab — log into your own account there</p>
             <p>• Approve ExiusCart's access request</p>
-            <p>• You're redirected back here — then choose your Business Policies to finish setup</p>
+            <p>• Come back to this tab — then choose your Business Policies to finish setup</p>
           </div>
           <button onClick={startAuthorize} disabled={connecting}
             className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
             {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {connecting ? 'Redirecting to eBay...' : 'Continue to eBay'}
+            {connecting ? 'Opening eBay...' : 'Continue to eBay'}
           </button>
         </div>
       </div>
