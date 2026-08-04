@@ -18,6 +18,7 @@ interface ChannelConnection {
   channel_type: string;
   channel_seller_id?: string;
   channel_warehouse_code?: string | null;
+  seller_country?: string | null;
   webhook_url: string;
   seller_status?: string | null;
 }
@@ -515,11 +516,13 @@ function EbayConnectModal({ shopId, onClose }: {
 }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
+  const [sellerCountry, setSellerCountry] = useState('');
 
   const startAuthorize = async () => {
+    if (!sellerCountry.trim()) return;
     setConnecting(true); setError('');
     try {
-      const res = await ebayApi.authorize(shopId);
+      const res = await ebayApi.authorize(shopId, sellerCountry.trim());
       window.open(res.data.authorize_url, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
       setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not start eBay connection. Try again.');
@@ -547,13 +550,33 @@ function EbayConnectModal({ shopId, onClose }: {
               {error}
             </div>
           )}
+
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">
+              Country your eBay seller account is registered under *
+            </label>
+            <input
+              type="text"
+              value={sellerCountry}
+              onChange={(e) => setSellerCountry(e.target.value)}
+              placeholder="e.g. Sri Lanka, UAE, United States"
+              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm"
+            />
+            <p className="text-xs text-muted-foreground mt-1.5">
+              This must match the country eBay has on file for your seller account — not
+              necessarily your ExiusCart shop's country. eBay rejects listings whose item
+              location doesn't match your account's registered country, so we ask directly
+              rather than guessing.
+            </p>
+          </div>
+
           <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
             <p><strong className="text-foreground">What happens next:</strong></p>
             <p>• eBay opens in a new tab — log into your own account there</p>
             <p>• Approve ExiusCart's access request</p>
             <p>• Come back to this tab — then choose your Business Policies to finish setup</p>
           </div>
-          <button onClick={startAuthorize} disabled={connecting}
+          <button onClick={startAuthorize} disabled={connecting || !sellerCountry.trim()}
             className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
             {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
             {connecting ? 'Opening eBay...' : 'Continue to eBay'}
@@ -716,6 +739,10 @@ function EbayCard({ connection, policiesConfigured, onManagePolicies, shopId, on
 }) {
   const [disconnecting, setDisconnecting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [countryInput, setCountryInput] = useState('');
+  const [savingCountry, setSavingCountry] = useState(false);
+  const [countryError, setCountryError] = useState('');
+  const [savedCountry, setSavedCountry] = useState(connection.seller_country ?? null);
 
   const disconnect = async () => {
     setDisconnecting(true);
@@ -725,6 +752,19 @@ function EbayCard({ connection, policiesConfigured, onManagePolicies, shopId, on
     } catch {
       setDisconnecting(false);
       setConfirming(false);
+    }
+  };
+
+  const saveCountry = async () => {
+    if (!countryInput.trim()) return;
+    setSavingCountry(true); setCountryError('');
+    try {
+      const res = await ebayApi.setSellerCountry(shopId, countryInput.trim());
+      setSavedCountry(res.data.seller_country);
+    } catch (err: any) {
+      setCountryError(err?.response?.data?.detail ?? 'Could not save. Try again.');
+    } finally {
+      setSavingCountry(false);
     }
   };
 
@@ -746,6 +786,29 @@ function EbayCard({ connection, policiesConfigured, onManagePolicies, shopId, on
       </div>
       <div className="p-5 text-sm text-muted-foreground space-y-2">
         <p>Seller: <strong className="text-foreground">{connection.channel_seller_id || 'eBay account connected'}</strong></p>
+        {savedCountry ? (
+          <p className="text-xs">Seller registered country: <strong className="text-foreground">{savedCountry}</strong></p>
+        ) : (
+          <div className="bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2 space-y-2">
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Seller registered country not set — listings will fail until this matches what eBay has on file for your account.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={countryInput}
+                onChange={(e) => setCountryInput(e.target.value)}
+                placeholder="e.g. Sri Lanka"
+                className="flex-1 px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs"
+              />
+              <button onClick={saveCountry} disabled={savingCountry || !countryInput.trim()}
+                className="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition disabled:opacity-60">
+                {savingCountry ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            {countryError && <p className="text-xs text-destructive">{countryError}</p>}
+          </div>
+        )}
         {policiesConfigured === false ? (
           <div className="flex items-center justify-between gap-3 bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2">
             <p className="text-xs text-amber-600 dark:text-amber-400">Business Policies not set — products can't be listed yet</p>

@@ -31,6 +31,7 @@ equivalent of Daraz's _daraz_signed_request — the one function every future
 eBay API call (orders, inventory, finances) is built on.
 """
 import os
+import re
 import json
 import base64
 import hashlib
@@ -218,13 +219,28 @@ def _ebay_callback_url() -> str:
 @router.get("/shops/{shop_id}/channels/ebay/authorize")
 def ebay_authorize(
     shop_id: int,
+    seller_country: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Start the eBay OAuth flow — returns the URL to redirect the seller's
     browser to. The seller must already have their own eBay account; this
-    only authorizes ExiusCart's app to access it."""
+    only authorizes ExiusCart's app to access it.
+
+    seller_country is the country the seller's eBay account is REGISTERED
+    under — required and stated explicitly by the seller here, never
+    inferred from the shop's general profile country (which is for
+    invoicing/VAT and can legitimately be different). eBay rejects any
+    listing whose item location doesn't match the seller's own registered
+    country, so guessing this gets a real seller a real rejected listing."""
     shop = _shop_or_404(shop_id, current_user, db)
+
+    seller_country_iso = _shop_country_iso(seller_country)
+    if not seller_country_iso:
+        raise HTTPException(
+            status_code=400,
+            detail="Enter the country your eBay seller account is registered under — this couldn't be recognized.",
+        )
 
     if not EBAY_APP_ID or not EBAY_RU_NAME:
         raise HTTPException(
@@ -242,7 +258,7 @@ def ebay_authorize(
             },
         )
 
-    marketplace_id = _ebay_marketplace_id(shop.country)
+    marketplace_id = _ebay_marketplace_id(seller_country_iso)
 
     existing = db.query(ChannelConnection).filter(
         ChannelConnection.shop_id == shop_id,
@@ -273,12 +289,14 @@ def ebay_authorize(
     ).first()
     if pending:
         pending.oauth_state = state
+        pending.seller_country = seller_country_iso
     else:
         pending = ChannelConnection(
             shop_id=shop_id,
             channel_type="ebay",
             is_active=False,
             oauth_state=state,
+            seller_country=seller_country_iso,
             webhook_secret=secrets.token_urlsafe(32),
         )
         db.add(pending)
@@ -384,6 +402,29 @@ def _get_ebay_connection(shop_id: int, db: Session) -> ChannelConnection:
     return conn
 
 
+class EbaySellerCountryIn(BaseModel):
+    country: str
+
+
+@router.put("/shops/{shop_id}/channels/ebay/seller-country")
+def set_ebay_seller_country(
+    shop_id: int,
+    payload: EbaySellerCountryIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lets a seller connected before this field existed (or who entered it
+    wrong) correct it without a full disconnect/reconnect."""
+    _shop_or_404(shop_id, current_user, db)
+    conn = _get_ebay_connection(shop_id, db)
+    iso = _shop_country_iso(payload.country)
+    if not iso:
+        raise HTTPException(status_code=400, detail="Enter the country your eBay seller account is registered under — this couldn't be recognized.")
+    conn.seller_country = iso
+    db.commit()
+    return {"seller_country": iso}
+
+
 # ── Business Policies — a real, mandatory, never-fabricated prerequisite ────
 # eBay requires every offer to reference a payment/fulfillment/return policy
 # ID. These encode real shipping-cost/return-window decisions the SELLER
@@ -417,7 +458,7 @@ def get_ebay_business_policies(
 ):
     shop = _shop_or_404(shop_id, current_user, db)
     conn = _get_ebay_connection(shop_id, db)
-    marketplace_id = _ebay_marketplace_id(shop.country)
+    marketplace_id = _ebay_marketplace_id(conn.seller_country)
 
     policies = fetch_ebay_business_policies(marketplace_id, conn, db)
     if policies is None:
@@ -550,7 +591,7 @@ def get_ebay_category_attributes(
 ):
     shop = _shop_or_404(shop_id, current_user, db)
     conn = _get_ebay_connection(shop_id, db)
-    marketplace_id = _ebay_marketplace_id(shop.country)
+    marketplace_id = _ebay_marketplace_id(conn.seller_country)
     attributes = fetch_ebay_item_aspects(marketplace_id, category_id, conn, db)
     if attributes is None:
         raise HTTPException(status_code=502, detail="Could not reach eBay — try again shortly")
@@ -585,30 +626,61 @@ EBAY_COUNTRY_ISO = {
 
 def _shop_country_iso(country: str | None) -> str | None:
     """Returns a 2-letter ISO code, or None when it can't be resolved —
-    never a guess, since this ends up on a real listing."""
+    never a guess, since this ends up on a real listing. Matches with
+    spaces/punctuation stripped ("SriLanka", "Sri-Lanka", "Sri Lanka" all
+    hit the same key) since this is a free-text field, not a dropdown."""
     raw = (country or "").strip()
     if len(raw) == 2:
         return raw.upper()
-    return EBAY_COUNTRY_ISO.get(raw.upper())
+    normalized = re.sub(r"[^A-Z]", "", raw.upper())
+    for name, iso in EBAY_COUNTRY_ISO.items():
+        if re.sub(r"[^A-Z]", "", name) == normalized:
+            return iso
+    return None
 
 
 def _ebay_ensure_inventory_location(conn: ChannelConnection, db: Session, shop: Shop, marketplace_id: str) -> str:
     """Returns the seller's eBay inventory-location key, creating it on the
-    first listing. Checks first instead of blind-creating, so the usual path
-    (location already there) doesn't rely on parsing a 409 error body."""
-    resp = _ebay_api_request(
-        "GET", f"/sell/inventory/v1/location/{EBAY_LOCATION_KEY}", conn, db, marketplace_id,
-    )
-    if resp is not None and resp.status_code < 300:
-        return EBAY_LOCATION_KEY
+    first listing — and correcting it if it's out of date (e.g. it was
+    created on an earlier attempt with an old/placeholder address). A stale
+    location silently sends the wrong Item.Country and eBay rejects the
+    listing without saying why — confirmed from a real GET showing an old
+    Dubai address still attached after the shop was updated.
 
-    country_iso = _shop_country_iso(shop.country)
+    Country comes from conn.seller_country — what the seller explicitly
+    stated their eBay account is registered under when they connected, not
+    the shop's general profile country (invoicing/VAT, can legitimately
+    differ). Address/city still come from the shop profile, since eBay
+    doesn't ask for those separately."""
+    country_iso = conn.seller_country
     if not (country_iso and shop.address and shop.city):
         raise HTTPException(status_code=400, detail={
             "error": "shop_address_required",
             "message": "eBay needs your shop's address to set the item location on your listings. "
-                       "Add your address, city and country under Settings, then try again.",
+                       "Add your address and city under Settings, then try again.",
         })
+
+    resp = _ebay_api_request(
+        "GET", f"/sell/inventory/v1/location/{EBAY_LOCATION_KEY}", conn, db, marketplace_id,
+    )
+    if resp is not None and resp.status_code < 300:
+        existing = resp.json().get("location", {}).get("address", {})
+        if (
+            existing.get("country") == country_iso
+            and existing.get("city") == shop.city
+            and existing.get("addressLine1") == shop.address
+        ):
+            return EBAY_LOCATION_KEY
+        upd = _ebay_api_request(
+            "POST", f"/sell/inventory/v1/location/{EBAY_LOCATION_KEY}/update_location_details",
+            conn, db, marketplace_id,
+            json={"location": {"address": {"addressLine1": shop.address, "city": shop.city, "country": country_iso}}},
+        )
+        if upd is None or upd.status_code >= 300:
+            detail = upd.text[:500] if upd is not None else "no response"
+            logger.error(f"[EBAY LOCATION] update failed — {detail}")
+            raise HTTPException(status_code=502, detail=f"eBay rejected updating the shop location: {detail}")
+        return EBAY_LOCATION_KEY
 
     body = {
         "location": {"address": {
@@ -687,7 +759,7 @@ def _create_ebay_listing_inner(
 ):
     shop = _shop_or_404(shop_id, current_user, db)
     conn = _get_ebay_connection(shop_id, db)
-    marketplace_id = _ebay_marketplace_id(shop.country)
+    marketplace_id = _ebay_marketplace_id(conn.seller_country)
 
     product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
@@ -852,7 +924,7 @@ def get_ebay_listing_status(
     synchronous so this is a status re-check, not a pending-review poll."""
     shop = _shop_or_404(shop_id, current_user, db)
     conn = _get_ebay_connection(shop_id, db)
-    marketplace_id = _ebay_marketplace_id(shop.country)
+    marketplace_id = _ebay_marketplace_id(conn.seller_country)
 
     status_row = db.query(ChannelProductStatus).filter(
         ChannelProductStatus.product_id == product_id,
@@ -907,7 +979,7 @@ def sync_ebay_orders(conn: ChannelConnection, shop: Shop, db: Session, start_iso
     from app.models.product_variant import ProductVariant
     import uuid as _uuid
 
-    marketplace_id = _ebay_marketplace_id(shop.country)
+    marketplace_id = _ebay_marketplace_id(conn.seller_country)
     orders_data = fetch_ebay_orders(marketplace_id, start_iso, end_iso, conn, db)
     if not orders_data:
         return 0
@@ -1021,7 +1093,7 @@ def fulfill_ebay_order(
 
     shop = _shop_or_404(shop_id, current_user, db)
     conn = _get_ebay_connection(shop_id, db)
-    marketplace_id = _ebay_marketplace_id(shop.country)
+    marketplace_id = _ebay_marketplace_id(conn.seller_country)
 
     meta = db.query(ChannelOrderMeta).filter(
         ChannelOrderMeta.order_id == order_id,
@@ -1061,7 +1133,7 @@ def get_ebay_earnings(
 ):
     shop = _shop_or_404(shop_id, current_user, db)
     conn = _get_ebay_connection(shop_id, db)
-    marketplace_id = _ebay_marketplace_id(shop.country)
+    marketplace_id = _ebay_marketplace_id(conn.seller_country)
 
     days = min(max(days, 1), 365)
     since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
@@ -1085,7 +1157,7 @@ def get_ebay_transactions(
     """start_time/end_time as ISO 8601 (e.g. 2026-01-01T00:00:00.000Z)."""
     shop = _shop_or_404(shop_id, current_user, db)
     conn = _get_ebay_connection(shop_id, db)
-    marketplace_id = _ebay_marketplace_id(shop.country)
+    marketplace_id = _ebay_marketplace_id(conn.seller_country)
 
     resp = _ebay_api_request(
         "GET", "/sell/finances/v1/transaction", conn, db, marketplace_id,

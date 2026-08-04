@@ -15,6 +15,13 @@ class ChannelConnection(Base):
                                                               # since the RSA private key alone is ~1750 chars
     channel_api_url = Column(String(500), nullable=True)    # override default channel API URL
     channel_seller_id = Column(String(100), nullable=True)  # seller ID on the channel
+    # 2-letter ISO country the seller's account is REGISTERED under on this
+    # channel — eBay in particular requires this to match your own item
+    # location or it rejects the listing outright. Never inferred from the
+    # shop's general profile country (that's for invoicing/VAT and can
+    # legitimately differ) — the seller states it explicitly when
+    # connecting, since only they know what they registered with eBay.
+    seller_country = Column(String(2), nullable=True)
     channel_warehouse_code = Column(String(100), nullable=True)  # Noon: seller's own chosen warehouse
                                                                    # (their own licensed space, or Noon's
                                                                    # own consolidation center) — fetched

@@ -603,6 +603,7 @@ def list_channels(
             "channel_type": c.channel_type,
             "channel_seller_id": c.channel_seller_id,
             "channel_warehouse_code": c.channel_warehouse_code,
+            "seller_country": c.seller_country,
             "last_synced_at": c.last_synced_at,
             "webhook_url": _webhook_url(c),
             "seller_status": c.seller_status,

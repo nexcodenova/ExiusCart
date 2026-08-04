@@ -644,8 +644,10 @@ export const noonApi = {
 // eBay — OAuth click-to-connect (same pattern as Daraz), plus a Business
 // Policies picker step that's unique to eBay's listing requirements.
 export const ebayApi = {
-  authorize: (shopId: string) =>
-    api.get(`/shops/${shopId}/channels/ebay/authorize`),
+  authorize: (shopId: string, sellerCountry: string) =>
+    api.get(`/shops/${shopId}/channels/ebay/authorize`, { params: { seller_country: sellerCountry } }),
+  setSellerCountry: (shopId: string, country: string) =>
+    api.put(`/shops/${shopId}/channels/ebay/seller-country`, { country }),
   getBusinessPolicies: (shopId: string) =>
     api.get(`/shops/${shopId}/channels/ebay/business-policies`),
   saveBusinessPolicies: (shopId: string, data: { payment_policy_id: string; fulfillment_policy_id: string; return_policy_id: string }) =>
