@@ -673,12 +673,27 @@ def create_ebay_listing(
             "availableQuantity": sku_row["quantity"],
         }
         resp = _ebay_api_request("POST", "/sell/inventory/v1/offer", conn, db, marketplace_id, json=offer_body)
-        if resp is None or resp.status_code >= 300:
+        offer_id = None
+        if resp is not None and resp.status_code < 300:
+            offer_id = resp.json().get("offerId")
+        elif resp is not None and resp.status_code == 400:
+            # A prior attempt for this SKU can leave an unpublished offer
+            # behind (e.g. it failed at a later step). eBay refuses to
+            # create a second one and hands back the existing offerId in
+            # the error itself (errorId 25002) — reuse it and publish
+            # that, instead of treating "already exists" as a failure.
+            try:
+                err_body = resp.json()
+                for err in err_body.get("errors", []):
+                    if err.get("errorId") == 25002:
+                        for param in err.get("parameters", []):
+                            if param.get("name") == "offerId":
+                                offer_id = param.get("value")
+            except Exception:
+                pass
+        if not offer_id:
             detail = resp.text[:500] if resp is not None else "no response"
             raise HTTPException(status_code=502, detail=f"eBay rejected the offer ({sku}): {detail}")
-        offer_id = resp.json().get("offerId")
-        if not offer_id:
-            raise HTTPException(status_code=502, detail=f"eBay didn't return an offerId for {sku}")
 
         # 5. POST publish
         resp = _ebay_api_request("POST", f"/sell/inventory/v1/offer/{offer_id}/publish", conn, db, marketplace_id)
