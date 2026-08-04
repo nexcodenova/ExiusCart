@@ -11,6 +11,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // Pre-fill the email from last time when "Remember me" was left on. Only
+  // the email is ever stored — never the password.
+  useEffect(() => {
+    const saved = localStorage.getItem('remembered_email');
+    if (saved) setEmail(saved);
+    else setRememberMe(false);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -51,6 +60,8 @@ export default function LoginPage() {
       const { access_token, user } = res.data;
       localStorage.setItem('access_token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
+      if (rememberMe) localStorage.setItem('remembered_email', email);
+      else localStorage.removeItem('remembered_email');
       // Fetch and store shop_id so all dashboard pages work immediately
       try {
         const shopRes = await shopApi.getMyShop();
@@ -137,7 +148,12 @@ export default function LoginPage() {
             </div>
 
             <label className="flex items-center gap-2 text-gray-500 text-sm cursor-pointer select-none">
-              <input type="checkbox" defaultChecked className="rounded border-gray-300 bg-gray-50 accent-[#6B3FD9]" />
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="rounded border-gray-300 bg-gray-50 accent-[#6B3FD9]"
+              />
               Remember me
             </label>
 

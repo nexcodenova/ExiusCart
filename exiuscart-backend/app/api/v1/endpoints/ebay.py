@@ -557,6 +557,80 @@ def get_ebay_category_attributes(
     return {"attributes": attributes}
 
 
+# ── Inventory location — the source of the listing's Item.Country ──────────
+# eBay takes a published listing's item location (and therefore Item.Country)
+# from the offer's merchantLocationKey. With no location, publishOffer fails
+# with errorId 25002 "No <Item.Country> exists" — confirmed from a real
+# failed publish. The address is the seller's own, never fabricated: it goes
+# on a live public listing as where the item ships from.
+
+EBAY_LOCATION_KEY = "exiuscart-primary"
+
+# Shop.country holds an ISO code for some shops ("AE") and a name for others
+# ("UAE") — both are in real data, so handle both rather than assuming.
+EBAY_COUNTRY_ISO = {
+    "UAE": "AE",
+    "UNITED ARAB EMIRATES": "AE",
+    "SRI LANKA": "LK",
+    "USA": "US",
+    "UNITED STATES": "US",
+    "UK": "GB",
+    "UNITED KINGDOM": "GB",
+    "CANADA": "CA",
+    "INDIA": "IN",
+    "PAKISTAN": "PK",
+    "BANGLADESH": "BD",
+}
+
+
+def _shop_country_iso(country: str | None) -> str | None:
+    """Returns a 2-letter ISO code, or None when it can't be resolved —
+    never a guess, since this ends up on a real listing."""
+    raw = (country or "").strip()
+    if len(raw) == 2:
+        return raw.upper()
+    return EBAY_COUNTRY_ISO.get(raw.upper())
+
+
+def _ebay_ensure_inventory_location(conn: ChannelConnection, db: Session, shop: Shop, marketplace_id: str) -> str:
+    """Returns the seller's eBay inventory-location key, creating it on the
+    first listing. Checks first instead of blind-creating, so the usual path
+    (location already there) doesn't rely on parsing a 409 error body."""
+    resp = _ebay_api_request(
+        "GET", f"/sell/inventory/v1/location/{EBAY_LOCATION_KEY}", conn, db, marketplace_id,
+    )
+    if resp is not None and resp.status_code < 300:
+        return EBAY_LOCATION_KEY
+
+    country_iso = _shop_country_iso(shop.country)
+    if not (country_iso and shop.address and shop.city):
+        raise HTTPException(status_code=400, detail={
+            "error": "shop_address_required",
+            "message": "eBay needs your shop's address to set the item location on your listings. "
+                       "Add your address, city and country under Settings, then try again.",
+        })
+
+    body = {
+        "location": {"address": {
+            "addressLine1": shop.address,
+            "city": shop.city,
+            "country": country_iso,
+        }},
+        "name": (shop.name or "ExiusCart")[:1000],
+        "merchantLocationStatus": "ENABLED",
+        "locationTypes": ["WAREHOUSE"],
+    }
+    resp = _ebay_api_request(
+        "POST", f"/sell/inventory/v1/location/{EBAY_LOCATION_KEY}",
+        conn, db, marketplace_id, json=body,
+    )
+    if resp is None or (resp.status_code >= 300 and resp.status_code != 409):
+        detail = resp.text[:500] if resp is not None else "no response"
+        logger.error(f"[EBAY LOCATION] create failed — {detail}")
+        raise HTTPException(status_code=502, detail=f"eBay rejected the shop location: {detail}")
+    return EBAY_LOCATION_KEY
+
+
 # ── Listing — three chained eBay Inventory API calls per product ────────────
 
 class EbayListingRequest(BaseModel):
@@ -611,6 +685,8 @@ def create_ebay_listing(
         image_urls = [product.image_url]
     if not image_urls:
         raise HTTPException(status_code=400, detail="This product has no images — eBay requires at least one")
+
+    location_key = _ebay_ensure_inventory_location(conn, db, shop, marketplace_id)
 
     # 2. One SKU per real variant, or one SKU from the base product — same
     # logic Daraz's listing endpoint already uses.
@@ -671,6 +747,7 @@ def create_ebay_listing(
                 "price": {"value": str(sku_row["price"]), "currency": "USD" if marketplace_id == "EBAY_US" else ("GBP" if marketplace_id == "EBAY_GB" else "CAD")},
             },
             "availableQuantity": sku_row["quantity"],
+            "merchantLocationKey": location_key,
         }
         resp = _ebay_api_request("POST", "/sell/inventory/v1/offer", conn, db, marketplace_id, json=offer_body)
         offer_id = None
@@ -680,17 +757,27 @@ def create_ebay_listing(
             # A prior attempt for this SKU can leave an unpublished offer
             # behind (e.g. it failed at a later step). eBay refuses to
             # create a second one and hands back the existing offerId in
-            # the error itself (errorId 25002) — reuse it and publish
-            # that, instead of treating "already exists" as a failure.
+            # the error itself (errorId 25002) — reuse it instead of
+            # treating "already exists" as a failure.
             try:
-                err_body = resp.json()
-                for err in err_body.get("errors", []):
+                for err in resp.json().get("errors", []):
                     if err.get("errorId") == 25002:
                         for param in err.get("parameters", []):
                             if param.get("name") == "offerId":
                                 offer_id = param.get("value")
             except Exception:
                 pass
+            if offer_id:
+                # That older offer was built before this request's values
+                # (and may predate merchantLocationKey entirely, which is
+                # what publish needs) — overwrite it so publishing uses
+                # what the seller just submitted, not a stale draft.
+                upd = _ebay_api_request(
+                    "PUT", f"/sell/inventory/v1/offer/{offer_id}", conn, db, marketplace_id, json=offer_body,
+                )
+                if upd is None or upd.status_code >= 300:
+                    detail = upd.text[:500] if upd is not None else "no response"
+                    raise HTTPException(status_code=502, detail=f"eBay rejected updating the existing offer ({sku}): {detail}")
         if not offer_id:
             detail = resp.text[:500] if resp is not None else "no response"
             raise HTTPException(status_code=502, detail=f"eBay rejected the offer ({sku}): {detail}")
