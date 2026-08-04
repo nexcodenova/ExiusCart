@@ -710,9 +710,24 @@ function EbayBusinessPoliciesModal({ shopId, onSaved, onClose }: {
 
 // ── eBay connected card ─────────────────────────────────────────────────────
 
-function EbayCard({ connection, policiesConfigured, onManagePolicies }: {
+function EbayCard({ connection, policiesConfigured, onManagePolicies, shopId, onDisconnected }: {
   connection: ChannelConnection; policiesConfigured: boolean | null; onManagePolicies: () => void;
+  shopId: string; onDisconnected: () => void;
 }) {
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const disconnect = async () => {
+    setDisconnecting(true);
+    try {
+      await channelsApi.disconnectChannel(shopId, connection.id);
+      onDisconnected();
+    } catch {
+      setDisconnecting(false);
+      setConfirming(false);
+    }
+  };
+
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -741,6 +756,37 @@ function EbayCard({ connection, policiesConfigured, onManagePolicies }: {
         ) : (
           <p className="text-xs">Orders syncing from eBay automatically</p>
         )}
+
+        <div className="pt-3 mt-1 border-t border-border">
+          {confirming ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-xs text-muted-foreground">
+                Disconnect eBay? Your listings stay on eBay, but they stop syncing here.
+              </p>
+              <button
+                onClick={disconnect}
+                disabled={disconnecting}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition disabled:opacity-60"
+              >
+                {disconnecting ? 'Disconnecting…' : 'Yes, disconnect'}
+              </button>
+              <button
+                onClick={() => setConfirming(false)}
+                disabled={disconnecting}
+                className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              className="text-xs text-muted-foreground hover:text-destructive transition"
+            >
+              Disconnect eBay
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1273,7 +1319,8 @@ export default function ChannelsPage() {
               ))}
               {ebayConns.map((conn) => (
                 <EbayCard key={conn.id} connection={conn} policiesConfigured={ebayPoliciesConfigured}
-                  onManagePolicies={() => setShowEbayPoliciesModal(true)} />
+                  onManagePolicies={() => setShowEbayPoliciesModal(true)}
+                  shopId={shopId} onDisconnected={() => load()} />
               ))}
             </div>
           )}

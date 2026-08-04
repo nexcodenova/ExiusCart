@@ -583,6 +583,8 @@ export const channelsApi = {
     channel_category_id?: string;
     channel_category_name?: string;
   }) => api.put(`/shops/${shopId}/products/${productId}/channel-category`, data),
+  disconnectChannel: (shopId: string, channelId: number) =>
+    api.delete(`/shops/${shopId}/channels/${channelId}`),
   getAllChannelStatuses: (shopId: string) =>
     api.get(`/shops/${shopId}/channel-statuses`),
   getAllProductChannelCategories: (shopId: string) =>

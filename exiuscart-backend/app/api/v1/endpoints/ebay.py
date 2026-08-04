@@ -642,6 +642,23 @@ class EbayListingRequest(BaseModel):
     return_policy_id: str | None = None
 
 
+def _log_ebay_sync(db: Session, shop_id: int, product_id: int, success: bool, error: str | None = None):
+    """Records the attempt on the Channel Listings page. Every eBay listing
+    attempt gets logged — success or failure — the same way Daraz and Noon
+    already do, so a failed listing is visible there instead of only
+    appearing as a red message inside the product modal."""
+    from app.models.channel_sync_log import ChannelSyncLog
+    try:
+        db.add(ChannelSyncLog(
+            shop_id=shop_id, product_id=product_id, channel_type="ebay",
+            action="listing", success=success,
+            error_message=(error or "")[:2000] or None,
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+
 @router.post("/shops/{shop_id}/channels/ebay/products/{product_id}/create")
 def create_ebay_listing(
     shop_id: int,
@@ -654,6 +671,20 @@ def create_ebay_listing(
     SKU, then publishes each offer. eBay's publish is synchronous — success
     here means the listing is already live, unlike Daraz's pending-review
     flow."""
+    try:
+        return _create_ebay_listing_inner(shop_id, product_id, payload, db, current_user)
+    except HTTPException as exc:
+        _log_ebay_sync(db, shop_id, product_id, False, str(exc.detail))
+        raise
+
+
+def _create_ebay_listing_inner(
+    shop_id: int,
+    product_id: int,
+    payload: EbayListingRequest,
+    db: Session,
+    current_user: User,
+):
     shop = _shop_or_404(shop_id, current_user, db)
     conn = _get_ebay_connection(shop_id, db)
     marketplace_id = _ebay_marketplace_id(shop.country)
@@ -805,6 +836,7 @@ def create_ebay_listing(
     status_row.external_item_id = created_listing_ids[0]
     db.commit()
 
+    _log_ebay_sync(db, shop_id, product_id, True)
     return {"listing_ids": created_listing_ids, "status": "approved"}
 
 
