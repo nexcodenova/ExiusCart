@@ -28,6 +28,7 @@ class ShopUpdate(BaseModel):
     email: Optional[EmailStr] = None
     address: Optional[str] = None
     city: Optional[str] = None
+    country: Optional[str] = None
     tax_number: Optional[str] = None
     trade_license: Optional[str] = None
     website: Optional[str] = None

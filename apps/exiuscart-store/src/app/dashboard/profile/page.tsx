@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 const EMPTY_SHOP = {
-  name: '', tradeLicense: '', vatNumber: '', address: '',
+  name: '', tradeLicense: '', vatNumber: '', address: '', city: '', country: '',
   phone: '', email: '', website: '', whatsapp: '', description: '',
   logo: null as string | null,
 };
@@ -80,6 +80,8 @@ export default function ShopProfilePage() {
   const [subPlan, setSubPlan] = useState<SubPlan>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveOk, setSaveOk] = useState(false);
   const [loading, setLoading] = useState(true);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
@@ -93,6 +95,8 @@ export default function ShopProfilePage() {
           tradeLicense: d.trade_license ?? '',
           vatNumber: d.tax_number ?? '',
           address: d.address ?? '',
+          city: d.city ?? '',
+          country: d.country ?? '',
           phone: d.phone ?? '',
           email: d.email ?? '',
           website: d.website ?? '',
@@ -113,6 +117,8 @@ export default function ShopProfilePage() {
 
   const handleSave = async () => {
     setIsSaving(true);
+    setSaveError('');
+    setSaveOk(false);
     try {
       const { shopApi } = await import('@/lib/api');
       await shopApi.updateShop({
@@ -120,15 +126,28 @@ export default function ShopProfilePage() {
         trade_license: shopData.tradeLicense,
         tax_number: shopData.vatNumber,
         address: shopData.address,
+        city: shopData.city,
+        country: shopData.country,
         phone: shopData.phone,
         email: shopData.email,
         website: shopData.website,
         whatsapp: shopData.whatsapp,
         description: shopData.description,
       });
-    } catch {}
-    setIsSaving(false);
-    setIsEditing(false);
+      setSaveOk(true);
+      setIsEditing(false);
+      setTimeout(() => setSaveOk(false), 3000);
+    } catch (err: any) {
+      // Previously swallowed with an empty catch — a failed save looked
+      // identical to a successful one, so nothing appeared to persist and
+      // there was no way to tell why.
+      const detail = err?.response?.data?.detail;
+      setSaveError(
+        typeof detail === 'string' ? detail : detail?.message ?? 'Could not save your changes. Please try again.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -170,6 +189,18 @@ export default function ShopProfilePage() {
           )}
         </div>
       </div>
+
+      {saveError && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>{saveError}</span>
+        </div>
+      )}
+      {saveOk && (
+        <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-600 dark:text-green-400">
+          Shop profile saved.
+        </div>
+      )}
 
       {/* Shop Logo & Name Card */}
       <div className="bg-card rounded-xl border border-border p-6">
@@ -298,6 +329,25 @@ export default function ShopProfilePage() {
             isEditing={isEditing}
             multiline
           />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              label="City"
+              icon={<Building2 className="w-4 h-4" />}
+              value={shopData.city}
+              onChange={(value) => setShopData({ ...shopData, city: value })}
+              isEditing={isEditing}
+            />
+            <FormField
+              label="Country"
+              icon={<Globe className="w-4 h-4" />}
+              value={shopData.country}
+              onChange={(value) => setShopData({ ...shopData, country: value })}
+              isEditing={isEditing}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Used on invoices and as the item location on marketplace listings like eBay.
+          </p>
         </div>
       </div>
 
