@@ -25,6 +25,31 @@ def _first_image(db: Session, product_id: int) -> str | None:
     return img.url if img else None
 
 
+@router.get("/public/store/{shop_slug}/categories")
+def public_store_categories(shop_slug: str, channel: str = "custom", db: Session = Depends(get_db)):
+    """No-auth — a custom storefront's category nav/grid reads this
+    directly, live, instead of the storefront keeping its own copy.
+    First real piece of the public storefront API described for the
+    'ExiusCart is the whole backend, the site is just a frontend' plan."""
+    from app.models.storefront_category import StorefrontCategory, STOREFRONT_CATEGORY_CHANNELS
+
+    if channel not in STOREFRONT_CATEGORY_CHANNELS:
+        raise HTTPException(status_code=400, detail=f"channel must be one of: {', '.join(STOREFRONT_CATEGORY_CHANNELS)}")
+
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    rows = db.query(StorefrontCategory).filter(
+        StorefrontCategory.shop_id == shop.id,
+        StorefrontCategory.channel_type == channel,
+    ).order_by(StorefrontCategory.sort_order).all()
+    return [
+        {"id": r.id, "name": r.name, "slug": r.slug, "icon_url": r.icon_url}
+        for r in rows
+    ]
+
+
 @router.get("/public/stats")
 def public_stats(db: Session = Depends(get_db)):
     """No-auth endpoint — returns live platform stats for the marketing site."""

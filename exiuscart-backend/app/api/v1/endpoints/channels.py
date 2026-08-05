@@ -17,6 +17,7 @@ import secrets
 import uuid
 import logging
 import httpx
+from slugify import slugify
 from datetime import datetime, timezone
 from typing import List, Optional, Union
 
@@ -1683,3 +1684,112 @@ def get_channel_sync_logs(
         }
         for r in rows
     ]
+
+
+# ── Storefront Categories — Shopify & Custom Website only ──────────────────
+# TheDersi/Daraz/Noon/eBay already have their own category systems
+# (ChannelCategory/ProductChannelCategory above). Shopify and Custom
+# Website have no category concept at all today — this is a shop-managed,
+# customer-facing category list for those two specifically, powering the
+# public storefront category endpoint below.
+
+from app.models.storefront_category import StorefrontCategory, STOREFRONT_CATEGORY_CHANNELS
+
+
+class StorefrontCategoryIn(BaseModel):
+    channel_type: str
+    name: str
+    icon_url: Optional[str] = None
+    sort_order: int = 0
+
+
+def _check_storefront_channel(channel_type: str):
+    if channel_type not in STOREFRONT_CATEGORY_CHANNELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Storefront categories are only available for: {', '.join(STOREFRONT_CATEGORY_CHANNELS)}.",
+        )
+
+
+@router.get("/shops/{shop_id}/storefront-categories")
+def list_storefront_categories(
+    shop_id: int,
+    channel_type: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    _check_storefront_channel(channel_type)
+    rows = db.query(StorefrontCategory).filter(
+        StorefrontCategory.shop_id == shop_id,
+        StorefrontCategory.channel_type == channel_type,
+    ).order_by(StorefrontCategory.sort_order).all()
+    return [
+        {"id": r.id, "channel_type": r.channel_type, "name": r.name, "slug": r.slug,
+         "icon_url": r.icon_url, "sort_order": r.sort_order}
+        for r in rows
+    ]
+
+
+@router.post("/shops/{shop_id}/storefront-categories", status_code=201)
+def create_storefront_category(
+    shop_id: int,
+    data: StorefrontCategoryIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    _check_storefront_channel(data.channel_type)
+    cat = StorefrontCategory(
+        shop_id=shop_id,
+        channel_type=data.channel_type,
+        name=data.name,
+        slug=f"{slugify(data.name)}-{uuid.uuid4().hex[:6]}",
+        icon_url=data.icon_url,
+        sort_order=data.sort_order,
+    )
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+    return {"id": cat.id, "channel_type": cat.channel_type, "name": cat.name, "slug": cat.slug,
+            "icon_url": cat.icon_url, "sort_order": cat.sort_order}
+
+
+@router.put("/shops/{shop_id}/storefront-categories/{category_id}")
+def update_storefront_category(
+    shop_id: int,
+    category_id: int,
+    data: StorefrontCategoryIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    cat = db.query(StorefrontCategory).filter(
+        StorefrontCategory.id == category_id, StorefrontCategory.shop_id == shop_id,
+    ).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    cat.name = data.name
+    cat.icon_url = data.icon_url
+    cat.sort_order = data.sort_order
+    db.commit()
+    return {"id": cat.id, "channel_type": cat.channel_type, "name": cat.name, "slug": cat.slug,
+            "icon_url": cat.icon_url, "sort_order": cat.sort_order}
+
+
+@router.delete("/shops/{shop_id}/storefront-categories/{category_id}", status_code=200)
+def delete_storefront_category(
+    shop_id: int,
+    category_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    cat = db.query(StorefrontCategory).filter(
+        StorefrontCategory.id == category_id, StorefrontCategory.shop_id == shop_id,
+    ).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    db.delete(cat)
+    db.commit()
+    return {"message": "Category deleted"}

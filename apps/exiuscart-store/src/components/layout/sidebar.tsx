@@ -12,7 +12,7 @@ import {
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw, ListChecks,
-  Star, MapPin, ShoppingBag,
+  Star, MapPin, ShoppingBag, LayoutGrid,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi } from '@/lib/api';
 
@@ -69,6 +69,7 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/dashboard/channels',         label: 'Channels',         icon: Link2      },
       { href: '/dashboard/channel-listings', label: 'Channel Listings', icon: ListChecks },
+      { href: '/dashboard/storefront-categories', label: 'Storefront Categories', icon: LayoutGrid },
       { href: '/dashboard/dropshipping',        label: 'Suppliers',       icon: Truck       },
       { href: '/dashboard/dropshipping/import', label: 'Import Products', icon: ShoppingBag },
     ],

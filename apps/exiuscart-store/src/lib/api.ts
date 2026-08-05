@@ -615,6 +615,14 @@ export const channelsApi = {
     api.post(`/shops/${shopId}/channels/daraz/products/${productId}/create`, data),
   getDarazListingStatus: (shopId: string, productId: number | string) =>
     api.get(`/shops/${shopId}/channels/daraz/products/${productId}/qc-status`),
+  listStorefrontCategories: (shopId: string, channelType: string) =>
+    api.get(`/shops/${shopId}/storefront-categories`, { params: { channel_type: channelType } }),
+  createStorefrontCategory: (shopId: string, data: { channel_type: string; name: string; icon_url?: string; sort_order?: number }) =>
+    api.post(`/shops/${shopId}/storefront-categories`, data),
+  updateStorefrontCategory: (shopId: string, categoryId: number, data: { channel_type: string; name: string; icon_url?: string; sort_order?: number }) =>
+    api.put(`/shops/${shopId}/storefront-categories/${categoryId}`, data),
+  deleteStorefrontCategory: (shopId: string, categoryId: number) =>
+    api.delete(`/shops/${shopId}/storefront-categories/${categoryId}`),
 };
 
 // Noon — per-seller service account (no OAuth click-to-connect yet; seller

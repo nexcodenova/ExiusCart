@@ -22,6 +22,7 @@ from app.models.channel_order_meta import ChannelOrderMeta
 from app.models.channel_product_status import ChannelProductStatus
 from app.models.channel_sync_log import ChannelSyncLog
 from app.models.channel_category import ChannelCategory, ProductChannelCategory
+from app.models.storefront_category import StorefrontCategory
 from app.models.product_variant import ProductVariant
 from app.models.thedersi_seller import TheDersiSeller
 from app.models.admin_settings import AdminSettings
