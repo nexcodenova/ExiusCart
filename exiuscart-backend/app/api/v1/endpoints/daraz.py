@@ -42,6 +42,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.thedersi import is_thedersi_shop
+from app.core.country_utils import shop_country_iso
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -81,7 +82,12 @@ DARAZ_COUNTRY_API_BASE_URLS = {
 
 
 def _daraz_api_base(country_code: str) -> str:
-    return DARAZ_COUNTRY_API_BASE_URLS.get((country_code or "").strip().upper(), "")
+    """Every Daraz call funnels through here — normalizing here fixes every
+    caller at once instead of each of the dozen call sites individually.
+    country_code is shop.country as saved, free text ("Srilanka", "UAE"),
+    not necessarily an ISO code."""
+    iso = shop_country_iso(country_code)
+    return DARAZ_COUNTRY_API_BASE_URLS.get(iso, "") if iso else ""
 
 
 def _log_sync(db: Session, shop_id: int, action: str, success: bool, product_id: int | None = None,
@@ -158,8 +164,8 @@ def daraz_authorize(
             detail="Daraz integration isn't configured yet — ExiusCart's app registration with Daraz is still pending.",
         )
 
-    country_code = (shop.country or "").strip().upper()
-    daraz_authorize_url = DARAZ_COUNTRY_AUTHORIZE_URLS.get(country_code)
+    country_code = shop_country_iso(shop.country)
+    daraz_authorize_url = DARAZ_COUNTRY_AUTHORIZE_URLS.get(country_code) if country_code else None
     if not daraz_authorize_url:
         raise HTTPException(
             status_code=400,

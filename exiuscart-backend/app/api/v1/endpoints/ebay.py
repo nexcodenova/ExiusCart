@@ -31,7 +31,6 @@ equivalent of Daraz's _daraz_signed_request — the one function every future
 eBay API call (orders, inventory, finances) is built on.
 """
 import os
-import re
 import json
 import base64
 import hashlib
@@ -609,34 +608,10 @@ EBAY_LOCATION_KEY = "exiuscart-primary"
 
 # Shop.country holds an ISO code for some shops ("AE") and a name for others
 # ("UAE") — both are in real data, so handle both rather than assuming.
-EBAY_COUNTRY_ISO = {
-    "UAE": "AE",
-    "UNITED ARAB EMIRATES": "AE",
-    "SRI LANKA": "LK",
-    "USA": "US",
-    "UNITED STATES": "US",
-    "UK": "GB",
-    "UNITED KINGDOM": "GB",
-    "CANADA": "CA",
-    "INDIA": "IN",
-    "PAKISTAN": "PK",
-    "BANGLADESH": "BD",
-}
-
-
-def _shop_country_iso(country: str | None) -> str | None:
-    """Returns a 2-letter ISO code, or None when it can't be resolved —
-    never a guess, since this ends up on a real listing. Matches with
-    spaces/punctuation stripped ("SriLanka", "Sri-Lanka", "Sri Lanka" all
-    hit the same key) since this is a free-text field, not a dropdown."""
-    raw = (country or "").strip()
-    if len(raw) == 2:
-        return raw.upper()
-    normalized = re.sub(r"[^A-Z]", "", raw.upper())
-    for name, iso in EBAY_COUNTRY_ISO.items():
-        if re.sub(r"[^A-Z]", "", name) == normalized:
-            return iso
-    return None
+# Moved to app/core/country_utils.py — Daraz hit the exact same bug this
+# solved (shop.country as free text, not a dropdown), so it's now shared
+# rather than fixed twice in two places.
+from app.core.country_utils import shop_country_iso as _shop_country_iso
 
 
 def _ebay_ensure_inventory_location(conn: ChannelConnection, db: Session, shop: Shop, marketplace_id: str) -> str:
