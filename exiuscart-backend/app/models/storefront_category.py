@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -24,7 +25,15 @@ class StorefrontCategory(Base):
     slug = Column(String(255), nullable=False)
     icon_url = Column(String(500), nullable=True)
     sort_order = Column(Integer, default=0)
+    # Self-referential — Main (parent_id=None) → Sub (parent_id=Main.id) →
+    # Sub-sub (parent_id=Sub.id). Same pattern as the existing generic
+    # Category model in app/models/product.py, no depth limit enforced at
+    # the DB level, though the dashboard UI only offers 3 levels.
+    parent_id = Column(Integer, ForeignKey("storefront_categories.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    children = relationship("StorefrontCategory", back_populates="parent", cascade="all, delete-orphan")
+    parent = relationship("StorefrontCategory", back_populates="children", remote_side="StorefrontCategory.id")
 
     __table_args__ = (
         UniqueConstraint("shop_id", "channel_type", "slug", name="uq_storefront_cat_shop_channel_slug"),

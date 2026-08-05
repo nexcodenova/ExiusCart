@@ -1701,14 +1701,33 @@ class StorefrontCategoryIn(BaseModel):
     name: str
     icon_url: Optional[str] = None
     sort_order: int = 0
+    parent_id: Optional[int] = None  # None = Main. Set = Sub (or Sub-sub if parent itself has a parent).
 
 
-def _check_storefront_channel(channel_type: str):
+def _check_storefront_channel(shop_id: int, channel_type: str, db: Session):
     if channel_type not in STOREFRONT_CATEGORY_CHANNELS:
         raise HTTPException(
             status_code=400,
             detail=f"Storefront categories are only available for: {', '.join(STOREFRONT_CATEGORY_CHANNELS)}.",
         )
+    # Categories only mean anything once the channel is actually connected
+    # — creating them for a channel with nothing to display them just
+    # produces orphaned data the seller forgets about.
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == channel_type,
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail={
+            "error": "channel_not_connected",
+            "message": f"Connect {channel_type.capitalize() if channel_type != 'custom' else 'Custom Website'} first, under Channels, before managing its categories.",
+        })
+
+
+def _cat_out(r: StorefrontCategory) -> dict:
+    return {"id": r.id, "channel_type": r.channel_type, "name": r.name, "slug": r.slug,
+            "icon_url": r.icon_url, "sort_order": r.sort_order, "parent_id": r.parent_id}
 
 
 @router.get("/shops/{shop_id}/storefront-categories")
@@ -1718,17 +1737,33 @@ def list_storefront_categories(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Returns a flat list (each row carries parent_id) — the dashboard and
+    any storefront build the Main/Sub/Sub-sub tree from that client-side,
+    same as how the existing product Category model is consumed."""
     _shop_or_404(shop_id, current_user, db)
-    _check_storefront_channel(channel_type)
+    if channel_type not in STOREFRONT_CATEGORY_CHANNELS:
+        raise HTTPException(status_code=400, detail=f"channel_type must be one of: {', '.join(STOREFRONT_CATEGORY_CHANNELS)}")
     rows = db.query(StorefrontCategory).filter(
         StorefrontCategory.shop_id == shop_id,
         StorefrontCategory.channel_type == channel_type,
     ).order_by(StorefrontCategory.sort_order).all()
-    return [
-        {"id": r.id, "channel_type": r.channel_type, "name": r.name, "slug": r.slug,
-         "icon_url": r.icon_url, "sort_order": r.sort_order}
-        for r in rows
-    ]
+    return [_cat_out(r) for r in rows]
+
+
+@router.get("/shops/{shop_id}/storefront-categories/icon-presign")
+def presign_storefront_category_icon(
+    shop_id: int,
+    content_type: str = "image/jpeg",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Presigned upload for a category icon — a real image upload, not a
+    pasted URL. One image per category: the category row has a single
+    icon_url field, so uploading again just replaces it."""
+    _shop_or_404(shop_id, current_user, db)
+    from app.core.storage import generate_storefront_category_presigned_url
+    ext = content_type.split("/")[-1].replace("jpeg", "jpg")
+    return generate_storefront_category_presigned_url(shop_id, ext, content_type)
 
 
 @router.post("/shops/{shop_id}/storefront-categories", status_code=201)
@@ -1739,7 +1774,18 @@ def create_storefront_category(
     current_user: User = Depends(get_current_user),
 ):
     _shop_or_404(shop_id, current_user, db)
-    _check_storefront_channel(data.channel_type)
+    _check_storefront_channel(shop_id, data.channel_type, db)
+
+    parent = None
+    if data.parent_id is not None:
+        parent = db.query(StorefrontCategory).filter(
+            StorefrontCategory.id == data.parent_id,
+            StorefrontCategory.shop_id == shop_id,
+            StorefrontCategory.channel_type == data.channel_type,
+        ).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent category not found")
+
     cat = StorefrontCategory(
         shop_id=shop_id,
         channel_type=data.channel_type,
@@ -1747,12 +1793,12 @@ def create_storefront_category(
         slug=f"{slugify(data.name)}-{uuid.uuid4().hex[:6]}",
         icon_url=data.icon_url,
         sort_order=data.sort_order,
+        parent_id=data.parent_id,
     )
     db.add(cat)
     db.commit()
     db.refresh(cat)
-    return {"id": cat.id, "channel_type": cat.channel_type, "name": cat.name, "slug": cat.slug,
-            "icon_url": cat.icon_url, "sort_order": cat.sort_order}
+    return _cat_out(cat)
 
 
 @router.put("/shops/{shop_id}/storefront-categories/{category_id}")
@@ -1769,12 +1815,24 @@ def update_storefront_category(
     ).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
+
+    if data.parent_id is not None:
+        if data.parent_id == category_id:
+            raise HTTPException(status_code=400, detail="A category can't be its own parent")
+        parent = db.query(StorefrontCategory).filter(
+            StorefrontCategory.id == data.parent_id,
+            StorefrontCategory.shop_id == shop_id,
+            StorefrontCategory.channel_type == cat.channel_type,
+        ).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent category not found")
+
     cat.name = data.name
     cat.icon_url = data.icon_url
     cat.sort_order = data.sort_order
+    cat.parent_id = data.parent_id
     db.commit()
-    return {"id": cat.id, "channel_type": cat.channel_type, "name": cat.name, "slug": cat.slug,
-            "icon_url": cat.icon_url, "sort_order": cat.sort_order}
+    return _cat_out(cat)
 
 
 @router.delete("/shops/{shop_id}/storefront-categories/{category_id}", status_code=200)
@@ -1790,6 +1848,6 @@ def delete_storefront_category(
     ).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
-    db.delete(cat)
+    db.delete(cat)  # cascades to children — see model's cascade="all, delete-orphan"
     db.commit()
     return {"message": "Category deleted"}

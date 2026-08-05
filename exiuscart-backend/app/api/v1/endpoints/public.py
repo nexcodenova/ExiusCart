@@ -45,7 +45,7 @@ def public_store_categories(shop_slug: str, channel: str = "custom", db: Session
         StorefrontCategory.channel_type == channel,
     ).order_by(StorefrontCategory.sort_order).all()
     return [
-        {"id": r.id, "name": r.name, "slug": r.slug, "icon_url": r.icon_url}
+        {"id": r.id, "name": r.name, "slug": r.slug, "icon_url": r.icon_url, "parent_id": r.parent_id}
         for r in rows
     ]
 

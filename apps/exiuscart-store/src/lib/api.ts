@@ -617,12 +617,19 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/daraz/products/${productId}/qc-status`),
   listStorefrontCategories: (shopId: string, channelType: string) =>
     api.get(`/shops/${shopId}/storefront-categories`, { params: { channel_type: channelType } }),
-  createStorefrontCategory: (shopId: string, data: { channel_type: string; name: string; icon_url?: string; sort_order?: number }) =>
+  createStorefrontCategory: (shopId: string, data: { channel_type: string; name: string; icon_url?: string; sort_order?: number; parent_id?: number | null }) =>
     api.post(`/shops/${shopId}/storefront-categories`, data),
-  updateStorefrontCategory: (shopId: string, categoryId: number, data: { channel_type: string; name: string; icon_url?: string; sort_order?: number }) =>
+  updateStorefrontCategory: (shopId: string, categoryId: number, data: { channel_type: string; name: string; icon_url?: string; sort_order?: number; parent_id?: number | null }) =>
     api.put(`/shops/${shopId}/storefront-categories/${categoryId}`, data),
   deleteStorefrontCategory: (shopId: string, categoryId: number) =>
     api.delete(`/shops/${shopId}/storefront-categories/${categoryId}`),
+  uploadStorefrontCategoryIcon: async (shopId: string, file: File) => {
+    const { data } = await api.get(`/shops/${shopId}/storefront-categories/icon-presign`, {
+      params: { content_type: file.type || 'image/jpeg' },
+    });
+    await uploadToR2(data.presigned_url, file);
+    return data.public_url as string;
+  },
 };
 
 // Noon — per-seller service account (no OAuth click-to-connect yet; seller

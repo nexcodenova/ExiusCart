@@ -117,6 +117,27 @@ def generate_marketing_presigned_url(shop_id: int, ext: str, content_type: str =
     return {"presigned_url": presigned_url, "public_url": public_url}
 
 
+def generate_storefront_category_presigned_url(shop_id: int, ext: str, content_type: str = "image/jpeg", expires: int = 300) -> dict:
+    """Presigned PUT URL for a storefront category icon — not tied to any
+    product, one image per category (the category row only has one
+    icon_url field, so a new upload just overwrites which URL is saved)."""
+    filename = f"{uuid.uuid4()}.{ext}"
+    key = f"storefront-categories/{shop_id}/{filename}"
+    client = _get_r2_client()
+    presigned_url = client.generate_presigned_url(
+        "put_object",
+        Params={
+            "Bucket": _R2_BUCKET,
+            "Key": key,
+            "ContentType": content_type,
+            "CacheControl": "public, max-age=31536000",
+        },
+        ExpiresIn=expires,
+    )
+    public_url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    return {"presigned_url": presigned_url, "public_url": public_url}
+
+
 def delete_image(url: str) -> None:
     """Delete image from Cloudflare R2 by its public URL."""
     if not url or not _R2_ACCOUNT_ID:
