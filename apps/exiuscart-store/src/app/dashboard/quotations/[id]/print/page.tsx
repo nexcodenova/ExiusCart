@@ -82,7 +82,7 @@ export default function QuotationPrintPage() {
             <div>
               {quote.shop_logo && (
                 <img src={quote.shop_logo} alt={quote.shop_name}
-                  style={{ maxHeight: 60, maxWidth: 180, objectFit: 'contain', marginBottom: 12, borderRadius: 6 }} />
+                  style={{ width: 180, height: 60, objectFit: 'contain', objectPosition: 'left', marginBottom: 12, borderRadius: 6 }} />
               )}
               <h1 style={{ fontSize: 24, fontWeight: 800 }}>{quote.shop_name}</h1>
               {quote.company_address && (

@@ -187,7 +187,7 @@ export default function ClientQuotationPage() {
               <div>
                 {quote.shop_logo && (
                   <img src={quote.shop_logo} alt={quote.shop_name}
-                    style={{ maxHeight: 56, maxWidth: 160, objectFit: 'contain', marginBottom: 12, borderRadius: 6 }} />
+                    style={{ width: 160, height: 56, objectFit: 'contain', objectPosition: 'left', marginBottom: 12, borderRadius: 6 }} />
                 )}
                 <h1 style={{ fontSize: 24, fontWeight: 800 }}>{quote.shop_name}</h1>
                 {quote.company_address && (

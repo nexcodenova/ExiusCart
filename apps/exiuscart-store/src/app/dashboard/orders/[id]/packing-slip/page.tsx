@@ -83,7 +83,7 @@ export default function PackingSlipPage() {
         /* ── Header ── */
         .slip-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
         .brand { display: flex; align-items: center; gap: 10px; }
-        .brand img { height: 36px; object-fit: contain; }
+        .brand img { width: 90px; height: 36px; object-fit: contain; object-position: left; }
         .brand-name { font-size: 17px; font-weight: 800; color: #111; }
         .brand-sub  { font-size: 10px; color: #6b7280; margin-top: 1px; }
         .slip-right { text-align: right; }

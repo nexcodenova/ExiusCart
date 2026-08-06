@@ -86,7 +86,7 @@ export default function PaymentReceiptPage() {
 
         /* Header */
         .rct-header { text-align: center; margin-bottom: 20px; }
-        .rct-logo { height: 44px; object-fit: contain; margin-bottom: 8px; }
+        .rct-logo { width: 140px; height: 44px; object-fit: contain; margin: 0 auto 8px; display: block; }
         .rct-shop-name { font-size: 18px; font-weight: 800; color: #111; margin-bottom: 2px; }
         .rct-shop-sub { font-size: 11px; color: #6b7280; }
 
