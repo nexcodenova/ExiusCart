@@ -239,7 +239,7 @@ def daraz_callback(
     access. Public endpoint — verified via the CSRF `state` token, not auth."""
     if error or not code or not state:
         logger.warning(f"[DARAZ OAUTH] callback failed — error={error} code_present={bool(code)} state_present={bool(state)}")
-        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?daraz=denied")
+        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/daraz-integration?daraz=denied")
 
     conn = db.query(ChannelConnection).filter(
         ChannelConnection.channel_type == "daraz",
@@ -248,7 +248,7 @@ def daraz_callback(
     ).first()
     if not conn:
         logger.error(f"[DARAZ OAUTH] callback with unknown/expired state={state[:8]}...")
-        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?daraz=invalid_state")
+        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/daraz-integration?daraz=invalid_state")
 
     shop = db.query(Shop).filter(Shop.id == conn.shop_id).first()
     country_code = (shop.country if shop else "") or ""
@@ -261,7 +261,7 @@ def daraz_callback(
         conn.seller_status = "pending_token_exchange"
         db.commit()
         logger.warning(f"[DARAZ OAUTH] shop={conn.shop_id} token exchange failed — connection left pending, see error above")
-        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?daraz=pending")
+        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/daraz-integration?daraz=pending")
 
     conn.access_token = token_result["access_token"]
     conn.refresh_token = token_result.get("refresh_token")
@@ -270,7 +270,7 @@ def daraz_callback(
     conn.oauth_state = None
     conn.seller_status = "approved"
     db.commit()
-    return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?daraz=connected")
+    return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/daraz-integration?daraz=connected")
 
 
 def _exchange_code_for_token(code: str, country_code: str):

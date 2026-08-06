@@ -324,7 +324,7 @@ def ebay_callback(
     access. Public endpoint — verified via the CSRF `state` token, not auth."""
     if error or not code or not state:
         logger.warning(f"[EBAY OAUTH] callback failed — error={error} code_present={bool(code)} state_present={bool(state)}")
-        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?ebay=denied")
+        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/ebay-integration?ebay=denied")
 
     conn = db.query(ChannelConnection).filter(
         ChannelConnection.channel_type == "ebay",
@@ -333,14 +333,14 @@ def ebay_callback(
     ).first()
     if not conn:
         logger.error(f"[EBAY OAUTH] callback with unknown/expired state={state[:8]}...")
-        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?ebay=invalid_state")
+        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/ebay-integration?ebay=invalid_state")
 
     token_result = _exchange_code_for_token(code)
     if token_result is None:
         conn.seller_status = "pending_token_exchange"
         db.commit()
         logger.warning(f"[EBAY OAUTH] shop={conn.shop_id} token exchange failed — connection left pending, see error above")
-        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?ebay=pending")
+        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/ebay-integration?ebay=pending")
 
     conn.access_token = token_result["access_token"]
     conn.refresh_token = token_result.get("refresh_token")
@@ -349,7 +349,7 @@ def ebay_callback(
     conn.oauth_state = None
     conn.seller_status = "approved"
     db.commit()
-    return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/channels?ebay=connected")
+    return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/ebay-integration?ebay=connected")
 
 
 # ── Marketplace Account Deletion/Closure Notifications ──────────────────────

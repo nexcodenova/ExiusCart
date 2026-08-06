@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Link2, Loader2, CheckCircle2,
-  Copy, Check, X, ExternalLink,
+  Link2, Loader2,
+  X, ExternalLink,
   ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2,
-  Warehouse, RefreshCw, AlertCircle,
 } from 'lucide-react';
-import { channelsApi, shopifyApi, subscriptionApi, noonApi, ebayApi } from '@/lib/api';
+import { channelsApi, shopifyApi, subscriptionApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -16,1002 +15,6 @@ function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 interface ChannelConnection {
   id: number;
   channel_type: string;
-  channel_seller_id?: string;
-  channel_warehouse_code?: string | null;
-  seller_country?: string | null;
-  webhook_url: string;
-  seller_status?: string | null;
-}
-
-function CopyBox({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground mb-1.5">{label}</p>
-      <div className="flex items-center gap-2">
-        <code className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-xs text-foreground break-all font-mono">
-          {value}
-        </code>
-        <button type="button" onClick={copy}
-          className="shrink-0 p-2 rounded-lg border border-border hover:bg-muted transition" title="Copy">
-          {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Custom Website connect modal ──────────────────────────────────────────────
-
-function CustomWebsiteModal({ shopId, onConnected, onClose }: {
-  shopId: string; onConnected: () => void; onClose: () => void;
-}) {
-  const [apiKey, setApiKey] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [webhookUrl, setWebhookUrl] = useState('');
-
-  const connect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!apiKey.trim()) return;
-    setSaving(true); setError('');
-    try {
-      const r = await channelsApi.connect(shopId, {
-        channel_type: 'custom',
-        channel_api_key: apiKey.trim(),
-      });
-      const url = r.data?.webhook_url ?? '';
-      setWebhookUrl(url);
-      onConnected();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'Connection failed. Try again.');
-    } finally { setSaving(false); }
-  };
-
-  if (webhookUrl) {
-    return (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-card rounded-xl border border-border w-full max-w-md p-6 space-y-5">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-green-500" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">Custom Website Connected!</p>
-              <p className="text-xs text-muted-foreground">Use this webhook URL in your website's checkout</p>
-            </div>
-          </div>
-          <CopyBox label="ExiusCart Order Webhook URL — add this to your website checkout" value={webhookUrl} />
-          <div className="bg-muted/50 rounded-lg px-3 py-3 space-y-1.5 text-xs text-muted-foreground">
-            <p><strong className="text-foreground">How it works:</strong></p>
-            <p>When a customer places an order on your website, POST the order data to this URL. ExiusCart will create the order, update stock, and sync everything automatically.</p>
-            <p>Your website must send the <strong className="text-foreground">X-Signature</strong> header and match the API key you just set.</p>
-          </div>
-          <button onClick={onClose}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-            Done
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border w-full max-w-md">
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <div>
-            <p className="font-semibold text-foreground">Connect Custom Website</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Get an order webhook URL for your own storefront</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <form onSubmit={connect} className="p-5 space-y-4">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-              {error}
-            </div>
-          )}
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">API Key *</label>
-            <input type="text" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
-              placeholder="Choose any secret key, e.g. mysite_secret_key_123"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
-            <p className="text-xs text-muted-foreground mt-1">
-              This is a shared secret between your website and ExiusCart. Choose any string — you'll use it when sending orders from your site.
-            </p>
-          </div>
-          <button type="submit" disabled={saving}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {saving ? 'Connecting...' : 'Connect & Get Webhook URL'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-
-// ── Daraz connect modal ───────────────────────────────────────────────────────
-
-function DarazConnectModal({ shopId, onClose }: {
-  shopId: string; onConnected: () => void; onClose: () => void;
-}) {
-  // Daraz uses OAuth — sellers log into their OWN existing Daraz seller
-  // account and approve ExiusCart's app. They never see or enter an App
-  // Key/Secret (that belongs to ExiusCart as the platform, not per-seller).
-  const [hasAccount, setHasAccount] = useState<boolean | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState('');
-
-  const startAuthorize = async () => {
-    setConnecting(true); setError('');
-    try {
-      const res = await channelsApi.darazAuthorize(shopId);
-      window.open(res.data.authorize_url, '_blank', 'noopener,noreferrer');
-    } catch (err: any) {
-      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not start Daraz connection. Try again.');
-    } finally {
-      setConnecting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border w-full max-w-md">
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <div>
-            <p className="font-semibold text-foreground">Connect Daraz</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Sri Lanka's #1 Marketplace</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-4">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-              {error}
-            </div>
-          )}
-
-          {hasAccount === null && (
-            <>
-              <p className="text-sm text-muted-foreground">Do you already have a Daraz seller account?</p>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setHasAccount(true)}
-                  className="py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-                  Yes, I have one
-                </button>
-                <button onClick={() => setHasAccount(false)}
-                  className="py-2.5 bg-muted border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted/70 transition">
-                  Not yet
-                </button>
-              </div>
-            </>
-          )}
-
-          {hasAccount === true && (
-            <>
-              <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-                <p><strong className="text-foreground">What happens next:</strong></p>
-                <p>• Daraz opens in a new tab — log into your own seller account there</p>
-                <p>• Approve ExiusCart's access request</p>
-                <p>• Come back to this tab — it'll be connected once you're done</p>
-              </div>
-              <button onClick={startAuthorize} disabled={connecting}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-                {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {connecting ? 'Opening Daraz...' : 'Continue to Daraz'}
-              </button>
-              <button onClick={() => setHasAccount(null)} className="w-full text-xs text-muted-foreground hover:text-foreground">
-                ← Back
-              </button>
-            </>
-          )}
-
-          {hasAccount === false && (
-            <>
-              <div className="bg-muted/50 rounded-lg px-4 py-3 text-sm text-muted-foreground">
-                You'll need a Daraz seller account before you can connect. It's free to create — once you're registered and approved as a seller, come back here and connect.
-              </div>
-              <a href="https://sellercenter.daraz.lk/apps/register/index" target="_blank" rel="noopener noreferrer"
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition flex items-center justify-center gap-2">
-                Create Daraz Seller Account <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-              <button onClick={() => setHasAccount(true)}
-                className="w-full py-2.5 bg-muted border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted/70 transition">
-                I've created my account
-              </button>
-              <button onClick={() => setHasAccount(null)} className="w-full text-xs text-muted-foreground hover:text-foreground">
-                ← Back
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Daraz connected card ──────────────────────────────────────────────────────
-
-function DarazCard({ connection }: { connection: ChannelConnection }) {
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-orange-500/10 flex items-center justify-center">
-            <ShoppingBag className="w-4 h-4 text-orange-500" />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground text-sm">Daraz</p>
-            <p className="text-xs text-muted-foreground">Sri Lanka's #1 Marketplace</p>
-          </div>
-        </div>
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
-          <CheckCircle2 className="w-3 h-3" /> Connected
-        </span>
-      </div>
-      <div className="p-5 text-sm text-muted-foreground">
-        <p>Seller ID: <strong className="text-foreground">{connection.channel_seller_id}</strong></p>
-        <p className="mt-1 text-xs">Orders syncing from daraz.lk automatically</p>
-      </div>
-    </div>
-  );
-}
-
-
-// ── Noon connect modal ──────────────────────────────────────────────────────
-//
-// Noon has no OAuth click-to-connect yet (unlike Daraz) — becoming an
-// approved "integrator" needs Noon's partnership team to say yes directly,
-// no self-serve signup exists for it. Until that's granted, each seller
-// generates their own service-account key on Noon's own Partners dashboard
-// and pastes it in here — same idea as TheDersi's API key, just 4 fields
-// instead of 1, because Noon's key is a full private key pair, not a single
-// token. After connecting, the seller picks their own warehouse (their own
-// licensed space, or Noon's own consolidation center if they don't have a
-// UAE/KSA trade license) — never assumed on ExiusCart's side.
-
-function NoonConnectModal({ shopId, onConnected, onClose, initialStep = 'form' }: {
-  shopId: string; onConnected: () => void; onClose: () => void; initialStep?: 'form' | 'warehouse';
-}) {
-  const [step, setStep] = useState<'form' | 'warehouse'>(initialStep);
-  const [keyId, setKeyId] = useState('');
-  const [privateKey, setPrivateKey] = useState('');
-  const [channelIdentifier, setChannelIdentifier] = useState('');
-  const [projectCode, setProjectCode] = useState('');
-  const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState('');
-
-  const [warehouses, setWarehouses] = useState<{ warehouse_code: string; name?: string }[]>([]);
-  const [loadingWarehouses, setLoadingWarehouses] = useState(false);
-  const [selectedWarehouse, setSelectedWarehouse] = useState('');
-  const [savingWarehouse, setSavingWarehouse] = useState(false);
-
-  useEffect(() => {
-    if (initialStep === 'warehouse') loadWarehouses();
-  }, []);
-
-  const connect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!keyId.trim() || !privateKey.trim() || !channelIdentifier.trim() || !projectCode.trim()) return;
-    setConnecting(true); setError('');
-    try {
-      await noonApi.connect(shopId, {
-        key_id: keyId.trim(),
-        private_key: privateKey.trim(),
-        channel_identifier: channelIdentifier.trim(),
-        project_code: projectCode.trim(),
-      });
-      setStep('warehouse');
-      loadWarehouses();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'Connection failed — double-check your credentials and try again.');
-    } finally {
-      setConnecting(false);
-    }
-  };
-
-  const loadWarehouses = async () => {
-    setLoadingWarehouses(true);
-    try {
-      const r = await noonApi.listWarehouses(shopId);
-      setWarehouses(r.data?.warehouses ?? []);
-    } catch {
-      setWarehouses([]);
-    } finally {
-      setLoadingWarehouses(false);
-    }
-  };
-
-  const saveWarehouse = async () => {
-    if (!selectedWarehouse) return;
-    setSavingWarehouse(true);
-    try {
-      await noonApi.setWarehouse(shopId, selectedWarehouse);
-      onConnected();
-      onClose();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'Could not save warehouse. Try again.');
-    } finally {
-      setSavingWarehouse(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <div>
-            <p className="font-semibold text-foreground">Connect Noon</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {step === 'form' ? 'Paste your own Noon service account key' : 'Choose your warehouse'}
-            </p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {step === 'form' && (
-          <form onSubmit={connect} className="p-5 space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
-              </div>
-            )}
-            <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-              <p><strong className="text-foreground">Don't have these yet?</strong></p>
-              <p>1. Go to your Noon Partners dashboard → API Users → Add Service Account</p>
-              <p>2. Download the credentials JSON — it has all 4 fields below</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Key ID *</label>
-              <input type="text" value={keyId} onChange={(e) => setKeyId(e.target.value)} required
-                placeholder="noon-partners-key-id-..."
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Private Key *</label>
-              <textarea value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} required rows={4}
-                placeholder="-----BEGIN PRIVATE KEY-----..."
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-xs font-mono" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Channel Identifier *</label>
-              <input type="text" value={channelIdentifier} onChange={(e) => setChannelIdentifier(e.target.value)} required
-                placeholder="yourkey@p123456.idp.noon.partners"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Project Code *</label>
-              <input type="text" value={projectCode} onChange={(e) => setProjectCode(e.target.value)} required
-                placeholder="PRJ123456"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-            </div>
-            <button type="submit" disabled={connecting}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {connecting ? 'Verifying...' : 'Connect Noon'}
-            </button>
-          </form>
-        )}
-
-        {step === 'warehouse' && (
-          <div className="p-5 space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
-              </div>
-            )}
-            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
-              <CheckCircle2 className="w-4 h-4" /> Connected — now pick your warehouse
-            </div>
-
-            {loadingWarehouses ? (
-              <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> <span className="text-sm">Loading your warehouses...</span>
-              </div>
-            ) : warehouses.length === 0 ? (
-              <div className="bg-amber-500/8 border border-amber-500/20 rounded-lg px-4 py-3 space-y-2">
-                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm font-medium">
-                  <AlertCircle className="w-4 h-4" /> No warehouse set up yet
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  You need at least one warehouse on your Noon account before products/stock can sync — either your own licensed location, or Noon's own consolidation center if you don't have a UAE/KSA trade license. Set this up on your Noon Partners dashboard, then refresh below.
-                </p>
-                <button type="button" onClick={loadWarehouses}
-                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium">
-                  <RefreshCw className="w-3.5 h-3.5" /> Refresh
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {warehouses.map((w) => (
-                  <label key={w.warehouse_code}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer transition ${
-                      selectedWarehouse === w.warehouse_code ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-                    }`}>
-                    <input type="radio" name="warehouse" value={w.warehouse_code}
-                      checked={selectedWarehouse === w.warehouse_code}
-                      onChange={() => setSelectedWarehouse(w.warehouse_code)} />
-                    <Warehouse className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm text-foreground truncate">{w.name || w.warehouse_code}</p>
-                      <p className="text-xs text-muted-foreground font-mono truncate">{w.warehouse_code}</p>
-                    </div>
-                  </label>
-                ))}
-                <button type="button" onClick={saveWarehouse} disabled={!selectedWarehouse || savingWarehouse}
-                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2 mt-2">
-                  {savingWarehouse && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {savingWarehouse ? 'Saving...' : 'Save & Finish'}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Noon connected card ─────────────────────────────────────────────────────
-
-function NoonCard({ connection, onManageWarehouse }: { connection: ChannelConnection; onManageWarehouse: () => void }) {
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-            <ShoppingBag className="w-4 h-4 text-yellow-500" />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground text-sm">Noon</p>
-            <p className="text-xs text-muted-foreground">UAE / KSA / GCC Marketplace</p>
-          </div>
-        </div>
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
-          <CheckCircle2 className="w-3 h-3" /> Connected
-        </span>
-      </div>
-      <div className="p-5 text-sm text-muted-foreground space-y-2">
-        <p>Account: <strong className="text-foreground font-mono text-xs">{connection.channel_seller_id}</strong></p>
-        {connection.channel_warehouse_code ? (
-          <p className="flex items-center gap-1.5">
-            <Warehouse className="w-3.5 h-3.5" /> Warehouse: <strong className="text-foreground font-mono text-xs">{connection.channel_warehouse_code}</strong>
-          </p>
-        ) : (
-          <div className="flex items-center justify-between gap-3 bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2">
-            <p className="text-xs text-amber-600 dark:text-amber-400">No warehouse selected — products/stock can't sync yet</p>
-            <button onClick={onManageWarehouse} className="shrink-0 text-xs text-primary hover:text-primary/80 font-medium whitespace-nowrap">
-              Choose
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── eBay connect modal ─────────────────────────────────────────────────────
-//
-// eBay uses OAuth — same idea as Daraz, but without the "do you have an
-// account" branch, since eBay accounts are close to universal and the
-// login/signup screen itself is handled by eBay's own consent flow.
-
-function EbayConnectModal({ shopId, onClose }: {
-  shopId: string; onConnected: () => void; onClose: () => void;
-}) {
-  const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState('');
-  const [sellerCountry, setSellerCountry] = useState('');
-
-  const startAuthorize = async () => {
-    if (!sellerCountry.trim()) return;
-    setConnecting(true); setError('');
-    try {
-      const res = await ebayApi.authorize(shopId, sellerCountry.trim());
-      window.open(res.data.authorize_url, '_blank', 'noopener,noreferrer');
-    } catch (err: any) {
-      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not start eBay connection. Try again.');
-    } finally {
-      setConnecting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border w-full max-w-md">
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <div>
-            <p className="font-semibold text-foreground">Connect eBay</p>
-            <p className="text-xs text-muted-foreground mt-0.5">List products and manage orders on eBay</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-4">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">
-              Country your eBay seller account is registered under *
-            </label>
-            <input
-              type="text"
-              value={sellerCountry}
-              onChange={(e) => setSellerCountry(e.target.value)}
-              placeholder="e.g. Sri Lanka, UAE, United States"
-              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm"
-            />
-            <p className="text-xs text-muted-foreground mt-1.5">
-              This must match the country eBay has on file for your seller account — not
-              necessarily your ExiusCart shop's country. eBay rejects listings whose item
-              location doesn't match your account's registered country, so we ask directly
-              rather than guessing.
-            </p>
-          </div>
-
-          <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-            <p><strong className="text-foreground">What happens next:</strong></p>
-            <p>• eBay opens in a new tab — log into your own account there</p>
-            <p>• Approve ExiusCart's access request</p>
-            <p>• Come back to this tab — then choose your Business Policies to finish setup</p>
-          </div>
-          <button onClick={startAuthorize} disabled={connecting || !sellerCountry.trim()}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-            {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {connecting ? 'Opening eBay...' : 'Continue to eBay'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── eBay Business Policies modal ────────────────────────────────────────────
-//
-// eBay requires every listing to reference a payment/fulfillment/return
-// policy ID. These can't be created on the seller's behalf — they encode
-// real shipping-cost/return-window decisions — so this fetches the
-// seller's existing policies and lets them pick, same "fetch a live
-// option, never fabricate" idea as Noon's warehouse picker above.
-
-function EbayBusinessPoliciesModal({ shopId, onSaved, onClose }: {
-  shopId: string; onSaved: () => void; onClose: () => void;
-}) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [noPolicies, setNoPolicies] = useState(false);
-  const [payments, setPayments] = useState<{ id: string; name: string }[]>([]);
-  const [fulfillments, setFulfillments] = useState<{ id: string; name: string }[]>([]);
-  const [returns, setReturns] = useState<{ id: string; name: string }[]>([]);
-  const [paymentId, setPaymentId] = useState('');
-  const [fulfillmentId, setFulfillmentId] = useState('');
-  const [returnId, setReturnId] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const load = async () => {
-    setLoading(true); setError(''); setNoPolicies(false);
-    try {
-      const r = await ebayApi.getBusinessPolicies(shopId);
-      setPayments(r.data?.payment ?? []);
-      setFulfillments(r.data?.fulfillment ?? []);
-      setReturns(r.data?.return ?? []);
-      const sel = r.data?.selected ?? {};
-      setPaymentId(sel.payment_policy_id ?? '');
-      setFulfillmentId(sel.fulfillment_policy_id ?? '');
-      setReturnId(sel.return_policy_id ?? '');
-    } catch (err: any) {
-      if (err?.response?.data?.detail?.error === 'no_business_policies') {
-        setNoPolicies(true);
-      } else {
-        setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not load Business Policies.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const save = async () => {
-    if (!paymentId || !fulfillmentId || !returnId) return;
-    setSaving(true); setError('');
-    try {
-      await ebayApi.saveBusinessPolicies(shopId, {
-        payment_policy_id: paymentId,
-        fulfillment_policy_id: fulfillmentId,
-        return_policy_id: returnId,
-      });
-      onSaved();
-      onClose();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not save Business Policies.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <div>
-            <p className="font-semibold text-foreground">eBay Business Policies</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Choose your payment, shipping & return policies</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-4">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-              {error}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" /> <span className="text-sm">Loading your policies...</span>
-            </div>
-          ) : noPolicies ? (
-            <div className="bg-amber-500/8 border border-amber-500/20 rounded-lg px-4 py-3 space-y-2">
-              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm font-medium">
-                <AlertCircle className="w-4 h-4" /> No Business Policies set up yet
-              </div>
-              <p className="text-xs text-muted-foreground">
-                eBay requires at least one payment, fulfillment (shipping), and return policy before you can list products. Set these up on eBay first, then refresh below.
-              </p>
-              <a href="https://www.ebay.com/help/selling/business-policies/business-policies-setup" target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium">
-                Set up Business Policies on eBay <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-              <button type="button" onClick={load}
-                className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium">
-                <RefreshCw className="w-3.5 h-3.5" /> Refresh
-              </button>
-            </div>
-          ) : (
-            <>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Payment Policy *</label>
-                <select value={paymentId} onChange={(e) => setPaymentId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm">
-                  <option value="">Select...</option>
-                  {payments.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Fulfillment (Shipping) Policy *</label>
-                <select value={fulfillmentId} onChange={(e) => setFulfillmentId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm">
-                  <option value="">Select...</option>
-                  {fulfillments.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Return Policy *</label>
-                <select value={returnId} onChange={(e) => setReturnId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm">
-                  <option value="">Select...</option>
-                  {returns.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <button type="button" onClick={save} disabled={!paymentId || !fulfillmentId || !returnId || saving}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2">
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {saving ? 'Saving...' : 'Save Policies'}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── eBay connected card ─────────────────────────────────────────────────────
-
-function EbayCard({ connection, policiesConfigured, onManagePolicies, shopId, onDisconnected }: {
-  connection: ChannelConnection; policiesConfigured: boolean | null; onManagePolicies: () => void;
-  shopId: string; onDisconnected: () => void;
-}) {
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [countryInput, setCountryInput] = useState('');
-  const [savingCountry, setSavingCountry] = useState(false);
-  const [countryError, setCountryError] = useState('');
-  const [savedCountry, setSavedCountry] = useState(connection.seller_country ?? null);
-
-  const disconnect = async () => {
-    setDisconnecting(true);
-    try {
-      await channelsApi.disconnectChannel(shopId, connection.id);
-      onDisconnected();
-    } catch {
-      setDisconnecting(false);
-      setConfirming(false);
-    }
-  };
-
-  const saveCountry = async () => {
-    if (!countryInput.trim()) return;
-    setSavingCountry(true); setCountryError('');
-    try {
-      const res = await ebayApi.setSellerCountry(shopId, countryInput.trim());
-      setSavedCountry(res.data.seller_country);
-    } catch (err: any) {
-      setCountryError(err?.response?.data?.detail ?? 'Could not save. Try again.');
-    } finally {
-      setSavingCountry(false);
-    }
-  };
-
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#E53238]/10 flex items-center justify-center">
-            <Tag className="w-4 h-4 text-[#E53238]" />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground text-sm">eBay</p>
-            <p className="text-xs text-muted-foreground">Global Marketplace</p>
-          </div>
-        </div>
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
-          <CheckCircle2 className="w-3 h-3" /> Connected
-        </span>
-      </div>
-      <div className="p-5 text-sm text-muted-foreground space-y-2">
-        <p>Seller: <strong className="text-foreground">{connection.channel_seller_id || 'eBay account connected'}</strong></p>
-        {savedCountry ? (
-          <p className="text-xs">Seller registered country: <strong className="text-foreground">{savedCountry}</strong></p>
-        ) : (
-          <div className="bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2 space-y-2">
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              Seller registered country not set — listings will fail until this matches what eBay has on file for your account.
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={countryInput}
-                onChange={(e) => setCountryInput(e.target.value)}
-                placeholder="e.g. Sri Lanka"
-                className="flex-1 px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs"
-              />
-              <button onClick={saveCountry} disabled={savingCountry || !countryInput.trim()}
-                className="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition disabled:opacity-60">
-                {savingCountry ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            {countryError && <p className="text-xs text-destructive">{countryError}</p>}
-          </div>
-        )}
-        {policiesConfigured === false ? (
-          <div className="flex items-center justify-between gap-3 bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2">
-            <p className="text-xs text-amber-600 dark:text-amber-400">Business Policies not set — products can't be listed yet</p>
-            <button onClick={onManagePolicies} className="shrink-0 text-xs text-primary hover:text-primary/80 font-medium whitespace-nowrap">
-              Choose
-            </button>
-          </div>
-        ) : (
-          <p className="text-xs">Orders syncing from eBay automatically</p>
-        )}
-
-        <div className="pt-3 mt-1 border-t border-border">
-          {confirming ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-xs text-muted-foreground">
-                Disconnect eBay? Your listings stay on eBay, but they stop syncing here.
-              </p>
-              <button
-                onClick={disconnect}
-                disabled={disconnecting}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition disabled:opacity-60"
-              >
-                {disconnecting ? 'Disconnecting…' : 'Yes, disconnect'}
-              </button>
-              <button
-                onClick={() => setConfirming(false)}
-                disabled={disconnecting}
-                className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirming(true)}
-              className="text-xs text-muted-foreground hover:text-destructive transition"
-            >
-              Disconnect eBay
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── TheDersi connect modal ────────────────────────────────────────────────────
-
-function TheDersiConnectModal({ shopId, onConnected, onClose }: {
-  shopId: string; onConnected: () => void; onClose: () => void;
-}) {
-  const [sellerId, setSellerId] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [webhookUrl, setWebhookUrl] = useState('');
-
-  const connect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sellerId.trim() || !apiKey.trim()) return;
-    setSaving(true);
-    setError('');
-    try {
-      const r = await channelsApi.connect(shopId, {
-        channel_type: 'thedersi',
-        channel_api_key: apiKey.trim(),
-        channel_api_url: 'https://thedersi.lk/api/v1',
-        channel_seller_id: sellerId.trim(),
-      });
-      const secret = r.data?.webhook_secret;
-      if (secret) setWebhookUrl(`https://api.exiuscart.com/api/v1/channels/webhook/${secret}`);
-      onConnected();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail ?? 'Connection failed. Check your Seller ID and API Key.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (webhookUrl) {
-    return (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-card rounded-xl border border-border w-full max-w-md p-6 space-y-5">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-green-500" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">TheDersi Connected!</p>
-              <p className="text-xs text-muted-foreground">Copy your webhook URL and paste it into TheDersi</p>
-            </div>
-          </div>
-          <CopyBox label="ExiusCart Webhook URL — paste into thedersi.lk/seller/connect" value={webhookUrl} />
-          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-            Go to <strong>thedersi.lk/seller/connect</strong>, paste this URL in the "ExiusCart Webhook URL" field and save.
-          </p>
-          <button onClick={onClose}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-            Done
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border w-full max-w-md">
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <div>
-            <p className="font-semibold text-foreground">Connect TheDersi</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Get credentials from thedersi.lk/seller/connect</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <form onSubmit={connect} className="p-5 space-y-4">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-              {error}
-            </div>
-          )}
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">TheDersi Seller ID *</label>
-            <input type="text" value={sellerId} onChange={(e) => setSellerId(e.target.value)} required
-              placeholder="e.g. seller_abc123"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
-          </div>
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">TheDersi API Key *</label>
-            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
-              placeholder="Paste your API key from TheDersi"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Find these at <strong>thedersi.lk/seller/connect</strong> under API Credentials.
-          </p>
-          <button type="submit" disabled={saving}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {saving ? 'Connecting...' : 'Connect TheDersi'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ── TheDersi connected card ───────────────────────────────────────────────────
-
-function TheDersiCard({ connection }: { connection: ChannelConnection }) {
-  const isSuspended = connection.seller_status === 'suspended';
-  const isRejected = connection.seller_status === 'rejected';
-  const isRestricted = isSuspended || isRejected;
-
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isRestricted ? 'bg-red-500/10' : 'bg-primary/10'}`}>
-            <Link2 className={`w-4 h-4 ${isRestricted ? 'text-red-500' : 'text-primary'}`} />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground text-sm">TheDersi</p>
-            <p className="text-xs text-muted-foreground">Sri Lankan Fashion Marketplace</p>
-          </div>
-        </div>
-        {isRestricted ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-red-500/10 text-red-600 dark:text-red-400">
-            <X className="w-3 h-3" /> {isSuspended ? 'Suspended' : 'Not Approved'}
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
-            <CheckCircle2 className="w-3 h-3" /> Connected
-          </span>
-        )}
-      </div>
-
-      {isRestricted && (
-        <div className="mx-5 mt-5 px-4 py-3 bg-red-500/8 border border-red-500/20 rounded-lg">
-          <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">
-            {isSuspended ? 'TheDersi channel suspended' : 'TheDersi account not approved'}
-          </p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {isSuspended
-              ? 'New TheDersi orders are paused. Your POS and other channels continue to work. Please contact TheDersi support to resolve your account status.'
-              : 'Your TheDersi seller application was not approved. New orders from TheDersi are paused. Contact TheDersi support for more information.'}
-          </p>
-        </div>
-      )}
-
-      <div className="p-5 space-y-4">
-        <CopyBox label="Your ExiusCart Webhook URL" value={connection.webhook_url} />
-        {!isRestricted && (
-          <Link href="/dashboard/payout"
-            className="flex items-center justify-center gap-2 w-full py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition">
-            View Payouts & Earnings →
-          </Link>
-        )}
-      </div>
-    </div>
-  );
 }
 
 // ── Channel tile for available-but-not-connected channels ─────────────────────
@@ -1077,20 +80,18 @@ function ChannelTile({ ch }: { ch: ChannelDef }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+//
+// Every real connect/manage flow now lives on its own dedicated page
+// (/dashboard/*-integration), same pattern Shopify already used. This page
+// is just the directory: a grid of tiles that route there, plus the
+// plan-gating explainers (locked/upgrade/TheDersi-block) that make sense
+// to show inline without leaving this list.
 
 export default function ChannelsPage() {
   const router = useRouter();
   const [shopId, setShopId] = useState('');
   const [connections, setConnections] = useState<ChannelConnection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showTheDersiModal, setShowTheDersiModal] = useState(false);
-  const [showCustomWebsiteModal, setShowCustomWebsiteModal] = useState(false);
-  const [showDarazModal, setShowDarazModal] = useState(false);
-  const [showNoonModal, setShowNoonModal] = useState(false);
-  const [noonModalStep, setNoonModalStep] = useState<'form' | 'warehouse'>('form');
-  const [showEbayModal, setShowEbayModal] = useState(false);
-  const [showEbayPoliciesModal, setShowEbayPoliciesModal] = useState(false);
-  const [ebayPoliciesConfigured, setEbayPoliciesConfigured] = useState<boolean | null>(null);
   const [ebayLocked, setEbayLocked] = useState(false);
   const [dersiBlockChannel, setDersiBlockChannel] = useState<string | null>(null);
   const [darazLocked, setDarazLocked] = useState(false);
@@ -1103,21 +104,7 @@ export default function ChannelsPage() {
   const load = () => {
     if (!shopId) return;
     Promise.all([
-      channelsApi.getConnections(shopId).then((r) => {
-        const conns: ChannelConnection[] = r.data ?? [];
-        setConnections(conns);
-        const ebayConn = conns.find((c) => c.channel_type === 'ebay');
-        if (ebayConn) {
-          ebayApi.getBusinessPolicies(shopId)
-            .then((pr) => {
-              const sel = pr.data?.selected ?? {};
-              setEbayPoliciesConfigured(!!(sel.payment_policy_id && sel.fulfillment_policy_id && sel.return_policy_id));
-            })
-            .catch((err) => {
-              setEbayPoliciesConfigured(err?.response?.data?.detail?.error === 'no_business_policies' ? false : null);
-            });
-        }
-      }),
+      channelsApi.getConnections(shopId).then((r) => setConnections(r.data ?? [])),
       shopifyApi.getStatus(shopId).then((r) => setShopifyConnected(r.data?.connected ?? false)).catch(() => {}),
       subscriptionApi.getCurrent(shopId).then((r) => setPlan(r.data?.plan?.plan_type || '')).catch(() => {}),
     ]).finally(() => setLoading(false));
@@ -1125,37 +112,11 @@ export default function ChannelsPage() {
 
   useEffect(() => { load(); }, [shopId]);
 
-  const [darazOAuthResult, setDarazOAuthResult] = useState<string | null>(null);
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const result = params.get('daraz');
-    if (!result) return;
-    setDarazOAuthResult(result);
-    router.replace('/dashboard/channels');
-    load();
-  }, []);
-
-  const [ebayOAuthResult, setEbayOAuthResult] = useState<string | null>(null);
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const result = params.get('ebay');
-    if (!result) return;
-    setEbayOAuthResult(result);
-    router.replace('/dashboard/channels');
-    load();
-    // Freshly connected — walk straight into picking Business Policies,
-    // since a listing can't happen without them.
-    if (result === 'connected') setShowEbayPoliciesModal(true);
-  }, []);
-
-  const theDersiConns = connections.filter((c) => c.channel_type === 'thedersi');
-  const darazConns = connections.filter((c) => c.channel_type === 'daraz');
-  const noonConns = connections.filter((c) => c.channel_type === 'noon');
-  const ebayConns = connections.filter((c) => c.channel_type === 'ebay');
-  const hasTheDersi = theDersiConns.length > 0;
-  const hasDaraz = darazConns.length > 0;
-  const hasNoon = noonConns.length > 0;
-  const hasEbay = ebayConns.length > 0;
+  const hasTheDersi = connections.some((c) => c.channel_type === 'thedersi');
+  const hasDaraz = connections.some((c) => c.channel_type === 'daraz');
+  const hasNoon = connections.some((c) => c.channel_type === 'noon');
+  const hasEbay = connections.some((c) => c.channel_type === 'ebay');
+  const hasCustomWebsite = connections.some((c) => c.channel_type === 'custom');
   // Detected via an active TheDersi connection, not plan_type — TheDersi's
   // Growth/Premium tier maps to plan='starter', same as a direct customer,
   // so a plan-string check alone would miss those sellers.
@@ -1183,8 +144,10 @@ export default function ChannelsPage() {
       icon: <Link2 className="w-5 h-5 text-primary" />,
       badge: hasTheDersi ? 'live' : (channelLimitReached ? 'locked' : 'connect'),
       badgeLabel: hasTheDersi ? 'Connected' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
-      onAction: hasTheDersi ? undefined : (channelLimitReached ? () => setUpgradeLimitModal(true) : () => setShowTheDersiModal(true)),
-      actionLabel: channelLimitReached ? 'Upgrade to Premium' : 'Connect TheDersi',
+      onAction: channelLimitReached && !hasTheDersi
+        ? () => setUpgradeLimitModal(true)
+        : () => router.push('/dashboard/thedersi-integration'),
+      actionLabel: hasTheDersi ? 'Manage TheDersi' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect TheDersi'),
     },
     {
       id: 'daraz',
@@ -1193,8 +156,10 @@ export default function ChannelsPage() {
       icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
       badge: hasDaraz ? 'live' : canUseDaraz ? 'connect' : 'locked',
       badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : (isTheDersiUser ? 'TheDersi Pro only' : 'Premium only'),
-      onAction: hasDaraz ? undefined : canUseDaraz ? () => setShowDarazModal(true) : () => setDarazLocked(true),
-      actionLabel: 'Connect Daraz',
+      onAction: hasDaraz || canUseDaraz
+        ? () => router.push('/dashboard/daraz-integration')
+        : () => setDarazLocked(true),
+      actionLabel: hasDaraz ? 'Manage Daraz' : 'Connect Daraz',
     },
     {
       id: 'noon',
@@ -1204,13 +169,13 @@ export default function ChannelsPage() {
       badge: hasNoon ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: hasNoon ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: hasNoon
-        ? undefined
+        ? () => router.push('/dashboard/noon-integration')
         : isTheDersiUser
           ? () => setDersiBlockChannel('Noon')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => { setNoonModalStep('form'); setShowNoonModal(true); },
-      actionLabel: hasNoon ? 'Connected' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Noon')),
+            : () => router.push('/dashboard/noon-integration'),
+      actionLabel: hasNoon ? 'Manage Noon' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Noon')),
     },
     // ── Row 2: Shopify + Custom Website (direct-ExiusCart channels) ──
     {
@@ -1221,7 +186,7 @@ export default function ChannelsPage() {
       badge: shopifyConnected ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: shopifyConnected ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: shopifyConnected
-        ? undefined
+        ? () => router.push('/dashboard/shopify-integration')
         : isTheDersiUser
           ? () => setDersiBlockChannel('Shopify')
           : channelLimitReached
@@ -1234,14 +199,16 @@ export default function ChannelsPage() {
       name: 'Custom Website',
       description: 'Connect any website using our API or webhook. Receive orders directly from your own storefront.',
       icon: <Globe className="w-5 h-5 text-sky-400" />,
-      badge: isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect'),
-      badgeLabel: isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
-      onAction: isTheDersiUser
-        ? () => setDersiBlockChannel('Custom Website')
-        : channelLimitReached
-          ? () => setUpgradeLimitModal(true)
-          : () => setShowCustomWebsiteModal(true),
-      actionLabel: isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Website'),
+      badge: hasCustomWebsite ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: hasCustomWebsite ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: hasCustomWebsite
+        ? () => router.push('/dashboard/custom-website-integration')
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('Custom Website')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => router.push('/dashboard/custom-website-integration'),
+      actionLabel: hasCustomWebsite ? 'Manage Website' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Website')),
     },
     // ── Row 3+: Amazon, eBay & all other channels ──
     {
@@ -1260,13 +227,13 @@ export default function ChannelsPage() {
       badge: hasEbay ? 'live' : (isTheDersiUser ? 'locked' : (canUseEbay ? 'connect' : 'locked')),
       badgeLabel: hasEbay ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (canUseEbay ? 'Available' : 'Premium only')),
       onAction: hasEbay
-        ? undefined
+        ? () => router.push('/dashboard/ebay-integration')
         : isTheDersiUser
           ? () => setDersiBlockChannel('eBay')
           : canUseEbay
-            ? () => setShowEbayModal(true)
+            ? () => router.push('/dashboard/ebay-integration')
             : () => setEbayLocked(true),
-      actionLabel: hasEbay ? 'Connected' : (isTheDersiUser ? 'Learn more' : (canUseEbay ? 'Connect eBay' : 'Upgrade to Premium')),
+      actionLabel: hasEbay ? 'Manage eBay' : (isTheDersiUser ? 'Learn more' : (canUseEbay ? 'Connect eBay' : 'Upgrade to Premium')),
     },
     {
       id: 'tiktok',
@@ -1303,42 +270,6 @@ export default function ChannelsPage() {
         </p>
       </div>
 
-      {darazOAuthResult && (
-        <div className={`flex items-center justify-between gap-4 px-5 py-4 rounded-xl border ${
-          darazOAuthResult === 'connected' ? 'bg-green-500/8 border-green-500/30'
-          : darazOAuthResult === 'pending' ? 'bg-amber-500/8 border-amber-500/30'
-          : 'bg-destructive/8 border-destructive/30'
-        }`}>
-          <p className="text-sm font-medium text-foreground">
-            {darazOAuthResult === 'connected' && 'Daraz connected successfully — your products will start syncing shortly.'}
-            {darazOAuthResult === 'pending' && "Daraz authorization received — we're finishing setup on our end, check back shortly."}
-            {darazOAuthResult === 'denied' && 'Daraz connection was cancelled — you can try again anytime.'}
-            {darazOAuthResult === 'invalid_state' && 'That Daraz connection link expired — please click Connect Daraz and try again.'}
-          </p>
-          <button onClick={() => setDarazOAuthResult(null)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground shrink-0">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {ebayOAuthResult && (
-        <div className={`flex items-center justify-between gap-4 px-5 py-4 rounded-xl border ${
-          ebayOAuthResult === 'connected' ? 'bg-green-500/8 border-green-500/30'
-          : ebayOAuthResult === 'pending' ? 'bg-amber-500/8 border-amber-500/30'
-          : 'bg-destructive/8 border-destructive/30'
-        }`}>
-          <p className="text-sm font-medium text-foreground">
-            {ebayOAuthResult === 'connected' && "eBay connected — now choose your Business Policies to start listing."}
-            {ebayOAuthResult === 'pending' && "eBay authorization received — we're finishing setup on our end, check back shortly."}
-            {ebayOAuthResult === 'denied' && 'eBay connection was cancelled — you can try again anytime.'}
-            {ebayOAuthResult === 'invalid_state' && 'That eBay connection link expired — please click Connect eBay and try again.'}
-          </p>
-          <button onClick={() => setEbayOAuthResult(null)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground shrink-0">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* Plan limit banner for free/starter users */}
       {!loading && !isTheDersiUser && !isPremium && plan !== '' && (
         <div className={`flex items-center justify-between gap-4 px-5 py-4 rounded-xl border ${channelLimitReached ? 'bg-amber-500/8 border-amber-500/30' : 'bg-muted/60 border-border'}`}>
@@ -1365,88 +296,14 @@ export default function ChannelsPage() {
           <span className="text-sm">Loading channels...</span>
         </div>
       ) : (
-        <>
-          {/* Active connected channel cards */}
-          {(theDersiConns.length > 0 || darazConns.length > 0 || noonConns.length > 0 || ebayConns.length > 0) && (
-            <div className="space-y-4">
-              <h2 className="text-sm font-medium text-foreground">Connected</h2>
-              {theDersiConns.map((conn) => (
-                <TheDersiCard key={conn.id} connection={conn} />
-              ))}
-              {darazConns.map((conn) => (
-                <DarazCard key={conn.id} connection={conn} />
-              ))}
-              {noonConns.map((conn) => (
-                <NoonCard key={conn.id} connection={conn}
-                  onManageWarehouse={() => { setNoonModalStep('warehouse'); setShowNoonModal(true); }} />
-              ))}
-              {ebayConns.map((conn) => (
-                <EbayCard key={conn.id} connection={conn} policiesConfigured={ebayPoliciesConfigured}
-                  onManagePolicies={() => setShowEbayPoliciesModal(true)}
-                  shopId={shopId} onDisconnected={() => load()} />
-              ))}
-            </div>
-          )}
-
-          {/* All channels grid */}
-          <div className="space-y-4">
-            <h2 className="text-sm font-medium text-foreground">All Channels</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {availableChannels.map((ch) => (
-                <ChannelTile key={ch.id} ch={ch} />
-              ))}
-            </div>
+        <div className="space-y-4">
+          <h2 className="text-sm font-medium text-foreground">All Channels</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {availableChannels.map((ch) => (
+              <ChannelTile key={ch.id} ch={ch} />
+            ))}
           </div>
-        </>
-      )}
-
-      {showTheDersiModal && (
-        <TheDersiConnectModal
-          shopId={shopId}
-          onConnected={() => load()}
-          onClose={() => { setShowTheDersiModal(false); load(); }}
-        />
-      )}
-
-      {showCustomWebsiteModal && (
-        <CustomWebsiteModal
-          shopId={shopId}
-          onConnected={() => load()}
-          onClose={() => { setShowCustomWebsiteModal(false); load(); }}
-        />
-      )}
-
-      {showDarazModal && (
-        <DarazConnectModal
-          shopId={shopId}
-          onConnected={() => load()}
-          onClose={() => { setShowDarazModal(false); load(); }}
-        />
-      )}
-
-      {showNoonModal && (
-        <NoonConnectModal
-          shopId={shopId}
-          initialStep={noonModalStep}
-          onConnected={() => load()}
-          onClose={() => { setShowNoonModal(false); load(); }}
-        />
-      )}
-
-      {showEbayModal && (
-        <EbayConnectModal
-          shopId={shopId}
-          onConnected={() => load()}
-          onClose={() => { setShowEbayModal(false); load(); }}
-        />
-      )}
-
-      {showEbayPoliciesModal && (
-        <EbayBusinessPoliciesModal
-          shopId={shopId}
-          onSaved={() => { setEbayPoliciesConfigured(true); load(); }}
-          onClose={() => setShowEbayPoliciesModal(false)}
-        />
+        </div>
       )}
 
       {ebayLocked && (
