@@ -47,3 +47,15 @@ class ChannelConnection(Base):
     refresh_token = Column(Text, nullable=True)
     token_expires_at = Column(DateTime(timezone=True), nullable=True)
     oauth_state = Column(String(100), nullable=True)  # CSRF token for the in-flight authorize request
+
+    # Payment gateway credentials — Custom Website channel only. Gateway-
+    # agnostic on purpose: `payment_gateway` names which one is active
+    # (e.g. "payhere" today), `gateway_merchant_id`/`gateway_merchant_secret`
+    # hold whatever that gateway calls its credentials. Swapping to a
+    # different gateway later is a new value + new checkout/webhook logic,
+    # not a schema change. gateway_merchant_secret is used server-side only
+    # (signing/verifying checkout requests and webhooks) — never sent to
+    # the browser.
+    payment_gateway = Column(String(30), nullable=True)
+    gateway_merchant_id = Column(String(100), nullable=True)
+    gateway_merchant_secret = Column(String(255), nullable=True)

@@ -21,6 +21,17 @@ async def get_current_user(
             detail="Invalid or expired token"
         )
 
+    # Customer-facing storefront tokens (get_current_customer below) are
+    # signed with this same JWT_SECRET_KEY and would otherwise decode
+    # successfully here too — a customer's token must never authenticate
+    # as a seller. Seller tokens never carry this claim, so absence is
+    # the normal case.
+    if payload.get("type") == "customer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload"
+        )
+
     user_id = payload.get("sub")
     if user_id is None:
         raise HTTPException(
@@ -53,3 +64,33 @@ async def get_current_user(
         )
 
     return user
+
+
+async def get_current_customer(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    """Auth for storefront-customer-facing endpoints (checkout, wallet) —
+    deliberately separate from get_current_user above. Customer tokens are
+    signed with the same JWT_SECRET_KEY as seller tokens (one shared
+    secret app-wide), so the `type: "customer"` claim is the only thing
+    telling them apart — required here, and get_current_user above
+    explicitly rejects it, so a token can never authenticate as both."""
+    from app.models.customer import Customer
+
+    token = credentials.credentials
+    payload = decode_token(token)
+    if payload is None or payload.get("type") != "customer":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    customer_id = payload.get("sub")
+    if customer_id is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+
+    customer = db.query(Customer).filter(Customer.id == int(customer_id)).first()
+    if customer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    if not customer.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
+
+    return customer

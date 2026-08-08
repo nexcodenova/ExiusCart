@@ -12,7 +12,7 @@ import {
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw, ListChecks,
-  Star, MapPin, ShoppingBag, LayoutGrid,
+  Star, MapPin, ShoppingBag, LayoutGrid, FormInput, Coins,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi } from '@/lib/api';
 
@@ -83,6 +83,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/accounting',   label: 'Accounting',   icon: BookOpen     },
       { href: '/dashboard/expenses',     label: 'Expenses',     icon: Wallet       },
       { href: '/dashboard/loyalty',      label: 'Loyalty',      icon: Star         },
+      { href: '/dashboard/wallet',       label: 'Wallet',       icon: Coins        },
       { href: '/dashboard/credit-notes',        label: 'Credit Notes',       icon: Receipt   },
       { href: '/dashboard/recurring-invoices',  label: 'Recurring Invoices', icon: RefreshCw },
       { href: '/dashboard/reports',    label: 'Reports',    icon: BarChart3},
@@ -97,6 +98,7 @@ const GROUPS: MenuGroup[] = [
     accent: 'text-purple-500',
     items: [
       { href: '/dashboard/leads',             label: 'Lead Management', icon: Target         },
+      { href: '/dashboard/signup-forms',      label: 'Signup Forms',    icon: FormInput      },
       { href: '/dashboard/drip-flows',        label: 'Drip Flows',      icon: GitBranch      },
       { href: '/dashboard/email-marketing',   label: 'Email Marketing', icon: Mail           },
       { href: '/dashboard/sms-marketing',    label: 'SMS Marketing',   icon: MessageSquare  },

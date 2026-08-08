@@ -40,6 +40,9 @@ from app.models.wholesale import WholesaleProduct, WholesaleBuyer, WholesaleOrde
 from app.models.dropship import DropshipConnection, DropshipProductLink, DropshipOrder
 from app.models.review import ProductReview
 from app.models.popup import StorefrontPopup
+from app.models.signup_form import SignupForm, SignupFormSubmission, CapturedFormSubmission
+from app.models.wallet import WalletSettings, WalletAccount, WalletTransaction
+from app.models.custom_product_fields import CustomProductFieldSettings
 from app.models.subscription_payment import SubscriptionPayment
 from app.models.quotation import Quotation
 from app.models.email_log import EmailLog

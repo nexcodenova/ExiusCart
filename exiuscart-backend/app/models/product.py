@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Numeric
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Numeric, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -76,6 +76,12 @@ class Product(Base):
     is_gift = Column(Boolean, default=False, server_default="false", nullable=False)  # TheDersi-specific: offered as a free gift at TheDersi checkout
     pos_enabled = Column(Boolean, default=True, server_default="true", nullable=False)  # available for in-store POS sale
     pos_is_gift = Column(Boolean, default=False, server_default="false", nullable=False)  # marked as a gift item specifically for POS
+    # Values for whatever extra fields the seller defined for the Custom
+    # Website channel (see CustomProductFieldSettings) — {field_id: value}.
+    # A "quantity_tiers" field's value is itself a list of
+    # {quantity, price} rows, read directly by checkout.py to price an
+    # order line instead of always using `price` above.
+    custom_field_values = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, signup_forms, checkout, wallet, custom_product_fields
 
 api_router = APIRouter()
 
@@ -35,6 +35,10 @@ api_router.include_router(advanced_reports.router, prefix="", tags=["Advanced Re
 api_router.include_router(dropshipping.router, prefix="", tags=["Dropshipping"])
 api_router.include_router(reviews.router, prefix="", tags=["Reviews"])
 api_router.include_router(popups.router, prefix="", tags=["Storefront Popups"])
+api_router.include_router(signup_forms.router, prefix="", tags=["Signup Forms"])
+api_router.include_router(checkout.router, prefix="", tags=["Storefront Checkout"])
+api_router.include_router(wallet.router, prefix="", tags=["Wallet"])
+api_router.include_router(custom_product_fields.router, prefix="", tags=["Custom Product Fields"])
 api_router.include_router(lemonsqueezy_webhook.router, prefix="", tags=["Lemon Squeezy Webhook"])
 api_router.include_router(daraz.router, prefix="", tags=["Daraz Integration"])
 api_router.include_router(noon.router, prefix="", tags=["Noon Integration"])

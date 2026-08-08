@@ -16,12 +16,14 @@ interface Customer {
   lastOrder?: string;
   joinedDate: string;
   isVip?: boolean;
+  source?: string | null;
 }
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -31,14 +33,14 @@ export default function CustomersPage() {
     if (!shopId) return;
     setLoading(true);
     try {
-      const res = await customersApi.getAll(shopId, { search: searchQuery || undefined });
+      const res = await customersApi.getAll(shopId, { search: searchQuery || undefined, source: sourceFilter || undefined });
       setCustomers(res.data);
     } catch {
       setCustomers([]);
     } finally {
       setLoading(false);
     }
-  }, [shopId, searchQuery]);
+  }, [shopId, searchQuery, sourceFilter]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
 
@@ -101,16 +103,26 @@ export default function CustomersPage() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search by name, phone, or email..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full rounded-xl border border-border bg-card py-2.5 pl-11 pr-4 text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-foreground/10"
-        />
+      {/* Search + source filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search by name, phone, or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-xl border border-border bg-card py-2.5 pl-11 pr-4 text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-foreground/10"
+          />
+        </div>
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          className="sm:w-48 rounded-xl border border-border bg-card py-2.5 px-3.5 text-foreground outline-none transition focus:ring-2 focus:ring-foreground/10"
+        >
+          <option value="">All customers</option>
+          <option value="signup">Signup (website)</option>
+        </select>
       </div>
 
       {/* List */}

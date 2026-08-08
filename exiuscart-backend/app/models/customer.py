@@ -16,6 +16,13 @@ class Customer(Base):
     city = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
+    # Nullable — most customers (POS, manual, synced from a channel) never
+    # log in and have no password. Only set for storefront self-signup.
+    password_hash = Column(String(255), nullable=True)
+    # Nullable — existing/POS/synced customers are left untagged rather
+    # than guessed at. Only the new storefront signup flow sets this
+    # (to "signup"), which is what the Customers page's source filter reads.
+    source = Column(String(30), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -8,7 +8,7 @@ import {
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
   Store, Globe, ShoppingBag, Tag,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, customProductFieldsApi, CustomProductField } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { colorNameToHex } from '@/lib/color-utils';
 import { DarazListingFields } from '@/components/daraz-listing-fields';
@@ -1076,6 +1076,32 @@ function ProductModal({
   const setOtherChannelGift = (key: 'daraz' | 'shopify' | 'custom' | 'ebay', isGift: boolean) =>
     setOtherChannels((prev) => ({ ...prev, [key]: { ...prev[key], isGift } }));
 
+  // Custom Website — storefront category tree (flattened, indented) +
+  // seller-defined extra fields (custom-website-fields page). Both scoped
+  // to this one channel, same reasoning as everywhere else in this file:
+  // eBay/Daraz/Noon each only make sense for their own channel's section.
+  const [customCategories, setCustomCategories] = useState<{ id: number; name: string; parent_id: number | null }[]>([]);
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomProductField[]>([]);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>(p?.custom_field_values ?? {});
+
+  const customCategoryOptions = (() => {
+    const byParent = new Map<number | null, typeof customCategories>();
+    customCategories.forEach((c) => {
+      const list = byParent.get(c.parent_id) ?? [];
+      list.push(c);
+      byParent.set(c.parent_id, list);
+    });
+    const out: { id: number; label: string }[] = [];
+    const walk = (parentId: number | null, depth: number) => {
+      (byParent.get(parentId) ?? []).forEach((c) => {
+        out.push({ id: c.id, label: `${'— '.repeat(depth)}${c.name}` });
+        walk(c.id, depth + 1);
+      });
+    };
+    walk(null, 0);
+    return out;
+  })();
+
   // POS — real per-product toggle (defaults on, seller can turn it off) +
   // its own independent gift toggle, same nested pattern as every channel.
   const [posEnabled, setPosEnabled] = useState(p?.pos_enabled ?? true);
@@ -1208,7 +1234,15 @@ function ProductModal({
                 .finally(() => setLoadingDarazCategories(false));
             });
         }
-        if (custom) setCustomWebsiteConnection({ id: custom.id });
+        if (custom) {
+          setCustomWebsiteConnection({ id: custom.id });
+          channelsApi.listStorefrontCategories(shopId, 'custom')
+            .then((r) => setCustomCategories(r.data ?? []))
+            .catch(() => {});
+          customProductFieldsApi.get(shopId)
+            .then((r) => setCustomFieldDefs(r.data?.fields ?? []))
+            .catch(() => {});
+        }
 
         const noon = data.find((c: any) => c.channel_type === 'noon');
         if (noon) setNoonConnection({ id: noon.id });
@@ -1258,7 +1292,13 @@ function ProductModal({
                 if (entry) {
                   setOtherChannels((prev) => ({
                     ...prev,
-                    custom: { ...prev.custom, enabled: entry.is_listed ?? true, isGift: entry.is_gift ?? false },
+                    custom: {
+                      ...prev.custom,
+                      enabled: entry.is_listed ?? true,
+                      isGift: entry.is_gift ?? false,
+                      categoryId: entry.channel_category_id ?? '',
+                      categoryName: entry.channel_category_name ?? '',
+                    },
                   }));
                 }
               }
@@ -1456,6 +1496,7 @@ function ProductModal({
         pos_enabled: posEnabled,
         pos_is_gift: posEnabled ? posIsGift : false,
         supplier_id: formData.supplierId ?? null,
+        custom_field_values: Object.keys(customFieldValues).length > 0 ? customFieldValues : null,
       };
 
       if (product?.id) {
@@ -1543,12 +1584,17 @@ function ProductModal({
         }).catch(() => {}));
       }
 
-      // Custom Website — real ChannelConnection, no category concept.
+      // Custom Website — real ChannelConnection, category is the seller's
+      // own Storefront Categories tree (channel_category_id holds a
+      // StorefrontCategory id, as a string, same field other channels
+      // use for their own category ids).
       if (customWebsiteConnection) {
         tasks.push(channelsApi.setProductCategory(shopId, productId, {
           channel_connection_id: customWebsiteConnection.id,
           is_listed: otherChannels.custom.enabled,
           is_gift: otherChannels.custom.isGift,
+          channel_category_id: otherChannels.custom.categoryId || undefined,
+          channel_category_name: otherChannels.custom.categoryName || undefined,
         }).catch(() => {}));
       }
 
@@ -2511,7 +2557,7 @@ function ProductModal({
                   )}
                 </div>
 
-                {/* Custom Website — toggle + nested gift toggle, no category concept */}
+                {/* Custom Website — toggle + gift toggle + storefront category + seller-defined fields */}
                 <div className="bg-card border border-border rounded-lg overflow-hidden">
                   <div className="p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
@@ -2541,7 +2587,7 @@ function ProductModal({
                     )}
                   </div>
                   {customWebsiteConnection && otherChannels.custom.enabled && (
-                    <div className="border-t border-border p-3">
+                    <div className="border-t border-border p-3 space-y-3">
                       <button
                         type="button"
                         onClick={() => setOtherChannelGift('custom', !otherChannels.custom.isGift)}
@@ -2555,6 +2601,91 @@ function ProductModal({
                           ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
                           : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
                       </button>
+
+                      {customCategoryOptions.length > 0 && (
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1 block">Category on your website</label>
+                          <select
+                            value={otherChannels.custom.categoryId}
+                            onChange={(e) => {
+                              const opt = customCategoryOptions.find((c) => String(c.id) === e.target.value);
+                              setOtherChannels((prev) => ({
+                                ...prev,
+                                custom: { ...prev.custom, categoryId: e.target.value, categoryName: opt?.label.replace(/— /g, '') ?? '' },
+                              }));
+                            }}
+                            className="w-full px-2.5 py-1.5 bg-muted border border-border rounded-lg text-xs"
+                          >
+                            <option value="">No category</option>
+                            {customCategoryOptions.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                          </select>
+                        </div>
+                      )}
+
+                      {customFieldDefs.map((f) => (
+                        <div key={f.id}>
+                          <label className="text-xs text-muted-foreground mb-1 block">{f.label}{f.required && ' *'}</label>
+                          {f.type === 'text' && (
+                            <input type="text" value={customFieldValues[f.id] ?? ''}
+                              onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                              className="w-full px-2.5 py-1.5 bg-muted border border-border rounded-lg text-xs" />
+                          )}
+                          {f.type === 'number' && (
+                            <input type="number" value={customFieldValues[f.id] ?? ''}
+                              onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                              className="w-full px-2.5 py-1.5 bg-muted border border-border rounded-lg text-xs" />
+                          )}
+                          {f.type === 'checkbox' && (
+                            <label className="flex items-center gap-2 text-xs text-foreground">
+                              <input type="checkbox" checked={!!customFieldValues[f.id]}
+                                onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, [f.id]: e.target.checked }))} />
+                              Yes
+                            </label>
+                          )}
+                          {f.type === 'dropdown' && (
+                            <select value={customFieldValues[f.id] ?? ''}
+                              onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                              className="w-full px-2.5 py-1.5 bg-muted border border-border rounded-lg text-xs">
+                              <option value="">Select...</option>
+                              {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          )}
+                          {f.type === 'quantity_tiers' && (
+                            <div className="space-y-1.5">
+                              {((customFieldValues[f.id] ?? []) as { quantity: number; price: number }[]).map((tier, ti) => (
+                                <div key={ti} className="flex items-center gap-1.5">
+                                  <input type="number" min={1} placeholder="Qty" value={tier.quantity}
+                                    onChange={(e) => setCustomFieldValues((prev) => {
+                                      const rows = [...(prev[f.id] ?? [])];
+                                      rows[ti] = { ...rows[ti], quantity: Number(e.target.value) || 0 };
+                                      return { ...prev, [f.id]: rows };
+                                    })}
+                                    className="w-16 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />
+                                  <span className="text-xs text-muted-foreground">→ $</span>
+                                  <input type="number" min={0} step="0.01" placeholder="Price/unit" value={tier.price}
+                                    onChange={(e) => setCustomFieldValues((prev) => {
+                                      const rows = [...(prev[f.id] ?? [])];
+                                      rows[ti] = { ...rows[ti], price: Number(e.target.value) || 0 };
+                                      return { ...prev, [f.id]: rows };
+                                    })}
+                                    className="flex-1 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />
+                                  <button type="button"
+                                    onClick={() => setCustomFieldValues((prev) => ({ ...prev, [f.id]: (prev[f.id] ?? []).filter((_: any, idx: number) => idx !== ti) }))}
+                                    className="p-1.5 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive shrink-0">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ))}
+                              <button type="button"
+                                onClick={() => setCustomFieldValues((prev) => ({ ...prev, [f.id]: [...(prev[f.id] ?? []), { quantity: 1, price: Number(formData.sellingPrice) || 0 }] }))}
+                                className="text-xs text-primary hover:text-primary/80 font-medium">
+                                + Add tier
+                              </button>
+                              <p className="text-xs text-muted-foreground">Per-unit price once someone buys this quantity or more — actually applied at checkout.</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

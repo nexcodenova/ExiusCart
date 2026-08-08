@@ -67,6 +67,7 @@ async def create_customer(
 async def get_customers(
     shop_id: int,
     search: Optional[str] = None,
+    source: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -80,6 +81,8 @@ async def get_customers(
             (Customer.phone.ilike(f"%{search}%")) |
             (Customer.email.ilike(f"%{search}%"))
         )
+    if source:
+        query = query.filter(Customer.source == source)
 
     customers = query.offset(skip).limit(limit).all()
     if not customers:
@@ -114,6 +117,7 @@ async def get_customers(
             "phone": c.phone or "",
             "email": c.email,
             "address": c.address,
+            "source": c.source,
             "totalOrders": s.total_orders if s else 0,
             "totalSpent": total_spent,
             "lastOrder": s.last_order.isoformat() if s and s.last_order else None,

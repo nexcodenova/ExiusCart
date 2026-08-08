@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -48,6 +49,195 @@ def public_store_categories(shop_slug: str, channel: str = "custom", db: Session
         {"id": r.id, "name": r.name, "slug": r.slug, "icon_url": r.icon_url, "parent_id": r.parent_id}
         for r in rows
     ]
+
+
+def _custom_connection(shop_id: int, db: Session):
+    from app.models.channel import ChannelConnection
+    return db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id, ChannelConnection.channel_type == "custom", ChannelConnection.is_active == True,
+    ).first()
+
+
+def _product_out(p: Product, category_id: str | None = None) -> dict:
+    images = [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else ([] if not p.image_url else [p.image_url])
+    return {
+        "id": p.id,
+        "name": p.name,
+        "slug": p.slug,
+        "description": p.description,
+        "price": float(p.price),
+        "compare_at_price": float(p.compare_at_price) if p.compare_at_price is not None else None,
+        "in_stock": (p.quantity or 0) > 0,
+        "quantity": p.quantity or 0,
+        "images": images,
+        "video_url": p.video_url,
+        "tags": [t.strip() for t in p.tags.split(",")] if p.tags else [],
+        "category_id": int(category_id) if category_id else None,
+        "custom_fields": p.custom_field_values or {},
+    }
+
+
+@router.get("/public/store/{shop_slug}/products")
+def public_store_products(
+    shop_slug: str,
+    search: str | None = None,
+    featured: bool | None = None,
+    trending: bool | None = None,
+    category: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """No-auth — a custom storefront's product listing reads this directly,
+    live, same pattern as public_store_categories above."""
+    from app.models.channel_category import ProductChannelCategory
+    from app.models.storefront_category import StorefrontCategory
+
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    conn = _custom_connection(shop.id, db)
+    category_map: dict[int, str] = {}
+    unlisted_ids: set[int] = set()
+    category_filter_ids: set[int] | None = None
+
+    if conn:
+        rows = db.query(ProductChannelCategory).filter(ProductChannelCategory.channel_connection_id == conn.id).all()
+        for r in rows:
+            if not r.is_listed:
+                unlisted_ids.add(r.product_id)
+            elif r.channel_category_id:
+                category_map[r.product_id] = r.channel_category_id
+        if category:
+            cat = db.query(StorefrontCategory).filter(StorefrontCategory.shop_id == shop.id, StorefrontCategory.slug == category).first()
+            if not cat:
+                return []
+            category_filter_ids = {pid for pid, cid in category_map.items() if cid == str(cat.id)}
+
+    q = db.query(Product).filter(Product.shop_id == shop.id, Product.is_active == True)
+    if search:
+        q = q.filter(Product.name.ilike(f"%{search}%"))
+    if featured:
+        q = q.filter(Product.is_featured == True)
+    if trending:
+        q = q.filter(Product.is_trending == True)
+    products = q.order_by(Product.created_at.desc()).all()
+
+    products = [p for p in products if p.id not in unlisted_ids]
+    if category_filter_ids is not None:
+        products = [p for p in products if p.id in category_filter_ids]
+
+    return [_product_out(p, category_map.get(p.id)) for p in products]
+
+
+@router.get("/public/store/{shop_slug}/products/{slug}")
+def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends(get_db)):
+    """No-auth — single product detail for a storefront's PDP."""
+    from app.models.channel_category import ProductChannelCategory
+
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    product = db.query(Product).filter(
+        Product.shop_id == shop.id, Product.slug == slug, Product.is_active == True,
+    ).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    category_id = None
+    conn = _custom_connection(shop.id, db)
+    if conn:
+        pcc = db.query(ProductChannelCategory).filter(
+            ProductChannelCategory.product_id == product.id, ProductChannelCategory.channel_connection_id == conn.id,
+        ).first()
+        if pcc:
+            if not pcc.is_listed:
+                raise HTTPException(status_code=404, detail="Product not found")
+            category_id = pcc.channel_category_id
+
+    return _product_out(product, category_id)
+
+
+# ── Storefront customer auth (Custom Website channel only) ──────────────────
+#
+# A shopper account on the seller's OWN storefront — separate from
+# ExiusCart's own seller/User login. Tokens are signed with the same
+# JWT_SECRET_KEY as seller tokens (one shared secret app-wide) so every
+# token here carries type="customer", checked by get_current_customer
+# (app/api/v1/deps.py) — and get_current_user explicitly rejects that
+# claim, so a customer token can never authenticate as a seller.
+
+class CustomerSignupIn(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class CustomerLoginIn(BaseModel):
+    email: str
+    password: str
+
+
+def _customer_out(c) -> dict:
+    return {"id": c.id, "name": c.name, "email": c.email}
+
+
+@router.post("/public/store/{shop_slug}/auth/signup")
+def public_store_signup(shop_slug: str, data: CustomerSignupIn, db: Session = Depends(get_db)):
+    from app.core.security import get_password_hash, create_access_token
+    from app.models.customer import Customer
+
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    email = data.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail="A valid email is required.")
+    if len(data.password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters.")
+
+    existing = db.query(Customer).filter(
+        Customer.shop_id == shop.id, func.lower(Customer.email) == email,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+
+    customer = Customer(
+        shop_id=shop.id,
+        name=data.name.strip() or "Customer",
+        email=email,
+        password_hash=get_password_hash(data.password),
+        source="signup",
+    )
+    db.add(customer)
+    db.commit()
+    db.refresh(customer)
+
+    token = create_access_token({"sub": str(customer.id), "type": "customer", "shop_id": shop.id})
+    return {"token": token, "customer": _customer_out(customer)}
+
+
+@router.post("/public/store/{shop_slug}/auth/login")
+def public_store_login(shop_slug: str, data: CustomerLoginIn, db: Session = Depends(get_db)):
+    from app.core.security import verify_password, create_access_token
+    from app.models.customer import Customer
+
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    email = data.email.strip().lower()
+    customer = db.query(Customer).filter(
+        Customer.shop_id == shop.id, func.lower(Customer.email) == email,
+    ).first()
+    if not customer or not customer.password_hash or not verify_password(data.password, customer.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+    if not customer.is_active:
+        raise HTTPException(status_code=403, detail="This account is deactivated.")
+
+    token = create_access_token({"sub": str(customer.id), "type": "customer", "shop_id": shop.id})
+    return {"token": token, "customer": _customer_out(customer)}
 
 
 @router.get("/public/stats")
@@ -185,6 +375,20 @@ def _save_lead(shop_id: int, name: str, email: str, phone: str, company: str, so
     from app.api.v1.endpoints.marketing import LEAD_LIMITS
     from app.models.subscription import Subscription
     from sqlalchemy import func as sql_func
+
+    # A public capture surface (popup, signup form) can be resubmitted by
+    # the same visitor — refreshing the page, double-clicking submit, etc.
+    # Without this, every resubmission burned another slot against the
+    # shop's plan-limited lead quota. Treat a repeat email as the same
+    # lead rather than creating a duplicate row.
+    if email:
+        existing = db.query(ShopLead).filter(
+            ShopLead.shop_id == shop_id,
+            sql_func.lower(ShopLead.email) == email.strip().lower(),
+        ).first()
+        if existing:
+            return existing
+
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan = sub.plan_type if sub else "free_trial"
     limit = LEAD_LIMITS.get(plan)

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Link, Link2Off, RefreshCw, Package, ShoppingCart, BarChart2, CheckCircle, XCircle, AlertCircle, Settings, X, ExternalLink, Zap } from 'lucide-react';
+import { ShoppingBag, Link, Link2Off, RefreshCw, Package, ShoppingCart, BarChart2, CheckCircle, XCircle, AlertCircle, Settings, X, ExternalLink, Zap, FormInput, ArrowRight } from 'lucide-react';
 import { shopifyApi } from '@/lib/api';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
@@ -136,6 +136,22 @@ export default function ShopifyIntegrationPage() {
             </a>
           )}
         </div>
+      )}
+
+      {isConnected && (
+        <a href="/dashboard/signup-forms"
+          className="flex items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-5 py-4 hover:border-blue-300 dark:hover:border-blue-700 transition group">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <FormInput className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Collect signups from your storefront</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Build a newsletter or inquiry form for your Shopify theme — every submission lands in Lead Management</p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0 group-hover:text-blue-500 transition" />
+        </a>
       )}
 
       {/* Sync Cards */}

@@ -131,7 +131,7 @@ export const ordersApi = {
 
 // ── Customers ─────────────────────────────────────────
 export const customersApi = {
-  getAll: (shopId: string, params?: { search?: string }) =>
+  getAll: (shopId: string, params?: { search?: string; source?: string }) =>
     api.get(`/shops/${shopId}/customers`, { params }),
   create: (shopId: string, data: any) =>
     api.post(`/shops/${shopId}/customers`, data),
@@ -790,6 +790,71 @@ export const popupsApi = {
     api.post(`/shops/${shopId}/popups/${popupId}/toggle`),
   remove: (shopId: string, popupId: number) =>
     api.delete(`/shops/${shopId}/popups/${popupId}`),
+};
+
+export interface SignupFormField {
+  id: string;
+  label: string;
+  type: 'text' | 'email' | 'phone' | 'textarea' | 'dropdown' | 'checkbox';
+  required?: boolean;
+  options?: string[];
+}
+
+export const signupFormsApi = {
+  list: (shopId: string, channelType?: string) =>
+    api.get(`/shops/${shopId}/signup-forms`, { params: channelType ? { channel_type: channelType } : {} }),
+  create: (shopId: string, data: {
+    channel_type: string; name: string; title: string; description?: string;
+    fields: SignupFormField[]; success_message?: string; discount_code?: string;
+    delay_seconds?: number; is_active?: boolean;
+  }) => api.post(`/shops/${shopId}/signup-forms`, data),
+  update: (shopId: string, formId: number, data: {
+    channel_type: string; name: string; title: string; description?: string;
+    fields: SignupFormField[]; success_message?: string; discount_code?: string;
+    delay_seconds?: number; is_active?: boolean;
+  }) => api.patch(`/shops/${shopId}/signup-forms/${formId}`, data),
+  toggle: (shopId: string, formId: number) =>
+    api.post(`/shops/${shopId}/signup-forms/${formId}/toggle`),
+  remove: (shopId: string, formId: number) =>
+    api.delete(`/shops/${shopId}/signup-forms/${formId}`),
+  submissions: (shopId: string, formId: number) =>
+    api.get(`/shops/${shopId}/signup-forms/${formId}/submissions`),
+  capturedSubmissions: (shopId: string) =>
+    api.get(`/shops/${shopId}/captured-submissions`),
+};
+
+export const walletApi = {
+  getSettings: (shopId: string) => api.get(`/shops/${shopId}/wallet/settings`),
+  setSettings: (shopId: string, data: { is_enabled: boolean; cashback_percent: number }) =>
+    api.put(`/shops/${shopId}/wallet/settings`, data),
+  listAccounts: (shopId: string, search?: string) =>
+    api.get(`/shops/${shopId}/wallet/accounts`, { params: search ? { search } : {} }),
+  getAccount: (shopId: string, accountId: number) =>
+    api.get(`/shops/${shopId}/wallet/accounts/${accountId}`),
+  credit: (shopId: string, accountId: number, data: { amount: number; description?: string }) =>
+    api.post(`/shops/${shopId}/wallet/accounts/${accountId}/credit`, data),
+  debit: (shopId: string, accountId: number, data: { amount: number; description?: string }) =>
+    api.post(`/shops/${shopId}/wallet/accounts/${accountId}/debit`, data),
+};
+
+export interface CustomProductField {
+  id: string;
+  label: string;
+  type: 'text' | 'number' | 'checkbox' | 'dropdown' | 'quantity_tiers';
+  required?: boolean;
+  options?: string[];
+}
+
+export const customProductFieldsApi = {
+  get: (shopId: string) => api.get(`/shops/${shopId}/custom-website/field-definitions`),
+  set: (shopId: string, fields: CustomProductField[]) =>
+    api.put(`/shops/${shopId}/custom-website/field-definitions`, { fields }),
+};
+
+export const paymentGatewayApi = {
+  get: (shopId: string) => api.get(`/shops/${shopId}/channels/custom/payment-gateway`),
+  set: (shopId: string, data: { payment_gateway: string; merchant_id: string; merchant_secret: string }) =>
+    api.put(`/shops/${shopId}/channels/custom/payment-gateway`, data),
 };
 
 export const payrollApi = {
