@@ -23,6 +23,7 @@ interface Variant {
 interface Product {
   id: number | string;
   name: string;
+  sku?: string | null;
 }
 
 interface BundleBuilderProps {
@@ -142,7 +143,7 @@ export function BundleBuilder({ shopId, enabled, onToggle, components, onChange,
                 >
                   <option value="">Select product…</option>
                   {available.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>{p.name}{p.sku ? ` — SKU: ${p.sku}` : ` — #${p.id}`}</option>
                   ))}
                 </select>
 

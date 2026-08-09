@@ -3,10 +3,94 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft, Globe, Loader2, CheckCircle2, FormInput, ArrowRight, CreditCard, Check, Coins, LayoutGrid, ListPlus,
+  ArrowLeft, Globe, Loader2, CheckCircle2, FormInput, ArrowRight, CreditCard, Check, Coins, LayoutGrid, ListPlus, Code2, Copy, Wand2,
 } from 'lucide-react';
-import { channelsApi, paymentGatewayApi } from '@/lib/api';
+import { channelsApi, paymentGatewayApi, shopApi } from '@/lib/api';
 import { CopyBox } from '@/components/channels/CopyBox';
+
+const API_BASE = 'https://api.exiuscart.com/api/v1';
+
+// The only endpoints a Custom Website's own code ever needs to call —
+// deliberately not the full `/docs` (which mixes in hundreds of internal
+// seller-dashboard endpoints). Curated for the developer building the
+// storefront, not the seller configuring ExiusCart.
+const STOREFRONT_ENDPOINTS = (slug: string) => [
+  { method: 'GET', path: `/public/store/${slug}/categories`, desc: 'Category tree' },
+  { method: 'GET', path: `/public/store/${slug}/products`, desc: 'Product list — supports ?category=, ?featured=, ?trending=, ?search=' },
+  { method: 'GET', path: `/public/store/${slug}/products/{slug}`, desc: 'Single product detail' },
+  { method: 'POST', path: `/public/store/${slug}/checkout`, desc: 'Create an order + get payment params' },
+  { method: 'GET', path: `/public/store/${slug}/orders/{order_number}?email=`, desc: 'Guest order lookup' },
+  { method: 'POST', path: `/public/store/${slug}/auth/signup`, desc: 'Create a customer account' },
+  { method: 'POST', path: `/public/store/${slug}/auth/login`, desc: 'Log in, returns a token' },
+  { method: 'GET', path: `/public/store/${slug}/wallet`, desc: 'Balance + history — needs the token from login' },
+];
+
+function DeveloperReferenceCard({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Code2 className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <p className="font-semibold text-foreground text-sm">Developer Reference</p>
+          <p className="text-xs text-muted-foreground">Hand this to whoever's building your website</p>
+        </div>
+      </div>
+      <div className="p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Base API URL</p>
+            <div className="flex items-center gap-2 bg-muted border border-border rounded-lg px-3 py-2">
+              <code className="text-xs text-foreground flex-1 truncate">{API_BASE}</code>
+              <button onClick={() => copy(API_BASE, 'base')} className="shrink-0 text-muted-foreground hover:text-foreground">
+                {copied === 'base' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Your shop slug</p>
+            <div className="flex items-center gap-2 bg-muted border border-border rounded-lg px-3 py-2">
+              <code className="text-xs text-foreground flex-1 truncate">{slug}</code>
+              <button onClick={() => copy(slug, 'slug')} className="shrink-0 text-muted-foreground hover:text-foreground">
+                {copied === 'slug' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground mb-1">Endpoints your website's code calls — no API key needed for any of these</p>
+          {STOREFRONT_ENDPOINTS(slug).map((e) => {
+            const full = `${API_BASE}${e.path}`;
+            const key = e.method + e.path;
+            return (
+              <div key={key} className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${e.method === 'GET' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>
+                  {e.method}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <code className="text-xs text-foreground block truncate">{full}</code>
+                  <p className="text-[11px] text-muted-foreground truncate">{e.desc}</p>
+                </div>
+                <button onClick={() => copy(full, key)} className="shrink-0 text-muted-foreground hover:text-foreground">
+                  {copied === key ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -48,11 +132,14 @@ export default function CustomWebsiteIntegrationPage() {
   const [error, setError] = useState('');
 
   const [gateway, setGateway] = useState<{ configured: boolean; payment_gateway: string | null; merchant_id: string | null; webhook_url: string } | null>(null);
+  const [selectedGateway, setSelectedGateway] = useState('payhere');
   const [merchantId, setMerchantId] = useState('');
   const [merchantSecret, setMerchantSecret] = useState('');
   const [savingGateway, setSavingGateway] = useState(false);
   const [gatewayError, setGatewayError] = useState('');
   const [gatewaySaved, setGatewaySaved] = useState(false);
+  const [shopSlug, setShopSlug] = useState('');
+  const [shopName, setShopName] = useState('');
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
@@ -63,8 +150,30 @@ export default function CustomWebsiteIntegrationPage() {
         const conns: ChannelConnection[] = r.data ?? [];
         setConnection(conns.find((c) => c.channel_type === 'custom') ?? null);
       }),
-      paymentGatewayApi.get(shopId).then((r) => setGateway(r.data)).catch(() => {}),
+      paymentGatewayApi.get(shopId).then((r) => {
+        setGateway(r.data);
+        if (r.data?.payment_gateway) setSelectedGateway(r.data.payment_gateway);
+      }).catch(() => {}),
+      shopApi.getMyShop().then((r) => { setShopSlug(r.data?.slug ?? ''); setShopName(r.data?.name ?? ''); }).catch(() => {}),
     ]).finally(() => setLoading(false));
+  };
+
+  // Credentials are stored in the same two generic columns for every
+  // gateway (see checkout.py) — what changes is what to call them.
+  const GATEWAY_LABELS: Record<string, { name: string; idLabel: string; idPlaceholder: string; secretLabel: string; secretPlaceholder: string }> = {
+    payhere: { name: 'PayHere', idLabel: 'Merchant ID', idPlaceholder: 'Your PayHere Merchant ID', secretLabel: 'Merchant Secret', secretPlaceholder: 'Your PayHere Merchant Secret' },
+    stripe: { name: 'Stripe', idLabel: 'Secret Key', idPlaceholder: 'sk_live_...', secretLabel: 'Webhook Signing Secret', secretPlaceholder: 'whsec_...' },
+    paypal: { name: 'PayPal', idLabel: 'Client ID', idPlaceholder: 'Your PayPal Client ID', secretLabel: 'Client Secret', secretPlaceholder: 'Your PayPal Client Secret' },
+  };
+  const gatewayLabels = GATEWAY_LABELS[selectedGateway] ?? GATEWAY_LABELS.payhere;
+
+  // Purely a convenience default — the key is never validated against
+  // anything, so this doesn't need to be cryptographically random, just
+  // unique enough that two sellers don't accidentally pick the same string.
+  const generateApiKey = () => {
+    const base = shopName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'my-store';
+    const suffix = Math.random().toString(36).slice(2, 8);
+    setApiKey(`${base}-${suffix}`);
   };
 
   useEffect(() => { load(); }, [shopId]);
@@ -74,7 +183,7 @@ export default function CustomWebsiteIntegrationPage() {
     if (!merchantId.trim() || !merchantSecret.trim()) return;
     setSavingGateway(true); setGatewayError(''); setGatewaySaved(false);
     try {
-      await paymentGatewayApi.set(shopId, { payment_gateway: 'payhere', merchant_id: merchantId.trim(), merchant_secret: merchantSecret.trim() });
+      await paymentGatewayApi.set(shopId, { payment_gateway: selectedGateway, merchant_id: merchantId.trim(), merchant_secret: merchantSecret.trim() });
       setMerchantSecret('');
       setGatewaySaved(true);
       load();
@@ -173,6 +282,8 @@ export default function CustomWebsiteIntegrationPage() {
           </div>
         </div>
 
+        {shopSlug && <DeveloperReferenceCard slug={shopSlug} />}
+
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -196,28 +307,29 @@ export default function CustomWebsiteIntegrationPage() {
             )}
             <div>
               <label className="text-sm text-muted-foreground mb-1.5 block">Gateway</label>
-              <select disabled value="payhere" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm opacity-70">
-                <option value="payhere">PayHere</option>
+              <select value={selectedGateway} onChange={(e) => setSelectedGateway(e.target.value)}
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm">
+                {Object.entries(GATEWAY_LABELS).map(([value, l]) => <option key={value} value={value}>{l.name}</option>)}
               </select>
               <p className="text-xs text-muted-foreground mt-1.5">
-                Accepts international cards, settles in LKR — not ideal for pure USD/GBP/EUR pricing, but works today. More gateways can be added later without changing how your storefront calls checkout.
+                Switching gateways doesn't require any change to how your storefront calls checkout.
               </p>
             </div>
             <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Merchant ID *</label>
+              <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.idLabel} *</label>
               <input type="text" value={merchantId} onChange={(e) => setMerchantId(e.target.value)}
-                placeholder={gateway?.merchant_id || 'Your PayHere Merchant ID'}
+                placeholder={gateway?.payment_gateway === selectedGateway ? (gateway?.merchant_id || gatewayLabels.idPlaceholder) : gatewayLabels.idPlaceholder}
                 className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Merchant Secret *</label>
+              <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.secretLabel} *</label>
               <input type="password" value={merchantSecret} onChange={(e) => setMerchantSecret(e.target.value)}
-                placeholder={gateway?.configured ? '••••••••  (already saved — enter a new one to replace)' : 'Your PayHere Merchant Secret'}
+                placeholder={gateway?.configured && gateway?.payment_gateway === selectedGateway ? '••••••••  (already saved — enter a new one to replace)' : gatewayLabels.secretPlaceholder}
                 className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
               <p className="text-xs text-muted-foreground mt-1.5">Stored server-side only — never sent to your website's browser code.</p>
             </div>
             {gateway?.webhook_url && (
-              <CopyBox label="Notify URL — paste into your PayHere account's domain settings" value={gateway.webhook_url} />
+              <CopyBox label="Notify URL — paste into your payment gateway's webhook/notify settings" value={gateway.webhook_url} />
             )}
             <button type="submit" disabled={savingGateway || !merchantId.trim() || !merchantSecret.trim()}
               className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
@@ -276,11 +388,17 @@ export default function CustomWebsiteIntegrationPage() {
             )}
             <div>
               <label className="text-sm text-muted-foreground mb-1.5 block">API Key *</label>
-              <input type="text" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
-                placeholder="Choose any secret key, e.g. mysite_secret_key_123"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+              <div className="flex items-center gap-2">
+                <input type="text" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
+                  placeholder="Choose any secret key, e.g. mysite_secret_key_123"
+                  className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+                <button type="button" onClick={generateApiKey}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2.5 border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition">
+                  <Wand2 className="w-3.5 h-3.5" /> Generate
+                </button>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
-                This is a shared secret between your website and ExiusCart. Choose any string — you'll use it when sending orders from your site.
+                This is a shared secret between your website and ExiusCart. Choose any string — you'll use it when sending orders from your site. "Generate" makes one from your store name.
               </p>
             </div>
             <button type="submit" disabled={saving}

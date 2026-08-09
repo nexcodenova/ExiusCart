@@ -30,6 +30,7 @@ export default function InventoryPage() {
   const [newPrice, setNewPrice] = useState<string>('');
   const [savingPrice, setSavingPrice] = useState(false);
   const [generatingSkus, setGeneratingSkus] = useState(false);
+  const [alertDismissed, setAlertDismissed] = useState(false);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const { sym } = useCurrency();
 
@@ -125,6 +126,40 @@ export default function InventoryPage() {
           </div>
         ))}
       </div>
+
+      {/* Low stock alert banner — moved here from the Products page, since
+          restocking is an Inventory action, not a product-editing one */}
+      {!loading && !alertDismissed && (outOfStock > 0 || lowStock > 0) && (
+        <div className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${outOfStock > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-orange-500/10 border-orange-500/30'}`}>
+          <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${outOfStock > 0 ? 'text-red-500' : 'text-orange-500'}`} />
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-semibold ${outOfStock > 0 ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}`}>
+              Stock Alert
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {outOfStock > 0 && <span className="text-red-500 font-medium">{outOfStock} out of stock</span>}
+              {outOfStock > 0 && lowStock > 0 && <span className="mx-1">·</span>}
+              {lowStock > 0 && <span className="text-orange-500 font-medium">{lowStock} running low</span>}
+              <span className="ml-2">— restock before you run out.</span>
+            </p>
+            <div className="flex gap-2 mt-2">
+              {outOfStock > 0 && (
+                <button onClick={() => setStockFilter('out')} className="text-xs px-2.5 py-1 bg-red-500/15 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-500/25 transition font-medium">
+                  Show out of stock ({outOfStock})
+                </button>
+              )}
+              {lowStock > 0 && (
+                <button onClick={() => setStockFilter('low')} className="text-xs px-2.5 py-1 bg-orange-500/15 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-500/25 transition font-medium">
+                  Show low stock ({lowStock})
+                </button>
+              )}
+            </div>
+          </div>
+          <button onClick={() => setAlertDismissed(true)} className="p-1 hover:bg-muted rounded transition shrink-0">
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      )}
 
       {/* Missing SKU banner */}
       {!loading && missingSkuCount > 0 && (

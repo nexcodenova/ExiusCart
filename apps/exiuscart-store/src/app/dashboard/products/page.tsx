@@ -234,7 +234,6 @@ export default function ProductsPage() {
   };
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [channelFilter, setChannelFilter] = useState<'all' | 'thedersi' | 'daraz' | 'ebay' | 'unlisted'>('all');
-  const [alertDismissed, setAlertDismissed] = useState(false);
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [planType, setPlanType] = useState<string>('');
   const [perfData, setPerfData] = useState<Record<string, { revenue: number; revenue_30d: number; units_sold: number; heat: string; margin_pct: number; days_since_sale: number }>>({});
@@ -388,39 +387,6 @@ export default function ProductsPage() {
           </div>
         ))}
       </div>
-
-      {/* Low stock alert banner */}
-      {!loading && !alertDismissed && (outOfStockCount > 0 || lowStockCount > 0) && (
-        <div className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${outOfStockCount > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-orange-500/10 border-orange-500/30'}`}>
-          <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${outOfStockCount > 0 ? 'text-red-500' : 'text-orange-500'}`} />
-          <div className="flex-1 min-w-0">
-            <p className={`text-sm font-semibold ${outOfStockCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}`}>
-              Stock Alert
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {outOfStockCount > 0 && <span className="text-red-500 font-medium">{outOfStockCount} out of stock</span>}
-              {outOfStockCount > 0 && lowStockCount > 0 && <span className="mx-1">·</span>}
-              {lowStockCount > 0 && <span className="text-orange-500 font-medium">{lowStockCount} running low</span>}
-              <span className="ml-2">— restock before you run out.</span>
-            </p>
-            <div className="flex gap-2 mt-2">
-              {outOfStockCount > 0 && (
-                <button onClick={() => setStockFilter('out')} className="text-xs px-2.5 py-1 bg-red-500/15 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-500/25 transition font-medium">
-                  Show out of stock ({outOfStockCount})
-                </button>
-              )}
-              {lowStockCount > 0 && (
-                <button onClick={() => setStockFilter('low')} className="text-xs px-2.5 py-1 bg-orange-500/15 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-500/25 transition font-medium">
-                  Show low stock ({lowStockCount})
-                </button>
-              )}
-            </div>
-          </div>
-          <button onClick={() => setAlertDismissed(true)} className="p-1 hover:bg-muted rounded transition shrink-0">
-            <X className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
-      )}
 
       {/* Missing SKU banner */}
       {!loading && missingSkuCount > 0 && (
@@ -1116,17 +1082,13 @@ function ProductModal({
   // included — TheDersi's own platform is fashion-only, but TheDersi
   // sellers also get a Daraz connection (a general marketplace), so a
   // TheDersi shop can easily have non-fashion products too.
-  const selectedCategoryObj = categories.find((c) => c.name === formData.category) ?? null;
-  const isFashionCategory = selectedCategoryObj?.name === 'Fashion & Apparel';
-
-  // Custom fields are scoped to the selected category (global fields always
-  // included by the backend) — refetch whenever the category changes.
-  useEffect(() => {
-    if (!shopId) return;
-    fieldsApi.getAll(shopId, selectedCategoryObj?.id ?? undefined)
-      .then((res) => setCustomFields(res.data ?? []))
-      .catch(() => {});
-  }, [shopId, selectedCategoryObj?.id]);
+  // The generic ExiusCart-only category (separate from each channel's own
+  // real category, e.g. TheDersi's/Daraz's/eBay's own pickers below) was
+  // removed from this form — each channel already has its own specific
+  // category, so forcing a second, unrelated one here was pure overhead.
+  // Existing products keep whatever category they already had (not
+  // touched by this form anymore); Settings → Product Fields still
+  // manages the underlying field definitions.
 
   // Load existing product data and TheDersi categories on mount
   useEffect(() => {
@@ -1490,7 +1452,10 @@ function ProductModal({
         cost_price: formData.costPrice > 0 ? formData.costPrice : null,
         quantity: totalStock,
         low_stock_threshold: formData.lowStockAlert,
-        category_id: selectedCategoryObj?.id ?? null,
+        // No category_id here anymore — the generic ExiusCart-only
+        // category picker was removed from this form (each channel has
+        // its own real category instead). Existing products keep
+        // whatever category they already had; new ones simply get none.
         list_on_marketplace: formData.listOnMarketplace,
         is_gift: formData.isGift,
         pos_enabled: posEnabled,
@@ -1621,7 +1586,7 @@ function ProductModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="relative bg-card rounded-xl border border-border w-full max-w-6xl max-h-[94vh] flex flex-col">
+      <div className="relative bg-card rounded-xl border border-border w-full max-w-7xl max-h-[94vh] flex flex-col">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
@@ -1738,8 +1703,9 @@ function ProductModal({
                 <p className="text-xs text-muted-foreground mt-1.5">Up to {imageLimit} images total (main + variants) · Max 5MB each · First image is primary.</p>
               </div>
 
-              {/* Size Chart — one optional image, fashion products only */}
-              {product?.id && isFashionCategory && (
+              {/* Size Chart — one optional image, available for any saved product
+                  (no longer tied to the removed generic category picker) */}
+              {product?.id && (
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">Size Chart <span className="text-muted-foreground/60">(optional)</span></label>
                   <div className="flex items-center gap-3">
@@ -1929,78 +1895,6 @@ function ProductModal({
                   </>
                 )}
               </section>
-
-              {/* ExiusCart category — separate from TheDersi's own category
-                  picker further down (that one decides shelf placement on
-                  thedersi.lk). This one decides which fields show up below,
-                  so it applies to every seller, TheDersi included: a
-                  TheDersi shop's Daraz connection can list non-fashion
-                  products even though TheDersi itself is fashion-only.
-                  Comes before Custom Fields so the cause (category picked)
-                  reads above its effect (matching fields appear below). */}
-              <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">
-                  Category *{theDersiConnection && <span className="text-muted-foreground font-normal"> (for ExiusCart — TheDersi's own category is set below)</span>}
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  required
-                  className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-                >
-                  {categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  {isFashionCategory
-                    ? 'Fashion & Apparel — fields like Material, Pattern, and a size chart will show up below.'
-                    : 'Add fields specific to this category anytime in Settings → Product Fields.'}
-                </p>
-              </div>
-
-              {/* Custom Fields — specific to whichever category is selected above */}
-              {customFields.length > 0 ? (
-                <section className="space-y-4">
-                  <p className="text-sm font-medium text-foreground">Additional Details</p>
-                  {customFields.map((field) => (
-                    <div key={field.field_key}>
-                      <label className="text-sm text-muted-foreground mb-1.5 flex items-center gap-1">
-                        {field.label}{field.is_required && <span className="text-destructive">*</span>}
-                      </label>
-                      {field.field_type === 'text' && <input type="text" value={attrValues[field.field_key] ?? ''} onChange={(e) => setAttr(field.field_key, e.target.value)} required={field.is_required} placeholder={field.label} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />}
-                      {field.field_type === 'number' && <input type="number" value={attrValues[field.field_key] ?? ''} onChange={(e) => setAttr(field.field_key, e.target.value)} required={field.is_required} placeholder="0" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />}
-                      {field.field_type === 'date' && <input type="date" value={attrValues[field.field_key] ?? ''} onChange={(e) => setAttr(field.field_key, e.target.value)} required={field.is_required} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />}
-                      {field.field_type === 'dropdown' && (
-                        <select value={attrValues[field.field_key] ?? ''} onChange={(e) => setAttr(field.field_key, e.target.value)} required={field.is_required} className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground">
-                          <option value="">Select {field.label}...</option>
-                          {(field.options ?? []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                        </select>
-                      )}
-                      {field.field_type === 'multiselect' && (
-                        <div className="flex flex-wrap gap-2">
-                          {(field.options ?? []).map((opt) => {
-                            const selected = (attrValues[field.field_key] ?? '').split(',').filter(Boolean).includes(opt);
-                            return (
-                              <button key={opt} type="button" onClick={() => toggleMultiselect(field.field_key, opt)} className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${selected ? 'bg-foreground text-background border-foreground' : 'bg-muted text-foreground border-border hover:border-foreground/30'}`}>
-                                {opt}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {field.field_type === 'toggle' && (
-                        <button type="button" onClick={() => setAttr(field.field_key, attrValues[field.field_key] === 'true' ? 'false' : 'true')} className="flex items-center gap-2 text-sm text-foreground">
-                          {attrValues[field.field_key] === 'true' ? <ToggleRight className="w-8 h-8 text-primary" /> : <ToggleLeft className="w-8 h-8 text-muted-foreground" />}
-                          <span>{attrValues[field.field_key] === 'true' ? 'Yes' : 'No'}</span>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </section>
-              ) : (
-                <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-                  No custom fields yet. Go to <strong>Settings → Product Fields</strong> to add fields like Brand, IMEI, Color.
-                </p>
-              )}
 
               <div className="border-t border-border" />
 
@@ -2747,7 +2641,7 @@ function ProductModal({
               onToggle={setIsBundleEnabled}
               components={bundleComponents}
               onChange={setBundleComponents}
-              availableProducts={allProducts.map(p => ({ id: p.id, name: p.name }))}
+              availableProducts={allProducts.map(p => ({ id: p.id, name: p.name, sku: p.sku }))}
               currentProductId={product?.id}
             />
           </div>

@@ -30,7 +30,7 @@ from app.models.channel import ChannelConnection
 from app.models.user import User
 from app.api.v1.deps import get_current_user
 
-SUPPORTED_GATEWAYS = ("payhere",)
+SUPPORTED_GATEWAYS = ("payhere", "stripe", "paypal")
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -117,6 +117,12 @@ class CheckoutIn(BaseModel):
     phone: Optional[str] = None
     shipping_address: Optional[str] = None
     use_wallet_amount: Optional[float] = None
+    # Required for Stripe/PayPal — those redirect the shopper to a hosted
+    # payment page and need to know where to send them back afterward.
+    # PayHere doesn't use these (it posts a form directly, no redirect URL
+    # needed from the storefront).
+    return_url: Optional[str] = None
+    cancel_url: Optional[str] = None
 
 
 @router.post("/public/store/{shop_slug}/checkout")
@@ -210,15 +216,51 @@ def public_store_checkout(
     db.commit()
     db.refresh(order)
 
-    payment_params = {"gateway": conn.payment_gateway, "order_id": order.order_number, "amount": f"{total:.2f}", "currency": "LKR"}
+    payment_params = _build_payment_params(conn, shop, order, total, data.return_url, data.cancel_url)
+    return {"order_number": order.order_number, "total": float(total), "payment": payment_params}
+
+
+def _build_payment_params(conn: ChannelConnection, shop: Shop, order: Order, total: Decimal, return_url: Optional[str], cancel_url: Optional[str]) -> dict:
+    """Each gateway hands the storefront a different shape — PayHere needs
+    a signed hash to build its own form/redirect; Stripe and PayPal are
+    hosted pages, so the storefront just needs one URL to send the
+    shopper to. Keeping this branching in one place is what lets checkout
+    itself stay gateway-agnostic."""
     if conn.payment_gateway == "payhere":
         from app.core.payment_gateways import payhere_checkout_hash
-        payment_params["merchant_id"] = conn.gateway_merchant_id
-        payment_params["hash"] = payhere_checkout_hash(
-            conn.gateway_merchant_id, order.order_number, payment_params["amount"], "LKR", conn.gateway_merchant_secret,
-        )
+        amount = f"{total:.2f}"
+        return {
+            "gateway": "payhere",
+            "order_id": order.order_number,
+            "amount": amount,
+            "currency": "LKR",
+            "merchant_id": conn.gateway_merchant_id,
+            "hash": payhere_checkout_hash(conn.gateway_merchant_id, order.order_number, amount, "LKR", conn.gateway_merchant_secret),
+        }
 
-    return {"order_number": order.order_number, "total": float(total), "payment": payment_params}
+    if conn.payment_gateway == "stripe":
+        if not return_url or not cancel_url:
+            raise HTTPException(status_code=422, detail="return_url and cancel_url are required for Stripe.")
+        from app.core.payment_gateways import stripe_create_checkout_session
+        session = stripe_create_checkout_session(
+            conn.gateway_merchant_id, order.order_number, float(total), shop.currency or "USD", return_url, cancel_url,
+        )
+        return {"gateway": "stripe", "order_id": order.order_number, "redirect_url": session["url"]}
+
+    if conn.payment_gateway == "paypal":
+        if not return_url or not cancel_url:
+            raise HTTPException(status_code=422, detail="return_url and cancel_url are required for PayPal.")
+        from app.core.payment_gateways import paypal_create_order
+        # PayPal's own return_url gets our capture endpoint appended so the
+        # capture happens before the shopper ever sees the storefront
+        # again — see public_paypal_return below.
+        capture_return = f"https://api.exiuscart.com/api/v1/public/store/{shop.slug}/payment-return/paypal?order_number={order.order_number}&redirect_to={return_url}"
+        pp_order = paypal_create_order(
+            conn.gateway_merchant_id, conn.gateway_merchant_secret, order.order_number, float(total), shop.currency or "USD", capture_return, cancel_url,
+        )
+        return {"gateway": "paypal", "order_id": order.order_number, "redirect_url": pp_order["approve_url"]}
+
+    raise HTTPException(status_code=400, detail=f"Unsupported gateway: {conn.payment_gateway}")
 
 
 @router.get("/public/store/{shop_slug}/orders/{order_number}")
@@ -245,45 +287,13 @@ def public_store_order_lookup(shop_slug: str, order_number: str, email: str, db:
     }
 
 
-@router.post("/public/payment-webhook/{shop_slug}")
-async def payment_webhook(shop_slug: str, request: Request, db: Session = Depends(get_db)):
-    """Server-to-server payment confirmation — the gateway calls this
-    directly (never through the storefront/ODTSI). Verifies the gateway's
-    own signature before trusting anything, then: marks the order paid,
-    decrements stock (deferred from checkout — see module docstring), and
-    credits the customer's wallet."""
-    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
-    if not shop:
-        raise HTTPException(status_code=404, detail="Store not found")
-
-    conn = db.query(ChannelConnection).filter(
-        ChannelConnection.shop_id == shop.id,
-        ChannelConnection.channel_type == "custom",
-        ChannelConnection.is_active == True,
-    ).first()
-    if not conn or not conn.payment_gateway:
-        raise HTTPException(status_code=400, detail="No payment gateway configured")
-
-    form = await request.form()
-
-    if conn.payment_gateway == "payhere":
-        from app.core.payment_gateways import payhere_verify_notification
-        order_number = form.get("order_id", "")
-        amount = form.get("payhere_amount", "")
-        currency = form.get("payhere_currency", "")
-        status_code = form.get("status_code", "")
-        md5sig = form.get("md5sig", "")
-        if not payhere_verify_notification(conn.gateway_merchant_id, order_number, amount, currency, status_code, conn.gateway_merchant_secret, md5sig):
-            logger.warning(f"[PAYMENT WEBHOOK] shop={shop.id} order={order_number} invalid signature — ignored")
-            raise HTTPException(status_code=400, detail="Invalid signature")
-        is_paid = status_code == "2"  # PayHere: 2 = success
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported gateway: {conn.payment_gateway}")
-
-    order = db.query(Order).filter(Order.shop_id == shop.id, Order.order_number == order_number).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-
+def _mark_order_paid_or_failed(order: Order, is_paid: bool, db: Session):
+    """Shared by every gateway's confirmation path (webhook or
+    capture-on-return) — marks the order, decrements stock (deferred from
+    checkout, see module docstring), and credits the wallet. Idempotent:
+    safe to call more than once for the same order (a gateway retrying
+    its webhook, or a shopper reloading the return page, won't double-pay
+    the wallet or double-decrement stock)."""
     if is_paid and order.payment_status != "paid":
         order.payment_status = "paid"
         order.status = "confirmed"
@@ -296,11 +306,101 @@ async def payment_webhook(shop_slug: str, request: Request, db: Session = Depend
 
         from app.api.v1.endpoints.wallet import credit_wallet_for_order
         credit_wallet_for_order(order, db)
-    elif not is_paid:
+    elif not is_paid and order.payment_status not in ("paid", "failed"):
         order.payment_status = "failed"
         db.commit()
 
+
+def _custom_conn_for_shop(shop: Shop, db: Session) -> Optional[ChannelConnection]:
+    return db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop.id,
+        ChannelConnection.channel_type == "custom",
+        ChannelConnection.is_active == True,
+    ).first()
+
+
+@router.post("/public/payment-webhook/{shop_slug}")
+async def payment_webhook(shop_slug: str, request: Request, db: Session = Depends(get_db)):
+    """Server-to-server payment confirmation — the gateway calls this
+    directly (never through the storefront/ODTSI). Verifies the gateway's
+    own signature before trusting anything. PayPal doesn't use this path
+    (see public_paypal_return below) — it confirms via capture-on-return
+    instead, since that's the standard, simpler PayPal Orders v2 flow."""
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    conn = _custom_conn_for_shop(shop, db)
+    if not conn or not conn.payment_gateway:
+        raise HTTPException(status_code=400, detail="No payment gateway configured")
+
+    if conn.payment_gateway == "payhere":
+        from app.core.payment_gateways import payhere_verify_notification
+        form = await request.form()
+        order_number = form.get("order_id", "")
+        amount = form.get("payhere_amount", "")
+        currency = form.get("payhere_currency", "")
+        status_code = form.get("status_code", "")
+        md5sig = form.get("md5sig", "")
+        if not payhere_verify_notification(conn.gateway_merchant_id, order_number, amount, currency, status_code, conn.gateway_merchant_secret, md5sig):
+            logger.warning(f"[PAYMENT WEBHOOK] shop={shop.id} order={order_number} invalid signature — ignored")
+            raise HTTPException(status_code=400, detail="Invalid signature")
+        is_paid = status_code == "2"  # PayHere: 2 = success
+
+    elif conn.payment_gateway == "stripe":
+        from app.core.payment_gateways import stripe_verify_webhook_signature
+        payload = await request.body()
+        sig_header = request.headers.get("stripe-signature", "")
+        event = stripe_verify_webhook_signature(payload, sig_header, conn.gateway_merchant_secret)
+        if not event:
+            logger.warning(f"[PAYMENT WEBHOOK] shop={shop.id} stripe — invalid signature, ignored")
+            raise HTTPException(status_code=400, detail="Invalid signature")
+        if event.get("type") != "checkout.session.completed":
+            return {"status": "ignored"}  # not the event we care about
+        order_number = event["data"]["object"].get("client_reference_id", "")
+        is_paid = True
+
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported gateway for webhook: {conn.payment_gateway}")
+
+    order = db.query(Order).filter(Order.shop_id == shop.id, Order.order_number == order_number).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    _mark_order_paid_or_failed(order, is_paid, db)
     return {"status": "ok"}
+
+
+@router.get("/public/store/{shop_slug}/payment-return/paypal")
+def public_paypal_return(shop_slug: str, order_number: str, redirect_to: str, token: Optional[str] = None, db: Session = Depends(get_db)):
+    """Where PayPal sends the shopper back after they approve. `token` is
+    the PayPal order id — capturing it here (not just reading redirect
+    params) is what actually proves the payment: the capture call itself
+    fails if the order was never genuinely approved, so this isn't
+    "trusting a browser redirect", it's a real server-to-server charge."""
+    from fastapi.responses import RedirectResponse
+
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+    conn = _custom_conn_for_shop(shop, db)
+    if not conn or conn.payment_gateway != "paypal" or not token:
+        return RedirectResponse(f"{redirect_to}?payment=failed")
+
+    order = db.query(Order).filter(Order.shop_id == shop.id, Order.order_number == order_number).first()
+    if not order:
+        return RedirectResponse(f"{redirect_to}?payment=failed")
+
+    from app.core.payment_gateways import paypal_capture_order
+    try:
+        capture = paypal_capture_order(conn.gateway_merchant_id, conn.gateway_merchant_secret, token)
+        is_paid = capture.get("status") == "COMPLETED"
+    except Exception:
+        logger.exception(f"[PAYPAL CAPTURE] shop={shop.id} order={order_number} capture call failed")
+        is_paid = False
+
+    _mark_order_paid_or_failed(order, is_paid, db)
+    return RedirectResponse(f"{redirect_to}?payment={'success' if is_paid else 'failed'}&order_number={order_number}")
 
 
 # ── Seller-facing: connect a payment gateway to the Custom Website channel ──
