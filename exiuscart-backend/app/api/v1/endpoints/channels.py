@@ -19,7 +19,7 @@ import logging
 import httpx
 from slugify import slugify
 from datetime import datetime, timezone
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,11 @@ DEFAULT_CHANNEL_URLS = {
 # Marketplace channels require admin approval before products go live.
 # Own-store channels (Shopify, WooCommerce) publish instantly — seller is their own admin.
 MARKETPLACE_CHANNELS = {"thedersi"}
+
+# How long a cached product-fields spec (TheDersi's /exiuscart/product-fields)
+# is trusted before we refetch — the seller re-opening the product form
+# repeatedly shouldn't hammer the channel's API for a list that rarely changes.
+PRODUCT_FIELDS_CACHE_TTL_SECONDS = 60 * 60
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -176,6 +181,7 @@ def _product_payload(
     channel_sub_category_id: str = None,
     is_gift: bool = False,
     db: Session = None,
+    field_values: Optional[dict] = None,
 ) -> dict:
     status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
     category = channel_category_id or None
@@ -206,7 +212,7 @@ def _product_payload(
         if v.image_url and v.image_url not in image_urls:
             image_urls.append(v.image_url)
 
-    return {
+    payload = {
         "exiuscart_product_id": product.id,
         "name": product.name,
         "description": product.description or "",
@@ -223,6 +229,17 @@ def _product_payload(
         "bundle_components": _bundle_components_payload(product, db) if (product.is_bundle and db is not None) else [],
         "is_gift": bool(is_gift),
     }
+
+    # Dynamic per-channel product-fields spec (TheDersi's Material/Pattern/
+    # Metal Type/etc, fetched live — see /product-fields below). Only the
+    # fields the seller actually filled in go out, as extra top-level keys —
+    # never overwrites a core key above even if a field key collided with one.
+    if field_values:
+        for key, value in field_values.items():
+            if value and key not in payload:
+                payload[key] = value
+
+    return payload
 
 
 def _parse_push_response(r: httpx.Response) -> dict:
@@ -314,6 +331,7 @@ def _bg_full_sync(shop_id: int, conn_id: int):
                     p, shop.currency, conn.channel_type,
                     listing.channel_category_id, listing.channel_sub_category_id,
                     is_gift=listing.is_gift, db=db,
+                    field_values=listing.channel_field_values,
                 ),
                 conn,
             )
@@ -361,6 +379,7 @@ def _bg_push_product(product_id: int, shop_id: int):
                     product, shop.currency, conn.channel_type,
                     listing.channel_category_id, listing.channel_sub_category_id,
                     is_gift=listing.is_gift, db=db,
+                    field_values=listing.channel_field_values,
                 ),
                 conn,
             )
@@ -1150,6 +1169,59 @@ def get_channel_categories(
     return [{"id": c.channel_category_id, "name": c.name, "parent_id": c.parent_id} for c in cats]
 
 
+@router.get("/shops/{shop_id}/channels/{channel_id}/product-fields")
+def get_channel_product_fields(
+    shop_id: int,
+    channel_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Dynamic per-channel product-fields spec — e.g. TheDersi's own
+    GET /exiuscart/product-fields (Material, Metal Type, Gemstone, etc).
+    We never hardcode this list: fetched live and cached on the connection
+    for PRODUCT_FIELDS_CACHE_TTL_SECONDS, refetched once stale. A channel
+    that doesn't expose this endpoint (or a transient failure) just serves
+    whatever's cached — an empty list means "no extra fields for this
+    channel", not an error, so the product form simply shows nothing extra.
+    """
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id,
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+    is_fresh = (
+        conn.field_defs_cache is not None
+        and conn.field_defs_synced_at is not None
+        and (datetime.now(timezone.utc) - conn.field_defs_synced_at).total_seconds() < PRODUCT_FIELDS_CACHE_TTL_SECONDS
+    )
+    if is_fresh:
+        return conn.field_defs_cache
+
+    api_url = _channel_url(conn)
+    if not api_url:
+        return conn.field_defs_cache or []
+
+    headers = {"X-Api-Key": conn.channel_api_key}
+    try:
+        with httpx.Client(timeout=10) as client:
+            r = client.get(f"{api_url}/exiuscart/product-fields", headers=headers)
+            r.raise_for_status()
+            fields = r.json()
+    except Exception as e:
+        logger.warning(f"[PRODUCT FIELDS] Could not reach {api_url} for conn={channel_id}: {e} — serving cached")
+        return conn.field_defs_cache or []
+
+    conn.field_defs_cache = fields
+    conn.field_defs_synced_at = datetime.now(timezone.utc)
+    db.commit()
+    return fields
+
+
 @router.get("/shops/{shop_id}/channels/{channel_id}/thedersi-info")
 def get_thedersi_seller_info(
     shop_id: int,
@@ -1368,6 +1440,7 @@ class SetProductChannelCategory(BaseModel):
     is_gift: bool = False
     channel_category_id: Optional[str] = None
     channel_category_name: Optional[str] = None
+    field_values: Optional[Dict[str, str]] = None
 
 
 @router.put("/shops/{shop_id}/products/{product_id}/channel-category")
@@ -1405,6 +1478,7 @@ def set_product_channel_category(
         existing.is_gift = data.is_gift
         existing.channel_category_id = data.channel_category_id
         existing.channel_category_name = data.channel_category_name
+        existing.channel_field_values = data.field_values
     else:
         db.add(ProductChannelCategory(
             product_id=product_id,
@@ -1413,6 +1487,7 @@ def set_product_channel_category(
             is_gift=data.is_gift,
             channel_category_id=data.channel_category_id,
             channel_category_name=data.channel_category_name,
+            channel_field_values=data.field_values,
         ))
     db.commit()
 
@@ -1637,6 +1712,7 @@ def get_product_channel_categories(
             "is_gift": r.is_gift,
             "channel_category_id": r.channel_category_id,
             "channel_category_name": r.channel_category_name,
+            "channel_field_values": r.channel_field_values or {},
         }
         for r in rows
     ]

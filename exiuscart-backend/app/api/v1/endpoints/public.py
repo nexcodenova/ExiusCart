@@ -58,7 +58,7 @@ def _custom_connection(shop_id: int, db: Session):
     ).first()
 
 
-def _product_out(p: Product, category_id: str | None = None) -> dict:
+def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None) -> dict:
     images = [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else ([] if not p.image_url else [p.image_url])
     return {
         "id": p.id,
@@ -73,6 +73,11 @@ def _product_out(p: Product, category_id: str | None = None) -> dict:
         "video_url": p.video_url,
         "tags": [t.strip() for t in p.tags.split(",")] if p.tags else [],
         "category_id": int(category_id) if category_id else None,
+        # The real, linkable slug for category_id above (e.g. "electronics-a1b2c3")
+        # — resolved here so every storefront gets a working category link/
+        # breadcrumb for free, instead of each one having to separately fetch
+        # the full category list and look up the id itself.
+        "category_slug": category_slug,
         "custom_fields": p.custom_field_values or {},
     }
 
@@ -97,16 +102,22 @@ def public_store_products(
 
     conn = _custom_connection(shop.id, db)
     category_map: dict[int, str] = {}
-    unlisted_ids: set[int] = set()
+    # Opt-in, not opt-out: a product only shows on the storefront if it has
+    # an explicit is_listed=True row for this connection. A product that's
+    # never been individually opened+saved with Custom Website active (e.g.
+    # bulk-imported products) has NO row at all — that must mean "not
+    # listed," not "assume it's fine to show."
+    listed_ids: set[int] | None = None
     category_filter_ids: set[int] | None = None
 
     if conn:
+        listed_ids = set()
         rows = db.query(ProductChannelCategory).filter(ProductChannelCategory.channel_connection_id == conn.id).all()
         for r in rows:
-            if not r.is_listed:
-                unlisted_ids.add(r.product_id)
-            elif r.channel_category_id:
-                category_map[r.product_id] = r.channel_category_id
+            if r.is_listed:
+                listed_ids.add(r.product_id)
+                if r.channel_category_id:
+                    category_map[r.product_id] = r.channel_category_id
         if category:
             cat = db.query(StorefrontCategory).filter(StorefrontCategory.shop_id == shop.id, StorefrontCategory.slug == category).first()
             if not cat:
@@ -122,17 +133,31 @@ def public_store_products(
         q = q.filter(Product.is_trending == True)
     products = q.order_by(Product.created_at.desc()).all()
 
-    products = [p for p in products if p.id not in unlisted_ids]
+    if listed_ids is not None:
+        products = [p for p in products if p.id in listed_ids]
     if category_filter_ids is not None:
         products = [p for p in products if p.id in category_filter_ids]
 
-    return [_product_out(p, category_map.get(p.id)) for p in products]
+    # Resolve each referenced StorefrontCategory id to its real slug in one
+    # batch query, so every product in the response carries a working
+    # category link — not just the internal id.
+    slug_by_cat_id: dict[str, str] = {}
+    referenced_ids = {int(cid) for cid in category_map.values()}
+    if referenced_ids:
+        cats = db.query(StorefrontCategory).filter(StorefrontCategory.id.in_(referenced_ids)).all()
+        slug_by_cat_id = {str(c.id): c.slug for c in cats}
+
+    return [
+        _product_out(p, category_map.get(p.id), slug_by_cat_id.get(category_map.get(p.id) or ""))
+        for p in products
+    ]
 
 
 @router.get("/public/store/{shop_slug}/products/{slug}")
 def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends(get_db)):
     """No-auth — single product detail for a storefront's PDP."""
     from app.models.channel_category import ProductChannelCategory
+    from app.models.storefront_category import StorefrontCategory
 
     shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
     if not shop:
@@ -150,12 +175,18 @@ def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends
         pcc = db.query(ProductChannelCategory).filter(
             ProductChannelCategory.product_id == product.id, ProductChannelCategory.channel_connection_id == conn.id,
         ).first()
-        if pcc:
-            if not pcc.is_listed:
-                raise HTTPException(status_code=404, detail="Product not found")
-            category_id = pcc.channel_category_id
+        # Same opt-in rule as the list endpoint above: no row at all means
+        # "never listed," not "assume it's fine to show."
+        if not pcc or not pcc.is_listed:
+            raise HTTPException(status_code=404, detail="Product not found")
+        category_id = pcc.channel_category_id
 
-    return _product_out(product, category_id)
+    category_slug = None
+    if category_id:
+        cat = db.query(StorefrontCategory).filter(StorefrontCategory.id == int(category_id)).first()
+        category_slug = cat.slug if cat else None
+
+    return _product_out(product, category_id, category_slug)
 
 
 # ── Storefront customer auth (Custom Website channel only) ──────────────────

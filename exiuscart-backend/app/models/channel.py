@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -59,3 +59,12 @@ class ChannelConnection(Base):
     payment_gateway = Column(String(30), nullable=True)
     gateway_merchant_id = Column(String(100), nullable=True)
     gateway_merchant_secret = Column(String(255), nullable=True)
+
+    # Cached product-fields spec from the channel's own API (TheDersi's
+    # /exiuscart/product-fields — Brand, Material, Metal Type, etc.), so we
+    # never hardcode a field list that only they can keep current. Refetched
+    # when stale (see PRODUCT_FIELDS_CACHE_TTL in channels.py) rather than
+    # on every form load, so a busy seller opening the product form
+    # repeatedly doesn't hammer the channel's API.
+    field_defs_cache = Column(JSON, nullable=True)
+    field_defs_synced_at = Column(DateTime(timezone=True), nullable=True)

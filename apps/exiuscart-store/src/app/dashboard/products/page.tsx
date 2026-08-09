@@ -981,6 +981,13 @@ function ProductModal({
   const [theDersiCategoryId, setTheDersiCategoryId] = useState('');
   const [theDersiCategoryName, setTheDersiCategoryName] = useState('');
   const [loadingCategories, setLoadingCategories] = useState(false);
+  // Dynamic product-fields spec fetched live from TheDersi's own API
+  // (Material, Metal Type, Gemstone, etc — never hardcoded here, see
+  // channelsApi.getProductFields). One text input per {key,label}; blank
+  // ones just don't send that key.
+  const [theDersiFieldDefs, setTheDersiFieldDefs] = useState<{ key: string; label: string }[]>([]);
+  const [theDersiFieldValues, setTheDersiFieldValues] = useState<Record<string, string>>({});
+  const [loadingFieldDefs, setLoadingFieldDefs] = useState(false);
 
   // Other-channel state (Daraz / Shopify / Custom Website) — kept fully
   // separate from TheDersi's state above so TheDersi's existing behavior
@@ -1149,7 +1156,16 @@ function ProductModal({
               .finally(() => setLoadingCategories(false));
           });
 
-        // If editing, load already-saved TheDersi category for this product
+        // Product-fields spec — live from TheDersi's own API (server caches
+        // it ~1hr), never hardcoded here. Empty result just means no extra
+        // fields for this connection right now.
+        setLoadingFieldDefs(true);
+        channelsApi.getProductFields(shopId, dersi.id)
+          .then((r) => setTheDersiFieldDefs(r.data ?? []))
+          .catch(() => {})
+          .finally(() => setLoadingFieldDefs(false));
+
+        // If editing, load already-saved TheDersi category + field values for this product
         if (product?.id) {
           channelsApi.getProductChannelCategories(shopId, product.id)
             .then((r) => {
@@ -1157,6 +1173,7 @@ function ProductModal({
               if (entry) {
                 setTheDersiCategoryId(entry.channel_category_id);
                 setTheDersiCategoryName(entry.channel_category_name);
+                setTheDersiFieldValues(entry.channel_field_values ?? {});
               }
             })
             .catch(() => {});
@@ -1523,6 +1540,7 @@ function ProductModal({
           is_gift: formData.isGift,
           channel_category_id: theDersiCategoryId || undefined,
           channel_category_name: theDersiCategoryName || undefined,
+          field_values: theDersiFieldValues,
         }).catch(() => {}));
       }
 
@@ -2109,6 +2127,40 @@ function ProductModal({
                         <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
                       </button>
                       <p className="text-xs text-muted-foreground mt-1.5">Listed under this category on TheDersi.</p>
+                    </div>
+                  )}
+
+                  {/* Product Details — TheDersi's own dynamic spec fields
+                      (Material, Metal Type, Gemstone, etc). Fetched live from
+                      their API, not hardcoded — the exact set shown here can
+                      change on their end without any change on ours. */}
+                  {theDersiConnection && formData.listOnMarketplace && (loadingFieldDefs || theDersiFieldDefs.length > 0) && (
+                    <div className="border-t border-border p-3">
+                      <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                        Product Details
+                        {loadingFieldDefs && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                      </label>
+                      {!loadingFieldDefs && (
+                        <>
+                          <p className="text-xs text-muted-foreground mb-2.5">
+                            Fill in whatever applies — leave the rest blank. Shown on the live TheDersi product page.
+                          </p>
+                          <div className="grid grid-cols-2 gap-2.5">
+                            {theDersiFieldDefs.map((f) => (
+                              <div key={f.key}>
+                                <label className="text-xs text-muted-foreground mb-1 block">{f.label}</label>
+                                <input
+                                  type="text"
+                                  value={theDersiFieldValues[f.key] ?? ''}
+                                  onChange={(e) => setTheDersiFieldValues({ ...theDersiFieldValues, [f.key]: e.target.value })}
+                                  className="w-full px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
+                                  placeholder={f.label}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

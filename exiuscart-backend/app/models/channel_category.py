@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, UniqueConstraint, JSON
 from app.core.database import Base
 
 
@@ -40,6 +40,11 @@ class ProductChannelCategory(Base):
     channel_category_name = Column(Text, nullable=True)                 # "Festival Wear"
     channel_sub_category_id = Column(String(100), nullable=True)       # TheDersi sub-category ID
     channel_sub_category_name = Column(Text, nullable=True)            # "Summer Dresses"
+    # Seller-filled values for this channel's dynamic product-fields spec
+    # (TheDersi's /exiuscart/product-fields — Material, Metal Type, etc.),
+    # keyed by field "key". Only non-blank entries are ever pushed to the
+    # channel; blank/omitted ones just don't show in that field's UI.
+    channel_field_values = Column(JSON, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("product_id", "channel_connection_id", name="uq_product_conn_cat"),

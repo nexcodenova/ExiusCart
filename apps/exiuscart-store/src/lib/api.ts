@@ -576,12 +576,15 @@ export const channelsApi = {
     api.post(`/shops/${shopId}/channels/${channelId}/sync-categories`),
   getCategories: (shopId: string, channelId: number) =>
     api.get(`/shops/${shopId}/channels/${channelId}/categories`),
+  getProductFields: (shopId: string, channelId: number) =>
+    api.get(`/shops/${shopId}/channels/${channelId}/product-fields`),
   setProductCategory: (shopId: string, productId: string, data: {
     channel_connection_id: number;
     is_listed?: boolean;
     is_gift?: boolean;
     channel_category_id?: string;
     channel_category_name?: string;
+    field_values?: Record<string, string>;
   }) => api.put(`/shops/${shopId}/products/${productId}/channel-category`, data),
   disconnectChannel: (shopId: string, channelId: number) =>
     api.delete(`/shops/${shopId}/channels/${channelId}`),
