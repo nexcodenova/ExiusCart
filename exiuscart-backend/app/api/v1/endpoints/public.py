@@ -58,8 +58,28 @@ def _custom_connection(shop_id: int, db: Session):
     ).first()
 
 
-def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None) -> dict:
+def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None, tier_field_id: str | None = None) -> dict:
     images = [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else ([] if not p.image_url else [p.image_url])
+    # Pulled out of custom_fields into its own top-level key, in the exact
+    # shape the storefront needs to render it directly — quantity, the
+    # TOTAL price for that quantity (see _tiered_unit_price in checkout.py,
+    # same "3 for $25" semantics, not per-unit), plus optional label/badge/
+    # recommended for display. No storefront has to separately fetch this
+    # shop's field definitions just to find which custom_fields key holds it.
+    quantity_tiers = []
+    if tier_field_id and p.custom_field_values:
+        raw_tiers = p.custom_field_values.get(tier_field_id) or []
+        quantity_tiers = [
+            {
+                "quantity": t.get("quantity"),
+                "price": t.get("price"),
+                "label": t.get("label") or None,
+                "badge": t.get("badge") or None,
+                "badge_type": t.get("badge_type") or None,
+                "recommended": bool(t.get("recommended")),
+            }
+            for t in raw_tiers
+        ]
     return {
         "id": p.id,
         "name": p.name,
@@ -70,7 +90,22 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         "in_stock": (p.quantity or 0) > 0,
         "quantity": p.quantity or 0,
         "images": images,
+        # Legacy single field — still set by the internal Prodora import
+        # pipeline, untouched. `videos` below is the new seller-manageable
+        # multi-video list (YouTube/TikTok, oEmbed-resolved) — both can be
+        # present; a storefront wanting the richer gallery should prefer
+        # `videos`.
         "video_url": p.video_url,
+        "videos": [
+            {
+                "url": v.url,
+                "platform": v.platform,
+                "thumbnail_url": v.thumbnail_url,
+                "title": v.title,
+                "embed_html": v.embed_html,
+            }
+            for v in sorted(p.videos, key=lambda v: v.sort_order)
+        ] if p.videos else [],
         "tags": [t.strip() for t in p.tags.split(",")] if p.tags else [],
         "category_id": int(category_id) if category_id else None,
         # The real, linkable slug for category_id above (e.g. "electronics-a1b2c3")
@@ -78,6 +113,7 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         # breadcrumb for free, instead of each one having to separately fetch
         # the full category list and look up the id itself.
         "category_slug": category_slug,
+        "quantity_tiers": quantity_tiers,
         "custom_fields": p.custom_field_values or {},
     }
 
@@ -95,10 +131,14 @@ def public_store_products(
     live, same pattern as public_store_categories above."""
     from app.models.channel_category import ProductChannelCategory
     from app.models.storefront_category import StorefrontCategory
+    from app.models.custom_product_fields import CustomProductFieldSettings
 
     shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Store not found")
+
+    field_settings = db.query(CustomProductFieldSettings).filter(CustomProductFieldSettings.shop_id == shop.id).first()
+    tier_field_id = next((f["id"] for f in (field_settings.fields if field_settings else []) or [] if f.get("type") == "quantity_tiers"), None)
 
     conn = _custom_connection(shop.id, db)
     category_map: dict[int, str] = {}
@@ -148,7 +188,7 @@ def public_store_products(
         slug_by_cat_id = {str(c.id): c.slug for c in cats}
 
     return [
-        _product_out(p, category_map.get(p.id), slug_by_cat_id.get(category_map.get(p.id) or ""))
+        _product_out(p, category_map.get(p.id), slug_by_cat_id.get(category_map.get(p.id) or ""), tier_field_id)
         for p in products
     ]
 
@@ -158,10 +198,14 @@ def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends
     """No-auth — single product detail for a storefront's PDP."""
     from app.models.channel_category import ProductChannelCategory
     from app.models.storefront_category import StorefrontCategory
+    from app.models.custom_product_fields import CustomProductFieldSettings
 
     shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Store not found")
+
+    field_settings = db.query(CustomProductFieldSettings).filter(CustomProductFieldSettings.shop_id == shop.id).first()
+    tier_field_id = next((f["id"] for f in (field_settings.fields if field_settings else []) or [] if f.get("type") == "quantity_tiers"), None)
 
     product = db.query(Product).filter(
         Product.shop_id == shop.id, Product.slug == slug, Product.is_active == True,
@@ -186,7 +230,7 @@ def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends
         cat = db.query(StorefrontCategory).filter(StorefrontCategory.id == int(category_id)).first()
         category_slug = cat.slug if cat else None
 
-    return _product_out(product, category_id, category_slug)
+    return _product_out(product, category_id, category_slug, tier_field_id)
 
 
 # ── Storefront customer auth (Custom Website channel only) ──────────────────

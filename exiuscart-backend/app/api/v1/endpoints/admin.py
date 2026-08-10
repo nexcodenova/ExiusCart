@@ -2,6 +2,7 @@
 Super-admin endpoints — all routes require is_superuser.
 """
 import logging
+import re
 import httpx
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
@@ -15,6 +16,7 @@ from app.api.v1.deps import get_current_user
 from app.core.encryption import encrypt
 from app.models.dropship import DropshipConnection
 from app.api.v1.endpoints.dropshipping import _cj_get_token, _cj_ensure_token, _parse_cj_price, CJ_BASE
+from app.api.v1.endpoints.product_fields import DESCRIPTION_WORDS_DEFAULT
 from app.core.email import (
     send_dashboard_live_email,
     send_affiliate_pending_email,
@@ -1491,6 +1493,48 @@ def _apply_shopping_extras(db: Session, product: Product, payload: dict) -> None
                 db.add(ProductVariant(product_id=product.id, color=color, color_hex=v.get("color_hex")))
 
 
+_DESCRIPTION_IMG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+_EMPTY_PARA_RE = re.compile(r"<p>(\s|&nbsp;|<br\s*/?>)*</p>", re.IGNORECASE)
+
+
+def _strip_description_images(html: Optional[str]) -> Optional[str]:
+    """Supplier-sourced descriptions (CJ, Prodora, etc.) often embed the
+    product's own photos as <img> tags throughout the description HTML —
+    redundant, since those same photos already come through separately as
+    real ProductImage rows (see `images` in _cj_import_one / ShoppingProductExtras).
+    Left in, they just don't render anywhere that treats description as
+    plain text (Custom Website's storefront strips all HTML for XSS safety,
+    and eBay/Daraz have their own plain-text limits) — so the seller sees a
+    "missing images" gap that isn't real, the images just never left the
+    description. Strip them here, once, at the only place descriptions
+    enter the system, rather than leaving every consumer to work around it."""
+    if not html:
+        return html
+    cleaned = _DESCRIPTION_IMG_RE.sub("", html)
+    cleaned = _EMPTY_PARA_RE.sub("", cleaned)
+    return cleaned.strip() or None
+
+
+def _truncate_description(html: Optional[str], word_limit: int) -> Optional[str]:
+    """Supplier descriptions can run far longer than any plan's word limit
+    (see DESCRIPTION_WORDS_DEFAULT/PREMIUM in product_fields.py — the same
+    limits create_product/update_product enforce for sellers typing their
+    own description). Cutting arbitrary HTML at a word boundary risks
+    leaving unclosed tags, so truncation only kicks in when actually over
+    the limit, and falls back to plain text wrapped in one <p> rather than
+    trying to preserve the original markup. Descriptions already under the
+    limit are returned untouched, formatting intact. Uses the free-tier
+    limit — imports land in the system shop, which has no plan of its own,
+    so the safest bound (the lowest any destination shop could have) applies."""
+    if not html:
+        return html
+    text_only = re.sub(r"<[^>]*>", " ", html).replace("&nbsp;", " ")
+    words = [w for w in text_only.split() if w]
+    if len(words) <= word_limit:
+        return html
+    return f"<p>{' '.join(words[:word_limit])}…</p>"
+
+
 def _get_or_create_system_shop(db: Session, admin_user: User) -> Shop:
     """Get or create the dedicated ExiusCart Dropshipping system shop."""
     shop = db.query(Shop).filter(Shop.slug == "exiuscart-dropshipping-system").first()
@@ -1522,7 +1566,7 @@ def admin_create_shopping_product(
     product = Product(
         name=data.name,
         slug=_slugify_unique(data.name),
-        description=data.description,
+        description=_truncate_description(_strip_description_images(data.description), DESCRIPTION_WORDS_DEFAULT),
         price=data.price,
         cost_price=data.cost_price,
         sku=data.sku,
@@ -1563,7 +1607,9 @@ def admin_update_shopping_product(
                 product.category_id = _get_or_create_category(db, product.shop_id, value).id
             else:
                 product.category_id = None
-        elif field in ("name", "description", "price", "cost_price", "sku",
+        elif field == "description":
+            product.description = _truncate_description(_strip_description_images(value), DESCRIPTION_WORDS_DEFAULT)
+        elif field in ("name", "price", "cost_price", "sku",
                        "image_url", "video_url", "source_url",
                        "is_featured", "is_trending", "is_active"):
             setattr(product, field, value)
@@ -1890,7 +1936,7 @@ async def _cj_import_one(db: Session, shop: Shop, token: str, cj_pid: str, price
     product = Product(
         name=name,
         slug=_slugify_unique(name),
-        description=p.get("description") or name,
+        description=_truncate_description(_strip_description_images(p.get("description")), DESCRIPTION_WORDS_DEFAULT) or name,
         price=final_price,
         cost_price=cost,
         sku=p.get("productSku") or cj_pid[:50],

@@ -11,11 +11,11 @@ from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product
-from app.models.product_fields import ShopField, ProductAttribute, ProductImage
+from app.models.product_fields import ShopField, ProductAttribute, ProductImage, ProductVideo
 from app.models.product_variant import ProductVariant
 from app.models.subscription import Subscription
 from fastapi import Query
-from app.core.storage import upload_image as storage_upload, delete_image as storage_delete, generate_presigned_url
+from app.core.storage import upload_image as storage_upload, delete_image as storage_delete, generate_presigned_url, generate_description_image_presigned_url
 
 router = APIRouter()
 
@@ -234,20 +234,31 @@ def get_attributes(
 # ── Product Images ────────────────────────────────────────────────────────────
 
 IMAGES_DEFAULT = 6    # free / starter / thedersi_basic
-IMAGES_PREMIUM = 15   # premium / thedersi_pro
+IMAGES_PREMIUM = 10   # premium / thedersi_pro
+DESCRIPTION_WORDS_DEFAULT = 200   # free / starter / thedersi_basic
+DESCRIPTION_WORDS_PREMIUM = 350   # premium / thedersi_pro
+DESCRIPTION_IMAGES_LIMIT = 3       # same for every plan — inline description photos, not the main gallery
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+_PREMIUM_PLANS = ("premium", "thedersi_pro")
 
 
-def _image_limit(shop_id: int, db: Session) -> int:
-    """Return 15 for premium/thedersi_pro shops, 6 for all others."""
+def _is_premium_shop(shop_id: int, db: Session) -> bool:
     sub = db.query(Subscription).filter(
         Subscription.shop_id == shop_id,
         Subscription.status == "active",
     ).first()
-    if sub and sub.plan_type in ("premium", "thedersi_pro"):
-        return IMAGES_PREMIUM
-    return IMAGES_DEFAULT
+    return bool(sub and sub.plan_type in _PREMIUM_PLANS)
+
+
+def _image_limit(shop_id: int, db: Session) -> int:
+    """Return 10 for premium/thedersi_pro shops, 6 for all others."""
+    return IMAGES_PREMIUM if _is_premium_shop(shop_id, db) else IMAGES_DEFAULT
+
+
+def _description_word_limit(shop_id: int, db: Session) -> int:
+    """Return 350 for premium/thedersi_pro shops, 200 for all others."""
+    return DESCRIPTION_WORDS_PREMIUM if _is_premium_shop(shop_id, db) else DESCRIPTION_WORDS_DEFAULT
 
 
 def _combined_image_count(product_id: int, db: Session) -> int:
@@ -268,7 +279,28 @@ def get_image_limit(
     current_user: User = Depends(get_current_user),
 ):
     get_shop_or_404(shop_id, db, current_user)
-    return {"limit": _image_limit(shop_id, db)}
+    return {
+        "limit": _image_limit(shop_id, db),
+        "description_word_limit": _description_word_limit(shop_id, db),
+        "description_image_limit": DESCRIPTION_IMAGES_LIMIT,
+    }
+
+
+@router.get("/shops/{shop_id}/description-image-presign")
+def presign_description_image(
+    shop_id: int,
+    content_type: str = Query("image/jpeg"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Presigned upload for an image the seller inserts directly into a
+    product description (Add/Edit Product's rich text editor) — shop-scoped,
+    not product-scoped, since a brand-new product has no id yet while its
+    description is still being written. Capped at 3 per description,
+    enforced client-side by counting <img> tags already in the text."""
+    get_shop_or_404(shop_id, db, current_user)
+    ext = content_type.split("/")[-1].replace("jpeg", "jpg")
+    return generate_description_image_presigned_url(shop_id, ext, content_type)
 
 
 @router.get("/shops/{shop_id}/products/{product_id}/images", response_model=List[ImageOut])
@@ -489,6 +521,100 @@ def set_primary_image(
 
     db.commit()
     return {"message": "Primary image updated"}
+
+
+# ── Product Videos (YouTube/TikTok links, oEmbed-resolved) ─────────────────────
+
+VIDEOS_LIMIT = 6
+
+
+class VideoOut(BaseModel):
+    id: int
+    url: str
+    platform: str
+    thumbnail_url: Optional[str]
+    title: Optional[str]
+    sort_order: int
+
+    class Config:
+        from_attributes = True
+
+
+class AddVideoBody(BaseModel):
+    url: str
+
+
+@router.get("/shops/{shop_id}/products/{product_id}/videos", response_model=List[VideoOut])
+def get_videos(
+    shop_id: int,
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_shop_or_404(shop_id, db, current_user)
+    get_product_or_404(product_id, shop_id, db)
+    return db.query(ProductVideo).filter(
+        ProductVideo.product_id == product_id
+    ).order_by(ProductVideo.sort_order).all()
+
+
+@router.post("/shops/{shop_id}/products/{product_id}/videos", response_model=VideoOut, status_code=201)
+def add_video(
+    shop_id: int,
+    product_id: int,
+    body: AddVideoBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Seller pastes a YouTube/TikTok link — resolved server-side via that
+    platform's oEmbed endpoint (thumbnail, title, embed snippet) so the
+    storefront never has to talk to YouTube/TikTok itself."""
+    get_shop_or_404(shop_id, db, current_user)
+    get_product_or_404(product_id, shop_id, db)
+
+    count = db.query(ProductVideo).filter(ProductVideo.product_id == product_id).count()
+    if count >= VIDEOS_LIMIT:
+        raise HTTPException(status_code=400, detail=f"Video limit reached ({VIDEOS_LIMIT} per product)")
+
+    from app.core.video_oembed import fetch_oembed
+    info = fetch_oembed(body.url.strip())
+    if not info:
+        raise HTTPException(
+            status_code=400,
+            detail="Couldn't read that link — only YouTube and TikTok video links are supported, and the video must be public.",
+        )
+
+    video = ProductVideo(
+        product_id=product_id,
+        url=body.url.strip(),
+        platform=info["platform"],
+        thumbnail_url=info["thumbnail_url"],
+        title=info["title"],
+        embed_html=info["embed_html"],
+        sort_order=count,
+    )
+    db.add(video)
+    db.commit()
+    db.refresh(video)
+    return video
+
+
+@router.delete("/shops/{shop_id}/products/{product_id}/videos/{video_id}", status_code=204)
+def delete_video(
+    shop_id: int,
+    product_id: int,
+    video_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_shop_or_404(shop_id, db, current_user)
+    video = db.query(ProductVideo).filter(
+        ProductVideo.id == video_id, ProductVideo.product_id == product_id,
+    ).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    db.delete(video)
+    db.commit()
 
 
 @router.post("/shops/{shop_id}/products/{product_id}/variant-image")

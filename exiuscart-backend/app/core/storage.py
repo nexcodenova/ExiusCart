@@ -117,6 +117,28 @@ def generate_marketing_presigned_url(shop_id: int, ext: str, content_type: str =
     return {"presigned_url": presigned_url, "public_url": public_url}
 
 
+def generate_description_image_presigned_url(shop_id: int, ext: str, content_type: str = "image/jpeg", expires: int = 300) -> dict:
+    """Presigned PUT URL for an image inserted directly into a product
+    description (not the main product gallery) — shop-scoped like marketing
+    images, not product-scoped, since a new product doesn't have an id yet
+    while its description is still being written."""
+    filename = f"{uuid.uuid4()}.{ext}"
+    key = f"description-images/{shop_id}/{filename}"
+    client = _get_r2_client()
+    presigned_url = client.generate_presigned_url(
+        "put_object",
+        Params={
+            "Bucket": _R2_BUCKET,
+            "Key": key,
+            "ContentType": content_type,
+            "CacheControl": "public, max-age=31536000",
+        },
+        ExpiresIn=expires,
+    )
+    public_url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    return {"presigned_url": presigned_url, "public_url": public_url}
+
+
 def generate_storefront_category_presigned_url(shop_id: int, ext: str, content_type: str = "image/jpeg", expires: int = 300) -> dict:
     """Presigned PUT URL for a storefront category icon — not tied to any
     product, one image per category (the category row only has one

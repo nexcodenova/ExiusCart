@@ -71,11 +71,17 @@ def _shop_and_gateway(shop_slug: str, db: Session):
 
 def _tiered_unit_price(product: Product, quantity: int, db: Session) -> Decimal:
     """If the seller defined a "quantity_tiers" field (custom_product_fields.py)
-    and set tiers on this product, returns the per-unit price for the
-    highest tier the ordered quantity qualifies for. Falls back to
+    and set tiers on this product, returns the effective per-unit price for
+    the highest tier the ordered quantity qualifies for. Falls back to
     product.price when no tiers are defined/qualified — this is the only
     place tier pricing actually affects what's charged; everywhere else
-    it's just seller-entered display data."""
+    it's just seller-entered display data.
+
+    Each tier's `price` is the TOTAL for buying exactly `quantity` of that
+    tier (e.g. "3 for $25" — not $25/unit) — matches how sellers actually
+    describe these ("Buy 3 for $25"), not a per-unit rate. Buying more than
+    the tier's quantity still gets that tier's effective per-unit rate
+    (tier price ÷ tier quantity) applied to the full amount ordered."""
     if not product.custom_field_values:
         return Decimal(str(product.price))
 
@@ -96,7 +102,9 @@ def _tiered_unit_price(product: Product, quantity: int, db: Session) -> Decimal:
     if not qualifying:
         return Decimal(str(product.price))
     best = max(qualifying, key=lambda t: int(t["quantity"]))
-    return Decimal(str(best["price"]))
+    tier_quantity = int(best["quantity"]) or 1
+    tier_total = Decimal(str(best["price"]))
+    return tier_total / tier_quantity
 
 
 def generate_order_number() -> str:

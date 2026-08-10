@@ -6,9 +6,9 @@ import {
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
-  Store, Globe, ShoppingBag, Tag,
+  Store, Globe, ShoppingBag, Tag, PlayCircle,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, customProductFieldsApi, CustomProductField } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, customProductFieldsApi, CustomProductField, videosApi, ProductVideo as ProductVideoType } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { colorNameToHex } from '@/lib/color-utils';
 import { DarazListingFields } from '@/components/daraz-listing-fields';
@@ -39,6 +39,13 @@ function generateSku(name: string): string {
   const prefix = (name || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'PRD';
   const suffix = Math.floor(Math.random() * 900 + 100);
   return `${prefix}-${suffix}`;
+}
+
+// Live word count for the description editor — strips HTML tags first so
+// markup (from headings/images/lists) never inflates the count.
+function countWords(html: string): number {
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ');
+  return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
 interface Product {
@@ -78,6 +85,19 @@ interface ProductImage {
 
 interface ProductCategory { id: number; name: string; }
 const DEFAULT_CATEGORIES: ProductCategory[] = [{ id: -1, name: 'General' }, { id: -2, name: 'Other' }];
+
+// One row of a "quantity_tiers" custom field's value on a specific product.
+// `price` is the TOTAL for buying exactly `quantity` (e.g. "3 for $25"),
+// not a per-unit rate — matches checkout.py's _tiered_unit_price(). label/
+// badge/badge_type/recommended are purely for the storefront's own display.
+interface QuantityTierValue {
+  quantity: number;
+  price: number;
+  label?: string;
+  badge?: string;
+  badge_type?: 'save' | 'popular' | 'value';
+  recommended?: boolean;
+}
 
 export default function ProductsPage() {
   const { sym } = useCurrency();
@@ -957,6 +977,14 @@ function ProductModal({
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
 
+  // Videos — YouTube/TikTok links only, no upload. Thumbnail/title come
+  // back from the server (oEmbed), not entered by the seller.
+  const [savedVideos, setSavedVideos] = useState<ProductVideoType[]>([]);
+  const [newVideoUrl, setNewVideoUrl] = useState('');
+  const [addingVideo, setAddingVideo] = useState(false);
+  const [videoError, setVideoError] = useState('');
+  const [deletingVideoId, setDeletingVideoId] = useState<number | null>(null);
+
   // Size chart — one optional image, separate from the product photo gallery
   const [sizeChartUrl, setSizeChartUrl] = useState(p?.size_chart_url ?? '');
   const [uploadingSizeChart, setUploadingSizeChart] = useState(false);
@@ -1081,8 +1109,11 @@ function ProductModal({
   const [posIsGift, setPosIsGift] = useState(p?.pos_is_gift ?? false);
 
   const [imageLimit, setImageLimit] = useState(6);
+  const [descriptionWordLimit, setDescriptionWordLimit] = useState(200);
+  const [descriptionImageLimit, setDescriptionImageLimit] = useState(3);
   const variantImageCount = variants.filter(v => v.image_url && v.image_url !== '').length;
   const totalImages = savedImages.length + pendingImages.length + variantImageCount;
+  const descriptionWordCount = countWords(formData.description);
 
   // Category → controls which custom fields (Material, Pattern, etc.) and
   // the size chart upload show up. Applies to every seller, TheDersi
@@ -1106,7 +1137,11 @@ function ProductModal({
       .catch(() => {});
 
     imagesApi.getLimit(shopId)
-      .then((res) => setImageLimit(res.data?.limit ?? 6))
+      .then((res) => {
+        setImageLimit(res.data?.limit ?? 6);
+        setDescriptionWordLimit(res.data?.description_word_limit ?? 200);
+        setDescriptionImageLimit(res.data?.description_image_limit ?? 3);
+      })
       .catch(() => {});
 
     if (product?.id) {
@@ -1116,6 +1151,10 @@ function ProductModal({
 
       imagesApi.getAll(shopId, product.id)
         .then((res) => setSavedImages(res.data ?? []))
+        .catch(() => {});
+
+      videosApi.getAll(shopId, product.id)
+        .then((res) => setSavedVideos(res.data ?? []))
         .catch(() => {});
 
       variantsApi.getAll(shopId, product.id)
@@ -1363,6 +1402,31 @@ function ProductModal({
     } catch {/* no-op */}
   };
 
+  const handleAddVideo = async () => {
+    if (!product?.id || !newVideoUrl.trim()) return;
+    setAddingVideo(true);
+    setVideoError('');
+    try {
+      const res = await videosApi.add(shopId, product.id, newVideoUrl.trim());
+      setSavedVideos((prev) => [...prev, res.data]);
+      setNewVideoUrl('');
+    } catch (err: any) {
+      setVideoError(err?.response?.data?.detail ?? "Couldn't add that video — check the link and try again.");
+    } finally {
+      setAddingVideo(false);
+    }
+  };
+
+  const handleDeleteVideo = async (videoId: number) => {
+    if (!product?.id) return;
+    setDeletingVideoId(videoId);
+    try {
+      await videosApi.delete(shopId, product.id, videoId);
+      setSavedVideos((prev) => prev.filter((v) => v.id !== videoId));
+    } catch {/* no-op */}
+    setDeletingVideoId(null);
+  };
+
   const setAttr = (key: string, value: string) => {
     setAttrValues((prev) => ({ ...prev, [key]: value }));
   };
@@ -1448,6 +1512,10 @@ function ProductModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopId) return;
+    if (descriptionWordCount > descriptionWordLimit) {
+      setError(`Description is too long — max ${descriptionWordLimit} words for your plan (currently ${descriptionWordCount}).`);
+      return;
+    }
     setSaving(true);
     setError('');
 
@@ -1615,7 +1683,7 @@ function ProductModal({
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-          <div className="grid lg:grid-cols-[1fr_380px] min-h-0">
+          <div className="grid lg:grid-cols-[1fr_460px] min-h-0">
 
             {/* ── LEFT: Content ──────────────────────────────────────── */}
             <div className="p-6 space-y-6 border-r border-border">
@@ -1654,12 +1722,19 @@ function ProductModal({
 
               {/* Description */}
               <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Description</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm text-muted-foreground">Description</label>
+                  <span className={`text-xs ${descriptionWordCount > descriptionWordLimit ? 'text-destructive font-medium' : 'text-muted-foreground/70'}`}>
+                    {descriptionWordCount}/{descriptionWordLimit} words
+                  </span>
+                </div>
                 <RichTextEditor
                   value={formData.description}
                   onChange={(html) => setFormData({ ...formData, description: html })}
                   placeholder="Describe the product — material, style, occasion..."
                   rows={3}
+                  maxImages={descriptionImageLimit}
+                  onUploadImage={(file) => imagesApi.uploadDescriptionImage(shopId, file)}
                 />
               </div>
 
@@ -1759,6 +1834,59 @@ function ProductModal({
                       }} className="text-xs text-muted-foreground hover:text-destructive transition">Remove</button>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Videos — YouTube/TikTok links only, no file upload. Paste a
+                  link, we resolve the thumbnail server-side (oEmbed) so the
+                  seller never has to find/upload one themselves. Clicking
+                  through on the storefront plays the real video on YouTube/
+                  TikTok, so views count there. */}
+              {product?.id && (
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">
+                    Videos <span className="text-muted-foreground/60">(optional — YouTube or TikTok links, up to 6)</span>
+                  </label>
+                  {savedVideos.length > 0 && (
+                    <div className="grid grid-cols-6 gap-2 mb-2">
+                      {savedVideos.map((v) => (
+                        <div key={v.id} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted">
+                          {v.thumbnail_url ? (
+                            <img src={v.thumbnail_url} alt={v.title ?? ''} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                              <PlayCircle className="w-6 h-6" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            <PlayCircle className="w-6 h-6 text-white drop-shadow" />
+                          </div>
+                          <span className="absolute bottom-1 left-1 text-[9px] font-medium text-white bg-black/60 px-1 rounded">
+                            {v.platform === 'tiktok' ? 'TikTok' : 'YouTube'}
+                          </span>
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <button type="button" onClick={() => handleDeleteVideo(v.id)} disabled={deletingVideoId === v.id} title="Remove" className="p-1 bg-destructive rounded-full hover:bg-destructive/80 transition">
+                              {deletingVideoId === v.id ? <Loader2 className="w-3 h-3 text-white animate-spin" /> : <X className="w-3 h-3 text-white" />}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {savedVideos.length < 6 && (
+                    <div className="flex gap-2">
+                      <input type="text" value={newVideoUrl} onChange={(e) => setNewVideoUrl(e.target.value)}
+                        placeholder="Paste a YouTube or TikTok video link"
+                        className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                      <button type="button" onClick={handleAddVideo} disabled={addingVideo || !newVideoUrl.trim()}
+                        className="px-3 py-2 text-sm font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition disabled:opacity-50 whitespace-nowrap flex items-center gap-1.5">
+                        {addingVideo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        Add
+                      </button>
+                    </div>
+                  )}
+                  {videoError && <p className="text-xs text-destructive mt-1.5">{videoError}</p>}
+                  <p className="text-xs text-muted-foreground mt-1.5">No upload — we fetch the thumbnail automatically. Playback happens on YouTube/TikTok, so views count there.</p>
                 </div>
               )}
 
@@ -2013,8 +2141,14 @@ function ProductModal({
               <div className="space-y-2.5">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sales Channels</p>
 
-                {/* POS — real toggle, defaults on. Nested gift toggle, same pattern as every other channel. */}
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                {/* Connected channels float to the top (order via flex), each
+                    block's own JSX/logic below is completely untouched —
+                    this is a display-file container change (flex flex-col),
+                    so space-y-2.5's margins still apply the same way. */}
+                <div className="flex flex-col gap-2.5">
+
+                {/* POS — real toggle, defaults on. Nested gift toggle, same pattern as every other channel. Always available, so it stays at the top. */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: 0 }}>
                   <div className="p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
@@ -2056,7 +2190,7 @@ function ProductModal({
                 </div>
 
                 {/* TheDersi — existing toggle/gift/category logic is untouched below, just restyled */}
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: theDersiConnection ? 0 : 10 }}>
                   <div className="p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
@@ -2166,7 +2300,7 @@ function ProductModal({
                 </div>
 
                 {/* Daraz — toggle + real category tree from Daraz's own API */}
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: darazConnection ? 0 : 10 }}>
                   <div className="p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
@@ -2279,7 +2413,7 @@ function ProductModal({
                 {/* eBay — toggle + real category tree from eBay's Taxonomy API.
                     eBay's publish is synchronous (no pending-review step like
                     Daraz), so success here means the listing is already live. */}
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: ebayConnection ? 0 : 10 }}>
                   <div className="p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-[#E53238]/10 flex items-center justify-center shrink-0">
@@ -2370,7 +2504,7 @@ function ProductModal({
 
                 {/* Noon — toggle + searched flat category (no OAuth connect yet,
                     seller pastes their own key from the Channels page) */}
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: noonConnection ? 0 : 10 }}>
                   <div className="p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
@@ -2456,7 +2590,7 @@ function ProductModal({
                 </div>
 
                 {/* Shopify — toggle + nested gift toggle, no category concept */}
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: shopifyConnected ? 0 : 10 }}>
                   <div className="p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
@@ -2504,7 +2638,7 @@ function ProductModal({
                 </div>
 
                 {/* Custom Website — toggle + gift toggle + storefront category + seller-defined fields */}
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: customWebsiteConnection ? 0 : 10 }}>
                   <div className="p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0">
@@ -2597,37 +2731,59 @@ function ProductModal({
                             </select>
                           )}
                           {f.type === 'quantity_tiers' && (
-                            <div className="space-y-1.5">
-                              {((customFieldValues[f.id] ?? []) as { quantity: number; price: number }[]).map((tier, ti) => (
-                                <div key={ti} className="flex items-center gap-1.5">
-                                  <input type="number" min={1} placeholder="Qty" value={tier.quantity}
-                                    onChange={(e) => setCustomFieldValues((prev) => {
-                                      const rows = [...(prev[f.id] ?? [])];
-                                      rows[ti] = { ...rows[ti], quantity: Number(e.target.value) || 0 };
-                                      return { ...prev, [f.id]: rows };
-                                    })}
-                                    className="w-16 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />
-                                  <span className="text-xs text-muted-foreground">→ $</span>
-                                  <input type="number" min={0} step="0.01" placeholder="Price/unit" value={tier.price}
-                                    onChange={(e) => setCustomFieldValues((prev) => {
-                                      const rows = [...(prev[f.id] ?? [])];
-                                      rows[ti] = { ...rows[ti], price: Number(e.target.value) || 0 };
-                                      return { ...prev, [f.id]: rows };
-                                    })}
-                                    className="flex-1 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />
-                                  <button type="button"
-                                    onClick={() => setCustomFieldValues((prev) => ({ ...prev, [f.id]: (prev[f.id] ?? []).filter((_: any, idx: number) => idx !== ti) }))}
-                                    className="p-1.5 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive shrink-0">
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              ))}
+                            <div className="space-y-2">
+                              {((customFieldValues[f.id] ?? []) as QuantityTierValue[]).map((tier, ti) => {
+                                const updateTier = (patch: Partial<QuantityTierValue>) => setCustomFieldValues((prev) => {
+                                  const rows = [...(prev[f.id] ?? [])];
+                                  rows[ti] = { ...rows[ti], ...patch };
+                                  return { ...prev, [f.id]: rows };
+                                });
+                                return (
+                                  <div key={ti} className="border border-border rounded-lg p-2 bg-card space-y-1.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <input type="number" min={1} placeholder="Qty" value={tier.quantity}
+                                        onChange={(e) => updateTier({ quantity: Number(e.target.value) || 0 })}
+                                        className="w-16 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />
+                                      <span className="text-xs text-muted-foreground">for a total of $</span>
+                                      <input type="number" min={0} step="0.01" placeholder="Total price" value={tier.price}
+                                        onChange={(e) => updateTier({ price: Number(e.target.value) || 0 })}
+                                        className="flex-1 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />
+                                      <button type="button"
+                                        onClick={() => setCustomFieldValues((prev) => ({ ...prev, [f.id]: (prev[f.id] ?? []).filter((_: any, idx: number) => idx !== ti) }))}
+                                        className="p-1.5 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive shrink-0">
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <input type="text" placeholder="Label, e.g. Best Value" value={tier.label ?? ''}
+                                        onChange={(e) => updateTier({ label: e.target.value })}
+                                        className="flex-1 min-w-0 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />
+                                      <input type="text" placeholder="Badge, e.g. Save $15" value={tier.badge ?? ''}
+                                        onChange={(e) => updateTier({ badge: e.target.value })}
+                                        className="flex-1 min-w-0 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />
+                                      <select value={tier.badge_type ?? ''}
+                                        onChange={(e) => updateTier({ badge_type: (e.target.value || undefined) as QuantityTierValue['badge_type'] })}
+                                        className="px-1.5 py-1.5 bg-muted border border-border rounded-lg text-xs shrink-0">
+                                        <option value="">No style</option>
+                                        <option value="save">Save</option>
+                                        <option value="popular">Popular</option>
+                                        <option value="value">Value</option>
+                                      </select>
+                                      <label className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                                        <input type="checkbox" checked={!!tier.recommended}
+                                          onChange={(e) => updateTier({ recommended: e.target.checked })} />
+                                        Pre-selected
+                                      </label>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                               <button type="button"
                                 onClick={() => setCustomFieldValues((prev) => ({ ...prev, [f.id]: [...(prev[f.id] ?? []), { quantity: 1, price: Number(formData.sellingPrice) || 0 }] }))}
                                 className="text-xs text-primary hover:text-primary/80 font-medium">
                                 + Add tier
                               </button>
-                              <p className="text-xs text-muted-foreground">Per-unit price once someone buys this quantity or more — actually applied at checkout.</p>
+                              <p className="text-xs text-muted-foreground">Total price for that quantity, once someone buys this many or more — actually applied at checkout.</p>
                             </div>
                           )}
                         </div>
@@ -2636,16 +2792,18 @@ function ProductModal({
                   )}
                 </div>
 
-                {/* Not connectable yet — honest placeholders, not fake toggles */}
+                {/* Not connectable yet — honest placeholders, not fake toggles.
+                    eBay and Noon removed from this list — they're real,
+                    connectable channels with their own cards above now, so
+                    having them here too was a leftover duplicate that showed
+                    two contradictory statuses for the same channel. */}
                 {[
                   { name: 'Amazon' },
-                  { name: 'eBay' },
-                  { name: 'Noon' },
                   { name: 'WooCommerce' },
                   { name: 'TikTok Shop' },
                   { name: 'Instagram Shopping' },
                 ].map((ch) => (
-                  <div key={ch.name} className="bg-muted/40 border border-border rounded-lg p-3 flex items-center justify-between gap-3 opacity-60">
+                  <div key={ch.name} className="bg-muted/40 border border-border rounded-lg p-3 flex items-center justify-between gap-3 opacity-60" style={{ order: 20 }}>
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
                         <Lock className="w-4 h-4 text-muted-foreground" />
@@ -2658,6 +2816,7 @@ function ProductModal({
                     <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />
                   </div>
                 ))}
+                </div>
               </div>
 
               <div className="border-t border-border" />

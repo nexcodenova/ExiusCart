@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from slugify import slugify
 from pydantic import BaseModel
+import re
 import uuid
 from app.core.database import get_db
 from app.core.trial import require_active_trial
@@ -19,6 +20,7 @@ from app.models.channel_category import ProductChannelCategory
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, CategoryCreate, CategoryResponse
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_product_sync, trigger_product_delete
+from app.api.v1.endpoints.product_fields import _description_word_limit, DESCRIPTION_IMAGES_LIMIT
 
 PLAN_PRODUCT_LIMITS = {
     "free_trial":     25,
@@ -27,6 +29,27 @@ PLAN_PRODUCT_LIMITS = {
     "thedersi_pro":   1000,
     "premium":        -1,    # unlimited
 }
+
+_IMG_TAG_RE = re.compile(r"<img\b", re.IGNORECASE)
+
+
+def _count_words(html: Optional[str]) -> int:
+    text = re.sub(r"<[^>]*>", " ", html or "").replace("&nbsp;", " ")
+    return len([w for w in text.split() if w])
+
+
+def _validate_description(description: Optional[str], shop_id: int, db: Session) -> None:
+    """Enforced server-side too, not just in the dashboard's editor — the
+    editor's own image-button cap (3) and this session's live word counter
+    are UX conveniences, not the actual gate. Anything hitting this API
+    directly must still respect plan limits."""
+    if not description:
+        return
+    word_limit = _description_word_limit(shop_id, db)
+    if _count_words(description) > word_limit:
+        raise HTTPException(status_code=422, detail=f"Description is too long — max {word_limit} words for your plan.")
+    if len(_IMG_TAG_RE.findall(description)) > DESCRIPTION_IMAGES_LIMIT:
+        raise HTTPException(status_code=422, detail=f"Too many images in the description — max {DESCRIPTION_IMAGES_LIMIT}.")
 
 
 class BulkProductRow(BaseModel):
@@ -203,6 +226,7 @@ async def create_product(
         raise HTTPException(status_code=404, detail="Shop not found")
 
     require_active_trial(shop_id, db)
+    _validate_description(product_data.description, shop_id, db)
 
     subscription = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
     if subscription:
@@ -324,6 +348,8 @@ async def update_product(
         raise HTTPException(status_code=404, detail="Product not found")
 
     update_data = product_data.model_dump(exclude_unset=True)
+    if "description" in update_data:
+        _validate_description(update_data["description"], shop_id, db)
     for field, value in update_data.items():
         setattr(product, field, value)
 

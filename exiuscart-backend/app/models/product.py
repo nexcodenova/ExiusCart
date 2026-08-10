@@ -97,5 +97,6 @@ class Product(Base):
     order_items = relationship("OrderItem", back_populates="product")
     attributes = relationship("ProductAttribute", back_populates="product", cascade="all, delete-orphan")
     images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan", order_by="ProductImage.sort_order")
+    videos = relationship("ProductVideo", back_populates="product", cascade="all, delete-orphan", order_by="ProductVideo.sort_order")
     variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
     reservations = relationship("Reservation", back_populates="product")

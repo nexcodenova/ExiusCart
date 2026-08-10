@@ -542,6 +542,32 @@ export const imagesApi = {
     await uploadToR2(data.presigned_url, file);
     return { data: { url: data.public_url } };
   },
+  uploadDescriptionImage: async (shopId: string, file: File): Promise<string> => {
+    const { data } = await api.get(`/shops/${shopId}/description-image-presign`, {
+      params: { content_type: file.type || 'image/jpeg' },
+    });
+    await uploadToR2(data.presigned_url, file);
+    return data.public_url as string;
+  },
+};
+
+export interface ProductVideo {
+  id: number;
+  url: string;
+  platform: 'youtube' | 'tiktok';
+  thumbnail_url: string | null;
+  title: string | null;
+  sort_order: number;
+}
+
+// ── Product Videos (YouTube/TikTok links — no upload, oEmbed-resolved) ──
+export const videosApi = {
+  getAll: (shopId: string, productId: string) =>
+    api.get(`/shops/${shopId}/products/${productId}/videos`),
+  add: (shopId: string, productId: string, url: string) =>
+    api.post(`/shops/${shopId}/products/${productId}/videos`, { url }),
+  delete: (shopId: string, productId: string, videoId: number) =>
+    api.delete(`/shops/${shopId}/products/${productId}/videos/${videoId}`),
 };
 
 // ── Product Variants ───────────────────────────────────

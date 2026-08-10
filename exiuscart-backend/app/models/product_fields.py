@@ -60,3 +60,27 @@ class ProductImage(Base):
 
     # Relationships
     product = relationship("Product", back_populates="images")
+
+
+class ProductVideo(Base):
+    """Seller-pasted YouTube/TikTok links — up to 6 per product. thumbnail_url/
+    title/embed_html come from that platform's own oEmbed lookup (see
+    app/core/video_oembed.py), fetched once server-side and cached here, so
+    every storefront gets a ready thumbnail without talking to YouTube/TikTok
+    itself."""
+    __tablename__ = "product_videos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+
+    url = Column(String(1000), nullable=False)          # the link the seller pasted
+    platform = Column(String(20), nullable=False)         # "youtube" | "tiktok"
+    thumbnail_url = Column(String(1000), nullable=True)
+    title = Column(String(500), nullable=True)
+    embed_html = Column(Text, nullable=True)              # oEmbed's ready-to-use embed snippet
+    sort_order = Column(Integer, default=0)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    product = relationship("Product", back_populates="videos")
