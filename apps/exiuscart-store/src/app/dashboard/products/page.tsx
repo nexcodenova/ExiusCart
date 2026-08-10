@@ -594,14 +594,14 @@ export default function ProductsPage() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                          <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center overflow-hidden shrink-0">
                             {((product as any).image_url || product.image)
                               ? <img src={(product as any).image_url || product.image!} alt={product.name} className="w-full h-full object-cover" />
                               : <Package className="w-6 h-6 text-muted-foreground" />}
                           </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-foreground">{product.name}</span>
+                          <div className="min-w-0 max-w-[280px]">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-medium text-foreground truncate" title={product.name}>{product.name}</span>
                               {perfData[product.id]?.heat === 'hot' && <Flame className="w-3.5 h-3.5 text-red-500 shrink-0" />}
                               {perfData[product.id]?.heat === 'moving' && <TrendingUp className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
                               {perfData[product.id] && perfData[product.id].heat === 'slow' && <Snowflake className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
@@ -635,28 +635,26 @@ export default function ProductsPage() {
                       </td>
                       <td className="p-4">
                         {(() => {
+                          // Just the channels this product is actually listed
+                          // on — the full category breadcrumb (e.g. "Jewelry
+                          // & Watches > Fashion Jewelry > Bracelets & Charms")
+                          // is editing detail, not list-scanning detail, and
+                          // was pushing rows to 3 lines tall.
                           const catEntries = channelCategories[product.id]
                             ? Object.values(channelCategories[product.id])
                             : [];
-                          const firstCat = catEntries[0];
-                          if (firstCat) {
-                            return (
-                              <div>
-                                <span className="text-sm text-foreground">{firstCat.channel_category_name}</span>
-                                <p className="text-xs text-indigo-500/80 mt-0.5">
-                                  {channelLabel(firstCat.channel_type)}
-                                  {catEntries.length > 1 && ` +${catEntries.length - 1} more`}
-                                </p>
-                              </div>
-                            );
+                          if (catEntries.length === 0) {
+                            return <span className="text-sm text-muted-foreground/40">—</span>;
                           }
-                          const categoryName = typeof product.category === 'string'
-                            ? product.category
-                            : product.category?.name;
-                          if (categoryName) {
-                            return <span className="text-sm text-foreground">{categoryName}</span>;
-                          }
-                          return <span className="text-sm text-muted-foreground/40">—</span>;
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {catEntries.map((entry, i) => (
+                                <span key={i} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                                  {channelLabel(entry.channel_type)}
+                                </span>
+                              ))}
+                            </div>
+                          );
                         })()}
                       </td>
                       <td className="p-4 text-right"><span className="text-sm text-muted-foreground">{product.costPrice} {sym}</span></td>
@@ -988,6 +986,7 @@ function ProductModal({
   // Size chart — one optional image, separate from the product photo gallery
   const [sizeChartUrl, setSizeChartUrl] = useState(p?.size_chart_url ?? '');
   const [uploadingSizeChart, setUploadingSizeChart] = useState(false);
+  const [generatingSku, setGeneratingSku] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -1896,7 +1895,25 @@ function ProductModal({
                   <label className="text-sm text-muted-foreground mb-1.5 block">SKU</label>
                   <div className="flex gap-2">
                     <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="IPH15PM-256" className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-                    <button type="button" onClick={() => setFormData({ ...formData, sku: generateSku(formData.name) })} className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap">
+                    <button
+                      type="button"
+                      disabled={generatingSku}
+                      onClick={async () => {
+                        setGeneratingSku(true);
+                        try {
+                          const res = await productsApi.getNextSku(shopId);
+                          setFormData((prev) => ({ ...prev, sku: res.data?.sku ?? generateSku(prev.name) }));
+                        } catch {
+                          // Server unreachable — fall back to the old client-side
+                          // generator rather than leaving the seller stuck.
+                          setFormData((prev) => ({ ...prev, sku: generateSku(prev.name) }));
+                        } finally {
+                          setGeneratingSku(false);
+                        }
+                      }}
+                      className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1.5"
+                    >
+                      {generatingSku && <Loader2 className="w-3 h-3 animate-spin" />}
                       Generate
                     </button>
                   </div>

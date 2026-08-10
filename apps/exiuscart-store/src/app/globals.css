@@ -136,6 +136,21 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Gentle floating motion for the login page's feature cards — straight up
+   and down only, no tilt. Each card sets its own --card-delay/--card-duration
+   so the group drifts asynchronously instead of bobbing in lockstep. */
+@keyframes float-card {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+.float-card {
+  animation: float-card var(--card-duration, 4s) ease-in-out infinite;
+  animation-delay: var(--card-delay, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-card { animation: none; }
+}
+
 /* Touch-friendly tap highlight */
 @media (hover: none) {
   button, a, [role="button"] {

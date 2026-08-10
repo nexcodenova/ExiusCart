@@ -250,12 +250,50 @@ async def create_product(
     db.refresh(new_product)
 
     if not new_product.sku:
-        new_product.sku = f"SKU{new_product.id:06d}"
+        new_product.sku = _next_shop_sku(shop, db)
         db.commit()
         db.refresh(new_product)
 
     trigger_product_sync(new_product.id, shop_id, background_tasks)
     return new_product
+
+
+def _shop_sku_prefix(shop_name: Optional[str]) -> str:
+    letters = re.sub(r"[^A-Za-z]", "", shop_name or "").upper()
+    return letters[:3] or "SKU"
+
+
+def _next_shop_sku(shop: Shop, db: Session) -> str:
+    """A real per-store sequence, not a random suffix — {STORE_PREFIX}-0001,
+    -0002, etc. Prefix comes from the shop's own name (first 3 letters,
+    non-letters stripped). Looks at the highest existing number already
+    used with this exact prefix (not just a row count) so it stays correct
+    even after a product with a gap in the sequence is deleted. Used by the
+    dashboard's Generate button, the auto-assign-on-save fallback, and the
+    legacy-products backfill tool — one scheme everywhere, not three."""
+    prefix = _shop_sku_prefix(shop.name)
+    existing = db.query(Product.sku).filter(
+        Product.shop_id == shop.id,
+        Product.sku.like(f"{prefix}-%"),
+    ).all()
+    max_n = 0
+    for (sku,) in existing:
+        suffix = (sku or "")[len(prefix) + 1:]
+        if suffix.isdigit():
+            max_n = max(max_n, int(suffix))
+    return f"{prefix}-{max_n + 1:04d}"
+
+
+@router.get("/shops/{shop_id}/next-sku")
+async def get_next_sku(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+    return {"sku": _next_shop_sku(shop, db)}
 
 
 @router.post("/shops/{shop_id}/products/backfill-skus")
@@ -265,18 +303,31 @@ async def backfill_product_skus(
     db: Session = Depends(get_db)
 ):
     """One-click fix for products created before SKUs were required (or
-    imported via CSV without one) — assigns each a stable SKU derived from
-    its own id, same format new products get automatically."""
+    imported via CSV without one) — assigns each the same store-prefix +
+    sequential SKU new products get automatically, continuing the sequence
+    rather than restarting it."""
     shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
+    prefix = _shop_sku_prefix(shop.name)
+    existing = db.query(Product.sku).filter(
+        Product.shop_id == shop_id,
+        Product.sku.like(f"{prefix}-%"),
+    ).all()
+    next_n = 1
+    for (sku,) in existing:
+        suffix = (sku or "")[len(prefix) + 1:]
+        if suffix.isdigit():
+            next_n = max(next_n, int(suffix) + 1)
+
     missing = db.query(Product).filter(
         Product.shop_id == shop_id,
         (Product.sku == None) | (Product.sku == "")
-    ).all()
+    ).order_by(Product.id).all()
     for p in missing:
-        p.sku = f"SKU{p.id:06d}"
+        p.sku = f"{prefix}-{next_n:04d}"
+        next_n += 1
     db.commit()
     return {"updated": len(missing)}
 

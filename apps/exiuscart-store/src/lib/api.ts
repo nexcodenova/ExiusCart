@@ -101,6 +101,8 @@ export const productsApi = {
     api.post(`/shops/${shopId}/products/bulk-import`, rows),
   backfillSkus: (shopId: string) =>
     api.post(`/shops/${shopId}/products/backfill-skus`),
+  getNextSku: (shopId: string) =>
+    api.get(`/shops/${shopId}/next-sku`),
 };
 
 // ── Orders ────────────────────────────────────────────
