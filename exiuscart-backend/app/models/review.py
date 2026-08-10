@@ -27,5 +27,13 @@ class ProductReview(Base):
     status = Column(String(20), nullable=False, default="requested")  # requested | pending | approved | rejected
     token = Column(String(64), unique=True, nullable=False, index=True)
 
+    # Which sales channel the underlying order came from (order.source at
+    # request time — "custom", "pos", "shopify", etc). Lets the Reviews page
+    # show/filter where a review actually originated, and is the anchor
+    # point for pulling in channel-native reviews (e.g. TheDersi) later —
+    # those would land here with their own channel_source instead of going
+    # through the request/token flow at all.
+    channel_source = Column(String(30), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     submitted_at = Column(DateTime(timezone=True), nullable=True)

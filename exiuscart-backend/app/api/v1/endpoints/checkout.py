@@ -310,6 +310,7 @@ def _mark_order_paid_or_failed(order: Order, is_paid: bool, db: Session):
                 product = db.query(Product).filter(Product.id == item.product_id).first()
                 if product:
                     product.quantity = max(0, (product.quantity or 0) - item.quantity)
+                    product.units_sold = (product.units_sold or 0) + item.quantity
         db.commit()
 
         from app.api.v1.endpoints.wallet import credit_wallet_for_order

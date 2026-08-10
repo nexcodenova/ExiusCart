@@ -76,6 +76,7 @@ def request_reviews_for_order(order: Order, db: Session) -> None:
             customer_email=order.customer.email,
             status="requested",
             token=token,
+            channel_source=order.source,
         )
         db.add(review)
 
@@ -123,6 +124,7 @@ def list_reviews(
     shop_id: int,
     status: Optional[str] = None,
     product_id: Optional[int] = None,
+    channel: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -132,6 +134,8 @@ def list_reviews(
         q = q.filter(ProductReview.status == status)
     if product_id:
         q = q.filter(ProductReview.product_id == product_id)
+    if channel:
+        q = q.filter(ProductReview.channel_source == channel)
     reviews = q.order_by(ProductReview.created_at.desc()).limit(500).all()
 
     product_ids = {r.product_id for r in reviews}
@@ -151,6 +155,7 @@ def list_reviews(
                 "comment": r.comment,
                 "photo_url": r.photo_url,
                 "status": r.status,
+                "channel_source": r.channel_source,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
                 "submitted_at": r.submitted_at.isoformat() if r.submitted_at else None,
             }
@@ -223,6 +228,100 @@ def manual_request_review(
 
     request_reviews_for_order(order, db)
     return {"requested": True}
+
+
+class ManualReviewIn(BaseModel):
+    product_id: int
+    customer_name: str
+    rating: int
+    comment: Optional[str] = None
+    photo_url: Optional[str] = None
+    # Free text, not a strict enum — "pos", "whatsapp", whatever the seller
+    # actually sold through. Same channel_source column real order-linked
+    # reviews use, so this shows the same channel badge on this page and
+    # isn't a second, separate concept.
+    channel_source: Optional[str] = None
+
+
+@router.post("/shops/{shop_id}/reviews/manual", status_code=201)
+def create_manual_review(
+    shop_id: int,
+    data: ManualReviewIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """For real sales ExiusCart never saw as an order — a POS cash sale, a
+    WhatsApp group order, anything sold outside the tracked checkout flow —
+    where the seller already has the customer's actual words (in person, in
+    a chat) and is transcribing them, not inventing them. Created straight
+    into 'approved': there's no separate customer-submission step to
+    moderate here, the seller IS the one entering it. No order_id — nothing
+    to link back to, this bypasses the request/token flow entirely."""
+    shop = _shop_or_404(shop_id, current_user, db)
+    if data.rating < 1 or data.rating > 5:
+        raise HTTPException(status_code=422, detail="Rating must be between 1 and 5.")
+    if not data.customer_name.strip():
+        raise HTTPException(status_code=422, detail="Customer name is required.")
+
+    product = db.query(Product).filter(Product.id == data.product_id, Product.shop_id == shop_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    review = ProductReview(
+        shop_id=shop.id,
+        product_id=product.id,
+        order_id=None,
+        customer_name=data.customer_name.strip(),
+        customer_email=None,
+        rating=data.rating,
+        comment=(data.comment or "").strip() or None,
+        photo_url=data.photo_url,
+        status="approved",
+        token=secrets.token_urlsafe(24),
+        channel_source=data.channel_source,
+        submitted_at=datetime.now(timezone.utc),
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    return {
+        "id": review.id,
+        "product_id": review.product_id,
+        "customer_name": review.customer_name,
+        "rating": review.rating,
+        "comment": review.comment,
+        "photo_url": review.photo_url,
+        "status": review.status,
+        "channel_source": review.channel_source,
+    }
+
+
+@router.post("/shops/{shop_id}/reviews/manual/photo")
+async def upload_manual_review_photo(
+    shop_id: int,
+    product_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    ext = (file.filename or "photo.jpg").rsplit(".", 1)[-1].lower()
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        ext = "jpg"
+    contents = await file.read()
+    if len(contents) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Photo must be under 8MB.")
+
+    try:
+        url = storage_upload(contents, shop_id, product_id, ext, content_type=file.content_type or "image/jpeg")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Photo upload failed: {exc}")
+
+    return {"url": url}
 
 
 # ── Public endpoints (no auth) ────────────────────────────────────────────────
@@ -316,61 +415,107 @@ def get_product_reviews(product_id: int, db: Session = Depends(get_db)):
     }
 
 
-# ── Embed widget — displays approved reviews on the storefront product page ──
+# Replaces an earlier version of this same script that built HTML via string
+# concatenation and injected it with innerHTML — a stored-XSS hole, since
+# review comment/customer_name are shopper-submitted, unescaped text. Any
+# reviewer could have put a <script> in their comment and had it run on
+# every site embedding this widget once that review was approved. This
+# version builds every element via textContent/DOM APIs instead, which is
+# the only safe way to render untrusted text into a third-party page.
+# Vanilla JS, no dependencies, so it works on any site regardless of framework.
+_REVIEWS_WIDGET_JS = r"""
+(function () {
+  function renderStars(container, rating) {
+    var wrap = document.createElement('span');
+    wrap.style.cssText = 'display:inline-flex;gap:1px;';
+    for (var i = 1; i <= 5; i++) {
+      var star = document.createElement('span');
+      star.textContent = '★';
+      star.style.color = i <= Math.round(rating) ? '#f59e0b' : '#d1d5db';
+      star.style.fontSize = '14px';
+      wrap.appendChild(star);
+    }
+    container.appendChild(wrap);
+  }
+
+  function renderReview(r) {
+    var el = document.createElement('div');
+    el.style.cssText = 'padding:12px 0;border-bottom:1px solid #eee;';
+
+    var head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:4px;';
+    if (r.rating) renderStars(head, r.rating);
+    var name = document.createElement('span');
+    name.textContent = r.customer_name || 'Customer';
+    name.style.cssText = 'font-weight:600;font-size:13px;color:#111;';
+    head.appendChild(name);
+    el.appendChild(head);
+
+    if (r.comment) {
+      var p = document.createElement('p');
+      p.textContent = r.comment;
+      p.style.cssText = 'font-size:13px;color:#333;margin:4px 0;line-height:1.5;';
+      el.appendChild(p);
+    }
+    if (r.photo_url) {
+      var img = document.createElement('img');
+      img.src = r.photo_url;
+      img.alt = 'Review photo';
+      img.style.cssText = 'width:64px;height:64px;object-fit:cover;border-radius:8px;margin-top:4px;display:block;';
+      el.appendChild(img);
+    }
+    return el;
+  }
+
+  function mount(el) {
+    var productId = el.getAttribute('data-product-id');
+    if (!productId) return;
+
+    fetch('https://api.exiuscart.com/api/v1/public/products/' + encodeURIComponent(productId) + '/reviews')
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+        el.innerHTML = '';
+
+        var summary = document.createElement('div');
+        summary.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:12px;';
+        if (data.avg_rating) {
+          renderStars(summary, data.avg_rating);
+          var text = document.createElement('span');
+          text.textContent = data.avg_rating + ' (' + data.count + (data.count === 1 ? ' review' : ' reviews') + ')';
+          text.style.cssText = 'font-size:13px;color:#555;';
+          summary.appendChild(text);
+        }
+        el.appendChild(summary);
+
+        if (!data.reviews || data.reviews.length === 0) {
+          var empty = document.createElement('p');
+          empty.textContent = 'No reviews yet.';
+          empty.style.cssText = 'font-size:13px;color:#999;';
+          el.appendChild(empty);
+          return;
+        }
+        data.reviews.forEach(function (r) { el.appendChild(renderReview(r)); });
+      })
+      .catch(function () {});
+  }
+
+  function init() {
+    var els = document.querySelectorAll('[data-exiuscart-reviews]');
+    for (var i = 0; i < els.length; i++) mount(els[i]);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+"""
+
 
 @router.get("/widget/reviews.js")
 def reviews_widget_script():
-    js = """
-(function(){
-  var API = 'https://api.exiuscart.com/api/v1';
+    return Response(content=_REVIEWS_WIDGET_JS, media_type="application/javascript")
 
-  function star(filled) {
-    return '<span style="color:' + (filled ? '#f59e0b' : '#d1d5db') + ';font-size:16px;">\\u2605</span>';
-  }
 
-  function stars(rating) {
-    var html = '';
-    for (var i = 1; i <= 5; i++) html += star(i <= Math.round(rating));
-    return html;
-  }
-
-  function render(container, data) {
-    var html = '<div style="font-family:Arial,sans-serif;max-width:100%;">';
-
-    if (data.count === 0) {
-      html += '<p style="color:#888;font-size:14px;">No reviews yet.</p>';
-    } else {
-      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">';
-      html += '<span style="font-size:28px;font-weight:800;color:#111;">' + data.avg_rating + '</span>';
-      html += '<div>' + stars(data.avg_rating) + '<div style="font-size:12px;color:#888;margin-top:2px;">' + data.count + ' review' + (data.count !== 1 ? 's' : '') + '</div></div>';
-      html += '</div>';
-
-      data.reviews.forEach(function(r){
-        html += '<div style="border-top:1px solid #eee;padding:14px 0;">';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
-        html += '<span style="font-weight:700;font-size:13px;color:#111;">' + (r.customer_name || 'Anonymous') + '</span>';
-        html += '<span>' + stars(r.rating) + '</span>';
-        html += '</div>';
-        if (r.comment) html += '<p style="margin:0 0 8px;font-size:14px;color:#444;line-height:1.5;">' + r.comment + '</p>';
-        if (r.photo_url) html += '<img src="' + r.photo_url + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;" />';
-        html += '</div>';
-      });
-    }
-
-    html += '</div>';
-    container.innerHTML = html;
-  }
-
-  function init(container) {
-    var productId = container.getAttribute('data-product-id');
-    if (!productId) return;
-    fetch(API + '/public/products/' + productId + '/reviews')
-      .then(function(r){ return r.json(); })
-      .then(function(data){ render(container, data); })
-      .catch(function(){});
-  }
-
-  document.querySelectorAll('[data-exiuscart-reviews]').forEach(init);
-})();
-"""
-    return Response(content=js, media_type="application/javascript")

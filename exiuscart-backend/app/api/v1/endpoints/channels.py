@@ -850,6 +850,7 @@ async def receive_order_webhook(
                         prod = db.query(Product).filter(Product.id == it.product_id).first()
                         if prod:
                             prod.quantity = max(0, (prod.quantity or 0) - it.quantity)
+                            prod.units_sold = (prod.units_sold or 0) + it.quantity
                             changed_pids.add(prod.id)
                             if prod.is_bundle:
                                 from app.api.v1.endpoints.bundles import deduct_bundle_components
@@ -859,6 +860,7 @@ async def receive_order_webhook(
                         prod = db.query(Product).filter(Product.id == it.product_id).first()
                         if prod:
                             prod.quantity = (prod.quantity or 0) + it.quantity
+                            prod.units_sold = max(0, (prod.units_sold or 0) - it.quantity)
                             changed_pids.add(prod.id)
 
                 existing_order.payment_status = new_payment or existing_order.payment_status
@@ -1008,6 +1010,7 @@ async def receive_order_webhook(
                     product.quantity = max(0, product.quantity - item.quantity)
             else:
                 product.quantity = max(0, product.quantity - item.quantity)
+            product.units_sold = (product.units_sold or 0) + item.quantity
             stock_changed_product_ids.add(product.id)
             if product.is_bundle:
                 from app.api.v1.endpoints.bundles import deduct_bundle_components

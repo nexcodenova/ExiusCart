@@ -790,6 +790,19 @@ export const reviewsApi = {
     api.delete(`/shops/${shopId}/reviews/${reviewId}`),
   requestForOrder: (shopId: string, orderId: string | number) =>
     api.post(`/shops/${shopId}/orders/${orderId}/request-review`),
+  addManual: (shopId: string, data: {
+    product_id: number; customer_name: string; rating: number;
+    comment?: string; photo_url?: string; channel_source?: string;
+  }) => api.post(`/shops/${shopId}/reviews/manual`, data),
+  uploadManualPhoto: async (shopId: string, productId: number, file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post(`/shops/${shopId}/reviews/manual/photo`, formData, {
+      params: { product_id: productId },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.url as string;
+  },
 };
 
 export const publicReviewApi = {

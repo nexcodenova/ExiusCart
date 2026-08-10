@@ -589,7 +589,17 @@ export default function ProductsPage() {
                             className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
                           />
                         ) : (
-                          <span className="w-4 h-4 block" />
+                          // This checkbox is for bulk barcode printing — a
+                          // product with no barcode has nothing to print, so
+                          // selecting it wouldn't do anything. Shown disabled
+                          // with a reason instead of just vanishing, which
+                          // read as broken rather than intentional.
+                          <input
+                            type="checkbox"
+                            disabled
+                            title="Generate a barcode for this product first to select it for printing"
+                            className="w-4 h-4 rounded border-border cursor-not-allowed opacity-30"
+                          />
                         )}
                       </td>
                       <td className="p-4">
@@ -1895,29 +1905,38 @@ function ProductModal({
                   <label className="text-sm text-muted-foreground mb-1.5 block">SKU</label>
                   <div className="flex gap-2">
                     <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="IPH15PM-256" className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-                    <button
-                      type="button"
-                      disabled={generatingSku}
-                      onClick={async () => {
-                        setGeneratingSku(true);
-                        try {
-                          const res = await productsApi.getNextSku(shopId);
-                          setFormData((prev) => ({ ...prev, sku: res.data?.sku ?? generateSku(prev.name) }));
-                        } catch {
-                          // Server unreachable — fall back to the old client-side
-                          // generator rather than leaving the seller stuck.
-                          setFormData((prev) => ({ ...prev, sku: generateSku(prev.name) }));
-                        } finally {
-                          setGeneratingSku(false);
-                        }
-                      }}
-                      className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1.5"
-                    >
-                      {generatingSku && <Loader2 className="w-3 h-3 animate-spin" />}
-                      Generate
-                    </button>
+                    {/* Only offered when there's no SKU yet — a product can
+                        already have one from a supplier import (CJ/Prodora),
+                        and silently overwriting that with a store-generated
+                        one would lose the traceability back to the source.
+                        Clear the field first if you really want a new one. */}
+                    {!formData.sku.trim() && (
+                      <button
+                        type="button"
+                        disabled={generatingSku}
+                        onClick={async () => {
+                          setGeneratingSku(true);
+                          try {
+                            const res = await productsApi.getNextSku(shopId);
+                            setFormData((prev) => ({ ...prev, sku: res.data?.sku ?? generateSku(prev.name) }));
+                          } catch {
+                            // Server unreachable — fall back to the old client-side
+                            // generator rather than leaving the seller stuck.
+                            setFormData((prev) => ({ ...prev, sku: generateSku(prev.name) }));
+                          } finally {
+                            setGeneratingSku(false);
+                          }
+                        }}
+                        className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1.5"
+                      >
+                        {generatingSku && <Loader2 className="w-3 h-3 animate-spin" />}
+                        Generate
+                      </button>
+                    )}
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">Leave blank to auto-generate one when you save.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formData.sku.trim() ? 'Clear this field to generate a new one.' : 'Leave blank to auto-generate one when you save.'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground mb-1.5 block">Barcode</label>

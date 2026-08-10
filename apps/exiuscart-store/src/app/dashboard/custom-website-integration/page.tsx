@@ -17,7 +17,8 @@ const API_BASE = 'https://api.exiuscart.com/api/v1';
 const STOREFRONT_ENDPOINTS = (slug: string) => [
   { method: 'GET', path: `/public/store/${slug}/categories`, desc: 'Category tree' },
   { method: 'GET', path: `/public/store/${slug}/products`, desc: 'Product list — supports ?category=, ?featured=, ?trending=, ?search=' },
-  { method: 'GET', path: `/public/store/${slug}/products/{slug}`, desc: 'Single product detail' },
+  { method: 'GET', path: `/public/store/${slug}/products/{slug}`, desc: 'Single product detail — includes rating, view count, units sold' },
+  { method: 'GET', path: `/public/store/${slug}/products/{slug}/reviews`, desc: 'Approved reviews for one product' },
   { method: 'POST', path: `/public/store/${slug}/checkout`, desc: 'Create an order + get payment params' },
   { method: 'GET', path: `/public/store/${slug}/orders/{order_number}?email=`, desc: 'Guest order lookup' },
   { method: 'POST', path: `/public/store/${slug}/auth/signup`, desc: 'Create a customer account' },
@@ -221,7 +222,7 @@ export default function CustomWebsiteIntegrationPage() {
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
       <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
         <ArrowLeft className="w-4 h-4" /> Back to Channels
       </Link>
@@ -282,8 +283,6 @@ export default function CustomWebsiteIntegrationPage() {
           </div>
         </div>
 
-        {shopSlug && <DeveloperReferenceCard slug={shopSlug} />}
-
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -315,19 +314,21 @@ export default function CustomWebsiteIntegrationPage() {
                 Switching gateways doesn't require any change to how your storefront calls checkout.
               </p>
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.idLabel} *</label>
-              <input type="text" value={merchantId} onChange={(e) => setMerchantId(e.target.value)}
-                placeholder={gateway?.payment_gateway === selectedGateway ? (gateway?.merchant_id || gatewayLabels.idPlaceholder) : gatewayLabels.idPlaceholder}
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.idLabel} *</label>
+                <input type="text" value={merchantId} onChange={(e) => setMerchantId(e.target.value)}
+                  placeholder={gateway?.payment_gateway === selectedGateway ? (gateway?.merchant_id || gatewayLabels.idPlaceholder) : gatewayLabels.idPlaceholder}
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.secretLabel} *</label>
+                <input type="password" value={merchantSecret} onChange={(e) => setMerchantSecret(e.target.value)}
+                  placeholder={gateway?.configured && gateway?.payment_gateway === selectedGateway ? '••••••••  (saved)' : gatewayLabels.secretPlaceholder}
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.secretLabel} *</label>
-              <input type="password" value={merchantSecret} onChange={(e) => setMerchantSecret(e.target.value)}
-                placeholder={gateway?.configured && gateway?.payment_gateway === selectedGateway ? '••••••••  (already saved — enter a new one to replace)' : gatewayLabels.secretPlaceholder}
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
-              <p className="text-xs text-muted-foreground mt-1.5">Stored server-side only — never sent to your website's browser code.</p>
-            </div>
+            <p className="text-xs text-muted-foreground -mt-2">Stored server-side only — never sent to your website's browser code.</p>
             {gateway?.webhook_url && (
               <CopyBox label="Notify URL — paste into your payment gateway's webhook/notify settings" value={gateway.webhook_url} />
             )}
@@ -342,7 +343,7 @@ export default function CustomWebsiteIntegrationPage() {
 
         <div>
           <p className="text-sm font-medium text-foreground mb-3">More for this channel</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <QuickLinkCard
               href="/dashboard/signup-forms"
               icon={<FormInput className="w-4 h-4 text-primary" />}
@@ -373,6 +374,11 @@ export default function CustomWebsiteIntegrationPage() {
             />
           </div>
         </div>
+
+        {/* Last on purpose — this is reference material for whoever's
+            building the site, not a setup step, so it doesn't need to
+            compete with the actual connection/payment steps above it. */}
+        {shopSlug && <DeveloperReferenceCard slug={shopSlug} />}
         </>
       ) : (
         <div className="bg-card border border-border rounded-xl">

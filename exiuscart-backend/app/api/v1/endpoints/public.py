@@ -58,7 +58,28 @@ def _custom_connection(shop_id: int, db: Session):
     ).first()
 
 
-def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None, tier_field_id: str | None = None) -> dict:
+def _ratings_by_product(product_ids: list[int], db: Session) -> dict[int, dict]:
+    """Average rating + count of *approved* reviews only, one grouped query
+    for the whole product list — avoids an N+1 query per product."""
+    if not product_ids:
+        return {}
+    from app.models.review import ProductReview
+    rows = (
+        db.query(ProductReview.product_id, func.avg(ProductReview.rating), func.count(ProductReview.id))
+        .filter(
+            ProductReview.product_id.in_(product_ids),
+            ProductReview.status == "approved",
+        )
+        .group_by(ProductReview.product_id)
+        .all()
+    )
+    return {
+        product_id: {"avg_rating": round(float(avg), 1) if avg is not None else None, "review_count": count}
+        for product_id, avg, count in rows
+    }
+
+
+def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None, tier_field_id: str | None = None, rating: dict | None = None) -> dict:
     images = [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else ([] if not p.image_url else [p.image_url])
     # Pulled out of custom_fields into its own top-level key, in the exact
     # shape the storefront needs to render it directly — quantity, the
@@ -114,6 +135,18 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         # the full category list and look up the id itself.
         "category_slug": category_slug,
         "quantity_tiers": quantity_tiers,
+        # Just the summary (average + count) — full review text/photos come
+        # from the dedicated /products/{slug}/reviews endpoint below, so a
+        # product list response doesn't balloon with every review's text.
+        "avg_rating": (rating or {}).get("avg_rating"),
+        "review_count": (rating or {}).get("review_count", 0),
+        # Real, earned social proof for products with no reviews yet — never
+        # fabricated or estimated. view_count is raw page-load hits (not
+        # unique visitors), incremented in public_store_product_detail below.
+        # units_sold mirrors whatever "counts as sold" already means in the
+        # order pipeline (see the units_sold column comment on Product).
+        "view_count": p.view_count or 0,
+        "units_sold": p.units_sold or 0,
         "custom_fields": p.custom_field_values or {},
     }
 
@@ -187,8 +220,13 @@ def public_store_products(
         cats = db.query(StorefrontCategory).filter(StorefrontCategory.id.in_(referenced_ids)).all()
         slug_by_cat_id = {str(c.id): c.slug for c in cats}
 
+    ratings = _ratings_by_product([p.id for p in products], db)
+
     return [
-        _product_out(p, category_map.get(p.id), slug_by_cat_id.get(category_map.get(p.id) or ""), tier_field_id)
+        _product_out(
+            p, category_map.get(p.id), slug_by_cat_id.get(category_map.get(p.id) or ""), tier_field_id,
+            rating=ratings.get(p.id),
+        )
         for p in products
     ]
 
@@ -230,7 +268,52 @@ def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends
         cat = db.query(StorefrontCategory).filter(StorefrontCategory.id == int(category_id)).first()
         category_slug = cat.slug if cat else None
 
-    return _product_out(product, category_id, category_slug, tier_field_id)
+    # Raw page-load hits, not unique visitors — every real request to this
+    # endpoint is one more view, on purpose (see the view_count column
+    # comment on Product). Counted only once gating above has already
+    # passed, so a 404'd/not-listed product's blocked requests don't count.
+    product.view_count = (product.view_count or 0) + 1
+    db.commit()
+
+    rating = _ratings_by_product([product.id], db).get(product.id)
+    return _product_out(product, category_id, category_slug, tier_field_id, rating=rating)
+
+
+def _approved_reviews_out(product_id: int, db: Session) -> list[dict]:
+    from app.models.review import ProductReview
+    reviews = db.query(ProductReview).filter(
+        ProductReview.product_id == product_id,
+        ProductReview.status == "approved",
+    ).order_by(ProductReview.submitted_at.desc()).limit(200).all()
+    return [
+        {
+            "id": r.id,
+            "customer_name": r.customer_name,
+            "rating": r.rating,
+            "comment": r.comment,
+            "photo_url": r.photo_url,
+            "submitted_at": r.submitted_at.isoformat() if r.submitted_at else None,
+        }
+        for r in reviews
+    ]
+
+
+@router.get("/public/store/{shop_slug}/products/{slug}/reviews")
+def public_store_product_reviews(shop_slug: str, slug: str, db: Session = Depends(get_db)):
+    """No-auth — approved reviews for one product's PDP. Separate from the
+    product detail response so a storefront that just needs the list/PDP
+    summary isn't forced to download every review's full text every time."""
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    product = db.query(Product).filter(
+        Product.shop_id == shop.id, Product.slug == slug, Product.is_active == True,
+    ).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return _approved_reviews_out(product.id, db)
 
 
 # ── Storefront customer auth (Custom Website channel only) ──────────────────

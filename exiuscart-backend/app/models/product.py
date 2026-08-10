@@ -46,6 +46,15 @@ class Product(Base):
     video_url = Column(String(500), nullable=True)   # short product video (TikTok-style)
     source_url = Column(String(1000), nullable=True) # supplier source link (AliExpress, CJ, etc.)
 
+    # Real, earned social proof for products with no reviews yet — never
+    # fabricated. view_count increments on every real product-detail page
+    # load (raw hits, not unique visitors — see public_store_product_detail
+    # in public.py); units_sold increments wherever stock already decrements
+    # on a real sale (same "counts as sold" moment used throughout the order
+    # pipeline, not a separately-invented definition).
+    view_count = Column(Integer, default=0, server_default="0", nullable=False)
+    units_sold = Column(Integer, default=0, server_default="0", nullable=False)
+
     # Prodora catalog — winning-product research metrics, all optional/admin-entered.
     # Never fabricated: frontend hides a metric entirely when its column is null.
     winning_score = Column(Integer, nullable=True)          # 0-100

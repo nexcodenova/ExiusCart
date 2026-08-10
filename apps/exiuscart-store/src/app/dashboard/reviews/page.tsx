@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Star, CheckCircle2, XCircle, Trash2, MessageSquare, Copy, Check, Sparkles } from 'lucide-react';
-import { reviewsApi } from '@/lib/api';
+import { Loader2, Star, CheckCircle2, XCircle, Trash2, MessageSquare, Copy, Check, Sparkles, Plus, X, ImageIcon } from 'lucide-react';
+import { reviewsApi, productsApi } from '@/lib/api';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -45,9 +45,19 @@ interface Review {
   comment: string | null;
   photo_url: string | null;
   status: string;
+  channel_source: string | null;
   created_at: string;
   submitted_at: string | null;
 }
+
+const CHANNEL_LABELS: Record<string, string> = {
+  custom: 'Custom Website',
+  pos: 'POS',
+  online: 'Online',
+  whatsapp: 'WhatsApp',
+  shopify: 'Shopify',
+  manual: 'Manually added',
+};
 
 function Stars({ rating }: { rating: number }) {
   return (
@@ -59,6 +69,20 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
+function StarPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button key={i} type="button" onClick={() => onChange(i)} className="p-0.5">
+          <Star className={`w-6 h-6 transition ${i <= value ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30 hover:text-amber-400/50'}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface SimpleProduct { id: number; name: string; sku?: string | null; }
+
 export default function ReviewsPage() {
   const [shopId, setShopId] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -66,6 +90,20 @@ export default function ReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | ''>('pending');
   const [actingId, setActingId] = useState<number | null>(null);
+
+  // Manual add — for real sales ExiusCart never saw as an order (POS cash
+  // sale, a WhatsApp order), where the seller already has the customer's
+  // actual words and is transcribing them, not inventing them.
+  const [products, setProducts] = useState<SimpleProduct[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addProductId, setAddProductId] = useState('');
+  const [addCustomerName, setAddCustomerName] = useState('');
+  const [addRating, setAddRating] = useState(5);
+  const [addComment, setAddComment] = useState('');
+  const [addPhotoFile, setAddPhotoFile] = useState<File | null>(null);
+  const [addPhotoPreview, setAddPhotoPreview] = useState('');
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState('');
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
@@ -79,6 +117,63 @@ export default function ReviewsPage() {
   };
 
   useEffect(() => { load(); }, [shopId, filter]);
+
+  useEffect(() => {
+    if (!shopId) return;
+    productsApi.getAll(shopId).then((r) => {
+      setProducts((r.data ?? []).map((p: any) => ({ id: p.id, name: p.name, sku: p.sku })));
+    }).catch(() => {});
+  }, [shopId]);
+
+  const resetAddForm = () => {
+    setAddProductId(''); setAddCustomerName(''); setAddRating(5); setAddComment('');
+    setAddPhotoFile(null); setAddPhotoPreview(''); setAddError('');
+  };
+
+  const openAddModal = () => { resetAddForm(); setShowAddModal(true); };
+
+  const handleAddPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAddPhotoFile(file);
+    setAddPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const submitManualReview = async () => {
+    if (!addProductId || !addCustomerName.trim()) {
+      setAddError('Product and customer name are required.');
+      return;
+    }
+    setAddSaving(true);
+    setAddError('');
+    try {
+      let photoUrl: string | undefined;
+      if (addPhotoFile) {
+        photoUrl = await reviewsApi.uploadManualPhoto(shopId, Number(addProductId), addPhotoFile);
+      }
+      await reviewsApi.addManual(shopId, {
+        product_id: Number(addProductId),
+        customer_name: addCustomerName.trim(),
+        rating: addRating,
+        comment: addComment.trim() || undefined,
+        photo_url: photoUrl,
+        // Not asked in the form — tagged automatically so it's still
+        // honestly distinguishable in your own dashboard from a review
+        // that actually came through the request/submit flow.
+        channel_source: 'manual',
+      });
+      setShowAddModal(false);
+      // The new review is created already-approved — switch there so it's
+      // actually visible instead of silently landing under a filter that's
+      // currently showing something else.
+      setFilter('approved');
+      load();
+    } catch (err: any) {
+      setAddError(err?.response?.data?.detail ?? 'Could not save. Try again.');
+    } finally {
+      setAddSaving(false);
+    }
+  };
 
   const act = async (id: number, status: 'approved' | 'rejected') => {
     setActingId(id);
@@ -106,11 +201,17 @@ export default function ReviewsPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Product Reviews</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Reviews are requested automatically when an order is marked delivered. Approve reviews to show them on your storefront.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Product Reviews</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Reviews are requested automatically when an order is marked delivered. Approve reviews to show them on your storefront.
+          </p>
+        </div>
+        <button onClick={openAddModal}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+          <Plus className="w-4 h-4" /> Add Review
+        </button>
       </div>
 
       <ReviewsEmbedBox />
@@ -174,6 +275,11 @@ export default function ReviewsPage() {
                     {r.status === 'requested' && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Awaiting customer</span>
                     )}
+                    {r.channel_source && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                        {CHANNEL_LABELS[r.channel_source] ?? r.channel_source}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{r.customer_name || 'Customer'}</p>
                   {r.rating != null && <div className="mt-2"><Stars rating={r.rating} /></div>}
@@ -205,6 +311,84 @@ export default function ReviewsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <p className="font-semibold text-foreground">Add a review</p>
+              <button onClick={() => setShowAddModal(false)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-muted-foreground -mt-1">
+                For a real sale ExiusCart never saw as an order — a POS cash sale, a WhatsApp order — where you already have the
+                customer's actual words. This goes live immediately, no separate approval step.
+              </p>
+
+              {addError && (
+                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{addError}</div>
+              )}
+
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Product *</label>
+                <select value={addProductId} onChange={(e) => setAddProductId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm">
+                  <option value="">Select a product…</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}{p.sku ? ` — SKU: ${p.sku}` : ` — #${p.id}`}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Customer name *</label>
+                <input type="text" value={addCustomerName} onChange={(e) => setAddCustomerName(e.target.value)}
+                  placeholder="e.g. Priya S."
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm" />
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Rating</label>
+                <StarPicker value={addRating} onChange={setAddRating} />
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">What they said</label>
+                <textarea value={addComment} onChange={(e) => setAddComment(e.target.value)} rows={3}
+                  placeholder="Transcribe their actual words — from the chat, or what they told you in person"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm resize-none" />
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Photo (optional)</label>
+                {addPhotoPreview ? (
+                  <div className="relative w-20 h-20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={addPhotoPreview} alt="Preview" className="w-20 h-20 rounded-lg object-cover border border-border" />
+                    <button type="button" onClick={() => { setAddPhotoFile(null); setAddPhotoPreview(''); }}
+                      className="absolute -top-2 -right-2 p-1 bg-destructive rounded-full text-white">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="inline-flex items-center gap-1.5 px-3 py-2 border border-dashed border-border rounded-lg text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition cursor-pointer">
+                    <ImageIcon className="w-3.5 h-3.5" /> Upload photo
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAddPhotoSelect} />
+                  </label>
+                )}
+              </div>
+
+              <button onClick={submitManualReview} disabled={addSaving || !addProductId || !addCustomerName.trim()}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {addSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {addSaving ? 'Saving...' : 'Add Review'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
