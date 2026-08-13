@@ -45,6 +45,14 @@ export interface ProductVariant {
   color_hex: string | null;
 }
 
+export interface ProductVideo {
+  url: string;
+  platform: string;
+  thumbnail_url: string | null;
+  title: string | null;
+  embed_html: string | null;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -55,6 +63,7 @@ export interface Product {
   image_url?: string;
   images?: string[];
   video_url?: string;
+  videos?: ProductVideo[];
   source_url?: string | null;
   is_trending: boolean;
   is_featured: boolean;
@@ -78,6 +87,7 @@ export interface Product {
   warehouse_country?: string | null;
   shipping_cost?: number | null;
   demand_trend_json?: string | null;
+  orders_trend_json?: string | null;
   top_countries_json?: string | null;
   ad_facebook_url?: string | null;
   ad_tiktok_url?: string | null;
@@ -125,4 +135,20 @@ export const shoppingApi = {
     const response = await apiClient.get(`/shopping/products/${id}/related`);
     return response.data;
   },
+
+  getShippingEstimate: async (id: number, countryCode: string): Promise<ShippingEstimate> => {
+    const response = await apiClient.get(`/shopping/products/${id}/shipping-estimate`, { params: { country_code: countryCode } });
+    return response.data;
+  },
 };
+
+export interface ShippingOption {
+  logistic_name: string;
+  price: number;
+  days: string | null;
+}
+
+export interface ShippingEstimate {
+  country_code: string;
+  options: ShippingOption[];
+}

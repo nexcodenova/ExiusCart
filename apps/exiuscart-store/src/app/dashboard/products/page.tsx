@@ -6,7 +6,7 @@ import {
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
-  Store, Globe, ShoppingBag, Tag, PlayCircle,
+  Store, Globe, ShoppingBag, Tag, PlayCircle, Info,
 } from 'lucide-react';
 import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, customProductFieldsApi, CustomProductField, videosApi, ProductVideo as ProductVideoType } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
@@ -62,6 +62,7 @@ interface Product {
   image?: string | null;
   supplier_id?: number | null;
   supplier?: { id: number; name: string } | null;
+  is_dropship_imported?: boolean;
 }
 
 interface ShopField {
@@ -540,6 +541,15 @@ export default function ProductsPage() {
           </div>
         ) : (
           <>
+            {(() => {
+              const noBarcodeCount = displayedProducts.filter(p => !(p as any).barcode).length;
+              return noBarcodeCount > 0 ? (
+                <div className="px-4 py-2 text-xs text-muted-foreground bg-muted/30 border-b border-border flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 shrink-0" />
+                  Checkboxes select products for barcode printing — {noBarcodeCount} product{noBarcodeCount !== 1 ? 's' : ''} below {noBarcodeCount !== 1 ? "don't" : "doesn't"} have a barcode yet, so {noBarcodeCount !== 1 ? "they're" : "it's"} not selectable. Generate one from the product's edit page first.
+                </div>
+              ) : null;
+            })()}
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
@@ -972,6 +982,7 @@ function ProductModal({
     listOnMarketplace: p?.list_on_marketplace ?? true,
     isGift: p?.is_gift ?? false,
     supplierId: p?.supplier_id ?? null as number | null,
+    isDropshipImported: p?.is_dropship_imported ?? false,
   });
 
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
@@ -1904,38 +1915,46 @@ function ProductModal({
                 <div>
                   <label className="text-sm text-muted-foreground mb-1.5 block">SKU</label>
                   <div className="flex gap-2">
-                    <input type="text" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="IPH15PM-256" className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-                    {/* Only offered when there's no SKU yet — a product can
-                        already have one from a supplier import (CJ/Prodora),
-                        and silently overwriting that with a store-generated
-                        one would lose the traceability back to the source.
-                        Clear the field first if you really want a new one. */}
-                    {!formData.sku.trim() && (
-                      <button
-                        type="button"
-                        disabled={generatingSku}
-                        onClick={async () => {
-                          setGeneratingSku(true);
-                          try {
-                            const res = await productsApi.getNextSku(shopId);
-                            setFormData((prev) => ({ ...prev, sku: res.data?.sku ?? generateSku(prev.name) }));
-                          } catch {
-                            // Server unreachable — fall back to the old client-side
-                            // generator rather than leaving the seller stuck.
-                            setFormData((prev) => ({ ...prev, sku: generateSku(prev.name) }));
-                          } finally {
-                            setGeneratingSku(false);
-                          }
-                        }}
-                        className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap disabled:opacity-50 inline-flex items-center gap-1.5"
-                      >
-                        {generatingSku && <Loader2 className="w-3 h-3 animate-spin" />}
-                        Generate
-                      </button>
-                    )}
+                    <input
+                      type="text"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                      placeholder="IPH15PM-256"
+                      disabled={formData.isDropshipImported}
+                      title={formData.isDropshipImported ? "Imported from a supplier — locked to keep the link back to the source" : undefined}
+                      className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    {/* Imported (CJ/Prodora) products keep their supplier SKU —
+                        generating a new one here would sever the traceability
+                        back to the source, so the button stays visible (so it
+                        doesn't look missing) but disabled rather than hidden. */}
+                    <button
+                      type="button"
+                      disabled={generatingSku || formData.isDropshipImported}
+                      title={formData.isDropshipImported ? "Locked — this SKU came from the supplier import" : undefined}
+                      onClick={async () => {
+                        setGeneratingSku(true);
+                        try {
+                          const res = await productsApi.getNextSku(shopId);
+                          setFormData((prev) => ({ ...prev, sku: res.data?.sku ?? generateSku(prev.name) }));
+                        } catch {
+                          // Server unreachable — fall back to the old client-side
+                          // generator rather than leaving the seller stuck.
+                          setFormData((prev) => ({ ...prev, sku: generateSku(prev.name) }));
+                        } finally {
+                          setGeneratingSku(false);
+                        }
+                      }}
+                      className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-muted disabled:hover:border-border disabled:hover:text-muted-foreground inline-flex items-center gap-1.5"
+                    >
+                      {generatingSku && <Loader2 className="w-3 h-3 animate-spin" />}
+                      Generate
+                    </button>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {formData.sku.trim() ? 'Clear this field to generate a new one.' : 'Leave blank to auto-generate one when you save.'}
+                    {formData.isDropshipImported
+                      ? 'Imported from a supplier — SKU is locked to preserve the source link.'
+                      : formData.sku.trim() ? 'Clear this field to generate a new one.' : 'Leave blank to auto-generate one when you save.'}
                   </p>
                 </div>
                 <div>

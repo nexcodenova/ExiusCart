@@ -179,7 +179,7 @@ def public_store_checkout(
             Customer.shop_id == shop.id, func.lower(Customer.email) == email,
         ).first()
         if not customer:
-            customer = Customer(shop_id=shop.id, name=data.name.strip() or "Guest", email=email, phone=data.phone)
+            customer = Customer(shop_id=shop.id, name=data.name.strip() or "Guest", email=email, phone=data.phone, source="custom")
             db.add(customer)
             db.flush()
 

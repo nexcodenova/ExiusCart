@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from app.core.database import get_db, SessionLocal
 from app.api.v1.deps import get_current_user
 from app.core.encryption import encrypt
-from app.models.dropship import DropshipConnection
+from app.models.dropship import DropshipConnection, DropshipProductLink
 from app.api.v1.endpoints.dropshipping import _cj_get_token, _cj_ensure_token, _parse_cj_price, CJ_BASE
 from app.api.v1.endpoints.product_fields import DESCRIPTION_WORDS_DEFAULT
 from app.core.email import (
@@ -1315,6 +1315,7 @@ def _shopping_product_out(p: Product) -> dict:
         "image_url": p.image_url,
         "images": [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else [],
         "video_url": p.video_url,
+        "videos": [v.url for v in p.videos] if p.videos else [],
         "source_url": getattr(p, "source_url", None),
         "is_active": p.is_active,
         "is_featured": p.is_featured,
@@ -1340,6 +1341,7 @@ def _shopping_product_out(p: Product) -> dict:
         "warehouse_country": p.warehouse_country,
         "shipping_cost": float(p.shipping_cost) if p.shipping_cost is not None else None,
         "demand_trend_json": p.demand_trend_json,
+        "orders_trend_json": p.orders_trend_json,
         "top_countries_json": p.top_countries_json,
         "ad_facebook_url": p.ad_facebook_url,
         "ad_tiktok_url": p.ad_tiktok_url,
@@ -1359,6 +1361,7 @@ class ShoppingProductVariantIn(BaseModel):
 # fabricated. Frontend hides each block/row when its field is null.
 class ShoppingProductExtras(BaseModel):
     images: Optional[List[str]] = None
+    videos: Optional[List[str]] = None
     variants: Optional[List[ShoppingProductVariantIn]] = None
     winning_score: Optional[int] = None
     trend_percent: Optional[float] = None
@@ -1373,6 +1376,7 @@ class ShoppingProductExtras(BaseModel):
     warehouse_country: Optional[str] = None
     shipping_cost: Optional[float] = None
     demand_trend_json: Optional[str] = None
+    orders_trend_json: Optional[str] = None
     top_countries_json: Optional[str] = None
     ad_facebook_url: Optional[str] = None
     ad_tiktok_url: Optional[str] = None
@@ -1464,7 +1468,7 @@ SHOPPING_EXTRA_SCALAR_FIELDS = [
     "winning_score", "trend_percent", "competition_level", "saturation_level",
     "orders_count", "supplier_name", "supplier_rating", "fulfillment_rate",
     "processing_time", "shipping_time", "warehouse_country", "shipping_cost",
-    "demand_trend_json", "top_countries_json", "ad_facebook_url", "ad_tiktok_url",
+    "demand_trend_json", "orders_trend_json", "top_countries_json", "ad_facebook_url", "ad_tiktok_url",
     "ad_instagram_url", "ad_pinterest_url", "specs_json", "tags",
 ]
 
@@ -1473,8 +1477,9 @@ def _apply_shopping_extras(db: Session, product: Product, payload: dict) -> None
     """Applies the optional Prodora research fields — winning metrics, supplier
     info, ad links, gallery images, variants. `payload` is a model_dump(exclude_unset=True)
     dict so only fields the caller actually sent get touched."""
-    from app.models.product_fields import ProductImage
+    from app.models.product_fields import ProductImage, ProductVideo
     from app.models.product_variant import ProductVariant
+    from app.core.video_oembed import fetch_oembed
 
     for field in SHOPPING_EXTRA_SCALAR_FIELDS:
         if field in payload:
@@ -1484,6 +1489,29 @@ def _apply_shopping_extras(db: Session, product: Product, payload: dict) -> None
         db.query(ProductImage).filter(ProductImage.product_id == product.id).delete()
         for i, url in enumerate([u for u in payload["images"] if u][:6]):
             db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
+
+    if payload.get("videos") is not None:
+        # Same oEmbed resolution as the seller-facing video endpoint
+        # (product_fields.py add_video) — thumbnail/title/embed come from
+        # YouTube/TikTok's own oEmbed lookup, never entered by hand. A link
+        # that fails to resolve is dropped rather than blocking the whole
+        # save, since videos here are just one field among many.
+        db.query(ProductVideo).filter(ProductVideo.product_id == product.id).delete()
+        sort_order = 0
+        for url in [u.strip() for u in payload["videos"] if u and u.strip()][:6]:
+            info = fetch_oembed(url)
+            if not info:
+                continue
+            db.add(ProductVideo(
+                product_id=product.id,
+                url=url,
+                platform=info["platform"],
+                thumbnail_url=info["thumbnail_url"],
+                title=info["title"],
+                embed_html=info["embed_html"],
+                sort_order=sort_order,
+            ))
+            sort_order += 1
 
     if payload.get("variants") is not None:
         db.query(ProductVariant).filter(ProductVariant.product_id == product.id).delete()
@@ -1632,6 +1660,34 @@ def admin_delete_shopping_product(
         raise HTTPException(status_code=404, detail="Product not found")
     db.delete(product)
     db.commit()
+
+
+@router.post("/admin/shopping/backfill-descriptions")
+def admin_backfill_shopping_descriptions(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    """
+    One-time cleanup for Prodora catalog products saved before the
+    strip/truncate pipeline existed (_strip_description_images /
+    _truncate_description, already applied on every create/update since —
+    see admin_create_shopping_product, admin_update_shopping_product,
+    _cj_import_one). Re-runs that same logic retroactively on whatever's
+    already stored, so old rows stop showing embedded CJ images and
+    oversized text. Idempotent — already-clean descriptions are untouched.
+    """
+    shop = _get_or_create_system_shop(db, current_admin)
+    products = db.query(Product).filter(Product.shop_id == shop.id).all()
+    updated = 0
+    for p in products:
+        if not p.description:
+            continue
+        cleaned = _truncate_description(_strip_description_images(p.description), DESCRIPTION_WORDS_DEFAULT)
+        if cleaned != p.description:
+            p.description = cleaned
+            updated += 1
+    db.commit()
+    return {"updated": updated, "total": len(products)}
 
 
 @router.get("/admin/shopping/shops")
@@ -1969,6 +2025,24 @@ async def _cj_import_one(db: Session, shop: Shop, token: str, cj_pid: str, price
         if label and label not in seen_variants:
             seen_variants.add(label)
             db.add(ProductVariant(product_id=product.id, color=label[:100], sku=v.get("variantSku")))
+
+    # CJ's freight-calculate API needs a variant vid, not the product's own
+    # pid — same link the seller-side CJ import saves (dropshipping.py) so
+    # this catalog product can later get a real per-country shipping quote
+    # instead of the admin-typed flat shipping_cost estimate.
+    variants = p.get("variants") or []
+    variant_vid = (variants[0] if variants else {}).get("vid")
+    if variant_vid:
+        db.add(DropshipProductLink(
+            shop_id=shop.id,
+            product_id=product.id,
+            supplier_type="cj",
+            supplier_product_id=cj_pid,
+            supplier_sku=variant_vid,
+            supplier_product_name=name,
+            cost_price=cost,
+            is_primary=True,
+        ))
 
     return product
 

@@ -94,6 +94,7 @@ export const adminApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  backfillShoppingDescriptions: () => api.post<{ updated: number; total: number }>('/admin/shopping/backfill-descriptions'),
   cjStatus: () => api.get('/admin/shopping/cj/status'),
   cjConnect: (apiKey: string) => api.post('/admin/shopping/cj/connect', { api_key: apiKey }),
   cjSearch: (q: string, page = 1) => api.get('/admin/shopping/cj/search', { params: { q, page } }),

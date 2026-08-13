@@ -268,6 +268,7 @@ def fulfill_reservation(
                 name=r.customer_name or "Walk-in Customer",
                 phone=r.customer_phone,
                 email=r.customer_email,
+                source="pos",
             )
             db.add(new_customer)
             db.flush()

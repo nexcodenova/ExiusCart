@@ -244,6 +244,7 @@ async def _pull_orders(store: ShopifyStore, db: Session, shop_id: int):
                         email=email or None,
                         phone=so.get("phone") or None,
                         address=caddr.get("address1") or None,
+                        source="shopify",
                     )
                     db.add(customer); db.flush()
 
@@ -393,6 +394,7 @@ async def receive_shopify_webhook(shop_id: int, request: Request, db: Session = 
                     shop_id=shop_id,
                     name=f"{so.get('customer', {}).get('first_name', '')} {so.get('customer', {}).get('last_name', '')}".strip() or "Shopify Customer",
                     email=email or None,
+                    source="shopify",
                 )
                 db.add(customer); db.flush()
             ref = f"SHOPIFY-{so['id']}"

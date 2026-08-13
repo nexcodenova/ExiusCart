@@ -70,6 +70,7 @@ class Product(Base):
     warehouse_country = Column(String(100), nullable=True)
     shipping_cost = Column(Numeric(10, 2), nullable=True)   # per-unit, for the cost/profit breakdown
     demand_trend_json = Column(Text, nullable=True)   # [{label, value}, ...] admin-entered trend points
+    orders_trend_json = Column(Text, nullable=True)   # [{label, value}, ...] admin-entered orders-over-time points (separate signal from demand_trend_json)
     top_countries_json = Column(Text, nullable=True)  # [{country, code, percent}, ...] admin-entered
     ad_facebook_url = Column(String(1000), nullable=True)
     ad_tiktok_url = Column(String(1000), nullable=True)

@@ -6,6 +6,7 @@ subscription (see POST /shopping/request-access).
 from typing import Optional
 from datetime import timedelta
 import uuid
+import httpx
 from slugify import slugify
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -16,10 +17,12 @@ from sqlalchemy import func
 from app.core.database import get_db
 from app.core.security import create_access_token, decode_token
 from app.models.product import Product, Category
-from app.models.product_fields import ProductImage
+from app.models.product_fields import ProductImage, ProductVideo
 from app.models.shop import Shop
 from app.models.user import User
 from app.models.subscription import Subscription
+from app.models.dropship import DropshipConnection, DropshipProductLink
+from app.api.v1.endpoints.dropshipping import _cj_ensure_token, CJ_BASE
 
 router = APIRouter()
 
@@ -119,6 +122,7 @@ def _product_out(p: Product) -> dict:
         "image_url": p.image_url,
         "images": [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else [],
         "video_url": getattr(p, "video_url", None),
+        "videos": [{"url": v.url, "platform": v.platform, "thumbnail_url": v.thumbnail_url, "title": v.title, "embed_html": v.embed_html} for v in p.videos] if p.videos else [],
         "source_url": getattr(p, "source_url", None),
         "is_trending": p.is_trending,
         "is_featured": p.is_featured,
@@ -141,6 +145,7 @@ def _product_out(p: Product) -> dict:
         "warehouse_country": p.warehouse_country,
         "shipping_cost": float(p.shipping_cost) if p.shipping_cost is not None else None,
         "demand_trend_json": p.demand_trend_json,
+        "orders_trend_json": p.orders_trend_json,
         "top_countries_json": p.top_countries_json,
         "ad_facebook_url": p.ad_facebook_url,
         "ad_tiktok_url": p.ad_tiktok_url,
@@ -333,9 +338,84 @@ def import_shopping_product(
     elif source.image_url:
         db.add(ProductImage(product_id=new_product.id, url=source.image_url, sort_order=0, is_primary=True))
 
+    # Full video gallery, not just the legacy single video_url column above —
+    # oEmbed data (thumbnail/title/embed_html) already resolved when the
+    # catalog product was created, so this is a straight copy, no new
+    # network calls needed.
+    if source.videos:
+        for v in sorted(source.videos, key=lambda v: v.sort_order):
+            db.add(ProductVideo(
+                product_id=new_product.id, url=v.url, platform=v.platform,
+                thumbnail_url=v.thumbnail_url, title=v.title, embed_html=v.embed_html,
+                sort_order=v.sort_order,
+            ))
+
     db.commit()
     db.refresh(new_product)
     return {"product_id": new_product.id, "name": new_product.name, "shop_id": shop.id}
+
+
+@router.get("/shopping/products/{product_id}/shipping-estimate")
+async def shopping_shipping_estimate(
+    product_id: int,
+    country_code: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_prodora_user),
+):
+    """
+    Real per-country shipping cost for a Prodora catalog product, straight
+    from CJ's own freight-calculate API — same mechanism a connected
+    seller's own shop uses (dropshipping.py: cj_shipping_estimate), just
+    running on the system shop's CJ connection instead of a per-seller one.
+    404s (not a hard error) for products with no CJ link — imported before
+    this was captured, or not CJ-sourced at all — so the frontend can fall
+    back to the admin-entered flat shipping_cost for those.
+    """
+    link = (
+        db.query(DropshipProductLink)
+        .join(Shop, DropshipProductLink.shop_id == Shop.id)
+        .filter(
+            DropshipProductLink.product_id == product_id,
+            DropshipProductLink.supplier_type == "cj",
+            Shop.slug == "exiuscart-dropshipping-system",
+        )
+        .first()
+    )
+    if not link or not link.supplier_sku:
+        raise HTTPException(status_code=404, detail="No live shipping estimate available for this product.")
+
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == link.shop_id,
+        DropshipConnection.supplier_type == "cj",
+        DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="No live shipping estimate available for this product.")
+
+    token = await _cj_ensure_token(conn, db)
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post(f"{CJ_BASE}/logistic/freightCalculate", json={
+                "startCountryCode": "CN",
+                "endCountryCode": country_code.upper(),
+                "products": [{"vid": link.supplier_sku, "quantity": 1}],
+            }, headers={"CJ-Access-Token": token})
+        data = r.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"CJ API error: {str(e)}")
+
+    if not data.get("result"):
+        raise HTTPException(status_code=502, detail=data.get("message", "CJ could not calculate shipping for this destination."))
+
+    options = []
+    for opt in (data.get("data") or []):
+        options.append({
+            "logistic_name": opt.get("logisticName") or opt.get("logisticAging") or opt.get("name") or "Standard Shipping",
+            "price": float(opt.get("logisticPrice") or opt.get("price") or 0),
+            "days": opt.get("logisticAging") or opt.get("aging") or None,
+        })
+
+    return {"country_code": country_code.upper(), "options": options}
 
 
 @router.get("/shopping/categories")

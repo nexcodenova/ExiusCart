@@ -101,6 +101,7 @@ class ProductResponse(ProductBase):
     category: Optional[CategoryResponse] = None
     supplier_id: Optional[int] = None
     supplier: Optional[SupplierRef] = None
+    is_dropship_imported: bool = False
 
     @property
     def discount_percent(self) -> Optional[int]:

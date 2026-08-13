@@ -213,6 +213,8 @@ async def create_order(
                 name=order_data.customer_name or "Walk-in Customer",
                 phone=order_data.customer_phone,
                 email=order_data.customer_email,
+                # Same source as the order being created for them right now.
+                source=order_data.source,
             )
             db.add(new_customer)
             db.flush()

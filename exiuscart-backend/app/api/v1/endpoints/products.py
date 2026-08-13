@@ -13,6 +13,7 @@ from app.models.product import Product, Category
 from app.models.product_variant import ProductVariant
 from app.models.product_fields import ProductImage, ProductAttribute
 from app.models.supplier import PurchaseOrderItem
+from app.models.dropship import DropshipProductLink
 from app.models.order import OrderItem
 from app.models.subscription import Subscription
 from app.models.channel_product_status import ChannelProductStatus
@@ -356,9 +357,22 @@ async def get_products(
         query = query.filter(Product.name.ilike(f"%{search}%"))
 
     products = query.offset(skip).limit(limit).all()
+
+    # Which of these came from a dropship import (CJ/Zendrop/etc.) — drives
+    # SKU-lock in the edit form so sellers don't sever the supplier link.
+    product_ids = [p.id for p in products]
+    dropship_ids = set()
+    if product_ids:
+        dropship_ids = {
+            row[0] for row in db.query(DropshipProductLink.product_id)
+            .filter(DropshipProductLink.product_id.in_(product_ids))
+            .distinct()
+        }
+
     for p in products:
         if not p.image_url and p.images:
             p.image_url = p.images[0].url
+        p.is_dropship_imported = p.id in dropship_ids
     return products
 
 
@@ -378,6 +392,9 @@ async def get_product(
         raise HTTPException(status_code=404, detail="Product not found")
     if not product.image_url and product.images:
         product.image_url = product.images[0].url
+    product.is_dropship_imported = db.query(DropshipProductLink.id).filter(
+        DropshipProductLink.product_id == product.id
+    ).first() is not None
     return product
 
 

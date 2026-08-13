@@ -5,9 +5,20 @@ import Image from 'next/image';
 import {
   TrendingUp, Plus, Search, Pencil, Trash2, Loader2,
   Flame, Star, Eye, EyeOff, X, Check, Package, Upload, ImageIcon,
-  ExternalLink, Tag, AlertCircle, ShoppingBag,
+  ExternalLink, Tag, AlertCircle, ShoppingBag, RefreshCw,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { RichTextEditor } from '@/components/rich-text-editor';
+
+// Prodora catalog products aren't shop-scoped to any one seller, so there's
+// no real sequential counter to draw from (unlike a seller's own products —
+// see exiuscart-store's /next-sku) — a readable name-prefixed random code is
+// enough here since it only needs to be unique within the admin's own catalog.
+function generateSku(name: string): string {
+  const prefix = (name || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'PRD';
+  const suffix = Math.floor(Math.random() * 900 + 100);
+  return `${prefix}-${suffix}`;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +37,7 @@ interface ShoppingProduct {
   image_url: string | null;
   images?: string[];
   video_url: string | null;
+  videos?: string[];
   source_url: string | null;
   is_active: boolean;
   is_featured: boolean;
@@ -47,6 +59,7 @@ interface ShoppingProduct {
   warehouse_country: string | null;
   shipping_cost: number | null;
   demand_trend_json: string | null;
+  orders_trend_json: string | null;
   top_countries_json: string | null;
   ad_facebook_url: string | null;
   ad_tiktok_url: string | null;
@@ -63,7 +76,6 @@ const emptyForm = {
   price: '',
   sku: '',
   image_url: '',
-  video_url: '',
   source_url: '',
   category_name: '',
   is_featured: false,
@@ -624,6 +636,8 @@ export default function TrendingDropshippingPage() {
   // CJ import
   const [cjConnected, setCjConnected] = useState(false);
   const [showCjModal, setShowCjModal] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState('');
 
   useEffect(() => {
     adminApi.cjStatus().then((r: any) => setCjConnected(!!r.data?.connected)).catch(() => {});
@@ -642,11 +656,14 @@ export default function TrendingDropshippingPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // extra gallery images (beyond the primary upload), variants, specs
+  // extra gallery images (beyond the primary upload), videos, variants, specs
   const [extraImages, setExtraImages] = useState<string[]>([]);
+  const [videoUrls, setVideoUrls] = useState<string[]>([]);
+  const [newVideoUrl, setNewVideoUrl] = useState('');
   const [variants, setVariants] = useState<{ color: string; color_hex: string }[]>([]);
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([]);
   const [demandTrend, setDemandTrend] = useState<{ label: string; value: string }[]>([]);
+  const [ordersTrend, setOrdersTrend] = useState<{ label: string; value: string }[]>([]);
   const [topCountries, setTopCountries] = useState<{ country: string; code: string; percent: string }[]>([]);
 
   // Meta Ad Library search (Facebook/Instagram — real ads, see admin_meta_ads_search)
@@ -692,9 +709,12 @@ export default function TrendingDropshippingPage() {
     setImageFile(null);
     setImagePreview('');
     setExtraImages([]);
+    setVideoUrls([]);
+    setNewVideoUrl('');
     setVariants([]);
     setSpecs([]);
     setDemandTrend([]);
+    setOrdersTrend([]);
     setTopCountries([]);
     setModalError('');
     setShowModal(true);
@@ -710,7 +730,6 @@ export default function TrendingDropshippingPage() {
       price: String(p.price),
       sku: p.sku || '',
       image_url: p.image_url || '',
-      video_url: p.video_url || '',
       source_url: p.source_url || '',
       category_name: p.category_name || '',
       is_featured: p.is_featured,
@@ -737,6 +756,8 @@ export default function TrendingDropshippingPage() {
     setImageFile(null);
     setImagePreview(p.image_url || '');
     setExtraImages((p.images || []).filter((u) => u !== p.image_url));
+    setVideoUrls(p.videos && p.videos.length > 0 ? p.videos : (p.video_url ? [p.video_url] : []));
+    setNewVideoUrl('');
     setVariants((p.variants || []).map((v) => ({ color: v.color || '', color_hex: v.color_hex || '' })));
     try {
       const parsed = p.specs_json ? JSON.parse(p.specs_json) : {};
@@ -746,6 +767,10 @@ export default function TrendingDropshippingPage() {
       const parsed = p.demand_trend_json ? JSON.parse(p.demand_trend_json) : [];
       setDemandTrend(Array.isArray(parsed) ? parsed.map((d: any) => ({ label: String(d.label ?? ''), value: String(d.value ?? '') })) : []);
     } catch { setDemandTrend([]); }
+    try {
+      const parsed = p.orders_trend_json ? JSON.parse(p.orders_trend_json) : [];
+      setOrdersTrend(Array.isArray(parsed) ? parsed.map((d: any) => ({ label: String(d.label ?? ''), value: String(d.value ?? '') })) : []);
+    } catch { setOrdersTrend([]); }
     try {
       const parsed = p.top_countries_json ? JSON.parse(p.top_countries_json) : [];
       setTopCountries(Array.isArray(parsed) ? parsed.map((c: any) => ({ country: String(c.country ?? ''), code: String(c.code ?? ''), percent: String(c.percent ?? '') })) : []);
@@ -790,6 +815,7 @@ export default function TrendingDropshippingPage() {
 
       const specsObj = specs.filter((s) => s.key.trim()).reduce((acc, s) => ({ ...acc, [s.key.trim()]: s.value }), {} as Record<string, string>);
       const demandTrendArr = demandTrend.filter((d) => d.label.trim() && d.value.trim()).map((d) => ({ label: d.label.trim(), value: parseFloat(d.value) }));
+      const ordersTrendArr = ordersTrend.filter((d) => d.label.trim() && d.value.trim()).map((d) => ({ label: d.label.trim(), value: parseFloat(d.value) }));
       const topCountriesArr = topCountries.filter((c) => c.country.trim() && c.percent.trim()).map((c) => ({ country: c.country.trim(), code: c.code.trim().toUpperCase(), percent: parseFloat(c.percent) }));
 
       const payload = {
@@ -799,13 +825,13 @@ export default function TrendingDropshippingPage() {
         cost_price: form.cost_price ? parseFloat(form.cost_price) : null,
         sku: form.sku.trim() || null,
         image_url: imageUrl,
-        video_url: form.video_url.trim() || null,
         source_url: form.source_url.trim() || null,
         category_name: form.category_name.trim() || null,
         is_featured: form.is_featured,
         is_trending: form.is_trending,
         is_active: form.is_active,
         images: [imageUrl, ...extraImages].filter((u): u is string => !!u),
+        videos: videoUrls,
         variants: variants.filter((v) => v.color.trim()).map((v) => ({ color: v.color.trim(), color_hex: v.color_hex || null })),
         winning_score: form.winning_score ? parseInt(form.winning_score, 10) : null,
         trend_percent: form.trend_percent ? parseFloat(form.trend_percent) : null,
@@ -820,6 +846,7 @@ export default function TrendingDropshippingPage() {
         warehouse_country: form.warehouse_country.trim() || null,
         shipping_cost: form.shipping_cost ? parseFloat(form.shipping_cost) : null,
         demand_trend_json: demandTrendArr.length ? JSON.stringify(demandTrendArr) : null,
+        orders_trend_json: ordersTrendArr.length ? JSON.stringify(ordersTrendArr) : null,
         top_countries_json: topCountriesArr.length ? JSON.stringify(topCountriesArr) : null,
         ad_facebook_url: form.ad_facebook_url.trim() || null,
         ad_tiktok_url: form.ad_tiktok_url.trim() || null,
@@ -900,6 +927,25 @@ export default function TrendingDropshippingPage() {
     }
   };
 
+  // One-time cleanup for catalog products saved before the strip/truncate
+  // pipeline existed — re-runs it retroactively so old rows stop showing
+  // embedded CJ images. Safe to click more than once (idempotent server-side).
+  const handleBackfillDescriptions = async () => {
+    setBackfilling(true);
+    setBackfillResult('');
+    try {
+      const res = await adminApi.backfillShoppingDescriptions();
+      const { updated, total } = res.data;
+      setBackfillResult(updated > 0 ? `Cleaned ${updated} of ${total} descriptions.` : `All ${total} descriptions were already clean.`);
+      if (updated > 0) await fetchProducts();
+    } catch {
+      setBackfillResult("Couldn't run cleanup — try again.");
+    } finally {
+      setBackfilling(false);
+      setTimeout(() => setBackfillResult(''), 6000);
+    }
+  };
+
   // ── Stats ──────────────────────────────────────────────────────────────────
 
   const trending = products.filter((p) => p.is_trending).length;
@@ -922,6 +968,19 @@ export default function TrendingDropshippingPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {backfillResult && (
+            <span className="text-xs text-gray-400 max-w-[180px]">{backfillResult}</span>
+          )}
+          <button
+            type="button"
+            onClick={handleBackfillDescriptions}
+            disabled={backfilling}
+            title="Re-cleans descriptions saved before the image-strip/word-limit fix existed — safe to run anytime"
+            className="inline-flex items-center gap-2 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-[#6B3FD9]/50 transition text-sm disabled:opacity-50"
+          >
+            {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Clean up descriptions
+          </button>
           <a
             href="https://prodora.exiuscart.com"
             target="_blank"
@@ -1203,7 +1262,7 @@ export default function TrendingDropshippingPage() {
       {/* ── Add / Edit Modal ─────────────────────────────────────────────── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="bg-[#151F32] rounded-2xl border border-gray-800 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#151F32] rounded-2xl border border-gray-800 w-full max-w-5xl max-h-[92vh] overflow-y-auto">
             {/* Modal header */}
             <div className="sticky top-0 bg-[#151F32] flex items-center justify-between px-5 py-4 border-b border-gray-800 z-10">
               <h2 className="text-lg font-semibold text-white">
@@ -1221,188 +1280,244 @@ export default function TrendingDropshippingPage() {
                 </div>
               )}
 
-              {/* Product Image Upload */}
-              <div>
-                <label className="text-sm text-gray-400 mb-2 block">Product Image</label>
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="relative cursor-pointer group border-2 border-dashed border-gray-700 hover:border-[#6B3FD9]/60 rounded-xl transition overflow-hidden"
-                  style={{ minHeight: '160px' }}
-                >
-                  {imagePreview ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-full h-40 object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                        <div className="text-white text-sm font-medium flex items-center gap-2">
-                          <Upload className="w-4 h-4" /> Change Image
+              {/* Content (left) + Pricing/meta (right) */}
+              <div className="grid lg:grid-cols-2 gap-x-6 gap-y-4">
+                {/* ── Left: Image, Name, Description, Source ── */}
+                <div className="space-y-4">
+                  {/* Product Image Upload */}
+                  <div>
+                    <label className="text-sm text-gray-400 mb-2 block">Product Image</label>
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="relative cursor-pointer group border-2 border-dashed border-gray-700 hover:border-[#6B3FD9]/60 rounded-xl transition overflow-hidden"
+                      style={{ minHeight: '160px' }}
+                    >
+                      {imagePreview ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-full h-40 object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <div className="text-white text-sm font-medium flex items-center gap-2">
+                              <Upload className="w-4 h-4" /> Change Image
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-40 gap-3 text-gray-500 group-hover:text-gray-400 transition">
+                          <ImageIcon className="w-10 h-10 opacity-40" />
+                          <div className="text-center">
+                            <p className="text-sm font-medium">Click to upload image</p>
+                            <p className="text-xs mt-0.5">JPG, PNG, WEBP · Max 10 MB</p>
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-40 gap-3 text-gray-500 group-hover:text-gray-400 transition">
-                      <ImageIcon className="w-10 h-10 opacity-40" />
-                      <div className="text-center">
-                        <p className="text-sm font-medium">Click to upload image</p>
-                        <p className="text-xs mt-0.5">JPG, PNG, WEBP · Max 10 MB</p>
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                    {imagePreview && (
+                      <button
+                        type="button"
+                        onClick={() => { setImageFile(null); setImagePreview(''); setForm(f => ({ ...f, image_url: '' })); }}
+                        className="mt-1 text-xs text-gray-500 hover:text-red-400 transition"
+                      >
+                        Remove image
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Name */}
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Product Name *</label>
+                    <input
+                      ref={firstInputRef}
+                      type="text"
+                      required
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      placeholder="e.g. Wireless Earbuds Pro"
+                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Description</label>
+                    <RichTextEditor
+                      value={form.description}
+                      onChange={(html) => setForm((f) => ({ ...f, description: html }))}
+                      placeholder="Describe the product for buyers..."
+                      rows={9}
+                      maxImages={3}
+                      onUploadImage={async (file) => {
+                        const res = await adminApi.uploadShoppingImage(file);
+                        return res.data.url;
+                      }}
+                    />
+                    <p className="mt-1 text-xs text-gray-600">Truncated automatically past 200 words when saved — matches every plan's minimum description limit.</p>
+                  </div>
+
+                  {/* Source / Supplier Link */}
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">
+                      Supplier / Source Link
+                      <span className="ml-2 text-xs text-gray-600">where dropshippers can find &amp; order this product</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={form.source_url}
+                      onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
+                      placeholder="https://aliexpress.com/... or CJ, Temu, etc."
+                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* ── Right: Pricing, Category, SKU, Videos ── */}
+                <div className="space-y-4">
+                  {/* Buying Price + Selling Price */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm text-gray-400 mb-1 block">
+                        Buying Price <span className="text-xs text-gray-600">(USD · your cost)</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={form.cost_price}
+                          onChange={(e) => setForm((f) => ({ ...f, cost_price: e.target.value }))}
+                          placeholder="0.00"
+                          className="w-full pl-7 pr-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                        />
                       </div>
                     </div>
+                    <div>
+                      <label className="text-sm text-gray-400 mb-1 block">
+                        Selling Price * <span className="text-xs text-gray-600">(USD · shown publicly)</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                        <input
+                          type="number"
+                          required
+                          min="0"
+                          step="0.01"
+                          value={form.price}
+                          onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                          placeholder="0.00"
+                          className="w-full pl-7 pr-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Margin preview */}
+                  {form.cost_price && form.price && parseFloat(form.price) > parseFloat(form.cost_price) && (
+                    <div className="px-3 py-2 bg-green-500/5 border border-green-500/20 rounded-lg flex items-center justify-between">
+                      <span className="text-xs text-gray-400">Profit margin</span>
+                      <span className="text-sm font-bold text-green-400">
+                        {Math.round(((parseFloat(form.price) - parseFloat(form.cost_price)) / parseFloat(form.price)) * 100)}%
+                        &nbsp;·&nbsp;
+                        +{(parseFloat(form.price) - parseFloat(form.cost_price)).toFixed(2)} per sale
+                      </span>
+                    </div>
                   )}
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageChange}
-                />
-                {imagePreview && (
-                  <button
-                    type="button"
-                    onClick={() => { setImageFile(null); setImagePreview(''); setForm(f => ({ ...f, image_url: '' })); }}
-                    className="mt-1 text-xs text-gray-500 hover:text-red-400 transition"
-                  >
-                    Remove image
-                  </button>
-                )}
-              </div>
 
-              {/* Name */}
-              <div>
-                <label className="text-sm text-gray-400 mb-1 block">Product Name *</label>
-                <input
-                  ref={firstInputRef}
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Wireless Earbuds Pro"
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="text-sm text-gray-400 mb-1 block">Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="Describe the product for buyers..."
-                  rows={3}
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm resize-none"
-                />
-              </div>
-
-              {/* Buying Price + Selling Price */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    Buying Price <span className="text-xs text-gray-600">(USD · your cost)</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                  {/* Category */}
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">Category</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.cost_price}
-                      onChange={(e) => setForm((f) => ({ ...f, cost_price: e.target.value }))}
-                      placeholder="0.00"
-                      className="w-full pl-7 pr-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                      type="text"
+                      value={form.category_name}
+                      onChange={(e) => setForm((f) => ({ ...f, category_name: e.target.value }))}
+                      placeholder="e.g. Electronics, Fashion"
+                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                     />
                   </div>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    Selling Price * <span className="text-xs text-gray-600">(USD · shown publicly)</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      step="0.01"
-                      value={form.price}
-                      onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                      placeholder="0.00"
-                      className="w-full pl-7 pr-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
-                    />
+
+                  {/* SKU */}
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">
+                      SKU
+                      <span className="ml-1 text-xs text-gray-600">(product code)</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={form.sku}
+                        onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
+                        placeholder="e.g. WBT-BLK-001"
+                        className="flex-1 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, sku: generateSku(f.name) }))}
+                        className="px-3 py-2 text-xs font-medium bg-[#0B1121] border border-gray-700 rounded-lg hover:border-[#6B3FD9] text-gray-400 hover:text-white transition whitespace-nowrap"
+                      >
+                        Generate
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Videos */}
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1 block">
+                      Videos
+                      <span className="ml-2 text-xs text-gray-600">optional · up to 6</span>
+                    </label>
+                    {videoUrls.length > 0 && (
+                      <div className="space-y-1.5 mb-2">
+                        {videoUrls.map((url, i) => (
+                          <div key={i} className="flex items-center gap-2 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg">
+                            <span className="flex-1 text-xs text-gray-300 truncate">{url}</span>
+                            <button
+                              type="button"
+                              onClick={() => setVideoUrls((v) => v.filter((_, idx) => idx !== i))}
+                              className="text-gray-500 hover:text-red-400 transition shrink-0"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {videoUrls.length < 6 && (
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          value={newVideoUrl}
+                          onChange={(e) => setNewVideoUrl(e.target.value)}
+                          placeholder="https://youtube.com/... or tiktok.com/..."
+                          className="flex-1 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const trimmed = newVideoUrl.trim();
+                            if (!trimmed) return;
+                            setVideoUrls((v) => [...v, trimmed]);
+                            setNewVideoUrl('');
+                          }}
+                          className="px-3 py-2 text-xs font-medium bg-[#0B1121] border border-gray-700 rounded-lg hover:border-[#6B3FD9] text-gray-400 hover:text-white transition whitespace-nowrap"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    )}
+                    <p className="mt-1 text-xs text-gray-600">YouTube or TikTok — thumbnail/title fetched automatically on save.</p>
                   </div>
                 </div>
-              </div>
-
-              {/* Margin preview */}
-              {form.cost_price && form.price && parseFloat(form.price) > parseFloat(form.cost_price) && (
-                <div className="px-3 py-2 bg-green-500/5 border border-green-500/20 rounded-lg flex items-center justify-between">
-                  <span className="text-xs text-gray-400">Profit margin</span>
-                  <span className="text-sm font-bold text-green-400">
-                    {Math.round(((parseFloat(form.price) - parseFloat(form.cost_price)) / parseFloat(form.price)) * 100)}%
-                    &nbsp;·&nbsp;
-                    +{(parseFloat(form.price) - parseFloat(form.cost_price)).toFixed(2)} per sale
-                  </span>
-                </div>
-              )}
-
-              {/* Category + SKU */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm text-gray-400 mb-1 block">Category</label>
-                  <input
-                    type="text"
-                    value={form.category_name}
-                    onChange={(e) => setForm((f) => ({ ...f, category_name: e.target.value }))}
-                    placeholder="e.g. Electronics, Fashion"
-                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-400 mb-1 block">
-                    SKU
-                    <span className="ml-1 text-xs text-gray-600">(product code)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.sku}
-                    onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
-                    placeholder="e.g. WBT-BLK-001"
-                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Video URL */}
-              <div>
-                <label className="text-sm text-gray-400 mb-1 block">
-                  Video URL
-                  <span className="ml-2 text-xs text-gray-600">optional · product promo video</span>
-                </label>
-                <input
-                  type="url"
-                  value={form.video_url}
-                  onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
-                  placeholder="https://... (MP4, YouTube, TikTok)"
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
-                />
-              </div>
-
-              {/* Source / Supplier Link */}
-              <div>
-                <label className="text-sm text-gray-400 mb-1 block">
-                  Supplier / Source Link
-                  <span className="ml-2 text-xs text-gray-600">where dropshippers can find &amp; order this product</span>
-                </label>
-                <input
-                  type="url"
-                  value={form.source_url}
-                  onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
-                  placeholder="https://aliexpress.com/... or CJ, Temu, etc."
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
-                />
               </div>
 
               {/* Gallery images (beyond the primary upload above) */}
@@ -1656,6 +1771,26 @@ export default function TrendingDropshippingPage() {
                   </div>
                 ))}
                 <button type="button" onClick={() => setDemandTrend((arr) => [...arr, { label: '', value: '' }])}
+                  className="text-xs text-[#6B3FD9] hover:underline">+ Add data point</button>
+              </div>
+
+              {/* Orders Trend — separate signal from Demand Trend, shown as its own chart on the product page */}
+              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-2">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Orders Trend</p>
+                <p className="text-xs text-gray-600 -mt-1">Optional — real orders-over-time data points (social proof), separate from Demand Trend above. Leave empty to hide it.</p>
+                {ordersTrend.map((d, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input type="text" value={d.label}
+                      onChange={(e) => setOrdersTrend((arr) => arr.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                      placeholder="e.g. May 17" className="w-1/3 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    <input type="number" value={d.value}
+                      onChange={(e) => setOrdersTrend((arr) => arr.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
+                      placeholder="Value" className="flex-1 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    <button type="button" onClick={() => setOrdersTrend((arr) => arr.filter((_, j) => j !== i))}
+                      className="px-2 text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setOrdersTrend((arr) => [...arr, { label: '', value: '' }])}
                   className="text-xs text-[#6B3FD9] hover:underline">+ Add data point</button>
               </div>
 

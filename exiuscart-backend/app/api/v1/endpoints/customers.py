@@ -55,7 +55,8 @@ async def create_customer(
 
     new_customer = Customer(
         **customer_data.model_dump(),
-        shop_id=shop_id
+        shop_id=shop_id,
+        source="manual",
     )
     db.add(new_customer)
     db.commit()

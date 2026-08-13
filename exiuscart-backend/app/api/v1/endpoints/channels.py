@@ -937,6 +937,10 @@ async def receive_order_webhook(
             email=payload.buyer_email,
             phone=payload.buyer_phone,
             address=payload.shipping_address,
+            # This one handler receives orders from every marketplace channel
+            # (TheDersi/Daraz/eBay/Noon), differentiated by conn.channel_type
+            # — tagging the customer with it here covers all of them at once.
+            source=conn.channel_type,
         )
         db.add(customer)
         db.flush()

@@ -366,7 +366,10 @@ def public_store_signup(shop_slug: str, data: CustomerSignupIn, db: Session = De
         name=data.name.strip() or "Customer",
         email=email,
         password_hash=get_password_hash(data.password),
-        source="signup",
+        # Same channel as a Custom Website guest checkout — "did they make an
+        # account" is a separate question already answered by password_hash
+        # being set, not something that needs its own top-level channel value.
+        source="custom",
     )
     db.add(customer)
     db.commit()

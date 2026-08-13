@@ -7,11 +7,35 @@ import Link from 'next/link';
 import {
   ArrowLeft, Package, Tag, Download, ExternalLink, Play, ShoppingCart, Copy, Check,
   Loader2, CheckCircle2, TrendingUp, Users, Swords, Gauge, Store, Facebook, Instagram,
-  Music2, ChevronRight, Trophy, Globe2,
+  Music2, ChevronRight, Trophy, Globe2, Truck,
 } from 'lucide-react';
-import { shoppingApi, Product } from '@/lib/api';
+import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import DOMPurify from 'dompurify';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectValue, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
+
+// Common dropship destinations — enough to cover the markets Prodora sellers
+// actually ship to; CJ's freight API accepts any ISO country code, this list
+// just keeps the picker short instead of every country on earth.
+const SHIP_COUNTRIES: { code: string; name: string }[] = [
+  { code: 'US', name: 'United States' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'LK', name: 'Sri Lanka' },
+  { code: 'IN', name: 'India' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'MY', name: 'Malaysia' },
+];
 
 function fmt(n: number) {
   return '$' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -22,7 +46,7 @@ function flagEmoji(code?: string | null) {
   return code.toUpperCase().replace(/./g, (c) => String.fromCodePoint(c.charCodeAt(0) + 127397));
 }
 
-function TrendChart({ data }: { data: { label: string; value: number }[] }) {
+function TrendChart({ data, color = '#2563EB', gradientId = 'trendGrad' }: { data: { label: string; value: number }[]; color?: string; gradientId?: string }) {
   if (data.length < 2) return null;
   const w = 260, h = 70, pad = 4;
   const values = data.map((d) => d.value);
@@ -40,14 +64,14 @@ function TrendChart({ data }: { data: { label: string; value: number }[] }) {
     <div>
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-16">
         <defs>
-          <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563EB" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d={areaPath} fill="url(#trendGrad)" />
-        <path d={linePath} fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={points[points.length - 1][0]} cy={points[points.length - 1][1]} r="3" fill="#2563EB" />
+        <path d={areaPath} fill={`url(#${gradientId})`} />
+        <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={points[points.length - 1][0]} cy={points[points.length - 1][1]} r="3" fill={color} />
       </svg>
       <div className="flex justify-between text-[10px] text-[#6B7280] mt-1">
         <span>{data[0].label}</span>
@@ -108,6 +132,16 @@ function ProductDetailContent() {
   const [importError, setImportError] = useState('');
   const [activeImg, setActiveImg] = useState(0);
 
+  // Live per-country shipping cost, via CJ's freight-calculate API — only
+  // available for products with a captured CJ supplier link (see
+  // shopping.py: shopping_shipping_estimate). Falls back to the admin's
+  // flat shipping_cost estimate when unavailable, so the summary never
+  // shows nothing.
+  const [shipCountry, setShipCountry] = useState('US');
+  const [shipOptions, setShipOptions] = useState<ShippingOption[] | null>(null);
+  const [shipLoading, setShipLoading] = useState(false);
+  const [shipUnavailable, setShipUnavailable] = useState(false);
+
   const productId = Number(params.id);
 
   useEffect(() => {
@@ -123,6 +157,20 @@ function ProductDetailContent() {
       .finally(() => setLoading(false));
     shoppingApi.getRelatedProducts(productId).then(setRelated).catch(() => setRelated([]));
   }, [productId]);
+
+  useEffect(() => {
+    if (!productId || isNaN(productId)) return;
+    setShipLoading(true);
+    setShipUnavailable(false);
+    shoppingApi.getShippingEstimate(productId, shipCountry)
+      .then((res) => setShipOptions(res.options))
+      .catch(() => { setShipOptions(null); setShipUnavailable(true); })
+      .finally(() => setShipLoading(false));
+  }, [productId, shipCountry]);
+
+  const cheapestShipOption = shipOptions && shipOptions.length > 0
+    ? [...shipOptions].sort((a, b) => a.price - b.price)[0]
+    : null;
 
   const handleCopyLink = async () => {
     try {
@@ -184,11 +232,11 @@ function ProductDetailContent() {
     );
   }
 
-  const { name, price, cost_price, discount_pct, image_url, images, video_url, source_url,
+  const { name, price, cost_price, discount_pct, image_url, images, video_url, videos, source_url,
     is_trending, is_featured, category_name, description, sku, variants,
     winning_score, trend_percent, competition_level, saturation_level, orders_count,
     supplier_name, supplier_rating, fulfillment_rate, processing_time, shipping_time,
-    warehouse_country, shipping_cost, demand_trend_json, top_countries_json,
+    warehouse_country, shipping_cost, demand_trend_json, orders_trend_json, top_countries_json,
     ad_facebook_url, ad_tiktok_url, ad_instagram_url, ad_pinterest_url, specs_json, tags } = product;
 
   const gallery = images && images.length > 0 ? images : (image_url ? [image_url] : []);
@@ -199,10 +247,15 @@ function ProductDetailContent() {
   try { specs = specs_json ? Object.entries(JSON.parse(specs_json)) : []; } catch { specs = []; }
   let demandTrend: { label: string; value: number }[] = [];
   try { demandTrend = demand_trend_json ? JSON.parse(demand_trend_json) : []; } catch { demandTrend = []; }
+  let ordersTrend: { label: string; value: number }[] = [];
+  try { ordersTrend = orders_trend_json ? JSON.parse(orders_trend_json) : []; } catch { ordersTrend = []; }
   let topCountries: { country: string; code: string; percent: number }[] = [];
   try { topCountries = top_countries_json ? JSON.parse(top_countries_json) : []; } catch { topCountries = []; }
 
-  const totalCost = cost_price != null ? cost_price + (shipping_cost || 0) : null;
+  // Live per-country quote wins when available; otherwise fall back to the
+  // admin-entered flat estimate rather than showing nothing.
+  const effectiveShippingCost = cheapestShipOption ? cheapestShipOption.price : shipping_cost;
+  const totalCost = cost_price != null ? cost_price + (effectiveShippingCost || 0) : null;
   const profit = totalCost != null ? price - totalCost : null;
   const marginPct = profit != null && price > 0 ? Math.round((profit / price) * 100) : null;
 
@@ -240,47 +293,50 @@ function ProductDetailContent() {
             {/* Gallery + basic info */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
               <div className="p-4 md:p-5">
-                <div className="relative bg-gray-50 group rounded-xl overflow-hidden" style={{ minHeight: '340px' }}>
-                  {activeImage ? (
-                    <Image src={activeImage} alt={name} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 60vw" priority />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center"><Package className="w-24 h-24 text-gray-300" /></div>
-                  )}
-
-                  <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
-                    {discount_pct && discount_pct > 0 && (
-                      <span className="text-xs font-bold px-2.5 py-1 rounded bg-[#2563EB] text-white shadow">%{discount_pct} OFF</span>
+                <div className="flex gap-3">
+                  <div className="relative bg-gray-50 group rounded-xl overflow-hidden flex-1" style={{ minHeight: '340px' }}>
+                    {activeImage ? (
+                      <Image src={activeImage} alt={name} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 60vw" priority />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center"><Package className="w-24 h-24 text-gray-300" /></div>
                     )}
-                    {is_trending && <span className="text-xs font-bold px-2.5 py-1 rounded bg-blue-500 text-white shadow">🔥 Trending</span>}
-                    {!is_trending && is_featured && <span className="text-xs font-bold px-2.5 py-1 rounded bg-amber-400 text-white shadow">⭐ Featured</span>}
+
+                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                      {discount_pct && discount_pct > 0 && (
+                        <span className="text-xs font-bold px-2.5 py-1 rounded bg-[#2563EB] text-white shadow">%{discount_pct} OFF</span>
+                      )}
+                      {is_trending && <span className="text-xs font-bold px-2.5 py-1 rounded bg-blue-500 text-white shadow">🔥 Trending</span>}
+                      {!is_trending && is_featured && <span className="text-xs font-bold px-2.5 py-1 rounded bg-amber-400 text-white shadow">⭐ Featured</span>}
+                    </div>
+
+                    {((videos && videos.length > 0) || video_url) && (
+                      <a href="#video" className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-black/70 hover:bg-black/90 text-white text-xs font-semibold rounded-lg backdrop-blur transition">
+                        <Play className="w-3.5 h-3.5" /> Watch Video{videos && videos.length > 1 ? `s (${videos.length})` : ''}
+                      </a>
+                    )}
+
+                    {activeImage && (
+                      <div className="absolute bottom-3 right-3 flex gap-2 z-10">
+                        <a href={activeImage} download target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-black/70 hover:bg-black/90 text-white text-xs font-semibold rounded-lg backdrop-blur transition">
+                          <Download className="w-3.5 h-3.5" /> Download
+                        </a>
+                      </div>
+                    )}
                   </div>
 
-                  {video_url && (
-                    <a href="#video" className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1.5 bg-black/70 hover:bg-black/90 text-white text-xs font-semibold rounded-lg backdrop-blur transition">
-                      <Play className="w-3.5 h-3.5" /> Watch Video
-                    </a>
-                  )}
-
-                  {activeImage && (
-                    <div className="absolute bottom-3 right-3 flex gap-2 z-10">
-                      <a href={activeImage} download target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-black/70 hover:bg-black/90 text-white text-xs font-semibold rounded-lg backdrop-blur transition">
-                        <Download className="w-3.5 h-3.5" /> Download
-                      </a>
+                  {/* Thumbnail rail — vertical, to the right of the main image */}
+                  {gallery.length > 1 && (
+                    <div className="flex flex-col gap-2 w-16 sm:w-20 shrink-0 overflow-y-auto pr-0.5" style={{ maxHeight: '420px' }}>
+                      {gallery.slice(0, 10).map((img, i) => (
+                        <button key={i} onClick={() => setActiveImg(i)}
+                          className={`relative w-full aspect-square rounded-lg overflow-hidden border-2 shrink-0 transition ${i === activeImg ? 'border-[#2563EB]' : 'border-[#E5E7EB]'}`}>
+                          <Image src={img} alt="" fill className="object-cover" />
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
-
-                {gallery.length > 1 && (
-                  <div className="flex gap-2 mt-3 overflow-x-auto">
-                    {gallery.slice(0, 10).map((img, i) => (
-                      <button key={i} onClick={() => setActiveImg(i)}
-                        className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition ${i === activeImg ? 'border-[#2563EB]' : 'border-[#E5E7EB]'}`}>
-                        <Image src={img} alt="" fill className="object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className="px-5 pb-5 space-y-3">
@@ -313,8 +369,29 @@ function ProductDetailContent() {
               </div>
             </div>
 
-            {/* Video */}
-            {video_url && (
+            {/* Videos */}
+            {videos && videos.length > 0 ? (
+              <div id="video" className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
+                <div className="px-5 py-4 border-b border-[#E5E7EB] flex items-center gap-2">
+                  <Play className="w-4 h-4 text-[#2563EB]" />
+                  <h2 className="text-xl font-semibold text-[#111827]">Product Video{videos.length > 1 ? 's' : ''}</h2>
+                </div>
+                <div className={`p-4 grid gap-4 ${videos.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                  {videos.map((v, i) => (
+                    <div key={i} className="rounded-xl overflow-hidden bg-black">
+                      {v.embed_html ? (
+                        <div className="aspect-[9/16] max-h-[420px] [&_iframe]:w-full [&_iframe]:h-full"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(v.embed_html, { ADD_TAGS: ['iframe'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling'] }) }} />
+                      ) : (
+                        <a href={v.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-40 text-[#2563EB] hover:underline font-semibold bg-gray-50">
+                          Open video in new tab →
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : video_url && (
               <div id="video" className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
                 <div className="px-5 py-4 border-b border-[#E5E7EB] flex items-center gap-2">
                   <Play className="w-4 h-4 text-[#2563EB]" />
@@ -409,6 +486,26 @@ function ProductDetailContent() {
               </div>
             )}
 
+            {/* Trends — Demand on the left, Orders (social proof) on the right */}
+            {(demandTrend.length >= 2 || ordersTrend.length >= 2) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+                <div className={`grid gap-6 ${demandTrend.length >= 2 && ordersTrend.length >= 2 ? 'sm:grid-cols-2' : ''}`}>
+                  {demandTrend.length >= 2 && (
+                    <div>
+                      <h2 className="text-sm font-semibold text-[#111827] mb-2 flex items-center gap-1.5"><TrendingUp className="w-4 h-4 text-[#2563EB]" /> Demand Trend</h2>
+                      <TrendChart data={demandTrend} color="#2563EB" gradientId="demandTrendGrad" />
+                    </div>
+                  )}
+                  {ordersTrend.length >= 2 && (
+                    <div className={demandTrend.length >= 2 ? 'sm:border-l sm:border-[#E5E7EB] sm:pl-6' : ''}>
+                      <h2 className="text-sm font-semibold text-[#111827] mb-2 flex items-center gap-1.5"><Users className="w-4 h-4 text-[#16A34A]" /> Orders Trend</h2>
+                      <TrendChart data={ordersTrend} color="#16A34A" gradientId="ordersTrendGrad" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Social proof */}
             {adPlatforms.length > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
@@ -488,77 +585,115 @@ function ProductDetailContent() {
           {/* ── Right: sticky sidebar ── */}
           <div className="space-y-4 lg:sticky lg:top-20">
             {/* Product Summary */}
-            <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5 space-y-4">
-              <h2 className="text-xl font-semibold text-[#111827]">Product Summary</h2>
-
-              {winning_score != null && (
-                <div className="flex items-center gap-3 bg-[#16A34A]/5 border border-[#16A34A]/20 rounded-xl p-3">
-                  <div className="w-11 h-11 rounded-full bg-[#16A34A] text-white flex items-center justify-center shrink-0"><Trophy className="w-5 h-5" /></div>
-                  <div>
-                    <p className="text-xs text-[#6B7280]">Winning Score</p>
-                    <p className="text-lg font-bold text-[#16A34A] leading-none">{winning_score}<span className="text-xs font-normal text-[#6B7280]">/100</span></p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Product Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {winning_score != null && (
+                  <div className="flex items-center gap-3 bg-[#16A34A]/5 border border-[#16A34A]/20 rounded-xl p-3">
+                    <div className="w-11 h-11 rounded-full bg-[#16A34A] text-white flex items-center justify-center shrink-0"><Trophy className="w-5 h-5" /></div>
+                    <div>
+                      <p className="text-xs text-[#6B7280]">Winning Score</p>
+                      <p className="text-lg font-bold text-[#16A34A] leading-none">{winning_score}<span className="text-xs font-normal text-[#6B7280]">/100</span></p>
+                    </div>
                   </div>
+                )}
+
+                {/* Live per-country shipping */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-medium text-[#6B7280] flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5" /> Ship to
+                    </label>
+                    <Select value={shipCountry} onValueChange={setShipCountry}>
+                      <SelectTrigger className="h-9 w-40 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SHIP_COUNTRIES.map((c) => (
+                          <SelectItem key={c.code} value={c.code}>{flagEmoji(c.code)} {c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {shipLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-[#6B7280] py-1"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Getting live shipping rates…</div>
+                  ) : shipOptions && shipOptions.length > 0 ? (
+                    <div className="space-y-1 rounded-lg bg-gray-50 border border-[#E5E7EB] p-2.5">
+                      {shipOptions.map((opt, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-[#111827]">{opt.logistic_name}{opt.days ? ` · ${opt.days}` : ''}</span>
+                          <span className={cheapestShipOption === opt ? 'font-semibold text-[#16A34A]' : 'text-[#6B7280]'}>{fmt(opt.price)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : shipUnavailable && shipping_cost != null ? (
+                    <p className="text-xs text-[#6B7280]">Live rates unavailable for this product — using the estimated flat shipping cost below.</p>
+                  ) : shipUnavailable ? (
+                    <p className="text-xs text-[#6B7280]">No shipping estimate available for this product.</p>
+                  ) : null}
                 </div>
-              )}
 
-              <div className="space-y-1.5 text-sm">
-                {cost_price != null && (
-                  <div className="flex justify-between"><span className="text-[#6B7280]">Product Cost</span><span className="text-[#111827] font-medium">{fmt(cost_price)}</span></div>
-                )}
-                {shipping_cost != null && (
-                  <div className="flex justify-between"><span className="text-[#6B7280]">Shipping Cost</span><span className="text-[#111827] font-medium">{fmt(shipping_cost)}</span></div>
-                )}
-                {totalCost != null && (
-                  <div className="flex justify-between font-semibold border-t border-[#E5E7EB] pt-1.5"><span className="text-[#111827]">Total Cost</span><span className="text-[#111827]">{fmt(totalCost)}</span></div>
-                )}
-                <div className="flex justify-between pt-1"><span className="text-[#6B7280]">Selling Price</span><span className="text-[#111827] font-medium">{fmt(price)}</span></div>
-                {profit != null && (
-                  <div className="flex justify-between"><span className="text-[#6B7280]">Estimated Profit</span><span className="text-[#16A34A] font-semibold">{fmt(profit)}</span></div>
-                )}
-                {marginPct != null && (
-                  <div className="flex justify-between"><span className="text-[#6B7280]">Profit Margin</span><span className="text-[#111827] font-medium">{marginPct}%</span></div>
-                )}
-              </div>
+                <Separator />
 
-              {(supplier_name || warehouse_country || processing_time || shipping_time) && (
-                <div className="space-y-1.5 text-sm border-t border-[#E5E7EB] pt-3">
-                  {supplier_name && <div className="flex justify-between"><span className="text-[#6B7280]">Supplier</span><span className="text-[#111827] font-medium">{supplier_name}</span></div>}
-                  {warehouse_country && <div className="flex justify-between"><span className="text-[#6B7280]">Warehouse</span><span className="text-[#111827] font-medium">{warehouse_country}</span></div>}
-                  {processing_time && <div className="flex justify-between"><span className="text-[#6B7280]">Processing Time</span><span className="text-[#111827] font-medium">{processing_time}</span></div>}
-                  {shipping_time && <div className="flex justify-between"><span className="text-[#6B7280]">Shipping Time</span><span className="text-[#111827] font-medium">{shipping_time}</span></div>}
-                  {sku && <div className="flex justify-between"><span className="text-[#6B7280]">SKU</span><span className="text-[#111827] font-medium">{sku}</span></div>}
+                <div className="space-y-1.5 text-sm">
+                  {cost_price != null && (
+                    <div className="flex justify-between"><span className="text-[#6B7280]">Product Cost</span><span className="text-[#111827] font-medium">{fmt(cost_price)}</span></div>
+                  )}
+                  {effectiveShippingCost != null && (
+                    <div className="flex justify-between">
+                      <span className="text-[#6B7280]">Shipping Cost{cheapestShipOption && <span className="ml-1 text-[10px] text-[#16A34A]">live</span>}</span>
+                      <span className="text-[#111827] font-medium">{fmt(effectiveShippingCost)}</span>
+                    </div>
+                  )}
+                  {totalCost != null && (
+                    <div className="flex justify-between font-semibold border-t border-[#E5E7EB] pt-1.5"><span className="text-[#111827]">Total Cost</span><span className="text-[#111827]">{fmt(totalCost)}</span></div>
+                  )}
+                  <div className="flex justify-between pt-1"><span className="text-[#6B7280]">Selling Price</span><span className="text-[#111827] font-medium">{fmt(price)}</span></div>
+                  {profit != null && (
+                    <div className="flex justify-between"><span className="text-[#6B7280]">Estimated Profit</span><span className={profit >= 0 ? 'text-[#16A34A] font-semibold' : 'text-red-500 font-semibold'}>{fmt(profit)}</span></div>
+                  )}
+                  {marginPct != null && (
+                    <div className="flex justify-between"><span className="text-[#6B7280]">Profit Margin</span><span className="text-[#111827] font-medium">{marginPct}%</span></div>
+                  )}
                 </div>
-              )}
 
-              <div className="space-y-2 pt-1">
-                {imported ? (
-                  <a href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm bg-[#16A34A] text-white active:scale-95 transition w-full">
-                    <CheckCircle2 className="w-4 h-4" /> Added — Open in ExiusCart
-                  </a>
-                ) : (
-                  <button type="button" onClick={handleImport} disabled={importing}
-                    className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm bg-[#2563EB] text-white hover:bg-[#1E4FC2] active:scale-95 transition w-full disabled:opacity-60">
-                    {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
-                    {importing ? 'Adding to your store…' : 'Import Product'}
+                {(supplier_name || warehouse_country || processing_time || shipping_time) && (
+                  <>
+                    <Separator />
+                    <div className="space-y-1.5 text-sm">
+                      {supplier_name && <div className="flex justify-between"><span className="text-[#6B7280]">Supplier</span><span className="text-[#111827] font-medium">{supplier_name}</span></div>}
+                      {warehouse_country && <div className="flex justify-between"><span className="text-[#6B7280]">Warehouse</span><span className="text-[#111827] font-medium">{warehouse_country}</span></div>}
+                      {processing_time && <div className="flex justify-between"><span className="text-[#6B7280]">Processing Time</span><span className="text-[#111827] font-medium">{processing_time}</span></div>}
+                      {shipping_time && <div className="flex justify-between"><span className="text-[#6B7280]">Shipping Time</span><span className="text-[#111827] font-medium">{shipping_time}</span></div>}
+                      {sku && <div className="flex justify-between"><span className="text-[#6B7280]">SKU</span><span className="text-[#111827] font-medium">{sku}</span></div>}
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-2 pt-1">
+                  {imported ? (
+                    <a href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm bg-[#16A34A] text-white active:scale-95 transition w-full">
+                      <CheckCircle2 className="w-4 h-4" /> Added — Open in ExiusCart
+                    </a>
+                  ) : (
+                    <button type="button" onClick={handleImport} disabled={importing}
+                      className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm bg-[#2563EB] text-white hover:bg-[#1E4FC2] active:scale-95 transition w-full disabled:opacity-60">
+                      {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
+                      {importing ? 'Adding to your store…' : 'Import Product'}
+                    </button>
+                  )}
+                  <button type="button" onClick={handleCopyLink}
+                    className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:border-gray-300 transition w-full">
+                    {copied ? <Check className="w-4 h-4 text-[#16A34A]" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Link copied!' : product?.source_url ? 'Copy CJ Product Link' : 'Copy Product Link'}
                   </button>
-                )}
-                <button type="button" onClick={handleCopyLink}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:border-gray-300 transition w-full">
-                  {copied ? <Check className="w-4 h-4 text-[#16A34A]" /> : <Copy className="w-4 h-4" />}
-                  {copied ? 'Link copied!' : product?.source_url ? 'Copy CJ Product Link' : 'Copy Product Link'}
-                </button>
-                {importError && <p className="text-xs text-red-500 text-center">{importError}</p>}
-              </div>
-            </div>
-
-            {/* Demand Trend */}
-            {demandTrend.length >= 2 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
-                <h2 className="text-sm font-semibold text-[#111827] mb-2 flex items-center gap-1.5"><TrendingUp className="w-4 h-4 text-[#2563EB]" /> Demand Trend</h2>
-                <TrendChart data={demandTrend} />
-              </div>
-            )}
+                  {importError && <p className="text-xs text-red-500 text-center">{importError}</p>}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Top Countries */}
             {topCountries.length > 0 && (
