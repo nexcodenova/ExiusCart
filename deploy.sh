@@ -26,6 +26,8 @@ export NEXT_TELEMETRY_DISABLED=1
 # 500 (that's what was happening: an in-progress build deleted .next while
 # the still-running old process tried to read a manifest that no longer
 # existed). Only after a successful build do we swap it in and reload pm2.
+DEPLOY_HAD_FAILURE=0
+
 build_app() {
   local APP_DIR="$1"
   local PM2_NAME="$2"
@@ -37,9 +39,10 @@ build_app() {
   rm -rf .next-staging
   NEXT_DIST_DIR=.next-staging npm run build || true
   if [ ! -f .next-staging/BUILD_ID ]; then
-    echo "$PM2_NAME build failed — old .next left untouched, site keeps running on it"
+    echo "!!! $PM2_NAME build FAILED — old .next left untouched, site keeps running on the previous build !!!"
     rm -rf .next-staging
     cd "$PROJECT_DIR"
+    DEPLOY_HAD_FAILURE=1
     return 0
   fi
 
@@ -112,6 +115,20 @@ if echo "$CHANGED" | grep -q "exiuscart-backend/" || [ "$CHANGED" = "all" ]; the
   echo "Backend reloaded ✓"
 fi
 
+# ── Frontend dependencies ────────────────────────────────────────────────────
+# This is an npm workspaces monorepo — one root node_modules for every app.
+# Without this, a build that needs a package.json dependency added since the
+# last install (e.g. a new Radix component) fails at "Module not found",
+# gets swallowed by build_app's `|| true`, and the site silently keeps
+# serving the previous build forever with no visible error anywhere. Cheap
+# to run every deploy — npm no-ops fast when the lockfile hasn't changed.
+if echo "$CHANGED" | grep -q "apps/exiuscart-store/\|apps/exiuscart-admin/\|package.json\|package-lock.json" || [ "$CHANGED" = "all" ]; then
+  echo "--- Installing frontend dependencies ---"
+  cd "$PROJECT_DIR"
+  npm install
+  cd "$PROJECT_DIR"
+fi
+
 # ── Store ─────────────────────────────────────────────────────────────────────
 if echo "$CHANGED" | grep -q "apps/exiuscart-store/" || [ "$CHANGED" = "all" ]; then
   build_app "apps/exiuscart-store" "exiuscart-store" "3002"
@@ -127,3 +144,8 @@ fi
 pm2 save
 echo "=== Deploy Complete ==="
 pm2 status
+
+if [ "$DEPLOY_HAD_FAILURE" -ne 0 ]; then
+  echo "!!! One or more app builds FAILED this deploy — see above. Old builds are still serving, nothing is down, but this deploy did NOT ship what was pushed. !!!"
+  exit 1
+fi
