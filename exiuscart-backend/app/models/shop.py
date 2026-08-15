@@ -19,7 +19,14 @@ class Shop(Base):
     address = Column(Text, nullable=True)
     city = Column(String(100), nullable=True)
     country = Column(String(100), default="UAE")
+    # `currency` is the seller's *display* preference — freely changeable,
+    # every price shown across the app gets live-converted into it. Prices
+    # are actually entered and stored in `base_currency`, which is fixed at
+    # shop creation and never changes via normal settings — that's what
+    # keeps switching the display currency non-destructive (nothing in the
+    # database is ever rewritten) and reversible any number of times.
     currency = Column(String(10), default="USD")
+    base_currency = Column(String(10), nullable=True)  # defaults to `currency` at creation if unset
     tax_number = Column(String(50), nullable=True)
     vat_enabled = Column(Boolean, default=False)
     vat_rate = Column(Numeric(5, 2), default=0.00)

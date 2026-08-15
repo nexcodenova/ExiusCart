@@ -32,16 +32,23 @@ router = APIRouter()
 
 # ── Supplier signup links (affiliate — update these when you have the links) ──
 SUPPLIER_SIGNUP_LINKS = {
-    "cj":       "https://www.cjdropshipping.com/register.html?token=bce7840c-d60b-46e7-b39c-872e1572796c",  # CJ affiliate — 2% of referred sellers' CJ revenue for 1yr
-    "zendrop":  "https://app.zendrop.com/signup",                 # replace with affiliate link
-    "hypersku": "https://www.hypersku.com/register",              # replace with affiliate link
-    "wiio":     "https://wiio.com/register",                      # replace with affiliate link
+    "cj":         "https://www.cjdropshipping.com/register.html?token=bce7840c-d60b-46e7-b39c-872e1572796c",  # CJ affiliate — 2% of referred sellers' CJ revenue for 1yr
+    "zendrop":    "https://app.zendrop.com/signup",                 # replace with affiliate link
+    "hypersku":   "https://www.hypersku.com/register",              # replace with affiliate link
+    "wiio":       "https://wiio.com/register",                      # replace with affiliate link
+    # Real order-placement API exists (AliExpress Open Platform's
+    # AE-Dropshipper category: createOrder/shippingInfo/productDetails),
+    # but it's gated behind an app application + audit — ExiusCart hasn't
+    # been approved yet, so this is scaffolding: the connection is stored
+    # the same way as the other API-key suppliers, but nothing actually
+    # calls AliExpress until real App Key/Secret + OAuth are wired in.
+    "aliexpress": "https://developers.aliexpress.com/",
 }
 
 CJ_BASE = "https://developers.cjdropshipping.com/api2.0/v1"
 
 PLAN_ALLOWED_SUPPLIERS = {
-    "premium":       {"cj", "zendrop", "hypersku", "wiio"},
+    "premium":       {"cj", "zendrop", "hypersku", "wiio", "aliexpress"},
     "starter":       {"cj"},
     "free_trial":    set(),
     "thedersi_basic":  set(),
@@ -169,7 +176,7 @@ class CJImportIn(BaseModel):
     selling_price: Optional[float] = None   # seller sets markup; defaults to 2× cost
 
 class APIKeyConnectIn(BaseModel):
-    supplier_type: str   # zendrop / hypersku / wiio
+    supplier_type: str   # zendrop / hypersku / wiio / aliexpress
     api_key: str
 
 class ProductLinkIn(BaseModel):
@@ -539,6 +546,16 @@ def list_connections(
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "wiio"), False),
             "locked": "wiio" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
         },
+        {
+            "supplier_type": "aliexpress",
+            "name": "AliExpress",
+            "description": "The world's largest supplier catalog. Order placement is pending ExiusCart's AliExpress API approval — connect now, ordering activates once that's live.",
+            "signup_url": SUPPLIER_SIGNUP_LINKS["aliexpress"],
+            "plan_required": "premium",
+            "connected": "aliexpress" in connected,
+            "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "aliexpress"), False),
+            "locked": "aliexpress" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+        },
     ]
     return {"plan": plan, "suppliers": suppliers}
 
@@ -591,7 +608,7 @@ def connect_apikey(
     current_user: User = Depends(get_current_user),
 ):
     _shop_or_404(shop_id, current_user, db)
-    if data.supplier_type not in ("zendrop", "hypersku", "wiio"):
+    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "aliexpress"):
         raise HTTPException(status_code=400, detail="Use /connect/cj for CJ Dropshipping.")
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)

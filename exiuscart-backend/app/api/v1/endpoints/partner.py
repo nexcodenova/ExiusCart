@@ -228,7 +228,12 @@ def _do_provision(
             name=shop_name or f"{seller_name}'s Store",
             slug=_make_slug(shop_name or seller_name),
             owner_id=user.id,
-            currency="USD",
+            # TheDersi operates in LKR only — set correctly from the first
+            # moment the shop exists rather than waiting for the seller to
+            # visit Settings (which previously left new TheDersi shops
+            # showing USD everywhere until that first save).
+            currency="LKR",
+            base_currency="LKR",
             is_active=True,
         )
         db.add(shop)

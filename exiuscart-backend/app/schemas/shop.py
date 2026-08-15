@@ -53,6 +53,7 @@ class ShopUpdate(BaseModel):
 class ShopResponse(ShopBase):
     id: int
     slug: str
+    base_currency: Optional[str] = None
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
     vat_enabled: bool = False
