@@ -1543,6 +1543,34 @@ def _strip_description_images(html: Optional[str]) -> Optional[str]:
     return cleaned.strip() or None
 
 
+_DESCRIPTION_IMG_SRC_RE = re.compile(r'<img\b[^>]*\bsrc=["\']([^"\']+)["\']', re.IGNORECASE)
+
+
+def _preserve_unique_description_images(db: Session, product: Product, raw_description: Optional[str], already_saved: set) -> None:
+    """_strip_description_images removes <img> tags from the description
+    text, but some suppliers (CJ especially) embed images there that never
+    appear in the separate product photo set — size charts, feature
+    call-outs. Stripping those unconditionally would silently delete real
+    content. `already_saved` is whatever this same request is already
+    saving to the gallery (e.g. ShoppingProductExtras.images); combined
+    with the product's existing ProductImage rows, anything left over is a
+    genuinely new image and gets appended to the gallery instead of being
+    thrown away. True duplicates are correctly skipped either way."""
+    urls = _DESCRIPTION_IMG_SRC_RE.findall(raw_description or "")
+    if not urls:
+        return
+    from app.models.product_fields import ProductImage
+    existing = db.query(ProductImage).filter(ProductImage.product_id == product.id).all()
+    seen = already_saved | {img.url for img in existing}
+    next_sort = max((img.sort_order for img in existing), default=-1) + 1
+    for url in urls:
+        if url in seen:
+            continue
+        db.add(ProductImage(product_id=product.id, url=url, sort_order=next_sort, is_primary=False))
+        seen.add(url)
+        next_sort += 1
+
+
 def _truncate_description(html: Optional[str], word_limit: int) -> Optional[str]:
     """Supplier descriptions can run far longer than any plan's word limit
     (see DESCRIPTION_WORDS_DEFAULT/PREMIUM in product_fields.py — the same
@@ -1611,6 +1639,7 @@ def admin_create_shopping_product(
     db.add(product)
     db.flush()
     _apply_shopping_extras(db, product, data.model_dump(exclude_unset=True))
+    _preserve_unique_description_images(db, product, data.description, set(data.images or []))
     db.commit()
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
@@ -1629,6 +1658,7 @@ def admin_update_shopping_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     payload = data.model_dump(exclude_unset=True)
+    raw_description = payload.get("description")
     for field, value in payload.items():
         if field == "category_name":
             if value:
@@ -1642,6 +1672,8 @@ def admin_update_shopping_product(
                        "is_featured", "is_trending", "is_active"):
             setattr(product, field, value)
     _apply_shopping_extras(db, product, payload)
+    if raw_description is not None:
+        _preserve_unique_description_images(db, product, raw_description, set(payload.get("images") or []))
     db.commit()
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
@@ -1674,7 +1706,10 @@ def admin_backfill_shopping_descriptions(
     see admin_create_shopping_product, admin_update_shopping_product,
     _cj_import_one). Re-runs that same logic retroactively on whatever's
     already stored, so old rows stop showing embedded CJ images and
-    oversized text. Idempotent — already-clean descriptions are untouched.
+    oversized text. Any embedded image not already in the product's photo
+    gallery is preserved there (_preserve_unique_description_images)
+    rather than discarded. Idempotent — already-clean descriptions are
+    untouched.
     """
     shop = _get_or_create_system_shop(db, current_admin)
     products = db.query(Product).filter(Product.shop_id == shop.id).all()
@@ -1684,6 +1719,7 @@ def admin_backfill_shopping_descriptions(
             continue
         cleaned = _truncate_description(_strip_description_images(p.description), DESCRIPTION_WORDS_DEFAULT)
         if cleaned != p.description:
+            _preserve_unique_description_images(db, p, p.description, set())
             p.description = cleaned
             updated += 1
     db.commit()
@@ -2016,6 +2052,8 @@ async def _cj_import_one(db: Session, shop: Shop, token: str, cj_pid: str, price
 
     for i, url in enumerate(images[:6]):
         db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
+
+    _preserve_unique_description_images(db, product, p.get("description"), set(images[:6]))
 
     # CJ variant names are a free-text combo (e.g. "Blue Triangle-25X23CM"),
     # not a clean color field — stored as a readable label, no fabricated hex.

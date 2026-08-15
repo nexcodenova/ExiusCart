@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   ArrowLeft, Package, Tag, Download, ExternalLink, Play, ShoppingCart, Copy, Check,
   Loader2, CheckCircle2, TrendingUp, Users, Swords, Gauge, Store, Facebook, Instagram,
-  Music2, ChevronRight, Trophy, Globe2, Truck,
+  Music2, ChevronRight, ChevronLeft, Trophy, Globe2, Truck, GalleryHorizontal, X,
 } from 'lucide-react';
 import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
@@ -131,6 +131,8 @@ function ProductDetailContent() {
   const [imported, setImported] = useState<{ product_id: number } | null>(null);
   const [importError, setImportError] = useState('');
   const [activeImg, setActiveImg] = useState(0);
+  const [showLightbox, setShowLightbox] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   // Live per-country shipping cost, via CJ's freight-calculate API — only
   // available for products with a captured CJ supplier link (see
@@ -317,6 +319,12 @@ function ProductDetailContent() {
 
                     {activeImage && (
                       <div className="absolute bottom-3 right-3 flex gap-2 z-10">
+                        {gallery.length > 1 && (
+                          <button type="button" onClick={() => setShowLightbox(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/70 hover:bg-black/90 text-white text-xs font-semibold rounded-lg backdrop-blur transition">
+                            <GalleryHorizontal className="w-3.5 h-3.5" /> View all {gallery.length} photos
+                          </button>
+                        )}
                         <a href={activeImage} download target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-black/70 hover:bg-black/90 text-white text-xs font-semibold rounded-lg backdrop-blur transition">
                           <Download className="w-3.5 h-3.5" /> Download
@@ -328,12 +336,21 @@ function ProductDetailContent() {
                   {/* Thumbnail rail — vertical, to the right of the main image */}
                   {gallery.length > 1 && (
                     <div className="flex flex-col gap-2 w-16 sm:w-20 shrink-0 overflow-y-auto pr-0.5" style={{ maxHeight: '420px' }}>
-                      {gallery.slice(0, 10).map((img, i) => (
+                      {gallery.slice(0, 5).map((img, i) => (
                         <button key={i} onClick={() => setActiveImg(i)}
                           className={`relative w-full aspect-square rounded-lg overflow-hidden border-2 shrink-0 transition ${i === activeImg ? 'border-[#2563EB]' : 'border-[#E5E7EB]'}`}>
                           <Image src={img} alt="" fill className="object-cover" />
                         </button>
                       ))}
+                      {gallery.length > 5 && (
+                        <button type="button" onClick={() => setShowLightbox(true)}
+                          className="relative w-full aspect-square rounded-lg overflow-hidden border-2 border-[#E5E7EB] shrink-0 transition hover:border-[#2563EB]">
+                          <Image src={gallery[5]} alt="" fill className="object-cover" />
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xs font-bold">
+                            +{gallery.length - 5}
+                          </div>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -413,46 +430,6 @@ function ProductDetailContent() {
               </div>
             )}
 
-            {/* Description */}
-            {description && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
-                <h2 className="text-xl font-semibold text-[#111827] mb-3">Description</h2>
-                <div className="text-[#6B7280] text-[15px] leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }} />
-              </div>
-            )}
-
-            {/* Features / Specifications */}
-            {(tagList.length > 0 || specs.length > 0) && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5 space-y-5">
-                {tagList.length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-semibold text-[#111827] mb-3">Features</h2>
-                    <div className="flex flex-wrap gap-2">
-                      {tagList.map((t) => (
-                        <span key={t} className="inline-flex items-center gap-1.5 text-sm text-[#111827] bg-gray-50 border border-[#E5E7EB] px-3 py-1.5 rounded-full">
-                          <Check className="w-3.5 h-3.5 text-[#16A34A]" /> {t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {specs.length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-semibold text-[#111827] mb-3">Specifications</h2>
-                    <div className="divide-y divide-[#E5E7EB]">
-                      {specs.map(([key, value]) => (
-                        <div key={key} className="flex justify-between py-2 text-sm">
-                          <span className="text-[#6B7280]">{key}</span>
-                          <span className="text-[#111827] font-medium">{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Winning Analytics */}
             {hasWinningAnalytics && (
               <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
@@ -505,84 +482,9 @@ function ProductDetailContent() {
                 </div>
               </div>
             )}
-
-            {/* Social proof */}
-            {adPlatforms.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
-                <h2 className="text-xl font-semibold text-[#111827] mb-3">See it in real ads</h2>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {adPlatforms.map((p) => (
-                    <a key={p.key} href={p.url!} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 border border-[#E5E7EB] rounded-xl p-3 hover:border-[#2563EB]/40 transition">
-                      <div className="w-9 h-9 rounded-lg bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0"><p.icon className="w-4 h-4" /></div>
-                      <span className="text-sm font-medium text-[#111827] flex-1">{p.label}</span>
-                      <ExternalLink className="w-4 h-4 text-[#6B7280]" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Supplier Information */}
-            {supplier_name && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
-                <h2 className="text-xl font-semibold text-[#111827] mb-4 flex items-center gap-2">
-                  <Store className="w-4 h-4 text-[#2563EB]" /> Supplier Information
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm mb-4">
-                  <div><p className="text-xs text-[#6B7280]">Supplier</p><p className="text-[#111827] font-medium mt-0.5">{supplier_name}</p></div>
-                  {supplier_rating != null && <div><p className="text-xs text-[#6B7280]">Rating</p><p className="text-[#111827] font-medium mt-0.5">⭐ {supplier_rating}</p></div>}
-                  {fulfillment_rate != null && <div><p className="text-xs text-[#6B7280]">Fulfillment Rate</p><p className="text-[#111827] font-medium mt-0.5">{fulfillment_rate}%</p></div>}
-                  {processing_time && <div><p className="text-xs text-[#6B7280]">Processing Time</p><p className="text-[#111827] font-medium mt-0.5">{processing_time}</p></div>}
-                  {shipping_time && <div><p className="text-xs text-[#6B7280]">Shipping Time</p><p className="text-[#111827] font-medium mt-0.5">{shipping_time}</p></div>}
-                </div>
-                {source_url && (
-                  <a href={source_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#2563EB] border border-[#2563EB]/30 rounded-lg px-3 py-2 hover:bg-[#2563EB]/5 transition">
-                    <Store className="w-4 h-4" /> View Supplier Store
-                  </a>
-                )}
-              </div>
-            )}
-
-            {/* How to sell this guide */}
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
-              <h2 className="font-bold text-[#111827] mb-3 flex items-center gap-2"><span className="text-lg">💡</span> How to sell this product</h2>
-              <ol className="space-y-2.5 text-sm text-[#111827]">
-                <li className="flex gap-3">
-                  <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                  <span><strong>Import the product</strong> — click &quot;Import Product&quot; on the right to add it straight to your ExiusCart store.</span>
-                </li>
-                {source_url && (
-                  <li className="flex gap-3">
-                    <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                    <span><strong>Order from supplier</strong> — use &quot;View Supplier Store&quot; when a customer orders it.</span>
-                  </li>
-                )}
-                <li className="flex gap-3">
-                  <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{source_url ? 3 : 2}</span>
-                  <span><strong>Start selling</strong> — the listing is live on your store immediately, ready to take orders.</span>
-                </li>
-              </ol>
-            </div>
-
-            {/* Related Winning Products */}
-            {related.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-[#111827]">Related Winning Products</h2>
-                  <Link href="/browse" className="text-sm text-[#2563EB] font-medium flex items-center gap-0.5 hover:underline">
-                    View all <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {related.map((p) => <RelatedProductCard key={p.id} product={p} />)}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* ── Right: sticky sidebar ── */}
+          {/* ── Right: sticky sidebar — accompanies just the hero + analytics above; the rest of the page runs full width below ── */}
           <div className="space-y-4 lg:sticky lg:top-20">
             {/* Product Summary */}
             <Card>
@@ -728,12 +630,189 @@ function ProductDetailContent() {
             )}
           </div>
         </div>
+
+        {/* ── Below: full-width content, no sidebar constraint ── */}
+        <div className="space-y-4 mt-4">
+            {/* Description — text on the left, gallery photos on the right */}
+            {description && (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+                <h2 className="text-xl font-semibold text-[#111827] mb-3">Description</h2>
+                <div className={`grid gap-4 ${gallery.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                  <div>
+                    <div
+                      className={`text-[#6B7280] text-[15px] leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 ${showFullDescription ? '' : 'line-clamp-6'}`}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
+                    />
+                    <button type="button" onClick={() => setShowFullDescription((v) => !v)}
+                      className="mt-2 text-sm font-medium text-[#2563EB] hover:underline">
+                      {showFullDescription ? 'Show less' : 'View all'}
+                    </button>
+                  </div>
+                  {gallery.length > 1 && (
+                    <div className="flex flex-col gap-3">
+                      {gallery.slice(0, showFullDescription ? gallery.length : 1).map((img, i) => (
+                        <button key={i} type="button" onClick={() => { setActiveImg(i); setShowLightbox(true); }}
+                          className="relative w-full aspect-[4/3] rounded-lg overflow-hidden border border-[#E5E7EB] hover:border-[#2563EB] transition bg-gray-50">
+                          <Image src={img} alt="" fill className="object-contain" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Features / Specifications */}
+            {(tagList.length > 0 || specs.length > 0) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5 space-y-5">
+                {tagList.length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-semibold text-[#111827] mb-3">Features</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {tagList.map((t) => (
+                        <span key={t} className="inline-flex items-center gap-1.5 text-sm text-[#111827] bg-gray-50 border border-[#E5E7EB] px-3 py-1.5 rounded-full">
+                          <Check className="w-3.5 h-3.5 text-[#16A34A]" /> {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {specs.length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-semibold text-[#111827] mb-3">Specifications</h2>
+                    <div className="divide-y divide-[#E5E7EB]">
+                      {specs.map(([key, value]) => (
+                        <div key={key} className="flex justify-between py-2 text-sm">
+                          <span className="text-[#6B7280]">{key}</span>
+                          <span className="text-[#111827] font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Social proof */}
+            {adPlatforms.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+                <h2 className="text-xl font-semibold text-[#111827] mb-3">See it in real ads</h2>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {adPlatforms.map((p) => (
+                    <a key={p.key} href={p.url!} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 border border-[#E5E7EB] rounded-xl p-3 hover:border-[#2563EB]/40 transition">
+                      <div className="w-9 h-9 rounded-lg bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0"><p.icon className="w-4 h-4" /></div>
+                      <span className="text-sm font-medium text-[#111827] flex-1">{p.label}</span>
+                      <ExternalLink className="w-4 h-4 text-[#6B7280]" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Supplier Information */}
+            {supplier_name && (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+                <h2 className="text-xl font-semibold text-[#111827] mb-4 flex items-center gap-2">
+                  <Store className="w-4 h-4 text-[#2563EB]" /> Supplier Information
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm mb-4">
+                  <div><p className="text-xs text-[#6B7280]">Supplier</p><p className="text-[#111827] font-medium mt-0.5">{supplier_name}</p></div>
+                  {supplier_rating != null && <div><p className="text-xs text-[#6B7280]">Rating</p><p className="text-[#111827] font-medium mt-0.5">⭐ {supplier_rating}</p></div>}
+                  {fulfillment_rate != null && <div><p className="text-xs text-[#6B7280]">Fulfillment Rate</p><p className="text-[#111827] font-medium mt-0.5">{fulfillment_rate}%</p></div>}
+                  {processing_time && <div><p className="text-xs text-[#6B7280]">Processing Time</p><p className="text-[#111827] font-medium mt-0.5">{processing_time}</p></div>}
+                  {shipping_time && <div><p className="text-xs text-[#6B7280]">Shipping Time</p><p className="text-[#111827] font-medium mt-0.5">{shipping_time}</p></div>}
+                </div>
+                {source_url && (
+                  <a href={source_url} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#2563EB] border border-[#2563EB]/30 rounded-lg px-3 py-2 hover:bg-[#2563EB]/5 transition">
+                    <Store className="w-4 h-4" /> View Supplier Store
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* How to sell this guide */}
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+              <h2 className="font-bold text-[#111827] mb-3 flex items-center gap-2"><span className="text-lg">💡</span> How to sell this product</h2>
+              <ol className="space-y-2.5 text-sm text-[#111827]">
+                <li className="flex gap-3">
+                  <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                  <span><strong>Import the product</strong> — click &quot;Import Product&quot; on the right to add it straight to your ExiusCart store.</span>
+                </li>
+                {source_url && (
+                  <li className="flex gap-3">
+                    <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                    <span><strong>Order from supplier</strong> — use &quot;View Supplier Store&quot; when a customer orders it.</span>
+                  </li>
+                )}
+                <li className="flex gap-3">
+                  <span className="w-6 h-6 rounded-full bg-[#2563EB] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{source_url ? 3 : 2}</span>
+                  <span><strong>Start selling</strong> — the listing is live on your store immediately, ready to take orders.</span>
+                </li>
+              </ol>
+            </div>
+
+            {/* Related Winning Products */}
+            {related.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-[#111827]">Related Winning Products</h2>
+                  <Link href="/browse" className="text-sm text-[#2563EB] font-medium flex items-center gap-0.5 hover:underline">
+                    View all <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {related.map((p) => <RelatedProductCard key={p.id} product={p} />)}
+                </div>
+              </div>
+            )}
+          </div>
       </div>
 
       <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-[#6B7280]">
         © {new Date().getFullYear()} Fairam Private Limited &nbsp;·&nbsp; Prodora by ExiusCart
       </footer>
       </main>
+
+      {/* Photo lightbox — every image, full view with prev/next */}
+      {showLightbox && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" onClick={() => setShowLightbox(false)}>
+          <div className="flex items-center justify-between px-4 py-3 text-white text-sm">
+            <span>{activeImg + 1} / {gallery.length}</span>
+            <button type="button" onClick={() => setShowLightbox(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="relative flex-1 flex items-center justify-center px-4" onClick={(e) => e.stopPropagation()}>
+            {gallery.length > 1 && (
+              <button type="button" onClick={() => setActiveImg((i) => (i - 1 + gallery.length) % gallery.length)}
+                className="absolute left-2 sm:left-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition text-white z-10">
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+            <div className="relative w-full h-full max-w-4xl">
+              <Image src={gallery[activeImg]} alt={name} fill className="object-contain" sizes="100vw" />
+            </div>
+            {gallery.length > 1 && (
+              <button type="button" onClick={() => setActiveImg((i) => (i + 1) % gallery.length)}
+                className="absolute right-2 sm:right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full transition text-white z-10">
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+          </div>
+          {gallery.length > 1 && (
+            <div className="flex gap-2 px-4 py-3 overflow-x-auto" onClick={(e) => e.stopPropagation()}>
+              {gallery.map((img, i) => (
+                <button key={i} onClick={() => setActiveImg(i)}
+                  className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition ${i === activeImg ? 'border-white' : 'border-transparent opacity-60 hover:opacity-100'}`}>
+                  <Image src={img} alt="" fill className="object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

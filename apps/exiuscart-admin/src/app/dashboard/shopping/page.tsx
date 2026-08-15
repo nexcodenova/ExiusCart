@@ -1356,7 +1356,7 @@ export default function TrendingDropshippingPage() {
                       onChange={(html) => setForm((f) => ({ ...f, description: html }))}
                       placeholder="Describe the product for buyers..."
                       rows={9}
-                      maxImages={3}
+                      maxImages={5}
                       onUploadImage={async (file) => {
                         const res = await adminApi.uploadShoppingImage(file);
                         return res.data.url;
