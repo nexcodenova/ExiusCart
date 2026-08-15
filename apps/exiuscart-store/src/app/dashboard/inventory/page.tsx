@@ -32,7 +32,7 @@ export default function InventoryPage() {
   const [generatingSkus, setGeneratingSkus] = useState(false);
   const [alertDismissed, setAlertDismissed] = useState(false);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
-  const { sym } = useCurrency();
+  const { baseSym: sym } = useCurrency();
 
   const fetchInventory = useCallback(async () => {
     if (!shopId) return;

@@ -64,6 +64,7 @@ export const usersApi = {
 export const shopApi = {
   getMyShop: () => api.get('/shops/me'),
   updateShop: (data: any) => api.put('/shops/me', data),
+  getExchangeRates: (base: string) => api.get('/shops/exchange-rates', { params: { base } }),
   getAllBranches: () => api.get('/shops/'),
   createBranch: (data: any) => api.post('/shops/', data),
   updateBranch: (shopId: number, data: any) => api.put(`/shops/${shopId}`, data),

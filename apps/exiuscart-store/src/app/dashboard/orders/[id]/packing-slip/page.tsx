@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ordersApi, shopApi } from '@/lib/api';
+import { symFor } from '@/components/providers/currency-provider';
 
 export default function PackingSlipPage() {
   const params = useParams();
@@ -37,7 +38,8 @@ export default function PackingSlipPage() {
     );
   }
 
-  const sym = localStorage.getItem('currency_symbol') || 'LKR';
+  // Real shipped amount — base currency, not a display conversion.
+  const sym = symFor(shop?.base_currency || shop?.currency || 'USD');
   const fmt = (n: number) => `${sym} ${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const date = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   const isTheDersi = order.source === 'thedersi' || order.channel_meta?.channel_type === 'thedersi';

@@ -87,7 +87,9 @@ export default function QuotationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [plan, setPlan] = useState('');
-  const { sym } = useCurrency();
+  // A quotation is a formal offer — base currency, so what's quoted never
+  // drifts from what actually gets invoiced later.
+  const { baseSym: sym } = useCurrency();
 
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
@@ -255,7 +257,9 @@ function CreateQuotationModal({ shopId, plan, onClose, onCreated }: {
   onClose: () => void;
   onCreated: (id: number) => void;
 }) {
-  const { sym } = useCurrency();
+  // A quotation is a formal offer — base currency, so what's quoted never
+  // drifts from what actually gets invoiced later.
+  const { baseSym: sym } = useCurrency();
   const advanced = isAdvancedPlan(plan);
 
   // Client

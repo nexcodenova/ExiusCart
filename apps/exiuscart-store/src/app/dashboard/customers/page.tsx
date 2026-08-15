@@ -65,7 +65,9 @@ export default function CustomersPage() {
     setEditingCustomer(null);
   };
 
-  const { sym } = useCurrency();
+  // Customer spend summaries are an at-a-glance aggregate view, not a
+  // transaction record — safe to show in the free-to-change display currency.
+  const { fmt } = useCurrency();
   const vipCount = customers.filter((c) => c.isVip).length;
   const totalRevenue = customers.reduce((sum, c) => sum + c.totalSpent, 0);
 
@@ -90,8 +92,8 @@ export default function CustomersPage() {
         {[
           { label: 'Total customers', icon: Users, value: loading ? '—' : String(customers.length) },
           { label: 'VIP customers', icon: Star, value: loading ? '—' : String(vipCount) },
-          { label: 'Total revenue', icon: Wallet, value: loading ? '—' : `${totalRevenue.toLocaleString()} ${sym}` },
-          { label: 'Avg. spent', icon: TrendingUp, value: loading || customers.length === 0 ? '—' : `${Math.round(totalRevenue / customers.length).toLocaleString()} ${sym}` },
+          { label: 'Total revenue', icon: Wallet, value: loading ? '—' : fmt(totalRevenue, 0) },
+          { label: 'Avg. spent', icon: TrendingUp, value: loading || customers.length === 0 ? '—' : fmt(totalRevenue / customers.length, 0) },
         ].map(({ label, icon: Icon, value }) => (
           <div key={label} className="rounded-xl border border-border bg-card p-3 flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className="h-4 w-4 text-foreground/70" /></div>
@@ -170,7 +172,7 @@ export default function CustomersPage() {
                     </div>
                     <div className="flex gap-4 mt-2">
                       <span className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{customer.totalOrders}</span> orders</span>
-                      <span className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{customer.totalSpent.toLocaleString()} {sym}</span> spent</span>
+                      <span className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{fmt(customer.totalSpent, 0)}</span> spent</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

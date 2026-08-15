@@ -1,11 +1,19 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 
 export type Currency = string;
 
 interface CurrencyContextValue {
+  // Display currency — freely changeable, every read-only amount shown
+  // across the app is live-converted into this. Safe to flip back and
+  // forth any number of times; nothing in the database ever changes.
   currency: Currency;
+  // Base currency — fixed at shop creation (LKR always, for TheDersi
+  // sellers). This is what prices are actually entered and stored in.
+  // Price ENTRY fields should format/label against this, not `currency`,
+  // so what a seller types is never ambiguous about which currency it's in.
+  baseCurrency: Currency;
   // Changes the currency AND persists it as the shop's real currency
   // (same field Settings → General → Regional Settings edits) — use this
   // for standalone quick-changes, like the header's currency dropdown.
@@ -15,30 +23,60 @@ interface CurrencyContextValue {
   // that are just enforcing a known value (TheDersi's locked LKR), so we
   // don't fire a redundant/conflicting API call.
   syncCurrency: (c: Currency) => void;
+  // Converts a raw base-currency amount into the display currency and
+  // formats it with the right symbol — use for read-only amounts
+  // (product prices shown to browse, order totals, dashboard stats).
   fmt: (amount: number, decimals?: number) => string;
-  sym: string;
+  // Same conversion, no formatting — for callers doing their own math/layout.
+  convert: (amount: number) => number;
+  // Formats a raw amount as-is in the BASE currency, no conversion — use
+  // for price entry fields (Cost Price, Selling Price) so what the seller
+  // types is unambiguous, regardless of what display currency is active.
+  fmtBase: (amount: number, decimals?: number) => string;
+  sym: string;       // display currency's symbol
+  baseSym: string;    // base currency's symbol — use for entry field labels
+  ratesLoading: boolean;
 }
 
 const CurrencyContext = createContext<CurrencyContextValue>({
   currency: 'USD',
+  baseCurrency: 'USD',
   setCurrency: () => {},
   syncCurrency: () => {},
   fmt: (n) => `$${n}`,
+  convert: (n) => n,
+  fmtBase: (n) => `$${n}`,
   sym: '$',
+  baseSym: '$',
+  ratesLoading: false,
 });
 
 export function useCurrency() {
   return useContext(CurrencyContext);
 }
 
-function symFor(c: Currency) {
-  if (c === 'USD') return '$';
-  if (c === 'EUR') return '€';
-  if (c === 'INR') return '₹';
-  return c;
+// Same currency list Settings → Regional Settings offers. Real symbols
+// where one is commonly used; anything without a distinct glyph falls back
+// to its ISO code, which is always unambiguous on its own.
+const SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', INR: '₹', AED: 'AED', SAR: 'SAR',
+  LKR: 'Rs', EGP: 'E£', PKR: 'Rs', BDT: '৳', CNY: '¥', JPY: '¥',
+  MYR: 'RM', SGD: 'S$', CAD: 'C$', AUD: 'A$', QAR: 'QAR', KWD: 'KWD',
+  BHD: 'BHD', OMR: 'OMR', NGN: '₦', KES: 'KSh', ZAR: 'R', TRY: '₺',
+  IDR: 'Rp', PHP: '₱', THB: '฿',
+};
+
+// Exported so standalone pages that don't render under the normal dashboard
+// layout (print-only pages: invoice, packing slip, payment receipt) can
+// derive the right symbol straight from a fetched shop object without
+// needing the full provider context — same lookup, not a second copy of it.
+export function symFor(c: Currency) {
+  return SYMBOLS[c] ?? c;
 }
 
 const STORAGE_KEY = 'billing_currency';
+const RATES_CACHE_KEY_PREFIX = 'fx_rates_';
+const RATES_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12h — matches the backend's own cache window
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   // Instant paint from whatever was cached last time, while the real value
@@ -47,6 +85,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === 'undefined') return 'USD';
     return localStorage.getItem(STORAGE_KEY) || 'USD';
   });
+  const [baseCurrency, setBaseCurrency] = useState<Currency>('USD');
+  const [rates, setRates] = useState<Record<string, number> | null>(null);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const ratesBaseRef = useRef<string | null>(null);
 
   // The shop's real currency (Settings → Regional Settings) is the single
   // source of truth — fetch it on mount so every page agrees with Settings
@@ -55,13 +97,51 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     import('@/lib/api').then(({ shopApi }) => {
       shopApi.getMyShop().then((res) => {
         const c = res.data?.currency;
+        const base = res.data?.base_currency || c;
         if (c) {
           setCurrencyState(c);
           try { localStorage.setItem(STORAGE_KEY, c); } catch {}
         }
+        if (base) setBaseCurrency(base);
       }).catch(() => {});
     });
   }, []);
+
+  // Live exchange rates, fetched relative to the shop's base currency —
+  // only actually needed once `currency` (display) diverges from
+  // `baseCurrency`, but fetched eagerly so switching feels instant rather
+  // than waiting on a network round-trip at the moment of the switch.
+  useEffect(() => {
+    if (!baseCurrency) return;
+    if (ratesBaseRef.current === baseCurrency) return;
+    ratesBaseRef.current = baseCurrency;
+
+    const cacheKey = RATES_CACHE_KEY_PREFIX + baseCurrency;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.rates && Date.now() - parsed.fetchedAt < RATES_CACHE_TTL_MS) {
+          setRates(parsed.rates);
+          return;
+        }
+      }
+    } catch {}
+
+    setRatesLoading(true);
+    import('@/lib/api').then(({ shopApi }) => {
+      shopApi.getExchangeRates(baseCurrency)
+        .then((res) => {
+          const r = res.data?.rates;
+          if (r) {
+            setRates(r);
+            try { localStorage.setItem(cacheKey, JSON.stringify({ rates: r, fetchedAt: Date.now() })); } catch {}
+          }
+        })
+        .catch(() => {})
+        .finally(() => setRatesLoading(false));
+    });
+  }, [baseCurrency]);
 
   useEffect(() => {
     function onStorage(e: StorageEvent) {
@@ -86,23 +166,43 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     });
   }, [syncCurrency]);
 
-  const fmt = useCallback((amount: number, decimals = 2): string => {
-    const n = (Number.isFinite(amount) ? amount : 0).toLocaleString(undefined, {
+  const convert = useCallback((amount: number): number => {
+    const n = Number.isFinite(amount) ? amount : 0;
+    if (currency === baseCurrency || !rates) return n;
+    const rate = rates[currency];
+    return rate ? n * rate : n;
+  }, [currency, baseCurrency, rates]);
+
+  const formatWith = useCallback((n: number, c: Currency, decimals: number) => {
+    const formatted = n.toLocaleString(undefined, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     });
-    if (currency === 'USD') return `$${n}`;
-    if (currency === 'EUR') return `€${n}`;
-    if (currency === 'INR') return `₹${n}`;
-    return `${currency} ${n}`;
-  }, [currency]);
+    const s = symFor(c);
+    // Symbols like $/€/£/¥ read naturally glued to the number; multi-letter
+    // codes (AED, LKR, ISO fallbacks) read better with a space.
+    return s.length <= 1 ? `${s}${formatted}` : `${s} ${formatted}`;
+  }, []);
+
+  const fmt = useCallback((amount: number, decimals = 2): string => {
+    return formatWith(convert(amount), currency, decimals);
+  }, [convert, currency, formatWith]);
+
+  const fmtBase = useCallback((amount: number, decimals = 2): string => {
+    return formatWith(Number.isFinite(amount) ? amount : 0, baseCurrency, decimals);
+  }, [baseCurrency, formatWith]);
 
   const value: CurrencyContextValue = {
     currency,
+    baseCurrency,
     setCurrency,
     syncCurrency,
     fmt,
+    convert,
+    fmtBase,
     sym: symFor(currency),
+    baseSym: symFor(baseCurrency),
+    ratesLoading,
   };
 
   return (

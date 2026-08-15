@@ -65,8 +65,8 @@ function buildHourly(data: { hour: number; orders: number; sales: number }[]) {
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const { fmt, sym } = useCurrency();
-  const compactFmt = (n: number) => `${sym}${new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(n)}`;
+  const { fmt, sym, convert } = useCurrency();
+  const compactFmt = (n: number) => `${sym}${new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(convert(n))}`;
 
   useEffect(() => {
     const shopId = localStorage.getItem('shop_id');

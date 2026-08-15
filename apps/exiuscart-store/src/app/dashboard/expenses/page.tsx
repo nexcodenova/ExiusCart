@@ -24,7 +24,9 @@ export default function ExpensesPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [formData, setFormData] = useState({ category: EXPENSE_CATEGORIES[0], description: '', amount: '', date: new Date().toISOString().split('T')[0], paymentMethod: 'cash' });
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
-  const { fmt, sym } = useCurrency();
+  // Expenses are real, already-spent money — base currency throughout,
+  // both for entry and for the list, never a display conversion.
+  const { fmtBase: fmt, baseSym: sym } = useCurrency();
 
   // Product picker state for "Supplies / Product" category
   const [prodList, setProdList] = useState<{ id: string; name: string; cost_price: number }[]>([]);

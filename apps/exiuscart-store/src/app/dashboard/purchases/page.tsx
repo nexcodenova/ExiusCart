@@ -48,7 +48,8 @@ export default function PurchasesPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
-  const { sym } = useCurrency();
+  // Purchase orders are real committed spend — base currency, not display.
+  const { baseSym: sym } = useCurrency();
 
   // New PO form
   const [poForm, setPoForm] = useState({ supplier_id: '', notes: '' });

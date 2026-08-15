@@ -79,7 +79,8 @@ export default function ReservationsPage() {
   const [fulfillTarget, setFulfillTarget] = useState<Reservation | null>(null);
   const [qrTarget, setQrTarget] = useState<Reservation | null>(null);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
-  const { sym } = useCurrency();
+  // A reservation deposit is real committed money — base currency.
+  const { baseSym: sym } = useCurrency();
 
   const fetchAll = useCallback(async () => {
     if (!shopId) return;

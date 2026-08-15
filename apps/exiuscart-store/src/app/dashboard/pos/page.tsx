@@ -82,7 +82,11 @@ interface ZReport {
 }
 
 export default function POSPage() {
-  const { sym } = useCurrency();
+  // POS is a real cash register — every amount shown/charged here must be
+  // the actual base-currency amount, never a converted display preview
+  // (aliasing baseSym as `sym` means every existing usage below is
+  // automatically correct without touching ~35 individual lines).
+  const { baseSym: sym } = useCurrency();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');

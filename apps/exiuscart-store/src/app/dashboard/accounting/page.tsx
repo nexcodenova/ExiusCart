@@ -87,7 +87,9 @@ export default function AccountingPage() {
   const vatPie = [{ name: 'Net Revenue', value: Math.round(netRevenue) }, { name: 'VAT', value: Math.round(outputVat) }];
   const VAT_COLORS = ['#6366f1', '#f59e0b'];
 
-  const { fmt: fmtCurrency, sym } = useCurrency();
+  // Accounting reflects real bookkeeping — figures stay in the shop's
+  // actual base currency, never a fluctuating display conversion.
+  const { fmtBase: fmtCurrency, baseSym: sym } = useCurrency();
   const fmt = (n: number) => fmtCurrency(n);
 
   // Load cash flow data when tab is opened

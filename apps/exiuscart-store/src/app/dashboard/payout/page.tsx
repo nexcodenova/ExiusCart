@@ -63,7 +63,8 @@ function fmtNum(n: number) {
 function POSEarningsPanel({ shopId }: { shopId: string }) {
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const { fmt, sym } = useCurrency();
+  // Real money being paid out — base currency, not a display conversion.
+  const { fmtBase: fmt, baseSym: sym } = useCurrency();
 
   useEffect(() => {
     if (!shopId) return;

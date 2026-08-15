@@ -44,7 +44,8 @@ export default function RecurringInvoicesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
-  const { fmt, sym } = useCurrency();
+  // Recurring invoices are real billing records — base currency.
+  const { fmtBase: fmt, baseSym: sym } = useCurrency();
 
   const load = useCallback(async () => {
     if (!shopId) return;
@@ -198,7 +199,7 @@ export default function RecurringInvoicesPage() {
 
 
 function CreateRecurringModal({ shopId, onClose, onCreated }: { shopId: string; onClose: () => void; onCreated: () => void }) {
-  const { sym } = useCurrency();
+  const { baseSym: sym } = useCurrency();
   const [form, setForm] = useState({
     customer_name: '', customer_email: '', customer_phone: '',
     frequency: 'monthly', start_date: new Date().toISOString().split('T')[0],

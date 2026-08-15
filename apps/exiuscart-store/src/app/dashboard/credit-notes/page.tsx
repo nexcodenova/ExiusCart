@@ -36,7 +36,8 @@ export default function CreditNotesPage() {
   const [form, setForm] = useState({ order_id: '', reason: '', amount: '', notes: '' });
   const [error, setError] = useState('');
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
-  const { sym, fmt } = useCurrency();
+  // A credit note is a real refund/credit record — base currency.
+  const { baseSym: sym, fmtBase: fmt } = useCurrency();
 
   const load = useCallback(async () => {
     if (!shopId) return;

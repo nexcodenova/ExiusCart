@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ordersApi, shopApi, channelsApi } from '@/lib/api';
+import { symFor } from '@/components/providers/currency-provider';
 
 // TheDersi's own real company info (Company Registration No. PV 00362065,
 // registered office in Kinniya, Sri Lanka) and app-download QR — same
@@ -57,7 +58,10 @@ export default function InvoicePage() {
     );
   }
 
-  const sym = localStorage.getItem('currency_symbol') || 'LKR';
+  // A printed invoice is a real financial record — it must show the actual
+  // charged amount (the shop's base currency), never a live-converted
+  // preview that would drift over time relative to what was really paid.
+  const sym = symFor(shop?.base_currency || shop?.currency || 'USD');
   const fmt = (n: number) => `${sym} ${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const date = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const paymentMethod = PaymentMethodLabel(order.notes);
