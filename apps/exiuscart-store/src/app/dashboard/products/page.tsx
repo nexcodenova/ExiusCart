@@ -19,6 +19,14 @@ import { DropshipSupplierSection } from '@/components/dropship-supplier-section'
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectValue, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 const CHANNEL_LABELS: Record<string, string> = {
   thedersi: 'TheDersi',
@@ -101,7 +109,7 @@ interface QuantityTierValue {
 }
 
 export default function ProductsPage() {
-  const { sym } = useCurrency();
+  const { fmt, fmtBase } = useCurrency();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
@@ -293,7 +301,8 @@ export default function ProductsPage() {
         name: p.name,
         sku: p.sku,
         barcode: (p as any).barcode,
-        price: `${p.sellingPrice} ${sym}`,
+        // Barcode price tag — real charged amount, not a display conversion.
+        price: fmtBase(p.sellingPrice),
       }));
     if (!items.length) return;
     const data = encodeURIComponent(JSON.stringify(items));
@@ -677,13 +686,13 @@ export default function ProductsPage() {
                           );
                         })()}
                       </td>
-                      <td className="p-4 text-right"><span className="text-sm text-muted-foreground">{product.costPrice} {sym}</span></td>
-                      <td className="p-4 text-right"><span className="text-sm font-medium text-foreground">{product.sellingPrice} {sym}</span></td>
+                      <td className="p-4 text-right"><span className="text-sm text-muted-foreground">{fmt(product.costPrice)}</span></td>
+                      <td className="p-4 text-right"><span className="text-sm font-medium text-foreground">{fmt(product.sellingPrice)}</span></td>
                       <td className="p-4 text-right">
                         {perfData[product.id] ? (
                           <div>
-                            <span className="text-sm font-medium text-foreground">{sym}{Math.round(perfData[product.id].revenue).toLocaleString()}</span>
-                            {perfData[product.id].revenue_30d > 0 && <p className="text-xs text-muted-foreground">{sym}{Math.round(perfData[product.id].revenue_30d).toLocaleString()} /30d</p>}
+                            <span className="text-sm font-medium text-foreground">{fmt(perfData[product.id].revenue, 0)}</span>
+                            {perfData[product.id].revenue_30d > 0 && <p className="text-xs text-muted-foreground">{fmt(perfData[product.id].revenue_30d, 0)} /30d</p>}
                           </div>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </td>
@@ -713,7 +722,9 @@ export default function ProductsPage() {
                                   name: product.name,
                                   sku: product.sku,
                                   barcode: (product as any).barcode,
-                                  price: `${product.sellingPrice} ${sym}`,
+                                  // A printed barcode tag is a real price sticker — it must show
+                                  // the actual charged amount, not a currency-preview conversion.
+                                  price: fmtBase(product.sellingPrice),
                                 }]));
                                 window.open(`/dashboard/products/barcode?data=${data}`, '_blank');
                               }}
@@ -775,12 +786,12 @@ export default function ProductsPage() {
                         );
                       })()}
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <span className="text-sm font-semibold text-foreground">{product.sellingPrice} {sym}</span>
+                        <span className="text-sm font-semibold text-foreground">{fmt(product.sellingPrice)}</span>
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${product.stock === 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400' : product.stock <= product.lowStockAlert ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400' : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>
                           {product.stock} in stock
                         </span>
                         {perfData[product.id]?.revenue > 0 && (
-                          <span className="text-xs text-muted-foreground">{sym}{Math.round(perfData[product.id].revenue).toLocaleString()} earned</span>
+                          <span className="text-xs text-muted-foreground">{fmt(perfData[product.id].revenue, 0)} earned</span>
                         )}
                         {perfData[product.id]?.margin_pct > 0 && (
                           <span className={`text-xs font-semibold ${perfData[product.id].margin_pct >= 40 ? 'text-green-600 dark:text-green-400' : 'text-amber-500'}`}>{perfData[product.id].margin_pct}% margin</span>
@@ -887,7 +898,7 @@ export default function ProductsPage() {
                           <tr key={i} className="hover:bg-muted/30">
                             <td className="px-3 py-2 text-foreground">{row.name}</td>
                             <td className="px-3 py-2 text-muted-foreground">{row.sku || '—'}</td>
-                            <td className="px-3 py-2 text-foreground">{row.price} {sym}</td>
+                            <td className="px-3 py-2 text-foreground">{fmtBase(row.price)}</td>
                             <td className="px-3 py-2 text-foreground">{row.quantity}</td>
                             <td className="px-3 py-2 text-muted-foreground">{row.category || '—'}</td>
                           </tr>
@@ -963,7 +974,10 @@ function ProductModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { sym } = useCurrency();
+  // Price ENTRY always happens in the shop's fixed base currency (baseSym)
+  // — never the freely-changeable display currency (sym) — so what a
+  // seller types is never ambiguous about which currency it's actually in.
+  const { baseSym } = useCurrency();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const p = product as any;
@@ -1130,7 +1144,7 @@ function ProductModal({
 
   const [imageLimit, setImageLimit] = useState(6);
   const [descriptionWordLimit, setDescriptionWordLimit] = useState(200);
-  const [descriptionImageLimit, setDescriptionImageLimit] = useState(3);
+  const [descriptionImageLimit, setDescriptionImageLimit] = useState(5);
   const variantImageCount = variants.filter(v => v.image_url && v.image_url !== '').length;
   const totalImages = savedImages.length + pendingImages.length + variantImageCount;
   const descriptionWordCount = countWords(formData.description);
@@ -1160,7 +1174,7 @@ function ProductModal({
       .then((res) => {
         setImageLimit(res.data?.limit ?? 6);
         setDescriptionWordLimit(res.data?.description_word_limit ?? 200);
-        setDescriptionImageLimit(res.data?.description_image_limit ?? 3);
+        setDescriptionImageLimit(res.data?.description_image_limit ?? 5);
       })
       .catch(() => {});
 
@@ -1691,22 +1705,22 @@ function ProductModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="relative bg-card rounded-xl border border-border w-full max-w-7xl max-h-[94vh] flex flex-col">
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-7xl max-h-[94vh] p-0 flex flex-col" showCloseButton={false}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-          <h2 className="text-lg font-semibold text-foreground">{product ? 'Edit Product' : 'Add Product'}</h2>
+        <DialogHeader className="flex-row items-center justify-between px-6 py-4 space-y-0">
+          <DialogTitle>{product ? 'Edit Product' : 'Add Product'}</DialogTitle>
           <button type="button" onClick={onClose} aria-label="Close" className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition">
             <X className="w-5 h-5" />
           </button>
-        </div>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-          <div className="grid lg:grid-cols-[1fr_460px] min-h-0">
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="grid lg:grid-cols-[1fr_460px] flex-1 min-h-0">
 
-            {/* ── LEFT: Content ──────────────────────────────────────── */}
-            <div className="p-6 space-y-6 border-r border-border">
+            {/* ── LEFT: Content — scrolls independently from the channels panel ── */}
+            <div className="p-6 space-y-6 border-r border-border overflow-y-auto min-h-0">
 
               {/* Alerts */}
               {error && (
@@ -1729,21 +1743,21 @@ function ProductModal({
 
               {/* Product Name */}
               <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Product Name *</label>
-                <input
+                <Label className="font-medium text-foreground mb-1.5 block">Product Name *</Label>
+                <Input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                   placeholder="e.g. iPhone 15 Pro Max"
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-base"
+                  className="text-base"
                 />
               </div>
 
               {/* Description */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-sm text-muted-foreground">Description</label>
+                  <Label>Description</Label>
                   <span className={`text-xs ${descriptionWordCount > descriptionWordLimit ? 'text-destructive font-medium' : 'text-muted-foreground/70'}`}>
                     {descriptionWordCount}/{descriptionWordLimit} words
                   </span>
@@ -1761,14 +1775,14 @@ function ProductModal({
               {/* Images */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm text-muted-foreground">
+                  <Label>
                     Product Images
                     <span className="ml-1.5 text-xs font-normal">({totalImages}/{imageLimit} total incl. variants)</span>
-                  </label>
+                  </Label>
                   {totalImages < imageLimit && (
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()} className="h-auto p-0 text-xs text-primary hover:text-primary/80 hover:bg-transparent">
                       <Upload className="w-3.5 h-3.5" /> Upload
-                    </button>
+                    </Button>
                   )}
                 </div>
                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={handleFileSelect} />
@@ -1820,7 +1834,7 @@ function ProductModal({
                   (no longer tied to the removed generic category picker) */}
               {product?.id && (
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Size Chart <span className="text-muted-foreground/60">(optional)</span></label>
+                  <Label className="font-medium text-foreground mb-1.5 block">Size Chart <span className="text-muted-foreground/60">(optional)</span></Label>
                   <div className="flex items-center gap-3">
                     {sizeChartUrl ? (
                       <img src={sizeChartUrl} alt="Size chart" className="w-20 h-20 rounded-lg object-cover border border-border shrink-0" />
@@ -1864,9 +1878,9 @@ function ProductModal({
                   TikTok, so views count there. */}
               {product?.id && (
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  <Label className="font-medium text-foreground mb-1.5 block">
                     Videos <span className="text-muted-foreground/60">(optional — YouTube or TikTok links, up to 6)</span>
-                  </label>
+                  </Label>
                   {savedVideos.length > 0 && (
                     <div className="grid grid-cols-6 gap-2 mb-2">
                       {savedVideos.map((v) => (
@@ -1895,14 +1909,13 @@ function ProductModal({
                   )}
                   {savedVideos.length < 6 && (
                     <div className="flex gap-2">
-                      <input type="text" value={newVideoUrl} onChange={(e) => setNewVideoUrl(e.target.value)}
-                        placeholder="Paste a YouTube or TikTok video link"
-                        className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
-                      <button type="button" onClick={handleAddVideo} disabled={addingVideo || !newVideoUrl.trim()}
-                        className="px-3 py-2 text-sm font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition disabled:opacity-50 whitespace-nowrap flex items-center gap-1.5">
+                      <Input type="text" value={newVideoUrl} onChange={(e) => setNewVideoUrl(e.target.value)}
+                        placeholder="Paste a YouTube or TikTok video link" className="flex-1" />
+                      <Button type="button" variant="outline" onClick={handleAddVideo} disabled={addingVideo || !newVideoUrl.trim()}
+                        className="whitespace-nowrap">
                         {addingVideo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                         Add
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {videoError && <p className="text-xs text-destructive mt-1.5">{videoError}</p>}
@@ -1913,23 +1926,24 @@ function ProductModal({
               {/* SKU + Barcode */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">SKU</label>
+                  <Label className="mb-1.5 block">SKU</Label>
                   <div className="flex gap-2">
-                    <input
+                    <Input
                       type="text"
                       value={formData.sku}
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                       placeholder="IPH15PM-256"
                       disabled={formData.isDropshipImported}
                       title={formData.isDropshipImported ? "Imported from a supplier — locked to keep the link back to the source" : undefined}
-                      className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1"
                     />
                     {/* Imported (CJ/Prodora) products keep their supplier SKU —
                         generating a new one here would sever the traceability
                         back to the source, so the button stays visible (so it
                         doesn't look missing) but disabled rather than hidden. */}
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
                       disabled={generatingSku || formData.isDropshipImported}
                       title={formData.isDropshipImported ? "Locked — this SKU came from the supplier import" : undefined}
                       onClick={async () => {
@@ -1945,11 +1959,11 @@ function ProductModal({
                           setGeneratingSku(false);
                         }
                       }}
-                      className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-muted disabled:hover:border-border disabled:hover:text-muted-foreground inline-flex items-center gap-1.5"
+                      className="whitespace-nowrap"
                     >
                       {generatingSku && <Loader2 className="w-3 h-3 animate-spin" />}
                       Generate
-                    </button>
+                    </Button>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {formData.isDropshipImported
@@ -1958,12 +1972,12 @@ function ProductModal({
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">Barcode</label>
+                  <Label className="mb-1.5 block">Barcode</Label>
                   <div className="flex gap-2">
-                    <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} placeholder="Scan or type" className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-                    <button type="button" onClick={() => setFormData({ ...formData, barcode: generateBarcode() })} className="px-3 py-2 text-xs font-medium bg-muted border border-border rounded-lg hover:bg-primary/10 hover:border-primary text-muted-foreground hover:text-primary transition whitespace-nowrap">
+                    <Input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} placeholder="Scan or type" className="flex-1" />
+                    <Button type="button" variant="outline" onClick={() => setFormData({ ...formData, barcode: generateBarcode() })} className="whitespace-nowrap">
                       Generate
-                    </button>
+                    </Button>
                   </div>
                   {formData.barcode && (
                     <div className="mt-2 bg-white rounded-lg p-2 border border-border">
@@ -1980,9 +1994,9 @@ function ProductModal({
                     <p className="text-sm font-medium text-foreground">Sizes & Colors</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Variants with individual stock counts</p>
                   </div>
-                  <button type="button" onClick={() => setVariants((v) => [...v, emptyVariant()])} className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition font-medium">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setVariants((v) => [...v, emptyVariant()])} className="h-auto p-0 text-xs text-primary hover:text-primary/80 hover:bg-transparent font-medium">
                     <Plus className="w-3.5 h-3.5" /> Add Variant
-                  </button>
+                  </Button>
                 </div>
                 {variants.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-3 bg-muted/30 rounded-lg">No variants — click "Add Variant" to add sizes and colors.</p>
@@ -2104,19 +2118,19 @@ function ProductModal({
                 <p className="text-sm font-medium text-foreground">Pricing</p>
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Cost Price ({sym}) *</label>
-                    <input type="number" step="0.01" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                    <Label className="text-xs mb-1 block">Cost Price ({baseSym}) *</Label>
+                    <Input type="number" step="0.01" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })} required min="0" />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Selling Price ({sym}) *</label>
-                    <input type="number" step="0.01" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                    <Label className="text-xs mb-1 block">Selling Price ({baseSym}) *</Label>
+                    <Input type="number" step="0.01" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required min="0" />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">
-                      Original Price ({sym})
+                    <Label className="text-xs mb-1 block">
+                      Original Price ({baseSym})
                       <span className="ml-1 font-normal opacity-60">— if on offer</span>
-                    </label>
-                    <input type="number" step="0.01" value={formData.compareAtPrice || ''} onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })} min="0" placeholder={formData.sellingPrice > 0 ? String(Math.round(formData.sellingPrice * 1.3)) : ''} className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                    </Label>
+                    <Input type="number" step="0.01" value={formData.compareAtPrice || ''} onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })} min="0" placeholder={formData.sellingPrice > 0 ? String(Math.round(formData.sellingPrice * 1.3)) : ''} />
                   </div>
                 </div>
 
@@ -2126,7 +2140,7 @@ function ProductModal({
                     <div className="flex items-center gap-2 text-xs">
                       <span className="text-muted-foreground">Profit</span>
                       <span className="font-semibold text-green-600 dark:text-green-400">
-                        {formData.sellingPrice - formData.costPrice} {sym} ({Math.round(((formData.sellingPrice - formData.costPrice) / formData.costPrice) * 100)}%)
+                        {formData.sellingPrice - formData.costPrice} {baseSym} ({Math.round(((formData.sellingPrice - formData.costPrice) / formData.costPrice) * 100)}%)
                       </span>
                     </div>
                     {formData.compareAtPrice > formData.sellingPrice && (
@@ -2148,22 +2162,22 @@ function ProductModal({
                 <p className="text-sm font-medium text-foreground">Inventory</p>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">
+                    <Label className="text-xs mb-1 block">
                       Stock Quantity
                       {variants.length > 0 && <span className="ml-2 text-primary font-semibold">= {variants.reduce((s, v) => s + v.quantity, 0)} (from variants)</span>}
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="number"
                       value={variants.length > 0 ? variants.reduce((s, v) => s + v.quantity, 0) : formData.stock}
                       onChange={(e) => { if (variants.length === 0) setFormData({ ...formData, stock: Number(e.target.value) }); }}
                       readOnly={variants.length > 0}
                       min="0"
-                      className={`w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground ${variants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      className={variants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Low Stock Alert</label>
-                    <input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
+                    <Label className="text-xs mb-1 block">Low Stock Alert</Label>
+                    <Input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" />
                   </div>
                 </div>
               </div>
@@ -2172,25 +2186,49 @@ function ProductModal({
 
               {/* Supplier */}
               <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Supplier</label>
-                <select
-                  value={formData.supplierId ?? ''}
-                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value ? Number(e.target.value) : null })}
-                  className="w-full px-3 py-2.5 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+                <Label className="font-medium text-foreground mb-1.5 block">Supplier</Label>
+                <Select
+                  value={formData.supplierId != null ? String(formData.supplierId) : '__none'}
+                  onValueChange={(v) => setFormData({ ...formData, supplierId: v === '__none' ? null : Number(v) })}
                 >
-                  <option value="">No supplier</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">No supplier</SelectItem>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {suppliers.length === 0 && (
                   <p className="text-xs text-muted-foreground mt-1.5">No suppliers yet — add them in <strong>Suppliers</strong>.</p>
                 )}
               </div>
+
+              {/* ── Bundle / Kit ── */}
+              <div className="border-t border-border -mx-6 px-6 pt-6">
+                <BundleBuilder
+                  shopId={shopId}
+                  enabled={isBundleEnabled}
+                  onToggle={setIsBundleEnabled}
+                  components={bundleComponents}
+                  onChange={setBundleComponents}
+                  availableProducts={allProducts.map(p => ({ id: p.id, name: p.name, sku: p.sku }))}
+                  currentProductId={product?.id}
+                />
+              </div>
+
+              {/* ── Dropship Supplier — only for existing (saved) products ── */}
+              {product?.id && (
+                <div className="border-t border-border -mx-6 px-6 pt-6">
+                  <DropshipSupplierSection shopId={shopId} productId={product.id} />
+                </div>
+              )}
             </div>
 
-            {/* ── RIGHT: Sidebar ─────────────────────────────────────── */}
-            <div className="p-6 space-y-6 bg-muted/20">
+            {/* ── RIGHT: Sidebar — scrolls independently from the content on the left ── */}
+            <div className="p-6 space-y-6 bg-muted/20 overflow-y-auto min-h-0">
 
               {/* ── Sales Channels ───────────────────────────────────── */}
               <div className="space-y-2.5">
@@ -2214,32 +2252,15 @@ function ProductModal({
                         <p className="text-xs text-muted-foreground">{posEnabled ? 'Available in-store' : 'Not available in-store'}</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setPosEnabled(!posEnabled)}
-                      className="shrink-0"
-                      aria-label="Toggle POS availability"
-                    >
-                      {posEnabled
-                        ? <ToggleRight className="w-9 h-9 text-primary" />
-                        : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
-                    </button>
+                    <Switch checked={posEnabled} onCheckedChange={setPosEnabled} aria-label="Toggle POS availability" className="shrink-0" />
                   </div>
                   {posEnabled && (
-                    <div className="border-t border-border p-3">
-                      <button
-                        type="button"
-                        onClick={() => setPosIsGift(!posIsGift)}
-                        className="w-full flex items-center justify-between gap-3"
-                      >
-                        <div className="text-left">
-                          <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
-                          <p className="text-xs text-muted-foreground">{posIsGift ? 'Given as a free gift in-store' : 'Off — this is a regular product'}</p>
-                        </div>
-                        {posIsGift
-                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
-                      </button>
+                    <div className="border-t border-border p-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
+                        <p className="text-xs text-muted-foreground">{posIsGift ? 'Given as a free gift in-store' : 'Off — this is a regular product'}</p>
+                      </div>
+                      <Switch checked={posIsGift} onCheckedChange={setPosIsGift} aria-label="Toggle POS gift item" className="shrink-0" />
                     </div>
                   )}
                 </div>
@@ -2259,16 +2280,12 @@ function ProductModal({
                       </div>
                     </div>
                     {theDersiConnection ? (
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, listOnMarketplace: !formData.listOnMarketplace })}
-                        className="shrink-0"
+                      <Switch
+                        checked={formData.listOnMarketplace}
+                        onCheckedChange={(v) => setFormData({ ...formData, listOnMarketplace: v })}
                         aria-label="Toggle TheDersi listing"
-                      >
-                        {formData.listOnMarketplace
-                          ? <ToggleRight className="w-9 h-9 text-primary" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
-                      </button>
+                        className="shrink-0"
+                      />
                     ) : (
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
                     )}
@@ -2276,24 +2293,21 @@ function ProductModal({
 
                   {/* Free Gift item — only relevant for TheDersi-listed products */}
                   {theDersiConnection && formData.listOnMarketplace && (
-                    <div className="border-t border-border p-3">
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, isGift: !formData.isGift })}
-                        className="w-full flex items-center justify-between gap-3"
-                      >
-                        <div className="text-left">
-                          <p className="text-sm font-medium text-foreground">Is this a free gift item?</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formData.isGift
-                              ? 'Offered as a free gift option at TheDersi checkout — not shown as a normal listing'
-                              : 'Off — this is a regular product'}
-                          </p>
-                        </div>
-                        {formData.isGift
-                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
-                      </button>
+                    <div className="border-t border-border p-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Is this a free gift item?</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formData.isGift
+                            ? 'Offered as a free gift option at TheDersi checkout — not shown as a normal listing'
+                            : 'Off — this is a regular product'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={formData.isGift}
+                        onCheckedChange={(v) => setFormData({ ...formData, isGift: v })}
+                        aria-label="Toggle TheDersi free gift item"
+                        className="shrink-0"
+                      />
                     </div>
                   )}
 
@@ -2325,10 +2339,10 @@ function ProductModal({
                       change on their end without any change on ours. */}
                   {theDersiConnection && formData.listOnMarketplace && (loadingFieldDefs || theDersiFieldDefs.length > 0) && (
                     <div className="border-t border-border p-3">
-                      <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                      <Label className="font-medium text-foreground mb-2 flex items-center gap-2">
                         Product Details
                         {loadingFieldDefs && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-                      </label>
+                      </Label>
                       {!loadingFieldDefs && (
                         <>
                           <p className="text-xs text-muted-foreground mb-2.5">
@@ -2337,12 +2351,11 @@ function ProductModal({
                           <div className="grid grid-cols-2 gap-2.5">
                             {theDersiFieldDefs.map((f) => (
                               <div key={f.key}>
-                                <label className="text-xs text-muted-foreground mb-1 block">{f.label}</label>
-                                <input
+                                <Label className="text-xs mb-1 block">{f.label}</Label>
+                                <Input
                                   type="text"
                                   value={theDersiFieldValues[f.key] ?? ''}
                                   onChange={(e) => setTheDersiFieldValues({ ...theDersiFieldValues, [f.key]: e.target.value })}
-                                  className="w-full px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
                                   placeholder={f.label}
                                 />
                               </div>
@@ -2369,40 +2382,35 @@ function ProductModal({
                       </div>
                     </div>
                     {darazConnection ? (
-                      <button
-                        type="button"
-                        onClick={() => setOtherChannelEnabled('daraz', !otherChannels.daraz.enabled)}
-                        className="shrink-0"
+                      <Switch
+                        checked={otherChannels.daraz.enabled}
+                        onCheckedChange={(v) => setOtherChannelEnabled('daraz', v)}
                         aria-label="Toggle Daraz listing"
-                      >
-                        {otherChannels.daraz.enabled
-                          ? <ToggleRight className="w-9 h-9 text-primary" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
-                      </button>
+                        className="shrink-0"
+                      />
                     ) : (
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
                     )}
                   </div>
                   {darazConnection && otherChannels.daraz.enabled && (
                     <div className="border-t border-border p-3 space-y-3">
-                      <button
-                        type="button"
-                        onClick={() => setOtherChannelGift('daraz', !otherChannels.daraz.isGift)}
-                        className="w-full flex items-center justify-between gap-3"
-                      >
-                        <div className="text-left">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
                           <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
                           <p className="text-xs text-muted-foreground">{otherChannels.daraz.isGift ? 'Listed as a gift on Daraz' : 'Off — this is a regular product'}</p>
                         </div>
-                        {otherChannels.daraz.isGift
-                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
-                      </button>
+                        <Switch
+                          checked={otherChannels.daraz.isGift}
+                          onCheckedChange={(v) => setOtherChannelGift('daraz', v)}
+                          aria-label="Toggle Daraz gift item"
+                          className="shrink-0"
+                        />
+                      </div>
                       <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                        <Label className="font-medium text-foreground mb-1.5 flex items-center gap-2">
                           Daraz Category
                           {loadingDarazCategories && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-                        </label>
+                        </Label>
                         <button
                           type="button"
                           onClick={() => setActiveCategoryPicker('daraz')}
@@ -2482,16 +2490,12 @@ function ProductModal({
                       </div>
                     </div>
                     {ebayConnection ? (
-                      <button
-                        type="button"
-                        onClick={() => setOtherChannelEnabled('ebay', !otherChannels.ebay.enabled)}
-                        className="shrink-0"
+                      <Switch
+                        checked={otherChannels.ebay.enabled}
+                        onCheckedChange={(v) => setOtherChannelEnabled('ebay', v)}
                         aria-label="Toggle eBay listing"
-                      >
-                        {otherChannels.ebay.enabled
-                          ? <ToggleRight className="w-9 h-9 text-primary" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
-                      </button>
+                        className="shrink-0"
+                      />
                     ) : (
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
                     )}
@@ -2499,10 +2503,10 @@ function ProductModal({
                   {ebayConnection && otherChannels.ebay.enabled && (
                     <div className="border-t border-border p-3 space-y-3">
                       <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                        <Label className="font-medium text-foreground mb-1.5 flex items-center gap-2">
                           eBay Category
                           {loadingEbayCategories && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-                        </label>
+                        </Label>
                         <button
                           type="button"
                           onClick={() => setActiveCategoryPicker('ebay')}
@@ -2573,16 +2577,12 @@ function ProductModal({
                       </div>
                     </div>
                     {noonConnection ? (
-                      <button
-                        type="button"
-                        onClick={() => setNoonEnabled(!noonEnabled)}
-                        className="shrink-0"
+                      <Switch
+                        checked={noonEnabled}
+                        onCheckedChange={setNoonEnabled}
                         aria-label="Toggle Noon listing"
-                      >
-                        {noonEnabled
-                          ? <ToggleRight className="w-9 h-9 text-primary" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
-                      </button>
+                        className="shrink-0"
+                      />
                     ) : (
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
                     )}
@@ -2591,19 +2591,22 @@ function ProductModal({
                     <div className="border-t border-border p-3 space-y-3">
                       <div className="grid grid-cols-[1fr_auto] gap-2">
                         <div>
-                          <label className="text-xs font-medium text-foreground mb-1 block">Brand *</label>
-                          <input type="text" value={noonBrand} onChange={(e) => setNoonBrand(e.target.value)}
-                            placeholder="Brand name shown on Noon"
-                            className="w-full px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                          <Label className="text-xs font-medium text-foreground mb-1 block">Brand *</Label>
+                          <Input type="text" value={noonBrand} onChange={(e) => setNoonBrand(e.target.value)}
+                            placeholder="Brand name shown on Noon" />
                         </div>
                         <div>
-                          <label className="text-xs font-medium text-foreground mb-1 block">Country</label>
-                          <select value={noonCountry} onChange={(e) => setNoonCountry(e.target.value as 'ae' | 'sa' | 'eg')}
-                            className="px-2.5 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none">
-                            <option value="ae">UAE</option>
-                            <option value="sa">Saudi Arabia</option>
-                            <option value="eg">Egypt</option>
-                          </select>
+                          <Label className="text-xs font-medium text-foreground mb-1 block">Country</Label>
+                          <Select value={noonCountry} onValueChange={(v) => setNoonCountry(v as 'ae' | 'sa' | 'eg')}>
+                            <SelectTrigger className="w-auto">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="ae">UAE</SelectItem>
+                              <SelectItem value="sa">Saudi Arabia</SelectItem>
+                              <SelectItem value="eg">Egypt</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
 
@@ -2659,35 +2662,28 @@ function ProductModal({
                       </div>
                     </div>
                     {shopifyConnected ? (
-                      <button
-                        type="button"
-                        onClick={() => setOtherChannelEnabled('shopify', !otherChannels.shopify.enabled)}
-                        className="shrink-0"
+                      <Switch
+                        checked={otherChannels.shopify.enabled}
+                        onCheckedChange={(v) => setOtherChannelEnabled('shopify', v)}
                         aria-label="Toggle Shopify listing"
-                      >
-                        {otherChannels.shopify.enabled
-                          ? <ToggleRight className="w-9 h-9 text-primary" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
-                      </button>
+                        className="shrink-0"
+                      />
                     ) : (
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
                     )}
                   </div>
                   {shopifyConnected && otherChannels.shopify.enabled && (
-                    <div className="border-t border-border p-3">
-                      <button
-                        type="button"
-                        onClick={() => setOtherChannelGift('shopify', !otherChannels.shopify.isGift)}
-                        className="w-full flex items-center justify-between gap-3"
-                      >
-                        <div className="text-left">
-                          <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
-                          <p className="text-xs text-muted-foreground">{otherChannels.shopify.isGift ? 'Listed as a gift on Shopify' : 'Off — this is a regular product'}</p>
-                        </div>
-                        {otherChannels.shopify.isGift
-                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
-                      </button>
+                    <div className="border-t border-border p-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
+                        <p className="text-xs text-muted-foreground">{otherChannels.shopify.isGift ? 'Listed as a gift on Shopify' : 'Off — this is a regular product'}</p>
+                      </div>
+                      <Switch
+                        checked={otherChannels.shopify.isGift}
+                        onCheckedChange={(v) => setOtherChannelGift('shopify', v)}
+                        aria-label="Toggle Shopify gift item"
+                        className="shrink-0"
+                      />
                     </div>
                   )}
                 </div>
@@ -2707,53 +2703,52 @@ function ProductModal({
                       </div>
                     </div>
                     {customWebsiteConnection ? (
-                      <button
-                        type="button"
-                        onClick={() => setOtherChannelEnabled('custom', !otherChannels.custom.enabled)}
-                        className="shrink-0"
+                      <Switch
+                        checked={otherChannels.custom.enabled}
+                        onCheckedChange={(v) => setOtherChannelEnabled('custom', v)}
                         aria-label="Toggle Custom Website listing"
-                      >
-                        {otherChannels.custom.enabled
-                          ? <ToggleRight className="w-9 h-9 text-primary" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
-                      </button>
+                        className="shrink-0"
+                      />
                     ) : (
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
                     )}
                   </div>
                   {customWebsiteConnection && otherChannels.custom.enabled && (
                     <div className="border-t border-border p-3 space-y-3">
-                      <button
-                        type="button"
-                        onClick={() => setOtherChannelGift('custom', !otherChannels.custom.isGift)}
-                        className="w-full flex items-center justify-between gap-3"
-                      >
-                        <div className="text-left">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
                           <p className="text-sm font-medium text-foreground">Is this a gift item?</p>
                           <p className="text-xs text-muted-foreground">{otherChannels.custom.isGift ? 'Listed as a gift on your website' : 'Off — this is a regular product'}</p>
                         </div>
-                        {otherChannels.custom.isGift
-                          ? <ToggleRight className="w-9 h-9 text-primary shrink-0" />
-                          : <ToggleLeft className="w-9 h-9 text-muted-foreground shrink-0" />}
-                      </button>
+                        <Switch
+                          checked={otherChannels.custom.isGift}
+                          onCheckedChange={(v) => setOtherChannelGift('custom', v)}
+                          aria-label="Toggle Custom Website gift item"
+                          className="shrink-0"
+                        />
+                      </div>
 
                       {customCategoryOptions.length > 0 && (
                         <div>
-                          <label className="text-xs text-muted-foreground mb-1 block">Category on your website</label>
-                          <select
-                            value={otherChannels.custom.categoryId}
-                            onChange={(e) => {
-                              const opt = customCategoryOptions.find((c) => String(c.id) === e.target.value);
+                          <Label className="text-xs mb-1 block">Category on your website</Label>
+                          <Select
+                            value={otherChannels.custom.categoryId || '__none'}
+                            onValueChange={(v) => {
+                              const opt = customCategoryOptions.find((c) => String(c.id) === v);
                               setOtherChannels((prev) => ({
                                 ...prev,
-                                custom: { ...prev.custom, categoryId: e.target.value, categoryName: opt?.label.replace(/— /g, '') ?? '' },
+                                custom: { ...prev.custom, categoryId: v === '__none' ? '' : v, categoryName: opt?.label.replace(/— /g, '') ?? '' },
                               }));
                             }}
-                            className="w-full px-2.5 py-1.5 bg-muted border border-border rounded-lg text-xs"
                           >
-                            <option value="">No category</option>
-                            {customCategoryOptions.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-                          </select>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none">No category</SelectItem>
+                              {customCategoryOptions.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
                       )}
 
@@ -2878,46 +2873,17 @@ function ProductModal({
 
               {/* Save */}
               <div className="flex flex-col gap-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="w-full px-4 py-2.5 bg-foreground text-background rounded-lg hover:opacity-90 transition font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
-                >
+                <Button type="submit" disabled={saving} className="w-full bg-foreground text-background hover:opacity-90 hover:bg-foreground">
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {saving ? 'Saving...' : product ? 'Update Product' : 'Add Product'}
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={saving}
-                  className="w-full px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition disabled:opacity-50 text-sm"
-                >
+                </Button>
+                <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="w-full">
                   Cancel
-                </button>
+                </Button>
               </div>
 
             </div>
           </div>
-
-          {/* ── Bundle / Kit ── full-width section below both columns ── */}
-          <div className="border-t border-border px-6 py-5">
-            <BundleBuilder
-              shopId={shopId}
-              enabled={isBundleEnabled}
-              onToggle={setIsBundleEnabled}
-              components={bundleComponents}
-              onChange={setBundleComponents}
-              availableProducts={allProducts.map(p => ({ id: p.id, name: p.name, sku: p.sku }))}
-              currentProductId={product?.id}
-            />
-          </div>
-
-          {/* ── Dropship Supplier — only for existing (saved) products ── */}
-          {product?.id && (
-            <div className="border-t border-border px-6 py-5">
-              <DropshipSupplierSection shopId={shopId} productId={product.id} />
-            </div>
-          )}
         </form>
 
         {/* Category picker — same for every channel that has categories.
@@ -3031,7 +2997,7 @@ function ProductModal({
             </div>
           );
         })()}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

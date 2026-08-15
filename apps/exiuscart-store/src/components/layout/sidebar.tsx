@@ -70,7 +70,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/channels',         label: 'Channels',         icon: Link2      },
       { href: '/dashboard/channel-listings', label: 'Channel Listings', icon: ListChecks },
       { href: '/dashboard/storefront-categories', label: 'Storefront Categories', icon: LayoutGrid },
-      { href: '/dashboard/dropshipping',        label: 'Suppliers',       icon: Truck       },
+      { href: '/dashboard/dropshipping',        label: 'Dropshipping',    icon: Truck       },
       { href: '/dashboard/dropshipping/import', label: 'Import Products', icon: ShoppingBag },
     ],
   },
