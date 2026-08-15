@@ -114,7 +114,6 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<ProductCategory[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -147,7 +146,6 @@ export default function ProductsPage() {
     try {
       const res = await productsApi.getAll(shopId, {
         search: searchQuery || undefined,
-        category: selectedCategory !== 'All' ? selectedCategory : undefined,
       });
       setProducts(res.data.map((p: any) => ({
         ...p,
@@ -161,7 +159,7 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [shopId, searchQuery, selectedCategory]);
+  }, [shopId, searchQuery]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -451,18 +449,6 @@ export default function ProductsPage() {
           </div>
           <div className="relative">
             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              aria-label="Filter by category"
-              className="appearance-none w-full sm:w-48 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
-            >
-              <option value="All">All Categories</option>
-              {categories.map((cat) => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value as typeof channelFilter)}
               aria-label="Filter by channel"
@@ -519,14 +505,14 @@ export default function ProductsPage() {
           <div className="p-16 text-center">
             <Package className="w-14 h-14 text-muted-foreground mx-auto mb-4 opacity-40" />
             <h3 className="font-semibold text-foreground mb-1">
-              {searchQuery || selectedCategory !== 'All' || stockFilter !== 'all' || channelFilter !== 'all' ? 'No products found' : 'No products yet'}
+              {searchQuery || stockFilter !== 'all' || channelFilter !== 'all' ? 'No products found' : 'No products yet'}
             </h3>
             <p className="text-sm text-muted-foreground mb-5">
               {stockFilter !== 'all'
                 ? 'No products match this stock filter'
                 : channelFilter !== 'all'
                 ? 'No products match this channel filter'
-                : searchQuery || selectedCategory !== 'All'
+                : searchQuery
                 ? 'Try adjusting your search or filters'
                 : 'Add your first product to start selling'}
             </p>
@@ -538,7 +524,7 @@ export default function ProductsPage() {
               <button type="button" onClick={() => setChannelFilter('all')} className="inline-flex items-center gap-2 border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition">
                 Clear filter
               </button>
-            ) : !searchQuery && selectedCategory === 'All' && (
+            ) : !searchQuery && (
               <button
                 type="button"
                 onClick={() => { setEditingProduct(null); setShowAddModal(true); }}
