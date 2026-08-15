@@ -86,7 +86,13 @@ export default function POSPage() {
   // the actual base-currency amount, never a converted display preview
   // (aliasing baseSym as `sym` means every existing usage below is
   // automatically correct without touching ~35 individual lines).
-  const { baseSym: sym } = useCurrency();
+  // `sym`/`fmt` (live-converted) for browse-time prices — grid, cart panel,
+  // Z-report. `baseSym` (raw, unconverted) for the checkout/payment modal
+  // and receipt: that's real money being collected (cash/card split) and
+  // submitted to the backend as the order total, so it has to stay in the
+  // shop's actual operating currency or the split math and order record
+  // would stop matching what's shown on screen.
+  const { sym, fmt, baseSym } = useCurrency();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -513,7 +519,7 @@ export default function POSPage() {
     {scannedProduct && (
       <ScannedProductModal
         product={scannedProduct}
-        sym={sym}
+        fmt={fmt}
         onAddToCart={() => { addToCart(scannedProduct); setBarcodeFlash(`Added: ${scannedProduct.name}`); setTimeout(() => setBarcodeFlash(null), 2000); setScannedProduct(null); }}
         onClose={() => setScannedProduct(null)}
       />
@@ -550,12 +556,12 @@ export default function POSPage() {
                 <p className="text-xs text-muted-foreground text-center">{zReport.date}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <ZStat label="Transactions" value={String(zReport.transactions)} />
-                  <ZStat label="Total Sales" value={`${sym}${zReport.totalSales.toFixed(2)}`} highlight />
-                  <ZStat label="Cash" value={`${sym}${zReport.cashSales.toFixed(2)}`} />
-                  <ZStat label="Card" value={`${sym}${zReport.cardSales.toFixed(2)}`} />
-                  {zReport.bankTransferSales > 0 && <ZStat label="Bank Transfer" value={`${sym}${zReport.bankTransferSales.toFixed(2)}`} />}
-                  {zReport.splitSales > 0 && <ZStat label="Split" value={`${sym}${zReport.splitSales.toFixed(2)}`} />}
-                  <ZStat label="Avg Order" value={`${sym}${zReport.avgOrder.toFixed(2)}`} />
+                  <ZStat label="Total Sales" value={fmt(zReport.totalSales)} highlight />
+                  <ZStat label="Cash" value={fmt(zReport.cashSales)} />
+                  <ZStat label="Card" value={fmt(zReport.cardSales)} />
+                  {zReport.bankTransferSales > 0 && <ZStat label="Bank Transfer" value={fmt(zReport.bankTransferSales)} />}
+                  {zReport.splitSales > 0 && <ZStat label="Split" value={fmt(zReport.splitSales)} />}
+                  <ZStat label="Avg Order" value={fmt(zReport.avgOrder)} />
                   <ZStat label="Items Sold" value={String(zReport.totalItems)} />
                   <ZStat label="Returns" value={String(zReport.returns)} />
                 </div>
@@ -672,7 +678,7 @@ export default function POSPage() {
                     : <Package className="w-4 h-4" />
                   }
                   <span className="max-w-[100px] truncate">{product.name}</span>
-                  <span className="text-xs text-indigo-500">{product.sellingPrice} {sym}</span>
+                  <span className="text-xs text-indigo-500">{fmt(product.sellingPrice)}</span>
                 </button>
               ))}
             </div>
@@ -720,7 +726,7 @@ export default function POSPage() {
                     <h3 className="font-medium text-foreground text-sm line-clamp-2">{product.name}</h3>
                     <p className="text-xs text-muted-foreground/60 font-mono mb-2 truncate">#{product.id}{product.sku && product.sku !== product.id ? ` · ${product.sku}` : ''}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">{product.sellingPrice} {sym}</span>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">{fmt(product.sellingPrice)}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
                         product.stock === 0
                           ? 'bg-red-500/10 text-red-600 dark:text-red-400'
@@ -888,7 +894,7 @@ export default function POSPage() {
                     <h4 className="font-medium text-foreground text-sm truncate">{item.name}</h4>
                     <p className="text-xs text-muted-foreground/60 font-mono">#{item.id}</p>
                     <p className={`text-sm font-semibold ${isReturnMode ? 'text-red-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
-                      {isReturnMode ? '-' : ''}{item.price} {sym}
+                      {isReturnMode ? '-' : ''}{fmt(item.price)}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -990,24 +996,24 @@ export default function POSPage() {
             <>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Items Total</span>
-                <span className="text-foreground">{cartTotal.toFixed(2)} {sym}</span>
+                <span className="text-foreground">{fmt(cartTotal)}</span>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Discount</span>
-                  <span className="text-green-600 dark:text-green-400">-{discountAmount.toFixed(2)} {sym}</span>
+                  <span className="text-green-600 dark:text-green-400">-{fmt(discountAmount)}</span>
                 </div>
               )}
               {serviceChargeAmount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Service Charge</span>
-                  <span className="text-foreground">+{serviceChargeAmount.toFixed(2)} {sym}</span>
+                  <span className="text-foreground">+{fmt(serviceChargeAmount)}</span>
                 </div>
               )}
               {shopVatSettings.showVatBreakdown && shopVatSettings.vatEnabled && (
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span className="text-xs">(incl. VAT {shopVatSettings.vatRate}%)</span>
-                  <span className="text-xs">{vatAmount.toFixed(2)} {sym}</span>
+                  <span className="text-xs">{fmt(vatAmount)}</span>
                 </div>
               )}
             </>
@@ -1015,24 +1021,24 @@ export default function POSPage() {
             <>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="text-foreground">{cartTotal.toFixed(2)} {sym}</span>
+                <span className="text-foreground">{fmt(cartTotal)}</span>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Discount</span>
-                  <span className="text-green-600 dark:text-green-400">-{discountAmount.toFixed(2)} {sym}</span>
+                  <span className="text-green-600 dark:text-green-400">-{fmt(discountAmount)}</span>
                 </div>
               )}
               {serviceChargeAmount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Service Charge</span>
-                  <span className="text-foreground">+{serviceChargeAmount.toFixed(2)} {sym}</span>
+                  <span className="text-foreground">+{fmt(serviceChargeAmount)}</span>
                 </div>
               )}
               {shopVatSettings.vatEnabled && shopVatSettings.vatRate > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">VAT ({shopVatSettings.vatRate}%)</span>
-                  <span className="text-foreground">+{vatAmount.toFixed(2)} {sym}</span>
+                  <span className="text-foreground">+{fmt(vatAmount)}</span>
                 </div>
               )}
             </>
@@ -1042,7 +1048,7 @@ export default function POSPage() {
               {isReturnMode ? 'Refund' : 'Total'}
             </span>
             <span className={isReturnMode ? 'text-red-600 dark:text-red-400' : 'text-indigo-600 dark:text-indigo-400'}>
-              {isReturnMode ? '-' : ''}{total.toFixed(2)} {sym}
+              {isReturnMode ? '-' : ''}{fmt(total)}
             </span>
           </div>
         </div>
@@ -1075,7 +1081,7 @@ export default function POSPage() {
               <ShoppingCart className="w-5 h-5" />
               {cart.reduce((s, i) => s + i.quantity, 0)} item{cart.reduce((s, i) => s + i.quantity, 0) !== 1 ? 's' : ''}
             </span>
-            <span>{isReturnMode ? 'Return ' : ''}{total.toFixed(2)} {sym} →</span>
+            <span>{isReturnMode ? 'Return ' : ''}{fmt(total)} →</span>
           </button>
         </div>
       )}
@@ -1148,7 +1154,7 @@ export default function POSPage() {
                       <span className="text-muted-foreground flex items-center gap-1.5">
                         <CreditCard className="w-4 h-4" /> Card
                       </span>
-                      <span className="font-semibold text-foreground">{sym}{splitCardAmount.toFixed(2)}</span>
+                      <span className="font-semibold text-foreground">{baseSym}{splitCardAmount.toFixed(2)}</span>
                     </div>
                   </div>
                 )}
@@ -1164,7 +1170,7 @@ export default function POSPage() {
                         {item.name} x{item.quantity}
                         {item.note && <span className="block text-xs text-amber-500 mt-0.5">📝 {item.note}</span>}
                       </span>
-                      <span className="text-foreground">{(item.price * item.quantity).toFixed(2)} {sym}</span>
+                      <span className="text-foreground">{(item.price * item.quantity).toFixed(2)} {baseSym}</span>
                     </div>
                   ))}
                   <div className="border-t border-border pt-2 mt-2 space-y-1">
@@ -1172,24 +1178,24 @@ export default function POSPage() {
                       <>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Items Total</span>
-                          <span className="text-foreground">{cartTotal.toFixed(2)} {sym}</span>
+                          <span className="text-foreground">{cartTotal.toFixed(2)} {baseSym}</span>
                         </div>
                         {discountAmount > 0 && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Discount</span>
-                            <span className="text-green-600 dark:text-green-400">-{discountAmount.toFixed(2)} {sym}</span>
+                            <span className="text-green-600 dark:text-green-400">-{discountAmount.toFixed(2)} {baseSym}</span>
                           </div>
                         )}
                         {serviceChargeAmount > 0 && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Service Charge</span>
-                            <span className="text-foreground">+{serviceChargeAmount.toFixed(2)} {sym}</span>
+                            <span className="text-foreground">+{serviceChargeAmount.toFixed(2)} {baseSym}</span>
                           </div>
                         )}
                         {shopVatSettings.showVatBreakdown && shopVatSettings.vatEnabled && (
                           <div className="flex justify-between text-muted-foreground">
                             <span className="text-xs">(incl. VAT {shopVatSettings.vatRate}%)</span>
-                            <span className="text-xs">{vatAmount.toFixed(2)} {sym}</span>
+                            <span className="text-xs">{vatAmount.toFixed(2)} {baseSym}</span>
                           </div>
                         )}
                       </>
@@ -1197,24 +1203,24 @@ export default function POSPage() {
                       <>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Subtotal</span>
-                          <span className="text-foreground">{cartTotal.toFixed(2)} {sym}</span>
+                          <span className="text-foreground">{cartTotal.toFixed(2)} {baseSym}</span>
                         </div>
                         {discountAmount > 0 && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Discount</span>
-                            <span className="text-green-600 dark:text-green-400">-{discountAmount.toFixed(2)} {sym}</span>
+                            <span className="text-green-600 dark:text-green-400">-{discountAmount.toFixed(2)} {baseSym}</span>
                           </div>
                         )}
                         {serviceChargeAmount > 0 && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Service Charge</span>
-                            <span className="text-foreground">+{serviceChargeAmount.toFixed(2)} {sym}</span>
+                            <span className="text-foreground">+{serviceChargeAmount.toFixed(2)} {baseSym}</span>
                           </div>
                         )}
                         {shopVatSettings.vatEnabled && shopVatSettings.vatRate > 0 && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">VAT ({shopVatSettings.vatRate}%)</span>
-                            <span className="text-foreground">+{vatAmount.toFixed(2)} {sym}</span>
+                            <span className="text-foreground">+{vatAmount.toFixed(2)} {baseSym}</span>
                           </div>
                         )}
                       </>
@@ -1224,7 +1230,7 @@ export default function POSPage() {
                         {isReturnMode ? 'Refund' : 'Total'}
                       </span>
                       <span className={isReturnMode ? 'text-red-600 dark:text-red-400' : 'text-indigo-600 dark:text-indigo-400'}>
-                        {isReturnMode ? '-' : ''}{grandTotal.toFixed(2)} {sym}
+                        {isReturnMode ? '-' : ''}{grandTotal.toFixed(2)} {baseSym}
                       </span>
                     </div>
                   </div>
@@ -1239,9 +1245,9 @@ export default function POSPage() {
                 {processingPayment ? (
                   <><Loader2 className="w-5 h-5 animate-spin" />Processing...</>
                 ) : isReturnMode ? (
-                  <><RotateCcw className="w-5 h-5" />Confirm Return — {sym}{grandTotal.toFixed(2)}</>
+                  <><RotateCcw className="w-5 h-5" />Confirm Return — {baseSym}{grandTotal.toFixed(2)}</>
                 ) : (
-                  <><Check className="w-5 h-5" />Confirm Payment — {sym}{grandTotal.toFixed(2)}</>
+                  <><Check className="w-5 h-5" />Confirm Payment — {baseSym}{grandTotal.toFixed(2)}</>
                 )}
               </button>
             </div>
@@ -1271,12 +1277,12 @@ export default function POSPage() {
             <div className="p-6 space-y-4">
               <div className="text-center">
                 <p className={`text-3xl font-bold ${isReturnMode ? 'text-red-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
-                  {isReturnMode ? '-' : ''}{grandTotal.toFixed(2)} {sym}
+                  {isReturnMode ? '-' : ''}{grandTotal.toFixed(2)} {baseSym}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {isReturnMode ? 'Refund via ' : 'Paid via '}
                   {paymentMethod === 'split'
-                    ? `Split (${sym}${splitCashAmount.toFixed(2)} cash + ${sym}${splitCardAmount.toFixed(2)} card)`
+                    ? `Split (${baseSym}${splitCashAmount.toFixed(2)} cash + ${baseSym}${splitCardAmount.toFixed(2)} card)`
                     : PAYMENT_METHOD_LABELS[paymentMethod] ?? paymentMethod
                   }
                 </p>
@@ -1325,10 +1331,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
 interface LiveInfo { stock: number; reserved: number; available: number; }
 
 function ScannedProductModal({
-  product, sym, onAddToCart, onClose,
+  product, fmt, onAddToCart, onClose,
 }: {
   product: POSProduct;
-  sym: string;
+  fmt: (amount: number, decimals?: number) => string;
   onAddToCart: () => void;
   onClose: () => void;
 }) {
@@ -1368,7 +1374,7 @@ function ScannedProductModal({
           )}
           <p className="text-xs text-muted-foreground mb-0.5">{product.category}</p>
           <h2 className="text-lg font-bold text-foreground mb-1">{product.name}</h2>
-          <p className="text-2xl font-black text-primary mb-4">{sym}{product.sellingPrice.toFixed(2)}</p>
+          <p className="text-2xl font-black text-primary mb-4">{fmt(product.sellingPrice)}</p>
 
           {live ? (
             <div className="grid grid-cols-3 gap-2 mb-5">

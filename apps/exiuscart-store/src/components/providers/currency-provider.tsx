@@ -167,7 +167,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   }, [syncCurrency]);
 
   const convert = useCallback((amount: number): number => {
-    const n = Number.isFinite(amount) ? amount : 0;
+    // Prices can arrive as strings (Decimal fields serialize that way) —
+    // Number.isFinite doesn't coerce, so a raw string would silently become 0.
+    const parsed = Number(amount);
+    const n = Number.isFinite(parsed) ? parsed : 0;
     if (currency === baseCurrency || !rates) return n;
     const rate = rates[currency];
     return rate ? n * rate : n;
@@ -189,7 +192,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   }, [convert, currency, formatWith]);
 
   const fmtBase = useCallback((amount: number, decimals = 2): string => {
-    return formatWith(Number.isFinite(amount) ? amount : 0, baseCurrency, decimals);
+    const parsed = Number(amount);
+    return formatWith(Number.isFinite(parsed) ? parsed : 0, baseCurrency, decimals);
   }, [baseCurrency, formatWith]);
 
   const value: CurrencyContextValue = {
