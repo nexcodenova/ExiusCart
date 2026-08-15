@@ -145,6 +145,49 @@ async def get_my_shops(
     return shops
 
 
+# ── Exchange rates ────────────────────────────────────────────────────────────
+# Real conversion for the currency display feature — a shop's prices are
+# entered/stored in one fixed base_currency, and the picked display currency
+# is a pure viewing preference. Nothing here ever touches stored prices;
+# it just answers "what's X worth in Y right now" for the frontend to apply.
+#
+# Must stay registered here, before the generic /{shop_id} route below —
+# Starlette matches routes in registration order on raw path shape, so
+# "/exchange-rates" would otherwise be swallowed by /{shop_id} (shop_id=
+# "exchange-rates"), hit get_shop's auth dependency first, and 403 before
+# ever reaching this handler. Confirmed this was happening in production.
+
+_RATE_CACHE: dict = {}  # {base: {"rates": {...}, "fetched_at": datetime}}
+_RATE_CACHE_TTL = timedelta(hours=12)
+
+
+@router.get("/exchange-rates")
+async def get_exchange_rates(base: str = Query("USD", max_length=10)):
+    base = base.upper()
+    cached = _RATE_CACHE.get(base)
+    now = datetime.now(timezone.utc)
+    if cached and (now - cached["fetched_at"]) < _RATE_CACHE_TTL:
+        return {"base": base, "rates": cached["rates"], "cached": True}
+
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(f"https://open.er-api.com/v6/latest/{base}")
+        data = r.json()
+        rates = data.get("rates")
+        if not rates:
+            raise ValueError(data.get("error-type") or "No rates returned")
+    except Exception:
+        # Real rates unavailable right now — serve the last known-good cache
+        # rather than a broken/blank conversion, even if it's gone stale.
+        if cached:
+            return {"base": base, "rates": cached["rates"], "cached": True, "stale": True}
+        raise HTTPException(status_code=502, detail="Exchange rate service unavailable and no cached rates for this currency.")
+
+    _RATE_CACHE[base] = {"rates": rates, "fetched_at": now}
+    return {"base": base, "rates": rates, "cached": False}
+
+
 @router.get("/{shop_id}", response_model=ShopResponse)
 async def get_shop(
     shop_id: int,
@@ -2673,38 +2716,3 @@ def set_main_branch(
     return _branch_out(b)
 
 
-# ── Exchange rates ────────────────────────────────────────────────────────────
-# Real conversion for the currency display feature — a shop's prices are
-# entered/stored in one fixed base_currency, and the picked display currency
-# is a pure viewing preference. Nothing here ever touches stored prices;
-# it just answers "what's X worth in Y right now" for the frontend to apply.
-
-_RATE_CACHE: dict = {}  # {base: {"rates": {...}, "fetched_at": datetime}}
-_RATE_CACHE_TTL = timedelta(hours=12)
-
-
-@router.get("/exchange-rates")
-async def get_exchange_rates(base: str = Query("USD", max_length=10)):
-    base = base.upper()
-    cached = _RATE_CACHE.get(base)
-    now = datetime.now(timezone.utc)
-    if cached and (now - cached["fetched_at"]) < _RATE_CACHE_TTL:
-        return {"base": base, "rates": cached["rates"], "cached": True}
-
-    import httpx
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(f"https://open.er-api.com/v6/latest/{base}")
-        data = r.json()
-        rates = data.get("rates")
-        if not rates:
-            raise ValueError(data.get("error-type") or "No rates returned")
-    except Exception:
-        # Real rates unavailable right now — serve the last known-good cache
-        # rather than a broken/blank conversion, even if it's gone stale.
-        if cached:
-            return {"base": base, "rates": cached["rates"], "cached": True, "stale": True}
-        raise HTTPException(status_code=502, detail="Exchange rate service unavailable and no cached rates for this currency.")
-
-    _RATE_CACHE[base] = {"rates": rates, "fetched_at": now}
-    return {"base": base, "rates": rates, "cached": False}
