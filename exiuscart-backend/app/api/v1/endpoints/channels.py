@@ -114,8 +114,9 @@ class ChannelOrderWebhook(BaseModel):
     payment_status: Optional[str] = None        # "paid" | "pending" — TheDersi sends "paid"
     # Delivery info (TheDersi specific)
     delivery_fee: Optional[float] = None
-    delivery_paid_by: Optional[str] = None      # "customer" | "seller"
+    delivery_paid_by: Optional[str] = None      # "customer" (prepaid at checkout) | "seller" (free-delivery order)
     delivery_note: Optional[str] = None
+    delivery_fee_share: Optional[float] = None  # this seller's cut, already included in seller_net_earnings
     # Commission info (TheDersi specific)
     seller_plan: Optional[str] = None
     commission_rate: Optional[float] = None
@@ -212,6 +213,13 @@ def _product_payload(
         if v.image_url and v.image_url not in image_urls:
             image_urls.append(v.image_url)
 
+    # Same multi-video list the Custom Website public API already sends
+    # (see public.py's product payload) — falls back to the legacy single
+    # video_url if the seller hasn't added any via the newer multi-video field.
+    video_urls = [v.url for v in sorted(product.videos or [], key=lambda v: v.sort_order) if v.url]
+    if not video_urls and product.video_url:
+        video_urls = [product.video_url]
+
     payload = {
         "exiuscart_product_id": product.id,
         "name": product.name,
@@ -220,6 +228,7 @@ def _product_payload(
         "compare_at_price": compare_at_price,
         "quantity": total_stock,
         "image_urls": image_urls,
+        "video_urls": video_urls,
         "category": category,
         "sub_category": sub_category,
         "variants": variants,
@@ -947,11 +956,16 @@ async def receive_order_webhook(
 
     # Create order
     order_number = f"{conn.channel_type.upper()}-{uuid.uuid4().hex[:8].upper()}"
+    # Delivery is prepaid by the customer at TheDersi checkout — sellers must
+    # never collect a delivery/COD charge on a TheDersi order. TheDersi sends
+    # its own plain-English delivery_note on every order; these are only a
+    # fallback for the rare case it's missing.
     delivery_note = payload.delivery_note or ""
-    if payload.delivery_paid_by == "customer":
-        delivery_note = delivery_note or f"Customer pays LKR {payload.delivery_fee or 500} delivery on arrival (COD)."
-    elif payload.delivery_paid_by == "seller":
-        delivery_note = delivery_note or "Free shipping — seller arranges and pays delivery."
+    if not delivery_note:
+        if payload.delivery_paid_by == "customer":
+            delivery_note = "Delivery is prepaid by the customer through TheDersi. Do NOT collect any delivery or COD charge — your share is included in your next scheduled payout."
+        elif payload.delivery_paid_by == "seller":
+            delivery_note = "Free delivery — this order qualifies for free delivery, ship at no charge to the buyer."
 
     order = Order(
         shop_id=conn.shop_id,
@@ -1036,6 +1050,7 @@ async def receive_order_webhook(
         delivery_fee=payload.delivery_fee,
         delivery_paid_by=payload.delivery_paid_by,
         delivery_note=delivery_note,
+        delivery_fee_share=payload.delivery_fee_share,
         items_detail=[item.model_dump() for item in payload.items],
     ))
 
@@ -1365,45 +1380,13 @@ def request_thedersi_payout(
         raise HTTPException(status_code=502, detail=f"Could not reach TheDersi: {e}")
 
 
-class AutoPayoutToggleIn(BaseModel):
-    enabled: bool
-
-
-@router.patch("/shops/{shop_id}/channels/{channel_id}/thedersi-auto-payout")
-def toggle_thedersi_auto_payout(
-    shop_id: int,
-    channel_id: int,
-    data: AutoPayoutToggleIn,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Opt-in toggle: when enabled, ExiusCart automatically submits the seller's
-    TheDersi payout request every Monday 00:00 Sri Lanka time — the seller
-    never has to remember to click. Off by default; the seller decides.
-    """
-    _shop_or_404(shop_id, current_user, db)
-    conn = db.query(ChannelConnection).filter(
-        ChannelConnection.id == channel_id,
-        ChannelConnection.shop_id == shop_id,
-        ChannelConnection.is_active == True,
-        ChannelConnection.channel_type == "thedersi",
-    ).first()
-    if not conn:
-        raise HTTPException(status_code=404, detail="TheDersi connection not found")
-
-    conn.auto_payout_enabled = data.enabled
-    db.commit()
-    return {"auto_payout_enabled": conn.auto_payout_enabled}
-
-
 def run_thedersi_auto_payouts() -> None:
     """
     Weekly job — fires every Monday 00:00 Sri Lanka time (18:30 UTC Sunday).
-    For every TheDersi connection with auto_payout_enabled=True, submits a
-    payout request on the seller's behalf, exactly as if they'd clicked the
-    button themselves. TheDersi's own API decides if there's anything payable
-    and rejects with 400 if not — same as a manual click with nothing available.
+    Every active TheDersi connection gets its available balance requested
+    automatically — this is mandatory, not opt-in, so no seller has to
+    remember to click anything or ever collects a payout manually. TheDersi's
+    own API decides if there's anything payable and rejects with 400 if not.
     TheDersi's admin team still reviews and pays each request manually; this
     job only guarantees the request itself never gets forgotten.
     """
@@ -1412,7 +1395,6 @@ def run_thedersi_auto_payouts() -> None:
         connections = db.query(ChannelConnection).filter(
             ChannelConnection.channel_type == "thedersi",
             ChannelConnection.is_active == True,
-            ChannelConnection.auto_payout_enabled == True,
         ).all()
 
         now = datetime.now(timezone.utc)

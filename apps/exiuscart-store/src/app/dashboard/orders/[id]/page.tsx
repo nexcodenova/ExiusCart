@@ -43,6 +43,7 @@ interface ChannelMeta {
   delivery_fee: number | null;
   delivery_paid_by: string | null;
   delivery_note: string | null;
+  delivery_fee_share?: number | null;
   items_detail: any[] | null;
   platform_discount?: number | null;
   coupon_code?: string | null;
@@ -529,12 +530,20 @@ export default function OrderDetailsPage() {
               {fmt(order.channel_meta.seller_net_earnings)}
             </span>
           </div>
-          {order.channel_meta.delivery_fee != null && (
-            <div className="mt-3 pt-3 border-t border-green-500/20">
-              <InfoRow
-                label={`Delivery Fee (paid by ${order.channel_meta.delivery_paid_by ?? 'N/A'})`}
-                value={fmt(order.channel_meta.delivery_fee)}
-              />
+          {(order.channel_meta.delivery_fee != null || order.channel_meta.delivery_fee_share != null) && (
+            <div className="mt-3 pt-3 border-t border-green-500/20 space-y-1.5">
+              {order.channel_meta.delivery_fee != null && (
+                <InfoRow
+                  label={`Delivery Fee (paid by ${order.channel_meta.delivery_paid_by === 'customer' ? 'customer, prepaid' : order.channel_meta.delivery_paid_by ?? 'N/A'})`}
+                  value={fmt(order.channel_meta.delivery_fee)}
+                />
+              )}
+              {order.channel_meta.delivery_fee_share != null && (
+                <InfoRow
+                  label="Your delivery fee share (included above)"
+                  value={fmt(order.channel_meta.delivery_fee_share)}
+                />
+              )}
             </div>
           )}
           {order.channel_meta.delivery_note && (

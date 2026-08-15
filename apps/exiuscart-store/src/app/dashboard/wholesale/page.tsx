@@ -7,6 +7,7 @@ import {
   AlertCircle, RefreshCw, CheckCircle, XCircle, Clock,
 } from 'lucide-react';
 import { wholesaleApi, subscriptionApi } from '@/lib/api';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,13 +64,10 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
   cancelled: <XCircle className="w-3 h-3" />,
 };
 
-function fmt(n: number, currency = 'LKR') {
-  return `${currency} ${n.toLocaleString('en-LK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function WholesalePage() {
+  const { fmt, baseSym } = useCurrency();
   const [shopId, setShopId] = useState('');
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [planType, setPlanType] = useState<string>('');
@@ -446,8 +444,8 @@ export default function WholesalePage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-lg font-bold text-foreground">LKR {p.wholesale_price.toLocaleString()}</p>
-                          {p.retail_price && <p className="text-xs text-muted-foreground line-through">LKR {p.retail_price.toLocaleString()}</p>}
+                          <p className="text-lg font-bold text-foreground">{fmt(p.wholesale_price)}</p>
+                          {p.retail_price && <p className="text-xs text-muted-foreground line-through">{fmt(p.retail_price)}</p>}
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-muted-foreground">Min {p.moq} {p.unit}</p>
@@ -512,7 +510,7 @@ export default function WholesalePage() {
                             </div>
                             <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                               <span>{b.total_orders} orders</span>
-                              <span className="font-medium text-foreground">LKR {b.total_spent.toLocaleString()} spent</span>
+                              <span className="font-medium text-foreground">{fmt(b.total_spent)} spent</span>
                             </div>
                           </div>
                         </div>
@@ -595,7 +593,7 @@ export default function WholesalePage() {
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {o.buyer?.name} {o.buyer?.company ? `— ${o.buyer.company}` : ''} · {o.items.length} items · <span className="font-semibold text-foreground">LKR {o.total.toLocaleString()}</span>
+                            {o.buyer?.name} {o.buyer?.company ? `— ${o.buyer.company}` : ''} · {o.items.length} items · <span className="font-semibold text-foreground">{fmt(o.total)}</span>
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">{new Date(o.created_at).toLocaleString('en-LK')}</p>
                         </div>
@@ -644,13 +642,13 @@ export default function WholesalePage() {
                                     <td className="px-4 py-2.5 font-medium text-foreground text-xs">{item.name}</td>
                                     <td className="px-4 py-2.5 text-xs text-muted-foreground">{item.sku || '—'}</td>
                                     <td className="px-4 py-2.5 text-xs text-muted-foreground">{item.qty} {item.unit}</td>
-                                    <td className="px-4 py-2.5 text-xs text-muted-foreground">LKR {item.unit_price?.toLocaleString()}</td>
-                                    <td className="px-4 py-2.5 text-xs font-semibold text-foreground">LKR {item.total?.toLocaleString()}</td>
+                                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{fmt(item.unit_price)}</td>
+                                    <td className="px-4 py-2.5 text-xs font-semibold text-foreground">{fmt(item.total)}</td>
                                   </tr>
                                 ))}
                                 <tr className="bg-muted/20">
                                   <td colSpan={4} className="px-4 py-2.5 text-xs font-semibold text-right text-foreground">Order Total</td>
-                                  <td className="px-4 py-2.5 text-sm font-bold text-foreground">LKR {o.total.toLocaleString()}</td>
+                                  <td className="px-4 py-2.5 text-sm font-bold text-foreground">{fmt(o.total)}</td>
                                 </tr>
                               </tbody>
                             </table>
@@ -699,7 +697,7 @@ export default function WholesalePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1">Wholesale Price (LKR) *</label>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Wholesale Price ({baseSym}) *</label>
                   <input type="number" value={pForm.wholesale_price} onChange={e => setPForm(p => ({ ...p, wholesale_price: e.target.value }))} placeholder="0"
                     className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-foreground text-sm focus:ring-2 focus:ring-primary outline-none" />
                 </div>

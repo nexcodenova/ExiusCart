@@ -105,7 +105,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/credit-notes',        label: 'Credit Notes',       icon: Receipt   },
       { href: '/dashboard/recurring-invoices',  label: 'Recurring Invoices', icon: RefreshCw },
       { href: '/dashboard/reports',    label: 'Reports',    icon: BarChart3},
-      { href: '/dashboard/payout',     label: 'Payout',     icon: CreditCard },
+      { href: '/dashboard/payout',     label: 'Earnings',   icon: CreditCard },
       { href: '/dashboard/billing',    label: 'Billing',    icon: CreditCard },
     ],
   },

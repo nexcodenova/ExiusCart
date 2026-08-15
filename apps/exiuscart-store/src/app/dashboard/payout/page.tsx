@@ -5,7 +5,7 @@ import {
   Loader2, AlertTriangle, CheckCircle2, Clock,
   Wallet, Tag, Calendar, Lock, TrendingUp, History,
   Link2, ArrowRight, ShoppingCart, RefreshCcw, BarChart3,
-  ToggleLeft, ToggleRight, Zap,
+  Zap,
 } from 'lucide-react';
 import { channelsApi, reportsApi } from '@/lib/api';
 import Link from 'next/link';
@@ -161,11 +161,7 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
   const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
-  const [requesting, setRequesting] = useState(false);
-  const [payoutSuccess, setPayoutSuccess] = useState('');
-  const [payoutError, setPayoutError] = useState('');
   const [error, setError] = useState('');
-  const [togglingAuto, setTogglingAuto] = useState(false);
 
   const loadPayouts = () => {
     setPayoutsLoading(true);
@@ -182,41 +178,6 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
       .finally(() => setLoading(false));
     loadPayouts();
   }, [shopId, connection.id]);
-
-  const handleRequestPayout = async () => {
-    setRequesting(true);
-    setPayoutError('');
-    setPayoutSuccess('');
-    try {
-      const r = await channelsApi.requestTheDersiPayout(shopId, connection.id);
-      const amount = r.data?.requested_amount;
-      const currency = r.data?.currency ?? info?.currency ?? 'LKR';
-      const isMonday = new Date().getDay() === 1;
-      setPayoutSuccess(
-        isMonday
-          ? `Request submitted — ${currency} ${fmtNum(amount)}. TheDersi will transfer to your bank today.`
-          : `Scheduled — ${currency} ${fmtNum(amount)} queued for ${nextMondayLabel}. TheDersi will send to your bank on Monday.`
-      );
-      loadPayouts();
-    } catch (err: any) {
-      setPayoutError(err?.response?.data?.detail ?? 'Could not submit payout request. Try again.');
-    } finally {
-      setRequesting(false);
-    }
-  };
-
-  const handleToggleAutoPayout = async () => {
-    if (!info) return;
-    setTogglingAuto(true);
-    try {
-      const r = await channelsApi.toggleTheDersiAutoPayout(shopId, connection.id, !info.auto_payout_enabled);
-      setInfo({ ...info, auto_payout_enabled: r.data.auto_payout_enabled });
-    } catch {
-      // silent — toggle just stays as-is, user can retry
-    } finally {
-      setTogglingAuto(false);
-    }
-  };
 
   const hasPending = payouts.some((p) => p.status === 'pending');
   const todayIsMonday = new Date().getDay() === 1;
@@ -255,7 +216,7 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
             <Link2 className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <p className="font-semibold text-foreground text-sm">TheDersi — Earnings & Payouts</p>
+            <p className="font-semibold text-foreground text-sm">TheDersi — Earnings</p>
             <p className="text-xs text-muted-foreground">Sri Lankan Fashion Marketplace · {commissionRate > 0 ? `${commissionRate}% commission` : info ? 'No commission' : ''}</p>
           </div>
         </div>
@@ -373,65 +334,21 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
               </div>
             )}
 
-            {/* Request payout */}
-            <div className="space-y-3">
-              {payoutSuccess && (
-                <div className="bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" /> {payoutSuccess}
-                </div>
-              )}
-              {payoutError && (
-                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-xl px-4 py-3">
-                  {payoutError}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={handleRequestPayout}
-                disabled={requesting || availableGross <= 0 || hasPending}
-                className="w-full py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {requesting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {hasPending
-                  ? 'Payout Request Pending'
-                  : availableGross <= 0
-                  ? 'No Balance Available'
-                  : todayIsMonday
-                  ? `Request Payout — ${cur} ${fmtNum(availableGross)}`
-                  : `Schedule Payout for ${nextMondayLabel} — ${cur} ${fmtNum(availableGross)}`}
-              </button>
-              <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                <Calendar className="w-3 h-3 shrink-0" />
-                <span>Bank transfer is sent every <strong>Monday</strong> — requests made any day are queued for the next Monday.</span>
+            {/* Automatic settlement — mandatory, no seller action needed */}
+            <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3.5">
+              <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  {hasPending
+                    ? 'Payout requested — awaiting transfer'
+                    : availableGross > 0
+                    ? `${cur} ${fmtNum(availableGross)} ready — sent automatically`
+                    : 'Automatic every Monday'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  ExiusCart sends your available balance to TheDersi automatically at midnight every Monday (Sri Lanka time). Nothing to click — it just arrives in your bank on schedule.
+                </p>
               </div>
-            </div>
-
-            {/* Auto-payout toggle */}
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
-              <div className="flex items-start gap-2.5">
-                <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Auto-request every Monday</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    ExiusCart submits your payout request automatically, right at midnight Monday (Sri Lanka time) — you never have to remember to click.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleToggleAutoPayout}
-                disabled={togglingAuto}
-                className="shrink-0 text-primary transition disabled:opacity-50"
-                title={info.auto_payout_enabled ? 'Turn off auto-request' : 'Turn on auto-request'}
-              >
-                {togglingAuto ? (
-                  <Loader2 className="w-7 h-7 animate-spin" />
-                ) : info.auto_payout_enabled ? (
-                  <ToggleRight className="w-8 h-8" />
-                ) : (
-                  <ToggleLeft className="w-8 h-8 text-muted-foreground" />
-                )}
-              </button>
             </div>
 
             {/* Meta row */}
@@ -659,7 +576,7 @@ export default function PayoutPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">Payouts</h1>
+        <h1 className="text-xl font-semibold text-foreground">Earnings</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Track your earnings from POS sales and connected channels separately.
         </p>

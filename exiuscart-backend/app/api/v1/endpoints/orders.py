@@ -533,6 +533,7 @@ async def get_order_details(
             "delivery_fee": float(meta.delivery_fee) if meta.delivery_fee else None,
             "delivery_paid_by": meta.delivery_paid_by,
             "delivery_note": meta.delivery_note,
+            "delivery_fee_share": float(meta.delivery_fee_share) if meta.delivery_fee_share else None,
             "items_detail": meta.items_detail,
         }
 
@@ -619,11 +620,7 @@ async def send_invoice(
             for c in components:
                 comp = db.query(Product).filter(Product.id == c.component_product_id).first()
                 if comp:
-                    label = comp.name
-                    parts = [p for p in [c.variant_size, c.variant_color] if p]
-                    if parts:
-                        label += f" ({' / '.join(parts)})"
-                    label += f" × {c.quantity * item.quantity}"
+                    label = f"{comp.name} × {c.quantity * item.quantity}"
                     sub_items.append(label)
             if sub_items:
                 item_dict["sub_items"] = sub_items

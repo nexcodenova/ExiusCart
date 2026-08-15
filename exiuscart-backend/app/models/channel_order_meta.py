@@ -20,9 +20,13 @@ class ChannelOrderMeta(Base):
     seller_net_earnings = Column(Numeric(10, 2), nullable=True) # 4650.00
 
     # Delivery
-    delivery_fee = Column(Numeric(10, 2), nullable=True)      # 500
-    delivery_paid_by = Column(String(20), nullable=True)      # "customer" | "seller"
+    delivery_fee = Column(Numeric(10, 2), nullable=True)      # 500 — what the customer paid, 0 if prepaid nothing to collect
+    delivery_paid_by = Column(String(20), nullable=True)      # "customer" (prepaid at checkout) | "seller" (free-delivery order)
     delivery_note = Column(Text, nullable=True)
+    # This seller's cut of the delivery fee, already folded into
+    # seller_net_earnings above — stored separately purely so it can be
+    # itemized for the seller ("your payout includes LKR X delivery share").
+    delivery_fee_share = Column(Numeric(10, 2), nullable=True)
 
     # Full items with variants (size, color etc.) — stored as JSON
     items_detail = Column(JSON, nullable=True)

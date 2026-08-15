@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ordersApi, shopApi } from '@/lib/api';
-import { symFor } from '@/components/providers/currency-provider';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 export default function PackingSlipPage() {
   const params = useParams();
   const orderId = params.id as string;
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
+  const { fmt } = useCurrency();
   const [order, setOrder] = useState<any>(null);
   const [shop, setShop] = useState<any>(null);
   const [ready, setReady] = useState(false);
@@ -38,9 +39,6 @@ export default function PackingSlipPage() {
     );
   }
 
-  // Real shipped amount — base currency, not a display conversion.
-  const sym = symFor(shop?.base_currency || shop?.currency || 'USD');
-  const fmt = (n: number) => `${sym} ${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const date = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   const isTheDersi = order.source === 'thedersi' || order.channel_meta?.channel_type === 'thedersi';
   const customer = order.customer;
@@ -143,6 +141,9 @@ export default function PackingSlipPage() {
 
         .notes-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: 11px; }
         .notes-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #92400e; margin-bottom: 3px; }
+
+        .delivery-box { background: #fef2f2; border: 2px solid #fca5a5; border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: 12px; font-weight: 700; color: #991b1b; }
+        .delivery-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #b91c1c; margin-bottom: 3px; }
 
         .tracking-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: 11px; }
         .tracking-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #166534; margin-bottom: 3px; }
@@ -303,6 +304,17 @@ export default function PackingSlipPage() {
             {order.carrier && <span>Carrier: <strong>{order.carrier}</strong>&nbsp;&nbsp;</span>}
             {order.tracking_number && <span>Tracking: <strong style={{ fontFamily: 'monospace' }}>{order.tracking_number}</strong>&nbsp;&nbsp;</span>}
             {order.estimated_delivery && <span>Est. Delivery: <strong>{order.estimated_delivery}</strong></span>}
+          </div>
+        )}
+
+        {/* Delivery instruction from the channel (TheDersi etc.) — shown as its
+            own unmissable box rather than blended into the free-text Notes,
+            since this is the one line that determines whether the fulfiller
+            collects money from the customer or not. */}
+        {order.channel_meta?.delivery_note && (
+          <div className="delivery-box">
+            <div className="delivery-lbl">🚚 Delivery — Read Before Handover</div>
+            <div>{order.channel_meta.delivery_note}</div>
           </div>
         )}
 
