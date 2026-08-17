@@ -43,12 +43,28 @@ SUPPLIER_SIGNUP_LINKS = {
     # the same way as the other API-key suppliers, but nothing actually
     # calls AliExpress until real App Key/Secret + OAuth are wired in.
     "aliexpress": "https://developers.aliexpress.com/",
+    # ── Print-on-Demand — design once, provider prints + ships automatically.
+    # Same scaffolding-first treatment as AliExpress above: the connection is
+    # stored the same way as the other API-key suppliers, but no design-upload/
+    # mockup/order-submission flow is wired in yet. Each of these has a real,
+    # documented API (catalog + async mockup generation + order placement)
+    # to build against once this becomes the active piece of work.
+    "printful":   "https://www.printful.com/dashboard/register",   # replace with affiliate link
+    "printify":   "https://printify.com/app/register",             # replace with affiliate link
+    "gelato":     "https://www.gelato.com/sign-up",                # replace with affiliate link
 }
 
 CJ_BASE = "https://developers.cjdropshipping.com/api2.0/v1"
 
+# Dropship suppliers forward an order to be picked, packed and shipped from
+# their own stock. POD (print-on-demand) suppliers instead print a design
+# onto a blank product per order — no inventory to forward, a design/mockup
+# step instead. Kept as a separate set purely so the UI can group them under
+# their own "Print-on-Demand" section instead of listing all eight the same way.
+POD_SUPPLIERS = {"printful", "printify", "gelato"}
+
 PLAN_ALLOWED_SUPPLIERS = {
-    "premium":       {"cj", "zendrop", "hypersku", "wiio", "aliexpress"},
+    "premium":       {"cj", "zendrop", "hypersku", "wiio", "aliexpress", "printful", "printify", "gelato"},
     "starter":       {"cj"},
     "free_trial":    set(),
     "thedersi_basic":  set(),
@@ -515,6 +531,7 @@ def list_connections(
             "connected": "cj" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "cj"), False),
             "locked": "cj" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "category": "dropship",
         },
         {
             "supplier_type": "zendrop",
@@ -525,6 +542,7 @@ def list_connections(
             "connected": "zendrop" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "zendrop"), False),
             "locked": "zendrop" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "category": "dropship",
         },
         {
             "supplier_type": "hypersku",
@@ -535,6 +553,7 @@ def list_connections(
             "connected": "hypersku" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "hypersku"), False),
             "locked": "hypersku" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "category": "dropship",
         },
         {
             "supplier_type": "wiio",
@@ -545,6 +564,7 @@ def list_connections(
             "connected": "wiio" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "wiio"), False),
             "locked": "wiio" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "category": "dropship",
         },
         {
             "supplier_type": "aliexpress",
@@ -555,6 +575,40 @@ def list_connections(
             "connected": "aliexpress" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "aliexpress"), False),
             "locked": "aliexpress" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "category": "dropship",
+        },
+        {
+            "supplier_type": "printful",
+            "name": "Printful",
+            "description": "Custom hoodies, tees & more — design once, Printful prints and ships automatically. Design/mockup workflow activates soon.",
+            "signup_url": SUPPLIER_SIGNUP_LINKS["printful"],
+            "plan_required": "premium",
+            "connected": "printful" in connected,
+            "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "printful"), False),
+            "locked": "printful" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "category": "pod",
+        },
+        {
+            "supplier_type": "printify",
+            "name": "Printify",
+            "description": "Large print-provider network with competitive per-unit pricing. Design/mockup workflow activates soon.",
+            "signup_url": SUPPLIER_SIGNUP_LINKS["printify"],
+            "plan_required": "premium",
+            "connected": "printify" in connected,
+            "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "printify"), False),
+            "locked": "printify" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "category": "pod",
+        },
+        {
+            "supplier_type": "gelato",
+            "name": "Gelato",
+            "description": "Local printing in 30+ countries — faster delivery, lower shipping cost. Design/mockup workflow activates soon.",
+            "signup_url": SUPPLIER_SIGNUP_LINKS["gelato"],
+            "plan_required": "premium",
+            "connected": "gelato" in connected,
+            "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "gelato"), False),
+            "locked": "gelato" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "category": "pod",
         },
     ]
     return {"plan": plan, "suppliers": suppliers}
@@ -608,7 +662,7 @@ def connect_apikey(
     current_user: User = Depends(get_current_user),
 ):
     _shop_or_404(shop_id, current_user, db)
-    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "aliexpress"):
+    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "aliexpress", "printful", "printify", "gelato"):
         raise HTTPException(status_code=400, detail="Use /connect/cj for CJ Dropshipping.")
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)

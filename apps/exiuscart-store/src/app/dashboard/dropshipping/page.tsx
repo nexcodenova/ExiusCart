@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff, Zap, Boxes, Layers, ArrowRight, ShoppingBag } from 'lucide-react';
+import { CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff, Zap, Boxes, Layers, ArrowRight, ShoppingBag, Shirt, Palette, Printer } from 'lucide-react';
 import { dropshipApi, channelsApi } from '@/lib/api';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -21,6 +21,9 @@ const SIGNUP_LINKS: Record<string, string> = {
   hypersku:   'https://www.hypersku.com/register',
   wiio:       'https://wiio.com/register',
   aliexpress: 'https://developers.aliexpress.com/',
+  printful:   'https://www.printful.com/dashboard/register',
+  printify:   'https://printify.com/app/register',
+  gelato:     'https://www.gelato.com/sign-up',
 };
 
 // Per-brand accent so the supplier grid reads at a glance instead of every
@@ -34,6 +37,9 @@ const SUPPLIER_STYLE: Record<string, { icon: React.ElementType; color: string; b
   hypersku:   { icon: Boxes,       color: 'text-teal-500',   bg: 'bg-teal-500/10',   logo: '/dropshipping/hypersku_icon.png', logoFit: 'contain' },
   wiio:       { icon: Layers,      color: 'text-rose-500',   bg: 'bg-rose-500/10'   },
   aliexpress: { icon: ShoppingBag, color: 'text-red-500',    bg: 'bg-red-500/10'   },
+  printful:   { icon: Shirt,       color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  printify:   { icon: Palette,     color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
+  gelato:     { icon: Printer,     color: 'text-amber-500',  bg: 'bg-amber-500/10' },
 };
 
 interface Supplier {
@@ -45,6 +51,7 @@ interface Supplier {
   connected: boolean;
   auto_fulfill_enabled: boolean;
   locked: boolean;
+  category: 'dropship' | 'pod';
 }
 
 // ── CJ Connect Modal ──────────────────────────────────────────────────────────
@@ -116,7 +123,7 @@ function CJConnectModal({ shopId, onConnected, onClose }: {
   );
 }
 
-// ── API Key Modal (Zendrop, HyperSKU, Wiio, AliExpress) ───────────────────────
+// ── API Key Modal (Zendrop, HyperSKU, Wiio, AliExpress, Printful, Printify, Gelato) ──
 
 function ApiKeyModal({ supplier, shopId, onConnected, onClose }: {
   supplier: Supplier; shopId: string; onConnected: () => void; onClose: () => void;
@@ -348,9 +355,9 @@ export default function DropshippingPage() {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-8">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Dropshipping</h1>
+          <h1 className="text-xl font-semibold text-foreground">Suppliers</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Connect a supplier. ExiusCart forwards orders to them — they pack and ship directly to your customer.
+            Connect a dropshipping or print-on-demand supplier. ExiusCart forwards orders to them automatically.
           </p>
         </div>
 
@@ -360,7 +367,7 @@ export default function DropshippingPage() {
           </div>
           <h2 className="text-lg font-semibold text-foreground">Dropshipping is for direct ExiusCart sellers</h2>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Your store is managed by <strong className="text-foreground">TheDersi</strong>, and your orders are fulfilled through TheDersi&apos;s own logistics. Dropshipping suppliers like CJ, Zendrop, HyperSKU, Wiio &amp; AliExpress are only available to sellers on a direct ExiusCart plan (Starter or Premium).
+            Your store is managed by <strong className="text-foreground">TheDersi</strong>, and your orders are fulfilled through TheDersi&apos;s own logistics. Dropshipping and print-on-demand suppliers like CJ, Zendrop, AliExpress, Printful &amp; Gelato are only available to sellers on a direct ExiusCart plan (Starter or Premium).
           </p>
           <Button asChild className="mt-6">
             <Link href="/dashboard/channels">Back to Channels</Link>
@@ -375,7 +382,7 @@ export default function DropshippingPage() {
       <div>
         <h1 className="text-xl font-semibold text-foreground">Suppliers</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Connect a supplier. ExiusCart forwards orders to them — they pack and ship directly to your customer.
+          Connect a dropshipping or print-on-demand supplier. ExiusCart forwards orders to them automatically.
         </p>
       </div>
 
@@ -410,7 +417,7 @@ export default function DropshippingPage() {
           <CardContent className="flex items-center justify-between gap-4 px-5 py-4">
             <div>
               <p className="text-sm font-semibold text-foreground">CJ Dropshipping is included in your Starter plan</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Upgrade to Premium to unlock Zendrop, HyperSKU, Wiio, AliExpress, and auto-fulfill.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Upgrade to Premium to unlock Zendrop, HyperSKU, Wiio, AliExpress, Printful, Printify, Gelato, and auto-fulfill.</p>
             </div>
             <Button asChild size="sm" className="shrink-0 whitespace-nowrap">
               <Link href="/dashboard/billing">Upgrade to Premium</Link>
@@ -433,10 +440,24 @@ export default function DropshippingPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-            {suppliers.map((s) => (
-              <SupplierCard key={s.supplier_type} supplier={s} shopId={shopId} plan={plan} onRefresh={load} />
-            ))}
+          <div>
+            <p className="text-sm font-semibold text-foreground mb-1">Dropshipping</p>
+            <p className="text-xs text-muted-foreground mb-3">Ready-made products — supplier picks, packs and ships from their own stock.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+              {suppliers.filter((s) => s.category === 'dropship').map((s) => (
+                <SupplierCard key={s.supplier_type} supplier={s} shopId={shopId} plan={plan} onRefresh={load} />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground mb-1">Print-on-Demand</p>
+            <p className="text-xs text-muted-foreground mb-3">Custom hoodies, tees, mugs & more — design once, the provider prints and ships each order automatically. No inventory to hold.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+              {suppliers.filter((s) => s.category === 'pod').map((s) => (
+                <SupplierCard key={s.supplier_type} supplier={s} shopId={shopId} plan={plan} onRefresh={load} />
+              ))}
+            </div>
           </div>
 
           {connectedCount > 0 && (
