@@ -26,6 +26,21 @@ const SIGNUP_LINKS: Record<string, string> = {
   gelato:     'https://www.gelato.com/sign-up',
 };
 
+// "Open X" for an already-connected supplier must land on the real logged-in
+// dashboard, not the signup page above — a signup/register URL 404s or loops
+// once the seller already has an account (this is what Printful's
+// dashboard/register link did after connecting).
+const DASHBOARD_LINKS: Record<string, string> = {
+  cj:         'https://cjdropshipping.com/my-product',
+  zendrop:    'https://app.zendrop.com/',
+  hypersku:   'https://www.hypersku.com/',
+  wiio:       'https://wiio.com/',
+  aliexpress: 'https://developers.aliexpress.com/',
+  printful:   'https://www.printful.com/dashboard',
+  printify:   'https://printify.com/app/store',
+  gelato:     'https://www.gelato.com/dashboard',
+};
+
 // Per-brand accent so the supplier grid reads at a glance instead of every
 // card looking identical. CJ/Zendrop use their real logo full-bleed (own
 // background baked in); HyperSKU uses a cropped icon-only mark (its source
@@ -336,7 +351,7 @@ function SupplierCard({ supplier, shopId, plan, onRefresh }: {
           ) : supplier.connected ? (
             <div className="flex gap-2">
               <Button asChild variant="outline" size="sm" className="flex-1">
-                <a href={SIGNUP_LINKS[supplier.supplier_type] ?? supplier.signup_url} target="_blank" rel="noopener noreferrer">
+                <a href={DASHBOARD_LINKS[supplier.supplier_type] ?? supplier.signup_url} target="_blank" rel="noopener noreferrer">
                   Open {supplier.name} <ExternalLink className="w-3 h-3" />
                 </a>
               </Button>
