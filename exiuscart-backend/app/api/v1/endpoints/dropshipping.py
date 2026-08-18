@@ -773,17 +773,19 @@ async def connect_printful(
     doing on connect is a real validation call so a bad/expired token is
     caught immediately instead of silently saved and failing later.
 
-    GET /store (singular) is implicitly scoped and 400s with "requires
-    store_id" if the token wasn't generated with a store selected — only
-    an "Account (all stores)" token hits that. A single-store token works
-    fine with GET /store directly. Since sellers connecting their own
-    Printful account will pick either option (this isn't something we
-    control), try /stores (list) first — the account-scoped shape — and
-    fall back to /store (singular) if that's rejected, so both token types
-    work without the seller needing to know which one they generated.
-    Its id is stored in access_token (reusing the column CJ uses for its
-    session token — same slot, different meaning per supplier) since every
-    subsequent Printful call for an account-scoped token needs to pass it.
+    Per Printful's official API spec, GET /stores (list) is the only store
+    endpoint that exists — it adapts its response automatically based on
+    the token's access level (single-store or account-wide), so a single
+    call covers both token types without needing a /store (singular)
+    fallback. It requires the `stores_list` scope ("View store
+    information") on the token — a token created without that scope will
+    fail here with a 401/403, and the seller needs to regenerate it with
+    that box checked.
+
+    The resolved store id is stored in access_token (reusing the column
+    CJ uses for its session token — same slot, different meaning per
+    supplier) since every subsequent Printful call for an account-scoped
+    token needs to pass it via the X-PF-Store-Id header.
     """
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
@@ -794,14 +796,6 @@ async def connect_printful(
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(f"{PRINTFUL_BASE}/stores", headers=headers)
             stores = r.json().get("result") if r.status_code == 200 else None
-            if not stores:
-                # Either the account-scoped call failed, or it succeeded but
-                # returned nothing meaningful (a single-store token can 200
-                # here with a shape that isn't a list) — try the single-store
-                # endpoint before giving up.
-                r2 = await client.get(f"{PRINTFUL_BASE}/store", headers=headers)
-                if r2.status_code == 200:
-                    r, stores = r2, [r2.json().get("result", {})]
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Could not reach Printful: {exc}")
 
@@ -809,7 +803,7 @@ async def connect_printful(
         logger.error(f"[PRINTFUL Auth] validation failed — status={r.status_code} response={r.text[:300]}")
         raise HTTPException(status_code=400, detail={
             "error": "printful_auth_failed",
-            "message": "Could not connect to Printful. Check your API token.",
+            "message": "Could not connect to Printful. Check your API token has the \"View store information\" (stores_list) scope, and that a store exists on the account.",
         })
     store_info = stores[0]
     store_id = store_info.get("id")
