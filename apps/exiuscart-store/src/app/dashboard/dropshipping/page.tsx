@@ -123,7 +123,71 @@ function CJConnectModal({ shopId, onConnected, onClose }: {
   );
 }
 
-// ── API Key Modal (Zendrop, HyperSKU, Wiio, AliExpress, Printful, Printify, Gelato) ──
+// ── Printful Connect Modal ────────────────────────────────────────────────────
+
+function PrintfulConnectModal({ shopId, onConnected, onClose }: {
+  shopId: string; onConnected: () => void; onClose: () => void;
+}) {
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const connect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true); setError('');
+    try {
+      await dropshipApi.connectPrintful(shopId, { api_key: apiKey });
+      onConnected();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Connection failed. Check your API token.');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Connect Printful</DialogTitle>
+          <DialogDescription>Paste your Printful Private API Token</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={connect} className="p-5 space-y-4">
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{error}</div>
+          )}
+          <div>
+            <Label className="mb-1.5 block">Printful API Token *</Label>
+            <div className="relative">
+              <Input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
+                placeholder="Paste your token" className="pr-10" />
+              <button type="button" onClick={() => setShowApiKey((v) => !v)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showApiKey ? 'Hide API token' : 'Show API token'}>
+                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 leading-relaxed">
+            Generate a Private Token from your Printful account under Settings → Stores → API. It&apos;s verified against your real store on connect, then encrypted and stored securely.
+          </p>
+          <Button type="submit" disabled={saving} className="w-full">
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saving ? 'Connecting...' : 'Connect Printful'}
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Don&apos;t have a Printful account?{' '}
+            <a href={SIGNUP_LINKS.printful} target="_blank" rel="noopener noreferrer"
+              className="text-primary underline hover:text-primary/80">
+              Create one free →
+            </a>
+          </p>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── API Key Modal (Zendrop, HyperSKU, Wiio, AliExpress, Printify, Gelato) ──
 
 function ApiKeyModal({ supplier, shopId, onConnected, onClose }: {
   supplier: Supplier; shopId: string; onConnected: () => void; onClose: () => void;
@@ -293,7 +357,12 @@ function SupplierCard({ supplier, shopId, plan, onRefresh }: {
           onConnected={() => { setShowModal(false); onRefresh(); }}
           onClose={() => setShowModal(false)} />
       )}
-      {showModal && supplier.supplier_type !== 'cj' && (
+      {showModal && supplier.supplier_type === 'printful' && (
+        <PrintfulConnectModal shopId={shopId}
+          onConnected={() => { setShowModal(false); onRefresh(); }}
+          onClose={() => setShowModal(false)} />
+      )}
+      {showModal && supplier.supplier_type !== 'cj' && supplier.supplier_type !== 'printful' && (
         <ApiKeyModal supplier={supplier} shopId={shopId}
           onConnected={() => { setShowModal(false); onRefresh(); }}
           onClose={() => setShowModal(false)} />

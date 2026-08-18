@@ -55,6 +55,7 @@ SUPPLIER_SIGNUP_LINKS = {
 }
 
 CJ_BASE = "https://developers.cjdropshipping.com/api2.0/v1"
+PRINTFUL_BASE = "https://api.printful.com"
 
 # Dropship suppliers forward an order to be picked, packed and shipped from
 # their own stock. POD (print-on-demand) suppliers instead print a design
@@ -506,6 +507,111 @@ async def cj_import_product(
     return {"product_id": product.id, "name": product.name, "price": product.price, "cost_price": cost}
 
 
+# ── Endpoints: Printful catalog (print-on-demand blanks, not existing stock) ──
+# First real piece of the Printful integration — proves a connected token can
+# actually talk to Printful. Design upload / mockup generation / order
+# placement are separate, larger pieces built after this is confirmed working.
+
+async def _get_printful_conn_or_400(shop_id: int, db: Session) -> DropshipConnection:
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id,
+        DropshipConnection.supplier_type == "printful",
+        DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail={
+            "error": "printful_not_connected",
+            "message": "Connect Printful first in the Suppliers section.",
+        })
+    return conn
+
+
+@router.get("/shops/{shop_id}/dropship/printful/catalog")
+async def printful_catalog(
+    shop_id: int,
+    category_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Printful's Catalog API — the blank products (hoodie styles, sizes,
+    colors) available to print on, not anything already in the seller's own
+    store. category_id filters to one category (e.g. hoodies) once the
+    seller has picked one from /categories.
+    """
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+        raise HTTPException(status_code=403, detail="Print-on-demand catalog browse is not available on your plan.")
+
+    conn = await _get_printful_conn_or_400(shop_id, db)
+    api_key = decrypt(conn.api_key)
+
+    params = {"category_id": category_id} if category_id else {}
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{PRINTFUL_BASE}/products", params=params,
+                              headers={"Authorization": f"Bearer {api_key}"})
+
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Printful API error: {r.status_code} {r.text[:300]}")
+
+    items = r.json().get("result") or []
+    return {
+        "products": [
+            {
+                "printful_id": p.get("id"),
+                "name": p.get("title"),
+                "brand": p.get("brand"),
+                "model": p.get("model"),
+                "image": p.get("image"),
+                "variant_count": p.get("variant_count"),
+            }
+            for p in items
+        ],
+    }
+
+
+@router.get("/shops/{shop_id}/dropship/printful/product/{printful_id}")
+async def printful_product_detail(
+    shop_id: int,
+    printful_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Real variants (size/color/price) for one Printful catalog product —
+    what the seller picks from before a design gets placed on it."""
+    _shop_or_404(shop_id, current_user, db)
+    conn = await _get_printful_conn_or_400(shop_id, db)
+    api_key = decrypt(conn.api_key)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{PRINTFUL_BASE}/products/{printful_id}",
+                              headers={"Authorization": f"Bearer {api_key}"})
+
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Printful API error: {r.status_code} {r.text[:300]}")
+
+    data = r.json().get("result") or {}
+    product = data.get("product") or {}
+    variants = data.get("variants") or []
+    return {
+        "printful_id": product.get("id"),
+        "name": product.get("title"),
+        "image": product.get("image"),
+        "variants": [
+            {
+                "variant_id": v.get("id"),
+                "size": v.get("size"),
+                "color": v.get("color"),
+                "color_code": v.get("color_code"),
+                "price": v.get("price"),
+                "image": v.get("image"),
+            }
+            for v in variants
+        ],
+    }
+
+
 # ── Endpoints: Supplier connections ──────────────────────────────────────────
 
 @router.get("/shops/{shop_id}/dropship/connections")
@@ -654,6 +760,60 @@ async def connect_cj(
     return {"connected": True, "supplier_type": "cj", "message": "CJ Dropshipping connected successfully."}
 
 
+@router.post("/shops/{shop_id}/dropship/connect/printful")
+async def connect_printful(
+    shop_id: int,
+    data: CJConnectIn,  # reuses the same {api_key: str} shape as CJ's connect
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Printful's Private Token is a static Bearer token — no exchange, no
+    expiry, unlike CJ's apiKey-for-session-token flow. The one thing worth
+    doing on connect is a real validation call (GET /store) so a bad/expired
+    token is caught immediately instead of silently saved and failing later,
+    same principle as CJ's connect but simpler since there's no token to store.
+    """
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    _check_supplier_allowed(plan, "printful", shop_id, db)
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                f"{PRINTFUL_BASE}/store",
+                headers={"Authorization": f"Bearer {data.api_key}"},
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not reach Printful: {exc}")
+
+    if r.status_code != 200:
+        logger.error(f"[PRINTFUL Auth] validation failed — status={r.status_code} response={r.text[:300]}")
+        raise HTTPException(status_code=400, detail={
+            "error": "printful_auth_failed",
+            "message": "Could not connect to Printful. Check your API token.",
+        })
+    store_info = r.json().get("result", {})
+
+    existing = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id,
+        DropshipConnection.supplier_type == "printful",
+    ).first()
+    enc_key = encrypt(data.api_key)
+    if existing:
+        existing.api_key = enc_key
+        existing.is_active = True
+    else:
+        db.add(DropshipConnection(shop_id=shop_id, supplier_type="printful", api_key=enc_key))
+    db.commit()
+    return {
+        "connected": True,
+        "supplier_type": "printful",
+        "store_name": store_info.get("name"),
+        "message": f"Printful connected — store \"{store_info.get('name', 'your store')}\" verified.",
+    }
+
+
 @router.post("/shops/{shop_id}/dropship/connect/apikey")
 def connect_apikey(
     shop_id: int,
@@ -662,7 +822,7 @@ def connect_apikey(
     current_user: User = Depends(get_current_user),
 ):
     _shop_or_404(shop_id, current_user, db)
-    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "aliexpress", "printful", "printify", "gelato"):
+    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "aliexpress", "printify", "gelato"):
         raise HTTPException(status_code=400, detail="Use /connect/cj for CJ Dropshipping.")
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)

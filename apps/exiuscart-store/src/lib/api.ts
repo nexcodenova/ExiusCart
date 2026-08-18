@@ -744,8 +744,14 @@ export const dropshipApi = {
     api.get(`/shops/${shopId}/dropship/connections`),
   connectCJ: (shopId: string, data: { api_key: string }) =>
     api.post(`/shops/${shopId}/dropship/connect/cj`, data),
+  connectPrintful: (shopId: string, data: { api_key: string }) =>
+    api.post(`/shops/${shopId}/dropship/connect/printful`, data),
   connectApiKey: (shopId: string, data: { supplier_type: string; api_key: string }) =>
     api.post(`/shops/${shopId}/dropship/connect/apikey`, data),
+  printfulCatalog: (shopId: string, categoryId?: number) =>
+    api.get(`/shops/${shopId}/dropship/printful/catalog`, { params: categoryId ? { category_id: categoryId } : {} }),
+  printfulProductDetail: (shopId: string, printfulId: number) =>
+    api.get(`/shops/${shopId}/dropship/printful/product/${printfulId}`),
   disconnect: (shopId: string, supplierType: string) =>
     api.delete(`/shops/${shopId}/dropship/connect/${supplierType}`),
   toggleAutoFulfill: (shopId: string, enabled: boolean) =>
