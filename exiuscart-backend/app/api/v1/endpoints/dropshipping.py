@@ -136,6 +136,21 @@ def _parse_cj_price(raw) -> float:
         return 0.0
 
 
+def _sanitize_supplier_html(html: str) -> str:
+    """Supplier descriptions (CJ, and any future import source) routinely embed
+    their product photos as inline base64 <img> data URIs rather than linking
+    real image files — one real CJ import left a shop with a 7MB description
+    (a single embedded photo) that then got served on every product-list API
+    call, on every storefront and every channel that product was pushed to.
+    Strips all <img> tags — the frontend's rich-text editor already does the
+    same for pasted HTML (see sanitizePastedHtml in rich-text-editor.tsx) but
+    that only covers seller-typed content, not data written directly by an
+    import endpoint like this one."""
+    if not html:
+        return html
+    return re.sub(r"<img\b[^>]*>", "", html, flags=re.IGNORECASE)
+
+
 # ── CJ token management ───────────────────────────────────────────────────────
 
 async def _cj_get_token(api_key: str) -> dict:
@@ -464,7 +479,7 @@ async def cj_import_product(
     product = Product(
         shop_id=shop_id,
         name=name,
-        description=p.get("description") or name,
+        description=_sanitize_supplier_html(p.get("description")) or name,
         price=price,
         cost_price=cost,
         sku=p.get("productSku") or body.cj_pid[:50],
