@@ -39,7 +39,14 @@ def _get_or_create_account(shop_id: int, customer_id: int, db: Session) -> Walle
         WalletAccount.shop_id == shop_id, WalletAccount.customer_id == customer_id,
     ).first()
     if not account:
-        account = WalletAccount(shop_id=shop_id, customer_id=customer_id, balance=Decimal("0"))
+        # Wallet balance is real, spendable money — it must be denominated in
+        # the shop's actual currency (base_currency), never the column default.
+        # Without this every new account silently inherited the model's "LKR"
+        # default regardless of what currency the shop actually uses.
+        from app.models.shop import Shop
+        shop = db.query(Shop).filter(Shop.id == shop_id).first()
+        shop_currency = (shop.base_currency or shop.currency) if shop else "USD"
+        account = WalletAccount(shop_id=shop_id, customer_id=customer_id, balance=Decimal("0"), currency=shop_currency)
         db.add(account)
         db.flush()
     return account
@@ -210,7 +217,7 @@ def public_wallet_balance(shop_slug: str, db: Session = Depends(get_db), custome
         raise HTTPException(status_code=404, detail="Store not found")
     account = db.query(WalletAccount).filter(WalletAccount.shop_id == shop.id, WalletAccount.customer_id == customer.id).first()
     if not account:
-        return {"balance": 0.0, "currency": "LKR", "transactions": []}
+        return {"balance": 0.0, "currency": shop.base_currency or shop.currency, "transactions": []}
     txs = db.query(WalletTransaction).filter(WalletTransaction.account_id == account.id).order_by(WalletTransaction.created_at.desc()).limit(50).all()
     return {
         "balance": float(account.balance),
