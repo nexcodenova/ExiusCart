@@ -770,30 +770,54 @@ async def connect_printful(
     """
     Printful's Private Token is a static Bearer token — no exchange, no
     expiry, unlike CJ's apiKey-for-session-token flow. The one thing worth
-    doing on connect is a real validation call (GET /store) so a bad/expired
-    token is caught immediately instead of silently saved and failing later,
-    same principle as CJ's connect but simpler since there's no token to store.
+    doing on connect is a real validation call so a bad/expired token is
+    caught immediately instead of silently saved and failing later.
+
+    GET /store (singular) is implicitly scoped and 400s with "requires
+    store_id" if the token wasn't generated with a store selected — only
+    an "Account (all stores)" token hits that. A single-store token works
+    fine with GET /store directly. Since sellers connecting their own
+    Printful account will pick either option (this isn't something we
+    control), try /stores (list) first — the account-scoped shape — and
+    fall back to /store (singular) if that's rejected, so both token types
+    work without the seller needing to know which one they generated.
+    Its id is stored in access_token (reusing the column CJ uses for its
+    session token — same slot, different meaning per supplier) since every
+    subsequent Printful call for an account-scoped token needs to pass it.
     """
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, "printful", shop_id, db)
 
+    headers = {"Authorization": f"Bearer {data.api_key}"}
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(
-                f"{PRINTFUL_BASE}/store",
-                headers={"Authorization": f"Bearer {data.api_key}"},
-            )
+            r = await client.get(f"{PRINTFUL_BASE}/stores", headers=headers)
+            stores = r.json().get("result") if r.status_code == 200 else None
+            if not stores:
+                # Either the account-scoped call failed, or it succeeded but
+                # returned nothing meaningful (a single-store token can 200
+                # here with a shape that isn't a list) — try the single-store
+                # endpoint before giving up.
+                r2 = await client.get(f"{PRINTFUL_BASE}/store", headers=headers)
+                if r2.status_code == 200:
+                    r, stores = r2, [r2.json().get("result", {})]
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Could not reach Printful: {exc}")
 
-    if r.status_code != 200:
+    if not stores:
         logger.error(f"[PRINTFUL Auth] validation failed — status={r.status_code} response={r.text[:300]}")
         raise HTTPException(status_code=400, detail={
             "error": "printful_auth_failed",
             "message": "Could not connect to Printful. Check your API token.",
         })
-    store_info = r.json().get("result", {})
+    store_info = stores[0]
+    store_id = store_info.get("id")
+    if not store_id:
+        raise HTTPException(status_code=400, detail={
+            "error": "printful_no_store",
+            "message": "No store found on this Printful account. Create one first: Stores → Connect via API in your Printful dashboard.",
+        })
 
     existing = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop_id,
@@ -802,9 +826,10 @@ async def connect_printful(
     enc_key = encrypt(data.api_key)
     if existing:
         existing.api_key = enc_key
+        existing.access_token = str(store_id)
         existing.is_active = True
     else:
-        db.add(DropshipConnection(shop_id=shop_id, supplier_type="printful", api_key=enc_key))
+        db.add(DropshipConnection(shop_id=shop_id, supplier_type="printful", api_key=enc_key, access_token=str(store_id)))
     db.commit()
     return {
         "connected": True,
