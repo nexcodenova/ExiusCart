@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff, Zap, Boxes, Layers, ArrowRight, ShoppingBag, Shirt, Palette, Printer } from 'lucide-react';
+import { CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff, Zap, Boxes, Layers, ShoppingBag, Shirt, Palette, Printer } from 'lucide-react';
 import { dropshipApi, channelsApi } from '@/lib/api';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -460,32 +460,6 @@ export default function DropshippingPage() {
             </div>
           </div>
 
-          {connectedCount > 0 && (
-            <Card className="rounded-xl">
-              <CardContent className="px-5 py-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Supplier Orders</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Track all orders sent to suppliers — status, tracking numbers, costs.</p>
-                </div>
-                <Link href="/dashboard/dropshipping/orders"
-                  className="text-sm text-primary font-medium hover:underline whitespace-nowrap">
-                  View supplier orders →
-                </Link>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Point to the dedicated Import Products page once a supplier is connected */}
-          {suppliers.some((s) => s.supplier_type === 'cj' && s.connected) && (
-            <Link href="/dashboard/dropshipping/import"
-              className="flex items-center justify-between gap-4 px-5 py-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition group">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Import Products from CJ</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Search CJ&apos;s catalog and add products to your store with one click.</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          )}
         </>
       )}
     </div>
