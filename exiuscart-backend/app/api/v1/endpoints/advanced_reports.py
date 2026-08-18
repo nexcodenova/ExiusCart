@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
 from typing import Optional
 from datetime import datetime, timezone, timedelta, date
@@ -268,7 +268,10 @@ def product_performance(
     since_7 = now - timedelta(days=7)
     year_ago = now - timedelta(days=365)
 
-    paid_orders = db.query(Order).filter(
+    # Eager-load items in the same query — without this, accessing
+    # order.items below fires one extra query per order (N+1), which is
+    # what was actually making this endpoint slow, not data volume.
+    paid_orders = db.query(Order).options(selectinload(Order.items)).filter(
         Order.shop_id == shop_id,
         Order.payment_status == "paid",
         Order.status != "cancelled",
@@ -298,6 +301,16 @@ def product_performance(
     revenues = [v["revenue_30d"] for v in perf.values() if v["revenue_30d"] > 0]
     hot_threshold = sorted(revenues, reverse=True)[max(0, len(revenues) // 4 - 1)] if revenues else float("inf")
 
+    # One batched lookup for every product's cost_price instead of a
+    # separate query per product inside the loop below (same N+1 pattern
+    # as the orders fetch above).
+    cost_by_product_id = {
+        p.id: p.cost_price
+        for p in db.query(Product.id, Product.cost_price).filter(
+            Product.id.in_(perf.keys()), Product.shop_id == shop_id
+        ).all()
+    }
+
     result = {}
     for pid, stat in perf.items():
         last = stat["last_sold_at"]
@@ -309,11 +322,11 @@ def product_performance(
         else:
             heat = "slow"
 
-        products = db.query(Product).filter(Product.id == pid, Product.shop_id == shop_id).first()
+        cost_price = cost_by_product_id.get(pid)
         margin_pct = 0.0
-        if products and products.cost_price and float(stat["revenue"]) > 0:
+        if cost_price and float(stat["revenue"]) > 0:
             units = stat["units_sold"]
-            cost = float(products.cost_price) * units
+            cost = float(cost_price) * units
             margin_pct = round(((float(stat["revenue"]) - cost) / float(stat["revenue"])) * 100, 1)
 
         result[str(pid)] = {

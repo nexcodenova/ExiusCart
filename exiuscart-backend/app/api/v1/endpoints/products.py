@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Optional
 from slugify import slugify
 from pydantic import BaseModel
@@ -343,7 +343,10 @@ async def get_products(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Product).filter(Product.shop_id == shop_id)
+    # Eager-load images — p.images is accessed per-product below, and
+    # without this each access fires its own query (N+1: 29 products = 29
+    # extra round-trips just to check the first image).
+    query = db.query(Product).options(selectinload(Product.images)).filter(Product.shop_id == shop_id)
 
     if category:
         cat_obj = db.query(Category).filter(
