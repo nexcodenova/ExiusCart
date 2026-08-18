@@ -221,6 +221,7 @@ const SUPPLIER_LABELS: Record<string, string> = {
   zendrop: 'Zendrop',
   hypersku: 'HyperSKU',
   wiio: 'Wiio',
+  printful: 'Printful',
 };
 
 // Short form for the compact Fulfillment table badge — SUPPLIER_LABELS'
@@ -230,6 +231,7 @@ const SUPPLIER_SHORT: Record<string, string> = {
   zendrop: 'Zendrop',
   hypersku: 'HyperSKU',
   wiio: 'Wiio',
+  printful: 'Printful',
 };
 
 const FULFILLMENT_STYLES: Record<string, string> = {

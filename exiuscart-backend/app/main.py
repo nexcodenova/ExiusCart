@@ -240,6 +240,19 @@ def _run_cj_tracking_scheduler():
 _cj_tracking_thread = threading.Thread(target=_run_cj_tracking_scheduler, daemon=True)
 _cj_tracking_thread.start()
 
+# Start Printful tracking sync (every 2 hours)
+def _run_printful_tracking_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.dropshipping import sync_printful_tracking_job
+            sync_printful_tracking_job(SessionLocal)
+        except Exception as exc:
+            logger.error(f"[Printful Tracking scheduler] {exc}")
+        time.sleep(2 * 3600)
+
+_printful_tracking_thread = threading.Thread(target=_run_printful_tracking_scheduler, daemon=True)
+_printful_tracking_thread.start()
+
 # Auto-expire overdue subscriptions (checked daily) — recurring affiliate
 # commissions are now generated only from real payment events (Lemon Squeezy
 # webhook or manual admin approval), never from a blind timer.

@@ -627,6 +627,195 @@ async def printful_product_detail(
     }
 
 
+def _printful_headers(conn: DropshipConnection) -> dict:
+    """Account-scoped tokens (the "Account (all stores)" option — see
+    connect_printful) need X-PF-Store-Id on every store-context call or
+    Printful 400s with "requires store_id". Single-store tokens don't need
+    it and ignore it if sent, so it's always safe to include when we have it.
+    conn.access_token holds the resolved store_id, set at connect time."""
+    headers = {"Authorization": f"Bearer {decrypt(conn.api_key)}"}
+    if conn.access_token:
+        headers["X-PF-Store-Id"] = conn.access_token
+    return headers
+
+
+class PrintfulImportIn(BaseModel):
+    sync_product_id: int
+    selling_price: Optional[float] = None
+
+
+@router.get("/shops/{shop_id}/dropship/printful/my-products")
+async def printful_my_products(
+    shop_id: int,
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """The seller's own synced products from Printful's Design Lab (blanks
+    they've already designed + mocked up over there) — this is what gets
+    imported into ExiusCart, not the raw catalog (that's /printful/catalog
+    above, blanks with nothing designed on them yet)."""
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+        raise HTTPException(status_code=403, detail="Print-on-demand product browse is not available on your plan.")
+
+    conn = await _get_printful_conn_or_400(shop_id, db)
+    limit = 20
+    offset = (max(page, 1) - 1) * limit
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{PRINTFUL_BASE}/store/products",
+                              params={"offset": offset, "limit": limit},
+                              headers=_printful_headers(conn))
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Printful API error: {r.status_code} {r.text[:300]}")
+
+    body = r.json()
+    items = body.get("result") or []
+    paging = body.get("paging") or {}
+    return {
+        "products": [
+            {
+                "sync_product_id": p.get("id"),
+                "name": p.get("name"),
+                "image": p.get("thumbnail_url") or p.get("thumbnail"),
+                "variant_count": p.get("variants"),
+            }
+            for p in items
+        ],
+        "total": paging.get("total", len(items)),
+        "page": page,
+    }
+
+
+@router.post("/shops/{shop_id}/dropship/printful/import")
+async def printful_import(
+    shop_id: int,
+    body: PrintfulImportIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Pulls one already-designed Printful sync product into ExiusCart as a
+    real, sellable Product — variants, mockup images, price. Mirrors
+    import_cj_product below in shape (same response fields), but the
+    supplier SKU stored on DropshipProductLink is a Printful sync_variant_id
+    (needed by /orders at fulfillment time), not a CJ vid.
+
+    UNVERIFIED against a live Printful account with real synced products —
+    built from Printful's documented /store/products/{id} response shape
+    (sync_product + sync_variants), same caveat as CJ's shipping-estimate
+    endpoint elsewhere in this file. Confirm the variant name parsing below
+    actually splits "Color / Size" the way a real synced product names it,
+    and adjust if Printful's real format differs.
+    """
+    from app.models.product import Product
+    from app.models.product_fields import ProductImage
+    from app.models.product_variant import ProductVariant
+    from app.api.v1.endpoints.products import generate_slug, PLAN_PRODUCT_LIMITS
+
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+        raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
+
+    limit = PLAN_PRODUCT_LIMITS.get(plan, 25)
+    if limit != -1:
+        count = db.query(Product).filter(Product.shop_id == shop_id).count()
+        if count >= limit:
+            raise HTTPException(status_code=403, detail=f"Product limit reached ({limit} on your plan). Upgrade to add more.")
+
+    conn = await _get_printful_conn_or_400(shop_id, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{PRINTFUL_BASE}/store/products/{body.sync_product_id}",
+                              headers=_printful_headers(conn))
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Printful API error: {r.status_code} {r.text[:300]}")
+
+    data = r.json().get("result") or {}
+    sync_product = data.get("sync_product") or {}
+    sync_variants = data.get("sync_variants") or []
+    if not sync_variants:
+        raise HTTPException(status_code=400, detail="This Printful product has no variants to import.")
+
+    name = (sync_product.get("name") or "Printful Product").strip()
+
+    primary = sync_variants[0]
+    price = body.selling_price if body.selling_price else float(primary.get("retail_price") or 0) or None
+    if not price:
+        raise HTTPException(status_code=400, detail="Couldn't determine a price — set one manually.")
+
+    product = Product(
+        shop_id=shop_id,
+        name=name,
+        description=name,
+        price=price,
+        cost_price=None,  # Printful's cost isn't exposed on this endpoint — seller sets margin manually
+        sku=f"PF-{body.sync_product_id}",
+        # Print-on-demand — nothing to hold in stock, Printful prints per
+        # order, so this is never "out of stock" the way a real-inventory
+        # product would be.
+        quantity=999999,
+        low_stock_threshold=0,
+        slug=generate_slug(name),
+    )
+    db.add(product)
+    db.flush()
+
+    # Images — sync_product's own thumbnail first, then each variant's
+    # mockup preview file (the "preview" file type is the rendered mockup;
+    # "default" is the raw print file, not something a buyer should see).
+    seen_urls = set()
+    images = []
+    if sync_product.get("thumbnail_url"):
+        images.append(sync_product["thumbnail_url"])
+        seen_urls.add(sync_product["thumbnail_url"])
+    for v in sync_variants:
+        for f in (v.get("files") or []):
+            url = f.get("preview_url") or (f.get("url") if f.get("type") == "preview" else None)
+            if url and url not in seen_urls:
+                images.append(url)
+                seen_urls.add(url)
+    for i, url in enumerate(images[:10]):
+        db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
+
+    # Variants — Printful names a sync variant like "Product Name - Black / M"
+    # (color / size after the last " - "); best-effort split so the storefront
+    # shows real size/color pickers instead of one flat SKU. Falls back to
+    # putting the whole variant name in `size` if the format doesn't match.
+    for v in sync_variants:
+        vname = (v.get("name") or "").split(" - ")[-1]
+        color, _, size = vname.partition(" / ")
+        if not size:
+            color, size = None, (vname or None)
+        db.add(ProductVariant(
+            product_id=product.id,
+            size=(size or None),
+            color=(color or None),
+            sku=str(v.get("id")),
+            quantity=999999,
+            price=float(v["retail_price"]) if v.get("retail_price") else None,
+            image_url=next((f.get("preview_url") for f in (v.get("files") or []) if f.get("preview_url")), None),
+        ))
+
+    db.add(DropshipProductLink(
+        shop_id=shop_id,
+        product_id=product.id,
+        supplier_type="printful",
+        supplier_product_id=str(body.sync_product_id),
+        supplier_sku=str(primary.get("id")),  # primary sync_variant_id — see fulfill_order's printful branch
+        supplier_product_name=name,
+        is_primary=True,
+    ))
+
+    db.commit()
+    db.refresh(product)
+    logger.info(f"[Printful Import] shop={shop_id} imported product={product.id} sync_product_id={body.sync_product_id} variants={len(sync_variants)}")
+    return {"product_id": product.id, "name": product.name, "price": float(product.price)}
+
+
 # ── Endpoints: Supplier connections ──────────────────────────────────────────
 
 @router.get("/shops/{shop_id}/dropship/connections")
@@ -1159,6 +1348,118 @@ async def fulfill_order(
             "message": "Order sent to CJ Dropshipping. Tracking will appear here once CJ ships it.",
         }
 
+    if data.supplier_type == "printful":
+        conn = db.query(DropshipConnection).filter(
+            DropshipConnection.shop_id == shop_id,
+            DropshipConnection.supplier_type == "printful",
+            DropshipConnection.is_active == True,
+        ).first()
+        if not conn:
+            raise HTTPException(status_code=400, detail="Printful is not connected. Go to Suppliers to connect.")
+
+        from app.models.order import OrderItem
+        items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+        if not items:
+            raise HTTPException(status_code=400, detail="Order has no items.")
+
+        pf_items = []
+        for item in items:
+            link = db.query(DropshipProductLink).filter(
+                DropshipProductLink.product_id == item.product_id,
+                DropshipProductLink.supplier_type == "printful",
+            ).first()
+            if not link or not link.supplier_sku:
+                raise HTTPException(status_code=400, detail={
+                    "error": "no_supplier_link",
+                    "message": f"Product '{item.product_name}' does not have a Printful supplier link. Re-import it from Printful, or link it manually under the product's Suppliers tab.",
+                })
+            # supplier_sku holds the *default* sync_variant_id set at import
+            # time — there's no per-order-item variant selection on OrderItem
+            # today, so every unit of this line item fulfills as that one
+            # variant regardless of which size/color the buyer actually
+            # picked at checkout. Same simplification CJ's import makes.
+            pf_items.append({
+                "sync_variant_id": int(link.supplier_sku),
+                "quantity": item.quantity,
+            })
+
+        shipping = {}
+        if order.shipping_address:
+            import json
+            try:
+                shipping = json.loads(order.shipping_address)
+            except Exception:
+                shipping = {"address": order.shipping_address}
+
+        recipient = {
+            "name": shipping.get("name") or order.notes or "Customer",
+            "address1": shipping.get("address", ""),
+            "city": shipping.get("city", ""),
+            "state_code": shipping.get("province") or shipping.get("state"),
+            "country_code": shipping.get("country_code", "US"),
+            "zip": shipping.get("zip", ""),
+            "phone": shipping.get("phone"),
+            "email": shipping.get("email"),
+        }
+
+        pf_payload = {
+            "external_id": order.order_number,
+            "recipient": recipient,
+            "items": pf_items,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                r = await client.post(
+                    f"{PRINTFUL_BASE}/orders",
+                    params={"confirm": 1},  # submit for fulfillment immediately, not a draft
+                    json=pf_payload,
+                    headers=_printful_headers(conn),
+                )
+            result = r.json()
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Printful API error: {str(e)}")
+
+        if r.status_code not in (200, 201) or not result.get("result"):
+            error_msg = (result.get("error") or {}).get("message") or result.get("result") or "Unknown Printful error"
+            ds_order = DropshipOrder(
+                shop_id=shop_id,
+                order_id=order_id,
+                supplier_type="printful",
+                status="failed",
+                error_message=str(error_msg)[:2000],
+            )
+            db.add(ds_order)
+            order.fulfillment_status = "failed"
+            db.commit()
+            raise HTTPException(status_code=400, detail={
+                "error": "printful_order_failed",
+                # Billing isn't set up is the single most common real cause here
+                # per Printful's own docs — confirmed orders fail outright without it.
+                "message": f"Printful rejected this order: {error_msg}. If this is your first order, make sure billing is set up on your Printful account.",
+            })
+
+        pf_order = result["result"]
+        pf_order_id = str(pf_order.get("id", ""))
+        costs = pf_order.get("costs") or {}
+        ds_order = DropshipOrder(
+            shop_id=shop_id,
+            order_id=order_id,
+            supplier_type="printful",
+            supplier_order_id=pf_order_id,
+            status="processing",
+            cost_paid=float(costs["total"]) if costs.get("total") else None,
+        )
+        db.add(ds_order)
+        order.fulfillment_status = "sent"
+        db.commit()
+        return {
+            "fulfilled": True,
+            "supplier_type": "printful",
+            "supplier_order_id": pf_order_id,
+            "message": "Order sent to Printful. Tracking will appear here once it ships.",
+        }
+
     # Other suppliers (Zendrop, HyperSKU, Wiio) — placeholder for their APIs
     raise HTTPException(status_code=501, detail=f"{data.supplier_type.title()} order forwarding coming soon.")
 
@@ -1344,5 +1645,110 @@ def sync_cj_tracking_job(db_session_factory) -> None:
 
     except Exception as e:
         logger.error(f"[CJ Tracking] Job error: {e}")
+    finally:
+        db.close()
+
+
+# ── Background: Printful tracking sync (called by scheduler in main.py) ──────
+
+def sync_printful_tracking_job(db_session_factory) -> None:
+    """
+    Poll Printful for status/tracking updates on all processing/sent
+    dropship orders. Called every 2 hours by the background scheduler in
+    main.py, same cadence as sync_cj_tracking_job.
+
+    Printful's own order.status values: draft, pending, failed, canceled,
+    onhold, inprocess, partial, fulfilled. onhold generally means a billing
+    or address problem needing the seller's attention on Printful's side —
+    surfaced here as our "failed" status with a message rather than left
+    silently stuck as "processing".
+    """
+    db = db_session_factory()
+    try:
+        pending = db.query(DropshipOrder).filter(
+            DropshipOrder.supplier_type == "printful",
+            DropshipOrder.status.in_(["processing", "sent"]),
+            DropshipOrder.supplier_order_id.isnot(None),
+        ).all()
+
+        if not pending:
+            return
+
+        logger.info(f"[Printful Tracking] Checking {len(pending)} pending orders")
+
+        conn_by_shop: dict = {}
+
+        for ds_order in pending:
+            shop_id = ds_order.shop_id
+
+            if shop_id not in conn_by_shop:
+                conn_by_shop[shop_id] = db.query(DropshipConnection).filter(
+                    DropshipConnection.shop_id == shop_id,
+                    DropshipConnection.supplier_type == "printful",
+                    DropshipConnection.is_active == True,
+                ).first()
+
+            conn = conn_by_shop.get(shop_id)
+            if not conn:
+                continue
+
+            try:
+                with httpx.Client(timeout=15) as client:
+                    r = client.get(f"{PRINTFUL_BASE}/orders/{ds_order.supplier_order_id}", headers=_printful_headers(conn))
+                data = r.json()
+                if r.status_code != 200 or not data.get("result"):
+                    continue
+
+                pf_order = data["result"]
+                pf_status = (pf_order.get("status") or "").lower()
+                shipments = pf_order.get("shipments") or []
+                latest_shipment = shipments[-1] if shipments else {}
+                tracking_number = latest_shipment.get("tracking_number")
+                tracking_url = latest_shipment.get("tracking_url")
+                carrier = latest_shipment.get("carrier")
+
+                if ds_order.cost_paid is None:
+                    costs = pf_order.get("costs") or {}
+                    if costs.get("total"):
+                        try:
+                            ds_order.cost_paid = float(costs["total"])
+                        except (TypeError, ValueError):
+                            pass
+
+                if tracking_number:
+                    ds_order.tracking_number = tracking_number
+                if carrier:
+                    ds_order.carrier = carrier
+                if tracking_url:
+                    ds_order.tracking_url = tracking_url
+
+                if pf_status == "fulfilled":
+                    ds_order.status = "delivered"
+                    if not ds_order.delivered_at:
+                        ds_order.delivered_at = datetime.now(timezone.utc)
+                elif pf_status in ("failed", "canceled", "onhold"):
+                    ds_order.status = "failed"
+                    ds_order.error_message = f"Printful order is '{pf_status}' — check this order on your Printful dashboard."
+                elif tracking_number and ds_order.status in ("processing", "sent"):
+                    ds_order.status = "shipped"
+                    if not ds_order.shipped_at:
+                        ds_order.shipped_at = datetime.now(timezone.utc)
+
+                if tracking_number:
+                    from app.models.order import Order as ShopOrder
+                    order = db.query(ShopOrder).filter(ShopOrder.id == ds_order.order_id).first()
+                    if order and not order.tracking_number:
+                        order.tracking_number = tracking_number
+                        order.carrier = carrier or order.carrier
+
+                db.commit()
+                logger.info(f"[Printful Tracking] order={ds_order.order_id} tracking={tracking_number} status={ds_order.status}")
+
+            except Exception as e:
+                logger.error(f"[Printful Tracking] Failed ds_order={ds_order.id}: {e}")
+                continue
+
+    except Exception as e:
+        logger.error(f"[Printful Tracking] Job error: {e}")
     finally:
         db.close()

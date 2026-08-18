@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, X, Loader2, Package, Lock, Search, ShoppingBag, ChevronRight, AlertCircle } from 'lucide-react';
+import { CheckCircle2, X, Loader2, Package, Lock, Search, ShoppingBag, ChevronRight, AlertCircle, Shirt } from 'lucide-react';
 import { dropshipApi, channelsApi } from '@/lib/api';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -24,6 +24,98 @@ interface CJProductDetail {
   cost_price: number;
   category: string;
   sku: string;
+}
+
+interface PrintfulProduct {
+  sync_product_id: number;
+  name: string;
+  image: string;
+  variant_count: number;
+}
+
+// ── Printful Import Modal ───────────────────────────────────────────────────
+// Simpler than CJ's — these are the seller's own already-designed synced
+// products, so there's no foreign "cost price" to show for comparison, and
+// no separate detail-preview call: the import endpoint itself fetches full
+// sync_variant detail and creates the product in one step.
+
+function PrintfulImportModal({ shopId, product, onClose, onImported }: {
+  shopId: string;
+  product: PrintfulProduct;
+  onClose: () => void;
+  onImported: (productId: number, name: string) => void;
+}) {
+  const [sellingPrice, setSellingPrice] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleImport = async () => {
+    setImporting(true); setError('');
+    try {
+      const price = parseFloat(sellingPrice) || undefined;
+      const r = await dropshipApi.printfulImport(shopId, product.sync_product_id, price);
+      onImported(r.data.product_id, r.data.name);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Import failed. Please try again.');
+    } finally { setImporting(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
+          <p className="font-semibold text-foreground">Import Product</p>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {product.image && (
+            <div className="relative w-full aspect-square bg-muted rounded-xl overflow-hidden">
+              <Image src={product.image} alt={product.name} fill className="object-contain p-2" unoptimized />
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <p className="font-semibold text-foreground leading-snug">{product.name}</p>
+            <p className="text-xs text-muted-foreground">{product.variant_count} variant{product.variant_count !== 1 ? 's' : ''}</p>
+          </div>
+
+          <div className="bg-muted/50 rounded-xl p-4 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <label htmlFor="pf-sell-price" className="text-muted-foreground">Selling Price</label>
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground text-xs">$</span>
+                <input id="pf-sell-price" type="number" step="0.01" min="0" value={sellingPrice}
+                  onChange={(e) => setSellingPrice(e.target.value)}
+                  placeholder="Use Printful price"
+                  className="w-28 px-2 py-1 bg-background border border-border rounded-lg text-sm text-right font-semibold outline-none focus:ring-2 focus:ring-primary text-foreground" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">Leave blank to use the retail price already set on this product in Printful.</p>
+          </div>
+
+          <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2.5 leading-relaxed">
+            ExiusCart will create this as a product in your catalog with its real variants and mockup images. No inventory to manage — Printful prints and ships each order automatically.
+          </p>
+
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-muted transition">Cancel</button>
+            <button onClick={handleImport} disabled={importing}
+              className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+              {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
+              {importing ? 'Importing…' : 'Import to My Products'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Import Modal ──────────────────────────────────────────────────────────────
@@ -160,7 +252,12 @@ export default function ImportProductsPage() {
   const [shopId, setShopId] = useState('');
   const [checking, setChecking] = useState(true);
   const [cjConnected, setCjConnected] = useState(false);
+  const [printfulConnected, setPrintfulConnected] = useState(false);
   const [isTheDersiUser, setIsTheDersiUser] = useState(false);
+
+  // Only relevant once both suppliers are connected — otherwise the page
+  // just shows whichever one is available with no switcher at all.
+  const [supplier, setSupplier] = useState<'cj' | 'printful'>('cj');
 
   const [activeTab, setActiveTab] = useState<'search' | 'my'>('search');
   const [query, setQuery] = useState('');
@@ -174,6 +271,11 @@ export default function ImportProductsPage() {
   const [importedId, setImportedId] = useState<{ id: number; name: string } | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [printfulProducts, setPrintfulProducts] = useState<PrintfulProduct[]>([]);
+  const [loadingPrintful, setLoadingPrintful] = useState(false);
+  const [printfulLoaded, setPrintfulLoaded] = useState(false);
+  const [printfulImportTarget, setPrintfulImportTarget] = useState<PrintfulProduct | null>(null);
+
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
   useEffect(() => {
@@ -185,12 +287,25 @@ export default function ImportProductsPage() {
     ])
       .then(([supRes, connRes]) => {
         const suppliers = supRes.data?.suppliers ?? [];
-        setCjConnected(suppliers.some((s: any) => s.supplier_type === 'cj' && s.connected));
+        const cj = suppliers.some((s: any) => s.supplier_type === 'cj' && s.connected);
+        const printful = suppliers.some((s: any) => s.supplier_type === 'printful' && s.connected);
+        setCjConnected(cj);
+        setPrintfulConnected(printful);
+        setSupplier(cj ? 'cj' : 'printful');
         setIsTheDersiUser((connRes.data ?? []).some((c: any) => c.channel_type === 'thedersi'));
       })
       .catch(() => {})
       .finally(() => setChecking(false));
   }, [shopId]);
+
+  useEffect(() => {
+    if (supplier !== 'printful' || printfulLoaded || !shopId || !printfulConnected) return;
+    setLoadingPrintful(true);
+    dropshipApi.printfulMyProducts(shopId)
+      .then((r) => setPrintfulProducts(r.data?.products ?? []))
+      .catch(() => {})
+      .finally(() => { setLoadingPrintful(false); setPrintfulLoaded(true); });
+  }, [supplier, printfulLoaded, shopId, printfulConnected]);
 
   useEffect(() => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
@@ -252,12 +367,12 @@ export default function ImportProductsPage() {
     );
   }
 
-  if (!cjConnected) {
+  if (!cjConnected && !printfulConnected) {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-8">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Import Products</h1>
-          <p className="text-sm text-muted-foreground mt-1">Search CJ&apos;s catalog and add products directly to your store.</p>
+          <p className="text-sm text-muted-foreground mt-1">Search a supplier&apos;s catalog and add products directly to your store.</p>
         </div>
         <div className="border border-border rounded-2xl bg-card p-8 sm:p-10 flex flex-col items-center text-center max-w-xl mx-auto">
           <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-5">
@@ -265,7 +380,7 @@ export default function ImportProductsPage() {
           </div>
           <h2 className="text-lg font-semibold text-foreground">Connect a supplier first</h2>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            You need an active CJ Dropshipping connection before you can browse and import products.
+            You need an active CJ Dropshipping or Printful connection before you can browse and import products.
           </p>
           <Link href="/dashboard/dropshipping"
             className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
@@ -280,9 +395,97 @@ export default function ImportProductsPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Import Products</h1>
-        <p className="text-sm text-muted-foreground mt-1">Search CJ&apos;s catalog and import directly to your store with one click.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          {supplier === 'cj' ? "Search CJ's catalog and import directly to your store with one click." : 'Bring your already-designed Printful products into your store.'}
+        </p>
       </div>
 
+      {/* Supplier switcher — only shown once there's actually a choice */}
+      {cjConnected && printfulConnected && (
+        <div className="flex gap-2">
+          <button onClick={() => setSupplier('cj')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
+              supplier === 'cj' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
+            }`}>
+            <Package className="w-3.5 h-3.5" /> CJ Dropshipping
+          </button>
+          <button onClick={() => setSupplier('printful')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
+              supplier === 'printful' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
+            }`}>
+            <Shirt className="w-3.5 h-3.5" /> Printful
+          </button>
+        </div>
+      )}
+
+      {supplier === 'printful' ? (
+        <>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Products you&apos;ve designed on Printful&apos;s own site (Design Lab / Product Templates → Published) — already mocked up, ready to import.
+          </p>
+
+          {importedId && (
+            <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
+              </div>
+              <Link href={`/dashboard/products/${importedId.id}`}
+                className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
+                Edit product <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
+
+          {loadingPrintful && (
+            <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Loading your Printful products…</span>
+            </div>
+          )}
+
+          {!loadingPrintful && printfulLoaded && printfulProducts.length === 0 && (
+            <div className="text-center py-20 text-sm text-muted-foreground max-w-md mx-auto">
+              Nothing here yet. Design and publish a product on <a href="https://www.printful.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Printful&apos;s dashboard</a> first — it&apos;ll show up here.
+            </div>
+          )}
+
+          {printfulProducts.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {printfulProducts.map((p) => (
+                <div key={p.sync_product_id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col hover:border-primary/40 transition group">
+                  <div className="relative aspect-square bg-muted">
+                    {p.image
+                      ? <Image src={p.image} alt={p.name} fill className="object-cover group-hover:scale-105 transition duration-300" unoptimized />
+                      : <div className="absolute inset-0 flex items-center justify-center"><Shirt className="w-8 h-8 text-muted-foreground/30" /></div>
+                    }
+                  </div>
+                  <div className="p-3 flex flex-col gap-2 flex-1">
+                    <p className="text-xs text-foreground font-medium line-clamp-2 leading-snug">{p.name}</p>
+                    <div className="flex items-center justify-between mt-auto">
+                      <p className="text-[10px] text-muted-foreground">{p.variant_count} variant{p.variant_count !== 1 ? 's' : ''}</p>
+                      <button onClick={() => { setPrintfulImportTarget(p); setImportedId(null); }}
+                        className="text-xs px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium shrink-0">
+                        Import
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {printfulImportTarget && (
+            <PrintfulImportModal
+              shopId={shopId}
+              product={printfulImportTarget}
+              onClose={() => setPrintfulImportTarget(null)}
+              onImported={(id, name) => { setImportedId({ id, name }); setPrintfulImportTarget(null); }}
+            />
+          )}
+        </>
+      ) : (
+      <>
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border">
         <button onClick={() => setActiveTab('search')}
@@ -403,6 +606,8 @@ export default function ImportProductsPage() {
           onClose={() => setImportTarget(null)}
           onImported={(id, name) => { setImportedId({ id, name }); setImportTarget(null); }}
         />
+      )}
+      </>
       )}
     </div>
   );
