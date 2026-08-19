@@ -833,15 +833,25 @@ async def printful_import(
         for i, url in enumerate(images[:10]):
             db.add(ProductImage(product_id=product.id, url=rehosted[url], sort_order=i, is_primary=(i == 0)))
 
-        # Variants — Printful names a sync variant like "Product Name - Black / M"
-        # (color / size after the last " - "); best-effort split so the storefront
-        # shows real size/color pickers instead of one flat SKU. Falls back to
-        # putting the whole variant name in `size` if the format doesn't match.
+        # Variants — confirmed live (not the " - " guess this comment used to
+        # describe) Printful actually names a sync variant
+        # "Product Name / Color / Size", and the color segment can itself
+        # contain a "/" (e.g. "Purple/Arctic White"), so a simple two-way
+        # split is wrong. Split on every " / ": the first part is always the
+        # product name (discarded — we already have it), the last part is
+        # the size, everything in between is the color, rejoined in case it
+        # had its own slash.
         for v in sync_variants:
-            vname = (v.get("name") or "").split(" - ")[-1]
-            color, _, size = vname.partition(" / ")
-            if not size:
-                color, size = None, (vname or None)
+            parts = (v.get("name") or "").split(" / ")
+            if len(parts) >= 3:
+                size = parts[-1] or None
+                color = " / ".join(parts[1:-1]) or None
+            elif len(parts) == 2:
+                size = parts[-1] or None
+                color = None
+            else:
+                size = parts[0] or None if parts else None
+                color = None
             variant_image = next((f.get("preview_url") for f in (v.get("files") or []) if f.get("preview_url")), None)
             if variant_image:
                 variant_image = rehosted.get(variant_image) or await _rehost_printful_image(rehost_client, variant_image, shop_id, product.id)
