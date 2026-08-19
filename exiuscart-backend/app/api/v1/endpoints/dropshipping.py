@@ -136,6 +136,27 @@ def _parse_cj_price(raw) -> float:
         return 0.0
 
 
+async def _rehost_printful_image(client: httpx.AsyncClient, url: str, shop_id: int, product_id: int) -> str:
+    """Printful's mockup preview URLs are temporary (Printful expires/removes
+    them within days) — storing them directly would leave product images
+    quietly breaking a few days after every import. Downloads and re-uploads
+    to ExiusCart's own R2 storage so the URL is permanent. Falls back to the
+    original Printful URL if the download/upload fails for any reason —
+    a slower-to-expire image beats a failed import."""
+    from app.core.storage import upload_image
+    try:
+        resp = await client.get(url, timeout=20)
+        resp.raise_for_status()
+        ext = (url.rsplit(".", 1)[-1].split("?")[0] or "png")[:4]
+        if ext not in ("png", "jpg", "jpeg", "webp", "gif"):
+            ext = "png"
+        content_type = resp.headers.get("content-type", "image/png").split(";")[0]
+        return upload_image(resp.content, shop_id, product_id, ext, content_type)
+    except Exception as exc:
+        logger.warning(f"[Printful Import] Failed to re-host image {url}: {exc} — keeping original (temporary) URL")
+        return url
+
+
 def _sanitize_supplier_html(html: str) -> str:
     """Supplier descriptions (CJ, and any future import source) routinely embed
     their product photos as inline base64 <img> data URIs rather than linking
@@ -438,7 +459,7 @@ async def cj_import_product(
     from app.models.product_fields import ProductImage
     from app.api.v1.endpoints.products import generate_slug, PLAN_PRODUCT_LIMITS
 
-    _shop_or_404(shop_id, current_user, db)
+    shop = _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
     if is_thedersi_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
@@ -473,7 +494,17 @@ async def cj_import_product(
     variant_vid = primary_variant.get("vid")
 
     cost = _parse_cj_price(p.get("sellPrice") or p.get("suggestSellPrice") or primary_variant.get("variantSellPrice"))
-    price = body.selling_price if body.selling_price else round(cost * 2, 2)
+    # CJ always quotes in USD — cost_price below intentionally stays in USD
+    # (it's a supplier-cost reference, not something a buyer sees), but the
+    # customer-facing price is implicitly in the shop's base_currency, so
+    # the default 2x markup needs converting or a EUR/LKR/etc shop ends up
+    # with a raw USD number stored as if it were their own currency.
+    if body.selling_price:
+        price = body.selling_price
+    else:
+        from app.core.currency import convert_amount
+        target_currency = shop.base_currency or shop.currency or "USD"
+        price = round(await convert_amount(cost * 2, "USD", target_currency), 2)
 
     # Create product
     product = Product(
@@ -715,7 +746,7 @@ async def printful_import(
     from app.models.product_variant import ProductVariant
     from app.api.v1.endpoints.products import generate_slug, PLAN_PRODUCT_LIMITS
 
-    _shop_or_404(shop_id, current_user, db)
+    shop = _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
     if is_thedersi_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
@@ -742,8 +773,24 @@ async def printful_import(
 
     name = (sync_product.get("name") or "Printful Product").strip()
 
+    # Printful's retail_price is in whatever currency that sync variant is
+    # set up with (Printful defaults new stores to USD unless configured
+    # otherwise) — ExiusCart's Product.price is implicitly in the shop's
+    # base_currency (see Shop.currency's own comment). Without converting,
+    # a $80 Printful price was landing as a raw "80" under a EUR shop —
+    # not €80-worth, literally the number 80 relabeled, a real pricing bug.
+    # A seller-typed selling_price is exempt — that's already being entered
+    # directly in the shop's own currency, nothing to convert.
+    from app.core.currency import convert_amount
+    target_currency = shop.base_currency or shop.currency or "USD"
+
     primary = sync_variants[0]
-    price = body.selling_price if body.selling_price else float(primary.get("retail_price") or 0) or None
+    if body.selling_price:
+        price = body.selling_price
+    else:
+        pf_currency = primary.get("currency") or "USD"
+        raw_price = float(primary.get("retail_price") or 0)
+        price = await convert_amount(raw_price, pf_currency, target_currency) if raw_price else None
     if not price:
         raise HTTPException(status_code=400, detail="Couldn't determine a price — set one manually.")
 
@@ -778,27 +825,43 @@ async def printful_import(
             if url and url not in seen_urls:
                 images.append(url)
                 seen_urls.add(url)
-    for i, url in enumerate(images[:10]):
-        db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
+    async with httpx.AsyncClient() as rehost_client:
+        rehosted = {
+            url: await _rehost_printful_image(rehost_client, url, shop_id, product.id)
+            for url in images[:10]
+        }
+        for i, url in enumerate(images[:10]):
+            db.add(ProductImage(product_id=product.id, url=rehosted[url], sort_order=i, is_primary=(i == 0)))
 
-    # Variants — Printful names a sync variant like "Product Name - Black / M"
-    # (color / size after the last " - "); best-effort split so the storefront
-    # shows real size/color pickers instead of one flat SKU. Falls back to
-    # putting the whole variant name in `size` if the format doesn't match.
-    for v in sync_variants:
-        vname = (v.get("name") or "").split(" - ")[-1]
-        color, _, size = vname.partition(" / ")
-        if not size:
-            color, size = None, (vname or None)
-        db.add(ProductVariant(
-            product_id=product.id,
-            size=(size or None),
-            color=(color or None),
-            sku=str(v.get("id")),
-            quantity=999999,
-            price=float(v["retail_price"]) if v.get("retail_price") else None,
-            image_url=next((f.get("preview_url") for f in (v.get("files") or []) if f.get("preview_url")), None),
-        ))
+        # Variants — Printful names a sync variant like "Product Name - Black / M"
+        # (color / size after the last " - "); best-effort split so the storefront
+        # shows real size/color pickers instead of one flat SKU. Falls back to
+        # putting the whole variant name in `size` if the format doesn't match.
+        for v in sync_variants:
+            vname = (v.get("name") or "").split(" - ")[-1]
+            color, _, size = vname.partition(" / ")
+            if not size:
+                color, size = None, (vname or None)
+            variant_image = next((f.get("preview_url") for f in (v.get("files") or []) if f.get("preview_url")), None)
+            if variant_image:
+                variant_image = rehosted.get(variant_image) or await _rehost_printful_image(rehost_client, variant_image, shop_id, product.id)
+            # Same currency conversion as the primary price above — only
+            # meaningfully different from the main product price when a
+            # variant is genuinely priced differently on Printful (e.g. a
+            # larger size costing more), but every variant still needs its
+            # raw Printful-currency number converted regardless.
+            variant_price = None
+            if v.get("retail_price"):
+                variant_price = await convert_amount(float(v["retail_price"]), v.get("currency") or "USD", target_currency)
+            db.add(ProductVariant(
+                product_id=product.id,
+                size=(size or None),
+                color=(color or None),
+                sku=str(v.get("id")),
+                quantity=999999,
+                price=variant_price,
+                image_url=variant_image,
+            ))
 
     db.add(DropshipProductLink(
         shop_id=shop_id,

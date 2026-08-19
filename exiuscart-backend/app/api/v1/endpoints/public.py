@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.core.database import get_db
 from app.models.shop import Shop
 from app.models.product import Product
@@ -79,7 +79,7 @@ def _ratings_by_product(product_ids: list[int], db: Session) -> dict[int, dict]:
     }
 
 
-def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None, tier_field_id: str | None = None, rating: dict | None = None) -> dict:
+def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None, tier_field_id: str | None = None, rating: dict | None = None, currency: str = "USD") -> dict:
     images = [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else ([] if not p.image_url else [p.image_url])
     # Pulled out of custom_fields into its own top-level key, in the exact
     # shape the storefront needs to render it directly — quantity, the
@@ -106,6 +106,12 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         "name": p.name,
         "slug": p.slug,
         "description": p.description,
+        # base_currency (not the seller's dashboard-display `currency`) is
+        # what price/compare_at_price/quantity_tiers are actually entered
+        # and stored in — see Shop.currency's own comment. Without this, a
+        # storefront has no way to know these raw numbers aren't USD and
+        # silently mislabels them (a EUR price rendered with "$").
+        "currency": currency,
         "price": float(p.price),
         "compare_at_price": float(p.compare_at_price) if p.compare_at_price is not None else None,
         "in_stock": (p.quantity or 0) > 0,
@@ -128,6 +134,24 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
             for v in sorted(p.videos, key=lambda v: v.sort_order)
         ] if p.videos else [],
         "tags": [t.strip() for t in p.tags.split(",")] if p.tags else [],
+        # Size/color options — never exposed here before, so no Custom
+        # Website storefront could render a variant picker or show a
+        # variant's own image/stock/price. Same shape channels.py already
+        # sends to marketplace channels (see _product_payload there).
+        "variants": [
+            {
+                "id": v.id,
+                "size": v.size,
+                "color": v.color,
+                "color_hex": v.color_hex,
+                "sku": v.sku,
+                "quantity": v.quantity or 0,
+                "in_stock": (v.quantity or 0) > 0,
+                "price": float(v.price) if v.price is not None else None,
+                "image_url": v.image_url,
+            }
+            for v in p.variants
+        ] if p.variants else [],
         "category_id": int(category_id) if category_id else None,
         # The real, linkable slug for category_id above (e.g. "electronics-a1b2c3")
         # — resolved here so every storefront gets a working category link/
@@ -197,7 +221,9 @@ def public_store_products(
                 return []
             category_filter_ids = {pid for pid, cid in category_map.items() if cid == str(cat.id)}
 
-    q = db.query(Product).filter(Product.shop_id == shop.id, Product.is_active == True)
+    q = db.query(Product).options(
+        selectinload(Product.images), selectinload(Product.videos), selectinload(Product.variants),
+    ).filter(Product.shop_id == shop.id, Product.is_active == True)
     if search:
         q = q.filter(Product.name.ilike(f"%{search}%"))
     if featured:
@@ -221,11 +247,12 @@ def public_store_products(
         slug_by_cat_id = {str(c.id): c.slug for c in cats}
 
     ratings = _ratings_by_product([p.id for p in products], db)
+    currency = shop.base_currency or shop.currency or "USD"
 
     return [
         _product_out(
             p, category_map.get(p.id), slug_by_cat_id.get(category_map.get(p.id) or ""), tier_field_id,
-            rating=ratings.get(p.id),
+            rating=ratings.get(p.id), currency=currency,
         )
         for p in products
     ]
@@ -276,7 +303,8 @@ def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends
     db.commit()
 
     rating = _ratings_by_product([product.id], db).get(product.id)
-    return _product_out(product, category_id, category_slug, tier_field_id, rating=rating)
+    currency = shop.base_currency or shop.currency or "USD"
+    return _product_out(product, category_id, category_slug, tier_field_id, rating=rating, currency=currency)
 
 
 def _approved_reviews_out(product_id: int, db: Session) -> list[dict]:

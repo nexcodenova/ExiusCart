@@ -174,6 +174,18 @@ def _bundle_components_payload(product: Product, db: Session) -> list:
     return result
 
 
+#  Sri Lankan marketplace — its own local currency, not something sellers
+# configure (matches THEDERSI_STAFF_DOMAIN accounts defaulting to LKR
+# elsewhere). No stored per-channel currency exists yet for eBay/Shopify/
+# WooCommerce (each seller's own store has its own currency setting we
+# don't currently capture at connect time) — those get the source amount
+# back unconverted rather than a guessed conversion that could be wrong
+# in the opposite direction. See CHANNEL_CURRENCY comment in dropshipping.py's
+# Printful/CJ import for the same "source currency has to be real, not
+# assumed" principle applied on the inbound side.
+CHANNEL_CURRENCY = {"thedersi": "LKR"}
+
+
 def _product_payload(
     product: Product,
     currency: str,
@@ -188,6 +200,19 @@ def _product_payload(
     category = channel_category_id or None
     sub_category = channel_sub_category_id or None
 
+    # `currency` in is the shop's base_currency — what product.price is
+    # actually stored in (see Shop.currency's own comment). Previously this
+    # parameter was accepted and completely unused: every channel received
+    # a bare number with zero currency context, so a EUR-priced shop's €80
+    # item showed up as "80" on TheDersi and got rendered "Rs 80" — a real
+    # ~24,000x pricing error, not just a cosmetic label issue.
+    from app.core.currency import convert_amount_sync
+    source_currency = currency or "USD"
+    target_currency = CHANNEL_CURRENCY.get(channel_type, source_currency)
+
+    def _conv(amount: float) -> float:
+        return convert_amount_sync(amount, source_currency, target_currency)
+
     variants = [
         {
             "size": v.size,
@@ -195,15 +220,15 @@ def _product_payload(
             "color_hex": v.color_hex,
             "sku": v.sku,
             "quantity": v.quantity,
-            "price": float(v.price) if v.price is not None else None,
+            "price": _conv(float(v.price)) if v.price is not None else None,
             "image_url": v.image_url or None,
         }
         for v in (product.variants or [])
     ]
     total_stock = sum(v["quantity"] for v in variants) if variants else product.quantity
 
-    compare_at_price = float(product.compare_at_price) if product.compare_at_price else None
-    selling_price = float(product.price)
+    compare_at_price = _conv(float(product.compare_at_price)) if product.compare_at_price else None
+    selling_price = _conv(float(product.price))
 
     image_urls = [img.url for img in (product.images or []) if img.url]
     if not image_urls and product.image_url:
@@ -224,6 +249,7 @@ def _product_payload(
         "exiuscart_product_id": product.id,
         "name": product.name,
         "description": product.description or "",
+        "currency": target_currency,
         "price": selling_price,
         "compare_at_price": compare_at_price,
         "quantity": total_stock,
@@ -337,7 +363,7 @@ def _bg_full_sync(shop_id: int, conn_id: int):
                 continue
             result = _push_one(
                 _product_payload(
-                    p, shop.currency, conn.channel_type,
+                    p, shop.base_currency or shop.currency, conn.channel_type,
                     listing.channel_category_id, listing.channel_sub_category_id,
                     is_gift=listing.is_gift, db=db,
                     field_values=listing.channel_field_values,
@@ -385,7 +411,7 @@ def _bg_push_product(product_id: int, shop_id: int):
                 continue  # connection was deactivated since this listing was set
             push_result = _push_one(
                 _product_payload(
-                    product, shop.currency, conn.channel_type,
+                    product, shop.base_currency or shop.currency, conn.channel_type,
                     listing.channel_category_id, listing.channel_sub_category_id,
                     is_gift=listing.is_gift, db=db,
                     field_values=listing.channel_field_values,

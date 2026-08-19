@@ -128,7 +128,7 @@ export default function ProductsPage() {
   // Channel status map: { product_id: { thedersi: { status, rejection_reason } } }
   const [channelStatuses, setChannelStatuses] = useState<Record<string, Record<string, { status: string; rejection_reason?: string }>>>({});
   // Channel category map: { product_id: { connection_id: { channel_type, channel_category_id, channel_category_name } } }
-  const [channelCategories, setChannelCategories] = useState<Record<string, Record<string, { channel_type: string; channel_category_id: string; channel_category_name: string }>>>({});
+  const [channelCategories, setChannelCategories] = useState<Record<string, Record<string, { channel_type: string; is_listed: boolean; channel_category_id: string; channel_category_name: string }>>>({});
 
   useEffect(() => {
     if (!shopId) return;
@@ -655,8 +655,13 @@ export default function ProductsPage() {
                           // & Watches > Fashion Jewelry > Bracelets & Charms")
                           // is editing detail, not list-scanning detail, and
                           // was pushing rows to 3 lines tall.
+                          // A ProductChannelCategory row exists as soon as a
+                          // category is picked for that channel — is_listed
+                          // is the actual "seller turned this on" flag, so a
+                          // channel the seller never enabled (or unlisted
+                          // again) must not show a badge here.
                           const catEntries = channelCategories[product.id]
-                            ? Object.values(channelCategories[product.id])
+                            ? Object.values(channelCategories[product.id]).filter((e) => e.is_listed)
                             : [];
                           if (catEntries.length === 0) {
                             return <span className="text-sm text-muted-foreground/40">—</span>;

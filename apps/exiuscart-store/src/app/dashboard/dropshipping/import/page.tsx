@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, X, Loader2, Package, Lock, Search, ShoppingBag, ChevronRight, AlertCircle, Shirt } from 'lucide-react';
 import { dropshipApi, channelsApi } from '@/lib/api';
+import { useCurrency } from '@/components/providers/currency-provider';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -45,6 +46,7 @@ function PrintfulImportModal({ shopId, product, onClose, onImported }: {
   onClose: () => void;
   onImported: (productId: number, name: string) => void;
 }) {
+  const { baseSym } = useCurrency();
   const [sellingPrice, setSellingPrice] = useState('');
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
@@ -82,16 +84,16 @@ function PrintfulImportModal({ shopId, product, onClose, onImported }: {
 
           <div className="bg-muted/50 rounded-xl p-4 space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <label htmlFor="pf-sell-price" className="text-muted-foreground">Selling Price</label>
+              <label htmlFor="pf-sell-price" className="text-muted-foreground">Selling Price ({baseSym})</label>
               <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground text-xs">$</span>
+                <span className="text-muted-foreground text-xs">{baseSym}</span>
                 <input id="pf-sell-price" type="number" step="0.01" min="0" value={sellingPrice}
                   onChange={(e) => setSellingPrice(e.target.value)}
                   placeholder="Use Printful price"
                   className="w-28 px-2 py-1 bg-background border border-border rounded-lg text-sm text-right font-semibold outline-none focus:ring-2 focus:ring-primary text-foreground" />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Leave blank to use the retail price already set on this product in Printful.</p>
+            <p className="text-xs text-muted-foreground">Leave blank to auto-convert this product&apos;s Printful retail price into your store&apos;s currency.</p>
           </div>
 
           <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2.5 leading-relaxed">
@@ -126,6 +128,7 @@ function CJImportModal({ shopId, product, onClose, onImported }: {
   onClose: () => void;
   onImported: (productId: number, name: string) => void;
 }) {
+  const { baseSym, baseCurrency } = useCurrency();
   const [detail, setDetail] = useState<CJProductDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(true);
   const [sellingPrice, setSellingPrice] = useState('');
@@ -139,7 +142,11 @@ function CJImportModal({ shopId, product, onClose, onImported }: {
       .then((r) => {
         const d = r.data?.product as CJProductDetail;
         setDetail(d);
-        setSellingPrice(String(Math.round(d.cost_price * 2 * 100) / 100));
+        // Not pre-filled with cost*2 anymore — CJ's cost is always USD, and
+        // this store's price is in its own base currency (baseSym), so a
+        // client-side "2x" guess would show a raw USD number mislabeled as
+        // that currency. Left blank, the backend computes 2x and converts
+        // it properly using a real exchange rate.
       })
       .catch(() => setDetail(null))
       .finally(() => setLoadingDetail(false));
@@ -201,19 +208,23 @@ function CJImportModal({ shopId, product, onClose, onImported }: {
             {/* Pricing */}
             <div className="bg-muted/50 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">CJ Cost Price</span>
+                <span className="text-muted-foreground">CJ Cost Price (USD)</span>
                 <span className="font-semibold text-foreground">${(detail?.cost_price ?? product.cost_price).toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <label htmlFor="sell-price" className="text-muted-foreground">Your Selling Price</label>
+                <label htmlFor="sell-price" className="text-muted-foreground">Your Selling Price ({baseSym})</label>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground text-xs">$</span>
+                  <span className="text-muted-foreground text-xs">{baseSym}</span>
                   <input id="sell-price" type="number" step="0.01" min="0" value={sellingPrice}
                     onChange={(e) => setSellingPrice(e.target.value)}
-                    className="w-24 px-2 py-1 bg-background border border-border rounded-lg text-sm text-right font-semibold outline-none focus:ring-2 focus:ring-primary text-foreground" />
+                    placeholder="2x cost, converted"
+                    className="w-32 px-2 py-1 bg-background border border-border rounded-lg text-sm text-right font-semibold outline-none focus:ring-2 focus:ring-primary text-foreground" />
                 </div>
               </div>
-              {sellingPrice && detail && parseFloat(sellingPrice) > (detail.cost_price ?? 0) && (
+              {/* Only shown when the store's own currency is USD — CJ's cost
+                  and a converted selling price aren't directly comparable
+                  otherwise without doing the same conversion here too. */}
+              {baseCurrency === 'USD' && sellingPrice && detail && parseFloat(sellingPrice) > (detail.cost_price ?? 0) && (
                 <div className="flex items-center justify-between text-xs text-green-500">
                   <span>Your profit per unit</span>
                   <span className="font-semibold">+${(parseFloat(sellingPrice) - (detail.cost_price ?? 0)).toFixed(2)}</span>
