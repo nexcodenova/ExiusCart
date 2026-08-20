@@ -812,8 +812,13 @@ async def printful_import(
     db.flush()
 
     # Images — sync_product's own thumbnail first, then each variant's
-    # mockup preview file (the "preview" file type is the rendered mockup;
-    # "default" is the raw print file, not something a buyer should see).
+    # mockup preview file. Confirmed live against a real synced product:
+    # every variant carries a "back" file (the raw print-design artwork,
+    # identical across every color — not a garment photo) ahead of the
+    # "preview" file (the real rendered mockup, genuinely different per
+    # color) in the files array. Must check type == "preview" explicitly —
+    # "back" also has preview_url populated, so `f.get("preview_url") or …`
+    # was silently grabbing the wrong file every time.
     seen_urls = set()
     images = []
     if sync_product.get("thumbnail_url"):
@@ -821,7 +826,7 @@ async def printful_import(
         seen_urls.add(sync_product["thumbnail_url"])
     for v in sync_variants:
         for f in (v.get("files") or []):
-            url = f.get("preview_url") or (f.get("url") if f.get("type") == "preview" else None)
+            url = f.get("preview_url") if f.get("type") == "preview" else None
             if url and url not in seen_urls:
                 images.append(url)
                 seen_urls.add(url)
@@ -852,7 +857,7 @@ async def printful_import(
             else:
                 size = parts[0] or None if parts else None
                 color = None
-            variant_image = next((f.get("preview_url") for f in (v.get("files") or []) if f.get("preview_url")), None)
+            variant_image = next((f.get("preview_url") for f in (v.get("files") or []) if f.get("type") == "preview" and f.get("preview_url")), None)
             if variant_image:
                 variant_image = rehosted.get(variant_image) or await _rehost_printful_image(rehost_client, variant_image, shop_id, product.id)
             # Same currency conversion as the primary price above — only
