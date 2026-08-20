@@ -174,15 +174,16 @@ def _bundle_components_payload(product: Product, db: Session) -> list:
     return result
 
 
-#  Sri Lankan marketplace — its own local currency, not something sellers
-# configure (matches THEDERSI_STAFF_DOMAIN accounts defaulting to LKR
-# elsewhere). No stored per-channel currency exists yet for eBay/Shopify/
-# WooCommerce (each seller's own store has its own currency setting we
-# don't currently capture at connect time) — those get the source amount
-# back unconverted rather than a guessed conversion that could be wrong
-# in the opposite direction. See CHANNEL_CURRENCY comment in dropshipping.py's
-# Printful/CJ import for the same "source currency has to be real, not
-# assumed" principle applied on the inbound side.
+# thedersi — Sri Lankan marketplace, its own fixed local currency, not
+# something a seller configures (matches THEDERSI_STAFF_DOMAIN accounts
+# defaulting to LKR elsewhere). eBay/Shopify/WooCommerce don't have a
+# fixed currency — each seller's own store on that channel uses whatever
+# currency THEY set up there, which ExiusCart can only know if the seller
+# states it (see ChannelConnection.channel_currency, set at connect time,
+# same "has to be real, not assumed" reasoning as seller_country on that
+# same model). This map is only the channels with a currency that's
+# always true regardless of the seller — a fallback of last resort, not
+# the primary source.
 CHANNEL_CURRENCY = {"thedersi": "LKR"}
 
 
@@ -195,6 +196,7 @@ def _product_payload(
     is_gift: bool = False,
     db: Session = None,
     field_values: Optional[dict] = None,
+    channel_currency: Optional[str] = None,
 ) -> dict:
     status = "pending_review" if channel_type in MARKETPLACE_CHANNELS else "active"
     category = channel_category_id or None
@@ -206,9 +208,15 @@ def _product_payload(
     # a bare number with zero currency context, so a EUR-priced shop's €80
     # item showed up as "80" on TheDersi and got rendered "Rs 80" — a real
     # ~24,000x pricing error, not just a cosmetic label issue.
+    #
+    # Target currency priority: the seller's own stated channel_currency
+    # (most trustworthy — they know their own Shopify/eBay store's
+    # currency) → the fixed CHANNEL_CURRENCY map (thedersi only) → no
+    # conversion at all (source_currency itself), since guessing wrong is
+    # worse than not converting.
     from app.core.currency import convert_amount_sync
     source_currency = currency or "USD"
-    target_currency = CHANNEL_CURRENCY.get(channel_type, source_currency)
+    target_currency = channel_currency or CHANNEL_CURRENCY.get(channel_type, source_currency)
 
     def _conv(amount: float) -> float:
         return convert_amount_sync(amount, source_currency, target_currency)
@@ -367,6 +375,7 @@ def _bg_full_sync(shop_id: int, conn_id: int):
                     listing.channel_category_id, listing.channel_sub_category_id,
                     is_gift=listing.is_gift, db=db,
                     field_values=listing.channel_field_values,
+                    channel_currency=conn.channel_currency,
                 ),
                 conn,
             )
@@ -415,6 +424,7 @@ def _bg_push_product(product_id: int, shop_id: int):
                     listing.channel_category_id, listing.channel_sub_category_id,
                     is_gift=listing.is_gift, db=db,
                     field_values=listing.channel_field_values,
+                    channel_currency=conn.channel_currency,
                 ),
                 conn,
             )
@@ -659,12 +669,40 @@ def list_channels(
             "channel_seller_id": c.channel_seller_id,
             "channel_warehouse_code": c.channel_warehouse_code,
             "seller_country": c.seller_country,
+            "channel_currency": c.channel_currency,
             "last_synced_at": c.last_synced_at,
             "webhook_url": _webhook_url(c),
             "seller_status": c.seller_status,
         }
         for c in conns
     ]
+
+
+class ChannelCurrencyIn(BaseModel):
+    channel_currency: Optional[str] = None
+
+
+@router.put("/shops/{shop_id}/channels/{channel_id}/currency")
+def set_channel_currency(
+    shop_id: int,
+    channel_id: int,
+    data: ChannelCurrencyIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lets a seller state what currency THIS channel's own store actually
+    uses (their Shopify/eBay store's own currency setting) — see
+    ChannelConnection.channel_currency's own comment for why ExiusCart
+    can't know this on its own. Null clears it back to "don't convert"."""
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id, ChannelConnection.shop_id == shop_id,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Channel connection not found")
+    conn.channel_currency = (data.channel_currency or "").strip().upper() or None
+    db.commit()
+    return {"channel_currency": conn.channel_currency}
 
 
 @router.delete("/shops/{shop_id}/channels/{channel_id}", status_code=200)

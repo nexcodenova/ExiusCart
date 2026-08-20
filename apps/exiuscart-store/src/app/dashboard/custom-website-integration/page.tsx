@@ -3,12 +3,20 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft, Globe, Loader2, CheckCircle2, FormInput, ArrowRight, CreditCard, Check, Coins, LayoutGrid, ListPlus, Code2, Copy, Wand2,
+  ArrowLeft, Globe, Loader2, CheckCircle2, FormInput, ArrowRight, CreditCard, Check, Coins, LayoutGrid, ListPlus, Code2, Copy, Wand2, DollarSign,
 } from 'lucide-react';
 import { channelsApi, paymentGatewayApi, shopApi } from '@/lib/api';
 import { CopyBox } from '@/components/channels/CopyBox';
 
 const API_BASE = 'https://api.exiuscart.com/api/v1';
+
+// Same list as the dashboard header's currency switcher, so this page never
+// offers a narrower choice than what a seller can already pick elsewhere.
+const CURRENCIES = [
+  'AED', 'SAR', 'USD', 'EUR', 'GBP', 'INR', 'LKR', 'BDT', 'PKR', 'MYR',
+  'SGD', 'CAD', 'AUD', 'QAR', 'KWD', 'BHD', 'OMR', 'EGP', 'NGN', 'KES',
+  'ZAR', 'TRY', 'IDR', 'PHP', 'THB', 'JPY', 'CNY',
+];
 
 // The only endpoints a Custom Website's own code ever needs to call —
 // deliberately not the full `/docs` (which mixes in hundreds of internal
@@ -141,6 +149,10 @@ export default function CustomWebsiteIntegrationPage() {
   const [gatewaySaved, setGatewaySaved] = useState(false);
   const [shopSlug, setShopSlug] = useState('');
   const [shopName, setShopName] = useState('');
+  const [baseCurrency, setBaseCurrency] = useState('');
+  const [storefrontCurrency, setStorefrontCurrency] = useState('');
+  const [savingCurrency, setSavingCurrency] = useState(false);
+  const [currencySaved, setCurrencySaved] = useState(false);
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
@@ -155,7 +167,12 @@ export default function CustomWebsiteIntegrationPage() {
         setGateway(r.data);
         if (r.data?.payment_gateway) setSelectedGateway(r.data.payment_gateway);
       }).catch(() => {}),
-      shopApi.getMyShop().then((r) => { setShopSlug(r.data?.slug ?? ''); setShopName(r.data?.name ?? ''); }).catch(() => {}),
+      shopApi.getMyShop().then((r) => {
+        setShopSlug(r.data?.slug ?? '');
+        setShopName(r.data?.name ?? '');
+        setBaseCurrency(r.data?.base_currency ?? r.data?.currency ?? 'USD');
+        setStorefrontCurrency(r.data?.storefront_currency ?? '');
+      }).catch(() => {}),
     ]).finally(() => setLoading(false));
   };
 
@@ -208,6 +225,18 @@ export default function CustomWebsiteIntegrationPage() {
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Connection failed. Try again.');
     } finally { setSaving(false); }
+  };
+
+  const saveCurrency = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingCurrency(true); setCurrencySaved(false);
+    try {
+      await shopApi.updateShop({ storefront_currency: storefrontCurrency || null });
+      setCurrencySaved(true);
+      setTimeout(() => setCurrencySaved(false), 2000);
+    } finally {
+      setSavingCurrency(false);
+    }
   };
 
   const disconnect = async () => {
@@ -337,6 +366,37 @@ export default function CustomWebsiteIntegrationPage() {
               {savingGateway && <Loader2 className="w-4 h-4 animate-spin" />}
               {gatewaySaved && !savingGateway && <Check className="w-4 h-4" />}
               {savingGateway ? 'Saving...' : gatewaySaved ? 'Saved' : 'Save Payment Gateway'}
+            </button>
+          </form>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <DollarSign className="w-4 h-4 text-amber-500" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground text-sm">Storefront Currency</p>
+              <p className="text-xs text-muted-foreground">What currency your website should receive prices in</p>
+            </div>
+          </div>
+          <form onSubmit={saveCurrency} className="p-5 space-y-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1.5 block">Show prices on my website in</label>
+              <select value={storefrontCurrency} onChange={(e) => setStorefrontCurrency(e.target.value)}
+                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm">
+                <option value="">Same as my store ({baseCurrency || 'USD'}) — no conversion</option>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                Your products are priced in <strong className="text-foreground">{baseCurrency || 'USD'}</strong>. If your website's visitors expect a different currency, pick it here — every price the API sends is converted using a live exchange rate before your site ever sees it, so it's correct even if your site doesn't do any currency handling of its own.
+              </p>
+            </div>
+            <button type="submit" disabled={savingCurrency}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+              {savingCurrency && <Loader2 className="w-4 h-4 animate-spin" />}
+              {currencySaved && !savingCurrency && <Check className="w-4 h-4" />}
+              {savingCurrency ? 'Saving...' : currencySaved ? 'Saved' : 'Save Storefront Currency'}
             </button>
           </form>
         </div>

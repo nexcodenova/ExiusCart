@@ -79,6 +79,20 @@ DARAZ_COUNTRY_API_BASE_URLS = {
     "NP": "https://api.daraz.com.np/rest",
     "MM": "https://api.shop.com.mm/rest",
 }
+# Each Daraz market is exactly one country with exactly one currency —
+# unlike eBay/Shopify, there's no ambiguity to ask the seller about, this
+# is deterministic from shop.country the same way the API base URL above
+# already is. Was never used at all before: create_daraz_listing sent
+# product.price/variant.price straight through with zero conversion, so a
+# EUR-priced shop's listing went out with the raw EUR number treated as
+# if it were already LKR/PKR/etc — same bug class Shopify had.
+DARAZ_COUNTRY_CURRENCY = {
+    "PK": "PKR",
+    "BD": "BDT",
+    "LK": "LKR",
+    "NP": "NPR",
+    "MM": "MMK",
+}
 
 
 def _daraz_api_base(country_code: str) -> str:
@@ -460,6 +474,16 @@ def create_daraz_listing(
         _log_sync(db, shop_id, "create_listing", False, product_id=product_id, error_message="Could not upload any images to Daraz")
         raise HTTPException(status_code=502, detail="Could not upload any images to Daraz — try again shortly")
 
+    # Convert prices into whatever this Daraz market's real currency is —
+    # deterministic from the shop's own country, see DARAZ_COUNTRY_CURRENCY.
+    from app.core.currency import convert_amount_sync
+    source_currency = shop.base_currency or shop.currency or "USD"
+    daraz_country = shop_country_iso(shop.country) or ""
+    target_currency = DARAZ_COUNTRY_CURRENCY.get(daraz_country, source_currency)
+
+    def _daraz_price(amount) -> float:
+        return convert_amount_sync(float(amount), source_currency, target_currency)
+
     # 2. Build Attributes: the product's own name/description plus whatever
     # category-specific fields the seller filled in (brand, material,
     # warranty, etc. — varies per category, see GetCategoryAttributes).
@@ -486,7 +510,7 @@ def create_daraz_listing(
             skus.append({
                 "SellerSku": v.sku or f"{product.sku or product.id}-{v.id}",
                 "quantity": v.quantity or 0,
-                "price": float(v.price if v.price is not None else product.price),
+                "price": _daraz_price(v.price if v.price is not None else product.price),
                 "color_family": v.color or "",
                 "Images": {"Image": sku_images[:8]},
             })
@@ -494,7 +518,7 @@ def create_daraz_listing(
         skus.append({
             "SellerSku": product.sku or str(product.id),
             "quantity": product.quantity or 0,
-            "price": float(product.price),
+            "price": _daraz_price(product.price),
             "Images": {"Image": daraz_image_urls},
         })
 

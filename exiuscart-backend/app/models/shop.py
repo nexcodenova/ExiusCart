@@ -27,6 +27,12 @@ class Shop(Base):
     # database is ever rewritten) and reversible any number of times.
     currency = Column(String(10), default="USD")
     base_currency = Column(String(10), nullable=True)  # defaults to `currency` at creation if unset
+    # What currency the Custom Website public API should CONVERT prices
+    # into before sending — null means "no conversion, send base_currency
+    # as-is" (today's behavior). Unlike `currency` above, this isn't a
+    # per-request display toggle; it's what an external storefront actually
+    # receives, since that storefront has no live conversion of its own.
+    storefront_currency = Column(String(10), nullable=True)
     tax_number = Column(String(50), nullable=True)
     vat_enabled = Column(Boolean, default=False)
     vat_rate = Column(Numeric(5, 2), default=0.00)

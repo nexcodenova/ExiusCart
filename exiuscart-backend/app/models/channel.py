@@ -22,6 +22,13 @@ class ChannelConnection(Base):
     # legitimately differ) — the seller states it explicitly when
     # connecting, since only they know what they registered with eBay.
     seller_country = Column(String(2), nullable=True)
+    # What currency THIS channel's own store actually operates in (e.g. the
+    # seller's Shopify store is billed/priced in GBP) — same reasoning as
+    # seller_country above: ExiusCart has no way to know this on its own,
+    # the seller states it once at connect time. Null means "unknown,
+    # don't convert" — a price gets pushed as-is in the shop's base
+    # currency rather than guessing wrong in either direction.
+    channel_currency = Column(String(10), nullable=True)
     channel_warehouse_code = Column(String(100), nullable=True)  # Noon: seller's own chosen warehouse
                                                                    # (their own licensed space, or Noon's
                                                                    # own consolidation center) — fetched

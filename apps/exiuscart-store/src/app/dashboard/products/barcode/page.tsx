@@ -16,7 +16,7 @@ interface LabelData {
   price: string;
 }
 
-function SingleLabel({ label }: { label: LabelData }) {
+function SingleLabel({ label, showQr }: { label: LabelData; showQr: boolean }) {
   const ref = useRef<SVGSVGElement>(null);
   const qrUrl = `${PUBLIC_BASE}/p/${label.barcode}`;
 
@@ -39,7 +39,7 @@ function SingleLabel({ label }: { label: LabelData }) {
   return (
     <div
       className="border border-gray-300 rounded flex flex-col items-center bg-white text-black p-2 gap-1"
-      style={{ width: '240px', minHeight: '140px', pageBreakInside: 'avoid' }}
+      style={{ width: '240px', minHeight: showQr ? '140px' : '100px', pageBreakInside: 'avoid' }}
     >
       {/* Product name */}
       <p className="text-xs font-semibold text-center leading-tight text-black w-full px-1 line-clamp-2" style={{ maxWidth: '230px' }}>
@@ -60,7 +60,7 @@ function SingleLabel({ label }: { label: LabelData }) {
       )}
 
       {/* Divider + QR section */}
-      {label.barcode && (
+      {showQr && label.barcode && (
         <div className="w-full border-t border-gray-200 pt-1.5 flex items-center gap-2 justify-center">
           <QRCodeSVG
             value={qrUrl}
@@ -84,6 +84,7 @@ function SingleLabel({ label }: { label: LabelData }) {
 export default function BarcodePrintPage() {
   const params = useSearchParams();
   const [copies, setCopies] = useState(1);
+  const [showQr, setShowQr] = useState(true);
 
   const labels: LabelData[] = [];
   try {
@@ -110,6 +111,15 @@ export default function BarcodePrintPage() {
         </Link>
 
         <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showQr}
+              onChange={(e) => setShowQr(e.target.checked)}
+              className="w-4 h-4"
+            />
+            Include QR code
+          </label>
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600">Copies per label:</label>
             <input
@@ -139,7 +149,7 @@ export default function BarcodePrintPage() {
         ) : (
           <div className="flex flex-wrap gap-3 print:gap-2" style={{ maxWidth: '960px', margin: '0 auto' }}>
             {allLabels.map((label, i) => (
-              <SingleLabel key={i} label={label} />
+              <SingleLabel key={i} label={label} showQr={showQr} />
             ))}
           </div>
         )}

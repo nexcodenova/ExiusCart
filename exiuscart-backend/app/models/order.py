@@ -92,7 +92,14 @@ class OrderItem(Base):
     # Foreign Keys
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)  # nullable so product can be deleted without losing order history
+    # Which specific size/color the buyer picked for a non-bundle item —
+    # null means "no variant selection" (product has no variants, or the
+    # channel/checkout that created this order predates variant tracking).
+    # Nullable so the variant can be deleted without losing order history,
+    # same reasoning as product_id above.
+    variant_id = Column(Integer, ForeignKey("product_variants.id"), nullable=True)
 
     # Relationships
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")
+    variant = relationship("ProductVariant")

@@ -27,6 +27,7 @@ from app.models.product import Product
 from app.models.customer import Customer
 from app.models.order import Order, OrderItem
 from app.models.channel import ChannelConnection
+from app.models.product_variant import ProductVariant
 from app.models.user import User
 from app.api.v1.deps import get_current_user
 
@@ -116,6 +117,7 @@ def generate_order_number() -> str:
 class CheckoutItemIn(BaseModel):
     product_id: int
     quantity: int
+    variant_id: Optional[int] = None
 
 
 class CheckoutIn(BaseModel):
@@ -160,12 +162,35 @@ def public_store_checkout(
         ).first()
         if not product:
             raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
-        if (product.quantity or 0) < item.quantity:
+
+        variant = None
+        if item.variant_id is not None:
+            variant = db.query(ProductVariant).filter(
+                ProductVariant.id == item.variant_id, ProductVariant.product_id == product.id,
+            ).first()
+            if not variant:
+                raise HTTPException(status_code=404, detail=f"Selected variant not found for '{product.name}'.")
+
+        # A variant's own stock is the real count once one's selected — the
+        # parent product's quantity is only checked when there's no variant
+        # to check instead (e.g. a product with no size/color options).
+        available = variant.quantity if variant is not None else product.quantity
+        if (available or 0) < item.quantity:
             raise HTTPException(status_code=400, detail=f"Insufficient stock for '{product.name}'.")
-        unit_price = _tiered_unit_price(product, item.quantity, db)
+
+        # A variant's own price overrides the product's — None means "use
+        # the parent product price", same convention ProductVariant.price's
+        # own column comment documents.
+        if variant is not None and variant.price is not None:
+            unit_price = variant.price
+        else:
+            unit_price = _tiered_unit_price(product, item.quantity, db)
         line_total = unit_price * item.quantity
         subtotal += line_total
-        line_items.append({"product": product, "quantity": item.quantity, "unit_price": unit_price, "total_price": line_total})
+        line_items.append({
+            "product": product, "variant": variant, "quantity": item.quantity,
+            "unit_price": unit_price, "total_price": line_total,
+        })
 
     # Guest or logged-in, every order still needs a Customer row to attach
     # to (same as every other order-creating path in this codebase already
@@ -216,6 +241,7 @@ def public_store_checkout(
         db.add(OrderItem(
             order_id=order.id,
             product_id=li["product"].id,
+            variant_id=li["variant"].id if li["variant"] else None,
             product_name=li["product"].name,
             quantity=li["quantity"],
             unit_price=li["unit_price"],
@@ -288,7 +314,12 @@ def public_store_order_lookup(shop_slug: str, order_number: str, email: str, db:
         "payment_status": order.payment_status,
         "total": float(order.total),
         "items": [
-            {"product_name": i.product_name, "quantity": i.quantity, "unit_price": float(i.unit_price), "total_price": float(i.total_price)}
+            {
+                "product_name": i.product_name, "quantity": i.quantity,
+                "unit_price": float(i.unit_price), "total_price": float(i.total_price),
+                "variant_size": i.variant.size if i.variant else None,
+                "variant_color": i.variant.color if i.variant else None,
+            }
             for i in order.items
         ],
         "created_at": order.created_at.isoformat() if order.created_at else None,
@@ -311,6 +342,10 @@ def _mark_order_paid_or_failed(order: Order, is_paid: bool, db: Session):
                 if product:
                     product.quantity = max(0, (product.quantity or 0) - item.quantity)
                     product.units_sold = (product.units_sold or 0) + item.quantity
+                if item.variant_id:
+                    variant = db.query(ProductVariant).filter(ProductVariant.id == item.variant_id).first()
+                    if variant:
+                        variant.quantity = max(0, (variant.quantity or 0) - item.quantity)
         db.commit()
 
         from app.api.v1.endpoints.wallet import credit_wallet_for_order

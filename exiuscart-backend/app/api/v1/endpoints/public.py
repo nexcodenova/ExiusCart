@@ -79,7 +79,13 @@ def _ratings_by_product(product_ids: list[int], db: Session) -> dict[int, dict]:
     }
 
 
-def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None, tier_field_id: str | None = None, rating: dict | None = None, currency: str = "USD") -> dict:
+def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None, tier_field_id: str | None = None, rating: dict | None = None, source_currency: str = "USD", target_currency: str | None = None) -> dict:
+    from app.core.currency import convert_amount_sync
+    target_currency = target_currency or source_currency
+
+    def _conv(amount) -> float:
+        return convert_amount_sync(float(amount), source_currency, target_currency)
+
     images = [img.url for img in sorted(p.images, key=lambda i: i.sort_order)] if p.images else ([] if not p.image_url else [p.image_url])
     # Pulled out of custom_fields into its own top-level key, in the exact
     # shape the storefront needs to render it directly — quantity, the
@@ -93,7 +99,7 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         quantity_tiers = [
             {
                 "quantity": t.get("quantity"),
-                "price": t.get("price"),
+                "price": _conv(t["price"]) if t.get("price") is not None else None,
                 "label": t.get("label") or None,
                 "badge": t.get("badge") or None,
                 "badge_type": t.get("badge_type") or None,
@@ -106,14 +112,14 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         "name": p.name,
         "slug": p.slug,
         "description": p.description,
-        # base_currency (not the seller's dashboard-display `currency`) is
-        # what price/compare_at_price/quantity_tiers are actually entered
-        # and stored in — see Shop.currency's own comment. Without this, a
-        # storefront has no way to know these raw numbers aren't USD and
-        # silently mislabels them (a EUR price rendered with "$").
-        "currency": currency,
-        "price": float(p.price),
-        "compare_at_price": float(p.compare_at_price) if p.compare_at_price is not None else None,
+        # target_currency defaults to the shop's base_currency (see
+        # Shop.currency's own comment) unless the seller opted into real
+        # conversion via Shop.storefront_currency — either way, every price
+        # below is ALREADY in this currency, not just labeled with it, so a
+        # storefront doesn't need its own conversion logic at all.
+        "currency": target_currency,
+        "price": _conv(p.price),
+        "compare_at_price": _conv(p.compare_at_price) if p.compare_at_price is not None else None,
         "in_stock": (p.quantity or 0) > 0,
         "quantity": p.quantity or 0,
         "images": images,
@@ -147,7 +153,7 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
                 "sku": v.sku,
                 "quantity": v.quantity or 0,
                 "in_stock": (v.quantity or 0) > 0,
-                "price": float(v.price) if v.price is not None else None,
+                "price": _conv(v.price) if v.price is not None else None,
                 "image_url": v.image_url,
             }
             for v in p.variants
@@ -247,12 +253,13 @@ def public_store_products(
         slug_by_cat_id = {str(c.id): c.slug for c in cats}
 
     ratings = _ratings_by_product([p.id for p in products], db)
-    currency = shop.base_currency or shop.currency or "USD"
+    source_currency = shop.base_currency or shop.currency or "USD"
+    target_currency = shop.storefront_currency or source_currency
 
     return [
         _product_out(
             p, category_map.get(p.id), slug_by_cat_id.get(category_map.get(p.id) or ""), tier_field_id,
-            rating=ratings.get(p.id), currency=currency,
+            rating=ratings.get(p.id), source_currency=source_currency, target_currency=target_currency,
         )
         for p in products
     ]
@@ -303,8 +310,9 @@ def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends
     db.commit()
 
     rating = _ratings_by_product([product.id], db).get(product.id)
-    currency = shop.base_currency or shop.currency or "USD"
-    return _product_out(product, category_id, category_slug, tier_field_id, rating=rating, currency=currency)
+    source_currency = shop.base_currency or shop.currency or "USD"
+    target_currency = shop.storefront_currency or source_currency
+    return _product_out(product, category_id, category_slug, tier_field_id, rating=rating, source_currency=source_currency, target_currency=target_currency)
 
 
 def _approved_reviews_out(product_id: int, db: Session) -> list[dict]:

@@ -7,6 +7,7 @@ import {
   ArrowLeft, Tag, Loader2, CheckCircle2, ExternalLink, X, AlertCircle, RefreshCw,
 } from 'lucide-react';
 import { channelsApi, ebayApi } from '@/lib/api';
+import { ChannelCurrencyField } from '@/components/channels/ChannelCurrencyField';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -15,6 +16,7 @@ interface ChannelConnection {
   channel_type: string;
   channel_seller_id?: string;
   seller_country?: string | null;
+  channel_currency?: string | null;
 }
 
 export default function EbayIntegrationPage() {
@@ -184,6 +186,7 @@ export default function EbayIntegrationPage() {
                 {countryError && <p className="text-xs text-destructive">{countryError}</p>}
               </div>
             )}
+            <ChannelCurrencyField shopId={shopId} channelId={connection.id} initialValue={connection.channel_currency} storeName="eBay" />
             {policiesConfigured === false ? (
               <div className="flex items-center justify-between gap-3 bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2">
                 <p className="text-xs text-amber-600 dark:text-amber-400">Business Policies not set — products can't be listed yet</p>

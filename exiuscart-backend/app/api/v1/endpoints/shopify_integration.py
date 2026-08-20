@@ -152,25 +152,46 @@ def update_sync_settings(shop_id: int, body: dict, current_user: User = Depends(
 # ── Product Sync: ExiusCart → Shopify ─────────────────────────────────────────
 
 async def _push_products(store: ShopifyStore, db: Session, shop_id: int):
+    """
+    UNVERIFIED against a live Shopify store — until now, this crashed on
+    every single product (Product has no `selling_price`/`stock` fields,
+    those are `price`/`quantity`; and `category` is a relationship object,
+    not a string, which json can't serialize), silently reported as
+    "failed" via the bare except below rather than raising visibly. Fixed
+    field names + added images + real currency conversion, but nobody has
+    actually confirmed a product lands correctly on Shopify's side yet.
+    """
     log = ShopifySyncLog(
         shopify_store_id=store.id, sync_type="products",
         direction="push", status="running", records_processed=0, records_failed=0
     )
     db.add(log); db.commit(); db.refresh(log)
-    products = db.query(Product).filter(Product.shop_id == shop_id).all()
+
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    source_currency = (shop.base_currency or shop.currency) if shop else "USD"
+    # ShopifyStore.currency is fetched directly from Shopify's own API at
+    # connect time (see the OAuth callback below) — the one channel here
+    # that doesn't need a seller to state it manually.
+    target_currency = store.currency or source_currency
+    from app.core.currency import convert_amount_sync
+
+    products = db.query(Product).filter(Product.shop_id == shop_id, Product.is_active == True).all()
     processed = 0; failed = 0
     async with httpx.AsyncClient(timeout=30) as client:
         for p in products:
+            price = convert_amount_sync(float(p.price), source_currency, target_currency)
+            images = [{"src": img.url} for img in (p.images or []) if img.url] or ([{"src": p.image_url}] if p.image_url else [])
             payload = {
                 "product": {
                     "title": p.name,
-                    "body_html": getattr(p, "description", "") or "",
+                    "body_html": p.description or "",
                     "vendor": "ExiusCart",
-                    "product_type": getattr(p, "category", "") or "",
+                    "product_type": p.category.name if p.category else "",
+                    "images": images,
                     "variants": [{
-                        "price": str(p.selling_price),
+                        "price": f"{price:.2f}",
                         "sku": p.sku or "",
-                        "inventory_quantity": p.stock or 0,
+                        "inventory_quantity": p.quantity or 0,
                         "inventory_management": "shopify",
                     }],
                 }

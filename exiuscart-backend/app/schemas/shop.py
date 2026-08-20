@@ -35,6 +35,7 @@ class ShopUpdate(BaseModel):
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
     currency: Optional[str] = None
+    storefront_currency: Optional[str] = None
     vat_enabled: Optional[bool] = None
     vat_rate: Optional[float] = None
     prices_include_vat: Optional[bool] = None
@@ -54,6 +55,7 @@ class ShopResponse(ShopBase):
     id: int
     slug: str
     base_currency: Optional[str] = None
+    storefront_currency: Optional[str] = None
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
     vat_enabled: bool = False
