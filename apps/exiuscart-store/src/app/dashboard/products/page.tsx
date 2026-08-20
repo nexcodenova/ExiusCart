@@ -18,7 +18,7 @@ import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { DropshipSupplierSection } from '@/components/dropship-supplier-section';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
-import { useCurrency } from '@/components/providers/currency-provider';
+import { useCurrency, symFor } from '@/components/providers/currency-provider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -949,6 +949,14 @@ export default function ProductsPage() {
 
 // ─── Product Modal ────────────────────────────────────────────────────────────
 
+// Same list used across the dashboard's other currency pickers (header,
+// Custom Website storefront currency, channel currency).
+const PRICE_ENTRY_CURRENCIES = [
+  'AED', 'SAR', 'USD', 'EUR', 'GBP', 'INR', 'LKR', 'BDT', 'PKR', 'MYR',
+  'SGD', 'CAD', 'AUD', 'QAR', 'KWD', 'BHD', 'OMR', 'EGP', 'NGN', 'KES',
+  'ZAR', 'TRY', 'IDR', 'PHP', 'THB', 'JPY', 'CNY',
+];
+
 interface PendingImage {
   file: File;
   preview: string;
@@ -965,10 +973,27 @@ function ProductModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  // Price ENTRY always happens in the shop's fixed base currency (baseSym)
-  // — never the freely-changeable display currency (sym) — so what a
-  // seller types is never ambiguous about which currency it's actually in.
-  const { baseSym } = useCurrency();
+  // Price ENTRY defaults to the shop's fixed base currency (baseSym) — the
+  // seller can switch entryCurrency below to type in a different one for
+  // convenience (e.g. a supplier quoted a USD cost on a EUR-based shop);
+  // whatever's typed gets converted to baseCurrency right before saving,
+  // in handleSubmit, so what's actually stored is never ambiguous.
+  const { baseSym, baseCurrency, convertBetween } = useCurrency();
+  const [entryCurrency, setEntryCurrency] = useState(baseCurrency);
+  useEffect(() => { setEntryCurrency(baseCurrency); }, [baseCurrency]);
+  const entrySym = symFor(entryCurrency);
+
+  const switchEntryCurrency = (next: string) => {
+    if (next === entryCurrency) return;
+    setFormData((prev) => ({
+      ...prev,
+      costPrice: prev.costPrice ? Math.round(convertBetween(prev.costPrice, entryCurrency, next) * 100) / 100 : prev.costPrice,
+      sellingPrice: prev.sellingPrice ? Math.round(convertBetween(prev.sellingPrice, entryCurrency, next) * 100) / 100 : prev.sellingPrice,
+      compareAtPrice: prev.compareAtPrice ? Math.round(convertBetween(prev.compareAtPrice, entryCurrency, next) * 100) / 100 : prev.compareAtPrice,
+    }));
+    setEntryCurrency(next);
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const p = product as any;
@@ -1552,14 +1577,22 @@ function ProductModal({
       const totalStock = variants.length > 0
         ? variants.reduce((sum, v) => sum + v.quantity, 0)
         : formData.stock;
+      // formData's three price fields are in whatever entryCurrency is
+      // currently selected (defaults to baseCurrency, so this is a no-op
+      // for every seller who never touches the picker) — converted to the
+      // shop's real base currency right here, the one and only place a
+      // price actually leaves this form, so everything downstream (API,
+      // stock/profit reports, every other page) keeps working with base
+      // currency exactly as it always has.
+      const toBase = (n: number) => Math.round(convertBetween(n, entryCurrency, baseCurrency) * 100) / 100;
       const apiData = {
         name: formData.name,
         description: formData.description || null,
         sku: formData.sku || null,
         barcode: formData.barcode || null,
-        price: formData.sellingPrice,
-        compare_at_price: formData.compareAtPrice > 0 ? formData.compareAtPrice : null,
-        cost_price: formData.costPrice > 0 ? formData.costPrice : null,
+        price: toBase(formData.sellingPrice),
+        compare_at_price: formData.compareAtPrice > 0 ? toBase(formData.compareAtPrice) : null,
+        cost_price: formData.costPrice > 0 ? toBase(formData.costPrice) : null,
         quantity: totalStock,
         low_stock_threshold: formData.lowStockAlert,
         // No category_id here anymore — the generic ExiusCart-only
@@ -2106,19 +2139,33 @@ function ProductModal({
 
               {/* Pricing */}
               <div className="space-y-3">
-                <p className="text-sm font-medium text-foreground">Pricing</p>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-sm font-medium text-foreground">Pricing</p>
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Enter prices in</Label>
+                    <select value={entryCurrency} onChange={(e) => switchEntryCurrency(e.target.value)}
+                      className="px-2 py-1 bg-muted border border-border rounded-lg text-xs text-foreground">
+                      {PRICE_ENTRY_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {entryCurrency !== baseCurrency && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 -mt-1.5">
+                    Typing in {entryCurrency} — converted to your store&apos;s real currency ({baseCurrency}) using a live exchange rate when you save.
+                  </p>
+                )}
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div>
-                    <Label className="text-xs mb-1 block">Cost Price ({baseSym}) *</Label>
+                    <Label className="text-xs mb-1 block">Cost Price ({entrySym}) *</Label>
                     <Input type="number" step="0.01" value={formData.costPrice} onChange={(e) => setFormData({ ...formData, costPrice: Number(e.target.value) })} required min="0" />
                   </div>
                   <div>
-                    <Label className="text-xs mb-1 block">Selling Price ({baseSym}) *</Label>
+                    <Label className="text-xs mb-1 block">Selling Price ({entrySym}) *</Label>
                     <Input type="number" step="0.01" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required min="0" />
                   </div>
                   <div>
                     <Label className="text-xs mb-1 block">
-                      Original Price ({baseSym})
+                      Original Price ({entrySym})
                       <span className="ml-1 font-normal opacity-60">— if on offer</span>
                     </Label>
                     <Input type="number" step="0.01" value={formData.compareAtPrice || ''} onChange={(e) => setFormData({ ...formData, compareAtPrice: Number(e.target.value) })} min="0" placeholder={formData.sellingPrice > 0 ? String(Math.round(formData.sellingPrice * 1.3)) : ''} />
@@ -2131,7 +2178,7 @@ function ProductModal({
                     <div className="flex items-center gap-2 text-xs">
                       <span className="text-muted-foreground">Profit</span>
                       <span className="font-semibold text-green-600 dark:text-green-400">
-                        {formData.sellingPrice - formData.costPrice} {baseSym} ({Math.round(((formData.sellingPrice - formData.costPrice) / formData.costPrice) * 100)}%)
+                        {(formData.sellingPrice - formData.costPrice).toFixed(2)} {entrySym} ({Math.round(((formData.sellingPrice - formData.costPrice) / formData.costPrice) * 100)}%)
                       </span>
                     </div>
                     {formData.compareAtPrice > formData.sellingPrice && (
@@ -2785,7 +2832,7 @@ function ProductModal({
                                       <input type="number" min={1} placeholder="Qty" value={tier.quantity}
                                         onChange={(e) => updateTier({ quantity: Number(e.target.value) || 0 })}
                                         className="w-16 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />
-                                      <span className="text-xs text-muted-foreground">for a total of $</span>
+                                      <span className="text-xs text-muted-foreground">for a total of {baseSym}</span>
                                       <input type="number" min={0} step="0.01" placeholder="Total price" value={tier.price}
                                         onChange={(e) => updateTier({ price: Number(e.target.value) || 0 })}
                                         className="flex-1 px-2 py-1.5 bg-muted border border-border rounded-lg text-xs" />

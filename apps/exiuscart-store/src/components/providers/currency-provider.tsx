@@ -33,6 +33,12 @@ interface CurrencyContextValue {
   // for price entry fields (Cost Price, Selling Price) so what the seller
   // types is unambiguous, regardless of what display currency is active.
   fmtBase: (amount: number, decimals?: number) => string;
+  // Converts an amount between any two currencies (not just base↔display)
+  // using the same rates the rest of the provider already fetches — for a
+  // price-entry field that lets the seller type in a currency other than
+  // baseCurrency and has the actual saved value converted to baseCurrency
+  // right before it's sent to the backend.
+  convertBetween: (amount: number, from: Currency, to: Currency) => number;
   sym: string;       // display currency's symbol
   baseSym: string;    // base currency's symbol — use for entry field labels
   ratesLoading: boolean;
@@ -46,6 +52,7 @@ const CurrencyContext = createContext<CurrencyContextValue>({
   fmt: (n) => `$${n}`,
   convert: (n) => n,
   fmtBase: (n) => `$${n}`,
+  convertBetween: (n) => n,
   sym: '$',
   baseSym: '$',
   ratesLoading: false,
@@ -196,6 +203,21 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     return formatWith(Number.isFinite(parsed) ? parsed : 0, baseCurrency, decimals);
   }, [baseCurrency, formatWith]);
 
+  // `rates` maps baseCurrency -> every other currency (that's the shape
+  // /shops/exchange-rates always returns, relative to baseCurrency — see
+  // the fetch effect above). Converting between two arbitrary currencies
+  // routes through baseCurrency: from -> base -> to. Best-effort — returns
+  // the raw amount unconverted if rates haven't loaded yet rather than
+  // blocking on it, same fallback philosophy as `convert` above.
+  const convertBetween = useCallback((amount: number, from: Currency, to: Currency): number => {
+    const parsed = Number(amount);
+    const n = Number.isFinite(parsed) ? parsed : 0;
+    if (from === to) return n;
+    if (!rates) return n;
+    const toBase = from === baseCurrency ? n : (rates[from] ? n / rates[from] : n);
+    return to === baseCurrency ? toBase : (rates[to] ? toBase * rates[to] : toBase);
+  }, [rates, baseCurrency]);
+
   const value: CurrencyContextValue = {
     currency,
     baseCurrency,
@@ -204,6 +226,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     fmt,
     convert,
     fmtBase,
+    convertBetween,
     sym: symFor(currency),
     baseSym: symFor(baseCurrency),
     ratesLoading,
