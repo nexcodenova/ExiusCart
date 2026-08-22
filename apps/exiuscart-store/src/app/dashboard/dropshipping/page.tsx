@@ -274,6 +274,22 @@ function SupplierCard({ supplier, shopId, plan, onRefresh }: {
   const [showModal, setShowModal] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [togglingAuto, setTogglingAuto] = useState(false);
+  const [connectingAliexpress, setConnectingAliexpress] = useState(false);
+  const [aliexpressError, setAliexpressError] = useState('');
+
+  // AliExpress is real OAuth2 (one shared ExiusCart app, the seller
+  // authorizes their own AliExpress account) — no form/modal, just a
+  // redirect, same shape as eBay's Connect button.
+  const connectAliexpress = async () => {
+    setConnectingAliexpress(true); setAliexpressError('');
+    try {
+      const res = await dropshipApi.aliexpressAuthorize(shopId);
+      window.location.href = res.data.authorize_url;
+    } catch (e: any) {
+      setAliexpressError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Could not start AliExpress connection. Try again.');
+      setConnectingAliexpress(false);
+    }
+  };
 
   const disconnect = async () => {
     if (!confirm(`Disconnect ${supplier.name}? Pending orders will not be affected.`)) return;
@@ -358,6 +374,14 @@ function SupplierCard({ supplier, shopId, plan, onRefresh }: {
               <Button variant="destructive" size="sm" onClick={disconnect} disabled={disconnecting}>
                 {disconnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Disconnect'}
               </Button>
+            </div>
+          ) : supplier.supplier_type === 'aliexpress' ? (
+            <div className="space-y-1.5">
+              <Button className="w-full" onClick={connectAliexpress} disabled={connectingAliexpress}>
+                {connectingAliexpress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                {connectingAliexpress ? 'Redirecting…' : `Connect ${supplier.name}`}
+              </Button>
+              {aliexpressError && <p className="text-xs text-destructive">{aliexpressError}</p>}
             </div>
           ) : (
             <Button className="w-full" onClick={() => setShowModal(true)}>

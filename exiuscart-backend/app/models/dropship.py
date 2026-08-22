@@ -18,6 +18,14 @@ class DropshipConnection(Base):
     access_token = Column(Text, nullable=True)                  # CJ access token (all suppliers use api_key to get one)
     token_expires_at = Column(DateTime(timezone=True), nullable=True)
     api_key = Column(Text, nullable=True)                       # CJ / Zendrop / HyperSKU / Wiio — Fernet-encrypted (app/core/encryption.py)
+    # AliExpress uses real OAuth2 (one shared ExiusCart app, each seller
+    # authorizes their own AliExpress account against it) instead of a
+    # pasted API key — same shape as ChannelConnection's own refresh_token/
+    # oauth_state, added here because AliExpress is a supplier (source
+    # products FROM), not an outbound sales channel, so it belongs on this
+    # table with CJ/Printful, not ChannelConnection with eBay/Daraz.
+    refresh_token = Column(Text, nullable=True)
+    oauth_state = Column(String(100), nullable=True)            # CSRF token for the in-flight authorize request
     is_active = Column(Boolean, default=True)
     auto_fulfill_enabled = Column(Boolean, default=False)       # Premium: auto-send orders to supplier
     created_at = Column(DateTime(timezone=True), server_default=func.now())

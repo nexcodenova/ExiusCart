@@ -8,13 +8,20 @@ Plan limits:
   thedersi_* → no dropshipping (fulfilled by TheDersi)
 """
 
+import os
+import time
+import hmac
+import hashlib
+import secrets
 import logging
 import re
 import httpx
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -26,6 +33,7 @@ from app.models.order import Order
 from app.models.subscription import Subscription
 from app.models.dropship import DropshipConnection, DropshipProductLink, DropshipOrder
 from app.api.v1.deps import get_current_user
+from app.api.v1.endpoints.channels import EXIUSCART_BASE
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -894,6 +902,183 @@ async def printful_import(
     return {"product_id": product.id, "name": product.name, "price": float(product.price)}
 
 
+# ── AliExpress Open Platform — OAuth2 connect flow ────────────────────────────
+#
+# ExiusCart registers ONE app on open.aliexpress.com (App Key/Secret, this
+# session's real "ExiusCart" Drop Shipping app) and each seller authorizes
+# that app against their own, already-existing AliExpress account — same
+# shape as Daraz's OAuth flow (daraz.py), reused here because AliExpress
+# Open Platform runs on the same Alibaba-family "TOP" API infrastructure as
+# Daraz: identical HMAC-SHA256 request signing, identical
+# authorize→code→token-exchange shape. AliExpress is a supplier (source
+# products FROM, like CJ/Printful), not a sales channel, so this lives here
+# in dropshipping.py and uses DropshipConnection, not ChannelConnection.
+#
+# UNVERIFIED — built from AliExpress Open Platform's documented OAuth flow
+# and the confirmed-live Daraz signing scheme, not yet tested against a
+# real authorize→callback round-trip (no way to do that without a real
+# browser redirect through AliExpress's own login). Watch the first real
+# "Connect AliExpress" attempt closely — the base API domain
+# (api-sg.aliexpress.com) and the /auth/token/create path are the two
+# most likely things to need correcting against what AliExpress actually
+# returns.
+
+ALIEXPRESS_APP_KEY = os.getenv("ALIEXPRESS_APP_KEY", "")
+ALIEXPRESS_APP_SECRET = os.getenv("ALIEXPRESS_APP_SECRET", "")
+ALIEXPRESS_API_BASE = "https://api-sg.aliexpress.com"
+ALIEXPRESS_AUTHORIZE_URL = f"{ALIEXPRESS_API_BASE}/oauth/authorize"
+STOREFRONT_BASE = "https://store.exiuscart.com"
+
+
+def _aliexpress_signed_request(api_path: str, business_params: dict, access_token: str | None = None, method: str = "GET") -> dict | None:
+    """Same HMAC-SHA256 TOP-platform signing as Daraz's _daraz_signed_request
+    (daraz.py) — sort params, concatenate as api_path + key+value pairs,
+    sign with the App Secret, uppercase hex. Reused for every future
+    AliExpress call (productDetails, createOrder, shippingInfo), not just
+    auth."""
+    params = {
+        "app_key": ALIEXPRESS_APP_KEY,
+        "sign_method": "sha256",
+        "timestamp": str(int(time.time() * 1000)),
+        **business_params,
+    }
+    if access_token:
+        params["access_token"] = access_token
+
+    sorted_keys = sorted(params.keys())
+    concatenated = api_path + "".join(f"{k}{params[k]}" for k in sorted_keys)
+    sign = hmac.new(
+        ALIEXPRESS_APP_SECRET.encode("utf-8"), concatenated.encode("utf-8"), hashlib.sha256
+    ).hexdigest().upper()
+    params["sign"] = sign
+
+    url = f"{ALIEXPRESS_API_BASE}{api_path}"
+    try:
+        if method == "POST":
+            resp = httpx.post(url, data=params, timeout=30)
+        else:
+            resp = httpx.get(url, params=params, timeout=15)
+        return resp.json()
+    except Exception as e:
+        logger.error(f"[ALIEXPRESS API] request to {api_path} failed: {e}")
+        return None
+
+
+def _aliexpress_callback_url() -> str:
+    return f"{EXIUSCART_BASE.rstrip('/')}/channels/aliexpress/callback"
+
+
+@router.get("/shops/{shop_id}/dropship/aliexpress/authorize")
+def aliexpress_authorize(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Start the AliExpress OAuth flow — returns the URL to redirect the
+    seller's browser to. The seller must already have their own AliExpress
+    account; this only authorizes ExiusCart's app to access it."""
+    _shop_or_404(shop_id, current_user, db)
+
+    if not ALIEXPRESS_APP_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="AliExpress integration isn't configured yet — ExiusCart's app registration is still pending.",
+        )
+
+    plan = _get_plan(shop_id, db)
+    _check_supplier_allowed(plan, "aliexpress", shop_id, db)
+
+    existing = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id,
+        DropshipConnection.supplier_type == "aliexpress",
+        DropshipConnection.is_active == True,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Already connected to AliExpress")
+
+    state = secrets.token_urlsafe(32)
+    pending = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id,
+        DropshipConnection.supplier_type == "aliexpress",
+        DropshipConnection.is_active == False,
+    ).first()
+    if pending:
+        pending.oauth_state = state
+    else:
+        pending = DropshipConnection(shop_id=shop_id, supplier_type="aliexpress", is_active=False, oauth_state=state)
+        db.add(pending)
+    db.commit()
+
+    params = {
+        "response_type": "code",
+        "force_auth": "true",
+        "redirect_uri": _aliexpress_callback_url(),
+        "client_id": ALIEXPRESS_APP_KEY,
+        "state": state,
+    }
+    return {"authorize_url": f"{ALIEXPRESS_AUTHORIZE_URL}?{urlencode(params)}"}
+
+
+@router.get("/channels/aliexpress/callback")
+def aliexpress_callback(
+    code: str = None,
+    state: str = None,
+    error: str = None,
+    db: Session = Depends(get_db),
+):
+    """AliExpress redirects the seller's browser here after they approve
+    (or deny) access. Public endpoint — verified via the CSRF `state`
+    token, not auth. Registered as this app's Callback URL in AliExpress's
+    App Console."""
+    if error or not code or not state:
+        logger.warning(f"[ALIEXPRESS OAUTH] callback failed — error={error} code_present={bool(code)} state_present={bool(state)}")
+        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=denied")
+
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.supplier_type == "aliexpress",
+        DropshipConnection.oauth_state == state,
+        DropshipConnection.is_active == False,
+    ).first()
+    if not conn:
+        logger.error(f"[ALIEXPRESS OAUTH] callback with unknown/expired state={state[:8]}...")
+        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=invalid_state")
+
+    token_result = _exchange_aliexpress_code(code)
+    if token_result is None:
+        # Real API call failed (bad/expired code, network issue, etc.) —
+        # leave the connection pending rather than silently dropping the
+        # seller's authorization. Safe to retry since the code is only
+        # usable once, but the seller can restart Connect AliExpress.
+        logger.warning(f"[ALIEXPRESS OAUTH] shop={conn.shop_id} token exchange failed — connection left pending, see error above")
+        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=pending")
+
+    conn.access_token = token_result["access_token"]
+    conn.refresh_token = token_result.get("refresh_token")
+    conn.token_expires_at = token_result.get("expires_at")
+    conn.is_active = True
+    conn.oauth_state = None
+    db.commit()
+    return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=connected")
+
+
+def _exchange_aliexpress_code(code: str):
+    """Exchanges an OAuth authorization code for a real access_token via
+    /auth/token/create, same REST path convention as Daraz's own token
+    exchange (both are TOP-platform derived). Returns None on failure so
+    the caller can leave the connection "pending" instead of guessing."""
+    data = _aliexpress_signed_request("/auth/token/create", {"code": code}, method="POST")
+    if not data or "access_token" not in data:
+        logger.error(f"[ALIEXPRESS OAUTH] token exchange failed — response: {data}")
+        return None
+
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 0))
+    return {
+        "access_token": data["access_token"],
+        "refresh_token": data.get("refresh_token"),
+        "expires_at": expires_at,
+    }
+
+
 # ── Endpoints: Supplier connections ──────────────────────────────────────────
 
 @router.get("/shops/{shop_id}/dropship/connections")
@@ -1123,8 +1308,8 @@ def connect_apikey(
     current_user: User = Depends(get_current_user),
 ):
     _shop_or_404(shop_id, current_user, db)
-    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "aliexpress", "printify", "gelato"):
-        raise HTTPException(status_code=400, detail="Use /connect/cj for CJ Dropshipping.")
+    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "printify", "gelato"):
+        raise HTTPException(status_code=400, detail="Use /connect/cj for CJ Dropshipping, or /dropship/aliexpress/authorize for AliExpress.")
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)
 

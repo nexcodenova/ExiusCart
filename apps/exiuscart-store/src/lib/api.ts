@@ -790,6 +790,8 @@ export const dropshipApi = {
     api.get(`/shops/${shopId}/dropship/printful/my-products`, { params: { page } }),
   printfulImport: (shopId: string, syncProductId: number, sellingPrice?: number) =>
     api.post(`/shops/${shopId}/dropship/printful/import`, { sync_product_id: syncProductId, selling_price: sellingPrice }),
+  aliexpressAuthorize: (shopId: string) =>
+    api.get(`/shops/${shopId}/dropship/aliexpress/authorize`),
 };
 
 export const reviewsApi = {
