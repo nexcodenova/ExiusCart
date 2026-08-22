@@ -1079,6 +1079,221 @@ def _exchange_aliexpress_code(code: str):
     }
 
 
+async def _aliexpress_ensure_token(conn: DropshipConnection, db: Session) -> str:
+    """Refreshes the AliExpress access token on demand using the stored
+    refresh_token — same shape as CJ's _cj_ensure_token. Raises rather
+    than returning something unusable if there's no way to get a valid
+    token (never connected, or the refresh itself fails)."""
+    now = datetime.now(timezone.utc)
+    if conn.access_token and conn.token_expires_at and conn.token_expires_at > now:
+        return conn.access_token
+    if not conn.refresh_token:
+        raise HTTPException(status_code=400, detail="AliExpress connection has expired. Please reconnect.")
+
+    data = _aliexpress_signed_request("/auth/token/refresh", {"refresh_token": conn.refresh_token}, method="POST")
+    if not data or "access_token" not in data:
+        logger.error(f"[ALIEXPRESS] token refresh failed for conn={conn.id} — response: {data}")
+        raise HTTPException(status_code=400, detail="Could not refresh AliExpress connection. Please reconnect.")
+
+    conn.access_token = data["access_token"]
+    conn.refresh_token = data.get("refresh_token", conn.refresh_token)
+    conn.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 0))
+    db.commit()
+    return conn.access_token
+
+
+def _parse_aliexpress_product_id(url: str) -> Optional[str]:
+    """Extracts the numeric product ID from a pasted AliExpress product
+    link (e.g. https://www.aliexpress.com/item/1005001234567890.html) —
+    matches across every AliExpress TLD (.com/.us/.ru/etc) since only the
+    /item/{id}.html shape matters, not the domain."""
+    if not url:
+        return None
+    m = re.search(r"/item/(\d+)\.html", url)
+    return m.group(1) if m else None
+
+
+def _aliexpress_fetch_product(access_token: str, product_id: str, target_currency: str = "USD") -> dict:
+    """
+    Fetches full product detail via aliexpress.ds.product.get and
+    normalizes it into {name, description, images, variants, currency}.
+    target_currency is requested directly from AliExpress (they localize
+    pricing server-side) — the returned `currency` should be checked
+    against what was actually requested rather than assumed, same
+    "verify, don't assume" principle as everywhere else currency is
+    touched in this codebase (see app/core/currency.py).
+
+    UNVERIFIED — built from AliExpress Dropshipper API's documented
+    aliexpress.ds.product.get response shape, not yet tested against a
+    real response. This is the single most likely place to need fixing
+    once a real product import is attempted — if names/images/variants
+    come back empty, log the raw `data` dict here and adjust the field
+    paths below to match what AliExpress actually sent.
+    """
+    data = _aliexpress_signed_request("/sync", {
+        "method": "aliexpress.ds.product.get",
+        "product_id": product_id,
+        "ship_to_country": "US",
+        "target_currency": target_currency,
+        "target_language": "EN",
+    }, access_token=access_token, method="POST")
+
+    if not data:
+        raise HTTPException(status_code=502, detail="Could not reach AliExpress. Please try again.")
+
+    result = (data.get("aliexpress_ds_product_get_response") or {}).get("result") or data.get("result")
+    if not result:
+        error_msg = (data.get("error_response") or {}).get("msg") or "Product not found, or not available for dropshipping on your account."
+        raise HTTPException(status_code=502, detail=f"AliExpress error: {error_msg}")
+
+    base_info = result.get("ae_item_base_info_dto") or {}
+    name = (base_info.get("subject") or "AliExpress Product").strip()
+    description = base_info.get("detail") or base_info.get("mobile_detail") or ""
+
+    multimedia = result.get("ae_multimedia_info_dto") or {}
+    images = [u.strip() for u in (multimedia.get("image_urls") or "").split(";") if u.strip()]
+
+    sku_list = (result.get("ae_item_sku_info_dtos") or {}).get("ae_item_sku_info_d_t_o") or []
+    variants = []
+    for sku in sku_list:
+        props = (sku.get("ae_sku_property_dtos") or {}).get("ae_sku_property_d_t_o") or []
+        color = size = None
+        for prop in props:
+            pname = (prop.get("sku_property_name") or "").lower()
+            pvalue = prop.get("property_value_definition_name") or prop.get("sku_property_value") or None
+            if "color" in pname:
+                color = pvalue
+            elif "size" in pname:
+                size = pvalue
+        variants.append({
+            "sku_id": sku.get("sku_id"),
+            "color": color,
+            "size": size,
+            "price": float(sku.get("sku_price") or 0),
+            "quantity": int(sku.get("sku_available_stock") or 0),
+        })
+
+    return {
+        "name": name,
+        "description": description,
+        "images": images,
+        "variants": variants,
+        "currency": result.get("currency_code") or target_currency,
+    }
+
+
+class AliexpressImportIn(BaseModel):
+    product_url: str
+    selling_price: Optional[float] = None
+
+
+@router.post("/shops/{shop_id}/dropship/aliexpress/import")
+async def aliexpress_import(
+    shop_id: int,
+    body: AliexpressImportIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Paste an AliExpress product link, get a real product — no catalog
+    search UI, since AliExpress doesn't expose one worth building against
+    (see _aliexpress_fetch_product's own docstring for API-shape caveats).
+    Mirrors CJ/Printful's seller-side import shape."""
+    from app.models.product import Product
+    from app.models.product_fields import ProductImage
+    from app.models.product_variant import ProductVariant
+    from app.api.v1.endpoints.products import generate_slug, PLAN_PRODUCT_LIMITS
+
+    shop = _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+        raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
+
+    limit = PLAN_PRODUCT_LIMITS.get(plan, 25)
+    if limit != -1:
+        count = db.query(Product).filter(Product.shop_id == shop_id).count()
+        if count >= limit:
+            raise HTTPException(status_code=403, detail=f"Product limit reached ({limit} on your plan). Upgrade to add more.")
+
+    product_id = _parse_aliexpress_product_id(body.product_url)
+    if not product_id:
+        raise HTTPException(status_code=400, detail="Couldn't find a product ID in that link — paste the full AliExpress product page URL.")
+
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id,
+        DropshipConnection.supplier_type == "aliexpress",
+        DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail="Connect AliExpress first in the Suppliers section.")
+    token = await _aliexpress_ensure_token(conn, db)
+
+    target_currency = shop.base_currency or shop.currency or "USD"
+    detail = _aliexpress_fetch_product(token, product_id, target_currency)
+    if not detail["variants"]:
+        raise HTTPException(status_code=400, detail="This product has no purchasable variants — it may be unavailable for dropshipping.")
+
+    # AliExpress was asked for target_currency directly — if it actually
+    # honored that, no conversion needed; if it silently returned
+    # something else (e.g. still USD), convert rather than trust the ask.
+    from app.core.currency import convert_amount
+    source_currency = detail["currency"] or "USD"
+    primary = detail["variants"][0]
+
+    if body.selling_price:
+        price = body.selling_price
+    else:
+        price = await convert_amount(primary["price"], source_currency, target_currency) if primary["price"] else None
+    if not price:
+        raise HTTPException(status_code=400, detail="Couldn't determine a price — set one manually.")
+
+    name = detail["name"]
+    product = Product(
+        shop_id=shop_id,
+        name=name,
+        description=_sanitize_supplier_html(detail["description"]) or name,
+        price=price,
+        cost_price=round(primary["price"], 2) if source_currency == "USD" else None,  # only a meaningful reference in the currency it was actually quoted in
+        sku=f"AE-{product_id}",
+        quantity=sum(v["quantity"] for v in detail["variants"]) or 0,
+        low_stock_threshold=5,
+        slug=generate_slug(name),
+    )
+    db.add(product)
+    db.flush()
+
+    for i, url in enumerate(detail["images"][:10]):
+        db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
+
+    for v in detail["variants"]:
+        variant_price = v["price"]
+        if source_currency != target_currency and v["price"]:
+            variant_price = await convert_amount(v["price"], source_currency, target_currency)
+        db.add(ProductVariant(
+            product_id=product.id,
+            size=v["size"],
+            color=v["color"],
+            sku=str(v["sku_id"]),
+            quantity=v["quantity"],
+            price=round(variant_price, 2) if variant_price else None,
+        ))
+
+    db.add(DropshipProductLink(
+        shop_id=shop_id,
+        product_id=product.id,
+        supplier_type="aliexpress",
+        supplier_product_id=product_id,
+        supplier_product_url=body.product_url,
+        supplier_sku=str(primary["sku_id"]),
+        supplier_product_name=name,
+        is_primary=True,
+    ))
+
+    db.commit()
+    db.refresh(product)
+    logger.info(f"[AliExpress Import] shop={shop_id} imported product={product.id} ae_product_id={product_id} variants={len(detail['variants'])}")
+    return {"product_id": product.id, "name": product.name, "price": float(product.price)}
+
+
 # ── Endpoints: Supplier connections ──────────────────────────────────────────
 
 @router.get("/shops/{shop_id}/dropship/connections")
@@ -1723,6 +1938,101 @@ async def fulfill_order(
             "message": "Order sent to Printful. Tracking will appear here once it ships.",
         }
 
+    if data.supplier_type == "aliexpress":
+        conn = db.query(DropshipConnection).filter(
+            DropshipConnection.shop_id == shop_id,
+            DropshipConnection.supplier_type == "aliexpress",
+            DropshipConnection.is_active == True,
+        ).first()
+        if not conn:
+            raise HTTPException(status_code=400, detail="AliExpress is not connected. Go to Suppliers to connect.")
+        token = await _aliexpress_ensure_token(conn, db)
+
+        from app.models.order import OrderItem
+        items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+        if not items:
+            raise HTTPException(status_code=400, detail="Order has no items.")
+
+        ae_items = []
+        for item in items:
+            link = db.query(DropshipProductLink).filter(
+                DropshipProductLink.product_id == item.product_id,
+                DropshipProductLink.supplier_type == "aliexpress",
+            ).first()
+            if not link or not link.supplier_sku or not link.supplier_product_id:
+                raise HTTPException(status_code=400, detail={
+                    "error": "no_supplier_link",
+                    "message": f"Product '{item.product_name}' does not have an AliExpress supplier link. Re-import it from AliExpress.",
+                })
+            ae_items.append({
+                "product_id": link.supplier_product_id,
+                "sku_id": link.supplier_sku,
+                "product_count": item.quantity,
+            })
+
+        shipping = {}
+        if order.shipping_address:
+            import json
+            try:
+                shipping = json.loads(order.shipping_address)
+            except Exception:
+                shipping = {"address": order.shipping_address}
+
+        # UNVERIFIED — aliexpress.trade.buy.placeorder's exact param shape
+        # (product_items as a JSON string, logistics_address field names)
+        # is my best understanding from AliExpress's documented Dropshipper
+        # order API, not yet tested against a real placed order. If this
+        # fails, check the raw AliExpress error message in the exception
+        # below first — TOP-family APIs generally return a specific,
+        # readable error_response.msg rather than a bare HTTP failure.
+        import json as _json
+        result = _aliexpress_signed_request("/sync", {
+            "method": "aliexpress.trade.buy.placeorder",
+            "param_place_order_request4_open_dto": _json.dumps({
+                "product_items": ae_items,
+                "logistics_address": {
+                    "address": shipping.get("address", ""),
+                    "city": shipping.get("city", ""),
+                    "country": shipping.get("country_code", "US"),
+                    "phone_number": shipping.get("phone", ""),
+                    "zip": shipping.get("zip", ""),
+                    "contact_person": shipping.get("name") or order.notes or "Customer",
+                    "province": shipping.get("province", ""),
+                },
+                "out_order_id": order.order_number,
+            }),
+        }, access_token=token, method="POST")
+
+        result_data = (result or {}).get("aliexpress_trade_buy_placeorder_response") or (result or {}).get("result")
+        if not result_data or not result_data.get("order_list"):
+            error_msg = ((result or {}).get("error_response") or {}).get("msg") or "Unknown AliExpress error"
+            ds_order = DropshipOrder(
+                shop_id=shop_id, order_id=order_id, supplier_type="aliexpress",
+                status="failed", error_message=str(error_msg)[:2000],
+            )
+            db.add(ds_order)
+            order.fulfillment_status = "failed"
+            db.commit()
+            raise HTTPException(status_code=400, detail={
+                "error": "aliexpress_order_failed",
+                "message": f"AliExpress rejected this order: {error_msg}",
+            })
+
+        ae_order_id = str((result_data.get("order_list") or [None])[0])
+        ds_order = DropshipOrder(
+            shop_id=shop_id, order_id=order_id, supplier_type="aliexpress",
+            supplier_order_id=ae_order_id, status="processing",
+        )
+        db.add(ds_order)
+        order.fulfillment_status = "sent"
+        db.commit()
+        return {
+            "fulfilled": True,
+            "supplier_type": "aliexpress",
+            "supplier_order_id": ae_order_id,
+            "message": "Order sent to AliExpress. Tracking will appear here once it ships.",
+        }
+
     # Other suppliers (Zendrop, HyperSKU, Wiio) — placeholder for their APIs
     raise HTTPException(status_code=501, detail=f"{data.supplier_type.title()} order forwarding coming soon.")
 
@@ -2013,5 +2323,100 @@ def sync_printful_tracking_job(db_session_factory) -> None:
 
     except Exception as e:
         logger.error(f"[Printful Tracking] Job error: {e}")
+    finally:
+        db.close()
+
+
+# ── Background: AliExpress tracking sync (called by scheduler in main.py) ────
+
+def sync_aliexpress_tracking_job(db_session_factory) -> None:
+    """
+    Poll AliExpress for status/tracking updates on all processing/sent
+    dropship orders. Called every 2 hours by the background scheduler in
+    main.py, same cadence as sync_cj_tracking_job / sync_printful_tracking_job.
+
+    UNVERIFIED — aliexpress.logistics.ds.trackinginfo.query's exact
+    response shape is my best understanding of AliExpress's documented
+    tracking API, not yet tested against a real order. The status-string
+    values checked below (in particular what "delivered"/"failed" actually
+    look like in a real response) are the most likely thing to need
+    correcting once a real order has shipped.
+    """
+    db = db_session_factory()
+    try:
+        pending = db.query(DropshipOrder).filter(
+            DropshipOrder.supplier_type == "aliexpress",
+            DropshipOrder.status.in_(["processing", "sent"]),
+            DropshipOrder.supplier_order_id.isnot(None),
+        ).all()
+
+        if not pending:
+            return
+
+        logger.info(f"[AliExpress Tracking] Checking {len(pending)} pending orders")
+
+        conn_by_shop: dict = {}
+
+        for ds_order in pending:
+            shop_id = ds_order.shop_id
+
+            if shop_id not in conn_by_shop:
+                conn_by_shop[shop_id] = db.query(DropshipConnection).filter(
+                    DropshipConnection.shop_id == shop_id,
+                    DropshipConnection.supplier_type == "aliexpress",
+                    DropshipConnection.is_active == True,
+                ).first()
+
+            conn = conn_by_shop.get(shop_id)
+            if not conn or not conn.access_token:
+                continue
+
+            try:
+                data = _aliexpress_signed_request("/sync", {
+                    "method": "aliexpress.logistics.ds.trackinginfo.query",
+                    "out_ref": ds_order.supplier_order_id,
+                }, access_token=conn.access_token, method="POST")
+
+                result = (data or {}).get("aliexpress_logistics_ds_trackinginfo_query_response") or (data or {}).get("result")
+                if not result:
+                    continue
+
+                tracking_number = result.get("mail_no") or result.get("tracking_number")
+                carrier = result.get("logistics_service_name") or result.get("carrier")
+                ae_status = (result.get("order_status") or result.get("status") or "").lower()
+
+                if tracking_number:
+                    ds_order.tracking_number = tracking_number
+                if carrier:
+                    ds_order.carrier = carrier
+
+                if ae_status in ("delivered", "signed", "completed"):
+                    ds_order.status = "delivered"
+                    if not ds_order.delivered_at:
+                        ds_order.delivered_at = datetime.now(timezone.utc)
+                elif ae_status in ("failed", "cancelled", "canceled"):
+                    ds_order.status = "failed"
+                    ds_order.error_message = f"AliExpress order is '{ae_status}' — check this order on your AliExpress account."
+                elif tracking_number and ds_order.status in ("processing", "sent"):
+                    ds_order.status = "shipped"
+                    if not ds_order.shipped_at:
+                        ds_order.shipped_at = datetime.now(timezone.utc)
+
+                if tracking_number:
+                    from app.models.order import Order as ShopOrder
+                    order = db.query(ShopOrder).filter(ShopOrder.id == ds_order.order_id).first()
+                    if order and not order.tracking_number:
+                        order.tracking_number = tracking_number
+                        order.carrier = carrier or order.carrier
+
+                db.commit()
+                logger.info(f"[AliExpress Tracking] order={ds_order.order_id} tracking={tracking_number} status={ds_order.status}")
+
+            except Exception as e:
+                logger.error(f"[AliExpress Tracking] Failed ds_order={ds_order.id}: {e}")
+                continue
+
+    except Exception as e:
+        logger.error(f"[AliExpress Tracking] Job error: {e}")
     finally:
         db.close()

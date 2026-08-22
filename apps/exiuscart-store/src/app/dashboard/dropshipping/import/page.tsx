@@ -264,11 +264,17 @@ export default function ImportProductsPage() {
   const [checking, setChecking] = useState(true);
   const [cjConnected, setCjConnected] = useState(false);
   const [printfulConnected, setPrintfulConnected] = useState(false);
+  const [aliexpressConnected, setAliexpressConnected] = useState(false);
   const [isTheDersiUser, setIsTheDersiUser] = useState(false);
 
-  // Only relevant once both suppliers are connected — otherwise the page
-  // just shows whichever one is available with no switcher at all.
-  const [supplier, setSupplier] = useState<'cj' | 'printful'>('cj');
+  // Only relevant once more than one supplier is connected — otherwise the
+  // page just shows whichever one is available with no switcher at all.
+  const [supplier, setSupplier] = useState<'cj' | 'printful' | 'aliexpress'>('cj');
+
+  const [aliexpressUrl, setAliexpressUrl] = useState('');
+  const [aliexpressSellingPrice, setAliexpressSellingPrice] = useState('');
+  const [importingAliexpress, setImportingAliexpress] = useState(false);
+  const [aliexpressError, setAliexpressError] = useState('');
 
   const [activeTab, setActiveTab] = useState<'search' | 'my'>('search');
   const [query, setQuery] = useState('');
@@ -300,9 +306,11 @@ export default function ImportProductsPage() {
         const suppliers = supRes.data?.suppliers ?? [];
         const cj = suppliers.some((s: any) => s.supplier_type === 'cj' && s.connected);
         const printful = suppliers.some((s: any) => s.supplier_type === 'printful' && s.connected);
+        const aliexpress = suppliers.some((s: any) => s.supplier_type === 'aliexpress' && s.connected);
         setCjConnected(cj);
         setPrintfulConnected(printful);
-        setSupplier(cj ? 'cj' : 'printful');
+        setAliexpressConnected(aliexpress);
+        setSupplier(cj ? 'cj' : printful ? 'printful' : 'aliexpress');
         setIsTheDersiUser((connRes.data ?? []).some((c: any) => c.channel_type === 'thedersi'));
       })
       .catch(() => {})
@@ -378,7 +386,9 @@ export default function ImportProductsPage() {
     );
   }
 
-  if (!cjConnected && !printfulConnected) {
+  const connectedCount = [cjConnected, printfulConnected, aliexpressConnected].filter(Boolean).length;
+
+  if (connectedCount === 0) {
     return (
       <div className="p-6 max-w-5xl mx-auto space-y-8">
         <div>
@@ -391,7 +401,7 @@ export default function ImportProductsPage() {
           </div>
           <h2 className="text-lg font-semibold text-foreground">Connect a supplier first</h2>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            You need an active CJ Dropshipping or Printful connection before you can browse and import products.
+            You need an active CJ Dropshipping, Printful, or AliExpress connection before you can browse and import products.
           </p>
           <Link href="/dashboard/dropshipping"
             className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
@@ -407,29 +417,99 @@ export default function ImportProductsPage() {
       <div>
         <h1 className="text-xl font-semibold text-foreground">Import Products</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {supplier === 'cj' ? "Search CJ's catalog and import directly to your store with one click." : 'Bring your already-designed Printful products into your store.'}
+          {supplier === 'cj' ? "Search CJ's catalog and import directly to your store with one click."
+            : supplier === 'printful' ? 'Bring your already-designed Printful products into your store.'
+            : 'Paste an AliExpress product link and import it directly.'}
         </p>
       </div>
 
       {/* Supplier switcher — only shown once there's actually a choice */}
-      {cjConnected && printfulConnected && (
+      {connectedCount > 1 && (
         <div className="flex gap-2">
-          <button onClick={() => setSupplier('cj')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
-              supplier === 'cj' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
-            }`}>
-            <Package className="w-3.5 h-3.5" /> CJ Dropshipping
-          </button>
-          <button onClick={() => setSupplier('printful')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
-              supplier === 'printful' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
-            }`}>
-            <Shirt className="w-3.5 h-3.5" /> Printful
-          </button>
+          {cjConnected && (
+            <button onClick={() => setSupplier('cj')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
+                supplier === 'cj' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
+              }`}>
+              <Package className="w-3.5 h-3.5" /> CJ Dropshipping
+            </button>
+          )}
+          {printfulConnected && (
+            <button onClick={() => setSupplier('printful')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
+                supplier === 'printful' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
+              }`}>
+              <Shirt className="w-3.5 h-3.5" /> Printful
+            </button>
+          )}
+          {aliexpressConnected && (
+            <button onClick={() => setSupplier('aliexpress')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
+                supplier === 'aliexpress' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
+              }`}>
+              <ShoppingBag className="w-3.5 h-3.5" /> AliExpress
+            </button>
+          )}
         </div>
       )}
 
-      {supplier === 'printful' ? (
+      {supplier === 'aliexpress' && (
+        <div className="max-w-xl space-y-4">
+          {importedId && (
+            <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
+              </div>
+              <Link href={`/dashboard/products/${importedId.id}`}
+                className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
+                Edit product <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">AliExpress product link</label>
+            <input type="text" value={aliexpressUrl} onChange={(e) => setAliexpressUrl(e.target.value)}
+              placeholder="https://www.aliexpress.com/item/1005001234567890.html"
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary outline-none" />
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Find and pick the product on AliExpress&apos;s own site, then paste its link here — everything (images, variants, description) imports automatically.
+            </p>
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">Selling price <span className="opacity-60 font-normal">— optional, leave blank to use 2x cost, converted to your store&apos;s currency</span></label>
+            <input type="number" step="0.01" min="0" value={aliexpressSellingPrice} onChange={(e) => setAliexpressSellingPrice(e.target.value)}
+              className="w-40 px-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground" />
+          </div>
+          {aliexpressError && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {aliexpressError}
+            </div>
+          )}
+          <button
+            onClick={async () => {
+              if (!aliexpressUrl.trim()) return;
+              setImportingAliexpress(true); setAliexpressError('');
+              try {
+                const price = parseFloat(aliexpressSellingPrice) || undefined;
+                const r = await dropshipApi.aliexpressImport(shopId, aliexpressUrl.trim(), price);
+                setImportedId({ id: r.data.product_id, name: r.data.name });
+                setAliexpressUrl(''); setAliexpressSellingPrice('');
+              } catch (e: any) {
+                setAliexpressError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Import failed. Check the link and try again.');
+              } finally { setImportingAliexpress(false); }
+            }}
+            disabled={importingAliexpress || !aliexpressUrl.trim()}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+            {importingAliexpress ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
+            {importingAliexpress ? 'Importing…' : 'Import to My Products'}
+          </button>
+          </div>
+        </div>
+      )}
+
+      {supplier !== 'aliexpress' && (supplier === 'printful' ? (
         <>
           <p className="text-xs text-muted-foreground -mt-2">
             Products you&apos;ve designed on Printful&apos;s own site (Design Lab / Product Templates → Published) — already mocked up, ready to import.
@@ -619,7 +699,7 @@ export default function ImportProductsPage() {
         />
       )}
       </>
-      )}
+      ))}
     </div>
   );
 }

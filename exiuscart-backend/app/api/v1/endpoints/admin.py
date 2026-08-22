@@ -2132,6 +2132,115 @@ async def admin_cj_import_bulk(
     return {"imported": imported, "failed": failed}
 
 
+# ── Admin — AliExpress as a source for the Prodora catalog ──────────────────
+# Reuses the same DropshipConnection + OAuth flow already built for regular
+# sellers (dropshipping.py) — the system shop IS a real Shop row, so
+# GET /shops/{system_shop_id}/dropship/aliexpress/authorize (no admin-only
+# duplicate needed) connects it exactly the same way a seller would connect
+# their own shop. This endpoint is just the import step, mirroring
+# admin_cj_import above — paste a link instead of picking from search,
+# since AliExpress doesn't expose a catalog worth building a search UI
+# against (see _aliexpress_fetch_product's docstring in dropshipping.py).
+
+from app.api.v1.endpoints.dropshipping import (
+    _parse_aliexpress_product_id, _aliexpress_ensure_token, _aliexpress_fetch_product,
+)
+
+
+class AliexpressImportAdminIn(BaseModel):
+    product_url: str
+    price: Optional[float] = None
+    category_name: Optional[str] = None
+
+
+@router.post("/admin/shopping/aliexpress/import", status_code=201)
+async def admin_aliexpress_import(
+    body: AliexpressImportAdminIn,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop.id, DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail=f"AliExpress is not connected. Connect it via GET /shops/{shop.id}/dropship/aliexpress/authorize first.")
+    token = await _aliexpress_ensure_token(conn, db)
+
+    product_id = _parse_aliexpress_product_id(body.product_url)
+    if not product_id:
+        raise HTTPException(status_code=400, detail="Couldn't find a product ID in that link — paste the full AliExpress product page URL.")
+
+    detail = _aliexpress_fetch_product(token, product_id, shop.currency or "USD")
+    if not detail["variants"]:
+        raise HTTPException(status_code=400, detail="This product has no purchasable variants — it may be unavailable for dropshipping.")
+
+    primary = detail["variants"][0]
+    final_price = body.price if body.price else round(primary["price"] * 2, 2)
+    name = detail["name"]
+
+    cat_id = None
+    if body.category_name:
+        cat_id = _get_or_create_category(db, shop.id, body.category_name).id
+
+    product = Product(
+        name=name,
+        slug=_slugify_unique(name),
+        description=_truncate_description(_strip_description_images(detail["description"]), DESCRIPTION_WORDS_DEFAULT) or name,
+        price=final_price,
+        cost_price=primary["price"] or None,
+        sku=f"AE-{product_id}",
+        image_url=detail["images"][0] if detail["images"] else None,
+        source_url=body.product_url,
+        quantity=0,
+        category_id=cat_id,
+        shop_id=shop.id,
+        is_featured=False,
+        is_trending=False,
+        is_active=True,
+        supplier_name="AliExpress",
+    )
+    db.add(product)
+    db.flush()
+
+    from app.models.product_fields import ProductImage
+    from app.models.product_variant import ProductVariant
+
+    for i, url in enumerate(detail["images"][:6]):
+        db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
+
+    _preserve_unique_description_images(db, product, detail["description"], set(detail["images"][:6]))
+
+    for v in detail["variants"]:
+        label_parts = [p for p in (v["color"], v["size"]) if p]
+        db.add(ProductVariant(
+            product_id=product.id,
+            color=(v["color"] or (" / ".join(label_parts) if label_parts else None) or "")[:100] or None,
+            size=v["size"],
+            sku=str(v["sku_id"]),
+        ))
+
+    # AliExpress order placement needs the specific sku_id, not the bare
+    # product_id — same reasoning as CJ's variant vid link above.
+    db.add(DropshipProductLink(
+        shop_id=shop.id,
+        product_id=product.id,
+        supplier_type="aliexpress",
+        supplier_product_id=product_id,
+        supplier_product_url=body.product_url,
+        supplier_sku=str(primary["sku_id"]),
+        supplier_product_name=name,
+        cost_price=primary["price"] or None,
+        is_primary=True,
+    ))
+
+    db.commit()
+    product = db.query(Product).options(
+        joinedload(Product.shop), joinedload(Product.category)
+    ).filter(Product.id == product.id).first()
+    return _shopping_product_out(product)
+
+
 # ── Admin — Meta Ad Library search (real ads, Facebook + Instagram) ─────────
 # Meta's Ad Library API (/ads_archive) is free, public, and needs no app
 # review since it only serves already-public archive data — but it does

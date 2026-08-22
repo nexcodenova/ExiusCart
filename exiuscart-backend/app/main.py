@@ -253,6 +253,19 @@ def _run_printful_tracking_scheduler():
 _printful_tracking_thread = threading.Thread(target=_run_printful_tracking_scheduler, daemon=True)
 _printful_tracking_thread.start()
 
+# Start AliExpress tracking sync (every 2 hours)
+def _run_aliexpress_tracking_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.dropshipping import sync_aliexpress_tracking_job
+            sync_aliexpress_tracking_job(SessionLocal)
+        except Exception as exc:
+            logger.error(f"[AliExpress Tracking scheduler] {exc}")
+        time.sleep(2 * 3600)
+
+_aliexpress_tracking_thread = threading.Thread(target=_run_aliexpress_tracking_scheduler, daemon=True)
+_aliexpress_tracking_thread.start()
+
 # Auto-expire overdue subscriptions (checked daily) — recurring affiliate
 # commissions are now generated only from real payment events (Lemon Squeezy
 # webhook or manual admin approval), never from a blind timer.

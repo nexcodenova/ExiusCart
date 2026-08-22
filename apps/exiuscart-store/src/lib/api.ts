@@ -792,6 +792,8 @@ export const dropshipApi = {
     api.post(`/shops/${shopId}/dropship/printful/import`, { sync_product_id: syncProductId, selling_price: sellingPrice }),
   aliexpressAuthorize: (shopId: string) =>
     api.get(`/shops/${shopId}/dropship/aliexpress/authorize`),
+  aliexpressImport: (shopId: string, productUrl: string, sellingPrice?: number) =>
+    api.post(`/shops/${shopId}/dropship/aliexpress/import`, { product_url: productUrl, selling_price: sellingPrice }),
 };
 
 export const reviewsApi = {
