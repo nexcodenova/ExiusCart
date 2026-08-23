@@ -796,6 +796,37 @@ export const dropshipApi = {
     api.post(`/shops/${shopId}/dropship/aliexpress/import`, { product_url: productUrl, selling_price: sellingPrice }),
 };
 
+export interface BlogPostIn {
+  title: string;
+  excerpt?: string;
+  content?: string;
+  cover_image_url?: string;
+  author_name?: string;
+  tags?: string;
+  cta_text?: string;
+  cta_url?: string;
+}
+
+export const blogApi = {
+  list: (shopId: string, statusFilter?: string) =>
+    api.get(`/shops/${shopId}/blog`, { params: statusFilter ? { status_filter: statusFilter } : {} }),
+  get: (shopId: string, postId: number | string) =>
+    api.get(`/shops/${shopId}/blog/${postId}`),
+  create: (shopId: string, data: BlogPostIn) =>
+    api.post(`/shops/${shopId}/blog`, data),
+  update: (shopId: string, postId: number | string, data: BlogPostIn) =>
+    api.put(`/shops/${shopId}/blog/${postId}`, data),
+  remove: (shopId: string, postId: number | string) =>
+    api.delete(`/shops/${shopId}/blog/${postId}`),
+  publish: (shopId: string, postId: number | string, published: boolean, pushToShopify = false) =>
+    api.post(`/shops/${shopId}/blog/${postId}/publish`, { published, push_to_shopify: pushToShopify }),
+  uploadImage: (shopId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post(`/shops/${shopId}/blog/upload-image`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
 export const reviewsApi = {
   list: (shopId: string, params?: { status?: string; product_id?: number }) =>
     api.get(`/shops/${shopId}/reviews`, { params }),

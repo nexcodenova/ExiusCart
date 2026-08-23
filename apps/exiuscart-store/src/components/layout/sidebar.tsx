@@ -81,6 +81,7 @@ const GROUPS: MenuGroup[] = [
     accent: 'text-purple-500',
     items: [
       { href: '/dashboard/leads',             label: 'Lead Management', icon: Target         },
+      { href: '/dashboard/blog',              label: 'Blog',            icon: BookOpen       },
       { href: '/dashboard/signup-forms',      label: 'Signup Forms',    icon: FormInput      },
       { href: '/dashboard/drip-flows',        label: 'Drip Flows',      icon: GitBranch      },
       { href: '/dashboard/email-marketing',   label: 'Email Marketing', icon: Mail           },

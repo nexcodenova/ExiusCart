@@ -32,6 +32,8 @@ const STOREFRONT_ENDPOINTS = (slug: string) => [
   { method: 'POST', path: `/public/store/${slug}/auth/signup`, desc: 'Create a customer account' },
   { method: 'POST', path: `/public/store/${slug}/auth/login`, desc: 'Log in, returns a token' },
   { method: 'GET', path: `/public/store/${slug}/wallet`, desc: 'Balance + history — needs the token from login' },
+  { method: 'GET', path: `/public/store/${slug}/blog`, desc: 'Published blog posts — supports ?tag=' },
+  { method: 'GET', path: `/public/store/${slug}/blog/{slug}`, desc: 'Single blog post, full content' },
 ];
 
 function DeveloperReferenceCard({ slug }: { slug: string }) {
