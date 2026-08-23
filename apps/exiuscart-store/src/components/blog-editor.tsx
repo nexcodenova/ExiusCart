@@ -221,7 +221,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
           </div>
           {excerpt && <p className="text-muted-foreground mt-4 leading-relaxed">{excerpt}</p>}
           <div
-            className="prose prose-sm sm:prose-base dark:prose-invert max-w-none mt-6 [&_img]:rounded-lg [&_img]:max-w-full"
+            className="text-foreground text-sm sm:text-base leading-relaxed mt-6 [&_p]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-3 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-4"
             dangerouslySetInnerHTML={{ __html: content || '<p class="text-muted-foreground italic">Start writing below — it\'ll appear here as you go.</p>' }}
           />
           {ctaText && (
