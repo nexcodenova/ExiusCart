@@ -350,6 +350,9 @@ def _mark_order_paid_or_failed(order: Order, is_paid: bool, db: Session):
 
         from app.api.v1.endpoints.wallet import credit_wallet_for_order
         credit_wallet_for_order(order, db)
+
+        from app.api.v1.endpoints.digital_delivery import create_digital_deliveries_for_order
+        create_digital_deliveries_for_order(order, db)
     elif not is_paid and order.payment_status not in ("paid", "failed"):
         order.payment_status = "failed"
         db.commit()

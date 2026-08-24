@@ -403,6 +403,36 @@ def presign_size_chart_image(
     return generate_presigned_url(shop_id, product_id, ext, content_type)
 
 
+DIGITAL_FILE_MAX_BYTES = 200 * 1024 * 1024  # 200MB — ebooks/PDFs/small installers, not video courses
+
+
+@router.post("/shops/{shop_id}/products/upload-digital-file")
+async def upload_digital_product_file(
+    shop_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Shop-scoped, not product-scoped — same reasoning as blog's cover-
+    image upload (blog.py): the seller picks the file while filling out
+    the "Add Digital Product" form, before a product row exists yet."""
+    get_shop_or_404(shop_id, db, current_user)
+
+    contents = await file.read()
+    if len(contents) > DIGITAL_FILE_MAX_BYTES:
+        raise HTTPException(status_code=400, detail=f"File must be under {DIGITAL_FILE_MAX_BYTES // (1024*1024)}MB")
+    if not contents:
+        raise HTTPException(status_code=400, detail="File is empty")
+
+    ext = (file.filename or "file").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin"
+    from app.core.storage import upload_digital_file
+    # No product_id yet — filed under shop_id/0, same placeholder pattern
+    # admin_upload_shopping_image (admin.py) already uses for a not-yet-
+    # created product's assets.
+    url = upload_digital_file(contents, shop_id, 0, ext, content_type=file.content_type or "application/octet-stream")
+    return {"url": url, "filename": file.filename or f"file.{ext}"}
+
+
 @router.post("/shops/{shop_id}/products/{product_id}/images", response_model=ImageOut, status_code=201)
 async def upload_image(
     shop_id: int,

@@ -241,8 +241,16 @@ async def create_product(
                     detail=f"Product limit reached for your plan ({limit} products). Please upgrade."
                 )
 
+    product_fields = product_data.model_dump()
+    if product_fields.get("product_type") == "digital":
+        # Nothing to ship or count down — same "always available" sentinel
+        # Printful POD products already use, so a digital product never
+        # shows as low/out of stock regardless of what quantity was sent.
+        product_fields["quantity"] = 999999
+        product_fields["low_stock_threshold"] = 0
+
     new_product = Product(
-        **product_data.model_dump(),
+        **product_fields,
         slug=generate_slug(product_data.name),
         shop_id=shop_id
     )
@@ -421,6 +429,9 @@ async def update_product(
     update_data = product_data.model_dump(exclude_unset=True)
     if "description" in update_data:
         _validate_description(update_data["description"], shop_id, db)
+    if update_data.get("product_type") == "digital" and "quantity" not in update_data:
+        update_data["quantity"] = 999999
+        update_data["low_stock_threshold"] = 0
     for field, value in update_data.items():
         setattr(product, field, value)
 

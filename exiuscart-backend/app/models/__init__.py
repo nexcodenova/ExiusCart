@@ -39,6 +39,7 @@ from app.models.branch import Branch
 from app.models.wholesale import WholesaleProduct, WholesaleBuyer, WholesaleOrder
 from app.models.dropship import DropshipConnection, DropshipProductLink, DropshipOrder
 from app.models.blog import BlogPost
+from app.models.digital_delivery import DigitalDelivery
 from app.models.review import ProductReview
 from app.models.popup import StorefrontPopup
 from app.models.signup_form import SignupForm, SignupFormSubmission, CapturedFormSubmission

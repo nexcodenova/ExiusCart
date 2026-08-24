@@ -246,6 +246,10 @@ async def create_order(
     db.commit()
     db.refresh(new_order)
 
+    if is_pos:
+        from app.api.v1.endpoints.digital_delivery import create_digital_deliveries_for_order
+        create_digital_deliveries_for_order(new_order, db)
+
     # Push updated stock to TheDersi for every product sold via POS
     for item in order_data.items:
         trigger_stock_sync(item.product_id, shop_id, background_tasks)
@@ -699,6 +703,16 @@ async def refund_order(
 
     order.status = "cancelled"
     order.payment_status = "refunded"
+
+    # A refunded digital purchase shouldn't still be downloadable — expires
+    # the gate immediately rather than leaving it valid until its normal
+    # 30-day window runs out.
+    from app.models.digital_delivery import DigitalDelivery
+    from datetime import datetime, timezone
+    db.query(DigitalDelivery).filter(DigitalDelivery.order_id == order.id).update(
+        {"expires_at": datetime.now(timezone.utc)}
+    )
+
     db.commit()
     db.refresh(order)
 

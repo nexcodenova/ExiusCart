@@ -1418,3 +1418,70 @@ def send_review_request_email(
         f"How was your order from {shop_name}?",
         with_thedersi_footer(html, shop_id),
     )
+
+
+def send_digital_product_email(
+    to_email: str,
+    customer_name: str,
+    shop_name: str,
+    product_name: str,
+    download_page_url: str,
+    access_code: str,
+) -> bool:
+    """Sent the moment a digital product's order is marked paid — see
+    create_digital_deliveries_for_order (app/api/v1/endpoints/digital_delivery.py).
+    Deliberately does NOT link straight to the R2 file — download_page_url
+    is the gated page that asks for access_code first (see that same
+    file's /public/download endpoints)."""
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0B1121;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B1121;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#151F32;border-radius:16px;overflow:hidden;border:1px solid #1e2d47;">
+
+        <tr><td style="background:#0B1121;padding:22px 32px;border-bottom:1px solid #1e2d47;">
+          <span style="font-size:22px;font-weight:800;color:#fff;"><span style="color:#6B3FD9;">Exius</span>Cart</span>
+        </td></tr>
+
+        <tr><td style="background:#10b981;padding:18px 32px;">
+          <p style="margin:0;font-size:18px;font-weight:700;color:#fff;">Your download is ready!</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#d1fae5;">{shop_name}</p>
+        </td></tr>
+
+        <tr><td style="padding:28px 32px;">
+          <p style="margin:0 0 20px;font-size:14px;color:#e2e8f0;">
+            Hi {customer_name or 'there'}, thanks for your purchase of <strong style="color:#fff;">{product_name}</strong> — it's ready to download.
+          </p>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="text-align:center;margin:0 0 20px;">
+            <tr><td>
+              <a href="{download_page_url}"
+                 style="display:inline-block;background:#10b981;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:10px;">
+                Get My Download
+              </a>
+            </td></tr>
+          </table>
+
+          <div style="background:#0B1121;border:1px solid #1e2d47;border-radius:10px;padding:16px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Your Access Code</p>
+            <p style="margin:0;font-size:22px;font-weight:800;color:#10b981;letter-spacing:.08em;font-family:monospace;">{access_code}</p>
+          </div>
+          <p style="margin:14px 0 0;font-size:12px;color:#64748b;text-align:center;">
+            You'll be asked to enter this code on the download page — keep this email so you can come back to it anytime.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px;border-top:1px solid #1e2d47;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#475569;">This email was sent to <strong style="color:#94a3b8;">{to_email}</strong></p>
+          <p style="margin:6px 0 0;font-size:11px;color:#334155;">Powered by <strong style="color:#6B3FD9;">ExiusCart</strong></p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    return send_email(to_email, f"Your download from {shop_name} is ready", html)

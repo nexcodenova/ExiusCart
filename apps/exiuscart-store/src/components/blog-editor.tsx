@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Loader2, Upload, X, CheckCircle2, Eye, Lock, AlertTriangle } from 'lucide-react';
-import { blogApi, shopifyApi, BlogPostIn } from '@/lib/api';
+import { blogApi, shopifyApi, productsApi, BlogPostIn } from '@/lib/api';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { useBlogChannelStatus } from '@/lib/use-blog-channel-status';
 
@@ -13,6 +13,8 @@ function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
 export function BlogEditor({ postId }: { postId?: number }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const linkedProductId = searchParams.get('productId');
   const [shopId, setShopId] = useState('');
   const [loading, setLoading] = useState(!!postId);
   const [saving, setSaving] = useState(false);
@@ -61,8 +63,17 @@ export function BlogEditor({ postId }: { postId?: number }) {
         setCtaUrl(p.cta_url ?? '');
         setStatus(p.status ?? 'draft');
       }).catch(() => setError('Could not load this post.')).finally(() => setLoading(false));
+    } else if (linkedProductId) {
+      // Arrived via "Product + Blog" — pre-fill the CTA button text with
+      // the product's real name. Deliberately NOT guessing the storefront
+      // URL (Custom Website / Prodora / others each route products
+      // differently) — leaving it blank with a hint is honest, a wrong
+      // guessed link isn't.
+      productsApi.get(shopId, linkedProductId).then((r) => {
+        setCtaText(`Get ${r.data?.name ?? 'This Product'}`);
+      }).catch(() => {});
     }
-  }, [shopId, postId]);
+  }, [shopId, postId, linkedProductId]);
 
   const buildPayload = (): BlogPostIn => ({
     title: title.trim(),

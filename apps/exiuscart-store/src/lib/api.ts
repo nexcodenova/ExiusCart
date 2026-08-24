@@ -104,6 +104,13 @@ export const productsApi = {
     api.post(`/shops/${shopId}/products/backfill-skus`),
   getNextSku: (shopId: string) =>
     api.get(`/shops/${shopId}/next-sku`),
+  get: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/products/${productId}`),
+  uploadDigitalFile: (shopId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post(`/shops/${shopId}/products/upload-digital-file`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── Orders ────────────────────────────────────────────

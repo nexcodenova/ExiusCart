@@ -46,6 +46,15 @@ class Product(Base):
     video_url = Column(String(500), nullable=True)   # short product video (TikTok-style)
     source_url = Column(String(1000), nullable=True) # supplier source link (AliExpress, CJ, etc.)
 
+    # Digital products — no shipping, no stock tracking (quantity gets set
+    # to a large sentinel at creation, same "always available" convention
+    # Printful POD products already use). Delivery is a single file, not a
+    # license-key pool — see DigitalDelivery (app/models/digital_delivery.py)
+    # for the per-order access-code-gated download link this powers.
+    product_type = Column(String(20), default="physical", server_default="physical", nullable=False)  # "physical" | "digital"
+    digital_file_url = Column(String(1000), nullable=True)
+    digital_file_name = Column(String(255), nullable=True)  # original filename, shown to the buyer
+
     # Real, earned social proof for products with no reviews yet — never
     # fabricated. view_count increments on every real product-detail page
     # load (raw hits, not unique visitors — see public_store_product_detail

@@ -47,6 +47,9 @@ class ProductBase(BaseModel):
     pos_enabled: bool = True  # available for in-store POS sale
     pos_is_gift: bool = False  # marked as a gift item specifically for POS
     custom_field_values: Optional[Dict[str, Any]] = None  # Custom Website channel's seller-defined fields
+    product_type: str = "physical"  # "physical" | "digital"
+    digital_file_url: Optional[str] = None
+    digital_file_name: Optional[str] = None
 
 
 class ProductCreate(ProductBase):
@@ -76,6 +79,9 @@ class ProductUpdate(BaseModel):
     pos_enabled: Optional[bool] = None
     pos_is_gift: Optional[bool] = None
     custom_field_values: Optional[Dict[str, Any]] = None
+    product_type: Optional[str] = None
+    digital_file_url: Optional[str] = None
+    digital_file_name: Optional[str] = None
 
 
 class SupplierRef(BaseModel):

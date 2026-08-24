@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Plus, Search, Edit, Trash2, Package, X, ChevronDown,
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
@@ -109,6 +110,7 @@ interface QuantityTierValue {
 }
 
 export default function ProductsPage() {
+  const router = useRouter();
   const { fmt, fmtBase } = useCurrency();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>(DEFAULT_CATEGORIES);
@@ -116,6 +118,9 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [addModalProductType, setAddModalProductType] = useState<'physical' | 'digital'>('physical');
+  const [showDigitalChoice, setShowDigitalChoice] = useState(false);
+  const [pendingBlogAfterSave, setPendingBlogAfterSave] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvRows, setCsvRows] = useState<any[]>([]);
@@ -388,10 +393,17 @@ export default function ProductsPage() {
           )}
           <button
             type="button"
-            onClick={() => { setEditingProduct(null); setShowAddModal(true); }}
+            onClick={() => { setEditingProduct(null); setAddModalProductType('physical'); setShowAddModal(true); }}
             className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm"
           >
             <Plus className="w-5 h-5" /> Add Product
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDigitalChoice(true)}
+            className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg font-semibold hover:bg-muted transition text-sm text-foreground"
+          >
+            <Download className="w-4 h-4" /> Add Digital Product
           </button>
         </div>
       </div>
@@ -801,6 +813,51 @@ export default function ProductsPage() {
         )}
       </div>
 
+      {/* "Add Digital Product" choice screen — asked before the actual form,
+          for affiliate/content sellers who want a linked blog post too. */}
+      {showDigitalChoice && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-foreground mb-1">Add Digital Product</h3>
+            <p className="text-sm text-muted-foreground mb-5">Selling an ebook, course, or software license? Choose how you want to start.</p>
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDigitalChoice(false);
+                  setPendingBlogAfterSave(false);
+                  setEditingProduct(null);
+                  setAddModalProductType('digital');
+                  setShowAddModal(true);
+                }}
+                className="w-full text-left px-4 py-3.5 border border-border rounded-xl hover:border-primary/40 hover:bg-muted/50 transition"
+              >
+                <p className="text-sm font-semibold text-foreground">Just Product</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Full product page — title, pricing, channels, POS, everything.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDigitalChoice(false);
+                  setPendingBlogAfterSave(true);
+                  setEditingProduct(null);
+                  setAddModalProductType('digital');
+                  setShowAddModal(true);
+                }}
+                className="w-full text-left px-4 py-3.5 border border-border rounded-xl hover:border-primary/40 hover:bg-muted/50 transition"
+              >
+                <p className="text-sm font-semibold text-foreground">Product + Blog</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Same product form, then straight into a blog post already linked to it — for reviews, affiliate content, launch posts.</p>
+              </button>
+            </div>
+            <button type="button" onClick={() => setShowDigitalChoice(false)}
+              className="w-full mt-4 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Add/Edit Modal */}
       {showAddModal && (
         <ProductModal
@@ -809,8 +866,18 @@ export default function ProductsPage() {
           categories={categories}
           allProducts={products}
           channelStatus={editingProduct ? channelStatuses[editingProduct.id]?.thedersi : undefined}
-          onClose={() => { setShowAddModal(false); setEditingProduct(null); }}
-          onSaved={() => { setShowAddModal(false); setEditingProduct(null); fetchProducts(); }}
+          initialProductType={editingProduct ? undefined : addModalProductType}
+          onClose={() => { setShowAddModal(false); setEditingProduct(null); setPendingBlogAfterSave(false); }}
+          onSaved={(savedId) => {
+            setShowAddModal(false);
+            const goToBlog = pendingBlogAfterSave;
+            setEditingProduct(null);
+            setPendingBlogAfterSave(false);
+            fetchProducts();
+            if (goToBlog && savedId) {
+              router.push(`/dashboard/blog/new?productId=${savedId}`);
+            }
+          }}
         />
       )}
 
@@ -963,7 +1030,7 @@ interface PendingImage {
 }
 
 function ProductModal({
-  product, shopId, categories, allProducts, channelStatus, onClose, onSaved,
+  product, shopId, categories, allProducts, channelStatus, onClose, onSaved, initialProductType,
 }: {
   product: Product | null;
   shopId: string;
@@ -971,7 +1038,8 @@ function ProductModal({
   allProducts: Product[];
   channelStatus?: { status: string; rejection_reason?: string };
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (productId?: number) => void;
+  initialProductType?: 'physical' | 'digital';
 }) {
   // Price ENTRY defaults to the shop's fixed base currency (baseSym) — the
   // seller can switch entryCurrency below to type in a different one for
@@ -1013,7 +1081,13 @@ function ProductModal({
     isGift: p?.is_gift ?? false,
     supplierId: p?.supplier_id ?? null as number | null,
     isDropshipImported: p?.is_dropship_imported ?? false,
+    productType: (p?.product_type ?? initialProductType ?? 'physical') as 'physical' | 'digital',
+    digitalFileUrl: p?.digital_file_url ?? '',
+    digitalFileName: p?.digital_file_name ?? '',
   });
+  const isDigital = formData.productType === 'digital';
+  const [uploadingDigitalFile, setUploadingDigitalFile] = useState(false);
+  const [digitalFileError, setDigitalFileError] = useState('');
 
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
 
@@ -1605,6 +1679,9 @@ function ProductModal({
         pos_is_gift: posEnabled ? posIsGift : false,
         supplier_id: formData.supplierId ?? null,
         custom_field_values: Object.keys(customFieldValues).length > 0 ? customFieldValues : null,
+        product_type: formData.productType,
+        digital_file_url: isDigital ? (formData.digitalFileUrl || null) : null,
+        digital_file_name: isDigital ? (formData.digitalFileName || null) : null,
       };
 
       if (product?.id) {
@@ -1721,7 +1798,7 @@ function ProductModal({
       }
 
       await Promise.all(tasks);
-      onSaved();
+      onSaved(Number(productId));
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Failed to save product. Please try again.');
       setSaving(false);
@@ -1734,7 +1811,14 @@ function ProductModal({
 
         {/* Header */}
         <DialogHeader className="flex-row items-center justify-between px-6 py-4 space-y-0">
-          <DialogTitle>{product ? 'Edit Product' : 'Add Product'}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {product ? 'Edit Product' : 'Add Product'}
+            {isDigital && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                <Download className="w-3 h-3" /> Digital
+              </span>
+            )}
+          </DialogTitle>
           <button type="button" onClick={onClose} aria-label="Close" className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition">
             <X className="w-5 h-5" />
           </button>
@@ -2195,30 +2279,76 @@ function ProductModal({
 
               <div className="border-t border-border" />
 
-              {/* Stock */}
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-foreground">Inventory</p>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs mb-1 block">
-                      Stock Quantity
-                      {variants.length > 0 && <span className="ml-2 text-primary font-semibold">= {variants.reduce((s, v) => s + v.quantity, 0)} (from variants)</span>}
-                    </Label>
-                    <Input
-                      type="number"
-                      value={variants.length > 0 ? variants.reduce((s, v) => s + v.quantity, 0) : formData.stock}
-                      onChange={(e) => { if (variants.length === 0) setFormData({ ...formData, stock: Number(e.target.value) }); }}
-                      readOnly={variants.length > 0}
-                      min="0"
-                      className={variants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">Low Stock Alert</Label>
-                    <Input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" />
+              {/* Stock — hidden for digital products, nothing to count down */}
+              {isDigital ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-foreground">Digital File</p>
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    Delivered automatically by email (with an access code) once the order is paid — no shipping, no stock to track.
+                  </p>
+                  {formData.digitalFileUrl ? (
+                    <div className="flex items-center justify-between gap-3 bg-muted/50 border border-border rounded-lg px-4 py-3">
+                      <div className="min-w-0 flex items-center gap-2">
+                        <Download className="w-4 h-4 text-primary shrink-0" />
+                        <p className="text-sm text-foreground truncate">{formData.digitalFileName || 'File uploaded'}</p>
+                      </div>
+                      <button type="button" onClick={() => setFormData({ ...formData, digitalFileUrl: '', digitalFileName: '' })}
+                        className="text-xs text-destructive hover:underline shrink-0">
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg py-8 cursor-pointer hover:border-primary/40 transition">
+                      {uploadingDigitalFile ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      ) : (
+                        <Upload className="w-5 h-5 text-muted-foreground" />
+                      )}
+                      <span className="text-xs text-muted-foreground">{uploadingDigitalFile ? 'Uploading…' : 'Click to upload the file (up to 200MB)'}</span>
+                      <input type="file" className="hidden" disabled={uploadingDigitalFile}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!file) return;
+                          setUploadingDigitalFile(true); setDigitalFileError('');
+                          try {
+                            const res = await productsApi.uploadDigitalFile(shopId, file);
+                            setFormData((prev) => ({ ...prev, digitalFileUrl: res.data.url, digitalFileName: res.data.filename }));
+                          } catch (err: any) {
+                            setDigitalFileError(err?.response?.data?.detail ?? "Couldn't upload that file — try again.");
+                          } finally {
+                            setUploadingDigitalFile(false);
+                          }
+                        }} />
+                    </label>
+                  )}
+                  {digitalFileError && <p className="text-xs text-destructive">{digitalFileError}</p>}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-foreground">Inventory</p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs mb-1 block">
+                        Stock Quantity
+                        {variants.length > 0 && <span className="ml-2 text-primary font-semibold">= {variants.reduce((s, v) => s + v.quantity, 0)} (from variants)</span>}
+                      </Label>
+                      <Input
+                        type="number"
+                        value={variants.length > 0 ? variants.reduce((s, v) => s + v.quantity, 0) : formData.stock}
+                        onChange={(e) => { if (variants.length === 0) setFormData({ ...formData, stock: Number(e.target.value) }); }}
+                        readOnly={variants.length > 0}
+                        min="0"
+                        className={variants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block">Low Stock Alert</Label>
+                      <Input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="border-t border-border" />
 

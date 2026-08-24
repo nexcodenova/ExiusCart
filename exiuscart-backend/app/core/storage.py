@@ -56,6 +56,41 @@ def upload_image(contents: bytes, shop_id: int, product_id: int, ext: str, conte
     return url
 
 
+def upload_digital_file(contents: bytes, shop_id: int, product_id: int, ext: str, content_type: str = "application/octet-stream") -> str:
+    """Upload a digital product's deliverable (ebook, PDF, zip, installer —
+    anything) to R2 and return its URL. Same bucket/public-URL shape as
+    upload_image (this bucket serves everything from one public domain,
+    there's no separate private bucket) — the real protection isn't the
+    bucket, it's that a buyer only ever sees this URL after passing the
+    access-code gate (see DigitalDelivery / the /public/download endpoints),
+    combined with the UUID filename below being computationally unguessable
+    on its own. Not true DRM; that was explicitly out of scope."""
+    if not _R2_ACCOUNT_ID or not _R2_ACCESS_KEY_ID or not _R2_SECRET_ACCESS_KEY:
+        raise RuntimeError(
+            "R2 credentials not configured. "
+            "Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL in .env"
+        )
+
+    filename = f"{uuid.uuid4()}.{ext}"
+    key = f"digital-files/{shop_id}/{product_id}/{filename}"
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=_R2_BUCKET,
+        Key=key,
+        Body=contents,
+        ContentType=content_type,
+        # No long CDN cache here (unlike upload_image) — a digital file's
+        # URL is meant to only ever be reached through the gate, not linked
+        # publicly, so there's no benefit to aggressive edge caching and it
+        # would make future access revocation (if that's ever built) harder.
+    )
+
+    url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    logger.info(f"[R2 UPLOAD digital] {url}")
+    return url
+
+
 def upload_shop_image(contents: bytes, shop_id: int, image_type: str, ext: str, content_type: str = "image/jpeg") -> str:
     """Upload a shop profile image (logo/banner) to R2 and return the public CDN URL."""
     if not _R2_ACCOUNT_ID or not _R2_ACCESS_KEY_ID or not _R2_SECRET_ACCESS_KEY:

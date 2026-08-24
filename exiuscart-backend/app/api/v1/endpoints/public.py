@@ -121,6 +121,11 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         "price": _conv(p.price),
         "compare_at_price": _conv(p.compare_at_price) if p.compare_at_price is not None else None,
         "in_stock": (p.quantity or 0) > 0,
+        # "physical" | "digital" — a storefront can use this to show
+        # "Delivered instantly by email" instead of shipping info, skip
+        # the shipping-address step at checkout, etc. Not enforced here;
+        # purely informational for whichever frontend reads it.
+        "product_type": p.product_type or "physical",
         "quantity": p.quantity or 0,
         "images": images,
         # Legacy single field — still set by the internal Prodora import
