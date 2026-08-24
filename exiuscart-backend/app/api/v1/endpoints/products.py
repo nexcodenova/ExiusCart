@@ -7,6 +7,7 @@ import re
 import uuid
 from app.core.database import get_db
 from app.core.trial import require_active_trial
+from app.core.thedersi import is_thedersi_shop
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product, Category
@@ -243,6 +244,15 @@ async def create_product(
 
     product_fields = product_data.model_dump()
     if product_fields.get("product_type") == "digital":
+        # ExiusCart-only — TheDersi orders arrive via a channel webhook,
+        # never through checkout.py/POS, so the digital-delivery email
+        # would never fire for one regardless; blocked outright rather
+        # than accepting a product that silently can't be fulfilled.
+        if is_thedersi_shop(shop_id, db):
+            raise HTTPException(status_code=403, detail={
+                "error": "not_available",
+                "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
+            })
         # Nothing to ship or count down — same "always available" sentinel
         # Printful POD products already use, so a digital product never
         # shows as low/out of stock regardless of what quantity was sent.
@@ -429,9 +439,15 @@ async def update_product(
     update_data = product_data.model_dump(exclude_unset=True)
     if "description" in update_data:
         _validate_description(update_data["description"], shop_id, db)
-    if update_data.get("product_type") == "digital" and "quantity" not in update_data:
-        update_data["quantity"] = 999999
-        update_data["low_stock_threshold"] = 0
+    if update_data.get("product_type") == "digital":
+        if is_thedersi_shop(shop_id, db):
+            raise HTTPException(status_code=403, detail={
+                "error": "not_available",
+                "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
+            })
+        if "quantity" not in update_data:
+            update_data["quantity"] = 999999
+            update_data["low_stock_threshold"] = 0
     for field, value in update_data.items():
         setattr(product, field, value)
 

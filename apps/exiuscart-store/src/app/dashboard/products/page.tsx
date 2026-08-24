@@ -288,6 +288,13 @@ export default function ProductsPage() {
   const isTheDersiBasic = planType === 'thedersi_basic';
   const canBulkUpload = planType === 'premium' || planType === 'thedersi_pro';
   const isTheDersiBasicUser = planType === 'thedersi_basic';
+  // Digital products are ExiusCart-only — TheDersi is a physical-goods
+  // marketplace, and TheDersi orders arrive via a channel webhook, never
+  // through checkout.py/POS, so the digital-delivery email would never
+  // even fire for a TheDersi order regardless of gating. Blocking this in
+  // the UI (and again server-side, see products.py) rather than shipping
+  // a button that silently can't work.
+  const isTheDersiShop = planType === 'thedersi_basic' || planType === 'thedersi_pro';
 
   const togglePrintSelect = (id: string) => {
     setSelectedForPrint(prev => {
@@ -398,13 +405,15 @@ export default function ProductsPage() {
           >
             <Plus className="w-5 h-5" /> Add Product
           </button>
-          <button
-            type="button"
-            onClick={() => setShowDigitalChoice(true)}
-            className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg font-semibold hover:bg-muted transition text-sm text-foreground"
-          >
-            <Download className="w-4 h-4" /> Add Digital Product
-          </button>
+          {!isTheDersiShop && (
+            <button
+              type="button"
+              onClick={() => setShowDigitalChoice(true)}
+              className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg font-semibold hover:bg-muted transition text-sm text-foreground"
+            >
+              <Download className="w-4 h-4" /> Add Digital Product
+            </button>
+          )}
         </div>
       </div>
 

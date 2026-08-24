@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.thedersi import is_thedersi_shop
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -417,6 +418,11 @@ async def upload_digital_product_file(
     image upload (blog.py): the seller picks the file while filling out
     the "Add Digital Product" form, before a product row exists yet."""
     get_shop_or_404(shop_id, db, current_user)
+    if is_thedersi_shop(shop_id, db):
+        raise HTTPException(status_code=403, detail={
+            "error": "not_available",
+            "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
+        })
 
     contents = await file.read()
     if len(contents) > DIGITAL_FILE_MAX_BYTES:
