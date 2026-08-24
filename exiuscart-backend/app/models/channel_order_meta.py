@@ -31,4 +31,10 @@ class ChannelOrderMeta(Base):
     # Full items with variants (size, color etc.) — stored as JSON
     items_detail = Column(JSON, nullable=True)
 
+    # Seller-uploaded bank-transfer payment receipt (TheDersi bank-transfer
+    # orders only — TheDersi ignores this event for COD/PayHere orders on
+    # their side). Re-uploading just overwrites this, matching TheDersi's
+    # own stated idempotent behavior for the receipt_uploaded webhook.
+    receipt_url = Column(String(500), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())

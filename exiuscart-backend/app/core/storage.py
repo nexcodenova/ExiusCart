@@ -113,6 +113,30 @@ def upload_shop_image(contents: bytes, shop_id: int, image_type: str, ext: str, 
     return url
 
 
+def upload_receipt_image(contents: bytes, shop_id: int, order_id: int, ext: str, content_type: str = "image/jpeg") -> str:
+    """Upload a seller-provided bank-transfer payment receipt to R2. Same
+    public-bucket shape as upload_image — receipts aren't secret (they're
+    shown openly to the buyer/TheDersi's own admin), so no gate is needed."""
+    if not _R2_ACCOUNT_ID or not _R2_ACCESS_KEY_ID or not _R2_SECRET_ACCESS_KEY:
+        raise RuntimeError("R2 credentials not configured.")
+
+    filename = f"{uuid.uuid4()}.{ext}"
+    key = f"receipts/{shop_id}/{order_id}/{filename}"
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=_R2_BUCKET,
+        Key=key,
+        Body=contents,
+        ContentType=content_type,
+        CacheControl="public, max-age=31536000",
+    )
+
+    url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    logger.info(f"[R2 UPLOAD receipt] {url}")
+    return url
+
+
 def generate_presigned_url(shop_id: int, product_id: int, ext: str, content_type: str = "image/jpeg", expires: int = 300) -> dict:
     """Return a presigned PUT URL so the browser can upload directly to R2."""
     filename = f"{uuid.uuid4()}.{ext}"

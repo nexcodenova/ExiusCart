@@ -137,6 +137,11 @@ export const ordersApi = {
     api.post(`/shops/${shopId}/orders/${orderId}/send-invoice`, { customer_email: customerEmail || null }),
   refund: (shopId: string, orderId: string) =>
     api.post(`/shops/${shopId}/orders/${orderId}/refund`),
+  uploadReceipt: (shopId: string, orderId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post(`/shops/${shopId}/orders/${orderId}/receipt`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── Customers ─────────────────────────────────────────

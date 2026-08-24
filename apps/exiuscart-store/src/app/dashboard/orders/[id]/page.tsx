@@ -6,7 +6,7 @@ import {
   ArrowLeft, Package, Truck, DollarSign, ShoppingBag,
   FileText, Percent, Mail, Check, User, Phone, Download,
   RefreshCcw, AlertTriangle, Printer, MessageCircle, X,
-  ChevronDown, Minus, Plus,
+  ChevronDown, Minus, Plus, Upload, Receipt,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi, creditNotesApi } from '@/lib/api';
@@ -47,6 +47,7 @@ interface ChannelMeta {
   items_detail: any[] | null;
   platform_discount?: number | null;
   coupon_code?: string | null;
+  receipt_url?: string | null;
 }
 
 interface Customer {
@@ -123,6 +124,9 @@ export default function OrderDetailsPage() {
   const [refundDone, setRefundDone] = useState(false);
   const [refundError, setRefundError] = useState('');
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
 
   // Return modal state
   const [returnQtys, setReturnQtys] = useState<Record<number, number>>({});
@@ -157,6 +161,26 @@ export default function OrderDetailsPage() {
       setInvoiceError(err.response?.data?.detail || 'Failed to send invoice');
     } finally {
       setSendingInvoice(false);
+    }
+  };
+
+  const handleReceiptUpload = async (file: File) => {
+    if (!order) return;
+    setUploadingReceipt(true);
+    setReceiptError('');
+    try {
+      const res = await ordersApi.uploadReceipt(shopId, orderId, file);
+      setOrder({
+        ...order,
+        channel_meta: order.channel_meta
+          ? { ...order.channel_meta, receipt_url: res.data.receipt_url }
+          : order.channel_meta,
+      });
+      setShowReceiptModal(false);
+    } catch (err: any) {
+      setReceiptError(err.response?.data?.detail || 'Failed to upload receipt');
+    } finally {
+      setUploadingReceipt(false);
     }
   };
 
@@ -269,6 +293,31 @@ export default function OrderDetailsPage() {
         </div>
       )}
 
+      {/* Payment & delivery collection instructions — TheDersi's own text,
+          differs per payment method (card/bank-transfer = prepaid, nothing
+          to collect; COD = collect full cash and deposit it). Styled by
+          content so a "collect cash" order visually stands out from a
+          prepaid one. */}
+      {isTheDersi && order.channel_meta?.delivery_note && (() => {
+        const note = order.channel_meta.delivery_note;
+        const needsCollection = /collect|cash on delivery|\bcod\b/i.test(note);
+        return (
+          <div className={`rounded-xl px-4 py-3 flex items-start gap-3 border ${
+            needsCollection
+              ? 'bg-amber-500/10 border-amber-500/30'
+              : 'bg-green-500/10 border-green-500/30'
+          }`}>
+            <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${needsCollection ? 'text-amber-500' : 'text-green-600 dark:text-green-400'}`} />
+            <div>
+              <p className={`text-sm font-semibold ${needsCollection ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}>
+                {needsCollection ? 'Collect payment on delivery' : 'Prepaid — nothing to collect'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">{note}</p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Actions — moved up front so exporting/messaging never needs a scroll to the bottom */}
       <div className="flex flex-wrap gap-2.5">
         {order.payment_status === 'paid' && order.status !== 'cancelled' && (
@@ -316,6 +365,20 @@ export default function OrderDetailsPage() {
         >
           <Printer className="w-4 h-4" /> Payment Receipt
         </button>
+
+        {isTheDersi && (
+          <button
+            onClick={() => { setReceiptError(''); setShowReceiptModal(true); }}
+            className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg transition font-medium ${
+              order.channel_meta?.receipt_url
+                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20'
+                : 'bg-primary/10 text-primary hover:bg-primary/20'
+            }`}
+          >
+            <Upload className="w-4 h-4" />
+            {order.channel_meta?.receipt_url ? 'Replace Bank Transfer Receipt' : 'Upload Bank Transfer Receipt'}
+          </button>
+        )}
 
         {/* WhatsApp — status-aware smart message */}
         {order.customer?.phone && (
@@ -546,9 +609,6 @@ export default function OrderDetailsPage() {
               )}
             </div>
           )}
-          {order.channel_meta.delivery_note && (
-            <p className="text-xs text-muted-foreground mt-3 bg-green-500/5 rounded-lg px-3 py-2">{order.channel_meta.delivery_note}</p>
-          )}
         </div>
       )}
 
@@ -729,6 +789,77 @@ export default function OrderDetailsPage() {
               >
                 {refunding && <RefreshCcw className="w-4 h-4 animate-spin" />}
                 {refunding ? 'Processing...' : 'Confirm Return'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bank transfer receipt upload modal */}
+      {showReceiptModal && order && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
+                  <Receipt className="w-4 h-4 text-indigo-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">Upload Bank Transfer Receipt</h3>
+                  <p className="text-xs text-muted-foreground">Order {order.order_number}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowReceiptModal(false)} className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Only for TheDersi orders where the buyer paid by direct bank transfer. Uploading
+                shares proof of payment with TheDersi&apos;s own order view — it has no effect on
+                COD or PayHere orders.
+              </p>
+
+              {order.channel_meta?.receipt_url && (
+                <a
+                  href={order.channel_meta.receipt_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-xl overflow-hidden border border-border"
+                >
+                  <img src={order.channel_meta.receipt_url} alt="Current receipt" className="w-full max-h-48 object-contain bg-muted" />
+                </a>
+              )}
+
+              <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl px-4 py-8 cursor-pointer hover:border-primary/50 transition">
+                <Upload className="w-6 h-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {uploadingReceipt ? 'Uploading...' : 'Click to select an image of the receipt'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingReceipt}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleReceiptUpload(file);
+                  }}
+                />
+              </label>
+
+              {receiptError && (
+                <p className="text-sm text-red-500 bg-red-500/10 rounded-xl px-3 py-2">{receiptError}</p>
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-border shrink-0">
+              <button
+                onClick={() => setShowReceiptModal(false)}
+                className="w-full px-4 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-muted transition"
+              >
+                Close
               </button>
             </div>
           </div>

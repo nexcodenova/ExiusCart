@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -20,7 +20,7 @@ from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrder
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
 from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_new_order_email, send_low_stock_alert_email, with_thedersi_footer
-from app.core.thedersi import notify_thedersi_order_status, MONTHLY_ORDER_LIMITS
+from app.core.thedersi import notify_thedersi_order_status, notify_thedersi_receipt_uploaded, MONTHLY_ORDER_LIMITS
 from app.core.trial import require_active_trial
 from app.models.subscription import Subscription
 from app.models.bundle_component import BundleComponent
@@ -64,11 +64,11 @@ def _check_and_alert_low_stock(seller_email: str, shop_name: str, product_ids: l
 _VALID_STATUSES = {"pending", "confirmed", "packing", "processing", "shipped", "in_transit", "delivered", "cancelled"}
 
 
-def _notify_channel_order(order_id: int, status: str, db: Session, tracking_number: str = None, tracking_courier: str = None) -> None:
+def _notify_channel_order(order_id: int, status: str, db: Session, tracking_number: str = None, tracking_courier: str = None, delivery_fee: float = None) -> None:
     meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order_id).first()
     print(f"[NOTIFY] order_id={order_id} status={status} meta={'found chan_id=' + str(meta.channel_order_id) if meta else 'MISSING'}", flush=True)
     if meta and meta.channel_order_id:
-        notify_thedersi_order_status(meta.channel_order_id, status, tracking_number, tracking_courier)
+        notify_thedersi_order_status(meta.channel_order_id, status, tracking_number, tracking_courier, delivery_fee)
 
 
 def generate_order_number() -> str:
@@ -406,7 +406,7 @@ async def ship_order(
     db.commit()
     db.refresh(order)
 
-    _notify_channel_order(order_id, "shipped", db, tracking_number=data.tracking_number, tracking_courier=data.carrier)
+    _notify_channel_order(order_id, "shipped", db, tracking_number=data.tracking_number, tracking_courier=data.carrier, delivery_fee=data.delivery_charge)
 
     return order
 
@@ -539,6 +539,7 @@ async def get_order_details(
             "delivery_note": meta.delivery_note,
             "delivery_fee_share": float(meta.delivery_fee_share) if meta.delivery_fee_share else None,
             "items_detail": meta.items_detail,
+            "receipt_url": meta.receipt_url,
         }
 
     customer = db.query(Customer).filter(Customer.id == order.customer_id).first() if order.customer_id else None
@@ -573,6 +574,50 @@ async def get_order_details(
             "address": customer.address,
         } if customer else None,
     }
+
+
+RECEIPT_IMAGE_MAX_BYTES = 10 * 1024 * 1024  # 10MB — a photo/screenshot of a bank transfer, not a document scan
+
+
+@router.post("/shops/{shop_id}/orders/{order_id}/receipt")
+async def upload_order_receipt(
+    order_id: int,
+    shop_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Seller uploads a bank-transfer payment receipt for a TheDersi order —
+    stored on ChannelOrderMeta and pushed to TheDersi's own admin view via
+    their receipt_uploaded webhook. Only shown/available for TheDersi orders
+    (ChannelOrderMeta.channel_type == "thedersi"); TheDersi's own spec says
+    they ignore this event for COD/PayHere orders, and re-uploading just
+    overwrites the URL (idempotent) — matching their stated behavior."""
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order.id).first()
+    if not meta or meta.channel_type != "thedersi":
+        raise HTTPException(status_code=400, detail="Receipt upload is only available for TheDersi orders")
+
+    contents = await file.read()
+    if len(contents) > RECEIPT_IMAGE_MAX_BYTES:
+        raise HTTPException(status_code=400, detail=f"File must be under {RECEIPT_IMAGE_MAX_BYTES // (1024*1024)}MB")
+    if not contents:
+        raise HTTPException(status_code=400, detail="File is empty")
+
+    ext = (file.content_type or "image/jpeg").split("/")[-1].replace("jpeg", "jpg")
+    from app.core.storage import upload_receipt_image
+    url = upload_receipt_image(contents, shop_id, order_id, ext, content_type=file.content_type or "image/jpeg")
+
+    meta.receipt_url = url
+    db.commit()
+
+    if meta.channel_order_id:
+        notify_thedersi_receipt_uploaded(meta.channel_order_id, url)
+
+    return {"receipt_url": url}
 
 
 class SendInvoiceIn(BaseModel):

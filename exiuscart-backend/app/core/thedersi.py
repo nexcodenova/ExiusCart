@@ -131,6 +131,35 @@ def notify_thedersi(seller_id: str, plan: str, event: str = "plan_update") -> No
         logger.warning(f"[TheDersi webhook] failed seller={seller_id}: {exc}")
 
 
+def notify_thedersi_receipt_uploaded(channel_order_id: str, receipt_url: str) -> None:
+    """POST receipt_uploaded to TheDersi when a seller uploads a bank-transfer
+    payment receipt from their ExiusCart dashboard, so it shows in TheDersi's
+    own admin order view too. Per TheDersi's spec this only matters for
+    bank-transfer orders — they ignore it for COD/PayHere on their end, and
+    re-sending just overwrites the URL (idempotent), so this is safe to call
+    unconditionally. Fire-and-forget — errors are logged but never raised."""
+    if not THEDERSI_WEBHOOK_URL or not channel_order_id:
+        return
+
+    payload = {
+        "event": "receipt_uploaded",
+        "channel_order_id": channel_order_id,
+        "receipt_url": receipt_url,
+    }
+    body = json.dumps(payload, separators=(",", ":"))
+    sig = _hmac_signature(body)
+    headers = {"Content-Type": "application/json", "X-Partner-Key": THEDERSI_KEY}
+    if sig:
+        headers["X-Signature"] = sig
+
+    try:
+        with httpx.Client(timeout=8) as client:
+            r = client.post(THEDERSI_WEBHOOK_URL, content=body, headers=headers)
+            logger.info(f"[TheDersi webhook] receipt_uploaded order={channel_order_id} → {r.status_code}")
+    except Exception as exc:
+        logger.warning(f"[TheDersi webhook] receipt_uploaded failed order={channel_order_id}: {exc}")
+
+
 def notify_thedersi_profile_updated(
     thedersi_seller_id: str,
     logo_url: str | None,
@@ -183,6 +212,7 @@ def notify_thedersi_order_status(
     status: str,
     tracking_number: str | None = None,
     tracking_courier: str | None = None,
+    delivery_fee: float | None = None,
 ) -> None:
     """POST order status update to TheDersi when a seller updates their order. Fire-and-forget."""
     if not channel_order_id:
@@ -193,6 +223,8 @@ def notify_thedersi_order_status(
         payload["tracking_number"] = tracking_number
     if tracking_courier:
         payload["tracking_courier"] = tracking_courier
+    if delivery_fee is not None:
+        payload["delivery_fee"] = delivery_fee
 
     body = json.dumps(payload, separators=(",", ":"))
 

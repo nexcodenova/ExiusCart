@@ -1020,14 +1020,18 @@ async def receive_order_webhook(
 
     # Create order
     order_number = f"{conn.channel_type.upper()}-{uuid.uuid4().hex[:8].upper()}"
-    # Delivery is prepaid by the customer at TheDersi checkout — sellers must
-    # never collect a delivery/COD charge on a TheDersi order. TheDersi sends
-    # its own plain-English delivery_note on every order; these are only a
-    # fallback for the rare case it's missing.
+    # TheDersi has 3 payment methods (card/PayHere, bank transfer, COD) and
+    # sends order-specific collection instructions in delivery_note on every
+    # order — for COD that means "collect the full cash amount (product +
+    # delivery) and deposit it", for card/bank-transfer it means nothing to
+    # collect, already prepaid. These fallbacks only fire on the rare order
+    # where delivery_note is missing — they must NOT assert a blanket "do not
+    # collect" the way the old text did, since that's actively wrong for a
+    # COD order.
     delivery_note = payload.delivery_note or ""
     if not delivery_note:
         if payload.delivery_paid_by == "customer":
-            delivery_note = "Delivery is prepaid by the customer through TheDersi. Do NOT collect any delivery or COD charge — your share is included in your next scheduled payout."
+            delivery_note = "TheDersi shows this order's delivery as prepaid by the customer — no delivery charge to collect. If this is a Cash on Delivery order, confirm the amount to collect in your TheDersi admin before shipping."
         elif payload.delivery_paid_by == "seller":
             delivery_note = "Free delivery — this order qualifies for free delivery, ship at no charge to the buyer."
 
