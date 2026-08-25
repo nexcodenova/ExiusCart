@@ -142,6 +142,8 @@ export const ordersApi = {
     form.append('file', file);
     return api.post(`/shops/${shopId}/orders/${orderId}/receipt`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  setDeliveryCost: (shopId: string, orderId: string, deliveryCost: number) =>
+    api.post(`/shops/${shopId}/orders/${orderId}/delivery-cost`, { delivery_cost: deliveryCost }),
 };
 
 // ── Customers ─────────────────────────────────────────
@@ -643,6 +645,8 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/${channelId}/thedersi-info`),
   getTheDersiPayouts: (shopId: string, channelId: number) =>
     api.get(`/shops/${shopId}/channels/${channelId}/thedersi-payouts`),
+  getTheDersiDeliveryCosts: (shopId: string, channelId: number) =>
+    api.get(`/shops/${shopId}/channels/${channelId}/thedersi-delivery-costs`),
   darazAuthorize: (shopId: string) =>
     api.get(`/shops/${shopId}/channels/daraz/authorize`),
   getDarazEarnings: (shopId: string, days: number = 90) =>

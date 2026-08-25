@@ -38,4 +38,12 @@ class ChannelOrderMeta(Base):
     # own stated idempotent behavior for the receipt_uploaded webhook.
     receipt_url = Column(String(500), nullable=True)
 
+    # Seller-reported real courier/delivery expense for their part of this
+    # order, in LKR — distinct from Order.delivery_charge (what the customer
+    # is invoiced, unrelated for TheDersi orders since TheDersi's own
+    # checkout already handles that). TheDersi reimburses this amount
+    # capped at delivery_fee (what the customer paid) — feeds their payout
+    # calc, not ours.
+    seller_delivery_cost = Column(Numeric(10, 2), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())

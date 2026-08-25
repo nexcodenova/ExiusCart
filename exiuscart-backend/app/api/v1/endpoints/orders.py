@@ -15,6 +15,7 @@ from app.models.shop import Shop
 from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.channel_order_meta import ChannelOrderMeta
+from app.models.thedersi_seller import TheDersiSeller
 from app.models.customer import Customer
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrderIn
 from app.api.v1.deps import get_current_user
@@ -64,11 +65,20 @@ def _check_and_alert_low_stock(seller_email: str, shop_name: str, product_ids: l
 _VALID_STATUSES = {"pending", "confirmed", "packing", "processing", "shipped", "in_transit", "delivered", "cancelled"}
 
 
-def _notify_channel_order(order_id: int, status: str, db: Session, tracking_number: str = None, tracking_courier: str = None, delivery_fee: float = None) -> None:
+def _notify_channel_order(order_id: int, status: str, db: Session, tracking_number: str = None, tracking_courier: str = None, delivery_cost: float = None) -> None:
     meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order_id).first()
     print(f"[NOTIFY] order_id={order_id} status={status} meta={'found chan_id=' + str(meta.channel_order_id) if meta else 'MISSING'}", flush=True)
-    if meta and meta.channel_order_id:
-        notify_thedersi_order_status(meta.channel_order_id, status, tracking_number, tracking_courier, delivery_fee)
+    # channel_type guard: this webhook call is TheDersi-shaped and only
+    # TheDersi has ever consumed it — without this guard, an eBay/Daraz
+    # order that also happens to have a ChannelOrderMeta row would silently
+    # get its status pinged to TheDersi's webhook too.
+    if meta and meta.channel_order_id and meta.channel_type == "thedersi":
+        thedersi_seller_id = None
+        order = db.query(Order).filter(Order.id == order_id).first()
+        if order:
+            link = db.query(TheDersiSeller).filter(TheDersiSeller.shop_id == order.shop_id).first()
+            thedersi_seller_id = link.thedersi_seller_id if link else None
+        notify_thedersi_order_status(meta.channel_order_id, status, tracking_number, tracking_courier, delivery_cost, thedersi_seller_id)
 
 
 def generate_order_number() -> str:
@@ -406,7 +416,7 @@ async def ship_order(
     db.commit()
     db.refresh(order)
 
-    _notify_channel_order(order_id, "shipped", db, tracking_number=data.tracking_number, tracking_courier=data.carrier, delivery_fee=data.delivery_charge)
+    _notify_channel_order(order_id, "shipped", db, tracking_number=data.tracking_number, tracking_courier=data.carrier)
 
     return order
 
@@ -541,6 +551,7 @@ async def get_order_details(
             "delivery_fee_share": float(meta.delivery_fee_share) if meta.delivery_fee_share else None,
             "items_detail": meta.items_detail,
             "receipt_url": meta.receipt_url,
+            "seller_delivery_cost": float(meta.seller_delivery_cost) if meta.seller_delivery_cost is not None else None,
         }
 
     customer = db.query(Customer).filter(Customer.id == order.customer_id).first() if order.customer_id else None
@@ -619,6 +630,39 @@ async def upload_order_receipt(
         notify_thedersi_receipt_uploaded(meta.channel_order_id, url)
 
     return {"receipt_url": url}
+
+
+class SetDeliveryCostIn(BaseModel):
+    delivery_cost: float
+
+
+@router.post("/shops/{shop_id}/orders/{order_id}/delivery-cost")
+async def set_order_delivery_cost(
+    order_id: int,
+    shop_id: int,
+    data: SetDeliveryCostIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Seller reports their real courier/delivery expense for a TheDersi
+    order — TheDersi reimburses this, capped at what the customer paid for
+    delivery. Not tied to shipping — can be set or updated any time the
+    seller has the number (2026-08-26 TheDersi spec). TheDersi-only, same
+    as receipt upload; re-setting just overwrites, no side effects."""
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order.id).first()
+    if not meta or meta.channel_type != "thedersi":
+        raise HTTPException(status_code=400, detail="Delivery cost reporting is only available for TheDersi orders")
+
+    meta.seller_delivery_cost = data.delivery_cost
+    db.commit()
+
+    _notify_channel_order(order_id, order.status, db, delivery_cost=data.delivery_cost)
+
+    return {"seller_delivery_cost": data.delivery_cost}
 
 
 class SendInvoiceIn(BaseModel):

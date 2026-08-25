@@ -1409,6 +1409,47 @@ def get_thedersi_payouts(
         raise HTTPException(status_code=502, detail=f"Could not reach TheDersi: {e}")
 
 
+@router.get("/shops/{shop_id}/channels/{channel_id}/thedersi-delivery-costs")
+def get_thedersi_delivery_costs(
+    shop_id: int,
+    channel_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Recent TheDersi orders with what the customer paid for delivery vs
+    what the seller reported as their own courier cost — our own data
+    (not proxied from TheDersi), for the Payout page's per-order breakdown
+    (2026-08-26 TheDersi payout-reimbursement spec)."""
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id,
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "thedersi",
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="TheDersi connection not found")
+
+    rows = (
+        db.query(Order, ChannelOrderMeta)
+        .join(ChannelOrderMeta, ChannelOrderMeta.order_id == Order.id)
+        .filter(Order.shop_id == shop_id, ChannelOrderMeta.channel_type == "thedersi")
+        .order_by(Order.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return [
+        {
+            "order_number": order.order_number,
+            "channel_order_id": meta.channel_order_id,
+            "status": order.status,
+            "customer_paid_delivery": float(meta.delivery_fee) if meta.delivery_fee is not None else None,
+            "seller_delivery_cost": float(meta.seller_delivery_cost) if meta.seller_delivery_cost is not None else None,
+            "created_at": order.created_at.isoformat() if order.created_at else None,
+        }
+        for order, meta in rows
+    ]
+
+
 class SetProductChannelCategory(BaseModel):
     channel_connection_id: int
     is_listed: bool = True

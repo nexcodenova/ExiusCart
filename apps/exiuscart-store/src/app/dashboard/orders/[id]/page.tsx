@@ -49,6 +49,7 @@ interface ChannelMeta {
   platform_discount?: number | null;
   coupon_code?: string | null;
   receipt_url?: string | null;
+  seller_delivery_cost?: number | null;
 }
 
 interface Customer {
@@ -136,6 +137,10 @@ export default function OrderDetailsPage() {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [receiptError, setReceiptError] = useState('');
+  const [deliveryCostInput, setDeliveryCostInput] = useState('');
+  const [editingDeliveryCost, setEditingDeliveryCost] = useState(false);
+  const [savingDeliveryCost, setSavingDeliveryCost] = useState(false);
+  const [deliveryCostError, setDeliveryCostError] = useState('');
 
   // Return modal state
   const [returnQtys, setReturnQtys] = useState<Record<number, number>>({});
@@ -190,6 +195,29 @@ export default function OrderDetailsPage() {
       setReceiptError(err.response?.data?.detail || 'Failed to upload receipt');
     } finally {
       setUploadingReceipt(false);
+    }
+  };
+
+  const handleSaveDeliveryCost = async () => {
+    if (!order) return;
+    const value = Number(deliveryCostInput);
+    if (!deliveryCostInput || isNaN(value) || value < 0) {
+      setDeliveryCostError('Enter a valid amount');
+      return;
+    }
+    setSavingDeliveryCost(true);
+    setDeliveryCostError('');
+    try {
+      await ordersApi.setDeliveryCost(shopId, orderId, value);
+      setOrder({
+        ...order,
+        channel_meta: order.channel_meta ? { ...order.channel_meta, seller_delivery_cost: value } : order.channel_meta,
+      });
+      setEditingDeliveryCost(false);
+    } catch (err: any) {
+      setDeliveryCostError(err.response?.data?.detail || 'Failed to save delivery cost');
+    } finally {
+      setSavingDeliveryCost(false);
     }
   };
 
@@ -622,6 +650,68 @@ export default function OrderDetailsPage() {
                   value={fmt(order.channel_meta.delivery_fee_share)}
                 />
               )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TheDersi delivery cost reporting — TheDersi reimburses the
+          seller's real courier expense, capped at what the customer paid
+          for delivery. Editable any time, not just at ship time. */}
+      {isTheDersi && (
+        <div className="bg-card border border-border rounded-2xl px-5 py-4">
+          <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Truck className="w-5 h-5 text-muted-foreground" /> Delivery Cost
+          </h2>
+          <InfoRow
+            label="Customer paid for delivery"
+            value={order.channel_meta?.delivery_fee != null ? fmt(order.channel_meta.delivery_fee) : 'N/A'}
+          />
+          {editingDeliveryCost ? (
+            <div className="pt-2.5 space-y-2">
+              <label className="text-xs text-muted-foreground block">Your real courier cost (LKR)</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={deliveryCostInput}
+                  onChange={(e) => setDeliveryCostInput(e.target.value)}
+                  placeholder="0.00"
+                  className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none text-foreground"
+                />
+                <button
+                  onClick={handleSaveDeliveryCost}
+                  disabled={savingDeliveryCost}
+                  className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+                >
+                  {savingDeliveryCost ? '...' : 'Save'}
+                </button>
+                <button
+                  onClick={() => { setEditingDeliveryCost(false); setDeliveryCostError(''); }}
+                  className="px-3 py-2 border border-border rounded-lg text-sm hover:bg-muted transition"
+                >
+                  Cancel
+                </button>
+              </div>
+              {deliveryCostError && <p className="text-xs text-red-500">{deliveryCostError}</p>}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between py-2.5">
+              <div>
+                <p className="text-sm text-muted-foreground">Your reported delivery cost</p>
+                <p className="text-xs text-muted-foreground/70 mt-0.5">Reimbursed by TheDersi, capped at the amount above</p>
+              </div>
+              <button
+                onClick={() => {
+                  setDeliveryCostInput(order.channel_meta?.seller_delivery_cost != null ? String(order.channel_meta.seller_delivery_cost) : '');
+                  setDeliveryCostError('');
+                  setEditingDeliveryCost(true);
+                }}
+                className="text-sm font-medium text-primary hover:underline shrink-0 ml-3"
+              >
+                {order.channel_meta?.seller_delivery_cost != null ? fmt(order.channel_meta.seller_delivery_cost) : 'Report cost'}
+              </button>
             </div>
           )}
         </div>

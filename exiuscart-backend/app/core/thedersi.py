@@ -212,9 +212,13 @@ def notify_thedersi_order_status(
     status: str,
     tracking_number: str | None = None,
     tracking_courier: str | None = None,
-    delivery_fee: float | None = None,
+    delivery_cost: float | None = None,
+    thedersi_seller_id: str | None = None,
 ) -> None:
-    """POST order status update to TheDersi when a seller updates their order. Fire-and-forget."""
+    """POST order status update to TheDersi when a seller updates their order.
+    delivery_cost/thedersi_seller_id are TheDersi's own payout-reimbursement
+    fields (2026-08-26 spec) — the seller's real courier expense, capped-
+    reimbursed against what the customer paid for delivery. Fire-and-forget."""
     if not channel_order_id:
         return
 
@@ -223,8 +227,10 @@ def notify_thedersi_order_status(
         payload["tracking_number"] = tracking_number
     if tracking_courier:
         payload["tracking_courier"] = tracking_courier
-    if delivery_fee is not None:
-        payload["delivery_fee"] = delivery_fee
+    if delivery_cost is not None:
+        payload["delivery_cost"] = delivery_cost
+    if thedersi_seller_id:
+        payload["thedersi_seller_id"] = thedersi_seller_id
 
     body = json.dumps(payload, separators=(",", ":"))
 

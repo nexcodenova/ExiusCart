@@ -43,6 +43,15 @@ interface PayoutRecord {
   period_end: string;
 }
 
+interface DeliveryCostRow {
+  order_number: string;
+  channel_order_id: string | null;
+  status: string;
+  customer_paid_delivery: number | null;
+  seller_delivery_cost: number | null;
+  created_at: string | null;
+}
+
 interface FinancialSummary {
   pos_revenue: number;
   pos_orders: number;
@@ -162,6 +171,8 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
   const [loading, setLoading] = useState(true);
   const [payoutsLoading, setPayoutsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deliveryCosts, setDeliveryCosts] = useState<DeliveryCostRow[]>([]);
+  const [deliveryCostsLoading, setDeliveryCostsLoading] = useState(true);
 
   const loadPayouts = () => {
     setPayoutsLoading(true);
@@ -177,6 +188,10 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
       .catch((e: any) => setError(e?.response?.data?.detail || 'Could not load earnings data from TheDersi.'))
       .finally(() => setLoading(false));
     loadPayouts();
+    channelsApi.getTheDersiDeliveryCosts(shopId, connection.id)
+      .then((r) => setDeliveryCosts(r.data ?? []))
+      .catch(() => {})
+      .finally(() => setDeliveryCostsLoading(false));
   }, [shopId, connection.id]);
 
   const hasPending = payouts.some((p) => p.status === 'pending');
@@ -433,6 +448,55 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
                             }`}>
                               {p.status === 'paid' ? 'Paid' : 'Processing'}
                             </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Delivery cost reporting — customer paid vs seller's real
+                courier cost, per recent order. TheDersi reimburses the
+                seller's reported cost capped at what the customer paid. */}
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Tag className="w-4 h-4 text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground">Delivery Cost Reports</p>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                TheDersi reimburses your real courier cost per order, capped at what the customer paid for delivery. Report it from the order page.
+              </p>
+              {deliveryCostsLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading...
+                </div>
+              ) : deliveryCosts.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">No TheDersi orders yet.</p>
+              ) : (
+                <div className="border border-border rounded-xl overflow-hidden overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        {['Order', 'Customer Paid', 'Your Reported Cost'].map((h) => (
+                          <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {deliveryCosts.map((d) => (
+                        <tr key={d.order_number} className="hover:bg-muted/30 transition">
+                          <td className="px-4 py-3 font-mono text-xs text-foreground whitespace-nowrap">{d.order_number}</td>
+                          <td className="px-4 py-3 text-foreground whitespace-nowrap">
+                            {d.customer_paid_delivery != null ? `${cur} ${fmtNum(d.customer_paid_delivery)}` : '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {d.seller_delivery_cost != null ? (
+                              <span className="text-foreground font-medium">{cur} {fmtNum(d.seller_delivery_cost)}</span>
+                            ) : (
+                              <span className="text-amber-600 dark:text-amber-400 text-xs">Not reported</span>
+                            )}
                           </td>
                         </tr>
                       ))}
