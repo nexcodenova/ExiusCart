@@ -12,6 +12,7 @@ class ChannelOrderMeta(Base):
     order_id = Column(Integer, ForeignKey("orders.id"), unique=True, nullable=False)
     channel_type = Column(String(50), nullable=False)         # "thedersi"
     channel_order_id = Column(String(100), nullable=True)     # TD-20260611-AB3X
+    payment_method = Column(String(20), nullable=True)        # "cod" | "bank_transfer" | "payhere" | "koko" | "mintpay" — null for orders received before TheDersi started sending this
 
     # Commission & earnings
     seller_plan = Column(String(100), nullable=True)          # "Growth — LKR 999/mo"

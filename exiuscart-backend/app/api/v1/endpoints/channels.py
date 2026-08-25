@@ -112,6 +112,7 @@ class ChannelOrderWebhook(BaseModel):
     total: float
     currency: str = "LKR"
     payment_status: Optional[str] = None        # "paid" | "pending" — TheDersi sends "paid"
+    payment_method: Optional[str] = None        # "cod" | "bank_transfer" | "payhere" | "koko" | "mintpay"
     # Delivery info (TheDersi specific)
     delivery_fee: Optional[float] = None
     delivery_paid_by: Optional[str] = None      # "customer" (prepaid at checkout) | "seller" (free-delivery order)
@@ -937,6 +938,8 @@ async def receive_order_webhook(
                             changed_pids.add(prod.id)
 
                 existing_order.payment_status = new_payment or existing_order.payment_status
+                if payload.payment_method:
+                    existing_meta.payment_method = payload.payment_method
                 db.commit()
 
                 for pid in changed_pids:
@@ -1111,6 +1114,7 @@ async def receive_order_webhook(
         order_id=order.id,
         channel_type=conn.channel_type,
         channel_order_id=incoming_chan_id,
+        payment_method=payload.payment_method,
         seller_plan=payload.seller_plan,
         commission_rate=payload.commission_rate,
         commission_amount=payload.commission_amount,
@@ -1363,8 +1367,7 @@ def get_thedersi_seller_info(
         data["payout_overdue"] = False
     data["payout_note"] = (
         "Each order has a 7-day hold from the order date. "
-        "Once the hold ends, funds become payable on the next Monday on or after that date. "
-        "Payout requests can only be submitted on Mondays."
+        "Once the hold ends, TheDersi pays your available balance automatically on the next Monday on or after that date — nothing to request."
     )
     data["auto_payout_enabled"] = conn.auto_payout_enabled
     return data
@@ -1404,91 +1407,6 @@ def get_thedersi_payouts(
         raise HTTPException(status_code=e.response.status_code, detail="TheDersi returned an error")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Could not reach TheDersi: {e}")
-
-
-@router.post("/shops/{shop_id}/channels/{channel_id}/thedersi-request-payout")
-def request_thedersi_payout(
-    shop_id: int,
-    channel_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Proxy call to TheDersi POST /seller/payouts.
-    Submits a payout request on behalf of the seller. API key never exposed to browser.
-    TheDersi calculates the available balance automatically.
-    """
-    _shop_or_404(shop_id, current_user, db)
-    conn = db.query(ChannelConnection).filter(
-        ChannelConnection.id == channel_id,
-        ChannelConnection.shop_id == shop_id,
-        ChannelConnection.is_active == True,
-        ChannelConnection.channel_type == "thedersi",
-    ).first()
-    if not conn:
-        raise HTTPException(status_code=404, detail="TheDersi connection not found")
-
-    api_url = _channel_url(conn)
-    try:
-        with httpx.Client(timeout=10) as client:
-            r = client.post(
-                f"{api_url}/seller/payouts",
-                headers={"X-Api-Key": conn.channel_api_key},
-            )
-            if r.status_code == 400:
-                detail = r.json().get("error", "Payout request failed")
-                raise HTTPException(status_code=400, detail=detail)
-            r.raise_for_status()
-            return r.json()
-    except HTTPException:
-        raise
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail="TheDersi returned an error")
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Could not reach TheDersi: {e}")
-
-
-def run_thedersi_auto_payouts() -> None:
-    """
-    Weekly job — fires every Monday 00:00 Sri Lanka time (18:30 UTC Sunday).
-    Every active TheDersi connection gets its available balance requested
-    automatically — this is mandatory, not opt-in, so no seller has to
-    remember to click anything or ever collects a payout manually. TheDersi's
-    own API decides if there's anything payable and rejects with 400 if not.
-    TheDersi's admin team still reviews and pays each request manually; this
-    job only guarantees the request itself never gets forgotten.
-    """
-    db = SessionLocal()
-    try:
-        connections = db.query(ChannelConnection).filter(
-            ChannelConnection.channel_type == "thedersi",
-            ChannelConnection.is_active == True,
-        ).all()
-
-        now = datetime.now(timezone.utc)
-        for conn in connections:
-            api_url = _channel_url(conn)
-            try:
-                with httpx.Client(timeout=10) as client:
-                    r = client.post(
-                        f"{api_url}/seller/payouts",
-                        headers={"X-Api-Key": conn.channel_api_key},
-                    )
-                conn.last_auto_payout_attempt_at = now
-                if r.status_code == 400:
-                    logger.info(f"[TheDersi AutoPayout] shop={conn.shop_id} nothing payable, skipped")
-                elif r.status_code >= 300:
-                    logger.warning(f"[TheDersi AutoPayout] shop={conn.shop_id} failed: {r.status_code} {r.text[:200]}")
-                else:
-                    logger.info(f"[TheDersi AutoPayout] shop={conn.shop_id} payout requested successfully")
-            except Exception as e:
-                logger.error(f"[TheDersi AutoPayout] shop={conn.shop_id} error: {e}")
-
-        db.commit()
-    except Exception as e:
-        logger.error(f"[TheDersi AutoPayout] job error: {e}")
-    finally:
-        db.close()
 
 
 class SetProductChannelCategory(BaseModel):

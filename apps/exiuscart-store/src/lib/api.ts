@@ -643,8 +643,6 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/${channelId}/thedersi-info`),
   getTheDersiPayouts: (shopId: string, channelId: number) =>
     api.get(`/shops/${shopId}/channels/${channelId}/thedersi-payouts`),
-  requestTheDersiPayout: (shopId: string, channelId: number) =>
-    api.post(`/shops/${shopId}/channels/${channelId}/thedersi-request-payout`),
   darazAuthorize: (shopId: string) =>
     api.get(`/shops/${shopId}/channels/daraz/authorize`),
   getDarazEarnings: (shopId: string, days: number = 90) =>

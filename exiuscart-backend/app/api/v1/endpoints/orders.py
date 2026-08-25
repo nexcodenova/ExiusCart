@@ -530,6 +530,7 @@ async def get_order_details(
         channel_meta = {
             "channel_type": meta.channel_type,
             "channel_order_id": meta.channel_order_id,
+            "payment_method": meta.payment_method,
             "seller_plan": meta.seller_plan,
             "commission_rate": float(meta.commission_rate) if meta.commission_rate else None,
             "commission_amount": float(meta.commission_amount) if meta.commission_amount else None,

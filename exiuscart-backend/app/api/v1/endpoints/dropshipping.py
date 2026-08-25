@@ -914,14 +914,18 @@ async def printful_import(
 # products FROM, like CJ/Printful), not a sales channel, so this lives here
 # in dropshipping.py and uses DropshipConnection, not ChannelConnection.
 #
-# UNVERIFIED — built from AliExpress Open Platform's documented OAuth flow
-# and the confirmed-live Daraz signing scheme, not yet tested against a
-# real authorize→callback round-trip (no way to do that without a real
-# browser redirect through AliExpress's own login). Watch the first real
-# "Connect AliExpress" attempt closely — the base API domain
-# (api-sg.aliexpress.com) and the /auth/token/create path are the two
-# most likely things to need correcting against what AliExpress actually
-# returns.
+# The first 3 real "Connect AliExpress" attempts (2026-08-24) all failed at
+# token exchange — the original code called api-sg.aliexpress.com/auth/token
+# /create, which is a literal 404 there (confirmed via curl), silently
+# crashing resp.json() and leaving the connection "pending". Fixed to call
+# oauth.aliexpress.com/token instead — a real, documented, standard-OAuth2-
+# style endpoint (confirmed live via curl, distinct from the TOP-signed
+# /sync gateway every other AliExpress API call goes through). That
+# endpoint responds correctly but currently returns "appkey not exists" for
+# this app's real AppKey regardless of code/secret — most likely because
+# the app is still in "Test" status in AliExpress's App Console and hasn't
+# finished their review/approval yet. Re-verify the full round-trip once
+# the app shows as approved/live there.
 
 ALIEXPRESS_APP_KEY = os.getenv("ALIEXPRESS_APP_KEY", "")
 ALIEXPRESS_APP_SECRET = os.getenv("ALIEXPRESS_APP_SECRET", "")
@@ -1061,21 +1065,54 @@ def aliexpress_callback(
     return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=connected")
 
 
+ALIEXPRESS_OAUTH_TOKEN_URL = "https://oauth.aliexpress.com/token"
+
+
+def _aliexpress_token_expiry(data: dict) -> datetime:
+    """AliExpress's docs disagree with each other on the expiry field shape
+    (expire_time = absolute epoch-ms in one source, expires_in = relative
+    seconds in another) — handle both defensively rather than trust either
+    blindly."""
+    if data.get("expire_time"):
+        try:
+            return datetime.fromtimestamp(int(data["expire_time"]) / 1000, tz=timezone.utc)
+        except (ValueError, TypeError):
+            pass
+    return datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 0))
+
+
 def _exchange_aliexpress_code(code: str):
-    """Exchanges an OAuth authorization code for a real access_token via
-    /auth/token/create, same REST path convention as Daraz's own token
-    exchange (both are TOP-platform derived). Returns None on failure so
-    the caller can leave the connection "pending" instead of guessing."""
-    data = _aliexpress_signed_request("/auth/token/create", {"code": code}, method="POST")
+    """Exchanges an OAuth authorization code for a real access_token.
+    AliExpress's dropshipping app OAuth does NOT go through the TOP-signed
+    /sync gateway like every other AliExpress API call (aliexpress.ds.*,
+    trade.buy.placeorder) — it's a separate, unsigned, standard-OAuth2-style
+    POST to oauth.aliexpress.com/token (confirmed live: api-sg.aliexpress.com
+    /auth/token/create, used originally, is a literal 404 — verified via
+    curl after the first 3 real "Connect AliExpress" attempts all failed on
+    it). Returns None on failure so the caller can leave the connection
+    "pending" instead of guessing."""
+    try:
+        resp = httpx.post(ALIEXPRESS_OAUTH_TOKEN_URL, data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "client_id": ALIEXPRESS_APP_KEY,
+            "client_secret": ALIEXPRESS_APP_SECRET,
+            "redirect_uri": _aliexpress_callback_url(),
+            "sp": "ae",
+        }, timeout=15)
+        data = resp.json()
+    except Exception as e:
+        logger.error(f"[ALIEXPRESS OAUTH] token exchange request failed: {e}")
+        return None
+
     if not data or "access_token" not in data:
         logger.error(f"[ALIEXPRESS OAUTH] token exchange failed — response: {data}")
         return None
 
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 0))
     return {
         "access_token": data["access_token"],
         "refresh_token": data.get("refresh_token"),
-        "expires_at": expires_at,
+        "expires_at": _aliexpress_token_expiry(data),
     }
 
 
@@ -1090,14 +1127,32 @@ async def _aliexpress_ensure_token(conn: DropshipConnection, db: Session) -> str
     if not conn.refresh_token:
         raise HTTPException(status_code=400, detail="AliExpress connection has expired. Please reconnect.")
 
-    data = _aliexpress_signed_request("/auth/token/refresh", {"refresh_token": conn.refresh_token}, method="POST")
+    # Same oauth.aliexpress.com/token endpoint as the initial exchange, just
+    # grant_type=refresh_token instead of authorization_code — standard
+    # OAuth2 shape, not the TOP-signed /sync gateway. Note: AliExpress's own
+    # docs warn refresh tokens on this app category may not take effect
+    # reliably yet ("expires immediately") — if this keeps failing, the
+    # seller needs to reconnect via the Authorize flow instead.
+    try:
+        resp = httpx.post(ALIEXPRESS_OAUTH_TOKEN_URL, data={
+            "grant_type": "refresh_token",
+            "refresh_token": conn.refresh_token,
+            "client_id": ALIEXPRESS_APP_KEY,
+            "client_secret": ALIEXPRESS_APP_SECRET,
+            "sp": "ae",
+        }, timeout=15)
+        data = resp.json()
+    except Exception as e:
+        logger.error(f"[ALIEXPRESS] token refresh request failed for conn={conn.id}: {e}")
+        raise HTTPException(status_code=400, detail="Could not refresh AliExpress connection. Please reconnect.")
+
     if not data or "access_token" not in data:
         logger.error(f"[ALIEXPRESS] token refresh failed for conn={conn.id} — response: {data}")
         raise HTTPException(status_code=400, detail="Could not refresh AliExpress connection. Please reconnect.")
 
     conn.access_token = data["access_token"]
     conn.refresh_token = data.get("refresh_token", conn.refresh_token)
-    conn.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", 0))
+    conn.token_expires_at = _aliexpress_token_expiry(data)
     db.commit()
     return conn.access_token
 

@@ -340,13 +340,13 @@ function TheDersiPayoutPanel({ connection, shopId, channelRefundAmount }: { conn
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground">
                   {hasPending
-                    ? 'Payout requested — awaiting transfer'
+                    ? 'Payout pending — awaiting transfer'
                     : availableGross > 0
-                    ? `${cur} ${fmtNum(availableGross)} ready — sent automatically`
+                    ? `${cur} ${fmtNum(availableGross)} ready — paid automatically`
                     : 'Automatic every Monday'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  ExiusCart sends your available balance to TheDersi automatically at midnight every Monday (Sri Lanka time). Nothing to click — it just arrives in your bank on schedule.
+                  TheDersi pays your available balance directly to your bank automatically at midnight every Monday (Sri Lanka time). Nothing to click or request — it just arrives on schedule.
                 </p>
               </div>
             </div>

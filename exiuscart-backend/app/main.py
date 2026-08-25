@@ -281,27 +281,10 @@ def _run_subscription_expiry_scheduler():
 _subscription_expiry_thread = threading.Thread(target=_run_subscription_expiry_scheduler, daemon=True)
 _subscription_expiry_thread.start()
 
-# TheDersi auto-payout — fires exactly once a week, at Monday 00:00 Sri Lanka
-# time (UTC+5:30), which is Sunday 18:30 UTC. Only affects sellers who opted in.
-def _run_thedersi_auto_payout_scheduler():
-    from datetime import datetime, timezone, timedelta
-    while True:
-        try:
-            now = datetime.now(timezone.utc)
-            days_until_sunday = (6 - now.weekday()) % 7  # Monday=0 .. Sunday=6
-            target = (now + timedelta(days=days_until_sunday)).replace(hour=18, minute=30, second=0, microsecond=0)
-            if target <= now:
-                target += timedelta(days=7)
-            time.sleep((target - now).total_seconds())
-
-            from app.api.v1.endpoints.channels import run_thedersi_auto_payouts
-            run_thedersi_auto_payouts()
-        except Exception as exc:
-            logger.error(f"[TheDersi AutoPayout scheduler] {exc}")
-            time.sleep(3600)  # back off an hour on error, then recompute next target
-
-_thedersi_auto_payout_thread = threading.Thread(target=_run_thedersi_auto_payout_scheduler, daemon=True)
-_thedersi_auto_payout_thread.start()
+# TheDersi auto-payout requesting was removed 2026-08-24 — TheDersi now pays
+# every seller's available balance automatically every Monday on their own
+# side; the POST /seller/payouts endpoint we used to call weekly is now a
+# no-op on their end. See run_thedersi_auto_payouts (removed from channels.py).
 
 # Daraz order sync — polls every 20 minutes since there's no confirmed
 # webhook/GetOrders integration wired up yet (see sync_daraz_orders).

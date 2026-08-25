@@ -36,6 +36,7 @@ interface EnrichedItem {
 interface ChannelMeta {
   channel_type: string;
   channel_order_id: string | null;
+  payment_method: string | null;
   seller_plan: string | null;
   commission_rate: number | null;
   commission_amount: number | null;
@@ -97,6 +98,14 @@ const PAYMENT_STATUS_STYLES: Record<string, string> = {
   paid: 'bg-green-500/10 text-green-600',
   failed: 'bg-red-500/10 text-red-500',
   refunded: 'bg-gray-500/10 text-gray-600',
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cod: 'Cash on Delivery',
+  bank_transfer: 'Bank Transfer',
+  payhere: 'Card (PayHere)',
+  koko: 'Koko',
+  mintpay: 'Mintpay',
 };
 
 function InfoRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
@@ -284,23 +293,29 @@ export default function OrderDetailsPage() {
       {isTheDersi && (
         <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 flex items-center gap-3">
           <ShoppingBag className="w-5 h-5 text-indigo-500 shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">TheDersi Order</p>
             {order.channel_meta?.channel_order_id && (
               <p className="text-xs text-muted-foreground">Channel ref: {order.channel_meta.channel_order_id}</p>
             )}
           </div>
+          {order.channel_meta?.payment_method && (
+            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 shrink-0">
+              {PAYMENT_METHOD_LABELS[order.channel_meta.payment_method] ?? order.channel_meta.payment_method}
+            </span>
+          )}
         </div>
       )}
 
       {/* Payment & delivery collection instructions — TheDersi's own text,
           differs per payment method (card/bank-transfer = prepaid, nothing
-          to collect; COD = collect full cash and deposit it). Styled by
-          content so a "collect cash" order visually stands out from a
-          prepaid one. */}
+          to collect; COD = collect full cash and deposit it). Driven by the
+          real payment_method field when TheDersi sends it; falls back to
+          sniffing the note text for older orders that predate that field. */}
       {isTheDersi && order.channel_meta?.delivery_note && (() => {
         const note = order.channel_meta.delivery_note;
-        const needsCollection = /collect|cash on delivery|\bcod\b/i.test(note);
+        const method = order.channel_meta?.payment_method;
+        const needsCollection = method ? method === 'cod' : /collect|cash on delivery|\bcod\b/i.test(note);
         return (
           <div className={`rounded-xl px-4 py-3 flex items-start gap-3 border ${
             needsCollection
@@ -366,7 +381,7 @@ export default function OrderDetailsPage() {
           <Printer className="w-4 h-4" /> Payment Receipt
         </button>
 
-        {isTheDersi && (
+        {isTheDersi && (order.channel_meta?.payment_method ? order.channel_meta.payment_method === 'bank_transfer' : true) && (
           <button
             onClick={() => { setReceiptError(''); setShowReceiptModal(true); }}
             className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg transition font-medium ${
