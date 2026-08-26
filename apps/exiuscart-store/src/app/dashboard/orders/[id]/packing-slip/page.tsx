@@ -43,6 +43,14 @@ export default function PackingSlipPage() {
   const isTheDersi = order.source === 'thedersi' || order.channel_meta?.channel_type === 'thedersi';
   const customer = order.customer;
   const deliveryAddress = order.shipping_address || customer?.address || null;
+  // This slip is often printed and placed straight inside the package, so
+  // it's exposed to the customer just like the emailed/downloaded invoice —
+  // TheDersi's raw operational note (bank deposit account, exact commission
+  // and net-earnings breakdown) must never be printed here. The amount to
+  // collect is computed from structured fields instead of trusting whatever
+  // freeform text happens to be in the note.
+  const isChannelOrder = ['thedersi', 'daraz', 'shopify', 'custom_website', 'ebay', 'noon', 'woocommerce'].includes(order.source);
+  const codAmountToCollect = Number(order.total) + Number(order.channel_meta?.delivery_fee || 0);
 
   return (
     <>
@@ -307,19 +315,21 @@ export default function PackingSlipPage() {
           </div>
         )}
 
-        {/* Delivery instruction from the channel (TheDersi etc.) — shown as its
-            own unmissable box rather than blended into the free-text Notes,
-            since this is the one line that determines whether the fulfiller
-            collects money from the customer or not. */}
-        {order.channel_meta?.delivery_note && (
+        {/* Cash-on-delivery collection amount — the one line that determines
+            whether the fulfiller collects money from the customer or not.
+            Built from structured order data, not TheDersi's raw note, since
+            this slip can end up inside the package the customer opens. */}
+        {isTheDersi && order.payment_status !== 'paid' && (
           <div className="delivery-box">
-            <div className="delivery-lbl">🚚 Delivery — Read Before Handover</div>
-            <div>{order.channel_meta.delivery_note}</div>
+            <div className="delivery-lbl">🚚 Cash on Delivery — Read Before Handover</div>
+            <div>Collect {fmt(codAmountToCollect)} in cash from the customer before handover. Do not accept partial payment.</div>
           </div>
         )}
 
-        {/* Notes */}
-        {order.notes && (
+        {/* Notes — only the seller's own note (POS/manual orders). Channel
+            orders' notes are internal-only (see codAmountToCollect above) and
+            never printed here. */}
+        {!isChannelOrder && order.notes && (
           <div className="notes-box">
             <div className="notes-lbl">⚠ Special Instructions</div>
             <div>{order.notes}</div>

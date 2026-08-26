@@ -61,10 +61,23 @@ export default function InvoicePage() {
 
   const date = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const paymentMethod = PaymentMethodLabel(order.notes);
-  // The raw "Payment: cash" tag is already shown above as "Paid via: Cash" —
-  // strip it out here so it doesn't also show up verbatim in Notes.
-  const displayNotes = (order.notes || '')
+  // For channel orders (TheDersi, Daraz, Shopify, etc), order.notes is
+  // auto-generated internal/seller-facing text — TheDersi's own notes
+  // include their bank deposit account, "collect cash from the customer"
+  // instructions, and the seller's exact commission/net-earnings breakdown.
+  // This invoice can end up printed and handed straight to the customer,
+  // so none of that internal text is shown here — only genuinely seller-
+  // authored notes (POS/manual orders) are.
+  const isChannelOrder = ['thedersi', 'daraz', 'shopify', 'custom_website', 'ebay', 'noon', 'woocommerce'].includes(order.source);
+  const displayNotes = isChannelOrder ? '' : (order.notes || '')
     .split('|').map((s: string) => s.trim()).filter((s: string) => s && !/^Payment:/i.test(s)).join(' · ');
+  // order.delivery_charge stays empty for TheDersi orders — the real
+  // customer-owed delivery fee lives on channel_meta.delivery_fee instead
+  // (from TheDersi's own checkout). Also: order.total never included the
+  // delivery charge in the first place (it's set later, at ship time), so
+  // the grand total shown here has to add it in explicitly.
+  const deliveryCharge = order.delivery_charge > 0 ? order.delivery_charge : (order.channel_meta?.delivery_fee || 0);
+  const grandTotal = Number(order.total) + Number(deliveryCharge);
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(THEDERSI_APP_URL)}`;
 
   return (
@@ -153,6 +166,11 @@ export default function InvoicePage() {
                 <td style={{ padding: '10px 12px', fontSize: 13, color: '#111', fontWeight: 500 }}>
                   {item.product_name}
                   {item.is_bundle && <span style={{ marginLeft: 6, fontSize: 10, background: '#ede9fe', color: '#6B3FD9', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>Bundle</span>}
+                  {item.is_bundle && (item.bundle_components || []).map((c: any, i: number) => (
+                    <div key={i} style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>
+                      ↳ {c.product_name}{c.variant_size ? ` · ${c.variant_size}` : ''}{c.variant_color ? ` · ${c.variant_color}` : ''} × {c.total_qty}
+                    </div>
+                  ))}
                 </td>
                 <td style={{ padding: '10px 12px', fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>{item.product_sku || '—'}</td>
                 <td style={{ padding: '10px 12px', fontSize: 13, color: '#111', textAlign: 'right' }}>{item.quantity}</td>
@@ -176,10 +194,10 @@ export default function InvoicePage() {
                 <span style={{ fontSize: 13, color: '#dc2626' }}>-{fmt(order.discount_amount)}</span>
               </div>
             )}
-            {order.delivery_charge > 0 && (
+            {deliveryCharge > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e5e7eb' }}>
                 <span style={{ fontSize: 13, color: '#6b7280' }}>Delivery Charge</span>
-                <span style={{ fontSize: 13, color: '#111' }}>{fmt(order.delivery_charge)}</span>
+                <span style={{ fontSize: 13, color: '#111' }}>{fmt(deliveryCharge)}</span>
               </div>
             )}
             {order.gift_wrap_fee > 0 && (
@@ -196,7 +214,7 @@ export default function InvoicePage() {
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0 0' }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>Total</span>
-              <span style={{ fontSize: 18, fontWeight: 800, color: '#6B3FD9' }}>{fmt(order.total)}</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: '#6B3FD9' }}>{fmt(grandTotal)}</span>
             </div>
           </div>
         </div>

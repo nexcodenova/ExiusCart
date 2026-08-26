@@ -1,12 +1,91 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   DollarSign, Check, Loader2, ArrowLeft, ArrowRight,
   Sparkles, Clock, Wallet, BadgeCheck, Play, Copy, Quote,
-  MousePointerClick, TrendingUp, X, Repeat, Zap, Calculator,
+  MousePointerClick, TrendingUp, X, Repeat, Zap, Calculator, Menu,
 } from 'lucide-react';
+
+// Same floating-pill navbar as the rest of the site (@/components/layout/navbar),
+// but scoped to this page: only affiliate-relevant links (Blog, affiliate
+// Login, affiliate Get Started — not the main site's Features/Industries/
+// Pricing/etc), and recolored to match this page's own hero tone instead of
+// the site-wide dark navbar.
+function AffiliateNavbar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    if (document.readyState === 'complete') { setLoaded(true); return; }
+    const onLoad = () => setLoaded(true);
+    window.addEventListener('load', onLoad);
+    return () => window.removeEventListener('load', onLoad);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) { setHidden(false); return; }
+    let lastY = window.scrollY;
+    function onScroll() {
+      const y = window.scrollY;
+      setHidden(y > lastY && y > 120);
+      lastY = y;
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [isOpen]);
+
+  return (
+    <div className={`fixed top-3 left-3 right-3 sm:top-4 sm:left-6 sm:right-6 z-50 transition-all duration-500 ${loaded ? 'opacity-100' : 'opacity-0 pointer-events-none'} ${hidden ? '-translate-y-24 opacity-0 pointer-events-none' : 'translate-y-0'}`}>
+      <nav className="max-w-6xl mx-auto bg-white/40 backdrop-blur-xl rounded-full shadow-lg shadow-black/5 border border-white/60 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-[4.5rem]">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo.svg" alt="ExiusCart" width={32} height={32} className="flex-shrink-0" />
+            <span className="text-xl font-bold text-slate-900 tracking-tight">
+              <span className="text-[#6B3FD9]">Exius</span>Cart
+            </span>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#how" className="text-slate-600 hover:text-slate-900 transition-colors text-sm">How It Works</a>
+            <a href="#calculator" className="text-slate-600 hover:text-slate-900 transition-colors text-sm">Calculator</a>
+            <Link href="/blog" className="text-slate-600 hover:text-slate-900 transition-colors text-sm">Blog</Link>
+          </div>
+
+          <div className="hidden md:flex items-center gap-4">
+            <a href="https://affiliates.exiuscart.com/login" className="text-slate-600 hover:text-slate-900 transition-colors text-sm">Login</a>
+            <a href="#apply" className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-6 py-2.5 rounded-full transition-all text-sm">
+              Get Started <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
+
+          <button onClick={() => setIsOpen(!isOpen)} className="md:hidden text-slate-700 hover:text-slate-900 p-2">
+            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </nav>
+
+      {isOpen && (
+        <div className="md:hidden mt-2 bg-white/70 backdrop-blur-xl rounded-3xl shadow-lg shadow-black/5 border border-white/60 overflow-hidden">
+          <div className="px-4 py-4 space-y-1">
+            <a href="#how" onClick={() => setIsOpen(false)} className="block text-slate-600 hover:text-slate-900 transition-colors py-3">How It Works</a>
+            <a href="#calculator" onClick={() => setIsOpen(false)} className="block text-slate-600 hover:text-slate-900 transition-colors py-3">Calculator</a>
+            <Link href="/blog" onClick={() => setIsOpen(false)} className="block text-slate-600 hover:text-slate-900 transition-colors py-3">Blog</Link>
+            <div className="pt-4 mt-4 border-t border-black/10 space-y-3">
+              <a href="https://affiliates.exiuscart.com/login" onClick={() => setIsOpen(false)} className="block text-slate-600 hover:text-slate-900 transition-colors py-2">Login</a>
+              <a href="#apply" onClick={() => setIsOpen(false)} className="flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-5 py-3 rounded-full transition-all">
+                Get Started <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const HOW_IT_WORKS = [
   { step: '1', title: 'Apply', desc: 'Fill in the short form. We review and approve within 24 hours.' },
@@ -208,21 +287,12 @@ export default function AffiliatePage() {
 
   return (
     <div className="min-h-screen bg-[#FBF8F3] text-slate-900">
-      {/* Nav */}
-      <nav className="border-b border-slate-200/70 bg-[#FBF8F3]/80 backdrop-blur sticky top-0 z-30">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold"><span className="text-[#6B3FD9]">Exius</span>Cart</Link>
-          <div className="flex items-center gap-4 text-sm">
-            <a href="https://affiliates.exiuscart.com/login" className="text-slate-600 hover:text-slate-900 transition">Sign in</a>
-            <a href="#apply" className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800">Become an affiliate</a>
-          </div>
-        </div>
-      </nav>
+      <AffiliateNavbar />
 
       {/* Hero */}
       <section className="relative overflow-hidden bg-[#E4DBD1]">
         <div className="pointer-events-none absolute -right-32 -top-24 h-72 w-72 rounded-full bg-[#6B3FD9]/10 blur-3xl" />
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:py-24">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 pt-28 pb-16 lg:grid-cols-2 lg:pt-36 lg:pb-24">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-[#6B3FD9]/20 bg-[#6B3FD9]/5 px-4 py-1.5 text-sm font-medium text-[#6B3FD9]">
               <Sparkles className="h-4 w-4" /> ExiusCart Affiliate Program

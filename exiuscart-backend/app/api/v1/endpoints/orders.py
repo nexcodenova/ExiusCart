@@ -731,8 +731,17 @@ async def send_invoice(
 
     # Delivery: orders of 10,000+ get free delivery as a gift from TheDersi;
     # smaller orders show the delivery charge the seller set at ship time.
+    # For TheDersi orders specifically, the real customer-owed delivery fee
+    # lives on ChannelOrderMeta.delivery_fee (from TheDersi's own checkout),
+    # not Order.delivery_charge, which stays empty for these — without this,
+    # the invoice silently dropped the delivery fee entirely for every
+    # TheDersi order.
     FREE_DELIVERY_THRESHOLD = 10000
     delivery_charge = float(order.delivery_charge or 0)
+    if not delivery_charge:
+        channel_meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order.id).first()
+        if channel_meta and channel_meta.delivery_fee:
+            delivery_charge = float(channel_meta.delivery_fee)
     free_delivery_label = None
     if float(order.total) >= FREE_DELIVERY_THRESHOLD:
         free_delivery_label = "Free — a gift from TheDersi 🎁"
@@ -750,7 +759,12 @@ async def send_invoice(
         discount_amount=float(order.discount_amount),
         total=float(order.total),
         currency="LKR" if db.query(ChannelConnection).filter(ChannelConnection.shop_id == shop_id, ChannelConnection.channel_type == "thedersi").first() else (shop.currency if shop else "AED"),
-        notes=order.notes,
+        # order.notes is internal/seller-facing only — for channel orders it
+        # carries TheDersi's own operational text (bank deposit account,
+        # "collect cash from the customer", the seller's commission and net
+        # earnings breakdown). None of that belongs in an email sent to the
+        # customer, so it's never passed through here.
+        notes=None,
         delivery_charge=delivery_charge,
         free_delivery_label=free_delivery_label,
         order_already_paid=(order.payment_status == "paid"),
