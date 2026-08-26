@@ -92,10 +92,12 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
   const [carrier, setCarrier] = useState('');
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
   const [deliveryCharge, setDeliveryCharge] = useState('');
+  const [deliveryCost, setDeliveryCost] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const isFreeDelivery = Number(order.total) >= FREE_DELIVERY_THRESHOLD;
+  const isTheDersi = order.source === 'thedersi';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +109,7 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
         carrier: carrier || undefined,
         estimated_delivery: estimatedDelivery || undefined,
         delivery_charge: isFreeDelivery ? 0 : (deliveryCharge !== '' ? Number(deliveryCharge) : undefined),
+        delivery_cost: isTheDersi && deliveryCost !== '' ? Number(deliveryCost) : undefined,
       });
       onShipped(res.data);
     } catch {
@@ -154,6 +157,22 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
               {CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+
+          {isTheDersi && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Your Real Delivery Cost <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={deliveryCost}
+                onChange={e => setDeliveryCost(e.target.value)}
+                placeholder="0.00"
+                className="w-full px-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
+              />
+              <p className="text-xs text-muted-foreground mt-1">What you actually paid the courier, from your receipt. TheDersi reimburses this, capped at what the customer paid for delivery. Don't have it yet? Skip this — you can add it from the order page later.</p>
+            </div>
+          )}
 
           {/* Delivery charge — orders of 10,000+ get free delivery */}
           {isFreeDelivery ? (

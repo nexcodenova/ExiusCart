@@ -413,10 +413,19 @@ async def ship_order(
     order.status = "shipped"
     order.shipped_at = datetime.now(tz=None)
 
+    # TheDersi orders only — capture the seller's real courier cost at the
+    # moment they have the receipt in hand (ship time), same field the
+    # order detail page's standalone "Report cost" button falls back to
+    # for anyone who skips it here.
+    if data.delivery_cost is not None:
+        meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order.id).first()
+        if meta and meta.channel_type == "thedersi":
+            meta.seller_delivery_cost = data.delivery_cost
+
     db.commit()
     db.refresh(order)
 
-    _notify_channel_order(order_id, "shipped", db, tracking_number=data.tracking_number, tracking_courier=data.carrier)
+    _notify_channel_order(order_id, "shipped", db, tracking_number=data.tracking_number, tracking_courier=data.carrier, delivery_cost=data.delivery_cost)
 
     return order
 

@@ -16,7 +16,7 @@ import { DarazListingFields } from '@/components/daraz-listing-fields';
 import { EbayListingFields } from '@/components/ebay-listing-fields';
 import { NoonListingFields, NoonAttributeValues } from '@/components/noon-listing-fields';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
-import { DropshipSupplierSection } from '@/components/dropship-supplier-section';
+import { DropshipSupplierSection, ProductShippingCostPreview } from '@/components/dropship-supplier-section';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency, symFor } from '@/components/providers/currency-provider';
@@ -2284,6 +2284,11 @@ function ProductModal({
                     )}
                   </div>
                 )}
+
+                {/* Shipment cost — right next to pricing, so cost + shipping
+                    can be weighed together while setting the selling price.
+                    Renders nothing for products with no CJ/Printful link. */}
+                {product?.id && <ProductShippingCostPreview shopId={shopId} productId={product.id} />}
               </div>
 
               <div className="border-t border-border" />

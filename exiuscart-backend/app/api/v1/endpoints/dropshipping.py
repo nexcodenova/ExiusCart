@@ -456,6 +456,59 @@ async def cj_shipping_estimate(
     return {"options": options, "product_cost": float(link.cost_price or 0)}
 
 
+@router.get("/shops/{shop_id}/dropship/printful/shipping-estimate")
+async def printful_shipping_estimate(
+    shop_id: int,
+    product_id: int,
+    country_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Estimate Printful shipping cost for a product to a destination
+    country, via Printful's documented POST /shipping/rates endpoint —
+    purely informational, called on-demand from the product edit page,
+    nothing persisted.
+
+    UNVERIFIED — the request shape (recipient.country_code + items[{variant_id,
+    quantity}]) is confirmed from Printful's own SDK examples, but the exact
+    response field names weren't confirmed from documentation; parsed
+    defensively with fallbacks, same as CJ's shipping-estimate above.
+    """
+    _shop_or_404(shop_id, current_user, db)
+    conn = await _get_printful_conn_or_400(shop_id, db)
+
+    link = db.query(DropshipProductLink).filter(
+        DropshipProductLink.product_id == product_id,
+        DropshipProductLink.supplier_type == "printful",
+    ).first()
+    if not link or not link.supplier_sku:
+        raise HTTPException(status_code=400, detail="This product has no Printful supplier link.")
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post(f"{PRINTFUL_BASE}/shipping/rates", json={
+                "recipient": {"country_code": country_code.upper()},
+                "items": [{"variant_id": int(link.supplier_sku), "quantity": 1}],
+            }, headers=_printful_headers(conn))
+        data = r.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Printful API error: {str(e)}")
+
+    result = data.get("result")
+    if not isinstance(result, list):
+        raise HTTPException(status_code=502, detail=(data.get("error") or {}).get("message", "Printful could not calculate shipping for this destination."))
+
+    options = []
+    for opt in result:
+        options.append({
+            "logistic_name": opt.get("name") or opt.get("id") or "Standard Shipping",
+            "price": float(opt.get("rate") or opt.get("price") or 0),
+            "days": opt.get("maxDeliveryDays") or opt.get("max_delivery_days") or None,
+        })
+
+    return {"options": options, "product_cost": float(link.cost_price or 0)}
+
+
 @router.post("/shops/{shop_id}/dropship/cj/import")
 async def cj_import_product(
     shop_id: int,

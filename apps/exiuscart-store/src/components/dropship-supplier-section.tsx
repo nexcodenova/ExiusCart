@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Truck, Loader2, Trash2, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Truck, Loader2, Trash2, CheckCircle2, ExternalLink, Calculator, ChevronDown } from 'lucide-react';
 import { dropshipApi } from '@/lib/api';
 import Link from 'next/link';
 
@@ -21,11 +21,144 @@ const SUPPLIER_LABELS: Record<string, string> = {
   zendrop: 'Zendrop',
   hypersku: 'HyperSKU',
   wiio: 'Wiio',
+  printful: 'Printful',
 };
+
+// Suppliers with a real shipping-cost API wired up. Estimate is fetched
+// on demand and never saved anywhere — purely a reference for the seller
+// while they're setting their retail price.
+const SHIPPING_ESTIMATE_SUPPLIERS = new Set(['cj', 'printful']);
+
+const ESTIMATE_COUNTRIES = [
+  { code: 'US', label: 'United States' },
+  { code: 'GB', label: 'United Kingdom' },
+  { code: 'CA', label: 'Canada' },
+  { code: 'AU', label: 'Australia' },
+  { code: 'AE', label: 'UAE' },
+  { code: 'SA', label: 'Saudi Arabia' },
+  { code: 'PK', label: 'Pakistan' },
+  { code: 'IN', label: 'India' },
+  { code: 'DE', label: 'Germany' },
+  { code: 'FR', label: 'France' },
+];
+
+interface EstimateOption { logistic_name: string; price: number; days: number | string | null }
+
+function ShippingEstimator({ shopId, productId, supplierType }: { shopId: string; productId: number | string; supplierType: string }) {
+  const [open, setOpen] = useState(false);
+  const [country, setCountry] = useState('US');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [options, setOptions] = useState<EstimateOption[] | null>(null);
+
+  const check = async () => {
+    setLoading(true);
+    setError('');
+    setOptions(null);
+    try {
+      const call = supplierType === 'printful' ? dropshipApi.printfulShippingEstimate : dropshipApi.cjShippingEstimate;
+      const res = await call(shopId, Number(productId), country);
+      setOptions(res.data?.options ?? []);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || 'Could not fetch a shipping estimate right now.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 border-t border-border pt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+      >
+        <Calculator className="w-3 h-3" />
+        Estimate shipping cost
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          <p className="text-[11px] text-muted-foreground">
+            For your own reference while pricing — not saved anywhere.
+          </p>
+          <div className="flex items-center gap-2">
+            <select
+              value={country}
+              onChange={(e) => { setCountry(e.target.value); setOptions(null); setError(''); }}
+              className="px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs text-foreground outline-none"
+            >
+              {ESTIMATE_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+            </select>
+            <button
+              type="button"
+              onClick={check}
+              disabled={loading}
+              className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-lg text-xs font-medium text-foreground transition disabled:opacity-60 flex items-center gap-1.5"
+            >
+              {loading && <Loader2 className="w-3 h-3 animate-spin" />}
+              {loading ? 'Checking...' : 'Check'}
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          {options && (
+            options.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No shipping options returned for this destination.</p>
+            ) : (
+              <div className="space-y-1">
+                {options.map((o, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs bg-muted/40 rounded-lg px-2.5 py-1.5">
+                    <span className="text-foreground">{o.logistic_name}{o.days ? ` · ~${o.days} days` : ''}</span>
+                    <span className="font-semibold text-foreground">${o.price.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   shopId: string;
   productId: number | string | undefined;
+}
+
+// Compact shipping-cost preview for the Pricing section of the product
+// edit form — placed right next to Cost/Selling Price so the seller can
+// see the shipment cost while deciding their margin, without having to
+// scroll down to the separate Dropship Supplier section. Renders nothing
+// for products with no CJ/Printful supplier link.
+export function ProductShippingCostPreview({ shopId, productId }: Props) {
+  const [links, setLinks] = useState<SupplierLink[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!shopId || !productId) { setLoading(false); return; }
+    dropshipApi.getProductLink(shopId, String(productId))
+      .then((r) => setLinks((r.data?.links ?? []).filter((l: SupplierLink) => SHIPPING_ESTIMATE_SUPPLIERS.has(l.supplier_type))))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [shopId, productId]);
+
+  if (loading || links.length === 0) return null;
+
+  return (
+    <div className="bg-muted rounded-lg p-3 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Truck className="w-3.5 h-3.5 text-muted-foreground" />
+        <p className="text-xs font-medium text-foreground">Shipment Cost</p>
+      </div>
+      {links.map((l) => (
+        <div key={l.id}>
+          <p className="text-[11px] text-muted-foreground mb-1">{SUPPLIER_LABELS[l.supplier_type] ?? l.supplier_type}</p>
+          <ShippingEstimator shopId={shopId} productId={productId!} supplierType={l.supplier_type} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function DropshipSupplierSection({ shopId, productId }: Props) {
@@ -116,28 +249,33 @@ export function DropshipSupplierSection({ shopId, productId }: Props) {
           {links.length > 0 && (
             <div className="space-y-2">
               {links.map((l) => (
-                <div key={l.id} className="flex items-center justify-between gap-3 bg-muted/40 border border-border rounded-lg px-4 py-2.5">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                      <p className="text-sm font-medium text-foreground">{SUPPLIER_LABELS[l.supplier_type] ?? l.supplier_type}</p>
+                <div key={l.id} className="bg-muted/40 border border-border rounded-lg px-4 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                        <p className="text-sm font-medium text-foreground">{SUPPLIER_LABELS[l.supplier_type] ?? l.supplier_type}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {l.supplier_product_id && `CJ ID: ${l.supplier_product_id} · `}
+                        SKU: {l.supplier_sku}{l.cost_price ? ` · Cost $${l.cost_price.toFixed(2)}` : ''}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {l.supplier_product_id && `CJ ID: ${l.supplier_product_id} · `}
-                      SKU: {l.supplier_sku}{l.cost_price ? ` · Cost $${l.cost_price.toFixed(2)}` : ''}
-                    </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {l.supplier_product_url && (
+                        <a href={l.supplier_product_url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-muted-foreground hover:text-foreground transition">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      <button type="button" onClick={() => remove(l.supplier_type)} disabled={removingId === l.supplier_type}
+                        className="p-1.5 text-muted-foreground hover:text-destructive transition">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {l.supplier_product_url && (
-                      <a href={l.supplier_product_url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-muted-foreground hover:text-foreground transition">
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                    <button type="button" onClick={() => remove(l.supplier_type)} disabled={removingId === l.supplier_type}
-                      className="p-1.5 text-muted-foreground hover:text-destructive transition">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  {SHIPPING_ESTIMATE_SUPPLIERS.has(l.supplier_type) && productId && (
+                    <ShippingEstimator shopId={shopId} productId={productId} supplierType={l.supplier_type} />
+                  )}
                 </div>
               ))}
             </div>

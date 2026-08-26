@@ -44,6 +44,7 @@ class ShipOrderIn(BaseModel):
     carrier: Optional[str] = None
     estimated_delivery: Optional[str] = None
     delivery_charge: Optional[float] = None  # what the customer pays for delivery (orders < 10,000)
+    delivery_cost: Optional[float] = None  # TheDersi orders only — seller's real courier expense, for their capped reimbursement
 
 
 class OrderResponse(BaseModel):
