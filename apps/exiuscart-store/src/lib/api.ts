@@ -803,6 +803,8 @@ export const dropshipApi = {
     api.get(`/shops/${shopId}/dropship/cj/shipping-estimate`, { params: { product_id: productId, country_code: countryCode } }),
   printfulShippingEstimate: (shopId: string, productId: number, countryCode: string) =>
     api.get(`/shops/${shopId}/dropship/printful/shipping-estimate`, { params: { product_id: productId, country_code: countryCode } }),
+  aliexpressShippingEstimate: (shopId: string, productId: number, countryCode: string) =>
+    api.get(`/shops/${shopId}/dropship/aliexpress/shipping-estimate`, { params: { product_id: productId, country_code: countryCode } }),
   printfulMyProducts: (shopId: string, page = 1) =>
     api.get(`/shops/${shopId}/dropship/printful/my-products`, { params: { page } }),
   printfulImport: (shopId: string, syncProductId: number, sellingPrice?: number) =>

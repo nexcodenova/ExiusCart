@@ -22,6 +22,10 @@ const CHANNEL_LABELS: Record<string, string> = {
   daraz: 'Daraz',
   thedersi: 'TheDersi',
   shopify: 'Shopify',
+  ebay: 'eBay',
+  custom: 'Custom Website',
+  woocommerce: 'WooCommerce',
+  amazon: 'Amazon',
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -93,9 +97,9 @@ export default function ChannelListingsPage() {
         <select value={channelFilter} onChange={(e) => setChannelFilter(e.target.value)}
           className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none">
           <option value="">All channels</option>
-          <option value="noon">Noon</option>
-          <option value="daraz">Daraz</option>
-          <option value="thedersi">TheDersi</option>
+          {Object.entries(CHANNEL_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
         </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}
           className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none">

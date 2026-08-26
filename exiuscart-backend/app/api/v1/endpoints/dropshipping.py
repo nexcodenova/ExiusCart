@@ -456,6 +456,71 @@ async def cj_shipping_estimate(
     return {"options": options, "product_cost": float(link.cost_price or 0)}
 
 
+@router.get("/shops/{shop_id}/dropship/aliexpress/shipping-estimate")
+async def aliexpress_shipping_estimate(
+    shop_id: int,
+    product_id: int,
+    country_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Estimate AliExpress shipping cost for a product to a destination
+    country, via aliexpress.ds.freight.query — request/response shape
+    confirmed directly from AliExpress's own Developer Guide (Freight API
+    section, 2026-08-26), not a guess like the earlier attempt at this."""
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id,
+        DropshipConnection.supplier_type == "aliexpress",
+        DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail="AliExpress is not connected. Go to Suppliers to connect.")
+    token = await _aliexpress_ensure_token(conn, db)
+
+    link = db.query(DropshipProductLink).filter(
+        DropshipProductLink.product_id == product_id,
+        DropshipProductLink.supplier_type == "aliexpress",
+    ).first()
+    if not link or not link.supplier_sku or not link.supplier_product_id:
+        raise HTTPException(status_code=400, detail="This product has no AliExpress supplier link.")
+
+    import json as _json
+    currency = shop.base_currency or shop.currency or "USD"
+    query = _json.dumps({
+        "quantity": "1",
+        "shipToCountry": country_code.upper(),
+        "productId": link.supplier_product_id,
+        "selectedSkuId": link.supplier_sku,
+        "language": "en_US",
+        "locale": "en_US",
+        "currency": currency,
+    })
+    data = _aliexpress_signed_request("/sync", {
+        "method": "aliexpress.ds.freight.query",
+        "queryDeliveryReq": query,
+    }, access_token=token, method="POST")
+
+    if not data:
+        raise HTTPException(status_code=502, detail="Could not reach AliExpress. Please try again.")
+
+    result = (data.get("aliexpress_ds_freight_query_response") or {}).get("result") or data.get("result") or {}
+    if not result.get("success"):
+        raise HTTPException(status_code=502, detail=result.get("msg") or "AliExpress could not calculate shipping for this destination.")
+
+    opts = (result.get("delivery_options") or {}).get("delivery_option_d_t_o") or []
+    options = [
+        {
+            "logistic_name": opt.get("company") or opt.get("code") or "Standard Shipping",
+            "price": float(opt.get("shipping_fee_cent") or 0),
+            "days": opt.get("max_delivery_days"),
+        }
+        for opt in opts
+    ]
+
+    return {"options": options, "product_cost": float(link.cost_price or 0)}
+
+
 @router.get("/shops/{shop_id}/dropship/printful/shipping-estimate")
 async def printful_shipping_estimate(
     shop_id: int,
@@ -1239,31 +1304,50 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
         error_msg = (data.get("error_response") or {}).get("msg") or "Product not found, or not available for dropshipping on your account."
         raise HTTPException(status_code=502, detail=f"AliExpress error: {error_msg}")
 
+    # Log the full raw response every time — this is still the least-verified
+    # part of the AliExpress integration (confirmed 2026-08-26: cost price,
+    # description and variant images all came back empty/wrong on a real
+    # import). Rather than guess at field names again blindly, capture the
+    # real shape here so the next import's log output can be read directly
+    # and the exact field paths fixed from real evidence.
+    logger.info(f"[ALIEXPRESS PRODUCT.GET] product_id={product_id} raw_result={result}")
+
     base_info = result.get("ae_item_base_info_dto") or {}
     name = (base_info.get("subject") or "AliExpress Product").strip()
-    description = base_info.get("detail") or base_info.get("mobile_detail") or ""
+    description = (
+        base_info.get("detail")
+        or base_info.get("mobile_detail")
+        or base_info.get("product_description")
+        or result.get("mobile_detail")
+        or result.get("detail")
+        or ""
+    )
 
     multimedia = result.get("ae_multimedia_info_dto") or {}
-    images = [u.strip() for u in (multimedia.get("image_urls") or "").split(";") if u.strip()]
+    image_urls_raw = multimedia.get("image_urls") or base_info.get("image_urls") or result.get("image_urls") or ""
+    images = [u.strip() for u in image_urls_raw.split(";") if u.strip()]
 
     sku_list = (result.get("ae_item_sku_info_dtos") or {}).get("ae_item_sku_info_d_t_o") or []
     variants = []
     for sku in sku_list:
         props = (sku.get("ae_sku_property_dtos") or {}).get("ae_sku_property_d_t_o") or []
         color = size = None
+        variant_image = sku.get("sku_image") or sku.get("ae_sku_image") or None
         for prop in props:
             pname = (prop.get("sku_property_name") or "").lower()
             pvalue = prop.get("property_value_definition_name") or prop.get("sku_property_value") or None
             if "color" in pname:
                 color = pvalue
+                variant_image = variant_image or prop.get("sku_image")
             elif "size" in pname:
                 size = pvalue
         variants.append({
             "sku_id": sku.get("sku_id"),
             "color": color,
             "size": size,
-            "price": float(sku.get("sku_price") or 0),
-            "quantity": int(sku.get("sku_available_stock") or 0),
+            "price": float(sku.get("sku_price") or sku.get("offer_sale_price") or sku.get("sku_available_price") or 0),
+            "quantity": int(sku.get("sku_available_stock") or sku.get("ipm_sku_stock") or 0),
+            "image": variant_image,
         })
 
     return {
@@ -1271,7 +1355,7 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
         "description": description,
         "images": images,
         "variants": variants,
-        "currency": result.get("currency_code") or target_currency,
+        "currency": result.get("currency_code") or result.get("target_sale_price_currency") or target_currency,
     }
 
 
@@ -1332,10 +1416,12 @@ async def aliexpress_import(
     source_currency = detail["currency"] or "USD"
     primary = detail["variants"][0]
 
+    converted_cost = await convert_amount(primary["price"], source_currency, target_currency) if primary["price"] else None
+
     if body.selling_price:
         price = body.selling_price
     else:
-        price = await convert_amount(primary["price"], source_currency, target_currency) if primary["price"] else None
+        price = converted_cost
     if not price:
         raise HTTPException(status_code=400, detail="Couldn't determine a price — set one manually.")
 
@@ -1345,7 +1431,10 @@ async def aliexpress_import(
         name=name,
         description=_sanitize_supplier_html(detail["description"]) or name,
         price=price,
-        cost_price=round(primary["price"], 2) if source_currency == "USD" else None,  # only a meaningful reference in the currency it was actually quoted in
+        # Previously only set when AliExpress happened to quote in USD —
+        # left every non-USD shop's cost price blank. Now converted to the
+        # shop's own currency the same way price/variant prices already are.
+        cost_price=round(converted_cost, 2) if converted_cost else None,
         sku=f"AE-{product_id}",
         quantity=sum(v["quantity"] for v in detail["variants"]) or 0,
         low_stock_threshold=5,
@@ -1368,6 +1457,7 @@ async def aliexpress_import(
             sku=str(v["sku_id"]),
             quantity=v["quantity"],
             price=round(variant_price, 2) if variant_price else None,
+            image_url=v.get("image"),
         ))
 
     db.add(DropshipProductLink(

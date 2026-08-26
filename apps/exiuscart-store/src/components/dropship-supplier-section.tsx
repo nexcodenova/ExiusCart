@@ -22,12 +22,13 @@ const SUPPLIER_LABELS: Record<string, string> = {
   hypersku: 'HyperSKU',
   wiio: 'Wiio',
   printful: 'Printful',
+  aliexpress: 'AliExpress',
 };
 
 // Suppliers with a real shipping-cost API wired up. Estimate is fetched
 // on demand and never saved anywhere — purely a reference for the seller
 // while they're setting their retail price.
-const SHIPPING_ESTIMATE_SUPPLIERS = new Set(['cj', 'printful']);
+const SHIPPING_ESTIMATE_SUPPLIERS = new Set(['cj', 'printful', 'aliexpress']);
 
 const ESTIMATE_COUNTRIES = [
   { code: 'US', label: 'United States' },
@@ -56,7 +57,11 @@ function ShippingEstimator({ shopId, productId, supplierType }: { shopId: string
     setError('');
     setOptions(null);
     try {
-      const call = supplierType === 'printful' ? dropshipApi.printfulShippingEstimate : dropshipApi.cjShippingEstimate;
+      const call = supplierType === 'printful'
+        ? dropshipApi.printfulShippingEstimate
+        : supplierType === 'aliexpress'
+        ? dropshipApi.aliexpressShippingEstimate
+        : dropshipApi.cjShippingEstimate;
       const res = await call(shopId, Number(productId), country);
       setOptions(res.data?.options ?? []);
     } catch (e: any) {
@@ -257,7 +262,7 @@ export function DropshipSupplierSection({ shopId, productId }: Props) {
                         <p className="text-sm font-medium text-foreground">{SUPPLIER_LABELS[l.supplier_type] ?? l.supplier_type}</p>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {l.supplier_product_id && `CJ ID: ${l.supplier_product_id} · `}
+                        {l.supplier_product_id && `${SUPPLIER_LABELS[l.supplier_type] ?? l.supplier_type} ID: ${l.supplier_product_id} · `}
                         SKU: {l.supplier_sku}{l.cost_price ? ` · Cost $${l.cost_price.toFixed(2)}` : ''}
                       </p>
                     </div>
