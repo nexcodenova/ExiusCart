@@ -663,9 +663,23 @@ def build_invoice_html(
     free_delivery_label: Optional[str] = None,
     order_already_paid: bool = False,
     gift_wrap_fee: float = 0,
+    is_cancelled: bool = False,
 ) -> str:
     def fmt(v: float) -> str:
         return f"{currency} {v:,.2f}"
+
+    # No status of any kind was shown on this email before — a cancelled
+    # order's invoice looked identical to a live one, whether cancelled by
+    # the seller in ExiusCart or pushed as cancelled by the marketplace
+    # (TheDersi). Sending an invoice for a cancelled order is still a real
+    # seller action (e.g. for their own records), so this doesn't block it —
+    # it just makes sure the customer can't mistake it for a live invoice.
+    cancelled_banner = """
+        <tr><td style="padding:16px 32px 0;">
+          <div style="background:#fee2e2;border:1px solid #fecaca;border-radius:8px;padding:10px 16px;text-align:center;">
+            <span style="color:#991b1b;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">This order was cancelled</span>
+          </div>
+        </td></tr>""" if is_cancelled else ""
 
     # When order_already_paid=True: order amount was settled (e.g. bank transfer before dispatch).
     # Customer only owes the delivery charge on arrival.
@@ -752,7 +766,7 @@ def build_invoice_html(
             <p style="color:rgba(255,255,255,0.75);margin:4px 0 0;font-size:14px;">Tax Invoice / Receipt</p>
           </td>
         </tr>
-
+{cancelled_banner}
         <tr>
           <td style="padding:24px 32px 0;">
             <table width="100%" cellpadding="0" cellspacing="0">

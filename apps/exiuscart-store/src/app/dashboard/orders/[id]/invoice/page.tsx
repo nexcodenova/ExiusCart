@@ -20,6 +20,17 @@ function PaymentMethodLabel(notes: string | null | undefined): string | null {
   return map[m[1].toLowerCase()] ?? m[1];
 }
 
+// TheDersi doesn't always populate channel_meta.delivery_fee accurately for
+// COD orders (confirmed 2026-08-27: sent 0 while their own note said "LKR
+// 500 (delivery)") — the real number still exists in their note text,
+// extracted here only as a last-resort, purely for display. Not a general
+// trust of that text — just this one narrow, non-sensitive numeric value.
+function extractDeliveryFromNote(note: string | null | undefined): number {
+  if (!note) return 0;
+  const m = note.match(/(?:LKR|Rs\.?)\s*([\d,]+(?:\.\d+)?)\s*\(delivery\)/i);
+  return m ? Number(m[1].replace(/,/g, '')) : 0;
+}
+
 export default function InvoicePage() {
   const params = useParams();
   const orderId = params.id as string;
@@ -76,7 +87,9 @@ export default function InvoicePage() {
   // (from TheDersi's own checkout). Also: order.total never included the
   // delivery charge in the first place (it's set later, at ship time), so
   // the grand total shown here has to add it in explicitly.
-  const deliveryCharge = order.delivery_charge > 0 ? order.delivery_charge : (order.channel_meta?.delivery_fee || 0);
+  const deliveryCharge = order.delivery_charge > 0
+    ? order.delivery_charge
+    : (order.channel_meta?.delivery_fee || extractDeliveryFromNote(order.channel_meta?.delivery_note) || 0);
   const grandTotal = Number(order.total) + Number(deliveryCharge);
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(THEDERSI_APP_URL)}`;
 
@@ -123,13 +136,27 @@ export default function InvoicePage() {
             <p style={{ margin: '3px 0 0', fontSize: 13, color: '#6b7280' }}>Date: {date}</p>
             {paymentMethod && <p style={{ margin: '3px 0 0', fontSize: 13, color: '#6b7280' }}>Paid via: {paymentMethod}</p>}
             <p style={{ margin: '6px 0 0' }}>
-              <span style={{
-                background: order.payment_status === 'paid' ? '#dcfce7' : '#fef9c3',
-                color: order.payment_status === 'paid' ? '#166534' : '#854d0e',
-                padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-              }}>
-                {order.payment_status}
-              </span>
+              {/* Cancellation (by the seller in ExiusCart, or pushed as
+                  cancelled by the marketplace/TheDersi) lives on order.status,
+                  separate from payment_status — without this, a cancelled
+                  order's invoice still showed "PENDING" with no indication
+                  it was ever cancelled. */}
+              {order.status === 'cancelled' ? (
+                <span style={{
+                  background: '#fee2e2', color: '#991b1b',
+                  padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                }}>
+                  Cancelled
+                </span>
+              ) : (
+                <span style={{
+                  background: order.payment_status === 'paid' ? '#dcfce7' : '#fef9c3',
+                  color: order.payment_status === 'paid' ? '#166534' : '#854d0e',
+                  padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                }}>
+                  {order.payment_status}
+                </span>
+              )}
             </p>
           </div>
         </div>

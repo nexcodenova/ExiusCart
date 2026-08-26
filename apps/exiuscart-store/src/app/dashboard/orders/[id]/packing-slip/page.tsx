@@ -5,6 +5,17 @@ import { useParams } from 'next/navigation';
 import { ordersApi, shopApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
+// TheDersi doesn't always populate channel_meta.delivery_fee accurately for
+// COD orders (confirmed 2026-08-27: sent 0 while their own note said "LKR
+// 500 (delivery)") — the real number still exists in their note text,
+// extracted here only as a last-resort, purely for display. Not a general
+// trust of that text — just this one narrow, non-sensitive numeric value.
+function extractDeliveryFromNote(note: string | null | undefined): number {
+  if (!note) return 0;
+  const m = note.match(/(?:LKR|Rs\.?)\s*([\d,]+(?:\.\d+)?)\s*\(delivery\)/i);
+  return m ? Number(m[1].replace(/,/g, '')) : 0;
+}
+
 export default function PackingSlipPage() {
   const params = useParams();
   const orderId = params.id as string;
@@ -50,7 +61,8 @@ export default function PackingSlipPage() {
   // collect is computed from structured fields instead of trusting whatever
   // freeform text happens to be in the note.
   const isChannelOrder = ['thedersi', 'daraz', 'shopify', 'custom_website', 'ebay', 'noon', 'woocommerce'].includes(order.source);
-  const codAmountToCollect = Number(order.total) + Number(order.channel_meta?.delivery_fee || 0);
+  const codDeliveryFee = Number(order.channel_meta?.delivery_fee || 0) || extractDeliveryFromNote(order.channel_meta?.delivery_note);
+  const codAmountToCollect = Number(order.total) + codDeliveryFee;
 
   return (
     <>
@@ -150,6 +162,7 @@ export default function PackingSlipPage() {
         .notes-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: 11px; }
         .notes-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #92400e; margin-bottom: 3px; }
 
+        .cancelled-box { background: #991b1b; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; font-weight: 800; color: #fff; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; }
         .delivery-box { background: #fef2f2; border: 2px solid #fca5a5; border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: 12px; font-weight: 700; color: #991b1b; }
         .delivery-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #b91c1c; margin-bottom: 3px; }
 
@@ -181,6 +194,14 @@ export default function PackingSlipPage() {
 
       {/* ── PACKING SLIP ── */}
       <div id="packing-slip">
+
+        {/* Cancelled — whether cancelled by the seller in ExiusCart or
+            pushed as cancelled by the marketplace (TheDersi), this must be
+            the single most unmissable thing on a printed slip, since it's
+            what stops someone from shipping an order that's already void. */}
+        {order.status === 'cancelled' && (
+          <div className="cancelled-box">⚠ This order was cancelled — do not ship</div>
+        )}
 
         {/* Header */}
         <div className="slip-header">

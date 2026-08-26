@@ -554,7 +554,7 @@ async def get_order_details(
             "commission_rate": float(meta.commission_rate) if meta.commission_rate else None,
             "commission_amount": float(meta.commission_amount) if meta.commission_amount else None,
             "seller_net_earnings": float(meta.seller_net_earnings) if meta.seller_net_earnings else None,
-            "delivery_fee": float(meta.delivery_fee) if meta.delivery_fee else None,
+            "delivery_fee": float(meta.delivery_fee) if meta.delivery_fee is not None else None,
             "delivery_paid_by": meta.delivery_paid_by,
             "delivery_note": meta.delivery_note,
             "delivery_fee_share": float(meta.delivery_fee_share) if meta.delivery_fee_share else None,
@@ -742,6 +742,17 @@ async def send_invoice(
         channel_meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order.id).first()
         if channel_meta and channel_meta.delivery_fee:
             delivery_charge = float(channel_meta.delivery_fee)
+        elif channel_meta and channel_meta.delivery_note:
+            # TheDersi doesn't always populate delivery_fee accurately for
+            # COD orders (confirmed 2026-08-27: sent 0 while their own note
+            # said "LKR 500 (delivery)") — the real number still exists in
+            # their note text, extracted here only as a last-resort, purely
+            # for display. Not a general trust of that text (see notes=None
+            # above) — just this one narrow, non-sensitive numeric value.
+            import re
+            m = re.search(r'(?:LKR|Rs\.?)\s*([\d,]+(?:\.\d+)?)\s*\(delivery\)', channel_meta.delivery_note, re.IGNORECASE)
+            if m:
+                delivery_charge = float(m.group(1).replace(',', ''))
     free_delivery_label = None
     if float(order.total) >= FREE_DELIVERY_THRESHOLD:
         free_delivery_label = "Free — a gift from TheDersi 🎁"
@@ -769,6 +780,7 @@ async def send_invoice(
         free_delivery_label=free_delivery_label,
         order_already_paid=(order.payment_status == "paid"),
         gift_wrap_fee=float(order.gift_wrap_fee or 0),
+        is_cancelled=(order.status == "cancelled"),
     )
     html = with_thedersi_footer(html, shop_id)
 

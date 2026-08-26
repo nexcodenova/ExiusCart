@@ -12,6 +12,17 @@ import Link from 'next/link';
 import { ordersApi, creditNotesApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 
+// TheDersi doesn't always populate channel_meta.delivery_fee accurately for
+// COD orders (confirmed 2026-08-27: sent 0 while their own note said "LKR
+// 500 (delivery)") — the real number still exists in their note text,
+// extracted here only as a last-resort, purely for display. Not a general
+// trust of that text — just this one narrow, non-sensitive numeric value.
+function extractDeliveryFromNote(note: string | null | undefined): number | null {
+  if (!note) return null;
+  const m = note.match(/(?:LKR|Rs\.?)\s*([\d,]+(?:\.\d+)?)\s*\(delivery\)/i);
+  return m ? Number(m[1].replace(/,/g, '')) : null;
+}
+
 interface BundleComponentLine {
   product_name: string;
   qty_per_bundle: number;
@@ -665,7 +676,10 @@ export default function OrderDetailsPage() {
           </h2>
           <InfoRow
             label="Customer paid for delivery"
-            value={order.channel_meta?.delivery_fee != null ? fmt(order.channel_meta.delivery_fee) : 'N/A'}
+            value={(() => {
+              const fee = order.channel_meta?.delivery_fee || extractDeliveryFromNote(order.channel_meta?.delivery_note);
+              return fee != null ? fmt(fee) : 'N/A';
+            })()}
           />
           {editingDeliveryCost ? (
             <div className="pt-2.5 space-y-2">

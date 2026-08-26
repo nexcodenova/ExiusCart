@@ -166,18 +166,18 @@ async def _rehost_printful_image(client: httpx.AsyncClient, url: str, shop_id: i
 
 
 def _sanitize_supplier_html(html: str) -> str:
-    """Supplier descriptions (CJ, and any future import source) routinely embed
+    """Supplier descriptions (CJ, and any future import source) sometimes embed
     their product photos as inline base64 <img> data URIs rather than linking
     real image files — one real CJ import left a shop with a 7MB description
     (a single embedded photo) that then got served on every product-list API
     call, on every storefront and every channel that product was pushed to.
-    Strips all <img> tags — the frontend's rich-text editor already does the
-    same for pasted HTML (see sanitizePastedHtml in rich-text-editor.tsx) but
-    that only covers seller-typed content, not data written directly by an
-    import endpoint like this one."""
+    Strips only that specific pattern (src="data:...") — real hosted image
+    URLs (src="https://...", what AliExpress's description HTML actually
+    uses) are just text, no bloat risk, and are kept so the description
+    shows the same images the supplier's own page does."""
     if not html:
         return html
-    return re.sub(r"<img\b[^>]*>", "", html, flags=re.IGNORECASE)
+    return re.sub(r'<img\b[^>]*\bsrc\s*=\s*["\']data:[^"\']*["\'][^>]*>', "", html, flags=re.IGNORECASE)
 
 
 # ── CJ token management ───────────────────────────────────────────────────────
@@ -1310,7 +1310,11 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
     # import). Rather than guess at field names again blindly, capture the
     # real shape here so the next import's log output can be read directly
     # and the exact field paths fixed from real evidence.
-    logger.info(f"[ALIEXPRESS PRODUCT.GET] product_id={product_id} raw_result={result}")
+    # logger.info was silently dropped in production (confirmed 2026-08-27 —
+    # this app's configured log level doesn't capture INFO), so the first
+    # two real imports left nothing to read. print(flush=True) is the
+    # proven-reliable pattern already used elsewhere in this file.
+    print(f"[ALIEXPRESS PRODUCT.GET] product_id={product_id} raw_result={result}", flush=True)
 
     base_info = result.get("ae_item_base_info_dto") or {}
     name = (base_info.get("subject") or "AliExpress Product").strip()
