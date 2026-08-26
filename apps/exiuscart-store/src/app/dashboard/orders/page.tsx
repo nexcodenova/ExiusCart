@@ -174,27 +174,35 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
             </div>
           )}
 
-          {/* Delivery charge — orders of 10,000+ get free delivery */}
-          {isFreeDelivery ? (
-            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2.5">
-              <span className="text-lg">🎁</span>
-              <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                Free delivery — a gift from TheDersi <span className="font-normal text-muted-foreground">(order is {FREE_DELIVERY_THRESHOLD.toLocaleString()}+)</span>
-              </p>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Delivery Charge <span className="text-muted-foreground font-normal">(customer pays)</span></label>
-              <input
-                type="number"
-                min={0}
-                value={deliveryCharge}
-                onChange={e => setDeliveryCharge(e.target.value)}
-                placeholder="0.00"
-                className="w-full px-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Order is under {FREE_DELIVERY_THRESHOLD.toLocaleString()} — enter the delivery fee the customer pays. It's added to their invoice.</p>
-            </div>
+          {/* Delivery charge (customer pays) — not asked for TheDersi orders:
+              TheDersi already tells us what the customer paid for delivery
+              in their own order webhook (shown as "Customer paid for
+              delivery" on the order page), so asking the seller to type it
+              in again here would be redundant and risks not matching
+              TheDersi's own number. Only relevant for channels where we
+              have no other source for it (POS, custom website, etc). */}
+          {!isTheDersi && (
+            isFreeDelivery ? (
+              <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2.5">
+                <span className="text-lg">🎁</span>
+                <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                  Free delivery <span className="font-normal text-muted-foreground">(order is {FREE_DELIVERY_THRESHOLD.toLocaleString()}+)</span>
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Delivery Charge <span className="text-muted-foreground font-normal">(customer pays)</span></label>
+                <input
+                  type="number"
+                  min={0}
+                  value={deliveryCharge}
+                  onChange={e => setDeliveryCharge(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Order is under {FREE_DELIVERY_THRESHOLD.toLocaleString()} — enter the delivery fee the customer pays. It's added to their invoice.</p>
+              </div>
+            )
           )}
 
           <div>

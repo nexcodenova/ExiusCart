@@ -987,12 +987,26 @@ ALIEXPRESS_AUTHORIZE_URL = f"{ALIEXPRESS_API_BASE}/oauth/authorize"
 STOREFRONT_BASE = "https://store.exiuscart.com"
 
 
-def _aliexpress_signed_request(api_path: str, business_params: dict, access_token: str | None = None, method: str = "GET") -> dict | None:
-    """Same HMAC-SHA256 TOP-platform signing as Daraz's _daraz_signed_request
-    (daraz.py) — sort params, concatenate as api_path + key+value pairs,
-    sign with the App Secret, uppercase hex. Reused for every future
-    AliExpress call (productDetails, createOrder, shippingInfo), not just
-    auth."""
+def _aliexpress_signed_request(api_path: str, business_params: dict, access_token: str | None = None, method: str = "GET", is_system: bool = False) -> dict | None:
+    """HMAC-SHA256 TOP-platform signing, matching AliExpress's own documented
+    algorithm exactly (openservice.aliexpress.com Developer Guide →
+    "Signature algorithm" + "HTTP request sample", confirmed live 2026-08-26
+    against this app's real console). The two interface types sign AND
+    route differently — this was the actual bug behind both the OAuth
+    404 and a latent signature bug in the product/order calls below:
+
+      - System interfaces (/auth/token/create, /auth/token/refresh): sign
+        the sorted+concatenated params with api_path PREPENDED, no `method`
+        param at all. URL is https://api-sg.aliexpress.com/rest{api_path}
+        (previously missing the /rest prefix — a literal 404).
+      - Business interfaces (aliexpress.ds.*, aliexpress.trade.*): sign the
+        sorted+concatenated params with NO prefix — api_path is not part of
+        the signature; instead the caller passes method=<api name> as a
+        regular business param (already done at every call site below).
+        URL is https://api-sg.aliexpress.com/sync (previously had api_path
+        wrongly prepended into the signature too — would have failed
+        AliExpress's own signature check on first real use).
+    """
     params = {
         "app_key": ALIEXPRESS_APP_KEY,
         "sign_method": "sha256",
@@ -1003,13 +1017,15 @@ def _aliexpress_signed_request(api_path: str, business_params: dict, access_toke
         params["access_token"] = access_token
 
     sorted_keys = sorted(params.keys())
-    concatenated = api_path + "".join(f"{k}{params[k]}" for k in sorted_keys)
+    concatenated = "".join(f"{k}{params[k]}" for k in sorted_keys)
+    if is_system:
+        concatenated = api_path + concatenated
     sign = hmac.new(
         ALIEXPRESS_APP_SECRET.encode("utf-8"), concatenated.encode("utf-8"), hashlib.sha256
     ).hexdigest().upper()
     params["sign"] = sign
 
-    url = f"{ALIEXPRESS_API_BASE}{api_path}"
+    url = f"{ALIEXPRESS_API_BASE}/rest{api_path}" if is_system else f"{ALIEXPRESS_API_BASE}{api_path}"
     try:
         if method == "POST":
             resp = httpx.post(url, data=params, timeout=30)
@@ -1118,14 +1134,11 @@ def aliexpress_callback(
     return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=connected")
 
 
-ALIEXPRESS_OAUTH_TOKEN_URL = "https://oauth.aliexpress.com/token"
-
-
 def _aliexpress_token_expiry(data: dict) -> datetime:
-    """AliExpress's docs disagree with each other on the expiry field shape
-    (expire_time = absolute epoch-ms in one source, expires_in = relative
-    seconds in another) — handle both defensively rather than trust either
-    blindly."""
+    """AliExpress's real response carries both expire_time (absolute
+    epoch-ms) and expires_in (relative seconds) at once — confirmed from
+    their own documented sample response, 2026-08-26. Prefer the absolute
+    one, fall back to the relative one."""
     if data.get("expire_time"):
         try:
             return datetime.fromtimestamp(int(data["expire_time"]) / 1000, tz=timezone.utc)
@@ -1135,29 +1148,18 @@ def _aliexpress_token_expiry(data: dict) -> datetime:
 
 
 def _exchange_aliexpress_code(code: str):
-    """Exchanges an OAuth authorization code for a real access_token.
-    AliExpress's dropshipping app OAuth does NOT go through the TOP-signed
-    /sync gateway like every other AliExpress API call (aliexpress.ds.*,
-    trade.buy.placeorder) — it's a separate, unsigned, standard-OAuth2-style
-    POST to oauth.aliexpress.com/token (confirmed live: api-sg.aliexpress.com
-    /auth/token/create, used originally, is a literal 404 — verified via
-    curl after the first 3 real "Connect AliExpress" attempts all failed on
-    it). Returns None on failure so the caller can leave the connection
-    "pending" instead of guessing."""
-    try:
-        resp = httpx.post(ALIEXPRESS_OAUTH_TOKEN_URL, data={
-            "grant_type": "authorization_code",
-            "code": code,
-            "client_id": ALIEXPRESS_APP_KEY,
-            "client_secret": ALIEXPRESS_APP_SECRET,
-            "redirect_uri": _aliexpress_callback_url(),
-            "sp": "ae",
-        }, timeout=15)
-        data = resp.json()
-    except Exception as e:
-        logger.error(f"[ALIEXPRESS OAUTH] token exchange request failed: {e}")
-        return None
-
+    """Exchanges an OAuth authorization code for a real access_token, via
+    /auth/token/create — a TOP-signed "System Interface" call, confirmed
+    from AliExpress's own Developer Guide (Seller Authorization + Signature
+    Algorithm + HTTP Request Sample pages, "Case 2: System Interfaces" uses
+    this exact API as its worked example). Two earlier attempts got this
+    wrong: the original code hit api-sg.aliexpress.com/auth/token/create
+    directly (missing the required /rest prefix → literal 404); a later
+    "fix" switched to oauth.aliexpress.com/token entirely, which isn't
+    this app's real token endpoint at all (returns "appkey not exists"
+    regardless of app status). Returns None on failure so the caller can
+    leave the connection "pending" instead of guessing."""
+    data = _aliexpress_signed_request("/auth/token/create", {"code": code}, method="POST", is_system=True)
     if not data or "access_token" not in data:
         logger.error(f"[ALIEXPRESS OAUTH] token exchange failed — response: {data}")
         return None
@@ -1171,34 +1173,17 @@ def _exchange_aliexpress_code(code: str):
 
 async def _aliexpress_ensure_token(conn: DropshipConnection, db: Session) -> str:
     """Refreshes the AliExpress access token on demand using the stored
-    refresh_token — same shape as CJ's _cj_ensure_token. Raises rather
-    than returning something unusable if there's no way to get a valid
-    token (never connected, or the refresh itself fails)."""
+    refresh_token — same TOP-signed System Interface shape as the initial
+    exchange above, just /auth/token/refresh with refresh_token instead of
+    code. Raises rather than returning something unusable if there's no way
+    to get a valid token (never connected, or the refresh itself fails)."""
     now = datetime.now(timezone.utc)
     if conn.access_token and conn.token_expires_at and conn.token_expires_at > now:
         return conn.access_token
     if not conn.refresh_token:
         raise HTTPException(status_code=400, detail="AliExpress connection has expired. Please reconnect.")
 
-    # Same oauth.aliexpress.com/token endpoint as the initial exchange, just
-    # grant_type=refresh_token instead of authorization_code — standard
-    # OAuth2 shape, not the TOP-signed /sync gateway. Note: AliExpress's own
-    # docs warn refresh tokens on this app category may not take effect
-    # reliably yet ("expires immediately") — if this keeps failing, the
-    # seller needs to reconnect via the Authorize flow instead.
-    try:
-        resp = httpx.post(ALIEXPRESS_OAUTH_TOKEN_URL, data={
-            "grant_type": "refresh_token",
-            "refresh_token": conn.refresh_token,
-            "client_id": ALIEXPRESS_APP_KEY,
-            "client_secret": ALIEXPRESS_APP_SECRET,
-            "sp": "ae",
-        }, timeout=15)
-        data = resp.json()
-    except Exception as e:
-        logger.error(f"[ALIEXPRESS] token refresh request failed for conn={conn.id}: {e}")
-        raise HTTPException(status_code=400, detail="Could not refresh AliExpress connection. Please reconnect.")
-
+    data = _aliexpress_signed_request("/auth/token/refresh", {"refresh_token": conn.refresh_token}, method="POST", is_system=True)
     if not data or "access_token" not in data:
         logger.error(f"[ALIEXPRESS] token refresh failed for conn={conn.id} — response: {data}")
         raise HTTPException(status_code=400, detail="Could not refresh AliExpress connection. Please reconnect.")

@@ -409,7 +409,7 @@ export default function OrderDetailsPage() {
           <Printer className="w-4 h-4" /> Payment Receipt
         </button>
 
-        {isTheDersi && (order.channel_meta?.payment_method ? order.channel_meta.payment_method === 'bank_transfer' : true) && (
+        {isTheDersi && (order.channel_meta?.payment_method ? order.channel_meta.payment_method === 'cod' : true) && (
           <button
             onClick={() => { setReceiptError(''); setShowReceiptModal(true); }}
             className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg transition font-medium ${
@@ -419,7 +419,7 @@ export default function OrderDetailsPage() {
             }`}
           >
             <Upload className="w-4 h-4" />
-            {order.channel_meta?.receipt_url ? 'Replace Bank Transfer Receipt' : 'Upload Bank Transfer Receipt'}
+            {order.channel_meta?.receipt_url ? 'Replace COD Deposit Receipt' : 'Upload COD Deposit Receipt'}
           </button>
         )}
 
@@ -910,7 +910,7 @@ export default function OrderDetailsPage() {
                   <Receipt className="w-4 h-4 text-indigo-500" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground">Upload Bank Transfer Receipt</h3>
+                  <h3 className="font-semibold text-foreground">Upload COD Deposit Receipt</h3>
                   <p className="text-xs text-muted-foreground">Order {order.order_number}</p>
                 </div>
               </div>
@@ -921,9 +921,10 @@ export default function OrderDetailsPage() {
 
             <div className="p-5 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Only for TheDersi orders where the buyer paid by direct bank transfer. Uploading
-                shares proof of payment with TheDersi&apos;s own order view — it has no effect on
-                COD or PayHere orders.
+                For Cash on Delivery orders only — upload proof once you&apos;ve deposited the
+                cash you collected to TheDersi&apos;s bank account. Card and bank-transfer orders
+                are paid straight to TheDersi at checkout, so there&apos;s nothing for you to
+                upload on those.
               </p>
 
               {order.channel_meta?.receipt_url && (
