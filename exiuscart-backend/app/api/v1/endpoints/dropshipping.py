@@ -1582,6 +1582,16 @@ async def aliexpress_import(
     if not price:
         raise HTTPException(status_code=400, detail="Couldn't determine a price — set one manually.")
 
+    # A seller-chosen price only ever set the top-level summary field here —
+    # every variant kept AliExpress's raw per-SKU price untouched, so
+    # checkout (which always prefers variant.price over product.price, see
+    # checkout.py) charged AliExpress's number instead of what the seller
+    # actually typed. Scale every variant by the same ratio the primary
+    # variant was adjusted by, so relative pricing between variants (e.g. a
+    # "kit" SKU costing more) is preserved but the seller's intended margin
+    # actually reaches checkout.
+    price_scale = (price / converted_cost) if (body.selling_price and converted_cost) else 1.0
+
     name = detail["name"]
     product = Product(
         shop_id=shop_id,
@@ -1604,9 +1614,10 @@ async def aliexpress_import(
         db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
 
     for v in detail["variants"]:
-        variant_price = v["price"]
+        variant_cost = v["price"]
         if source_currency != target_currency and v["price"]:
-            variant_price = await convert_amount(v["price"], source_currency, target_currency)
+            variant_cost = await convert_amount(v["price"], source_currency, target_currency)
+        variant_price = variant_cost * price_scale if variant_cost else None
         db.add(ProductVariant(
             product_id=product.id,
             size=v["size"],
@@ -1614,6 +1625,10 @@ async def aliexpress_import(
             sku=str(v["sku_id"]),
             quantity=v["quantity"],
             price=round(variant_price, 2) if variant_price else None,
+            # The real per-SKU AliExpress cost — a single product-level
+            # cost_price can't represent variants priced differently by the
+            # supplier (e.g. a "kit" SKU costing more than the base one).
+            cost_price=round(variant_cost, 2) if variant_cost else None,
             image_url=v.get("image"),
         ))
 

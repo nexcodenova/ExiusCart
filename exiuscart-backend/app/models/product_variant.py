@@ -21,6 +21,11 @@ class ProductVariant(Base):
     sku = Column(String(100), nullable=True)    # optional variant-level SKU
     quantity = Column(Integer, default=0)
     price = Column(Numeric(10, 2), nullable=True)  # None = use parent product price
+    # What this specific variant actually costs from the supplier — a single
+    # product-level cost_price can't represent variants priced differently by
+    # the supplier (e.g. a "kit" SKU vs a base SKU). None = use parent
+    # product's cost_price, same fallback convention as `price` above.
+    cost_price = Column(Numeric(10, 2), nullable=True)
     image_url = Column(String(500), nullable=True)  # per-variant image (e.g. Blue vs Red version)
 
     product = relationship("Product", back_populates="variants")

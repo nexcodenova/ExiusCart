@@ -1126,8 +1126,8 @@ function ProductModal({
   const [error, setError] = useState('');
 
   // Variants state
-  interface Variant { id?: number; size: string; color: string; color_hex: string; sku: string; quantity: number; price: string; image_url: string; _pendingFile?: File; _previewUrl?: string; }
-  const emptyVariant = (): Variant => ({ size: '', color: '', color_hex: '', sku: '', quantity: 0, price: '', image_url: '' });
+  interface Variant { id?: number; size: string; color: string; color_hex: string; sku: string; quantity: number; price: string; costPrice: string; image_url: string; _pendingFile?: File; _previewUrl?: string; }
+  const emptyVariant = (): Variant => ({ size: '', color: '', color_hex: '', sku: '', quantity: 0, price: '', costPrice: '', image_url: '' });
   const [variants, setVariants] = useState<Variant[]>([]);
   const [uploadingVariantIdx, setUploadingVariantIdx] = useState<number | null>(null);
   const [variantImageError, setVariantImageError] = useState<string>('');
@@ -1295,6 +1295,7 @@ function ProductModal({
           id: v.id, size: v.size ?? '', color: v.color ?? '', color_hex: v.color_hex ?? '',
           sku: v.sku ?? '', quantity: v.quantity ?? 0,
           price: v.price != null ? String(v.price) : '',
+          costPrice: v.cost_price != null ? String(v.cost_price) : '',
           image_url: v.image_url ?? '',
         }))))
         .catch(() => {});
@@ -1737,6 +1738,7 @@ function ProductModal({
           sku: v.sku || undefined,
           quantity: v.quantity,
           price: v.price !== '' ? Number(v.price) : undefined,
+          cost_price: v.costPrice !== '' ? Number(v.costPrice) : undefined,
           image_url: v.image_url || undefined,
         }))).catch(() => {}));
       }
@@ -2155,6 +2157,27 @@ function ProductModal({
                             <button type="button" onClick={() => setVariants((arr) => arr.filter((_, j) => j !== i))} className="p-2 text-muted-foreground hover:text-destructive transition rounded-lg hover:bg-destructive/10">
                               <Trash2 className="w-4 h-4" />
                             </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-12 gap-2 items-end">
+                          <div className="col-span-4">
+                            {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Cost Price ({entrySym}, blank = default)</label>}
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{entrySym}</span>
+                              <input type="number" step="0.01" value={v.costPrice} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, costPrice: e.target.value } : r))} placeholder={String(formData.costPrice)} className="w-full pl-6 pr-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                            </div>
+                          </div>
+                          <div className="col-span-8 flex items-center h-9">
+                            {(() => {
+                              const cost = v.costPrice !== '' ? Number(v.costPrice) : formData.costPrice;
+                              const sell = v.price !== '' ? Number(v.price) : formData.sellingPrice;
+                              if (!(cost > 0 && sell > 0)) return null;
+                              return (
+                                <span className="text-xs text-muted-foreground">
+                                  Profit <span className="font-semibold text-green-600 dark:text-green-400">{(sell - cost).toFixed(2)} {entrySym} ({Math.round(((sell - cost) / cost) * 100)}%)</span>
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

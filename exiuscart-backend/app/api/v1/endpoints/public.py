@@ -159,7 +159,11 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
                 "quantity": v.quantity or 0,
                 "in_stock": (v.quantity or 0) > 0,
                 "price": _conv(v.price) if v.price is not None else None,
-                "image_url": v.image_url,
+                # Falls back to the product's own main photo only when this
+                # variant genuinely has no image of its own (e.g. a CJ import
+                # that never captured one) — a real per-variant image (what
+                # AliExpress imports normally have) always wins over this.
+                "image_url": v.image_url or (images[0] if images else None),
             }
             for v in p.variants
         ] if p.variants else [],
