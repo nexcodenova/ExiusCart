@@ -39,16 +39,6 @@ const PLAN_FEATURES: Record<string, string[]> = {
   ],
 };
 
-function AedSign({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 26 32" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M6 2L6 30L13 30C20 30 24 25 24 16C24 7 20 2 13 2Z" />
-      <line x1="1" y1="11" x2="8" y2="11" />
-      <line x1="1" y1="17" x2="8" y2="17" />
-    </svg>
-  );
-}
-
 function CheckoutContent() {
   const searchParams = useSearchParams();
   const plan = (searchParams.get('plan') || 'starter') as 'starter' | 'premium';
@@ -66,7 +56,6 @@ function CheckoutContent() {
   const period = billing === 'monthly' ? '/month' : '/year';
   const planName = plan === 'starter' ? 'Starter' : 'Premium';
   const features = PLAN_FEATURES[plan] || [];
-  const isAed = currency === 'AED';
 
   const yearlySavings = billing === 'yearly'
     ? Math.round(prices[plan].monthly * 12 - prices[plan].yearly)
@@ -119,18 +108,14 @@ function CheckoutContent() {
             </span>
 
             <div className="mt-4 mb-1 flex items-start gap-2">
-              {isAed ? (
-                <AedSign className="w-5 h-7 mt-3 text-gray-400 shrink-0" />
-              ) : (
-                <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
-              )}
+              <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
               <span className="text-[3.5rem] font-black text-gray-900 tracking-tight leading-none">{price}</span>
               <span className="text-gray-400 text-sm self-end mb-1">{period}</span>
             </div>
 
             {billing === 'yearly' && yearlySavings > 0 && (
               <p className="text-sm text-emerald-600 font-medium mb-2">
-                You save {isAed ? 'AED' : '$'}{yearlySavings}/year vs monthly billing
+                You save ${yearlySavings}/year vs monthly billing
               </p>
             )}
 
@@ -191,13 +176,13 @@ function CheckoutContent() {
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">{planName} — {billing}</span>
                     <span className="font-bold text-gray-900">
-                      {isAed ? 'AED' : '$'}{price}{period}
+                      ${price}{period}
                     </span>
                   </div>
                   {billing === 'yearly' && yearlySavings > 0 && (
                     <div className="flex justify-between items-center text-xs text-emerald-600 mt-1">
                       <span>Savings vs monthly</span>
-                      <span>–{isAed ? 'AED' : '$'}{yearlySavings}/yr</span>
+                      <span>–${yearlySavings}/yr</span>
                     </div>
                   )}
                 </div>

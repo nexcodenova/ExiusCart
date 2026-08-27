@@ -17,8 +17,8 @@ ExiusCart combines POS (point of sale), inventory management, order management, 
 ## Pricing
 
 - Free Trial: 14 days, no credit card required
-- Starter Plan: AED 45/month (UAE) or $12/month (international)
-- Premium Plan: AED 99/month (UAE) or $29/month (international)
+- Starter Plan: $12/month, billed in USD worldwide
+- Premium Plan: $29/month, billed in USD worldwide
 - No setup fees. Cancel anytime.
 
 ## Key features
@@ -33,6 +33,14 @@ ExiusCart combines POS (point of sale), inventory management, order management, 
 - WhatsApp and online store integrations
 - Payroll and HR (Premium)
 - Quotation and purchase management
+
+## For developers
+
+ExiusCart also powers custom storefronts — sellers can connect their own website
+and call ExiusCart's public API directly for products, checkout, payment, and
+customer accounts, no login required.
+
+- Full API reference: https://exiuscart.com/developers
 
 ## Company
 

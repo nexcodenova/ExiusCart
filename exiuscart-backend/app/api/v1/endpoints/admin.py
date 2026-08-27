@@ -1607,6 +1607,185 @@ def _get_or_create_system_shop(db: Session, admin_user: User) -> Shop:
     return shop
 
 
+# ── Admin — Website blog (exiuscart.com/blog) ────────────────────────────────
+# The marketing site's own blog, written from the admin panel instead of
+# hardcoded into apps/exiuscart-website. Reuses the exact same BlogPost
+# model, slug generation, and public read API (/public/store/{shop_slug}/blog)
+# that seller storefronts already use — this just points that same machinery
+# at a dedicated system shop instead of a real seller's, same pattern as
+# _get_or_create_system_shop above. The website reads posts from
+# GET /public/store/exiuscart-website/blog with zero backend changes needed.
+
+from app.models.blog import BlogPost
+from app.api.v1.endpoints.blog import _post_out as _blog_post_out, _generate_blog_slug
+
+
+def _get_or_create_website_shop(db: Session, admin_user: User) -> Shop:
+    shop = db.query(Shop).filter(Shop.slug == "exiuscart-website").first()
+    if not shop:
+        shop = Shop(
+            name="ExiusCart Website",
+            slug="exiuscart-website",
+            owner_id=admin_user.id,
+            currency="USD",
+            is_active=True,
+        )
+        db.add(shop)
+        db.flush()
+    return shop
+
+
+class WebsiteBlogPostIn(BaseModel):
+    title: str
+    excerpt: Optional[str] = None
+    content: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    author_name: Optional[str] = None
+    tags: Optional[str] = None
+    cta_text: Optional[str] = None
+    cta_url: Optional[str] = None
+
+
+@router.get("/admin/website-blog")
+def admin_list_website_blog_posts(
+    status_filter: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_website_shop(db, current_admin)
+    q = db.query(BlogPost).filter(BlogPost.shop_id == shop.id)
+    if status_filter:
+        q = q.filter(BlogPost.status == status_filter)
+    posts = q.order_by(BlogPost.created_at.desc()).all()
+    db.commit()
+    return {"posts": [_blog_post_out(p) for p in posts]}
+
+
+@router.get("/admin/website-blog/{post_id}")
+def admin_get_website_blog_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_website_shop(db, current_admin)
+    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.shop_id == shop.id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    db.commit()
+    return _blog_post_out(post)
+
+
+@router.post("/admin/website-blog", status_code=201)
+def admin_create_website_blog_post(
+    data: WebsiteBlogPostIn,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_website_shop(db, current_admin)
+    if not data.title.strip():
+        raise HTTPException(status_code=422, detail="Title is required.")
+    post = BlogPost(
+        shop_id=shop.id,
+        title=data.title.strip(),
+        slug=_generate_blog_slug(data.title),
+        excerpt=data.excerpt,
+        content=data.content,
+        cover_image_url=data.cover_image_url,
+        author_name=data.author_name or "ExiusCart Team",
+        tags=data.tags,
+        cta_text=data.cta_text,
+        cta_url=data.cta_url,
+        status="draft",
+    )
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+    return _blog_post_out(post)
+
+
+@router.put("/admin/website-blog/{post_id}")
+def admin_update_website_blog_post(
+    post_id: int,
+    data: WebsiteBlogPostIn,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_website_shop(db, current_admin)
+    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.shop_id == shop.id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    post.title = data.title.strip() or post.title
+    post.excerpt = data.excerpt
+    post.content = data.content
+    post.cover_image_url = data.cover_image_url
+    post.author_name = data.author_name
+    post.tags = data.tags
+    post.cta_text = data.cta_text
+    post.cta_url = data.cta_url
+    db.commit()
+    db.refresh(post)
+    return _blog_post_out(post)
+
+
+@router.delete("/admin/website-blog/{post_id}")
+def admin_delete_website_blog_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_website_shop(db, current_admin)
+    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.shop_id == shop.id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    db.delete(post)
+    db.commit()
+    return {"deleted": True}
+
+
+class WebsiteBlogPublishIn(BaseModel):
+    published: bool
+
+
+@router.post("/admin/website-blog/{post_id}/publish")
+def admin_publish_website_blog_post(
+    post_id: int,
+    data: WebsiteBlogPublishIn,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    shop = _get_or_create_website_shop(db, current_admin)
+    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.shop_id == shop.id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    if data.published:
+        if not (post.content or "").strip():
+            raise HTTPException(status_code=422, detail="Can't publish an empty post — add some content first.")
+        post.status = "published"
+        if not post.published_at:
+            post.published_at = datetime.now(timezone.utc)
+    else:
+        post.status = "draft"
+    db.commit()
+    db.refresh(post)
+    return _blog_post_out(post)
+
+
+@router.post("/admin/website-blog/upload-image")
+async def admin_upload_website_blog_image(
+    file: UploadFile,
+    _: User = Depends(require_superuser),
+):
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image must be under 10 MB.")
+    ext = (file.filename or "img").rsplit(".", 1)[-1].lower()
+    from app.core.storage import upload_shop_image
+    url = upload_shop_image(contents, 0, "website-blog", ext, content_type=file.content_type or "image/jpeg")
+    return {"url": url}
+
+
 @router.post("/admin/shopping/products", status_code=201)
 def admin_create_shopping_product(
     data: ShoppingProductCreate,

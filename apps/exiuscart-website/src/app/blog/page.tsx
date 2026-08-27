@@ -109,15 +109,12 @@ const POSTS = [
     category: 'Growth',
     date: 'Jun 2026',
     readTime: '6 min',
-    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing Under AED 100',
-    excerpt: 'Most UAE businesses pay AED 300–500/month for separate tools. ExiusCart replaces all of them — POS, inventory, VAT invoicing, HR — for AED 45–99/month.',
+    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing From $12/Month',
+    excerpt: 'Most UAE businesses pay AED 300–500/month for separate tools. ExiusCart replaces all of them — POS, inventory, VAT invoicing, HR — from $12/month.',
   },
 ];
 
 const CATEGORIES = ['All', 'Finance', 'Integrations', 'Guides', 'Technology', 'Growth', 'Productivity', 'HR & Payroll'];
-
-const featured = POSTS.find(p => p.featured)!;
-const rest = POSTS.filter(p => !p.featured);
 
 const CATEGORY_COLORS: Record<string, string> = {
   Finance:      'text-emerald-600',
@@ -129,7 +126,41 @@ const CATEGORY_COLORS: Record<string, string> = {
   'HR & Payroll': 'text-pink-600',
 };
 
-export default function BlogPage() {
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// Posts written from the admin panel (Blogs sidebar) — real content, fetched
+// live alongside the hand-built posts above. New posts show up here with no
+// deploy needed; the hand-built ones stay exactly as they are.
+async function getAdminPosts() {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/public/store/exiuscart-website/blog`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const posts: {
+      slug: string; title: string; excerpt: string | null; tags: string[]; published_at: string | null;
+    }[] = await res.json();
+    return posts.map((p) => ({
+      slug: p.slug,
+      category: p.tags?.[0] || 'Guides',
+      date: p.published_at
+        ? new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(new Date(p.published_at))
+        : '',
+      readTime: '5 min',
+      title: p.title,
+      excerpt: p.excerpt || '',
+      featured: false,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export default async function BlogPage() {
+  const adminPosts = await getAdminPosts();
+  const featured = POSTS.find(p => p.featured)!;
+  const rest = [...POSTS.filter(p => !p.featured), ...adminPosts];
+
   return (
     <div className="min-h-screen bg-[#0B1121]">
       <Navbar />

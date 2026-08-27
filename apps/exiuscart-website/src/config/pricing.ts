@@ -1,4 +1,9 @@
-export type CurrencyCode = 'AED' | 'USD';
+// Single currency, on purpose — checkout (Lemon Squeezy) only ever charges
+// USD, so showing a region-detected AED price that doesn't match what's
+// actually billed was misleading. Kept as a type (not a bare constant) so
+// every previous AED/USD branch below still type-checks against something
+// real, rather than silently rotting into dead code.
+export type CurrencyCode = 'USD';
 
 export interface CurrencyConfig {
   code: CurrencyCode;
@@ -24,13 +29,6 @@ export interface Plan {
 }
 
 export const currencies: Record<CurrencyCode, CurrencyConfig> = {
-  AED: {
-    code: 'AED',
-    symbol: 'AED',
-    name: 'UAE Dirham',
-    country: 'United Arab Emirates',
-    flag: '🇦🇪',
-  },
   USD: {
     code: 'USD',
     symbol: '$',
@@ -61,11 +59,6 @@ export const plans: Plan[] = [
 ];
 
 export const pricing: Record<CurrencyCode, Record<string, PlanPricing>> = {
-  AED: {
-    free_trial: { monthly: 0,  yearly: 0    },
-    starter:    { monthly: 45, yearly: 459,  originalMonthly: 89,  originalYearly: 890  },
-    premium:    { monthly: 99, yearly: 999,  originalMonthly: 149, originalYearly: 1490 },
-  },
   USD: {
     free_trial: { monthly: 0,  yearly: 0    },
     starter:    { monthly: 12, yearly: 120,  originalMonthly: 24,  originalYearly: 240  },
@@ -73,15 +66,10 @@ export const pricing: Record<CurrencyCode, Record<string, PlanPricing>> = {
   },
 };
 
-export const countryToCurrency: Record<string, CurrencyCode> = {
-  AE: 'AED',
-};
-
 export const defaultCurrency: CurrencyCode = 'USD';
 
-export function formatPrice(amount: number, currency: CurrencyCode): string {
-  if (currency === 'USD') return `$${amount}`;
-  return `AED ${amount}`;
+export function formatPrice(amount: number): string {
+  return `$${amount}`;
 }
 
 export function yearlySavings(monthly: number, yearly: number): number {

@@ -103,7 +103,7 @@ export default function TermsPage() {
                   <li>Understand that prices may change with 30 days notice</li>
                 </ul>
                 <p className="text-gray-400 leading-relaxed mt-4">
-                  All prices are displayed in AED (UAE Dirhams) and are exclusive of applicable taxes unless
+                  All prices are displayed in USD (US Dollars) and are exclusive of applicable taxes unless
                   otherwise stated.
                 </p>
               </section>

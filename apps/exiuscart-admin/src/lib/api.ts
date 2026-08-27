@@ -113,6 +113,30 @@ export const adminApi = {
   metaAdsSearch: (q: string, country = 'US') =>
     api.get('/admin/shopping/meta-ads/search', { params: { q, country } }),
 
+  // Website blog (exiuscart.com/blog) — written here, read live by the
+  // marketing site via /public/store/exiuscart-website/blog.
+  listWebsiteBlogPosts: (statusFilter?: string) =>
+    api.get('/admin/website-blog', { params: statusFilter ? { status_filter: statusFilter } : {} }),
+  getWebsiteBlogPost: (postId: number) => api.get(`/admin/website-blog/${postId}`),
+  createWebsiteBlogPost: (data: {
+    title: string; excerpt?: string; content?: string; cover_image_url?: string;
+    author_name?: string; tags?: string; cta_text?: string; cta_url?: string;
+  }) => api.post('/admin/website-blog', data),
+  updateWebsiteBlogPost: (postId: number, data: {
+    title: string; excerpt?: string; content?: string; cover_image_url?: string;
+    author_name?: string; tags?: string; cta_text?: string; cta_url?: string;
+  }) => api.put(`/admin/website-blog/${postId}`, data),
+  deleteWebsiteBlogPost: (postId: number) => api.delete(`/admin/website-blog/${postId}`),
+  publishWebsiteBlogPost: (postId: number, published: boolean) =>
+    api.post(`/admin/website-blog/${postId}/publish`, { published }),
+  uploadWebsiteBlogImage: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/admin/website-blog/upload-image', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
   // NexCode Codes
   getNexCodes: () => api.get('/admin/nexcodes'),
   createNexCode: (data: {

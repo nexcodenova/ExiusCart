@@ -35,7 +35,7 @@ const CATEGORIES = [
     faqs: [
       {
         q: 'How much does ExiusCart cost?',
-        a: 'Three plans: Free Trial (14 days, free), Starter (AED 45/month or $12 USD/month), and Premium (AED 99/month or $29 USD/month). We also support LKR, EUR, and INR billing.',
+        a: 'Three plans, billed in USD: Free Trial (14 days, free), Starter ($12/month), and Premium ($29/month). One price worldwide.',
       },
       {
         q: 'What is included in the Starter plan?',

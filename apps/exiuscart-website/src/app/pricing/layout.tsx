@@ -12,10 +12,56 @@ export const metadata: Metadata = {
   },
 };
 
+// Structured data so Google can show the real $12/$29 price directly in
+// search results (rich snippet) instead of a crawler guessing at a number
+// buried in page text — same reason this matters for AI answer engines
+// reading the page. Kept here (a server component) since the page itself
+// is a client component and can't export raw <script> data safely otherwise.
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'ExiusCart',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Starter',
+      price: '12',
+      priceCurrency: 'USD',
+      billingDuration: 'P1M',
+      url: 'https://exiuscart.com/pricing',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Premium',
+      price: '29',
+      priceCurrency: 'USD',
+      billingDuration: 'P1M',
+      url: 'https://exiuscart.com/pricing',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Free Trial',
+      price: '0',
+      priceCurrency: 'USD',
+      url: 'https://exiuscart.com/pricing',
+    },
+  ],
+};
+
 export default function PricingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      {children}
+    </>
+  );
 }

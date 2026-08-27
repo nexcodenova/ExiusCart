@@ -293,7 +293,7 @@ function SkipAdminPanel() {
 
       <div className="grid grid-cols-3 gap-4 my-8">
         <StatBox stat="4–6mo" label="Typical build time" sub="For a full admin panel" />
-        <StatBox stat="AED 45" label="ExiusCart Starter" sub="$12 USD · per month" />
+        <StatBox stat="$12" label="ExiusCart Starter" sub="per month" />
         <StatBox stat="1 day" label="To connect your site" sub="API setup, not a project" />
       </div>
 
@@ -471,8 +471,8 @@ function TheDersiPost() {
             <tr className="bg-gray-900 text-white">
               <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Feature</th>
               <th className="text-left px-4 py-3 font-semibold">Free Trial</th>
-              <th className="text-left px-4 py-3 font-semibold">Starter · AED 45/$12</th>
-              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Premium · AED 99/$29</th>
+              <th className="text-left px-4 py-3 font-semibold">Starter · $12</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Premium · $29</th>
             </tr>
           </thead>
           <tbody>
@@ -497,7 +497,7 @@ function TheDersiPost() {
       </div>
 
       <Callout type="example">
-        <strong>When to upgrade:</strong> If your TheDersi store does more than 50 orders a month — even occasionally — the Starter plan at AED 45/month is worth it. At 100 orders a month, you're spending more time on manual management than the subscription costs. At 500+, Premium pays for itself in staff time alone.
+        <strong>When to upgrade:</strong> If your TheDersi store does more than 50 orders a month — even occasionally — the Starter plan at $12/month is worth it. At 100 orders a month, you're spending more time on manual management than the subscription costs. At 500+, Premium pays for itself in staff time alone.
       </Callout>
 
       <H2 id="get-started">Get Connected in 10 Minutes</H2>
@@ -575,7 +575,7 @@ function POSvsCashRegister() {
           <tbody>
             {[
               { f: 'Hardware',           cr: 'AED 200–800 (buy once)',     pos: 'Tablet you may already own' },
-              { f: 'Software',           cr: 'None',                        pos: 'AED 45–99/month (ExiusCart)' },
+              { f: 'Software',           cr: 'None',                        pos: '$12–29/month (ExiusCart)' },
               { f: 'Daily stock count',  cr: 'Manual — 30–60 min/day',     pos: 'Automatic — 0 min' },
               { f: 'End-of-day reports', cr: 'Manual calculation',          pos: 'Instant, automatic' },
               { f: 'VAT invoicing',      cr: 'Not compliant',               pos: 'FTA-compliant, automatic' },
@@ -656,7 +656,7 @@ function POSvsCashRegister() {
       <P>Every sale generates an FTA-compliant VAT invoice automatically. Inventory updates in real time. Staff log in to their own accounts. End-of-day reports are instant. And because it's the same platform handling your online orders, TheDersi sync, invoicing, HR, and reports — everything is connected in one place.</P>
 
       <div className="grid grid-cols-3 gap-4 my-8">
-        <StatBox stat="AED 45" label="Starter plan" sub="$12 USD · per month" />
+        <StatBox stat="$12" label="Starter plan" sub="per month" />
         <StatBox stat="14 days" label="Free trial" sub="All features unlocked" />
         <StatBox stat="0" label="Hardware cost" sub="Works on any device" />
       </div>
@@ -791,8 +791,8 @@ function ScaleMultipleBranches() {
           <thead>
             <tr className="bg-gray-900 text-white">
               <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Feature</th>
-              <th className="text-left px-4 py-3 font-semibold">Starter · AED 45/$12</th>
-              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Premium · AED 99/$29</th>
+              <th className="text-left px-4 py-3 font-semibold">Starter · $12</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Premium · $29</th>
             </tr>
           </thead>
           <tbody>
@@ -863,11 +863,11 @@ function StopSpreadsheets() {
 
       <div className="grid grid-cols-3 gap-4 my-8">
         <StatBox stat="8–12hrs" label="Lost per week" sub="Typical spreadsheet overhead" />
-        <StatBox stat="AED 45" label="ExiusCart Starter" sub="$12 USD · per month" />
+        <StatBox stat="$12" label="ExiusCart Starter" sub="per month" />
         <StatBox stat="0 hrs" label="Manual data entry" sub="Everything updates automatically" />
       </div>
 
-      <P>At eight hours a week, that is over 400 hours a year. If your time is worth AED 50 an hour — a conservative estimate for a business owner — that is AED 20,000 a year in time spent maintaining a system that could be replaced for AED 45 a month.</P>
+      <P>At eight hours a week, that is over 400 hours a year. If your time is worth AED 50 an hour — a conservative estimate for a business owner — that is AED 20,000 a year in time spent maintaining a system that could be replaced for $12 a month.</P>
       <P>And that calculation does not include the cost of mistakes.</P>
 
       <H2 id="what-breaks-first">What Breaks First</H2>
@@ -1289,7 +1289,7 @@ function BestPOSUAE() {
           </thead>
           <tbody>
             {[
-              { s: 'ExiusCart',  p: 'AED 45/month',      vat: 'Yes — built in',    uae: 'Yes',         b: 'SMBs wanting all-in-one at low cost' },
+              { s: 'ExiusCart',  p: '$12/month',      vat: 'Yes — built in',    uae: 'Yes',         b: 'SMBs wanting all-in-one at low cost' },
               { s: 'Zoho Books', p: 'AED 50+/month',     vat: 'Yes',                uae: 'Partly',      b: 'Accounting-focused businesses' },
               { s: 'Square',     p: 'Free + % per sale', vat: 'Basic',              uae: 'No',          b: 'Freelancers and pop-ups' },
               { s: 'Lightspeed', p: '$89 USD/month',     vat: 'Yes (addon)',         uae: 'Partly',      b: 'Larger retail chains' },
@@ -1312,17 +1312,17 @@ function BestPOSUAE() {
 
       <UL items={[
         'FTA-compliant VAT invoices built into every sale — no add-ons needed',
-        'AED as the primary currency — automatic AED/USD handling based on customer location',
+        'AED invoicing for your own sales — bill your UAE customers in AED with automatic VAT handling',
         'Runs on any tablet or laptop — no proprietary hardware to buy',
         'Inventory, staff accounts, HR, payroll, and reports all included',
         'TheDersi marketplace integration — direct connection to the UAE/Sri Lanka seller platform',
-        'Starter plan at AED 45/month — less than Zoho, Lightspeed, or Cin7',
+        'Starter plan at $12/month — less than Zoho, Lightspeed, or Cin7',
         '14-day free trial with all features unlocked — no credit card required',
       ]} />
 
       <div className="grid grid-cols-3 gap-4 my-8">
-        <StatBox stat="AED 45" label="Starter plan" sub="$12 USD · per month" />
-        <StatBox stat="AED 99" label="Premium plan" sub="$29 USD · per month" />
+        <StatBox stat="$12" label="Starter plan" sub="per month" />
+        <StatBox stat="$29" label="Premium plan" sub="per month" />
         <StatBox stat="14 days" label="Free trial" sub="All features included" />
       </div>
 
@@ -1342,7 +1342,7 @@ function BestPOSUAE() {
       </Callout>
 
       <H2 id="what-to-try-first">What to Try First</H2>
-      <P>The fastest way to know if a POS is right for your business is to use it on your actual operations for a week. Start with ExiusCart — it has everything you need from day one, without configuration complexity, and the Starter plan at AED 45/month is the lowest-risk entry point in this category.</P>
+      <P>The fastest way to know if a POS is right for your business is to use it on your actual operations for a week. Start with ExiusCart — it has everything you need from day one, without configuration complexity, and the Starter plan at $12/month is the lowest-risk entry point in this category.</P>
 
       <NumberedList items={[
         { title: 'Start the ExiusCart free trial', desc: '14 days, all features, no card. Set it up the same day you read this.' },
@@ -1354,7 +1354,7 @@ function BestPOSUAE() {
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
         <p className="text-white font-black text-xl mb-2">Try the best UAE POS free for 14 days</p>
-        <p className="text-gray-400 text-sm mb-6">Built for UAE businesses. VAT-compliant invoices, AED pricing, inventory included. No credit card required.</p>
+        <p className="text-gray-400 text-sm mb-6">Built for UAE businesses. VAT-compliant invoices, $12/month, inventory included. No credit card required.</p>
         <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
@@ -1472,7 +1472,7 @@ function ExiusCartVsZohoPost() {
           </thead>
           <tbody>
             {[
-              { f: 'Starting price',        e: 'AED 45/mo ($12 USD)',       z: '~AED 50+/mo per app' },
+              { f: 'Starting price',        e: '$12/mo',       z: '~AED 50+/mo per app' },
               { f: 'POS included',          e: 'Yes — built in',             z: 'Separate app (Zoho POS)' },
               { f: 'HR & Payroll',          e: 'Premium plan',               z: 'Zoho People (separate)' },
               { f: 'UAE VAT invoicing',     e: 'Built in, FTA-compliant',    z: 'Yes, with setup' },
@@ -1502,7 +1502,7 @@ function ExiusCartVsZohoPost() {
         'Zoho POS — additional subscription for in-store point of sale',
         'Total: $44–80+/month depending on order volume and features needed',
       ]} />
-      <P>ExiusCart covers POS + inventory + invoicing + HR + payroll in one subscription: AED 45/month (Starter) or AED 99/month (Premium).</P>
+      <P>ExiusCart covers POS + inventory + invoicing + HR + payroll in one subscription: $12/month (Starter) or $29/month (Premium).</P>
 
       <Callout type="info">
         This does not mean Zoho is overpriced. The reason Zoho costs more is that each app is more fully featured. If you need deep double-entry accounting or complex multi-currency books, Zoho Books is the right tool. If you primarily need to sell, track stock, and issue UAE VAT invoices, ExiusCart covers it at lower cost.
@@ -1538,7 +1538,7 @@ function ExiusCartVsZohoPost() {
         'You sell on TheDersi and need native marketplace integration',
         'You want one subscription that covers POS, inventory, HR, and payroll without additional apps',
         'You want to set it up yourself in an afternoon, not configure it over several weeks',
-        'Budget matters — AED 45/month vs AED 100–200+/month for a full Zoho stack',
+        'Budget matters — $12/month vs AED 100–200+/month for a full Zoho stack',
         'You are starting a new business and want everything working from day one',
       ]} />
 
@@ -1563,7 +1563,7 @@ function AllInOneUnder100() {
         A POS system. Inventory management. VAT-compliant invoicing. Order management. Staff accounts. HR and payroll. Customer records. Sales reports. Most businesses in the UAE pay for these as separate subscriptions — and end up spending AED 300–500 a month without realising it.
       </p>
 
-      <P>ExiusCart Premium puts all of that in one platform at AED 99 per month. The Starter plan gives you POS, inventory, invoicing, and order management for AED 45 per month. This article covers exactly what you get and what it replaces.</P>
+      <P>ExiusCart Premium puts all of that in one platform at $29 per month. The Starter plan gives you POS, inventory, invoicing, and order management for $12 per month. This article covers exactly what you get and what it replaces.</P>
 
       <H2 id="the-subscription-sprawl-problem">The Subscription Sprawl Problem</H2>
       <P>Most small businesses end up with too many subscriptions. It happens gradually: you add a POS, then you need inventory software, then invoicing, then HR. Each one feels like a good decision at the time. A year later you have five separate tools, five separate logins, five separate sets of data that do not talk to each other — and a combined bill that dwarfs what a single integrated platform would cost.</P>
@@ -1586,7 +1586,7 @@ function AllInOneUnder100() {
               { s: 'HR & payroll software',     c: '80–200',    e: 'Yes (Premium)' },
               { s: 'CRM / customer management', c: '60–150',    e: 'Yes' },
               { s: 'Sales analytics',           c: '50–100',    e: 'Yes' },
-              { s: 'Total',                     c: '460–1,100', e: 'AED 45–99/month' },
+              { s: 'Total',                     c: '460–1,100', e: '$12–29/month' },
             ].map((row, i) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 <td className={`px-4 py-3 font-medium border-b border-gray-100 ${row.s === 'Total' ? 'font-bold text-gray-900' : 'text-gray-900'}`}>{row.s}</td>
@@ -1600,7 +1600,7 @@ function AllInOneUnder100() {
 
       <PullQuote>&quot;The cost of separate tools is not just the subscriptions — it is the time spent switching between them and the data that never quite lines up.&quot;</PullQuote>
 
-      <H2 id="what-you-get-starter">Starter Plan — AED 45/Month</H2>
+      <H2 id="what-you-get-starter">Starter Plan — $12/Month</H2>
       <P>The ExiusCart Starter plan is designed for businesses with one location and a small team:</P>
 
       <UL items={[
@@ -1615,7 +1615,7 @@ function AllInOneUnder100() {
         'Shopify and WooCommerce sync',
       ]} />
 
-      <H2 id="what-you-get-premium">Premium Plan — AED 99/Month</H2>
+      <H2 id="what-you-get-premium">Premium Plan — $29/Month</H2>
       <P>The Premium plan removes all limits and adds HR, payroll, and multi-branch management:</P>
 
       <UL items={[
@@ -1629,8 +1629,8 @@ function AllInOneUnder100() {
       ]} />
 
       <div className="grid grid-cols-3 gap-4 my-8">
-        <StatBox stat="AED 45" label="Starter" sub="$12 USD · per month" />
-        <StatBox stat="AED 99" label="Premium" sub="$29 USD · per month" />
+        <StatBox stat="$12" label="Starter" sub="per month" />
+        <StatBox stat="$29" label="Premium" sub="per month" />
         <StatBox stat="0" label="Setup fee" sub="No hidden costs" />
       </div>
 
@@ -1642,7 +1642,7 @@ function AllInOneUnder100() {
       <UL items={[
         'FTA-compliant VAT invoicing — 5% VAT, TRN field, sequential numbering, PDF generation',
         'AED as primary currency — no conversion required, invoices in AED for UAE transactions',
-        'USD pricing for international customers — auto-detected by customer location',
+        'Subscription billed in USD worldwide — one simple price, no region switching',
         'TheDersi marketplace integration — native, not a third-party workaround',
         'WPS-ready payroll — salary records for UAE Wage Protection System compliance (Premium)',
       ]} />
@@ -1668,7 +1668,7 @@ function AllInOneUnder100() {
       ]} />
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
-        <p className="text-white font-black text-xl mb-2">All-in-one for AED 45/month. Try free for 14 days.</p>
+        <p className="text-white font-black text-xl mb-2">All-in-one for $12/month. Try free for 14 days.</p>
         <p className="text-gray-400 text-sm mb-6">POS, inventory, VAT invoicing, HR, multi-channel orders. Built for UAE businesses. No credit card required.</p>
         <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
@@ -1764,7 +1764,7 @@ const POSTS: Record<string, {
     categoryColor: 'text-cyan-600 bg-cyan-50 border-cyan-100',
     date: 'June 2026',
     readTime: '7 min',
-    lead: "A cash register costs AED 300 and does one thing. A POS costs AED 45/month and runs your entire business. Here is exactly when each makes sense.",
+    lead: "A cash register costs AED 300 and does one thing. A POS costs $12/month and runs your entire business. Here is exactly when each makes sense.",
     toc: [
       { id: 'what-a-cash-register-does', label: 'What a cash register does' },
       { id: 'what-a-pos-does',           label: 'What a POS does' },
@@ -1805,7 +1805,7 @@ const POSTS: Record<string, {
     categoryColor: 'text-rose-600 bg-rose-50 border-rose-100',
     date: 'June 2026',
     readTime: '6 min',
-    lead: "Eight hours a week on spreadsheet admin. That is AED 20,000 a year in your time — for a system you could replace for AED 45 a month.",
+    lead: "Eight hours a week on spreadsheet admin. That is AED 20,000 a year in your time — for a system you could replace for $12 a month.",
     toc: [
       { id: 'why-spreadsheets-feel-safe', label: 'Why spreadsheets feel safe' },
       { id: 'what-they-cost-you',         label: 'What they actually cost' },
@@ -1915,18 +1915,18 @@ const POSTS: Record<string, {
     Content: ExiusCartVsZohoPost,
   },
   'all-in-one-business-software-uae-under-aed-100': {
-    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing Under AED 100',
-    seoTitle: 'All-in-One Business Software UAE — POS, Inventory, VAT Invoicing Under AED 100/Month | ExiusCart',
-    seoDescription: 'Replace 5 separate subscriptions with one platform. ExiusCart gives UAE businesses POS, inventory, VAT invoicing, HR, and order management from AED 45/month.',
+    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing From $12/Month',
+    seoTitle: 'All-in-One Business Software UAE — POS, Inventory, VAT Invoicing From $12/Month | ExiusCart',
+    seoDescription: 'Replace 5 separate subscriptions with one platform. ExiusCart gives UAE businesses POS, inventory, VAT invoicing, HR, and order management from $12/month.',
     category: 'Growth',
     categoryColor: 'text-orange-600 bg-orange-50 border-orange-100',
     date: 'June 2026',
     readTime: '6 min',
-    lead: "Most UAE businesses pay AED 300–500 a month for separate subscriptions that don't talk to each other. Here is what one platform at AED 45–99/month covers instead.",
+    lead: "Most UAE businesses pay AED 300–500 a month for separate subscriptions that don't talk to each other. Here is what one platform at $12–29/month covers instead.",
     toc: [
       { id: 'the-subscription-sprawl-problem', label: 'The subscription sprawl problem' },
-      { id: 'what-you-get-starter',            label: 'Starter plan — AED 45/month' },
-      { id: 'what-you-get-premium',            label: 'Premium plan — AED 99/month' },
+      { id: 'what-you-get-starter',            label: 'Starter plan — $12/month' },
+      { id: 'what-you-get-premium',            label: 'Premium plan — $29/month' },
       { id: 'uae-specific-features',           label: 'UAE-specific features' },
       { id: 'who-its-for',                     label: 'Who it is for' },
       { id: 'free-trial',                      label: '14-day free trial' },
@@ -1937,9 +1937,50 @@ const POSTS: Record<string, {
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// A post written from the admin panel — not in the hand-built POSTS map
+// above. Tried only when the slug isn't one of the hand-built ones.
+interface AdminPost {
+  title: string; excerpt: string | null; content: string | null; cover_image_url: string | null;
+  author_name: string | null; tags: string[]; published_at: string | null;
+  cta_text: string | null; cta_url: string | null;
+}
+async function getAdminPost(slug: string): Promise<AdminPost | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/public/store/exiuscart-website/blog/${slug}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const post = POSTS[params.slug];
-  if (!post) return { title: 'Not Found | ExiusCart Blog' };
+  if (!post) {
+    const adminPost = await getAdminPost(params.slug);
+    if (!adminPost) return { title: 'Not Found | ExiusCart Blog' };
+    return {
+      title: `${adminPost.title} | ExiusCart Blog`,
+      description: adminPost.excerpt || adminPost.title,
+      openGraph: {
+        title: adminPost.title,
+        description: adminPost.excerpt || adminPost.title,
+        url: `https://exiuscart.com/blog/${params.slug}`,
+        siteName: 'ExiusCart',
+        type: 'article',
+        images: adminPost.cover_image_url ? [{ url: adminPost.cover_image_url }] : undefined,
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: adminPost.title,
+        description: adminPost.excerpt || adminPost.title,
+      },
+    };
+  }
   return {
     title: post.seoTitle,
     description: post.seoDescription,
@@ -1958,11 +1999,116 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
+// ── Page — admin-authored post (fetched, not hand-built) ──────────────────────
+
+function AdminBlogPostView({ post }: { post: AdminPost }) {
+  const date = post.published_at
+    ? new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(post.published_at))
+    : '';
+
+  return (
+    <div className="min-h-screen bg-[#0B1121]">
+      <Navbar />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: post.title,
+          description: post.excerpt || post.title,
+          datePublished: post.published_at,
+          image: post.cover_image_url || undefined,
+          author: { '@type': 'Organization', name: post.author_name || 'ExiusCart' },
+          publisher: { '@type': 'Organization', name: 'ExiusCart', url: 'https://exiuscart.com' },
+        }) }}
+      />
+
+      <section className="pt-32 pb-16 px-6">
+        <div className="max-w-3xl mx-auto">
+          <Link href="/blog" className="inline-flex items-center gap-2 text-gray-500 hover:text-white text-sm mb-10 transition-colors group">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Back to blog
+          </Link>
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            {post.tags?.[0] && (
+              <span className="text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border text-[#6B3FD9] border-[#6B3FD9]/30 bg-[#6B3FD9]/10">
+                {post.tags[0]}
+              </span>
+            )}
+            {date && <span className="text-xs text-gray-500">{date}</span>}
+          </div>
+          <h1 className="text-4xl md:text-5xl lg:text-[3.25rem] font-black text-white leading-[1.06] tracking-tight mb-6">
+            {post.title}
+          </h1>
+          {post.excerpt && <p className="text-gray-400 text-lg leading-relaxed">{post.excerpt}</p>}
+        </div>
+      </section>
+
+      <section className="bg-[#F5F3EF] px-6 py-16">
+        <div className="max-w-2xl mx-auto">
+          {post.cover_image_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={post.cover_image_url} alt="" className="w-full aspect-video object-cover rounded-2xl mb-10" />
+          )}
+          <div
+            className="text-gray-800 leading-relaxed [&_p]:my-4 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-4 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-4 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_h3]:mt-8 [&_h3]:mb-3 [&_img]:max-w-full [&_img]:rounded-xl [&_img]:my-6 [&_strong]:text-gray-900"
+            dangerouslySetInnerHTML={{ __html: post.content || '' }}
+          />
+          {post.cta_text && (
+            <Link
+              href={post.cta_url || '/register'}
+              className="inline-flex items-center gap-2 mt-8 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-6 py-3 rounded-xl transition-all text-sm"
+            >
+              {post.cta_text} <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
+        </div>
+      </section>
+
+      <section className="bg-[#F5F3EF] px-6 pb-20">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-[#0B1121] rounded-3xl p-10 md:p-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6B3FD9] mb-4">Start today</p>
+              <h3 className="text-3xl font-black text-white mb-2 leading-tight">
+                Run your business<br />the smart way.
+              </h3>
+              <p className="text-gray-400 text-sm">14-day free trial. No credit card required.</p>
+            </div>
+            <div className="flex flex-col gap-3 shrink-0">
+              <Link
+                href="/register"
+                className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm whitespace-nowrap"
+              >
+                Start free trial <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 text-gray-400 hover:text-white font-semibold px-7 py-3.5 rounded-xl border border-white/10 hover:border-white/20 transition-all text-sm whitespace-nowrap"
+              >
+                View pricing <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function BlogPostPage({ params }: { params: { slug: string } }) {
+export default async function BlogPostPage({ params }: { params: { slug: string } }) {
   const post = POSTS[params.slug];
-  if (!post) notFound();
+
+  if (!post) {
+    const adminPost = await getAdminPost(params.slug);
+    if (!adminPost) notFound();
+    return <AdminBlogPostView post={adminPost} />;
+  }
+
   const { Content } = post;
 
   return (

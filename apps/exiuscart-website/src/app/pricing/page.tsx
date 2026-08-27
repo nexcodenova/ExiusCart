@@ -5,20 +5,9 @@ import { useState } from 'react';
 import { ArrowRight, Check, X, ChevronDown, Store, Users2, Puzzle, Headphones } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
-import { useCurrency } from '@/context/currency-context';
 import { pricing } from '@/config/pricing';
 
 type Period = 'monthly' | 'yearly';
-
-function AedSign({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 26 32" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M6 2L6 30L13 30C20 30 24 25 24 16C24 7 20 2 13 2Z" />
-      <line x1="1" y1="11" x2="8" y2="11" />
-      <line x1="1" y1="17" x2="8" y2="17" />
-    </svg>
-  );
-}
 
 const faqs = [
   {
@@ -38,8 +27,8 @@ const faqs = [
     a: 'Yes — upgrade anytime. You only pay the prorated difference for the remaining billing period.',
   },
   {
-    q: 'Do UAE and international users pay different prices?',
-    a: 'Yes. UAE users pay in AED (Starter AED 45/mo, Premium AED 99/mo). International users pay in USD (Starter $12/mo, Premium $29/mo). Prices are shown automatically based on your location.',
+    q: 'Is pricing the same everywhere?',
+    a: 'Yes — one price worldwide, billed in USD (Starter $12/mo, Premium $29/mo). No region-based pricing or currency switching.',
   },
   {
     q: 'Is VAT invoicing available on the free trial?',
@@ -58,23 +47,14 @@ const faqs = [
 export default function PricingPage() {
   const [billing, setBilling] = useState<Period>('monthly');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const { currency, currencyConfig, isLoading } = useCurrency();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#F5F3EF] flex items-center justify-center">
-        <div className="text-gray-400 text-sm">Loading…</div>
-      </div>
-    );
-  }
-
-  const prices = pricing[currency];
+  const prices = pricing.USD;
   const starterPrice = billing === 'monthly' ? prices.starter.monthly : prices.starter.yearly;
   const premiumPrice = billing === 'monthly' ? prices.premium.monthly : prices.premium.yearly;
   const starterOriginal = billing === 'monthly' ? prices.starter.originalMonthly : prices.starter.originalYearly;
   const premiumOriginal = billing === 'monthly' ? prices.premium.originalMonthly : prices.premium.originalYearly;
   const period = billing === 'monthly' ? '/mo' : '/yr';
-  const currSym = currency === 'USD' ? '$' : 'AED ';
+  const currSym = '$';
 
   return (
     <div className="min-h-screen bg-[#F5F3EF]">
@@ -95,9 +75,8 @@ export default function PricingPage() {
             Upgrade when you&apos;re ready.
           </p>
           <p className="text-sm text-gray-400 mb-8">
-            {currencyConfig.flag}&nbsp; Prices shown in&nbsp;
-            <strong className="text-gray-600">{currency}</strong>&nbsp;
-            for {currencyConfig.country}
+            🌍&nbsp; One price for everyone, billed in&nbsp;
+            <strong className="text-gray-600">USD</strong>
           </p>
 
           {/* Billing toggle */}
@@ -194,11 +173,7 @@ export default function PricingPage() {
                 </div>
               )}
               <div className="mt-2 mb-2 flex items-start gap-2">
-                {currency === 'USD' ? (
-                  <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
-                ) : (
-                  <AedSign className="w-5 h-7 mt-3 text-gray-400 shrink-0" />
-                )}
+                <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
                 <span className="text-[3.8rem] font-black text-white tracking-tight leading-none">{starterPrice}</span>
                 <span className="text-gray-500 text-sm self-end mb-1">{period}</span>
               </div>
@@ -255,11 +230,7 @@ export default function PricingPage() {
                 </div>
               )}
               <div className="mt-2 mb-2 flex items-start gap-2">
-                {currency === 'USD' ? (
-                  <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
-                ) : (
-                  <AedSign className="w-5 h-7 mt-3 text-gray-400 shrink-0" />
-                )}
+                <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
                 <span className="text-[3.8rem] font-black text-gray-900 tracking-tight leading-none">{premiumPrice}</span>
                 <span className="text-gray-400 text-sm self-end mb-1">{period}</span>
               </div>

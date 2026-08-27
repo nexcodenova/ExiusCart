@@ -7,34 +7,17 @@ import { useCurrency } from '@/context/currency-context';
 import { pricing } from '@/config/pricing';
 
 export function PricingPreview() {
-  const { currency, currencyConfig, isLoading } = useCurrency();
-  const prices = pricing[currency];
+  const { currencyConfig } = useCurrency();
+  const prices = pricing.USD;
   const [hovering, setHovering] = useState(false);
   const [tapped, setTapped] = useState(false);
   const flipped = hovering || tapped;
 
-  if (isLoading) {
-    return (
-      <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8 animate-pulse">
-        <div className="h-4 bg-gray-700 rounded w-24 mb-4" />
-        <div className="h-12 bg-gray-700 rounded w-32 mb-2" />
-        <div className="h-4 bg-gray-700 rounded w-48 mb-8" />
-        <div className="space-y-3 mb-8">
-          {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-4 bg-gray-700 rounded w-36" />)}
-        </div>
-        <div className="h-12 bg-gray-700 rounded" />
-      </div>
-    );
-  }
-
   const starterMonthly = prices.starter.monthly;
   const premiumMonthly = prices.premium.monthly;
-  const priceDisplay = currency === 'USD' ? `$${starterMonthly}` : `AED ${starterMonthly}`;
-  const premiumDisplay = currency === 'USD' ? `$${premiumMonthly}` : `AED ${premiumMonthly}`;
-  // The illustration has the starter price baked in as pixels, so it needs
-  // a matching version per currency — otherwise a USD visitor would see
-  // "AED 45/mo" on the front and the correct "$12/mo" only after flipping.
-  const frontImage = currency === 'USD' ? '/integration/pricing-usd.jpg' : '/integration/pricing.jpg';
+  const priceDisplay = `$${starterMonthly}`;
+  const premiumDisplay = `$${premiumMonthly}`;
+  const frontImage = '/integration/pricing-usd.jpg';
 
   return (
     <div

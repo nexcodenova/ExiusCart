@@ -18,15 +18,50 @@ const cairo = Cairo({
   variable: '--font-cairo',
 });
 
+const SITE_URL = 'https://exiuscart.com';
+const SITE_TITLE = 'ExiusCart - Smart Multi-Shop Business System';
+const SITE_DESCRIPTION =
+  'All-in-one POS, inventory & invoicing platform for small businesses worldwide — UAE and international.';
+
 export const metadata: Metadata = {
-  title: 'ExiusCart - Smart Multi-Shop Business System',
-  description:
-    'All-in-one POS, inventory & invoicing platform for small businesses worldwide — UAE and international.',
+  // Without this, every relative image URL in openGraph/twitter below
+  // (and on every page that sets its own metadata) resolves against
+  // whatever host is currently serving the request instead of the real
+  // domain — broken previews on localhost/staging, silently wrong in prod.
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: '%s | ExiusCart',
+  },
+  description: SITE_DESCRIPTION,
   keywords: ['POS', 'Point of Sale', 'UAE', 'Inventory', 'Invoicing', 'worldwide', 'small business'],
   icons: {
     icon: '/logo.svg',
     shortcut: '/logo.svg',
     apple: '/logo.svg',
+  },
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  openGraph: {
+    type: 'website',
+    url: SITE_URL,
+    siteName: 'ExiusCart',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    locale: 'en_US',
+    images: [{ url: '/dashboard.png', width: 1200, height: 630, alt: 'ExiusCart dashboard' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ['/dashboard.png'],
   },
 };
 
