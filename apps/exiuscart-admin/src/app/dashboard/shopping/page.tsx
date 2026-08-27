@@ -226,12 +226,15 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<CJProduct[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const [myProducts, setMyProducts] = useState<CJProduct[]>([]);
   const [loadingMy, setLoadingMy] = useState(false);
   const [myLoaded, setMyLoaded] = useState(false);
+  const [myError, setMyError] = useState('');
   const [trendingProducts, setTrendingProducts] = useState<CJProduct[]>([]);
   const [loadingTrending, setLoadingTrending] = useState(false);
   const [trendingLoaded, setTrendingLoaded] = useState(false);
+  const [trendingError, setTrendingError] = useState('');
   const [trendingPage, setTrendingPage] = useState(1);
   const [trendingHasMore, setTrendingHasMore] = useState(true);
 
@@ -271,23 +274,26 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
     if (!query || !connected) return;
     setLoading(true);
     setProducts([]);
+    setSearchError('');
     adminApi.cjSearch(query)
       .then((r: any) => setProducts(r.data?.products ?? []))
-      .catch(() => {})
+      .catch((e: any) => setSearchError(e?.response?.data?.detail ?? 'Search failed — CJ may be unreachable right now.'))
       .finally(() => setLoading(false));
   }, [query, connected]);
 
   useEffect(() => {
     if (activeTab !== 'my' || myLoaded || !connected) return;
     setLoadingMy(true);
+    setMyError('');
     adminApi.cjMyProducts()
       .then((r: any) => setMyProducts(r.data?.products ?? []))
-      .catch(() => {})
+      .catch((e: any) => setMyError(e?.response?.data?.detail ?? 'Could not load CJ products — CJ may be unreachable right now.'))
       .finally(() => { setLoadingMy(false); setMyLoaded(true); });
   }, [activeTab, myLoaded, connected]);
 
   const loadTrending = (page: number) => {
     setLoadingTrending(true);
+    setTrendingError('');
     adminApi.cjTrending(page)
       .then((r: any) => {
         const items = r.data?.products ?? [];
@@ -300,7 +306,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
         setTrendingPage(page);
         setTrendingHasMore(items.length >= 20);
       })
-      .catch(() => {})
+      .catch((e: any) => setTrendingError(e?.response?.data?.detail ?? 'Could not load trending products — CJ may be unreachable right now.'))
       .finally(() => { setLoadingTrending(false); setTrendingLoaded(true); });
   };
 
@@ -503,6 +509,12 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
               </div>
             )}
 
+            {activeTab === 'search' && searchError && (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {searchError}
+              </div>
+            )}
+
             {activeTab === 'search' && !query && (
               <div className="text-center py-16 text-sm text-gray-500">Start typing above to search CJ&apos;s catalog.</div>
             )}
@@ -513,7 +525,13 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
               </div>
             )}
 
-            {activeTab === 'my' && !loadingMy && myLoaded && myProducts.length === 0 && (
+            {activeTab === 'my' && myError && (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {myError}
+              </div>
+            )}
+
+            {activeTab === 'my' && !loadingMy && myLoaded && !myError && myProducts.length === 0 && (
               <div className="text-center py-16 text-sm text-gray-500 max-w-sm mx-auto">
                 Nothing here yet. On CJ&apos;s site, browse a product and click &ldquo;Add to My Product&rdquo; — it&apos;ll show up here.
               </div>
@@ -522,6 +540,12 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
             {activeTab === 'trending' && loadingTrending && (
               <div className="flex items-center justify-center py-16 text-gray-500 gap-2">
                 <Loader2 className="w-5 h-5 animate-spin" /> <span className="text-sm">Loading trending products…</span>
+              </div>
+            )}
+
+            {activeTab === 'trending' && trendingError && (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {trendingError}
               </div>
             )}
 
@@ -626,6 +650,268 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   );
 }
 
+interface AliexpressSearchResult {
+  item_id: string;
+  name: string;
+  image: string;
+  price: number;
+  currency: string;
+  item_url: string;
+  orders?: string;
+  score?: string;
+}
+
+// Search uses aliexpress.ds.text.search — a real, documented catalog search
+// (confirmed 2026-08-27), unlike CJ's curated-feed system which needs
+// business-team-granted feed names. Paste-a-link stays available as a
+// fallback tab for a specific product found outside the search.
+function AliexpressImportModal({ connected, systemShopId, onClose, onImported }: {
+  connected: boolean;
+  systemShopId: number | null;
+  onClose: () => void;
+  onImported: () => void;
+}) {
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState('');
+
+  const [activeTab, setActiveTab] = useState<'search' | 'link'>('search');
+
+  // Search tab
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<AliexpressSearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [searchPage, setSearchPage] = useState(1);
+  const [searchTotal, setSearchTotal] = useState(0);
+  const [importingItemId, setImportingItemId] = useState<string | null>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Paste-link tab
+  const [productUrl, setProductUrl] = useState('');
+  const [price, setPrice] = useState('');
+  const [categoryName, setCategoryName] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [importedCount, setImportedCount] = useState(0);
+
+  const connect = async () => {
+    if (!systemShopId) return;
+    setConnecting(true); setConnectError('');
+    try {
+      const res = await adminApi.aliexpressAuthorize(systemShopId);
+      window.location.href = res.data.authorize_url;
+    } catch (err: any) {
+      setConnectError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not start AliExpress connection. Try again.');
+      setConnecting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (!searchInput.trim()) { setSearchResults([]); setSearchQuery(''); return; }
+    searchTimeout.current = setTimeout(() => setSearchQuery(searchInput.trim()), 500);
+  }, [searchInput]);
+
+  const runSearch = (q: string, page: number) => {
+    setSearchLoading(true); setSearchError('');
+    adminApi.aliexpressSearch(q, page)
+      .then((r: any) => {
+        setSearchResults(r.data?.products ?? []);
+        setSearchPage(page);
+        setSearchTotal(r.data?.total ?? 0);
+      })
+      .catch((err: any) => setSearchError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Search failed.'))
+      .finally(() => setSearchLoading(false));
+  };
+
+  useEffect(() => {
+    if (!searchQuery || !connected) return;
+    runSearch(searchQuery, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, connected]);
+
+  const handleSearchImport = async (p: AliexpressSearchResult) => {
+    setImportingItemId(p.item_id);
+    try {
+      await adminApi.aliexpressImport(p.item_url);
+      setImportedCount((c) => c + 1);
+      onImported();
+    } catch {
+      // leave it in the results so they can retry
+    } finally { setImportingItemId(null); }
+  };
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productUrl.trim()) return;
+    setImporting(true); setImportError('');
+    try {
+      await adminApi.aliexpressImport(productUrl.trim(), price ? Number(price) : undefined, categoryName.trim() || undefined);
+      setImportedCount((c) => c + 1);
+      setProductUrl(''); setPrice(''); setCategoryName('');
+      onImported();
+    } catch (err: any) {
+      setImportError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Import failed. Check the link and try again.');
+    } finally { setImporting(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-[#0F1729] border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-gray-800 sticky top-0 bg-[#0F1729] z-10">
+          <div>
+            <p className="font-semibold text-white flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-[#6B3FD9]" /> Import from AliExpress
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">Products go straight into the Prodora catalog</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+        </div>
+
+        {!connected ? (
+          <div className="p-5 space-y-4">
+            {connectError && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{connectError}</div>
+            )}
+            <p className="text-xs text-gray-400 bg-[#0B1121] rounded-lg px-3 py-2.5 leading-relaxed">
+              Connects to a real AliExpress account via their own login page (same OAuth flow sellers use to connect their own AliExpress). This connects it to the Prodora catalog only, separate from any individual seller&apos;s own connection.
+            </p>
+            <button type="button" onClick={connect} disabled={connecting || !systemShopId}
+              className="w-full py-2.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium transition disabled:opacity-60 flex items-center justify-center gap-2">
+              {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {connecting ? 'Redirecting to AliExpress…' : 'Connect AliExpress'}
+            </button>
+          </div>
+        ) : (
+          <div className="p-5 space-y-4">
+            {/* Tabs */}
+            <div className="flex gap-1 border-b border-gray-800">
+              <button onClick={() => setActiveTab('search')}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition flex items-center gap-1.5 ${
+                  activeTab === 'search' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                }`}>
+                <Search className="w-3.5 h-3.5" /> Search Catalog
+              </button>
+              <button onClick={() => setActiveTab('link')}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
+                  activeTab === 'link' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                }`}>
+                Paste Link
+              </button>
+            </div>
+
+            {importedCount > 0 && (
+              <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2.5 text-sm text-green-400">
+                <Check className="w-4 h-4" /> {importedCount} product{importedCount > 1 ? 's' : ''} imported into Prodora
+              </div>
+            )}
+
+            {activeTab === 'search' && (
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="Search AliExpress e.g. phone case, yoga mat, LED lamp…"
+                    className="w-full pl-10 pr-4 py-3 bg-[#0B1121] border border-gray-700 rounded-xl text-sm text-white placeholder:text-gray-500 focus:ring-2 focus:ring-[#6B3FD9] outline-none"
+                  />
+                  {searchLoading && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-500" />}
+                </div>
+
+                {searchError && (
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{searchError}</div>
+                )}
+
+                {!searchQuery && (
+                  <div className="text-center py-16 text-sm text-gray-500">Start typing above to search AliExpress&apos;s catalog.</div>
+                )}
+
+                {searchQuery && !searchLoading && searchResults.length === 0 && !searchError && (
+                  <div className="text-center py-10 text-sm text-gray-500">No products found for &ldquo;{searchQuery}&rdquo;. Try a different keyword.</div>
+                )}
+
+                {searchResults.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {searchResults.map((p) => (
+                      <div key={p.item_id} className="relative bg-[#0B1121] border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+                        <div className="relative aspect-square bg-gray-900">
+                          {p.image
+                            ? <Image src={p.image} alt={p.name} fill className="object-cover" unoptimized />
+                            : <div className="absolute inset-0 flex items-center justify-center"><Package className="w-8 h-8 text-gray-700" /></div>
+                          }
+                        </div>
+                        <div className="p-3 flex flex-col gap-2 flex-1">
+                          <p className="text-xs text-white font-medium line-clamp-2 leading-snug">{p.name}</p>
+                          <div className="flex items-center justify-between mt-auto">
+                            <div>
+                              <p className="text-[10px] text-gray-500">Price</p>
+                              <p className="text-sm font-bold text-white">{p.currency} {p.price.toFixed(2)}</p>
+                            </div>
+                            <button onClick={() => handleSearchImport(p)} disabled={importingItemId === p.item_id}
+                              className="text-xs px-2.5 py-1.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg transition font-medium shrink-0 disabled:opacity-60 flex items-center gap-1">
+                              {importingItemId === p.item_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Import'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {searchResults.length > 0 && (
+                  <div className="flex items-center justify-center gap-3 pt-1">
+                    <button type="button" disabled={searchPage <= 1 || searchLoading} onClick={() => runSearch(searchQuery, searchPage - 1)}
+                      className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Previous</button>
+                    <span className="text-xs text-gray-500">Page {searchPage} · {searchTotal} results</span>
+                    <button type="button" disabled={searchPage * 20 >= searchTotal || searchLoading} onClick={() => runSearch(searchQuery, searchPage + 1)}
+                      className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Next</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'link' && (
+              <form onSubmit={handleImport} className="space-y-4">
+                {importError && (
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{importError}</div>
+                )}
+                <div>
+                  <label className="text-sm text-gray-400 mb-1.5 block">AliExpress product link *</label>
+                  <input type="url" value={productUrl} onChange={(e) => setProductUrl(e.target.value)} required
+                    placeholder="https://www.aliexpress.com/item/....html"
+                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-white text-sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1.5 block">Selling price <span className="text-gray-600">(optional)</span></label>
+                    <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)}
+                      placeholder="Auto: 2× cost"
+                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-white text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 mb-1.5 block">Category <span className="text-gray-600">(optional)</span></label>
+                    <input type="text" value={categoryName} onChange={(e) => setCategoryName(e.target.value)}
+                      placeholder="e.g. Electronics"
+                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-white text-sm" />
+                  </div>
+                </div>
+                <button type="submit" disabled={importing || !productUrl.trim()}
+                  className="w-full py-2.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium transition disabled:opacity-60 flex items-center justify-center gap-2">
+                  {importing && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {importing ? 'Importing…' : 'Import Product'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function TrendingDropshippingPage() {
@@ -641,6 +927,18 @@ export default function TrendingDropshippingPage() {
 
   useEffect(() => {
     adminApi.cjStatus().then((r: any) => setCjConnected(!!r.data?.connected)).catch(() => {});
+  }, []);
+
+  // AliExpress import
+  const [aliexpressConnected, setAliexpressConnected] = useState(false);
+  const [aliexpressShopId, setAliexpressShopId] = useState<number | null>(null);
+  const [showAliexpressModal, setShowAliexpressModal] = useState(false);
+
+  useEffect(() => {
+    adminApi.aliexpressStatus().then((r: any) => {
+      setAliexpressConnected(!!r.data?.connected);
+      setAliexpressShopId(r.data?.system_shop_id ?? null);
+    }).catch(() => {});
   }, []);
 
   // modal state
@@ -1000,6 +1298,14 @@ export default function TrendingDropshippingPage() {
           </button>
           <button
             type="button"
+            onClick={() => setShowAliexpressModal(true)}
+            className="inline-flex items-center gap-2 bg-[#0B1121] border border-gray-700 hover:border-[#6B3FD9]/50 text-white font-semibold px-4 py-2.5 rounded-lg transition"
+          >
+            <ShoppingBag className="w-4 h-4 text-[#6B3FD9]" />
+            {aliexpressConnected ? 'Import from AliExpress' : 'Connect AliExpress'}
+          </button>
+          <button
+            type="button"
             onClick={openAdd}
             className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-4 py-2.5 rounded-lg transition"
           >
@@ -1014,6 +1320,15 @@ export default function TrendingDropshippingPage() {
           connected={cjConnected}
           onClose={() => setShowCjModal(false)}
           onConnected={() => setCjConnected(true)}
+          onImported={fetchProducts}
+        />
+      )}
+
+      {showAliexpressModal && (
+        <AliexpressImportModal
+          connected={aliexpressConnected}
+          systemShopId={aliexpressShopId}
+          onClose={() => setShowAliexpressModal(false)}
           onImported={fetchProducts}
         />
       )}

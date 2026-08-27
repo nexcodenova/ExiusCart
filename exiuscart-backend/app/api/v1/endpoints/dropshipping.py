@@ -1181,6 +1181,16 @@ def aliexpress_callback(
         logger.error(f"[ALIEXPRESS OAUTH] callback with unknown/expired state={state[:8]}...")
         return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=invalid_state")
 
+    # The admin/Prodora catalog connects through this exact same seller-
+    # facing flow (see admin.py's comment above admin_aliexpress_import) —
+    # its DropshipConnection lives on the dedicated system shop, not a real
+    # seller's. Route the browser back to whichever dashboard actually
+    # started the connect, instead of always landing on the seller one.
+    from app.models.shop import Shop
+    shop = db.query(Shop).filter(Shop.id == conn.shop_id).first()
+    is_admin_system_shop = bool(shop and shop.slug == "exiuscart-dropshipping-system")
+    return_base = "https://admin.exiuscart.com/dashboard/shopping" if is_admin_system_shop else f"{STOREFRONT_BASE}/dashboard/dropshipping"
+
     token_result = _exchange_aliexpress_code(code)
     if token_result is None:
         # Real API call failed (bad/expired code, network issue, etc.) —
@@ -1188,7 +1198,7 @@ def aliexpress_callback(
         # seller's authorization. Safe to retry since the code is only
         # usable once, but the seller can restart Connect AliExpress.
         logger.warning(f"[ALIEXPRESS OAUTH] shop={conn.shop_id} token exchange failed — connection left pending, see error above")
-        return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=pending")
+        return RedirectResponse(f"{return_base}?aliexpress=pending")
 
     conn.access_token = token_result["access_token"]
     conn.refresh_token = token_result.get("refresh_token")
@@ -1196,7 +1206,7 @@ def aliexpress_callback(
     conn.is_active = True
     conn.oauth_state = None
     db.commit()
-    return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=connected")
+    return RedirectResponse(f"{return_base}?aliexpress=connected")
 
 
 def _aliexpress_token_expiry(data: dict) -> datetime:
@@ -1421,6 +1431,56 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
         # field (see docstring above), and ae_item_base_info_dto's own
         # currency_code can legitimately differ from it.
         "currency": sku_currency or base_info.get("currency_code") or target_currency,
+    }
+
+
+def _aliexpress_search_products(access_token: str, keyword: str, page: int = 1, page_size: int = 20, currency: str = "USD", country: str = "US") -> dict:
+    """Searches AliExpress's catalog via aliexpress.ds.text.search — a real,
+    fully-documented Business Interface (confirmed 2026-08-27, AliExpress's
+    own Developer Guide), unlike the curated "feed" system which needs
+    business-team-granted feed names. Lets a search/browse UI exist at all,
+    instead of paste-a-link only."""
+    data = _aliexpress_signed_request("/sync", {
+        "method": "aliexpress.ds.text.search",
+        "keyWord": keyword,
+        "local": "en_US",
+        "countryCode": country,
+        "currency": currency,
+        "pageIndex": page,
+        "pageSize": page_size,
+    }, access_token=access_token, method="POST")
+
+    if not data:
+        return {"products": [], "total": 0}
+
+    # The docs' own example wraps the payload as "aliexpress_ds_text_search"
+    # (no "_response" suffix, unlike every other method on this API) — kept
+    # the _response fallback too since that's the convention everywhere else
+    # and this one detail is easy to get wrong from docs alone.
+    wrapper = data.get("aliexpress_ds_text_search") or data.get("aliexpress_ds_text_search_response") or data
+    inner = wrapper.get("data") or {}
+    raw_products = _as_list(inner.get("products"))
+
+    products = []
+    for p in raw_products:
+        try:
+            price = float(p.get("targetSalePrice") or p.get("salePrice") or 0)
+        except (TypeError, ValueError):
+            price = 0.0
+        products.append({
+            "item_id": p.get("itemId"),
+            "name": p.get("title"),
+            "image": p.get("itemMainPic"),
+            "price": price,
+            "currency": p.get("targetOriginalPriceCurrency") or p.get("salePriceCurrency") or currency,
+            "item_url": p.get("itemUrl"),
+            "orders": p.get("orders"),
+            "score": p.get("score"),
+        })
+
+    return {
+        "products": products,
+        "total": int(inner.get("totalCount") or 0),
     }
 
 

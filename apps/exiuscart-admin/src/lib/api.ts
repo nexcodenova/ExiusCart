@@ -105,6 +105,11 @@ export const adminApi = {
   cjImportBulk: (cjPids: string[]) => api.post('/admin/shopping/cj/import-bulk', { cj_pids: cjPids }),
   cjImport: (cjPid: string, price?: number, categoryName?: string) =>
     api.post('/admin/shopping/cj/import', { cj_pid: cjPid, price, category_name: categoryName }),
+  aliexpressStatus: () => api.get('/admin/shopping/aliexpress/status'),
+  aliexpressAuthorize: (systemShopId: number) => api.get(`/shops/${systemShopId}/dropship/aliexpress/authorize`),
+  aliexpressSearch: (q: string, page = 1) => api.get('/admin/shopping/aliexpress/search', { params: { q, page } }),
+  aliexpressImport: (productUrl: string, price?: number, categoryName?: string) =>
+    api.post('/admin/shopping/aliexpress/import', { product_url: productUrl, price, category_name: categoryName }),
   metaAdsSearch: (q: string, country = 'US') =>
     api.get('/admin/shopping/meta-ads/search', { params: { q, country } }),
 

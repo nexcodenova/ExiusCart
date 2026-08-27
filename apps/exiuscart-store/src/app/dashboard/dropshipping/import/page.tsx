@@ -281,9 +281,11 @@ export default function ImportProductsPage() {
   const [inputVal, setInputVal] = useState('');
   const [products, setProducts] = useState<CJProduct[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const [myProducts, setMyProducts] = useState<CJProduct[]>([]);
   const [loadingMy, setLoadingMy] = useState(false);
   const [myLoaded, setMyLoaded] = useState(false);
+  const [myError, setMyError] = useState('');
   const [importTarget, setImportTarget] = useState<CJProduct | null>(null);
   const [importedId, setImportedId] = useState<{ id: number; name: string } | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -336,18 +338,20 @@ export default function ImportProductsPage() {
     if (!query || !shopId) return;
     setLoading(true);
     setProducts([]);
+    setSearchError('');
     dropshipApi.cjSearch(shopId, query)
       .then((r) => setProducts(r.data?.products ?? []))
-      .catch(() => {})
+      .catch((e: any) => setSearchError(e?.response?.data?.detail ?? 'Search failed — CJ may be unreachable right now. Try again in a moment.'))
       .finally(() => setLoading(false));
   }, [query, shopId]);
 
   useEffect(() => {
     if (activeTab !== 'my' || myLoaded || !shopId) return;
     setLoadingMy(true);
+    setMyError('');
     dropshipApi.cjMyProducts(shopId)
       .then((r) => setMyProducts(r.data?.products ?? []))
-      .catch(() => {})
+      .catch((e: any) => setMyError(e?.response?.data?.detail ?? 'Could not load your CJ products — CJ may be unreachable right now.'))
       .finally(() => { setLoadingMy(false); setMyLoaded(true); });
   }, [activeTab, myLoaded, shopId]);
 
@@ -651,7 +655,13 @@ export default function ImportProductsPage() {
         </div>
       )}
 
-      {activeTab === 'my' && !loadingMy && myLoaded && myProducts.length === 0 && (
+      {activeTab === 'my' && myError && (
+        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0" /> {myError}
+        </div>
+      )}
+
+      {activeTab === 'my' && !loadingMy && myLoaded && !myError && myProducts.length === 0 && (
         <div className="text-center py-20 text-sm text-muted-foreground max-w-md mx-auto">
           Nothing here yet. On CJ&apos;s site, browse a product and click &ldquo;Add to My Product&rdquo; — it&apos;ll show up here.
         </div>
@@ -686,7 +696,13 @@ export default function ImportProductsPage() {
         </div>
       )}
 
-      {activeTab === 'search' && !loading && query && products.length === 0 && (
+      {activeTab === 'search' && searchError && (
+        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0" /> {searchError}
+        </div>
+      )}
+
+      {activeTab === 'search' && !loading && !searchError && query && products.length === 0 && (
         <div className="text-center py-10 text-sm text-muted-foreground">No products found for &ldquo;{query}&rdquo;. Try a different keyword.</div>
       )}
 

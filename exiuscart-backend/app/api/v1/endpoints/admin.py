@@ -2144,7 +2144,50 @@ async def admin_cj_import_bulk(
 
 from app.api.v1.endpoints.dropshipping import (
     _parse_aliexpress_product_id, _aliexpress_ensure_token, _aliexpress_fetch_product,
+    _aliexpress_search_products,
 )
+
+
+@router.get("/admin/shopping/aliexpress/status")
+def admin_aliexpress_status(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    """Connection state + the system shop's id, so the admin frontend can
+    build the OAuth authorize link (GET /shops/{system_shop_id}/dropship/
+    aliexpress/authorize) — that route is the existing seller-facing one,
+    reused as-is rather than duplicated for admin (see comment above
+    admin_aliexpress_import)."""
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop.id,
+        DropshipConnection.supplier_type == "aliexpress",
+        DropshipConnection.is_active == True,
+    ).first()
+    return {"connected": conn is not None, "system_shop_id": shop.id}
+
+
+@router.get("/admin/shopping/aliexpress/search")
+async def admin_aliexpress_search(
+    q: str = "",
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    """Real catalog search (aliexpress.ds.text.search), not the curated-feed
+    system — that one needs business-team-granted feed names, this doesn't."""
+    if not q.strip():
+        return {"products": [], "total": 0, "page": page}
+    shop = _get_or_create_system_shop(db, current_admin)
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop.id, DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail=f"AliExpress is not connected. Connect it via GET /shops/{shop.id}/dropship/aliexpress/authorize first.")
+    token = await _aliexpress_ensure_token(conn, db)
+
+    result = _aliexpress_search_products(token, q.strip(), page=page, currency=shop.currency or "USD")
+    return {**result, "page": page}
 
 
 class AliexpressImportAdminIn(BaseModel):
