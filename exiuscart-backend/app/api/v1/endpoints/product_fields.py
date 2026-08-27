@@ -236,9 +236,9 @@ def get_attributes(
 
 IMAGES_DEFAULT = 6    # free / starter / thedersi_basic
 IMAGES_PREMIUM = 10   # premium / thedersi_pro
-DESCRIPTION_WORDS_DEFAULT = 200   # free / starter / thedersi_basic
-DESCRIPTION_WORDS_PREMIUM = 350   # premium / thedersi_pro
-DESCRIPTION_IMAGES_LIMIT = 5       # same for every plan — inline description photos, not the main gallery
+DESCRIPTION_WORDS_DEFAULT = 350   # free / starter / thedersi_basic
+DESCRIPTION_WORDS_PREMIUM = 500   # premium / thedersi_pro
+DESCRIPTION_IMAGES_LIMIT = 25      # same for every plan — inline description photos, not the main gallery
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 _PREMIUM_PLANS = ("premium", "thedersi_pro")

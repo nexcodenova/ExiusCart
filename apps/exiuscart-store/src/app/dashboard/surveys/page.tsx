@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, BarChart2, Trash2, Play, PauseCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { marketingApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
@@ -14,6 +15,7 @@ const Q_TYPES = ['text', 'multiple_choice', 'checkbox', 'rating', 'yes_no'];
 interface Question { question_text: string; question_type: string; options: string; }
 
 export default function SurveysPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState<string>('');
   const [surveys, setSurveys] = useState<any[]>([]);
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || '1'); }, []);
@@ -64,7 +66,7 @@ export default function SurveysPage() {
   };
 
   const del = async (s: any) => {
-    if (!confirm('Delete this survey?')) return;
+    if (!(await confirm({ title: 'Delete this survey?', variant: 'destructive' }))) return;
     try { await marketingApi.deleteSurvey(shopId!, s.id); load(); } catch {}
   };
 

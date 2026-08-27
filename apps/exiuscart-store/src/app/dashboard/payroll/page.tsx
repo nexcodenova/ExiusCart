@@ -6,6 +6,7 @@ import {
   DollarSign, Calendar, Printer, ChevronDown,
 } from 'lucide-react';
 import { payrollApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 type Tab = 'staff' | 'runs';
@@ -49,6 +50,7 @@ const CURRENCIES = ['AED','USD','LKR','EUR','GBP','SAR'];
 const emptyStaff = { name: '', role: '', email: '', phone: '', salary: 0, currency: 'AED', join_date: '', notes: '', is_active: true };
 
 export default function PayrollPage() {
+  const confirm = useConfirm();
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const { fmt } = useCurrency();
   const [tab, setTab] = useState<Tab>('staff');
@@ -126,7 +128,7 @@ export default function PayrollPage() {
   }
 
   async function softDeleteStaff(s: Staff) {
-    if (!confirm(`Set ${s.name} as inactive?`)) return;
+    if (!(await confirm({ title: `Set ${s.name} as inactive?`, variant: 'destructive' }))) return;
     try {
       await payrollApi.updateStaff(shopId, s.id, { is_active: false });
       setStaffList(prev => prev.map(x => x.id === s.id ? { ...x, is_active: false } : x));
@@ -164,7 +166,7 @@ export default function PayrollPage() {
   }
 
   async function markPaid(run: PayrollRun) {
-    if (!confirm(`Mark payroll for ${MONTHS[run.month - 1]} ${run.year} as paid?`)) return;
+    if (!(await confirm({ title: `Mark payroll for ${MONTHS[run.month - 1]} ${run.year} as paid?` }))) return;
     try {
       await payrollApi.markPaid(shopId, run.id);
       setRuns(prev => prev.map(r => r.id === run.id ? { ...r, status: 'paid', paid_date: new Date().toISOString() } : r));

@@ -1242,8 +1242,8 @@ function ProductModal({
   const [posIsGift, setPosIsGift] = useState(p?.pos_is_gift ?? false);
 
   const [imageLimit, setImageLimit] = useState(6);
-  const [descriptionWordLimit, setDescriptionWordLimit] = useState(200);
-  const [descriptionImageLimit, setDescriptionImageLimit] = useState(5);
+  const [descriptionWordLimit, setDescriptionWordLimit] = useState(350);
+  const [descriptionImageLimit, setDescriptionImageLimit] = useState(25);
   const variantImageCount = variants.filter(v => v.image_url && v.image_url !== '').length;
   const totalImages = savedImages.length + pendingImages.length + variantImageCount;
   const descriptionWordCount = countWords(formData.description);
@@ -1272,8 +1272,8 @@ function ProductModal({
     imagesApi.getLimit(shopId)
       .then((res) => {
         setImageLimit(res.data?.limit ?? 6);
-        setDescriptionWordLimit(res.data?.description_word_limit ?? 200);
-        setDescriptionImageLimit(res.data?.description_image_limit ?? 5);
+        setDescriptionWordLimit(res.data?.description_word_limit ?? 350);
+        setDescriptionImageLimit(res.data?.description_image_limit ?? 25);
       })
       .catch(() => {});
 

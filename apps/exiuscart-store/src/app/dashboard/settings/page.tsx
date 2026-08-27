@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { shopApi, channelsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   Settings,
   Shield,
@@ -28,7 +29,12 @@ type SettingsTab = 'general' | 'tax' | 'storefront' | 'security' | 'notification
 
 export default function SettingsPage() {
   const { syncCurrency } = useCurrency();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [baseCurrency, setBaseCurrency] = useState('');
+  const [originalBaseCurrency, setOriginalBaseCurrency] = useState('');
+  const [baseCurrencySaving, setBaseCurrencySaving] = useState(false);
+  const [baseCurrencySaved, setBaseCurrencySaved] = useState(false);
   const [taxSaving, setTaxSaving] = useState(false);
   const [taxSaved, setTaxSaved] = useState(false);
   const [generalSaving, setGeneralSaving] = useState(false);
@@ -75,6 +81,9 @@ export default function SettingsPage() {
         pricesIncludeVat: shop.prices_include_vat ?? false,
         showVatBreakdown: shop.show_vat_breakdown ?? false,
       }));
+      const bc = shop.base_currency ?? shop.currency ?? 'USD';
+      setBaseCurrency(bc);
+      setOriginalBaseCurrency(bc);
       setAboutText(shop.about_text ?? '');
       setSocialInstagram(shop.social_instagram ?? '');
       setSocialTiktok(shop.social_tiktok ?? '');
@@ -92,6 +101,8 @@ export default function SettingsPage() {
           setIsTheDersiSeller(isDersi);
           if (isDersi) {
             setSettings((prev) => ({ ...prev, currency: 'LKR' }));
+            setBaseCurrency('LKR');
+            setOriginalBaseCurrency('LKR');
           }
         })
         .catch(() => {});
@@ -113,6 +124,25 @@ export default function SettingsPage() {
       alert('Failed to save settings.');
     } finally {
       setGeneralSaving(false);
+    }
+  };
+
+  const handleSaveBaseCurrency = async () => {
+    if (!(await confirm({
+      title: `Change base currency to ${baseCurrency}?`,
+      description: `Every price you've already entered will now be read as ${baseCurrency} instead of ${originalBaseCurrency}. The numbers themselves won't change — only what currency they mean. Only do this if your prices were always meant to be ${baseCurrency}.`,
+      variant: 'destructive',
+    }))) return;
+    setBaseCurrencySaving(true);
+    try {
+      await shopApi.updateShop({ base_currency: baseCurrency });
+      setOriginalBaseCurrency(baseCurrency);
+      setBaseCurrencySaved(true);
+      setTimeout(() => setBaseCurrencySaved(false), 3000);
+    } catch {
+      alert('Failed to change base currency.');
+    } finally {
+      setBaseCurrencySaving(false);
     }
   };
 
@@ -289,6 +319,66 @@ export default function SettingsPage() {
                     <option value="JPY">JPY - Japanese Yen</option>
                     <option value="CNY">CNY - Chinese Yuan</option>
                   </select>
+                )}
+              </div>
+              <div className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                <label htmlFor="base-currency-select" className="text-sm font-medium text-foreground mb-1 block">
+                  Store base currency {isTheDersiSeller && <span className="text-xs text-indigo-500 ml-1">(TheDersi — locked to LKR)</span>}
+                </label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  The currency your product prices are actually stored in — different from &quot;Currency&quot; above, which only controls how prices are displayed. Changing this relabels every price you already have; it does not convert the numbers. Only change it if your prices were always meant to be read in the new currency.
+                </p>
+                {isTheDersiSeller ? (
+                  <div className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground flex items-center gap-2 cursor-not-allowed">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                    LKR - Sri Lanka Rupee
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      id="base-currency-select"
+                      value={baseCurrency}
+                      onChange={(e) => setBaseCurrency(e.target.value)}
+                      className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground"
+                    >
+                      <option value="AED">AED - UAE Dirham</option>
+                      <option value="SAR">SAR - Saudi Riyal</option>
+                      <option value="USD">USD - US Dollar</option>
+                      <option value="EUR">EUR - Euro</option>
+                      <option value="GBP">GBP - British Pound</option>
+                      <option value="INR">INR - Indian Rupee</option>
+                      <option value="LKR">LKR - Sri Lanka Rupee</option>
+                      <option value="BDT">BDT - Bangladeshi Taka</option>
+                      <option value="PKR">PKR - Pakistani Rupee</option>
+                      <option value="MYR">MYR - Malaysian Ringgit</option>
+                      <option value="SGD">SGD - Singapore Dollar</option>
+                      <option value="CAD">CAD - Canadian Dollar</option>
+                      <option value="AUD">AUD - Australian Dollar</option>
+                      <option value="QAR">QAR - Qatari Riyal</option>
+                      <option value="KWD">KWD - Kuwaiti Dinar</option>
+                      <option value="BHD">BHD - Bahraini Dinar</option>
+                      <option value="OMR">OMR - Omani Rial</option>
+                      <option value="EGP">EGP - Egyptian Pound</option>
+                      <option value="NGN">NGN - Nigerian Naira</option>
+                      <option value="KES">KES - Kenyan Shilling</option>
+                      <option value="ZAR">ZAR - South African Rand</option>
+                      <option value="TRY">TRY - Turkish Lira</option>
+                      <option value="IDR">IDR - Indonesian Rupiah</option>
+                      <option value="PHP">PHP - Philippine Peso</option>
+                      <option value="THB">THB - Thai Baht</option>
+                      <option value="JPY">JPY - Japanese Yen</option>
+                      <option value="CNY">CNY - Chinese Yuan</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleSaveBaseCurrency}
+                      disabled={baseCurrencySaving || baseCurrency === originalBaseCurrency}
+                      className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
+                    >
+                      {baseCurrencySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : baseCurrencySaved ? <Check className="w-4 h-4" /> : null}
+                      {baseCurrencySaved ? 'Saved' : 'Change'}
+                    </button>
+                  </div>
                 )}
               </div>
               <div>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, MessageSquare, Send, Trash2, Edit2, X } from 'lucide-react';
 import { marketingApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
@@ -11,6 +12,7 @@ const STATUS_COLORS: Record<string, string> = {
 const EMPTY = { name: '', message: '' };
 
 export default function SmsMarketingPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState<string>('');
   const [campaigns, setCampaigns] = useState<any[]>([]);
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || '1'); }, []);
@@ -42,12 +44,12 @@ export default function SmsMarketingPage() {
   };
 
   const sendCampaign = async (c: any) => {
-    if (!confirm(`Mark "${c.name}" as sent?`)) return;
+    if (!(await confirm({ title: `Mark "${c.name}" as sent?` }))) return;
     try { await marketingApi.updateSmsCampaign(shopId!, c.id, { status: 'sent' }); load(); } catch {}
   };
 
   const del = async (c: any) => {
-    if (!confirm('Delete this campaign?')) return;
+    if (!(await confirm({ title: 'Delete this campaign?', variant: 'destructive' }))) return;
     try { await marketingApi.deleteSmsCampaign(shopId!, c.id); load(); } catch {}
   };
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2, Star, CheckCircle2, XCircle, Trash2, MessageSquare, Copy, Check, Sparkles, Plus, X, ImageIcon } from 'lucide-react';
 import { reviewsApi, productsApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -84,6 +85,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
 interface SimpleProduct { id: number; name: string; sku?: string | null; }
 
 export default function ReviewsPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, avg_rating: 0 });
@@ -184,7 +186,7 @@ export default function ReviewsPage() {
   };
 
   const remove = async (id: number) => {
-    if (!confirm('Delete this review permanently?')) return;
+    if (!(await confirm({ title: 'Delete this review permanently?', variant: 'destructive' }))) return;
     setActingId(id);
     try {
       await reviewsApi.remove(shopId, id);

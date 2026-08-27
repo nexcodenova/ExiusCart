@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Plus, Loader2, Eye, Pencil, Trash2, FileText, CheckCircle2, ExternalLink, Lock, AlertTriangle } from 'lucide-react';
 import { blogApi } from '@/lib/api';
 import { useBlogChannelStatus } from '@/lib/use-blog-channel-status';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -23,6 +24,7 @@ interface BlogPostRow {
 }
 
 export default function BlogListPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
   const [posts, setPosts] = useState<BlogPostRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export default function BlogListPage() {
   useEffect(() => { load(); }, [shopId]);
 
   const remove = async (id: number) => {
-    if (!confirm('Delete this post? This cannot be undone.')) return;
+    if (!(await confirm({ title: 'Delete this post?', description: 'This cannot be undone.', variant: 'destructive' }))) return;
     setDeletingId(id);
     try {
       await blogApi.remove(shopId, id);

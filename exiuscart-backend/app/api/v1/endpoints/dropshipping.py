@@ -63,6 +63,27 @@ SUPPLIER_SIGNUP_LINKS = {
 }
 
 CJ_BASE = "https://developers.cjdropshipping.com/api2.0/v1"
+
+
+async def _cj_fetch_stock(vid: str, token: str) -> Optional[int]:
+    """Real, live warehouse inventory for a CJ variant — confirmed against
+    a real connected account: /product/query never returns a usable stock
+    number (inventoryNum/inventories come back null), the actual figures
+    only live behind this dedicated endpoint, one area entry per warehouse
+    (areaEn/countryCode + totalInventoryNum). Summed across every warehouse
+    CJ has stock in. Returns None (not 0) on any failure so callers can
+    tell "CJ has nothing in stock" apart from "we couldn't ask CJ"."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(f"{CJ_BASE}/product/stock/queryByVid", params={"vid": vid}, headers={"CJ-Access-Token": token})
+        data = r.json()
+        if not data.get("result"):
+            print(f"[CJ STOCK] vid={vid} lookup failed: {data.get('message')}", flush=True)
+            return None
+        return sum(int(area.get("totalInventoryNum") or 0) for area in (data.get("data") or []))
+    except Exception as e:
+        print(f"[CJ STOCK] vid={vid} error: {e}", flush=True)
+        return None
 PRINTFUL_BASE = "https://api.printful.com"
 
 # Dropship suppliers forward an order to be picked, packed and shipped from
@@ -443,6 +464,7 @@ async def cj_shipping_estimate(
         raise HTTPException(status_code=502, detail=f"CJ API error: {str(e)}")
 
     if not data.get("result"):
+        print(f"[CJ FREIGHT] shop={shop_id} product={product_id} vid={link.supplier_sku} dest={country_code} failed: {data}", flush=True)
         raise HTTPException(status_code=502, detail=data.get("message", "CJ could not calculate shipping for this destination."))
 
     options = []
@@ -452,6 +474,12 @@ async def cj_shipping_estimate(
             "price": float(opt.get("logisticPrice") or opt.get("price") or 0),
             "days": opt.get("logisticAging") or opt.get("aging") or None,
         })
+
+    if not options:
+        # Confirmed against a real CJ account: CJ legitimately returns
+        # result=true, data=[] for products it has no configured logistics
+        # channel for to a given destination — not an ExiusCart-side bug.
+        print(f"[CJ FREIGHT] shop={shop_id} product={product_id} vid={link.supplier_sku} dest={country_code} — CJ returned zero logistics options (genuine CJ-side gap, not an error).", flush=True)
 
     return {"options": options, "product_cost": float(link.cost_price or 0)}
 
@@ -619,6 +647,8 @@ async def cj_import_product(
     primary_variant = variants[0] if variants else {}
     variant_vid = primary_variant.get("vid")
 
+    stock = await _cj_fetch_stock(variant_vid, token) if variant_vid else None
+
     cost = _parse_cj_price(p.get("sellPrice") or p.get("suggestSellPrice") or primary_variant.get("variantSellPrice"))
     # CJ always quotes in USD — cost_price below intentionally stays in USD
     # (it's a supplier-cost reference, not something a buyer sees), but the
@@ -640,7 +670,7 @@ async def cj_import_product(
         price=price,
         cost_price=cost,
         sku=p.get("productSku") or body.cj_pid[:50],
-        quantity=0,
+        quantity=stock if stock is not None else 0,
         low_stock_threshold=5,
         slug=generate_slug(name),
     )
@@ -672,6 +702,8 @@ async def cj_import_product(
 
     if not variant_vid:
         logger.warning(f"[CJ Import] shop={shop_id} product={product.id} cj_pid={body.cj_pid} — no variants returned, order fulfillment will fail until a supplier SKU is set manually.")
+    elif stock is None:
+        logger.warning(f"[CJ Import] shop={shop_id} product={product.id} cj_pid={body.cj_pid} — stock lookup failed, quantity defaulted to 0. Check manually.")
 
     db.commit()
     db.refresh(product)

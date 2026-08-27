@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, CalendarCheck, Clock, User, Phone, Mail, Trash2, Edit2, X } from 'lucide-react';
 import { appointmentsApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
@@ -19,6 +20,7 @@ function fmt(dt: string) {
 }
 
 export default function AppointmentsPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState<string>('');
   const [appointments, setAppointments] = useState<any[]>([]);
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || '1'); }, []);
@@ -70,7 +72,7 @@ export default function AppointmentsPage() {
   };
 
   const del = async (a: any) => {
-    if (!confirm('Delete this appointment?')) return;
+    if (!(await confirm({ title: 'Delete this appointment?', variant: 'destructive' }))) return;
     try { await appointmentsApi.delete(shopId!, a.id); load(); } catch {}
   };
 

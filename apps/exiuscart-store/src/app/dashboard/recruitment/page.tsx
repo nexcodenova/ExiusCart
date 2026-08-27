@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Briefcase, Users, ChevronRight, Trash2, Edit2, X, ArrowRight } from 'lucide-react';
 import { recruitmentApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const STAGES = ['new', 'screening', 'interview', 'offer', 'hired', 'rejected'];
 const STAGE_COLORS: Record<string, string> = {
@@ -16,6 +17,7 @@ const STAGE_COLORS: Record<string, string> = {
 const EMP_TYPES = ['full_time', 'part_time', 'contract', 'internship'];
 
 export default function RecruitmentPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState<string>('');
   const [tab, setTab] = useState<'jobs' | 'applicants'>('jobs');
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || '1'); }, []);
@@ -63,7 +65,7 @@ export default function RecruitmentPage() {
   };
 
   const delJob = async (j: any) => {
-    if (!confirm(`Delete job "${j.title}"?`)) return;
+    if (!(await confirm({ title: `Delete job "${j.title}"?`, variant: 'destructive' }))) return;
     try { await recruitmentApi.deleteJob(shopId!, j.id); load(); } catch {}
   };
 
@@ -83,7 +85,7 @@ export default function RecruitmentPage() {
   };
 
   const delApplicant = async (a: any) => {
-    if (!confirm('Delete applicant?')) return;
+    if (!(await confirm({ title: 'Delete applicant?', variant: 'destructive' }))) return;
     try { await recruitmentApi.deleteApplicant(shopId!, a.id); load(); } catch {}
   };
 

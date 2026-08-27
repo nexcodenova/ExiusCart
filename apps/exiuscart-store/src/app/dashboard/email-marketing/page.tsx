@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { marketingApi, usageApi } from '@/lib/api';
 import { EMPTY_EMAIL_FIELDS, EMAIL_FONTS, BUTTON_SHAPES, buildEmailHtml } from '@/lib/email-builder';
 import { RichTextEditor } from '@/components/rich-text-editor';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -16,6 +17,7 @@ const STATUS_COLORS: Record<string, string> = {
 const EMPTY = { name: '', subject: '', ...EMPTY_EMAIL_FIELDS };
 
 export default function EmailMarketingPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,7 +115,7 @@ export default function EmailMarketingPage() {
   };
 
   const deleteTemplate = async (id: number) => {
-    if (!confirm('Delete this template?')) return;
+    if (!(await confirm({ title: 'Delete this template?', variant: 'destructive' }))) return;
     try { await marketingApi.deleteEmailTemplate(shopId, id); load(); } catch {}
   };
 
@@ -160,7 +162,7 @@ export default function EmailMarketingPage() {
   };
 
   const del = async (c: any) => {
-    if (!confirm('Delete this campaign?')) return;
+    if (!(await confirm({ title: 'Delete this campaign?', variant: 'destructive' }))) return;
     try { await marketingApi.deleteEmailCampaign(shopId, c.id); load(); } catch {}
   };
 

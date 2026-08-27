@@ -7,6 +7,7 @@ import {
   AlertCircle, RefreshCw, CheckCircle, XCircle, Clock,
 } from 'lucide-react';
 import { wholesaleApi, subscriptionApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function WholesalePage() {
+  const confirm = useConfirm();
   const { fmt, baseSym } = useCurrency();
   const [shopId, setShopId] = useState('');
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
@@ -163,7 +165,7 @@ export default function WholesalePage() {
   };
 
   const deleteProduct = async (id: number) => {
-    if (!confirm('Delete this wholesale product?')) return;
+    if (!(await confirm({ title: 'Delete this wholesale product?', variant: 'destructive' }))) return;
     try { await wholesaleApi.deleteProduct(shopId, id); loadAll(); } catch {}
   };
 
@@ -193,7 +195,7 @@ export default function WholesalePage() {
   };
 
   const deleteBuyer = async (id: number) => {
-    if (!confirm('Remove this buyer? Their catalogue link will stop working.')) return;
+    if (!(await confirm({ title: 'Remove this buyer?', description: 'Their catalogue link will stop working.', variant: 'destructive' }))) return;
     try { await wholesaleApi.deleteBuyer(shopId, id); loadAll(); } catch {}
   };
 

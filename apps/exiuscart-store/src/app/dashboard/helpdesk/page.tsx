@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Ticket, CheckCircle, Clock, AlertCircle, Trash2, Edit2, X } from 'lucide-react';
 import { helpdeskApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const STATUS_COLORS: Record<string, string> = {
   open: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
@@ -19,6 +20,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 const EMPTY = { subject: '', description: '', customer_name: '', customer_email: '', customer_phone: '', priority: 'normal', assigned_to: '' };
 
 export default function HelpdeskPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState<string>('');
   const [tickets, setTickets] = useState<any[]>([]);
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || '1'); }, []);
@@ -60,7 +62,7 @@ export default function HelpdeskPage() {
   };
 
   const del = async (t: any) => {
-    if (!confirm('Delete this ticket?')) return;
+    if (!(await confirm({ title: 'Delete this ticket?', variant: 'destructive' }))) return;
     try { await helpdeskApi.deleteTicket(shopId!, t.id); load(); } catch {}
   };
 

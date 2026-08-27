@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -271,6 +272,7 @@ function ApiKeyModal({ supplier, shopId, onConnected, onClose }: {
 function SupplierCard({ supplier, shopId, plan, onRefresh }: {
   supplier: Supplier; shopId: string; plan: string; onRefresh: () => void;
 }) {
+  const confirm = useConfirm();
   const [showModal, setShowModal] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [togglingAuto, setTogglingAuto] = useState(false);
@@ -292,7 +294,7 @@ function SupplierCard({ supplier, shopId, plan, onRefresh }: {
   };
 
   const disconnect = async () => {
-    if (!confirm(`Disconnect ${supplier.name}? Pending orders will not be affected.`)) return;
+    if (!(await confirm({ title: `Disconnect ${supplier.name}?`, description: 'Pending orders will not be affected.', variant: 'destructive' }))) return;
     setDisconnecting(true);
     try {
       await dropshipApi.disconnect(shopId, supplier.supplier_type);

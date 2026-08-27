@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Truck, Wrench, Trash2, Edit2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { fleetApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
@@ -16,6 +17,7 @@ const EMPTY_V = { name: '', make: '', model: '', year: '', plate_number: '', vin
 const EMPTY_S = { service_type: '', service_date: '', mileage_at_service: '', cost: '0', provider: '', notes: '' };
 
 export default function FleetPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState<string>('');
   const { fmt } = useCurrency();
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || '1'); }, []);
@@ -72,7 +74,7 @@ export default function FleetPage() {
   };
 
   const delVehicle = async (v: any) => {
-    if (!confirm(`Delete vehicle "${v.name}"?`)) return;
+    if (!(await confirm({ title: `Delete vehicle "${v.name}"?`, variant: 'destructive' }))) return;
     try { await fleetApi.deleteVehicle(shopId!, v.id); load(); } catch {}
   };
 

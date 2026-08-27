@@ -8,6 +8,7 @@ import {
   Clock, Mail, AlertCircle, Printer, Bell, Loader2, MessageCircle, Link, Copy,
 } from 'lucide-react';
 import { quotationsApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface Quotation {
   id: number;
@@ -53,6 +54,7 @@ const STATUS_STYLES: Record<string, string> = {
 export default function QuotationDetailPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+  const confirm = useConfirm();
 
   const [quote, setQuote] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,7 @@ export default function QuotationDetailPage() {
 
   const handleDelete = async () => {
     if (!quote) return;
-    if (!confirm(`Delete quotation ${quote.quote_number}? This cannot be undone.`)) return;
+    if (!(await confirm({ title: `Delete quotation ${quote.quote_number}?`, description: 'This cannot be undone.', variant: 'destructive' }))) return;
     setDeleting(true);
     try {
       await quotationsApi.delete(shopId, quote.id);

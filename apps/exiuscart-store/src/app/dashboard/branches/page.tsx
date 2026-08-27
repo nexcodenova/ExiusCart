@@ -6,6 +6,7 @@ import {
   MapPin, Phone, User, CheckCircle, Star,
 } from 'lucide-react';
 import { branchApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface Branch {
   id: number;
@@ -24,6 +25,7 @@ const emptyForm = {
 };
 
 export default function BranchesPage() {
+  const confirm = useConfirm();
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ export default function BranchesPage() {
 
   async function deleteBranch(b: Branch) {
     if (b.is_main) return;
-    if (!confirm(`Delete branch "${b.name}"? This cannot be undone.`)) return;
+    if (!(await confirm({ title: `Delete branch "${b.name}"?`, description: 'This cannot be undone.', variant: 'destructive' }))) return;
     try {
       await branchApi.delete(shopId, b.id);
       setBranches(prev => prev.filter(x => x.id !== b.id));

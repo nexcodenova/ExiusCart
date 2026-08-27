@@ -8,6 +8,7 @@ import { Header } from '@/components/layout/header';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { TrialBanner } from '@/components/layout/trial-banner';
 import { CurrencyProvider } from '@/components/providers/currency-provider';
+import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 import { applyBrandColor } from '@/lib/brand-color';
 
 // Only page an expired trial can still reach — everywhere else (Quotations,
@@ -107,24 +108,26 @@ export default function DashboardLayout({
 
   return (
     <CurrencyProvider>
-      <div className="min-h-screen bg-background">
-        <ShopSidebar
-          collapsed={sidebarCollapsed}
-          onCollapsedChange={setSidebarCollapsed}
-          mobileOpen={mobileMenuOpen}
-          onMobileClose={() => {}}
-        />
-        <div
-          className={`min-h-screen transition-all duration-300 pb-20 lg:pb-0 ${
-            sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
-          }`}
-        >
-          <Header onMenuClick={() => {}} />
-          <TrialBanner />
-          <main className="p-4 lg:p-6">{children}</main>
+      <ConfirmProvider>
+        <div className="min-h-screen bg-background">
+          <ShopSidebar
+            collapsed={sidebarCollapsed}
+            onCollapsedChange={setSidebarCollapsed}
+            mobileOpen={mobileMenuOpen}
+            onMobileClose={() => {}}
+          />
+          <div
+            className={`min-h-screen transition-all duration-300 pb-20 lg:pb-0 ${
+              sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+            }`}
+          >
+            <Header onMenuClick={() => {}} />
+            <TrialBanner />
+            <main className="p-4 lg:p-6">{children}</main>
+          </div>
+          <MobileBottomNav />
         </div>
-        <MobileBottomNav />
-      </div>
+      </ConfirmProvider>
     </CurrencyProvider>
   );
 }

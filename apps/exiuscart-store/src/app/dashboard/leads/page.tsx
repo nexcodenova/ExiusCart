@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Target, Trash2, Edit2, X, Loader2, ChevronDown, Search, Copy, Check as CheckIcon, Zap, Instagram, Facebook, Flame, TrendingUp, Snowflake, ArrowUpDown, SortAsc, Info, GitBranch } from 'lucide-react';
 import Link from 'next/link';
 import { leadsApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const STATUSES = ['new', 'contacted', 'qualified', 'converted', 'lost'] as const;
 const SOURCES  = ['manual', 'website', 'google_ads', 'meta_ads', 'whatsapp', 'referral', 'other'] as const;
@@ -39,6 +40,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function LeadsPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
   const [leads, setLeads] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
@@ -126,7 +128,7 @@ export default function LeadsPage() {
   };
 
   const del = async (l: any) => {
-    if (!confirm('Delete this lead?')) return;
+    if (!(await confirm({ title: 'Delete this lead?', variant: 'destructive' }))) return;
     try { await leadsApi.delete(shopId, l.id); load(); } catch {}
   };
 

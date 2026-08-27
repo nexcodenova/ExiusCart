@@ -6,6 +6,7 @@ import {
   Calendar, ChevronDown, Search, RotateCcw,
 } from 'lucide-react';
 import { recurringInvoicesApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface RItem { name: string; qty: number; unit_price: number; total: number; }
@@ -36,6 +37,7 @@ const FREQ_COLOR: Record<string, string> = {
 };
 
 export default function RecurringInvoicesPage() {
+  const confirm = useConfirm();
   const [items, setItems] = useState<RecurringInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -84,7 +86,7 @@ export default function RecurringInvoicesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this recurring invoice? This cannot be undone.')) return;
+    if (!(await confirm({ title: 'Delete this recurring invoice?', description: 'This cannot be undone.', variant: 'destructive' }))) return;
     setDeletingId(id);
     try {
       await recurringInvoicesApi.delete(shopId, id);

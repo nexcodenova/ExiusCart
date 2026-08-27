@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Truck, Loader2, Trash2, CheckCircle2, ExternalLink, Calculator, ChevronDown } from 'lucide-react';
 import { dropshipApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import Link from 'next/link';
 
 interface SupplierLink {
@@ -167,6 +168,7 @@ export function ProductShippingCostPreview({ shopId, productId }: Props) {
 }
 
 export function DropshipSupplierSection({ shopId, productId }: Props) {
+  const confirm = useConfirm();
   const [connectedSuppliers, setConnectedSuppliers] = useState<string[]>([]);
   const [links, setLinks] = useState<SupplierLink[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,7 +219,7 @@ export function DropshipSupplierSection({ shopId, productId }: Props) {
   };
 
   const remove = async (type: string) => {
-    if (!confirm(`Remove the ${SUPPLIER_LABELS[type] ?? type} link for this product?`)) return;
+    if (!(await confirm({ title: `Remove the ${SUPPLIER_LABELS[type] ?? type} link for this product?`, variant: 'destructive' }))) return;
     setRemovingId(type);
     try {
       await dropshipApi.removeProductLink(shopId, String(productId), type);

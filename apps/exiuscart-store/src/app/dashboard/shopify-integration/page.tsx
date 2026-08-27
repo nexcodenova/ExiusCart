@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { ShoppingBag, Link, Link2Off, RefreshCw, Package, ShoppingCart, BarChart2, CheckCircle, XCircle, AlertCircle, Settings, X, ExternalLink, Zap, FormInput, ArrowRight } from 'lucide-react';
 import { shopifyApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -13,6 +14,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ShopifyIntegrationPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export default function ShopifyIntegrationPage() {
   };
 
   const disconnect = async () => {
-    if (!confirm('Disconnect your Shopify store? Sync will stop but existing data remains.')) return;
+    if (!(await confirm({ title: 'Disconnect your Shopify store?', description: 'Sync will stop but existing data remains.', variant: 'destructive' }))) return;
     try { await shopifyApi.disconnect(shopId); load(); } catch {}
   };
 

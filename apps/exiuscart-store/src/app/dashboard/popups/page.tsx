@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2, Plus, X, Trash2, ToggleLeft, ToggleRight, Copy, Check, Sparkles, Eye, MousePointerClick } from 'lucide-react';
 import { popupsApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -182,6 +183,7 @@ function EmbedCodeBox({ shopId }: { shopId: string }) {
 }
 
 export default function PopupsPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
   const [popups, setPopups] = useState<Popup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,7 +210,7 @@ export default function PopupsPage() {
   };
 
   const remove = async (id: number) => {
-    if (!confirm('Delete this popup?')) return;
+    if (!(await confirm({ title: 'Delete this popup?', variant: 'destructive' }))) return;
     setActingId(id);
     try { await popupsApi.remove(shopId, id); load(); } finally { setActingId(null); }
   };

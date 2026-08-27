@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, FolderOpen, CheckSquare, Trash2, Edit2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { projectsApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const PROJECT_STATUS = ['planning', 'in_progress', 'on_hold', 'completed', 'cancelled'];
 const TASK_STAGES = ['todo', 'in_progress', 'review', 'done'];
@@ -22,6 +23,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export default function ProjectsPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState<string>('');
   const [projects, setProjects] = useState<any[]>([]);
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || '1'); }, []);
@@ -73,7 +75,7 @@ export default function ProjectsPage() {
   };
 
   const delProject = async (p: any) => {
-    if (!confirm(`Delete project "${p.name}"?`)) return;
+    if (!(await confirm({ title: `Delete project "${p.name}"?`, variant: 'destructive' }))) return;
     try { await projectsApi.deleteProject(shopId!, p.id); load(); } catch {}
   };
 

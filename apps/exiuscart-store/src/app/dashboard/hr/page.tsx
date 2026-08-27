@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { hrApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   Users, DollarSign, Calendar, Plus, Edit2, Trash2,
   CheckCircle, XCircle, Clock, Play, CreditCard, ChevronDown, ChevronUp,
@@ -35,6 +36,7 @@ const EMPTY_EMP = (defaultCurrency = 'AED') => ({
 });
 
 export default function HRPage() {
+  const confirm = useConfirm();
   const [tab, setTab] = useState<Tab>('employees');
   const [shopId, setShopId] = useState<string>('');
   const { currency, fmt } = useCurrency();
@@ -143,7 +145,7 @@ export default function HRPage() {
     setEmpSaving(false);
   }
   async function terminateEmployee(empId: number) {
-    if (!confirm('Mark this employee as terminated?')) return;
+    if (!(await confirm({ title: 'Mark this employee as terminated?', variant: 'destructive' }))) return;
     try {
       await hrApi.deleteEmployee(shopId, empId);
       loadEmployees();

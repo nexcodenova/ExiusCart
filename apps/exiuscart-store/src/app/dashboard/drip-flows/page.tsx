@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { dripFlowsApi, leadsApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -183,6 +184,7 @@ function defaultConfig(type: StepType): Record<string, any> {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function DripFlowsPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
   const [flows, setFlows] = useState<DripFlow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -253,7 +255,7 @@ export default function DripFlowsPage() {
   };
 
   const del = async (id: number) => {
-    if (!confirm('Delete this drip flow? All enrollments will be removed.')) return;
+    if (!(await confirm({ title: 'Delete this drip flow?', description: 'All enrollments will be removed.', variant: 'destructive' }))) return;
     try { await dripFlowsApi.delete(shopId, id); load(); } catch {}
   };
 

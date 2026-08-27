@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Edit2, X } from 'lucide-react';
 import { attendanceApi, hrApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const STATUS_COLORS: Record<string, string> = {
   present: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
@@ -20,6 +21,7 @@ function monthStr() { return new Date().toISOString().slice(0, 7); }
 const EMPTY_FORM = { employee_id: '', date: todayStr(), status: 'present', check_in: '', check_out: '', notes: '' };
 
 export default function AttendancePage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState<string>('');
   const [records, setRecords] = useState<any[]>([]);
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || '1'); }, []);
@@ -67,7 +69,7 @@ export default function AttendancePage() {
   };
 
   const del = async (r: any) => {
-    if (!confirm('Delete this record?')) return;
+    if (!(await confirm({ title: 'Delete this record?', variant: 'destructive' }))) return;
     try { await attendanceApi.delete(shopId!, r.id); load(); } catch {}
   };
 

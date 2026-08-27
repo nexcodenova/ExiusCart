@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, ChevronLeft, ChevronRight, Calendar, MapPin, Globe, Trash2, Edit2, X, Loader2 } from 'lucide-react';
 import { marketingApi } from '@/lib/api';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -23,6 +24,7 @@ const DOT_COLORS: Record<string, string> = {
 const EMPTY = { title: '', description: '', location: '', start_date: '', end_date: '', capacity: '', is_online: false, meeting_url: '' };
 
 export default function EventsPage() {
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +109,7 @@ export default function EventsPage() {
 
   const del = async (e: any, ev: React.MouseEvent) => {
     ev.stopPropagation();
-    if (!confirm('Delete this event?')) return;
+    if (!(await confirm({ title: 'Delete this event?', variant: 'destructive' }))) return;
     try { await marketingApi.deleteEvent(shopId, e.id); load(); } catch {}
   };
 

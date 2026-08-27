@@ -35,6 +35,11 @@ class ShopUpdate(BaseModel):
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
     currency: Optional[str] = None
+    # Relabels every stored price's currency without converting the numbers
+    # themselves — a deliberate correction tool for a shop whose prices were
+    # always meant to be read in a different currency than what got locked
+    # in at signup, not a display preference (see `currency` above for that).
+    base_currency: Optional[str] = None
     storefront_currency: Optional[str] = None
     vat_enabled: Optional[bool] = None
     vat_rate: Optional[float] = None
