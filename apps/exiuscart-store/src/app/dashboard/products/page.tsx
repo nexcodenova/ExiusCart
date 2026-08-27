@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Plus, Search, Edit, Trash2, Package, X, ChevronDown,
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
@@ -111,6 +111,7 @@ interface QuantityTierValue {
 
 export default function ProductsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { fmt, fmtBase } = useCurrency();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>(DEFAULT_CATEGORIES);
@@ -167,6 +168,20 @@ export default function ProductsPage() {
   }, [shopId, searchQuery]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  // Jump straight into editing a product from elsewhere (e.g. the "Edit
+  // product" link right after a dropship import) via ?edit={id} — this page
+  // only ever edits through the modal, there's no /products/{id} route.
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (!editId || products.length === 0) return;
+    const match = products.find((p) => String(p.id) === editId);
+    if (match) {
+      setEditingProduct(match);
+      setShowAddModal(true);
+      router.replace('/dashboard/products');
+    }
+  }, [searchParams, products, router]);
 
   useEffect(() => {
     if (!shopId) return;
@@ -1215,6 +1230,11 @@ function ProductModal({
   // to this one channel, same reasoning as everywhere else in this file:
   // eBay/Daraz/Noon each only make sense for their own channel's section.
   const [customCategories, setCustomCategories] = useState<{ id: number; name: string; parent_id: number | null }[]>([]);
+  // A product can be filed under more than one category on your own
+  // website — unlike TheDersi/Daraz/eBay, which only ever allow one
+  // (their own platform's rule, not ours), so this is kept separate from
+  // otherChannels.custom.categoryId/categoryName above.
+  const [customSelectedCategories, setCustomSelectedCategories] = useState<{ id: string; name: string }[]>([]);
   const [customFieldDefs, setCustomFieldDefs] = useState<CustomProductField[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>(p?.custom_field_values ?? {});
 
@@ -1448,10 +1468,17 @@ function ProductModal({
                       ...prev.custom,
                       enabled: entry.is_listed ?? true,
                       isGift: entry.is_gift ?? false,
-                      categoryId: entry.channel_category_id ?? '',
-                      categoryName: entry.channel_category_name ?? '',
                     },
                   }));
+                  // Prefer the real multi-category list; fall back to the
+                  // old single field for a product not yet re-saved since
+                  // multi-category shipped.
+                  const cats = (entry.categories ?? []).length > 0
+                    ? entry.categories
+                    : entry.channel_category_id
+                    ? [{ id: entry.channel_category_id, name: entry.channel_category_name ?? '' }]
+                    : [];
+                  setCustomSelectedCategories(cats);
                 }
               }
               if (ebay) {
@@ -1790,8 +1817,7 @@ function ProductModal({
           channel_connection_id: customWebsiteConnection.id,
           is_listed: otherChannels.custom.enabled,
           is_gift: otherChannels.custom.isGift,
-          channel_category_id: otherChannels.custom.categoryId || undefined,
-          channel_category_name: otherChannels.custom.categoryName || undefined,
+          categories: customSelectedCategories.map((c) => ({ id: c.id, name: c.name })),
         }).catch(() => {}));
       }
 
@@ -2938,25 +2964,46 @@ function ProductModal({
 
                       {customCategoryOptions.length > 0 && (
                         <div>
-                          <Label className="text-xs mb-1 block">Category on your website</Label>
-                          <Select
-                            value={otherChannels.custom.categoryId || '__none'}
-                            onValueChange={(v) => {
-                              const opt = customCategoryOptions.find((c) => String(c.id) === v);
-                              setOtherChannels((prev) => ({
-                                ...prev,
-                                custom: { ...prev.custom, categoryId: v === '__none' ? '' : v, categoryName: opt?.label.replace(/— /g, '') ?? '' },
-                              }));
-                            }}
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none">No category</SelectItem>
-                              {customCategoryOptions.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.label}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <Label className="text-xs mb-1 block">Categories on your website</Label>
+                          <p className="text-xs text-muted-foreground mb-1.5">A product can belong to more than one category here.</p>
+                          {customSelectedCategories.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mb-1.5">
+                              {customSelectedCategories.map((c) => (
+                                <span key={c.id} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-primary/10 text-primary text-xs">
+                                  {c.name}
+                                  <button
+                                    type="button"
+                                    onClick={() => setCustomSelectedCategories((prev) => prev.filter((x) => x.id !== c.id))}
+                                    className="hover:bg-primary/20 rounded-full p-0.5"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="border border-border rounded-lg max-h-40 overflow-y-auto bg-muted">
+                            {customCategoryOptions.map((c) => {
+                              const checked = customSelectedCategories.some((x) => x.id === String(c.id));
+                              return (
+                                <label key={c.id} className="flex items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-card cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      const name = c.label.replace(/— /g, '');
+                                      setCustomSelectedCategories((prev) =>
+                                        e.target.checked
+                                          ? [...prev, { id: String(c.id), name }]
+                                          : prev.filter((x) => x.id !== String(c.id))
+                                      );
+                                    }}
+                                  />
+                                  <span className="text-foreground">{c.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
 

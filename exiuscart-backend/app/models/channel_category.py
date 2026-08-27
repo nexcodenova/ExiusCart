@@ -49,3 +49,23 @@ class ProductChannelCategory(Base):
     __table_args__ = (
         UniqueConstraint("product_id", "channel_connection_id", name="uq_product_conn_cat"),
     )
+
+
+class ProductStorefrontCategory(Base):
+    """Multiple categories per product, for the Custom Website channel only.
+    TheDersi/Daraz/eBay are locked to exactly one category per listing by
+    their own platform's rules (ProductChannelCategory.channel_category_id
+    above stays the single-value source of truth for those) — a seller's
+    own website has no such external constraint, so a product can be filed
+    under more than one category here."""
+    __tablename__ = "product_storefront_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    channel_connection_id = Column(Integer, ForeignKey("channel_connections.id"), nullable=False)
+    category_id = Column(String(100), nullable=False)
+    category_name = Column(Text, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("product_id", "channel_connection_id", "category_id", name="uq_product_conn_storefront_cat"),
+    )

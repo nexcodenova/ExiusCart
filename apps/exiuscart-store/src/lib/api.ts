@@ -629,6 +629,7 @@ export const channelsApi = {
     channel_category_id?: string;
     channel_category_name?: string;
     field_values?: Record<string, string>;
+    categories?: { id: string; name: string }[];
   }) => api.put(`/shops/${shopId}/products/${productId}/channel-category`, data),
   disconnectChannel: (shopId: string, channelId: number) =>
     api.delete(`/shops/${shopId}/channels/${channelId}`),

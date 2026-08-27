@@ -41,7 +41,12 @@ class DropshipProductLink(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     supplier_type = Column(String(20), nullable=False)
     supplier_product_id = Column(String(255), nullable=True)    # CJ product ID
-    supplier_product_url = Column(String(1000), nullable=True)  # CJ URL pasted by seller
+    # Text, not a bounded VARCHAR — a real AliExpress "copy link" URL carries
+    # huge tracking query params (spm=, gps-id=, utparam-url=, ...) that blew
+    # past the original 1000-char cap and threw a hard 500 on import. Same
+    # underlying reason channel_categories.name and access_token columns
+    # were widened elsewhere in this codebase.
+    supplier_product_url = Column(Text, nullable=True)  # CJ/AliExpress URL pasted by seller
     supplier_sku = Column(String(255), nullable=True)           # specific variant SKU
     supplier_product_name = Column(String(500), nullable=True)  # snapshot from CJ
     cost_price = Column(Numeric(10, 2), nullable=True)

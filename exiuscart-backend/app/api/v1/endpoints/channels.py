@@ -38,7 +38,7 @@ from app.models.order import Order, OrderItem
 from app.models.customer import Customer
 from app.models.channel_order_meta import ChannelOrderMeta
 from app.models.channel_product_status import ChannelProductStatus
-from app.models.channel_category import ChannelCategory, ProductChannelCategory
+from app.models.channel_category import ChannelCategory, ProductChannelCategory, ProductStorefrontCategory
 from app.models.product_variant import ProductVariant
 from app.models.bundle_component import BundleComponent
 from app.models.subscription import Subscription
@@ -1457,6 +1457,12 @@ class SetProductChannelCategory(BaseModel):
     channel_category_id: Optional[str] = None
     channel_category_name: Optional[str] = None
     field_values: Optional[Dict[str, str]] = None
+    # Custom Website only — a product can be filed under more than one
+    # category there, unlike TheDersi/Daraz/eBay which are locked to exactly
+    # one by their own platform. None = leave existing categories untouched
+    # (so other channels' saves, which never send this, can't wipe it);
+    # an empty list explicitly clears all categories.
+    categories: Optional[List[Dict[str, str]]] = None
 
 
 @router.put("/shops/{shop_id}/products/{product_id}/channel-category")
@@ -1505,6 +1511,23 @@ def set_product_channel_category(
             channel_category_name=data.channel_category_name,
             channel_field_values=data.field_values,
         ))
+
+    if data.categories is not None:
+        db.query(ProductStorefrontCategory).filter(
+            ProductStorefrontCategory.product_id == product_id,
+            ProductStorefrontCategory.channel_connection_id == data.channel_connection_id,
+        ).delete()
+        for cat in data.categories:
+            cat_id = cat.get("id")
+            if not cat_id:
+                continue
+            db.add(ProductStorefrontCategory(
+                product_id=product_id,
+                channel_connection_id=data.channel_connection_id,
+                category_id=cat_id,
+                category_name=cat.get("name"),
+            ))
+
     db.commit()
 
     if data.is_listed:
@@ -1657,6 +1680,17 @@ def get_all_product_channel_categories(
         .filter(Product.shop_id == shop_id)
         .all()
     )
+    storefront_rows = (
+        db.query(ProductStorefrontCategory)
+        .join(Product, Product.id == ProductStorefrontCategory.product_id)
+        .filter(Product.shop_id == shop_id)
+        .all()
+    )
+    storefront_by_key: dict = {}
+    for sc in storefront_rows:
+        key = (sc.product_id, sc.channel_connection_id)
+        storefront_by_key.setdefault(key, []).append({"id": sc.category_id, "name": sc.category_name})
+
     result: dict = {}
     for r, channel_type in rows:
         pid = str(r.product_id)
@@ -1668,6 +1702,10 @@ def get_all_product_channel_categories(
             "is_gift": r.is_gift,
             "channel_category_id": r.channel_category_id,
             "channel_category_name": r.channel_category_name,
+            # Custom Website only — the full multi-category list; every
+            # other channel's entry here is always an empty list, since only
+            # Custom Website can have more than one category per product.
+            "categories": storefront_by_key.get((r.product_id, r.channel_connection_id), []),
         }
     return result
 
@@ -1721,6 +1759,12 @@ def get_product_channel_categories(
     rows = db.query(ProductChannelCategory).filter(
         ProductChannelCategory.product_id == product_id,
     ).all()
+    storefront_rows = db.query(ProductStorefrontCategory).filter(
+        ProductStorefrontCategory.product_id == product_id,
+    ).all()
+    categories_by_conn: dict = {}
+    for sc in storefront_rows:
+        categories_by_conn.setdefault(sc.channel_connection_id, []).append({"id": sc.category_id, "name": sc.category_name})
     return [
         {
             "channel_connection_id": r.channel_connection_id,
@@ -1729,6 +1773,8 @@ def get_product_channel_categories(
             "channel_category_id": r.channel_category_id,
             "channel_category_name": r.channel_category_name,
             "channel_field_values": r.channel_field_values or {},
+            # Custom Website only — see SetProductChannelCategory.categories.
+            "categories": categories_by_conn.get(r.channel_connection_id, []),
         }
         for r in rows
     ]

@@ -1442,11 +1442,14 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
             elif "size" in pname:
                 size = pvalue
         # offer_sale_price is the real, current price a customer pays;
-        # sku_price is AliExpress's own "Origin SKU price" — the pre-
-        # discount reference number. sku_price was being read first, which
-        # is almost always present, so the pre-discount price was silently
-        # imported instead of the real one. Fixed to prefer the real price.
-        price = float(sku.get("offer_sale_price") or sku.get("sku_price") or sku.get("sku_available_price") or 0)
+        # offer_bulk_sale_price is the same kind of real, actually-charged
+        # price (for bulk quantity) — tried next since it's still a real
+        # price, not a reference one. sku_price is AliExpress's own "Origin
+        # SKU price" — the pre-discount reference number, only used as a
+        # last resort since it was never the real charged amount. (Was
+        # reading sku_price first, which is almost always present, so the
+        # pre-discount price was silently imported instead of the real one.)
+        price = float(sku.get("offer_sale_price") or sku.get("offer_bulk_sale_price") or sku.get("sku_price") or 0)
         if not sku_currency:
             sku_currency = sku.get("currency_code")
         variants.append({

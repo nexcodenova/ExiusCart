@@ -465,7 +465,7 @@ export default function ImportProductsPage() {
                 <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
                 <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
               </div>
-              <Link href={`/dashboard/products/${importedId.id}`}
+              <Link href={`/dashboard/products?edit=${importedId.id}`}
                 className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
                 Edit product <ChevronRight className="w-3.5 h-3.5" />
               </Link>
@@ -525,7 +525,7 @@ export default function ImportProductsPage() {
                 <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
                 <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
               </div>
-              <Link href={`/dashboard/products/${importedId.id}`}
+              <Link href={`/dashboard/products?edit=${importedId.id}`}
                 className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
                 Edit product <ChevronRight className="w-3.5 h-3.5" />
               </Link>
@@ -634,7 +634,7 @@ export default function ImportProductsPage() {
             <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
             <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
           </div>
-          <Link href={`/dashboard/products/${importedId.id}`}
+          <Link href={`/dashboard/products?edit=${importedId.id}`}
             className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
             Edit product <ChevronRight className="w-3.5 h-3.5" />
           </Link>

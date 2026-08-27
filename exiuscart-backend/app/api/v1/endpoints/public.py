@@ -79,7 +79,7 @@ def _ratings_by_product(product_ids: list[int], db: Session) -> dict[int, dict]:
     }
 
 
-def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None, tier_field_id: str | None = None, rating: dict | None = None, source_currency: str = "USD", target_currency: str | None = None) -> dict:
+def _product_out(p: Product, category_id: str | None = None, category_slug: str | None = None, tier_field_id: str | None = None, rating: dict | None = None, source_currency: str = "USD", target_currency: str | None = None, category_ids: list[str] | None = None, category_slugs: list[str] | None = None) -> dict:
     from app.core.currency import convert_amount_sync
     target_currency = target_currency or source_currency
 
@@ -167,12 +167,20 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
             }
             for v in p.variants
         ] if p.variants else [],
+        # Kept as the single primary category (first of category_ids below)
+        # for storefronts built before multi-category existed — still
+        # populated, never removed.
         "category_id": int(category_id) if category_id else None,
         # The real, linkable slug for category_id above (e.g. "electronics-a1b2c3")
         # — resolved here so every storefront gets a working category link/
         # breadcrumb for free, instead of each one having to separately fetch
         # the full category list and look up the id itself.
         "category_slug": category_slug,
+        # Full multi-category assignment — a product can belong to more than
+        # one category on your own website (unlike TheDersi/Daraz/eBay,
+        # which only ever allow one). Same order as category_slugs below.
+        "category_ids": [int(c) for c in (category_ids or [])],
+        "category_slugs": category_slugs or [],
         "quantity_tiers": quantity_tiers,
         # Just the summary (average + count) — full review text/photos come
         # from the dedicated /products/{slug}/reviews endpoint below, so a
@@ -201,7 +209,7 @@ def public_store_products(
 ):
     """No-auth — a custom storefront's product listing reads this directly,
     live, same pattern as public_store_categories above."""
-    from app.models.channel_category import ProductChannelCategory
+    from app.models.channel_category import ProductChannelCategory, ProductStorefrontCategory
     from app.models.storefront_category import StorefrontCategory
     from app.models.custom_product_fields import CustomProductFieldSettings
 
@@ -213,7 +221,7 @@ def public_store_products(
     tier_field_id = next((f["id"] for f in (field_settings.fields if field_settings else []) or [] if f.get("type") == "quantity_tiers"), None)
 
     conn = _custom_connection(shop.id, db)
-    category_map: dict[int, str] = {}
+    category_map: dict[int, list[str]] = {}
     # Opt-in, not opt-out: a product only shows on the storefront if it has
     # an explicit is_listed=True row for this connection. A product that's
     # never been individually opened+saved with Custom Website active (e.g.
@@ -224,17 +232,26 @@ def public_store_products(
 
     if conn:
         listed_ids = set()
+        legacy_category: dict[int, str] = {}
         rows = db.query(ProductChannelCategory).filter(ProductChannelCategory.channel_connection_id == conn.id).all()
         for r in rows:
             if r.is_listed:
                 listed_ids.add(r.product_id)
                 if r.channel_category_id:
-                    category_map[r.product_id] = r.channel_category_id
+                    legacy_category[r.product_id] = r.channel_category_id
+
+        for sr in db.query(ProductStorefrontCategory).filter(ProductStorefrontCategory.channel_connection_id == conn.id).all():
+            category_map.setdefault(sr.product_id, []).append(sr.category_id)
+        # A product not yet re-saved since multi-category shipped only has
+        # the old single-category field — still honored here.
+        for pid, cid in legacy_category.items():
+            category_map.setdefault(pid, [cid])
+
         if category:
             cat = db.query(StorefrontCategory).filter(StorefrontCategory.shop_id == shop.id, StorefrontCategory.slug == category).first()
             if not cat:
                 return []
-            category_filter_ids = {pid for pid, cid in category_map.items() if cid == str(cat.id)}
+            category_filter_ids = {pid for pid, cids in category_map.items() if str(cat.id) in cids}
 
     q = db.query(Product).options(
         selectinload(Product.images), selectinload(Product.videos), selectinload(Product.variants),
@@ -256,7 +273,7 @@ def public_store_products(
     # batch query, so every product in the response carries a working
     # category link — not just the internal id.
     slug_by_cat_id: dict[str, str] = {}
-    referenced_ids = {int(cid) for cid in category_map.values()}
+    referenced_ids = {int(cid) for cids in category_map.values() for cid in cids}
     if referenced_ids:
         cats = db.query(StorefrontCategory).filter(StorefrontCategory.id.in_(referenced_ids)).all()
         slug_by_cat_id = {str(c.id): c.slug for c in cats}
@@ -267,8 +284,10 @@ def public_store_products(
 
     return [
         _product_out(
-            p, category_map.get(p.id), slug_by_cat_id.get(category_map.get(p.id) or ""), tier_field_id,
-            rating=ratings.get(p.id), source_currency=source_currency, target_currency=target_currency,
+            p,
+            (category_map.get(p.id) or [None])[0], slug_by_cat_id.get((category_map.get(p.id) or [""])[0]),
+            tier_field_id, rating=ratings.get(p.id), source_currency=source_currency, target_currency=target_currency,
+            category_ids=category_map.get(p.id) or [], category_slugs=[slug_by_cat_id.get(cid) for cid in (category_map.get(p.id) or []) if slug_by_cat_id.get(cid)],
         )
         for p in products
     ]
@@ -277,7 +296,7 @@ def public_store_products(
 @router.get("/public/store/{shop_slug}/products/{slug}")
 def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends(get_db)):
     """No-auth — single product detail for a storefront's PDP."""
-    from app.models.channel_category import ProductChannelCategory
+    from app.models.channel_category import ProductChannelCategory, ProductStorefrontCategory
     from app.models.storefront_category import StorefrontCategory
     from app.models.custom_product_fields import CustomProductFieldSettings
 
@@ -294,7 +313,7 @@ def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    category_id = None
+    category_ids: list[str] = []
     conn = _custom_connection(shop.id, db)
     if conn:
         pcc = db.query(ProductChannelCategory).filter(
@@ -304,12 +323,21 @@ def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends
         # "never listed," not "assume it's fine to show."
         if not pcc or not pcc.is_listed:
             raise HTTPException(status_code=404, detail="Product not found")
-        category_id = pcc.channel_category_id
 
-    category_slug = None
-    if category_id:
-        cat = db.query(StorefrontCategory).filter(StorefrontCategory.id == int(category_id)).first()
-        category_slug = cat.slug if cat else None
+        storefront_cats = db.query(ProductStorefrontCategory).filter(
+            ProductStorefrontCategory.product_id == product.id, ProductStorefrontCategory.channel_connection_id == conn.id,
+        ).all()
+        category_ids = [sc.category_id for sc in storefront_cats]
+        # A product not yet re-saved since multi-category shipped only has
+        # the old single-category field — still honored here.
+        if not category_ids and pcc.channel_category_id:
+            category_ids = [pcc.channel_category_id]
+
+    category_slugs: list[str] = []
+    if category_ids:
+        cats = db.query(StorefrontCategory).filter(StorefrontCategory.id.in_([int(c) for c in category_ids])).all()
+        slug_by_id = {str(c.id): c.slug for c in cats}
+        category_slugs = [slug_by_id[c] for c in category_ids if c in slug_by_id]
 
     # Raw page-load hits, not unique visitors — every real request to this
     # endpoint is one more view, on purpose (see the view_count column
@@ -321,7 +349,11 @@ def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends
     rating = _ratings_by_product([product.id], db).get(product.id)
     source_currency = shop.base_currency or shop.currency or "USD"
     target_currency = shop.storefront_currency or source_currency
-    return _product_out(product, category_id, category_slug, tier_field_id, rating=rating, source_currency=source_currency, target_currency=target_currency)
+    return _product_out(
+        product, category_ids[0] if category_ids else None, category_slugs[0] if category_slugs else None,
+        tier_field_id, rating=rating, source_currency=source_currency, target_currency=target_currency,
+        category_ids=category_ids, category_slugs=category_slugs,
+    )
 
 
 def _approved_reviews_out(product_id: int, db: Session) -> list[dict]:
