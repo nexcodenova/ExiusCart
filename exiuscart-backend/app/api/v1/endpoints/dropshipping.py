@@ -1271,6 +1271,27 @@ def _parse_aliexpress_product_id(url: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
+def _as_list(val) -> list:
+    """AliExpress's own documented response shape shows array fields
+    (ae_item_sku_info_dtos, ae_sku_property_dtos, etc) as plain JSON arrays,
+    but the TOP gateway convention used everywhere else in this family of
+    APIs wraps them in a {"x_d_t_o": [...]} envelope — and this codebase's
+    earlier wrapped-access assumption did produce real variants without
+    crashing, meaning actual traffic through this app is wrapped. Rather
+    than gamble on which is right, handle both: a real list is used as-is,
+    a dict envelope has its first list value pulled out regardless of the
+    exact wrapper key name."""
+    if val is None:
+        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, dict):
+        for v in val.values():
+            if isinstance(v, list):
+                return v
+    return []
+
+
 def _aliexpress_fetch_product(access_token: str, product_id: str, target_currency: str = "USD") -> dict:
     """
     Fetches full product detail via aliexpress.ds.product.get and
@@ -1281,12 +1302,27 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
     "verify, don't assume" principle as everywhere else currency is
     touched in this codebase (see app/core/currency.py).
 
-    UNVERIFIED — built from AliExpress Dropshipper API's documented
-    aliexpress.ds.product.get response shape, not yet tested against a
-    real response. This is the single most likely place to need fixing
-    once a real product import is attempted — if names/images/variants
-    come back empty, log the raw `data` dict here and adjust the field
-    paths below to match what AliExpress actually sent.
+    Field shapes confirmed 2026-08-27 against AliExpress's own Developer
+    Guide (aliexpress.ds.product.get page, full request/response docs +
+    real JSON example) — no longer a guess:
+      - Price: each SKU carries BOTH sku_price ("Origin SKU price" — the
+        pre-discount reference price) and offer_sale_price ("SKU discount
+        price" — what a customer actually pays). This function was
+        preferring sku_price, which is almost always present, so it was
+        silently importing the pre-discount price instead of the real one.
+        Fixed to prefer offer_sale_price. Per AliExpress's own FAQ on this
+        exact page: page-level flash-sale/banner discounts do NOT apply via
+        the API, so offer_sale_price still may not exactly match a very
+        temporary storefront promotion — that's a real platform limitation,
+        not something fixable on our end.
+      - Currency: there is no top-level result.currency_code at all — it
+        only exists per-SKU (ae_item_sku_info_dtos[].currency_code) and
+        separately on ae_item_base_info_dto.currency_code (which can differ
+        — the docs' own example shows CNY there while the SKU-level one
+        shows USD). Reads the SKU-level one now, since that's what the
+        price numbers are actually denominated in.
+      - Variant images: ae_sku_property_dtos[].sku_image — already correct,
+        confirmed working on a real import.
     """
     data = _aliexpress_signed_request("/sync", {
         "method": "aliexpress.ds.product.get",
@@ -1327,14 +1363,27 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
         or ""
     )
 
+    # AliExpress's own specifications table (Brand, Material, etc) — appended
+    # as a simple list under the description so it shows the same info the
+    # supplier's own product page does, not just the freeform detail HTML.
+    properties = _as_list(result.get("ae_item_properties"))
+    if properties:
+        spec_rows = "".join(
+            f"<li><strong>{p.get('attr_name')}:</strong> {p.get('attr_value')}</li>"
+            for p in properties if p.get("attr_name") and p.get("attr_value")
+        )
+        if spec_rows:
+            description = f"{description}<h4>Specifications</h4><ul>{spec_rows}</ul>"
+
     multimedia = result.get("ae_multimedia_info_dto") or {}
     image_urls_raw = multimedia.get("image_urls") or base_info.get("image_urls") or result.get("image_urls") or ""
     images = [u.strip() for u in image_urls_raw.split(";") if u.strip()]
 
-    sku_list = (result.get("ae_item_sku_info_dtos") or {}).get("ae_item_sku_info_d_t_o") or []
+    sku_list = _as_list(result.get("ae_item_sku_info_dtos"))
     variants = []
+    sku_currency = None
     for sku in sku_list:
-        props = (sku.get("ae_sku_property_dtos") or {}).get("ae_sku_property_d_t_o") or []
+        props = _as_list(sku.get("ae_sku_property_dtos"))
         color = size = None
         variant_image = sku.get("sku_image") or sku.get("ae_sku_image") or None
         for prop in props:
@@ -1345,11 +1394,19 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
                 variant_image = variant_image or prop.get("sku_image")
             elif "size" in pname:
                 size = pvalue
+        # offer_sale_price is the real, current price a customer pays;
+        # sku_price is AliExpress's own "Origin SKU price" — the pre-
+        # discount reference number. sku_price was being read first, which
+        # is almost always present, so the pre-discount price was silently
+        # imported instead of the real one. Fixed to prefer the real price.
+        price = float(sku.get("offer_sale_price") or sku.get("sku_price") or sku.get("sku_available_price") or 0)
+        if not sku_currency:
+            sku_currency = sku.get("currency_code")
         variants.append({
             "sku_id": sku.get("sku_id"),
             "color": color,
             "size": size,
-            "price": float(sku.get("sku_price") or sku.get("offer_sale_price") or sku.get("sku_available_price") or 0),
+            "price": price,
             "quantity": int(sku.get("sku_available_stock") or sku.get("ipm_sku_stock") or 0),
             "image": variant_image,
         })
@@ -1359,7 +1416,11 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
         "description": description,
         "images": images,
         "variants": variants,
-        "currency": result.get("currency_code") or result.get("target_sale_price_currency") or target_currency,
+        # SKU-level currency_code is what the price numbers above are
+        # actually denominated in — there's no reliable top-level currency
+        # field (see docstring above), and ae_item_base_info_dto's own
+        # currency_code can legitimately differ from it.
+        "currency": sku_currency or base_info.get("currency_code") or target_currency,
     }
 
 

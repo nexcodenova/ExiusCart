@@ -2144,8 +2144,11 @@ function ProductModal({
                             <input type="number" value={v.quantity} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, quantity: Number(e.target.value) } : r))} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
                           </div>
                           <div className="col-span-3">
-                            {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Price (blank = default)</label>}
-                            <input type="number" step="0.01" value={v.price} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, price: e.target.value } : r))} placeholder={String(formData.sellingPrice)} className="w-full px-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                            {i === 0 && <label className="text-xs text-muted-foreground mb-1 block">Price ({entrySym}{entryCurrency}, blank = default)</label>}
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{entrySym}</span>
+                              <input type="number" step="0.01" value={v.price} min={0} onChange={(e) => setVariants((arr) => arr.map((r, j) => j === i ? { ...r, price: e.target.value } : r))} placeholder={String(formData.sellingPrice)} className="w-full pl-6 pr-2.5 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none" />
+                            </div>
                           </div>
                           <div className="col-span-1 flex justify-end">
                             {i === 0 && <div className="mb-1 h-4" />}
