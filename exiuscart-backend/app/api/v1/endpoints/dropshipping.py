@@ -15,6 +15,7 @@ import hashlib
 import secrets
 import logging
 import re
+import html
 import httpx
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -1410,8 +1411,12 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
     # supplier's own product page does, not just the freeform detail HTML.
     properties = _as_list(result.get("ae_item_properties"))
     if properties:
+        # attr_value is free text from AliExpress's own catalog and sometimes
+        # contains raw '<'/'>' (e.g. "Flightheight: <120m") — confirmed on a
+        # real import, where it broke every list item after it by starting
+        # what HTML parses as a new tag. Escaped before insertion now.
         spec_rows = "".join(
-            f"<li><strong>{p.get('attr_name')}:</strong> {p.get('attr_value')}</li>"
+            f"<li><strong>{html.escape(str(p.get('attr_name')))}:</strong> {html.escape(str(p.get('attr_value')))}</li>"
             for p in properties if p.get("attr_name") and p.get("attr_value")
         )
         if spec_rows:
