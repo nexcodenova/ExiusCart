@@ -10,6 +10,7 @@ Plan limits:
 
 import os
 import time
+import asyncio
 import hmac
 import hashlib
 import secrets
@@ -66,6 +67,23 @@ SUPPLIER_SIGNUP_LINKS = {
 CJ_BASE = "https://developers.cjdropshipping.com/api2.0/v1"
 
 
+async def _cj_request(client: httpx.AsyncClient, method: str, url: str, **kwargs) -> dict:
+    """CJ enforces a hard 1-request/second limit per account — confirmed
+    live by firing two calls back to back: the second came back with
+    code=1600200 "Too Many Requests, QPS limit is 1 time/1second". A seller
+    browsing normally (search -> open a product -> import) trivially trips
+    this with zero warning, surfacing as a scary "Failed to fetch product
+    from CJ" error for what's really just timing. Retries once after a beat
+    instead of failing outright."""
+    r = await client.request(method, url, **kwargs)
+    data = r.json()
+    if data.get("code") == 1600200:
+        await asyncio.sleep(1.2)
+        r = await client.request(method, url, **kwargs)
+        data = r.json()
+    return data
+
+
 async def _cj_fetch_stock(vid: str, token: str) -> Optional[int]:
     """Real, live warehouse inventory for a CJ variant — confirmed against
     a real connected account: /product/query never returns a usable stock
@@ -76,8 +94,7 @@ async def _cj_fetch_stock(vid: str, token: str) -> Optional[int]:
     tell "CJ has nothing in stock" apart from "we couldn't ask CJ"."""
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.get(f"{CJ_BASE}/product/stock/queryByVid", params={"vid": vid}, headers={"CJ-Access-Token": token})
-        data = r.json()
+            data = await _cj_request(client, "GET", f"{CJ_BASE}/product/stock/queryByVid", params={"vid": vid}, headers={"CJ-Access-Token": token})
         if not data.get("result"):
             print(f"[CJ STOCK] vid={vid} lookup failed: {data.get('message')}", flush=True)
             return None
@@ -312,13 +329,12 @@ async def cj_search_products(
     token = await _cj_ensure_token(conn, db)
 
     async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(f"{CJ_BASE}/product/list", params={
+        data = await _cj_request(client, "GET", f"{CJ_BASE}/product/list", params={
             "productNameEn": q,
             "pageNum": page,
             "pageSize": 20,
         }, headers={"CJ-Access-Token": token})
 
-    data = r.json()
     if not data.get("result"):
         raise HTTPException(status_code=502, detail=f"CJ API error: {data.get('message', 'Unknown error')}")
 
@@ -354,12 +370,11 @@ async def cj_my_products(
     token = await _cj_ensure_token(conn, db)
 
     async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(f"{CJ_BASE}/product/myProduct/query", params={
+        data = await _cj_request(client, "GET", f"{CJ_BASE}/product/myProduct/query", params={
             "pageNum": page,
             "pageSize": 20,
         }, headers={"CJ-Access-Token": token})
 
-    data = r.json()
     if not data.get("result"):
         raise HTTPException(status_code=502, detail=f"CJ API error: {data.get('message', 'Unknown error')}")
 
@@ -395,9 +410,8 @@ async def cj_get_product_detail(
     token = await _cj_ensure_token(conn, db)
 
     async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(f"{CJ_BASE}/product/query", params={"pid": cj_pid}, headers={"CJ-Access-Token": token})
+        data = await _cj_request(client, "GET", f"{CJ_BASE}/product/query", params={"pid": cj_pid}, headers={"CJ-Access-Token": token})
 
-    data = r.json()
     if not data.get("result"):
         raise HTTPException(status_code=502, detail=f"CJ API error: {data.get('message', 'Unknown error')}")
 
@@ -455,12 +469,11 @@ async def cj_shipping_estimate(
 
     try:
         async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.post(f"{CJ_BASE}/logistic/freightCalculate", json={
+            data = await _cj_request(client, "POST", f"{CJ_BASE}/logistic/freightCalculate", json={
                 "startCountryCode": "CN",
                 "endCountryCode": country_code.upper(),
                 "products": [{"vid": link.supplier_sku, "quantity": 1}],
             }, headers={"CJ-Access-Token": token})
-        data = r.json()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"CJ API error: {str(e)}")
 
@@ -631,11 +644,11 @@ async def cj_import_product(
 
     # Fetch full product detail from CJ
     async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(f"{CJ_BASE}/product/query", params={"pid": body.cj_pid}, headers={"CJ-Access-Token": token})
+        cj = await _cj_request(client, "GET", f"{CJ_BASE}/product/query", params={"pid": body.cj_pid}, headers={"CJ-Access-Token": token})
 
-    cj = r.json()
     if not cj.get("result"):
-        raise HTTPException(status_code=502, detail="Failed to fetch product from CJ. Please try again.")
+        print(f"[CJ IMPORT] shop={shop_id} cj_pid={body.cj_pid} fetch failed: {cj}", flush=True)
+        raise HTTPException(status_code=502, detail=cj.get("message") or "Failed to fetch product from CJ. Please try again.")
 
     p = cj.get("data", {})
     name = (p.get("productNameEn") or p.get("productName") or "CJ Product").strip()
