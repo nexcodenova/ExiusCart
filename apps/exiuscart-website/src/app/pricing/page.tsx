@@ -1,13 +1,96 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
+import { Caveat } from 'next/font/google';
 import { ArrowRight, Check, X, ChevronDown, Store, Users2, Puzzle, Headphones } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { pricing } from '@/config/pricing';
 
+const caveat = Caveat({ subsets: ['latin'], weight: ['600', '700'] });
+
 type Period = 'monthly' | 'yearly';
+
+// Hand-drawn marker-style callout — a curved arrow + handwritten note, the
+// "someone scribbled this on the page" pattern used by Tradelle and similar
+// SaaS pricing pages to draw the eye to one specific thing. `flip` mirrors
+// the arrow for callouts pointing the other direction. Hidden below `lg`:
+// there's no room for a floating annotation once cards stack to one column.
+function PencilNote({
+  text, className, rotate = -4, flip = false, direction = 'down', wrap = false, wrapWidth = 190,
+}: { text: string | string[]; className?: string; rotate?: number; flip?: boolean; direction?: 'down' | 'left'; wrap?: boolean; wrapWidth?: number }) {
+  const lines = Array.isArray(text) ? text : [text];
+  // `wrap` trades the single-line layout for a narrow wrapped block — used
+  // where the note has no guaranteed open space beside it (e.g. sitting in
+  // a grid column with no fixed gutter), so it can't rely on screen width.
+  const textEl = (
+    <span
+      className={`${caveat.className} text-2xl leading-snug text-[#6B3FD9] ${wrap ? 'whitespace-normal' : 'whitespace-nowrap'} ${direction === 'down' ? 'text-right' : ''}`}
+      style={{ transform: `rotate(${rotate}deg)`, ...(wrap ? { maxWidth: `${wrapWidth}px` } : {}) }}
+    >
+      {lines.map((line, i) => (
+        <span key={i} className={wrap ? undefined : 'block'}>{wrap ? `${line} ` : line}</span>
+      ))}
+    </span>
+  );
+
+  // 'down': text sits above, the arrow swoops down from it to point at a
+  // target below — `flip` mirrors the swoop to lean right instead of left.
+  if (direction === 'down') {
+    return (
+      <div className={`hidden lg:flex flex-col items-end gap-0.5 pointer-events-none select-none ${className ?? ''}`}>
+        {textEl}
+        <svg
+          width="46" height="42" viewBox="0 0 46 42" fill="none"
+          className={`shrink-0 text-[#6B3FD9] ${flip ? 'scale-x-[-1]' : ''}`}
+        >
+          <path
+            d="M42 4C40 17 31 33 12 39C8 40.3 4.5 40 2 38.3"
+            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none"
+          />
+          <path d="M9 33.5L2 38.3L4.5 29.8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        </svg>
+      </div>
+    );
+  }
+
+  // 'left': a short horizontal swoosh pointing left, for a note sitting
+  // beside its target (same line) rather than above it.
+  return (
+    <div className={`hidden lg:flex items-center gap-1.5 pointer-events-none select-none ${className ?? ''}`}>
+      <svg width="40" height="24" viewBox="0 0 40 24" fill="none" className="shrink-0 text-[#6B3FD9]">
+        <path d="M38 7C27 8 14 12 4 15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+        <path d="M11 9L4 15L12 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </svg>
+      {textEl}
+    </div>
+  );
+}
+
+// Prodora is a real, named product-within-the-product (thousands of
+// pre-vetted winning products, one-click import) — it was getting lost as
+// plain text in a long checklist next to "Chat support". Pulled out into
+// its own render so it reads as a headline feature, not a bullet point.
+// The real logo file has a white background baked in (not transparent), so
+// it's wrapped in a small white chip rather than dropped directly onto the
+// dark cards — reads as an intentional app-icon badge, not a broken image.
+function FeatureLine({ text }: { text: string }) {
+  if (!text.startsWith('Prodora')) return <>{text}</>;
+  const rest = text.replace(/^Prodora\s*—\s*/, '');
+  return (
+    <span className="inline-flex items-center flex-wrap gap-x-2">
+      <span className="inline-flex items-center gap-1.5 font-black text-[1.2em] tracking-tight bg-gradient-to-r from-[#A78BFA] to-[#6B3FD9] bg-clip-text text-transparent">
+        <span className="inline-flex w-[1.3em] h-[1.3em] rounded-md bg-white p-[0.15em] shrink-0 shadow-sm">
+          <Image src="/prodora-logo.png" alt="" width={20} height={20} className="w-full h-full object-contain" />
+        </span>
+        Prodora
+      </span>
+      <span>— {rest}</span>
+    </span>
+  );
+}
 
 const faqs = [
   {
@@ -81,7 +164,7 @@ export default function PricingPage() {
 
           {/* Billing toggle */}
           <div className="flex justify-center">
-            <div className="inline-flex bg-white rounded-2xl p-1 shadow-sm border border-gray-100">
+            <div className="relative inline-flex bg-white rounded-2xl p-1 shadow-sm border border-gray-100">
               <button
                 onClick={() => setBilling('monthly')}
                 className={`px-7 py-2.5 rounded-xl font-semibold text-sm transition-all ${
@@ -94,17 +177,21 @@ export default function PricingPage() {
               </button>
               <button
                 onClick={() => setBilling('yearly')}
-                className={`px-7 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 ${
+                className={`px-7 py-2.5 rounded-xl font-semibold text-sm transition-all ${
                   billing === 'yearly'
                     ? 'bg-[#0B1121] text-white shadow-sm'
                     : 'text-gray-400 hover:text-gray-700'
                 }`}
               >
                 Yearly
-                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                  Save 15%
-                </span>
               </button>
+              <PencilNote
+                text="save 15% billing yearly!"
+                rotate={-4}
+                direction="left"
+                wrap
+                className="absolute left-full top-1/2 -translate-y-1/2 ml-3"
+              />
             </div>
           </div>
         </div>
@@ -141,7 +228,7 @@ export default function PricingPage() {
                     <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                       <Check className="w-3 h-3 text-gray-500" />
                     </span>
-                    {f}
+                    <FeatureLine text={f} />
                   </li>
                 ))}
                 {['Multi-user access', 'HR & staff management', 'Chat support'].map((f) => (
@@ -149,7 +236,7 @@ export default function PricingPage() {
                     <span className="w-5 h-5 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
                       <X className="w-3 h-3 text-gray-300" />
                     </span>
-                    {f}
+                    <FeatureLine text={f} />
                   </li>
                 ))}
               </ul>
@@ -198,10 +285,10 @@ export default function PricingPage() {
                   '3 user accounts',
                   'Full POS & Invoicing',
                   'VAT invoicing (Custom)',
-                  '1 channel — Shopify, TheDersi, eBay, TikTok Shop, Amazon, Instagram & more (pick any one)',
-                  'CJ Dropshipping — 1 supplier, free to use (pay per order only)',
+                  '1 channel — Shopify, TheDersi, Daraz, Noon, eBay, WooCommerce, TikTok Shop, Amazon, or your own custom website (pick any one)',
+                  '1 dropshipping supplier of your choice — CJ, AliExpress, or Printful',
                   'Prodora — discover winning products to sell',
-                  'Lead management (500)',
+                  'Lead management (500) · Google & Meta Ads capture',
                   'Email campaigns',
                   'Advanced reports & export',
                   'Chat support',
@@ -210,7 +297,7 @@ export default function PricingPage() {
                     <span className="w-5 h-5 rounded-full bg-[#6B3FD9]/20 flex items-center justify-center shrink-0">
                       <Check className="w-3 h-3 text-[#6B3FD9]" />
                     </span>
-                    {f}
+                    <FeatureLine text={f} />
                   </li>
                 ))}
               </ul>
@@ -250,8 +337,8 @@ export default function PricingPage() {
                 {[
                   'Unlimited products & orders',
                   'Unlimited customers · 3 users',
-                  'All channels — Shopify, TheDersi, Daraz, eBay, TikTok Shop, Amazon, Instagram & more',
-                  'All suppliers — CJ Dropshipping, Zendrop, HyperSKU, Wiio & more',
+                  'All channels — Shopify, TheDersi, Daraz, Noon, eBay, WooCommerce, TikTok Shop, Amazon, custom website — connect every one at once',
+                  'CJ, AliExpress & Printful — full automatic order fulfillment',
                   'Prodora — discover & auto-import winning products',
                   'Full invoice branding',
                   'Multi-store & multi-location',
@@ -262,11 +349,21 @@ export default function PricingPage() {
                   'Advanced analytics',
                   'Priority support + onboarding',
                 ].map((f) => (
-                  <li key={f} className="flex items-center gap-3 text-sm text-gray-600">
+                  <li key={f} className={`flex items-center gap-3 text-sm text-gray-600 ${f.startsWith('Prodora') ? 'relative' : ''}`}>
                     <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                       <Check className="w-3 h-3 text-gray-700" />
                     </span>
-                    {f}
+                    <FeatureLine text={f} />
+                    {f.startsWith('Prodora') && (
+                      <PencilNote
+                        text="1000s of winning, high-margin picks — low-cost supplier details, auto-fulfilled!"
+                        rotate={-2}
+                        direction="left"
+                        wrap
+                        wrapWidth={280}
+                        className="absolute left-full top-1/2 -translate-y-1/2 ml-3"
+                      />
+                    )}
                   </li>
                 ))}
               </ul>
@@ -443,7 +540,7 @@ export default function PricingPage() {
                     <div className="w-4 h-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
                       <Check className="w-2.5 h-2.5 text-gray-400" />
                     </div>
-                    <span className="text-gray-400 text-xs">{f}</span>
+                    <span className="text-gray-400 text-xs"><FeatureLine text={f} /></span>
                   </div>
                 ))}
               </div>
@@ -469,10 +566,10 @@ export default function PricingPage() {
                   '500 invoice emails / mo',
                   'Basic invoice branding',
                   'Low-stock alerts',
-                  '1 channel — Shopify, TheDersi, eBay, TikTok Shop, Amazon, Instagram & more (pick any one)',
-                  'CJ Dropshipping — 1 supplier, free to use (pay per order only)',
+                  '1 channel — Shopify, TheDersi, Daraz, Noon, eBay, WooCommerce, TikTok Shop, Amazon, or your own custom website (pick any one)',
+                  '1 dropshipping supplier of your choice — CJ, AliExpress, or Printful',
                   'Prodora — discover winning products to sell',
-                  '500 leads · Meta Ads capture',
+                  '500 leads · Google Ads & Meta Ads capture',
                   'Email campaigns',
                   'Advanced sales reports',
                   'Data export (Excel / CSV)',
@@ -482,7 +579,7 @@ export default function PricingPage() {
                     <div className="w-4 h-4 rounded-full bg-[#6B3FD9]/20 border border-[#6B3FD9]/30 flex items-center justify-center shrink-0">
                       <Check className="w-2.5 h-2.5 text-[#6B3FD9]" />
                     </div>
-                    <span className="text-gray-300 text-xs">{f}</span>
+                    <span className="text-gray-300 text-xs"><FeatureLine text={f} /></span>
                   </div>
                 ))}
               </div>
@@ -499,8 +596,8 @@ export default function PricingPage() {
                 {[
                   'Unlimited products & orders',
                   'Unlimited customers · 3 users',
-                  'All channels — Shopify, TheDersi, Daraz, eBay, TikTok Shop, Amazon, Instagram & more',
-                  'All suppliers — CJ Dropshipping, Zendrop, HyperSKU, Wiio & more',
+                  'All channels — Shopify, TheDersi, Daraz, Noon, eBay, WooCommerce, TikTok Shop, Amazon, custom website — connect every one at once',
+                  'CJ, AliExpress & Printful — full automatic order fulfillment',
                   'Prodora — discover & auto-import winning products',
                   'Unlimited leads',
                   'Full invoice branding',
@@ -516,7 +613,7 @@ export default function PricingPage() {
                     <div className="w-4 h-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
                       <Check className="w-2.5 h-2.5 text-gray-400" />
                     </div>
-                    <span className="text-gray-400 text-xs">{f}</span>
+                    <span className="text-gray-400 text-xs"><FeatureLine text={f} /></span>
                   </div>
                 ))}
               </div>

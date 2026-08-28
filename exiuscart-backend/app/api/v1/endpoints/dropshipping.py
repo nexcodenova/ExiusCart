@@ -111,9 +111,16 @@ PRINTFUL_BASE = "https://api.printful.com"
 # their own "Print-on-Demand" section instead of listing all eight the same way.
 POD_SUPPLIERS = {"printful", "printify", "gelato"}
 
+# The 3 suppliers that actually auto-fulfill orders today (CJ fully, Printful
+# fully, AliExpress pending their own API approval for order placement) —
+# Zendrop/HyperSKU/Wiio/Printify/Gelato only support connecting an account,
+# nothing places orders through them yet, so they stay Premium-only rather
+# than something a Starter seller could "choose".
+STARTER_SUPPLIER_CHOICES = {"cj", "aliexpress", "printful"}
+
 PLAN_ALLOWED_SUPPLIERS = {
     "premium":       {"cj", "zendrop", "hypersku", "wiio", "aliexpress", "printful", "printify", "gelato"},
-    "starter":       {"cj"},
+    "starter":       STARTER_SUPPLIER_CHOICES,
     "free_trial":    set(),
     "thedersi_basic":  set(),
     "thedersi_growth": set(),
@@ -144,16 +151,32 @@ def _check_supplier_allowed(plan: str, supplier_type: str, shop_id: int, db: Ses
         if plan in ("free_trial",):
             raise HTTPException(status_code=403, detail={
                 "error": "plan_required",
-                "message": "Dropshipping is available on Starter (CJ only) and Premium plans. Upgrade to get started.",
+                "message": "Dropshipping is available on Starter (pick one supplier) and Premium (all suppliers) plans. Upgrade to get started.",
             })
-        if supplier_type != "cj" and plan == "starter":
+        if plan == "starter":
             raise HTTPException(status_code=403, detail={
                 "error": "upgrade_required",
                 "supplier": supplier_type,
-                "message": f"{supplier_type.title()} is available on Premium plans. CJ Dropshipping is included in your Starter plan.",
+                "message": f"{supplier_type.title()} is available on Premium plans. Starter includes one dropshipping supplier of your choice — CJ, AliExpress, or Printful.",
                 "signup_url": SUPPLIER_SIGNUP_LINKS.get(supplier_type, ""),
             })
         raise HTTPException(status_code=403, detail={"error": "not_allowed", "message": "Supplier not available on your plan."})
+
+    # Starter: one of CJ/AliExpress/Printful at a time, seller's choice —
+    # connecting a second one means disconnecting the first, or upgrading.
+    if plan == "starter" and supplier_type in STARTER_SUPPLIER_CHOICES:
+        other = db.query(DropshipConnection).filter(
+            DropshipConnection.shop_id == shop_id,
+            DropshipConnection.supplier_type.in_(STARTER_SUPPLIER_CHOICES),
+            DropshipConnection.supplier_type != supplier_type,
+            DropshipConnection.is_active == True,
+        ).first()
+        if other:
+            raise HTTPException(status_code=403, detail={
+                "error": "one_supplier_limit",
+                "connected_supplier": other.supplier_type,
+                "message": f"Your Starter plan includes one dropshipping supplier at a time. You already have {other.supplier_type.title()} connected — disconnect it first, or upgrade to Premium to use all suppliers together.",
+            })
 
 
 def _shop_or_404(shop_id: int, user: User, db: Session):
@@ -1735,7 +1758,7 @@ def list_connections(
             "name": "AliExpress",
             "description": "The world's largest supplier catalog. Order placement is pending ExiusCart's AliExpress API approval — connect now, ordering activates once that's live.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["aliexpress"],
-            "plan_required": "premium",
+            "plan_required": "starter",
             "connected": "aliexpress" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "aliexpress"), False),
             "locked": "aliexpress" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
@@ -1746,7 +1769,7 @@ def list_connections(
             "name": "Printful",
             "description": "Custom hoodies, tees & more — design once, Printful prints and ships automatically. Design/mockup workflow activates soon.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["printful"],
-            "plan_required": "premium",
+            "plan_required": "starter",
             "connected": "printful" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "printful"), False),
             "locked": "printful" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),

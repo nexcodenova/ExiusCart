@@ -6,10 +6,10 @@ import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
   title: 'Integrations | Sales Channels, Printers & More | ExiusCart',
-  description: 'Connect ExiusCart with Shopify, TikTok Shop, eBay, Amazon, Facebook and more. Seamless integrations to run your entire business from one place.',
+  description: 'Connect ExiusCart with Shopify, eBay, Daraz, Noon, WooCommerce and more. Seamless integrations to run your entire business from one place.',
   openGraph: {
     title: 'ExiusCart Integrations | Sales Channels & More',
-    description: 'Connect ExiusCart with Shopify, TikTok Shop, eBay, Amazon, Facebook and more tools.',
+    description: 'Connect ExiusCart with Shopify, eBay, Daraz, Noon, WooCommerce and more tools.',
     url: 'https://exiuscart.com/integrations',
     siteName: 'ExiusCart',
     type: 'website',
@@ -20,6 +20,7 @@ const CHANNELS_SECONDARY = [
   {
     label: 'TikTok Shop',
     desc: 'Sync orders and inventory with your TikTok Shop in real time.',
+    status: 'soon' as const,
     color: '#010101',
     bg: '#f0f0f0',
     svg: (
@@ -42,6 +43,7 @@ const CHANNELS_SECONDARY = [
   {
     label: 'Amazon',
     desc: 'Connect your Amazon seller account — orders, stock, and fulfilment in one place.',
+    status: 'soon' as const,
     color: '#FF9900',
     bg: '#fffbf0',
     svg: (
@@ -53,6 +55,7 @@ const CHANNELS_SECONDARY = [
   {
     label: 'Facebook & Instagram',
     desc: 'Sell on Facebook Shops and Instagram Shopping. Inventory and orders synced automatically.',
+    status: 'soon' as const,
     color: '#1877F2',
     bg: '#f0f6ff',
     svg: (
@@ -182,7 +185,7 @@ export default function IntegrationsPage() {
           <span style={{ color: '#6B3FD9' }}>One place.</span>
         </h1>
         <p className="text-base md:text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-          Connect Shopify, TikTok Shop, eBay, Amazon, Facebook, and more — all syncing in real time
+          Connect Shopify, eBay, Daraz, Noon, WooCommerce, and more — all syncing in real time
           with your ExiusCart inventory, orders, and reports.
         </p>
       </section>
@@ -259,7 +262,7 @@ export default function IntegrationsPage() {
 
           {/* Secondary channels grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {CHANNELS_SECONDARY.map(({ label, desc, color, bg, svg }) => (
+            {CHANNELS_SECONDARY.map(({ label, desc, status, color, bg, svg }) => (
               <div key={label}
                 className="bg-white rounded-2xl p-5 border border-black/6 hover:border-[#6B3FD9]/30 hover:shadow-sm transition-all group flex flex-col items-start gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -267,7 +270,14 @@ export default function IntegrationsPage() {
                   {svg}
                 </div>
                 <div>
-                  <p className="text-gray-900 font-bold text-sm mb-0.5">{label}</p>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-gray-900 font-bold text-sm">{label}</p>
+                    {status === 'soon' && (
+                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-gray-500 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-full">
+                        Soon
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray-400 text-xs leading-relaxed">{desc}</p>
                 </div>
               </div>

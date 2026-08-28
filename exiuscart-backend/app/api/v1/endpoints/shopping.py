@@ -4,7 +4,7 @@ token — issued only to ExiusCart accounts on an active Starter or Premium
 subscription (see POST /shopping/request-access).
 """
 from typing import Optional
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 import uuid
 import httpx
 from slugify import slugify
@@ -22,6 +22,7 @@ from app.models.shop import Shop
 from app.models.user import User
 from app.models.subscription import Subscription
 from app.models.dropship import DropshipConnection, DropshipProductLink
+from app.models.prodora import ProdoraImportLog
 from app.api.v1.endpoints.dropshipping import _cj_ensure_token, CJ_BASE
 
 router = APIRouter()
@@ -29,6 +30,12 @@ router = APIRouter()
 # Plans that grant Prodora access. Free trial and TheDersi plans are
 # deliberately excluded — Prodora is a Starter/Premium perk only.
 PRODORA_ELIGIBLE_PLANS = ("starter", "premium")
+
+# Starter and Premium both had identical, unlimited Prodora access — no real
+# reason to upgrade for it. Starter is now capped monthly; Premium stays
+# unlimited (None). 50 was picked as generous enough for a real small
+# store's normal pace, but a real ceiling for someone bulk-importing.
+PRODORA_MONTHLY_IMPORT_LIMIT = {"starter": 50, "premium": None}
 
 _security = HTTPBearer()
 
@@ -303,6 +310,21 @@ def import_shopping_product(
     if not shop:
         raise HTTPException(status_code=404, detail="No active ExiusCart shop found for this account")
 
+    sub = _find_eligible_subscription(db, user)
+    monthly_limit = PRODORA_MONTHLY_IMPORT_LIMIT.get(sub.plan_type if sub else "", 0)
+    if monthly_limit is not None:
+        month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        used = db.query(ProdoraImportLog).filter(
+            ProdoraImportLog.shop_id == shop.id,
+            ProdoraImportLog.created_at >= month_start,
+        ).count()
+        if used >= monthly_limit:
+            raise HTTPException(status_code=403, detail={
+                "error": "prodora_import_limit_reached",
+                "limit": monthly_limit,
+                "message": f"You've used all {monthly_limit} Prodora imports for this month on your Starter plan. Upgrade to Premium for unlimited Prodora imports.",
+            })
+
     # Match by category name into the seller's own categories — the source
     # category_id belongs to the curated catalog shop, not this seller's
     # shop, so it can't be copied directly (categories are shop-scoped).
@@ -350,6 +372,7 @@ def import_shopping_product(
                 sort_order=v.sort_order,
             ))
 
+    db.add(ProdoraImportLog(shop_id=shop.id, product_id=new_product.id))
     db.commit()
     db.refresh(new_product)
     return {"product_id": new_product.id, "name": new_product.name, "shop_id": shop.id}

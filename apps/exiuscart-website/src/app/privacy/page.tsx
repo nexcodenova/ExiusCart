@@ -6,7 +6,7 @@ import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | ExiusCart',
-  description: 'ExiusCart Privacy Policy — how we collect, use, and protect your data across all connected channels including Shopify, TikTok Shop, eBay, Google Ads, and Meta.',
+  description: 'ExiusCart Privacy Policy — how we collect, use, and protect your data across all connected channels including Shopify, eBay, Daraz, Noon, Google Ads, and Meta.',
   openGraph: {
     title: 'Privacy Policy | ExiusCart',
     description: 'ExiusCart privacy policy. How we collect, use and protect your data.',
@@ -135,24 +135,28 @@ export default function PrivacyPage() {
                     <p className="text-gray-400 text-sm">We access your Shopify store&apos;s orders, products, inventory, and customer data via the Shopify Admin API. We register webhooks for real-time updates and push product and stock changes back to Shopify.</p>
                   </div>
                   <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
-                    <p className="text-white font-medium text-sm mb-1">TikTok Shop</p>
-                    <p className="text-gray-400 text-sm">We access your TikTok Shop products, orders, and inventory via the TikTok Shop Open Platform API using OAuth 2.0. Order data syncs via TikTok webhooks. Product listings and stock are pushed to TikTok Shop.</p>
-                  </div>
-                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
                     <p className="text-white font-medium text-sm mb-1">eBay</p>
                     <p className="text-gray-400 text-sm">We access your eBay listings, orders, and inventory via the eBay REST API using OAuth 2.0. Order notifications are received via eBay platform notifications. Product and inventory changes are pushed to eBay.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">Daraz</p>
+                    <p className="text-gray-400 text-sm">We access your Daraz orders, products, and inventory via the Daraz Open Platform API using OAuth 2.0. Product and stock changes are pushed to Daraz.</p>
+                  </div>
+                  <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
+                    <p className="text-white font-medium text-sm mb-1">Noon</p>
+                    <p className="text-gray-400 text-sm">We access your Noon orders, listings, and inventory via the Noon Partner API. Product and stock changes are pushed to Noon.</p>
                   </div>
                   <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
                     <p className="text-white font-medium text-sm mb-1">WooCommerce</p>
                     <p className="text-gray-400 text-sm">We connect to your WooCommerce store via API keys you provide. Orders are received via webhook and inventory is synced bidirectionally.</p>
                   </div>
                   <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
-                    <p className="text-white font-medium text-sm mb-1">Amazon</p>
-                    <p className="text-gray-400 text-sm">We access your Amazon Seller Central account via the Amazon SP-API (Selling Partner API). We access order data, product listings, and inventory solely to sync your Amazon business with ExiusCart.</p>
+                    <p className="text-white font-medium text-sm mb-1">TikTok Shop <span className="text-gray-500 font-normal">(rolling out)</span></p>
+                    <p className="text-gray-400 text-sm">We access your TikTok Shop products, orders, and inventory via the TikTok Shop Open Platform API using OAuth 2.0. Order data syncs via TikTok webhooks. Product listings and stock are pushed to TikTok Shop.</p>
                   </div>
                   <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
-                    <p className="text-white font-medium text-sm mb-1">Instagram Shopping / Meta Commerce</p>
-                    <p className="text-gray-400 text-sm">We access your Facebook Page and Instagram Business account via the Meta Graph API using Facebook Login (OAuth 2.0). We sync product catalogs and receive order notifications on your behalf.</p>
+                    <p className="text-white font-medium text-sm mb-1">Amazon <span className="text-gray-500 font-normal">(rolling out)</span></p>
+                    <p className="text-gray-400 text-sm">We access your Amazon Seller Central account via the Amazon SP-API (Selling Partner API). We access order data, product listings, and inventory solely to sync your Amazon business with ExiusCart.</p>
                   </div>
                   <div className="bg-[#151F32] rounded-xl p-4 border border-gray-800">
                     <p className="text-white font-medium text-sm mb-1">Google Ads Lead Capture</p>

@@ -12,43 +12,44 @@ interface IntegrationCard {
   imageSize: string;      // exact px size this box was designed at, documented for whoever creates the art
   status?: 'live' | 'soon';
   desc: string;
+  core?: boolean;         // ExiusCart + Prodora — grouped in their own boxed pair, matching the heading copy ("at the center")
 }
 
-// All 8 cards in one row now, reading as one continuous strip like the
+// All 10 cards in one row now, reading as one continuous strip like the
 // reference. Amazon and TikTok Shop are marked status:'soon' — no backend
 // integration exists for either yet, so they're shown honestly as upcoming
-// rather than claimed as live, unlike TheDersi/Daraz/eBay/Custom Website
-// which ship.
+// rather than claimed as live, unlike TheDersi/Daraz/eBay/Shopify/Noon/
+// Custom Website which ship.
 const CARDS: IntegrationCard[] = [
   {
-    id: 'exiuscart', name: 'ExiusCart', status: 'live',
+    id: 'exiuscart', name: 'ExiusCart', status: 'live', core: true,
     image: '/integration/ExiusCart.png', imageSize: '480×600',
     desc: 'One platform for your entire business — POS, inventory, invoicing, HR and every sales channel, together.',
   },
   {
-    id: 'prodora', name: 'Prodora', status: 'live',
+    id: 'prodora', name: 'Prodora', status: 'live', core: true,
     image: '/integration/Prodora.png', imageSize: '480×600',
     desc: 'Thousands of winning products to sell, complete with ready-made marketing videos, images and real reviews.',
   },
   {
-    id: 'ebay', name: 'eBay', status: 'live',
-    image: '/integration/ebay.png', imageSize: '480×600',
-    desc: 'List your products on eBay and manage orders from ExiusCart — one dashboard for your global reach.',
-  },
-  {
-    id: 'thedersi', name: 'TheDersi', status: 'live',
-    image: '/integration/TheDersi.jpg', imageSize: '480×600',
-    desc: "Sri Lanka's #1 fashion marketplace. ExiusCart is the official seller backend — orders and stock sync automatically.",
-  },
-  {
-    id: 'daraz', name: 'Daraz', status: 'live',
-    image: '/integration/daraz.jpg', imageSize: '480×600',
-    desc: "South Asia's largest marketplace — Pakistan, Bangladesh, Sri Lanka, Nepal and Myanmar. List products and manage Daraz orders directly from ExiusCart.",
+    id: 'shopify', name: 'Shopify', status: 'live',
+    image: '/integration/shopify.jpg', imageSize: '480×600',
+    desc: 'Sync products, inventory and orders between Shopify and ExiusCart automatically.',
   },
   {
     id: 'custom-website', name: 'Custom Website', status: 'live',
     image: '/integration/custom-website.jpg', imageSize: '480×600',
     desc: 'Already have your own store? Connect it as a channel — orders, inventory and invoicing handled automatically.',
+  },
+  {
+    id: 'ebay', name: 'eBay', status: 'live',
+    image: '/integration/ebay-card.jpg', imageSize: '480×600',
+    desc: 'List your products on eBay and manage orders from ExiusCart — one dashboard for your global reach.',
+  },
+  {
+    id: 'noon', name: 'Noon', status: 'live',
+    image: '/integration/noon.jpg', imageSize: '480×600',
+    desc: 'Sell across the Gulf on Noon — list products and manage orders directly from ExiusCart.',
   },
   {
     id: 'amazon', name: 'Amazon', status: 'soon',
@@ -60,12 +61,22 @@ const CARDS: IntegrationCard[] = [
     image: '/integration/tiktok.jpg', imageSize: '480×600',
     desc: 'Sync products and orders with TikTok Shop directly from ExiusCart. In development.',
   },
+  {
+    id: 'daraz', name: 'Daraz', status: 'live',
+    image: '/integration/Daraz-card.png', imageSize: '480×600',
+    desc: "South Asia's largest marketplace — Pakistan, Bangladesh, Sri Lanka, Nepal and Myanmar. List products and manage Daraz orders directly from ExiusCart.",
+  },
+  {
+    id: 'thedersi', name: 'TheDersi', status: 'live',
+    image: '/integration/TheDersi.jpg', imageSize: '480×600',
+    desc: "Sri Lanka's #1 fashion marketplace. ExiusCart is the official seller backend — orders and stock sync automatically.",
+  },
 ];
 
-function Card({ card }: { card: IntegrationCard }) {
+function Card({ card, className, square }: { card: IntegrationCard; className?: string; square?: boolean }) {
   return (
     <div
-      className="shrink-0 w-[90vw] sm:w-[330px] lg:w-[360px] rounded-3xl p-6 lg:p-7 flex flex-col transition-transform duration-300 hover:-translate-y-1.5"
+      className={`shrink-0 w-[90vw] sm:w-[330px] lg:w-[360px] rounded-3xl p-6 lg:p-7 flex flex-col transition-transform duration-300 hover:-translate-y-1.5 ${className ?? ''}`}
       style={{ background: '#EDEBE6', border: '1px solid #DDD6C7' }}
     >
       {/* Top — big headline, same color across every card */}
@@ -80,8 +91,12 @@ function Card({ card }: { card: IntegrationCard }) {
         )}
       </div>
 
-      {/* Middle — illustration */}
-      <div className="relative rounded-2xl overflow-hidden bg-white/60 mb-5 aspect-[4/5] flex items-center justify-center">
+      {/* Middle — illustration. `square` swaps the tall 4:5 portrait crop
+          for a squarer one on mobile only — at the narrow width the
+          ExiusCart/Prodora pair renders on phones, 4:5 made the card look
+          gangly and overly tall; reverts to the normal 4:5 at sm+ where
+          there's room for it. */}
+      <div className={`relative rounded-2xl overflow-hidden bg-white/60 mb-5 flex items-center justify-center ${square ? 'aspect-square sm:aspect-[4/5]' : 'aspect-[4/5]'}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={card.image} alt={card.name} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
       </div>
@@ -132,33 +147,71 @@ export function IntegrationsGrid() {
   }, [maxTranslate]);
 
   return (
-    <div ref={wrapperRef} style={{ height: `calc(100vh + ${maxTranslate}px)` }}>
-      <div ref={trackRef} className="sticky top-0 h-screen flex flex-col overflow-hidden">
-        {/* Mobile-only: heading stays pinned together with the cards for
-            the whole scroll-jack, since mobile shows one card at a time
-            and loses context otherwise. Hidden from sm up — desktop/tablet
-            keep the original heading back in page.tsx as normal-flow
-            content above this section, since that view already shows
-            several cards at once and never needed the pin. */}
-        <div className="sm:hidden shrink-0 pt-24 pb-4 px-6 text-center max-w-2xl mx-auto">
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#6B3FD9] mb-2">
-            Connected everywhere
-          </p>
-          <h2 className="text-4xl font-black text-gray-900 leading-[1.05] tracking-tight">
-            Every channel,<br />one hub.
-          </h2>
-        </div>
+    <>
+      {/* Mobile-only heading, moved here (ahead of Row 1) so it still
+          introduces the section before any cards on phone screens — it used
+          to sit inside the sticky wrapper right before what was the only
+          row of cards; now that Row 1 renders before the sticky wrapper,
+          leaving the heading in its old spot would print it after
+          ExiusCart/Prodora instead of before them. Hidden from sm up —
+          desktop/tablet keep the original heading back in page.tsx as
+          normal-flow content above this section. */}
+      <div className="sm:hidden shrink-0 pt-24 pb-4 px-6 text-center max-w-2xl mx-auto">
+        <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#6B3FD9] mb-2">
+          Connected everywhere
+        </p>
+        <h2 className="text-4xl font-black text-gray-900 leading-[1.05] tracking-tight">
+          Every channel,<br />one hub.
+        </h2>
+      </div>
 
-        <div className="flex-1 flex items-center sm:items-start sm:pt-16 lg:pt-10 overflow-hidden">
-          <div
-            ref={rowRef}
-            className="flex gap-4 lg:gap-6 px-6 will-change-transform"
-            style={{ transform: `translateX(-${translate}px)` }}
-          >
-            {CARDS.map(card => <Card key={card.id} card={card} />)}
+      {/* Row 1 — ExiusCart + Prodora, tilted toward each other like a
+          leaning pair of cards, the duo the heading calls "the center".
+          Plain static content, deliberately outside the sticky scroll-jack
+          below — it's only two cards and never needs to scroll, and
+          stacking it inside the pinned h-screen container made the total
+          content taller than the viewport, clipping it. Found by id (not
+          array position) so this survives future reordering. */}
+      <div className="flex justify-center gap-3 sm:gap-10 lg:gap-24 px-6 pb-8 lg:pb-14">
+        {(() => {
+          const exiuscart = CARDS.find(c => c.id === 'exiuscart');
+          const prodora = CARDS.find(c => c.id === 'prodora');
+          // Card's own width defaults to w-[90vw] — sized for the single-
+          // card-at-a-time swipe strip in Row 2. Two of those side by side
+          // would overflow any phone screen, so this pair gets its own
+          // (!important-forced) narrower mobile width that widens back to
+          // the normal card size at sm/lg, matching Card's own breakpoints.
+          const pairWidth = '!w-[40vw] sm:!w-[330px] lg:!w-[360px]';
+          return (
+            <>
+              {/* ExiusCart drifts left on hover; Prodora drifts right on
+                  press (`active:` — CSS's closest equivalent to "on click"
+                  without adding React state for a decorative pair that
+                  isn't otherwise interactive). Both still straighten flat
+                  and lift slightly, same as every other card. */}
+              {exiuscart && <Card card={exiuscart} square className={`rotate-[6deg] hover:rotate-0 hover:-translate-x-4 origin-bottom-left ${pairWidth}`} />}
+              {prodora && <Card card={prodora} square className={`rotate-[-6deg] hover:rotate-0 active:translate-x-4 origin-bottom-right ${pairWidth}`} />}
+            </>
+          );
+        })()}
+      </div>
+
+      {/* Row 2 — Shopify onward, the same horizontally scroll-jacked strip
+          as before this whole change, just starting one card later now
+          that ExiusCart/Prodora moved to their own row above. */}
+      <div ref={wrapperRef} style={{ height: `calc(100vh + ${maxTranslate}px)` }}>
+        <div ref={trackRef} className="sticky top-0 h-screen flex flex-col overflow-hidden">
+          <div className="flex-1 flex items-center sm:items-start sm:pt-16 lg:pt-10 overflow-hidden">
+            <div
+              ref={rowRef}
+              className="flex gap-4 lg:gap-6 px-6 will-change-transform"
+              style={{ transform: `translateX(-${translate}px)` }}
+            >
+              {CARDS.filter(card => !card.core).map(card => <Card key={card.id} card={card} />)}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

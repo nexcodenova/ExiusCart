@@ -62,7 +62,7 @@ export const pricing: Record<CurrencyCode, Record<string, PlanPricing>> = {
   USD: {
     free_trial: { monthly: 0,  yearly: 0    },
     starter:    { monthly: 12, yearly: 120,  originalMonthly: 24,  originalYearly: 240  },
-    premium:    { monthly: 29, yearly: 290,  originalMonthly: 49,  originalYearly: 490  },
+    premium:    { monthly: 29, yearly: 290,  originalMonthly: 58,  originalYearly: 580  },
   },
 };
 

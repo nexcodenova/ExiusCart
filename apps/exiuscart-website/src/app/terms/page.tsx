@@ -56,7 +56,7 @@ export default function TermsPage() {
                   ExiusCart is a multi-channel business management platform that provides point of sale (POS),
                   inventory management, invoicing, customer management, lead management, and sales channel
                   integration for small and medium businesses. Connected channels include TheDersi, Shopify,
-                  TikTok Shop, eBay, WooCommerce, Amazon, Instagram Shopping, and custom websites.
+                  Daraz, Noon, eBay, WooCommerce, and custom websites.
                   Our services are designed primarily for businesses operating in the UAE and surrounding regions.
                 </p>
                 <p className="text-gray-400 leading-relaxed mt-4">
