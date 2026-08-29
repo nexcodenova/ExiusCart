@@ -7,9 +7,9 @@ import {
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
-  Store, Globe, ShoppingBag, Tag, PlayCircle, Info,
+  Store, Globe, ShoppingBag, Tag, PlayCircle, Info, Music2, ShoppingCart,
 } from 'lucide-react';
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, customProductFieldsApi, CustomProductField, videosApi, ProductVideo as ProductVideoType } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, tiktokApi, woocommerceApi, etsyApi, customProductFieldsApi, CustomProductField, videosApi, ProductVideo as ProductVideoType } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { colorNameToHex } from '@/lib/color-utils';
 import { DarazListingFields } from '@/components/daraz-listing-fields';
@@ -1213,6 +1213,41 @@ function ProductModal({
   const [listingNoon, setListingNoon] = useState(false);
   const [noonListingError, setNoonListingError] = useState('');
 
+  // TikTok Shop — like Noon, own dedicated state (not otherChannels), since
+  // there's no category-browsing endpoint built yet (TikTok's real Product
+  // API is unverified — see tiktok.py's own module docstring), so category
+  // is a plain manually-typed field rather than a tree/search picker.
+  const [tiktokConnection, setTiktokConnection] = useState<{ id: number } | null>(null);
+  const [tiktokEnabled, setTiktokEnabled] = useState(false);
+  const [tiktokCategoryId, setTiktokCategoryId] = useState('');
+  const [tiktokListingStatus, setTiktokListingStatus] = useState<{ external_id: string } | null>(null);
+  const [listingTiktok, setListingTiktok] = useState(false);
+  const [tiktokListingError, setTiktokListingError] = useState('');
+
+  // Etsy — like TikTok, own dedicated state with manually-typed fields
+  // (taxonomy_id/shipping_profile_id) rather than pickers, since no
+  // taxonomy-browsing or shipping-profile-listing endpoint is built yet
+  // even though Etsy's docs make those real, confirmed endpoints —
+  // scope for a later pass, not blocking this one.
+  const [etsyConnection, setEtsyConnection] = useState<{ id: number } | null>(null);
+  const [etsyEnabled, setEtsyEnabled] = useState(false);
+  const [etsyTaxonomyId, setEtsyTaxonomyId] = useState('');
+  const [etsyWhoMade, setEtsyWhoMade] = useState('i_did');
+  const [etsyWhenMade, setEtsyWhenMade] = useState('made_to_order');
+  const [etsyShippingProfileId, setEtsyShippingProfileId] = useState('');
+  const [etsyListingStatus, setEtsyListingStatus] = useState<{ external_id: string } | null>(null);
+  const [listingEtsy, setListingEtsy] = useState(false);
+  const [etsyListingError, setEtsyListingError] = useState('');
+
+  // WooCommerce — simplest of all: no category concept in the core REST
+  // API (a product is just created directly under the store), so no
+  // extra fields needed beyond the toggle + button.
+  const [wooConnection, setWooConnection] = useState<{ id: number } | null>(null);
+  const [wooEnabled, setWooEnabled] = useState(false);
+  const [wooListingStatus, setWooListingStatus] = useState<{ external_id: string } | null>(null);
+  const [listingWoo, setListingWoo] = useState(false);
+  const [wooListingError, setWooListingError] = useState('');
+
   interface OtherChannelToggle { enabled: boolean; isGift: boolean; categoryId: string; categoryName: string }
   const [otherChannels, setOtherChannels] = useState<Record<'daraz' | 'shopify' | 'custom' | 'ebay', OtherChannelToggle>>({
     daraz: { enabled: false, isGift: false, categoryId: '', categoryName: '' },
@@ -1418,6 +1453,36 @@ function ProductModal({
 
         const noon = data.find((c: any) => c.channel_type === 'noon');
         if (noon) setNoonConnection({ id: noon.id });
+
+        const tiktok = data.find((c: any) => c.channel_type === 'tiktok');
+        if (tiktok) {
+          setTiktokConnection({ id: tiktok.id });
+          if (product?.id) {
+            tiktokApi.getListingStatus(shopId, product.id)
+              .then((r) => { if (r.data?.listed) setTiktokListingStatus({ external_id: r.data.external_id }); })
+              .catch(() => {});
+          }
+        }
+
+        const woo = data.find((c: any) => c.channel_type === 'woocommerce');
+        if (woo) {
+          setWooConnection({ id: woo.id });
+          if (product?.id) {
+            woocommerceApi.getListingStatus(shopId, product.id)
+              .then((r) => { if (r.data?.listed) setWooListingStatus({ external_id: r.data.external_id }); })
+              .catch(() => {});
+          }
+        }
+
+        const etsy = data.find((c: any) => c.channel_type === 'etsy');
+        if (etsy) {
+          setEtsyConnection({ id: etsy.id });
+          if (product?.id) {
+            etsyApi.getListingStatus(shopId, product.id)
+              .then((r) => { if (r.data?.listed) setEtsyListingStatus({ external_id: r.data.external_id }); })
+              .catch(() => {});
+          }
+        }
 
         const ebay = data.find((c: any) => c.channel_type === 'ebay');
         if (ebay) {
@@ -1667,6 +1732,56 @@ function ProductModal({
       setNoonListingError(err?.response?.data?.detail ?? 'Could not create the Noon listing. Try again.');
     } finally {
       setListingNoon(false);
+    }
+  };
+
+  const handleListOnTiktok = async () => {
+    if (!product?.id || !tiktokCategoryId.trim()) return;
+    setListingTiktok(true);
+    setTiktokListingError('');
+    try {
+      const res = await tiktokApi.createListing(shopId, product.id, tiktokCategoryId.trim());
+      setTiktokListingStatus({ external_id: res.data?.external_id });
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setTiktokListingError(typeof detail === 'string' ? detail : detail?.message ?? 'Could not create the TikTok Shop listing. Try again.');
+    } finally {
+      setListingTiktok(false);
+    }
+  };
+
+  const handleListOnEtsy = async () => {
+    if (!product?.id || !etsyTaxonomyId.trim() || !etsyShippingProfileId.trim()) return;
+    setListingEtsy(true);
+    setEtsyListingError('');
+    try {
+      const res = await etsyApi.createListing(shopId, product.id, {
+        taxonomy_id: Number(etsyTaxonomyId.trim()),
+        who_made: etsyWhoMade,
+        when_made: etsyWhenMade,
+        shipping_profile_id: Number(etsyShippingProfileId.trim()),
+      });
+      setEtsyListingStatus({ external_id: res.data?.external_id });
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setEtsyListingError(typeof detail === 'string' ? detail : detail?.message ?? 'Could not create the Etsy listing. Try again.');
+    } finally {
+      setListingEtsy(false);
+    }
+  };
+
+  const handleListOnWoo = async () => {
+    if (!product?.id) return;
+    setListingWoo(true);
+    setWooListingError('');
+    try {
+      const res = await woocommerceApi.createListing(shopId, product.id);
+      setWooListingStatus({ external_id: res.data?.external_id });
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setWooListingError(typeof detail === 'string' ? detail : detail?.message ?? 'Could not create the WooCommerce listing. Try again.');
+    } finally {
+      setListingWoo(false);
     }
   };
 
@@ -2873,6 +2988,213 @@ function ProductModal({
                               </button>
                               {!noonBrand && <p className="text-xs text-muted-foreground mt-1.5 text-center">Enter a brand above first.</p>}
                               {noonListingError && <p className="text-xs text-destructive mt-1.5">{noonListingError}</p>}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* TikTok Shop — toggle + manually-typed category ID (no
+                    category-browsing endpoint exists yet — see tiktok.py's
+                    module docstring on why this stays plain-text for now
+                    instead of a search/tree picker like eBay/Noon's). */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: tiktokConnection ? 0 : 10 }}>
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-[#010101]/10 flex items-center justify-center shrink-0">
+                        <Music2 className="w-4 h-4 text-[#010101] dark:text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">TikTok Shop</p>
+                        <p className="text-xs text-muted-foreground">
+                          {tiktokConnection ? (tiktokEnabled ? 'Listed on TikTok Shop' : 'Not listed') : 'Not connected'}
+                        </p>
+                      </div>
+                    </div>
+                    {tiktokConnection ? (
+                      <Switch
+                        checked={tiktokEnabled}
+                        onCheckedChange={setTiktokEnabled}
+                        aria-label="Toggle TikTok Shop listing"
+                        className="shrink-0"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
+                    )}
+                  </div>
+                  {tiktokConnection && tiktokEnabled && (
+                    <div className="border-t border-border p-3 space-y-3">
+                      <div>
+                        <Label className="text-xs font-medium text-foreground mb-1 block">TikTok Category ID *</Label>
+                        <Input type="text" value={tiktokCategoryId} onChange={(e) => setTiktokCategoryId(e.target.value)}
+                          placeholder="e.g. 601226" />
+                        <p className="text-xs text-muted-foreground mt-1.5">Find this in TikTok Shop's own category list — a category browser isn't built here yet.</p>
+                      </div>
+                      {product?.id && tiktokCategoryId.trim() && (
+                        <div className="border-t border-border pt-3">
+                          {tiktokListingStatus ? (
+                            <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-green-500/10 text-green-600 dark:text-green-400">
+                              <CheckCircle className="w-3.5 h-3.5" /> Listed on TikTok Shop
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleListOnTiktok}
+                                disabled={listingTiktok}
+                                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                              >
+                                {listingTiktok && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {listingTiktok ? 'Creating listing on TikTok Shop…' : 'List on TikTok Shop'}
+                              </button>
+                              {tiktokListingError && <p className="text-xs text-destructive mt-1.5">{tiktokListingError}</p>}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* WooCommerce — toggle + button only, no category concept
+                    in the core REST API. */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: wooConnection ? 0 : 10 }}>
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-[#7F54B3]/10 flex items-center justify-center shrink-0">
+                        <ShoppingCart className="w-4 h-4 text-[#7F54B3]" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">WooCommerce</p>
+                        <p className="text-xs text-muted-foreground">
+                          {wooConnection ? (wooEnabled ? 'Listed on WooCommerce' : 'Not listed') : 'Not connected'}
+                        </p>
+                      </div>
+                    </div>
+                    {wooConnection ? (
+                      <Switch
+                        checked={wooEnabled}
+                        onCheckedChange={setWooEnabled}
+                        aria-label="Toggle WooCommerce listing"
+                        className="shrink-0"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
+                    )}
+                  </div>
+                  {wooConnection && wooEnabled && product?.id && (
+                    <div className="border-t border-border p-3">
+                      {wooListingStatus ? (
+                        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-green-500/10 text-green-600 dark:text-green-400">
+                          <CheckCircle className="w-3.5 h-3.5" /> Listed on WooCommerce
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleListOnWoo}
+                            disabled={listingWoo}
+                            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                          >
+                            {listingWoo && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {listingWoo ? 'Creating listing on WooCommerce…' : 'List on WooCommerce'}
+                          </button>
+                          {wooListingError && <p className="text-xs text-destructive mt-1.5">{wooListingError}</p>}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Etsy — toggle + manually-typed taxonomy/shipping-profile
+                    IDs (no browsing endpoint built for either yet, same
+                    caveat as TikTok's category field above — though
+                    unlike TikTok, Etsy's underlying API IS confirmed
+                    real, see etsy.py's own module docstring). */}
+                <div className="bg-card border border-border rounded-lg overflow-hidden" style={{ order: etsyConnection ? 0 : 10 }}>
+                  <div className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-[#F1641E]/10 flex items-center justify-center shrink-0">
+                        <Store className="w-4 h-4 text-[#F1641E]" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Etsy</p>
+                        <p className="text-xs text-muted-foreground">
+                          {etsyConnection ? (etsyEnabled ? 'Listed on Etsy' : 'Not listed') : 'Not connected'}
+                        </p>
+                      </div>
+                    </div>
+                    {etsyConnection ? (
+                      <Switch
+                        checked={etsyEnabled}
+                        onCheckedChange={setEtsyEnabled}
+                        aria-label="Toggle Etsy listing"
+                        className="shrink-0"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full shrink-0">Not connected</span>
+                    )}
+                  </div>
+                  {etsyConnection && etsyEnabled && (
+                    <div className="border-t border-border p-3 space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs font-medium text-foreground mb-1 block">Taxonomy ID *</Label>
+                          <Input type="text" value={etsyTaxonomyId} onChange={(e) => setEtsyTaxonomyId(e.target.value)}
+                            placeholder="e.g. 1633" />
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium text-foreground mb-1 block">Shipping Profile ID *</Label>
+                          <Input type="text" value={etsyShippingProfileId} onChange={(e) => setEtsyShippingProfileId(e.target.value)}
+                            placeholder="From your Etsy shop" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs font-medium text-foreground mb-1 block">Who made it?</Label>
+                          <Select value={etsyWhoMade} onValueChange={setEtsyWhoMade}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="i_did">I did</SelectItem>
+                              <SelectItem value="collective">A member of my shop</SelectItem>
+                              <SelectItem value="someone_else">Another company / person</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs font-medium text-foreground mb-1 block">When was it made?</Label>
+                          <Select value={etsyWhenMade} onValueChange={setEtsyWhenMade}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="made_to_order">Made to order</SelectItem>
+                              <SelectItem value="2020_2026">2020–2026</SelectItem>
+                              <SelectItem value="2010_2019">2010–2019</SelectItem>
+                              <SelectItem value="before_2010">Before 2010</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Taxonomy and shipping profile IDs come from your own Etsy shop — a browser for these isn't built here yet.</p>
+                      {product?.id && etsyTaxonomyId.trim() && etsyShippingProfileId.trim() && (
+                        <div className="border-t border-border pt-3">
+                          {etsyListingStatus ? (
+                            <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-green-500/10 text-green-600 dark:text-green-400">
+                              <CheckCircle className="w-3.5 h-3.5" /> Listed on Etsy
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleListOnEtsy}
+                                disabled={listingEtsy}
+                                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm"
+                              >
+                                {listingEtsy && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {listingEtsy ? 'Creating listing on Etsy…' : 'List on Etsy'}
+                              </button>
+                              {etsyListingError && <p className="text-xs text-destructive mt-1.5">{etsyListingError}</p>}
                             </>
                           )}
                         </div>

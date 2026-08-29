@@ -134,6 +134,8 @@ export default function ChannelsPage() {
   const hasNoon = connections.some((c) => c.channel_type === 'noon');
   const hasEbay = connections.some((c) => c.channel_type === 'ebay');
   const hasTikTok = connections.some((c) => c.channel_type === 'tiktok');
+  const hasWooCommerce = connections.some((c) => c.channel_type === 'woocommerce');
+  const hasEtsy = connections.some((c) => c.channel_type === 'etsy');
   const hasCustomWebsite = connections.some((c) => c.channel_type === 'custom');
   // Detected via an active TheDersi connection, not plan_type — TheDersi's
   // Growth/Premium tier maps to plan='starter', same as a direct customer,
@@ -172,6 +174,22 @@ export default function ChannelsPage() {
       actionLabel: shopifyConnected ? 'Manage Shopify' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Shopify')),
     },
     {
+      id: 'etsy',
+      name: 'Etsy',
+      description: 'List products on Etsy and manage orders from ExiusCart — great for handmade and craft sellers.',
+      icon: <ShoppingBag className="w-5 h-5 text-orange-600" />,
+      badge: hasEtsy ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: hasEtsy ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: hasEtsy
+        ? () => router.push('/dashboard/etsy-integration')
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('Etsy')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => router.push('/dashboard/etsy-integration'),
+      actionLabel: hasEtsy ? 'Manage Etsy' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Etsy')),
+    },
+    {
       id: 'custom_website',
       name: 'Custom Website',
       description: 'Connect any website using our API or webhook. Receive orders directly from your own storefront.',
@@ -190,10 +208,18 @@ export default function ChannelsPage() {
     {
       id: 'woocommerce',
       name: 'WooCommerce',
-      description: 'WordPress + WooCommerce integration. Install the ExiusCart plugin to sync products and orders.',
+      description: 'Connect your own WordPress store — paste your site\'s REST API keys, no plugin needed.',
       icon: <ShoppingCart className="w-5 h-5 text-[#7F54B3]" />,
-      badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('WooCommerce') : undefined,
+      badge: hasWooCommerce ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: hasWooCommerce ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: hasWooCommerce
+        ? () => router.push('/dashboard/woocommerce-integration')
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('WooCommerce')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => router.push('/dashboard/woocommerce-integration'),
+      actionLabel: hasWooCommerce ? 'Manage WooCommerce' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect WooCommerce')),
     },
     // ── Row 2: eBay, Amazon, Instagram, TikTok Shop ──
     {
@@ -307,7 +333,7 @@ export default function ChannelsPage() {
   // each group as its own grid container forces a real line break between
   // groups instead of relying on column-count arithmetic to land right.
   const CHANNEL_ROWS = [
-    ['shopify', 'custom_website', 'woocommerce'],
+    ['shopify', 'etsy', 'custom_website', 'woocommerce'],
     ['ebay', 'amazon', 'instagram', 'tiktok'],
     ['noon', 'trendyol'],
     ['daraz', 'thedersi'],

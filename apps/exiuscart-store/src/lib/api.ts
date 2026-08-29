@@ -734,13 +734,57 @@ export const ebayApi = {
 };
 
 // TikTok Shop — OAuth click-to-connect (same pattern as eBay/Daraz).
-// Product listing and order sync endpoints aren't built yet — connect flow
-// only, same incremental order eBay itself shipped in.
+// Product listing / order sync / fulfillment endpoints exist on the backend
+// now, but there's no frontend UI wired up to call them yet (no listing
+// creation flow, no order-sync button) — same gap eBay's UI fills with its
+// category-attributes + listing screens. Client methods added so that UI
+// has something real to call once it's built.
 export const tiktokApi = {
   authorize: (shopId: string) =>
     api.get(`/shops/${shopId}/channels/tiktok/authorize`),
   getStatus: (shopId: string) =>
     api.get(`/shops/${shopId}/channels/tiktok/status`),
+  createListing: (shopId: string, productId: number | string, categoryId: string) =>
+    api.post(`/shops/${shopId}/channels/tiktok/products/${productId}/create`, { category_id: categoryId }),
+  getListingStatus: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/channels/tiktok/products/${productId}/listing`),
+  syncOrdersNow: (shopId: string, days: number = 7) =>
+    api.post(`/shops/${shopId}/channels/tiktok/sync-orders`, null, { params: { days } }),
+  fulfillOrder: (shopId: string, orderId: number | string, data: { tracking_number: string; shipping_provider_id: string }) =>
+    api.post(`/shops/${shopId}/channels/tiktok/orders/${orderId}/fulfill`, data),
+};
+
+// WooCommerce — no central marketplace to register an app with, so each
+// seller pastes their own site's Consumer Key/Secret (from their own
+// WordPress admin), same per-seller-credential pattern as Noon.
+export const woocommerceApi = {
+  connect: (shopId: string, data: { site_url: string; consumer_key: string; consumer_secret: string }) =>
+    api.post(`/shops/${shopId}/channels/woocommerce/connect`, data),
+  createListing: (shopId: string, productId: number | string) =>
+    api.post(`/shops/${shopId}/channels/woocommerce/products/${productId}/create`),
+  getListingStatus: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/channels/woocommerce/products/${productId}/listing`),
+  syncOrdersNow: (shopId: string, days: number = 7) =>
+    api.post(`/shops/${shopId}/channels/woocommerce/sync-orders`, null, { params: { days } }),
+  fulfillOrder: (shopId: string, orderId: number | string, data: { tracking_number: string; carrier_name: string }) =>
+    api.post(`/shops/${shopId}/channels/woocommerce/orders/${orderId}/fulfill`, data),
+};
+
+// Etsy — OAuth2 + PKCE click-to-connect, same shape as eBay/TikTok/Daraz.
+export const etsyApi = {
+  authorize: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/etsy/authorize`),
+  getStatus: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/etsy/status`),
+  createListing: (shopId: string, productId: number | string, data: {
+    taxonomy_id: number; who_made: string; when_made: string; shipping_profile_id: number;
+  }) => api.post(`/shops/${shopId}/channels/etsy/products/${productId}/create`, data),
+  getListingStatus: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/channels/etsy/products/${productId}/listing`),
+  syncOrdersNow: (shopId: string, days: number = 7) =>
+    api.post(`/shops/${shopId}/channels/etsy/sync-orders`, null, { params: { days } }),
+  fulfillOrder: (shopId: string, orderId: number | string, data: { tracking_number: string; carrier_name: string }) =>
+    api.post(`/shops/${shopId}/channels/etsy/orders/${orderId}/fulfill`, data),
 };
 
 export const usageApi = {

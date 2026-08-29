@@ -25,6 +25,8 @@ const CHANNEL_LABELS: Record<string, string> = {
   ebay: 'eBay',
   custom: 'Custom Website',
   woocommerce: 'WooCommerce',
+  tiktok: 'TikTok Shop',
+  etsy: 'Etsy',
   amazon: 'Amazon',
 };
 

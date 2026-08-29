@@ -15,11 +15,12 @@ interface IntegrationCard {
   core?: boolean;         // ExiusCart + Prodora — grouped in their own boxed pair, matching the heading copy ("at the center")
 }
 
-// All 10 cards in one row now, reading as one continuous strip like the
-// reference. Amazon and TikTok Shop are marked status:'soon' — no backend
-// integration exists for either yet, so they're shown honestly as upcoming
-// rather than claimed as live, unlike TheDersi/Daraz/eBay/Shopify/Noon/
-// Custom Website which ship.
+// All 11 cards in one row now, reading as one continuous strip like the
+// reference. Amazon, TikTok Shop and Etsy are marked status:'soon' — TikTok
+// has real connect-flow code now but hasn't cleared TikTok's own app review
+// yet, Amazon/Etsy have no backend integration at all — all three shown
+// honestly as upcoming rather than claimed as live, unlike
+// TheDersi/Daraz/eBay/Shopify/Noon/Custom Website which ship.
 const CARDS: IntegrationCard[] = [
   {
     id: 'exiuscart', name: 'ExiusCart', status: 'live', core: true,
@@ -35,6 +36,16 @@ const CARDS: IntegrationCard[] = [
     id: 'shopify', name: 'Shopify', status: 'live',
     image: '/integration/shopify.jpg', imageSize: '480×600',
     desc: 'Sync products, inventory and orders between Shopify and ExiusCart automatically.',
+  },
+  {
+    id: 'tiktok', name: 'TikTok Shop', status: 'soon',
+    image: '/integration/tiktok.jpg', imageSize: '480×600',
+    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart. In development.',
+  },
+  {
+    id: 'etsy', name: 'Etsy', status: 'soon',
+    image: '/integration/etsy.jpg', imageSize: '480×600',
+    desc: 'List products on Etsy and manage orders from ExiusCart. In development.',
   },
   {
     id: 'custom-website', name: 'Custom Website', status: 'live',
@@ -55,11 +66,6 @@ const CARDS: IntegrationCard[] = [
     id: 'amazon', name: 'Amazon', status: 'soon',
     image: '/integration/amazon.jpg', imageSize: '480×600',
     desc: 'Connect your Amazon seller account — orders, stock and fulfilment in one place. In development.',
-  },
-  {
-    id: 'tiktok', name: 'TikTok Shop', status: 'soon',
-    image: '/integration/tiktok.jpg', imageSize: '480×600',
-    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart. In development.',
   },
   {
     id: 'daraz', name: 'Daraz', status: 'live',

@@ -54,11 +54,11 @@ import hashlib
 import secrets
 import logging
 from datetime import datetime, timezone, timedelta
-from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -86,6 +86,10 @@ TIKTOK_AUTHORIZE_URL_TEMPLATE = os.getenv("TIKTOK_AUTHORIZE_URL_TEMPLATE", "")
 
 TIKTOK_AUTH_BASE = "https://auth.tiktok-shops.com"
 TIKTOK_API_BASE = "https://open-api.tiktokglobalshop.com"
+# CONFIRMED (endpoint path pattern only, e.g. "product/202309/images/upload")
+# against TikTok's own documented page titles — every Shop API path is
+# prefixed by a resource name + this version string.
+TIKTOK_API_VERSION = "202309"
 
 STOREFRONT_BASE = "https://store.exiuscart.com"
 
@@ -344,11 +348,7 @@ def tiktok_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Connection status for the dashboard page — product listing and order
-    sync (the eBay-equivalent create_ebay_listing/sync_ebay_orders) aren't
-    built yet; this endpoint exists so the frontend has something real to
-    show once Connect succeeds, same incremental order eBay itself was
-    built in (connect flow first, product/order endpoints after)."""
+    """Connection status for the dashboard page."""
     _shop_or_404(shop_id, current_user, db)
     conn = db.query(ChannelConnection).filter(
         ChannelConnection.shop_id == shop_id,
@@ -359,3 +359,301 @@ def tiktok_status(
         "connected": conn is not None,
         "last_synced_at": conn.last_synced_at.isoformat() if conn and conn.last_synced_at else None,
     }
+
+
+# ── Product listing ──────────────────────────────────────────────────────────
+#
+# UNVERIFIED END TO END — unlike the OAuth flow above (which has confirmed
+# sources for its critical pieces), nothing below has a confirmed real
+# request/response shape. All that's actually confirmed from public sources
+# is the endpoint *path pattern* (resource/202309/action) and that TikTok's
+# Product API is image-upload-then-create (two calls, not one) — the same
+# shape AliExpress's own _aliexpress_fetch_product docstring warns about
+# before it had real docs to check against. Field names below (title,
+# description, category_id, skus[].price/stock, etc.) are inferred from
+# TikTok's own REST naming conventions elsewhere in this file (snake_case,
+# matching the token endpoint's real fields), NOT read from a confirmed
+# schema. Treat every field name as something to verify against Partner
+# Center's own API Reference (available once App Review grants real API
+# scope access) before trusting a real response, exactly like eBay's
+# Content-Language header requirement was only found after a real failed
+# listing attempt.
+
+def _log_tiktok_sync(shop_id: int, product_id: int | None, action: str, success: bool, external_id: str | None, error_message: str | None, db: Session):
+    from app.models.channel_sync_log import ChannelSyncLog
+    db.add(ChannelSyncLog(
+        shop_id=shop_id, product_id=product_id, channel_type="tiktok",
+        action=action, success=success, external_id=external_id, error_message=error_message,
+    ))
+    db.commit()
+
+
+def _tiktok_upload_image(image_url: str, conn: ChannelConnection, db: Session) -> str | None:
+    """UNVERIFIED. Best guess: TikTok requires product images to be
+    uploaded to their own CDN first (image-by-URL, not raw bytes, matching
+    how most REST product APIs of this shape work), returning an internal
+    `uri` to reference in the product-create call. Path pattern itself
+    (product/202309/images/upload) is CONFIRMED from TikTok's own doc page
+    title; the request/response field names (img_url in, uri out) are
+    inferred, not confirmed."""
+    resp = _tiktok_api_request(
+        "POST", f"/product/{TIKTOK_API_VERSION}/images/upload",
+        conn, db, json={"img_url": image_url},
+    )
+    if resp is None or resp.status_code >= 300:
+        logger.error(f"[TIKTOK PRODUCT] image upload failed for {image_url}: {resp.text[:300] if resp else 'no response'}")
+        return None
+    data = resp.json().get("data") or {}
+    return data.get("uri")
+
+
+class TiktokCreateListingIn(BaseModel):
+    category_id: str
+
+
+@router.post("/shops/{shop_id}/channels/tiktok/products/{product_id}/create")
+def create_tiktok_listing(
+    shop_id: int,
+    product_id: int,
+    data: TiktokCreateListingIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lists a product on TikTok Shop — mirrors eBay's create_ebay_listing
+    shape (upload images, then create), recorded the same way via
+    ChannelProductStatus + _log_tiktok_sync. See module note above: the
+    exact TikTok field names are UNVERIFIED, this will need adjustment on
+    the first real attempt."""
+    from app.models.product import Product
+    from app.models.product_fields import ProductImage
+    from app.models.channel_product_status import ChannelProductStatus
+
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = _get_tiktok_connection(shop_id, db)
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    images = db.query(ProductImage).filter(ProductImage.product_id == product_id).order_by(ProductImage.sort_order).all()
+    uploaded_uris = []
+    for img in images[:9]:  # TikTok Shop's own UI caps product images around 9 — matched here, not confirmed as a hard API limit
+        uri = _tiktok_upload_image(img.url, conn, db)
+        if uri:
+            uploaded_uris.append(uri)
+
+    if not uploaded_uris:
+        _log_tiktok_sync(shop_id, product_id, "create_listing", False, None, "No images could be uploaded to TikTok", db)
+        raise HTTPException(status_code=502, detail="Could not upload any product images to TikTok Shop.")
+
+    body = {
+        "category_id": data.category_id,
+        "title": product.name[:255],
+        "description": (product.description or product.name)[:5000],
+        "images": [{"uri": uri} for uri in uploaded_uris],
+        "skus": [{
+            "sales_attributes": [],
+            "price": {"amount": str(product.price), "currency": conn.channel_currency or "USD"},
+            "inventory": [{"warehouse_id": "", "quantity": int(product.quantity or 0)}],
+            "seller_sku": product.sku or f"EC-{product.id}",
+        }],
+    }
+    resp = _tiktok_api_request("POST", f"/product/{TIKTOK_API_VERSION}/products", conn, db, json=body)
+    if resp is None or resp.status_code >= 300:
+        error_detail = resp.text[:500] if resp is not None else "no response"
+        _log_tiktok_sync(shop_id, product_id, "create_listing", False, None, error_detail, db)
+        raise HTTPException(status_code=502, detail=f"TikTok Shop rejected the listing: {error_detail}")
+
+    external_id = (resp.json().get("data") or {}).get("product_id")
+    existing = db.query(ChannelProductStatus).filter(
+        ChannelProductStatus.product_id == product_id,
+        ChannelProductStatus.channel_type == "tiktok",
+    ).first()
+    if existing:
+        existing.status = "pending_review"
+        existing.external_item_id = external_id
+    else:
+        db.add(ChannelProductStatus(product_id=product_id, shop_id=shop_id, channel_type="tiktok", status="pending_review", external_item_id=external_id))
+    db.commit()
+    _log_tiktok_sync(shop_id, product_id, "create_listing", True, external_id, None, db)
+    return {"message": "Listed on TikTok Shop — pending TikTok's own review.", "external_id": external_id}
+
+
+@router.get("/shops/{shop_id}/channels/tiktok/products/{product_id}/listing")
+def get_tiktok_listing_status(
+    shop_id: int,
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.channel_product_status import ChannelProductStatus
+    _shop_or_404(shop_id, current_user, db)
+    status = db.query(ChannelProductStatus).filter(
+        ChannelProductStatus.product_id == product_id,
+        ChannelProductStatus.channel_type == "tiktok",
+    ).first()
+    if not status:
+        return {"listed": False}
+    return {"listed": True, "status": status.status, "external_id": status.external_item_id, "rejection_reason": status.rejection_reason}
+
+
+# ── Order sync ────────────────────────────────────────────────────────────────
+# Same UNVERIFIED caveat as Product listing above. order_status and
+# page_size as real param names, and the endpoint path pattern, are
+# CONFIRMED from public fragments (a real PHP SDK's documented usage); the
+# full response shape (line item / SKU / recipient field names) is
+# inferred from TikTok's own snake_case convention, not confirmed.
+
+def fetch_tiktok_orders(conn: ChannelConnection, db: Session, days: int = 7) -> list | None:
+    """POST /order/202309/orders/search — paginated via next_page_token
+    (TikTok's documented pattern for other list endpoints, applied here by
+    inference). order_status/page_size params are the two pieces actually
+    confirmed from a public source; everything else about this call is a
+    best-effort guess to verify on first real use."""
+    orders = []
+    page_token = None
+    create_time_ge = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp())
+    for _ in range(20):  # hard cap so a pagination bug can't loop forever
+        body = {"create_time_ge": create_time_ge}
+        params = {"page_size": 50}
+        if page_token:
+            params["page_token"] = page_token
+        resp = _tiktok_api_request("POST", f"/order/{TIKTOK_API_VERSION}/orders/search", conn, db, params=params, json=body)
+        if resp is None or resp.status_code >= 300:
+            logger.error(f"[TIKTOK ORDERS] search failed: {resp.text[:300] if resp else 'no response'}")
+            return None if not orders else orders
+        data = resp.json().get("data") or {}
+        batch = data.get("orders", [])
+        orders.extend(batch)
+        page_token = data.get("next_page_token")
+        if not page_token or not batch:
+            break
+    return orders
+
+
+def sync_tiktok_orders(conn: ChannelConnection, shop, db: Session, days: int = 7) -> int:
+    """Mirrors eBay's sync_ebay_orders exactly — pulls orders in the given
+    window ExiusCart doesn't already have, matches line items to real
+    products by SKU (`seller_sku`, inferred field name)."""
+    from app.models.channel_order_meta import ChannelOrderMeta
+    from app.models.order import Order, OrderItem
+    from app.models.product import Product
+    from app.models.product_variant import ProductVariant
+    import uuid as _uuid
+
+    orders_data = fetch_tiktok_orders(conn, db, days)
+    if not orders_data:
+        return 0
+
+    order_ids = {o.get("id") for o in orders_data if o.get("id")}
+    already_known = {
+        m.channel_order_id for m in db.query(ChannelOrderMeta).filter(
+            ChannelOrderMeta.channel_type == "tiktok",
+            ChannelOrderMeta.channel_order_id.in_(order_ids),
+        ).all()
+    }
+    created = 0
+
+    for tt_order in orders_data:
+        tt_order_id = tt_order.get("id")
+        if not tt_order_id or tt_order_id in already_known:
+            continue
+
+        subtotal = 0.0
+        order_items_to_add = []
+        items_detail = []
+        for line_item in tt_order.get("line_items", []):
+            sku = line_item.get("seller_sku")
+            product = db.query(Product).filter(Product.shop_id == shop.id, Product.sku == sku).first() if sku else None
+            if not product:
+                variant = db.query(ProductVariant).filter(ProductVariant.sku == sku).first() if sku else None
+                product = db.query(Product).filter(Product.id == variant.product_id).first() if variant else None
+            if not product:
+                logger.warning(f"[TIKTOK ORDERS] shop={shop.id} order_id={tt_order_id} — no product matches SKU {sku!r}, skipping item")
+                continue
+
+            qty = int(line_item.get("quantity") or 1)
+            unit_price = float((line_item.get("sale_price") or {}).get("amount") or 0)
+            item_total = unit_price * qty
+            subtotal += item_total
+            order_items_to_add.append(OrderItem(
+                product_id=product.id, product_name=product.name,
+                quantity=qty, unit_price=unit_price, total_price=item_total,
+            ))
+            items_detail.append({"sku": sku, "line_item_id": line_item.get("id"), "quantity": qty})
+
+        if not order_items_to_add:
+            logger.warning(f"[TIKTOK ORDERS] shop={shop.id} order_id={tt_order_id} — no items matched any product, order not created")
+            continue
+
+        order = Order(
+            order_number=f"TT-{tt_order_id}-{str(_uuid.uuid4())[:4].upper()}",
+            source="channel", subtotal=subtotal, total=subtotal,
+            shop_id=shop.id, notes=f"TikTok Shop Order #{tt_order_id}",
+        )
+        db.add(order)
+        db.flush()
+        for oi in order_items_to_add:
+            oi.order_id = order.id
+            db.add(oi)
+        db.add(ChannelOrderMeta(order_id=order.id, channel_type="tiktok", channel_order_id=tt_order_id, items_detail=items_detail))
+        created += 1
+
+    if created:
+        conn.last_synced_at = datetime.now(timezone.utc)
+        db.commit()
+    return created
+
+
+@router.post("/shops/{shop_id}/channels/tiktok/sync-orders")
+def sync_tiktok_orders_now(
+    shop_id: int,
+    days: int = 7,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = _get_tiktok_connection(shop_id, db)
+    created = sync_tiktok_orders(conn, shop, db, min(max(days, 1), 90))
+    return {"orders_created": created}
+
+
+class TiktokFulfillIn(BaseModel):
+    tracking_number: str
+    shipping_provider_id: str
+
+
+@router.post("/shops/{shop_id}/channels/tiktok/orders/{order_id}/fulfill")
+def fulfill_tiktok_order(
+    shop_id: int,
+    order_id: int,
+    data: TiktokFulfillIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Pushes a tracking number back to TikTok Shop. UNVERIFIED — the
+    endpoint path (fulfillment/202309/...) and body fields are inferred
+    from TikTok's own naming conventions elsewhere, not confirmed."""
+    from app.models.channel_order_meta import ChannelOrderMeta
+
+    shop = _shop_or_404(shop_id, current_user, db)
+    conn = _get_tiktok_connection(shop_id, db)
+
+    meta = db.query(ChannelOrderMeta).filter(
+        ChannelOrderMeta.order_id == order_id,
+        ChannelOrderMeta.channel_type == "tiktok",
+    ).first()
+    if not meta or not meta.channel_order_id:
+        raise HTTPException(status_code=404, detail="This order isn't linked to a TikTok Shop order")
+
+    body = {
+        "tracking_number": data.tracking_number,
+        "shipping_provider_id": data.shipping_provider_id,
+    }
+    resp = _tiktok_api_request(
+        "POST", f"/fulfillment/{TIKTOK_API_VERSION}/orders/{meta.channel_order_id}/packages",
+        conn, db, json=body,
+    )
+    if resp is None or resp.status_code >= 300:
+        detail = resp.text[:500] if resp is not None else "no response"
+        raise HTTPException(status_code=502, detail=f"TikTok Shop rejected the fulfillment update: {detail}")
+    return {"message": "Tracking sent to TikTok Shop"}
