@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react';
 import {
   Link2, Loader2,
-  X, ExternalLink,
+  X, ExternalLink, Lock,
   ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2,
 } from 'lucide-react';
 import { channelsApi, shopifyApi, subscriptionApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -30,18 +33,17 @@ interface ChannelDef {
   actionLabel?: string;
 }
 
+// Matches the Suppliers page's SupplierCard pattern (real shadcn Card/
+// Badge/Button, not raw divs) — same green-tinted-card-when-connected
+// language, and the action button now actually shifts to the same green
+// (Button's `success` variant, added alongside this) instead of staying
+// primary-blue while everything around it says "Connected".
 function ChannelTile({ ch }: { ch: ChannelDef }) {
-  const badgeStyles: Record<string, string> = {
-    live: 'bg-green-500/10 text-green-600 dark:text-green-400',
-    connect: 'bg-primary/10 text-primary',
-    soon: 'bg-muted text-muted-foreground',
-    locked: 'bg-muted/80 text-muted-foreground/70',
-  };
-  const dotStyles: Record<string, string> = {
-    live: 'bg-green-500',
-    connect: 'bg-primary',
-    soon: 'bg-muted-foreground/40',
-    locked: 'bg-muted-foreground/40',
+  const badgeVariant: Record<ChannelDef['badge'], 'success' | 'default' | 'muted'> = {
+    live: 'success',
+    connect: 'default',
+    soon: 'muted',
+    locked: 'muted',
   };
   const badgeLabels: Record<string, string> = {
     live: 'Live',
@@ -50,41 +52,47 @@ function ChannelTile({ ch }: { ch: ChannelDef }) {
     locked: 'Not on your plan',
   };
   return (
-    <div className={`group relative bg-card border rounded-2xl p-5 flex flex-col gap-4 transition-all duration-200 hover:shadow-lg hover:shadow-black/[0.03] hover:-translate-y-0.5 ${
-      ch.badge === 'live' ? 'border-green-500/25 bg-gradient-to-br from-green-500/[0.04] to-transparent' : 'border-border hover:border-primary/30'
+    <Card className={`group relative transition-all duration-200 hover:shadow-lg hover:shadow-black/[0.03] hover:-translate-y-0.5 ${
+      ch.badge === 'live' ? 'border-green-500/25 bg-gradient-to-br from-green-500/[0.04] to-transparent' : 'hover:border-primary/30'
     }`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-muted/70 ring-1 ring-border flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:ring-primary/20 transition-all duration-200">
-          {ch.icon}
+      <CardContent className="p-5 pt-5 flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-muted/70 ring-1 ring-border flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:ring-primary/20 transition-all duration-200">
+            {ch.icon}
+          </div>
+          <Badge variant={badgeVariant[ch.badge]} className="shrink-0 gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              ch.badge === 'live' ? 'bg-green-500' : ch.badge === 'connect' ? 'bg-primary' : 'bg-muted-foreground/40'
+            }`} />
+            {ch.badgeLabel ?? badgeLabels[ch.badge]}
+          </Badge>
         </div>
-        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${badgeStyles[ch.badge]}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${dotStyles[ch.badge]}`} />
-          {ch.badgeLabel ?? badgeLabels[ch.badge]}
-        </span>
-      </div>
-      <div className="flex-1">
-        <p className="font-semibold text-foreground text-sm">{ch.name}</p>
-        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{ch.description}</p>
-      </div>
-      {ch.onAction && ch.badge !== 'soon' && ch.badge !== 'locked' && (
-        <button type="button" onClick={ch.onAction}
-          className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition flex items-center justify-center gap-1.5">
-          {ch.actionLabel ?? 'Connect'} <ExternalLink className="w-3.5 h-3.5" />
-        </button>
-      )}
-      {ch.onAction && ch.badge === 'locked' && (
-        <button type="button" onClick={ch.onAction}
-          className="w-full py-2.5 text-sm font-medium border border-border rounded-xl hover:bg-muted transition text-muted-foreground">
-          {ch.actionLabel ?? 'Upgrade to Premium'}
-        </button>
-      )}
-      {ch.onAction && ch.badge === 'soon' && (
-        <button type="button" onClick={ch.onAction}
-          className="w-full py-2.5 text-sm font-medium border border-border rounded-xl hover:bg-muted transition text-muted-foreground">
-          Learn more
-        </button>
-      )}
-    </div>
+        <div className="flex-1">
+          <p className="font-semibold text-foreground text-sm">{ch.name}</p>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{ch.description}</p>
+        </div>
+        {ch.onAction && ch.badge === 'live' && (
+          <Button variant="success" className="w-full" onClick={ch.onAction}>
+            {ch.actionLabel ?? 'Manage'} <ExternalLink className="w-3.5 h-3.5" />
+          </Button>
+        )}
+        {ch.onAction && ch.badge === 'connect' && (
+          <Button className="w-full" onClick={ch.onAction}>
+            {ch.actionLabel ?? 'Connect'} <ExternalLink className="w-3.5 h-3.5" />
+          </Button>
+        )}
+        {ch.onAction && ch.badge === 'locked' && (
+          <Button variant="outline" className="w-full" onClick={ch.onAction}>
+            <Lock className="w-3.5 h-3.5" /> {ch.actionLabel ?? 'Upgrade to Premium'}
+          </Button>
+        )}
+        {ch.onAction && ch.badge === 'soon' && (
+          <Button variant="outline" className="w-full" onClick={ch.onAction}>
+            Learn more
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -125,6 +133,7 @@ export default function ChannelsPage() {
   const hasDaraz = connections.some((c) => c.channel_type === 'daraz');
   const hasNoon = connections.some((c) => c.channel_type === 'noon');
   const hasEbay = connections.some((c) => c.channel_type === 'ebay');
+  const hasTikTok = connections.some((c) => c.channel_type === 'tiktok');
   const hasCustomWebsite = connections.some((c) => c.channel_type === 'custom');
   // Detected via an active TheDersi connection, not plan_type — TheDersi's
   // Growth/Premium tier maps to plan='starter', same as a direct customer,
@@ -145,48 +154,7 @@ export default function ChannelsPage() {
   const canUseEbay = plan === 'premium' && !isTheDersiUser;
 
   const availableChannels: ChannelDef[] = [
-    // ── Row 1: TheDersi + Daraz (the two channels TheDersi sellers can use) ──
-    {
-      id: 'thedersi',
-      name: 'TheDersi',
-      description: "List products on Sri Lanka's #1 fashion marketplace. Orders sync automatically to your dashboard.",
-      icon: <Link2 className="w-5 h-5 text-primary" />,
-      badge: hasTheDersi ? 'live' : (channelLimitReached ? 'locked' : 'connect'),
-      badgeLabel: hasTheDersi ? 'Connected' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
-      onAction: channelLimitReached && !hasTheDersi
-        ? () => setUpgradeLimitModal(true)
-        : () => router.push('/dashboard/thedersi-integration'),
-      actionLabel: hasTheDersi ? 'Manage TheDersi' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect TheDersi'),
-    },
-    {
-      id: 'daraz',
-      name: 'Daraz',
-      description: "Sri Lanka's #1 marketplace. Orders sync to ExiusCart automatically — manage everything from one dashboard.",
-      icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
-      badge: hasDaraz ? 'live' : canUseDaraz ? 'connect' : 'locked',
-      badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : (isTheDersiUser ? 'TheDersi Pro only' : 'Premium only'),
-      onAction: hasDaraz || canUseDaraz
-        ? () => router.push('/dashboard/daraz-integration')
-        : () => setDarazLocked(true),
-      actionLabel: hasDaraz ? 'Manage Daraz' : 'Connect Daraz',
-    },
-    {
-      id: 'noon',
-      name: 'Noon',
-      description: "UAE/KSA/GCC's biggest marketplace. Paste your own Noon service account key to connect — products, stock, and orders sync to ExiusCart.",
-      icon: <ShoppingBag className="w-5 h-5 text-yellow-500" />,
-      badge: hasNoon ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: hasNoon ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
-      onAction: hasNoon
-        ? () => router.push('/dashboard/noon-integration')
-        : isTheDersiUser
-          ? () => setDersiBlockChannel('Noon')
-          : channelLimitReached
-            ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/noon-integration'),
-      actionLabel: hasNoon ? 'Manage Noon' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Noon')),
-    },
-    // ── Row 2: Shopify + Custom Website (direct-ExiusCart channels) ──
+    // ── Row 1: Shopify, Custom Website, WooCommerce ──
     {
       id: 'shopify',
       name: 'Shopify',
@@ -219,15 +187,15 @@ export default function ChannelsPage() {
             : () => router.push('/dashboard/custom-website-integration'),
       actionLabel: hasCustomWebsite ? 'Manage Website' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Website')),
     },
-    // ── Row 3+: Amazon, eBay & all other channels ──
     {
-      id: 'amazon',
-      name: 'Amazon',
-      description: 'List and manage your Amazon products and orders through ExiusCart.',
-      icon: <Package className="w-5 h-5 text-orange-400" />,
+      id: 'woocommerce',
+      name: 'WooCommerce',
+      description: 'WordPress + WooCommerce integration. Install the ExiusCart plugin to sync products and orders.',
+      icon: <ShoppingCart className="w-5 h-5 text-[#7F54B3]" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Amazon') : undefined,
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('WooCommerce') : undefined,
     },
+    // ── Row 2: eBay, Amazon, Instagram, TikTok Shop ──
     {
       id: 'ebay',
       name: 'eBay',
@@ -245,20 +213,12 @@ export default function ChannelsPage() {
       actionLabel: hasEbay ? 'Manage eBay' : (isTheDersiUser ? 'Learn more' : (canUseEbay ? 'Connect eBay' : 'Upgrade to Premium')),
     },
     {
-      id: 'tiktok',
-      name: 'TikTok Shop',
-      description: 'Sell directly on TikTok. Orders sync to ExiusCart, stock stays in sync automatically.',
-      icon: <Music2 className="w-5 h-5 text-[#010101] dark:text-white" />,
+      id: 'amazon',
+      name: 'Amazon',
+      description: 'List and manage your Amazon products and orders through ExiusCart.',
+      icon: <Package className="w-5 h-5 text-orange-400" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('TikTok Shop') : undefined,
-    },
-    {
-      id: 'woocommerce',
-      name: 'WooCommerce',
-      description: 'WordPress + WooCommerce integration. Install the ExiusCart plugin to sync products and orders.',
-      icon: <ShoppingCart className="w-5 h-5 text-[#7F54B3]" />,
-      badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('WooCommerce') : undefined,
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Amazon') : undefined,
     },
     {
       id: 'instagram',
@@ -268,6 +228,89 @@ export default function ChannelsPage() {
       badge: 'soon',
       onAction: isTheDersiUser ? () => setDersiBlockChannel('Instagram Shopping') : undefined,
     },
+    {
+      // Gated the same way as Noon/Shopify/Custom Website — Starter picks
+      // it as their one channel, Premium gets it unlimited alongside
+      // everything else — matching the pricing page's actual promise,
+      // NOT eBay's inline Premium-only gate (a separate, pre-existing
+      // mismatch between eBay's code and its own marketing copy).
+      id: 'tiktok',
+      name: 'TikTok Shop',
+      description: 'Sell directly on TikTok. Orders sync to ExiusCart, stock stays in sync automatically.',
+      icon: <Music2 className="w-5 h-5 text-[#010101] dark:text-white" />,
+      badge: hasTikTok ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: hasTikTok ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: hasTikTok
+        ? () => router.push('/dashboard/tiktok-integration')
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('TikTok Shop')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => router.push('/dashboard/tiktok-integration'),
+      actionLabel: hasTikTok ? 'Manage TikTok Shop' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect TikTok Shop')),
+    },
+    // ── Row 3: Noon, Trendyol ──
+    {
+      id: 'noon',
+      name: 'Noon',
+      description: "UAE/KSA/GCC's biggest marketplace. Paste your own Noon service account key to connect — products, stock, and orders sync to ExiusCart.",
+      icon: <ShoppingBag className="w-5 h-5 text-yellow-500" />,
+      badge: hasNoon ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: hasNoon ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: hasNoon
+        ? () => router.push('/dashboard/noon-integration')
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('Noon')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => router.push('/dashboard/noon-integration'),
+      actionLabel: hasNoon ? 'Manage Noon' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Noon')),
+    },
+    {
+      id: 'trendyol',
+      name: 'Trendyol',
+      description: "Turkey's largest online marketplace. List products and manage orders through ExiusCart.",
+      icon: <ShoppingBag className="w-5 h-5 text-[#F27A1A]" />,
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Trendyol') : undefined,
+    },
+    // ── Row 4 (last): Daraz, TheDersi — the two channels TheDersi sellers can use ──
+    {
+      id: 'daraz',
+      name: 'Daraz',
+      description: "South Asia's largest marketplace — Pakistan, Bangladesh, Sri Lanka, Nepal and Myanmar. Orders sync to ExiusCart automatically.",
+      icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
+      badge: hasDaraz ? 'live' : canUseDaraz ? 'connect' : 'locked',
+      badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : (isTheDersiUser ? 'TheDersi Pro only' : 'Premium only'),
+      onAction: hasDaraz || canUseDaraz
+        ? () => router.push('/dashboard/daraz-integration')
+        : () => setDarazLocked(true),
+      actionLabel: hasDaraz ? 'Manage Daraz' : 'Connect Daraz',
+    },
+    {
+      id: 'thedersi',
+      name: 'TheDersi',
+      description: "List products on Sri Lanka's #1 fashion marketplace. Orders sync automatically to your dashboard.",
+      icon: <Link2 className="w-5 h-5 text-primary" />,
+      badge: hasTheDersi ? 'live' : (channelLimitReached ? 'locked' : 'connect'),
+      badgeLabel: hasTheDersi ? 'Connected' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
+      onAction: channelLimitReached && !hasTheDersi
+        ? () => setUpgradeLimitModal(true)
+        : () => router.push('/dashboard/thedersi-integration'),
+      actionLabel: hasTheDersi ? 'Manage TheDersi' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect TheDersi'),
+    },
+  ];
+
+  // A single flowing grid wraps continuously across every tile — with 11
+  // tiles at 3 columns, item 7 (TikTok) shares a row with items 8-9
+  // (Noon/Trendyol) regardless of the "logical" grouping below. Rendering
+  // each group as its own grid container forces a real line break between
+  // groups instead of relying on column-count arithmetic to land right.
+  const CHANNEL_ROWS = [
+    ['shopify', 'custom_website', 'woocommerce'],
+    ['ebay', 'amazon', 'instagram', 'tiktok'],
+    ['noon', 'trendyol'],
+    ['daraz', 'thedersi'],
   ];
 
   return (
@@ -305,13 +348,16 @@ export default function ChannelsPage() {
           <span className="text-sm">Loading channels...</span>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <h2 className="text-sm font-medium text-foreground">All Channels</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {availableChannels.map((ch) => (
-              <ChannelTile key={ch.id} ch={ch} />
-            ))}
-          </div>
+          {CHANNEL_ROWS.map((ids, i) => (
+            <div key={i} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ids.map((id) => {
+                const ch = availableChannels.find((c) => c.id === id);
+                return ch ? <ChannelTile key={ch.id} ch={ch} /> : null;
+              })}
+            </div>
+          ))}
         </div>
       )}
 

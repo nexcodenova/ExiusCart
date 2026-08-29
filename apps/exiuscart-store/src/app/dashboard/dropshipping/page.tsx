@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff, Zap, Boxes, Layers, ShoppingBag, Shirt, Palette, Printer } from 'lucide-react';
+import { CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff, Zap, Boxes, Layers, ShoppingBag, Shirt, Palette, Printer, Globe } from 'lucide-react';
 import { dropshipApi, channelsApi } from '@/lib/api';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -22,6 +22,11 @@ const SIGNUP_LINKS: Record<string, string> = {
   hypersku:   'https://www.hypersku.com/register',
   wiio:       'https://wiio.com/register',
   aliexpress: 'https://developers.aliexpress.com/',
+  // 1688 has no direct foreign-facing signup of its own — points at the
+  // marketplace itself as an informational link, not a real API-key
+  // signup flow, same scaffolding-first treatment as AliExpress got
+  // before its own App Key/Secret existed.
+  '1688':     'https://www.1688.com/',
   printful:   'https://www.printful.com/dashboard/register',
   printify:   'https://printify.com/app/register',
   gelato:     'https://www.gelato.com/sign-up',
@@ -37,6 +42,7 @@ const DASHBOARD_LINKS: Record<string, string> = {
   hypersku:   'https://www.hypersku.com/',
   wiio:       'https://wiio.com/',
   aliexpress: 'https://developers.aliexpress.com/',
+  '1688':     'https://www.1688.com/',
   printful:   'https://www.printful.com/dashboard',
   printify:   'https://printify.com/app/store',
   gelato:     'https://www.gelato.com/dashboard',
@@ -53,6 +59,7 @@ const SUPPLIER_STYLE: Record<string, { icon: React.ElementType; color: string; b
   hypersku:   { icon: Boxes,       color: 'text-teal-500',   bg: 'bg-teal-500/10',   logo: '/dropshipping/hypersku_icon.png', logoFit: 'contain' },
   wiio:       { icon: Layers,      color: 'text-rose-500',   bg: 'bg-rose-500/10'   },
   aliexpress: { icon: ShoppingBag, color: 'text-red-500',    bg: 'bg-red-500/10'   },
+  '1688':     { icon: Globe,       color: 'text-orange-600', bg: 'bg-orange-600/10' },
   printful:   { icon: Shirt,       color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
   printify:   { icon: Palette,     color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
   gelato:     { icon: Printer,     color: 'text-amber-500',  bg: 'bg-amber-500/10' },

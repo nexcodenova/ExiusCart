@@ -53,6 +53,14 @@ SUPPLIER_SIGNUP_LINKS = {
     # the same way as the other API-key suppliers, but nothing actually
     # calls AliExpress until real App Key/Secret + OAuth are wired in.
     "aliexpress": "https://developers.aliexpress.com/",
+    # 1688.com (Alibaba's Chinese domestic wholesale marketplace) has no
+    # direct foreign-facing open API — real access goes through a
+    # third-party API provider (evaluated: OTCommerce, TMAPI) that wraps
+    # 1688 for outside developers. No provider is picked/configured yet, so
+    # this points at 1688 itself as an informational link, not a real
+    # API-key signup flow — same honest scaffolding-first treatment as
+    # AliExpress got before its own App Key/Secret existed.
+    "1688":       "https://www.1688.com/",
     # ── Print-on-Demand — design once, provider prints + ships automatically.
     # Same scaffolding-first treatment as AliExpress above: the connection is
     # stored the same way as the other API-key suppliers, but no design-upload/
@@ -119,7 +127,10 @@ POD_SUPPLIERS = {"printful", "printify", "gelato"}
 STARTER_SUPPLIER_CHOICES = {"cj", "aliexpress", "printful"}
 
 PLAN_ALLOWED_SUPPLIERS = {
-    "premium":       {"cj", "zendrop", "hypersku", "wiio", "aliexpress", "printful", "printify", "gelato"},
+    # 1688 is Premium-only for now, like zendrop/hypersku/wiio — the
+    # pricing page's Starter copy ("CJ, AliExpress, or Printful") doesn't
+    # mention it, so it isn't added to STARTER_SUPPLIER_CHOICES.
+    "premium":       {"cj", "zendrop", "hypersku", "wiio", "aliexpress", "printful", "printify", "gelato", "1688"},
     "starter":       STARTER_SUPPLIER_CHOICES,
     "free_trial":    set(),
     "thedersi_basic":  set(),
@@ -1693,6 +1704,59 @@ async def aliexpress_import(
     return {"product_id": product.id, "name": product.name, "price": float(product.price)}
 
 
+def _fetch_1688_product(product_url: str) -> dict:
+    """Placeholder — 1688 has no first-party API for outside developers, so
+    fetching real product data here requires a third-party provider
+    (evaluated: OTCommerce, TMAPI). Neither is configured yet, and their
+    actual response shapes (image fields, variant structure, price units —
+    1688 quotes in CNY) haven't been confirmed, so this raises honestly
+    instead of fabricating a fake-but-plausible field mapping the way
+    _aliexpress_fetch_product's real one was built against AliExpress's own
+    confirmed docs. Once a provider is picked: mirror
+    _aliexpress_fetch_product's shape exactly — return
+    {name, description, images, currency, variants: [{sku_id, size, color,
+    price, quantity, image}]} — and china1688_import below needs no other
+    changes, its currency-conversion/DB-write logic already expects that
+    exact contract."""
+    raise HTTPException(status_code=503, detail="1688 sourcing isn't connected to a data provider yet — this is scaffolding only. Contact ExiusCart if you need this activated.")
+
+
+class China1688ImportIn(BaseModel):
+    product_url: str
+    selling_price: Optional[float] = None
+
+
+@router.post("/shops/{shop_id}/dropship/1688/import")
+async def china1688_import(
+    shop_id: int,
+    body: China1688ImportIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Paste a 1688 product link, get a real product — same paste-a-link
+    shape as aliexpress_import above (no catalog browse UI). The
+    surrounding auth/plan/connection checks and DB-write shape are real and
+    reusable regardless of which 1688 API provider ends up wired in; only
+    _fetch_1688_product's actual data-fetch is a stub — see its own
+    docstring for exactly what needs to change once one is picked."""
+    shop = _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    _check_supplier_allowed(plan, "1688", shop_id, db)
+
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id,
+        DropshipConnection.supplier_type == "1688",
+        DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail="Connect 1688 first in the Suppliers section.")
+
+    # Raises 503 today — see _fetch_1688_product's docstring. Left as a real
+    # call (not commented out) so wiring in a provider later is a one-line
+    # change to that function's body, not a rewrite of this endpoint.
+    _fetch_1688_product(body.product_url)
+
+
 # ── Endpoints: Supplier connections ──────────────────────────────────────────
 
 @router.get("/shops/{shop_id}/dropship/connections")
@@ -1762,6 +1826,17 @@ def list_connections(
             "connected": "aliexpress" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "aliexpress"), False),
             "locked": "aliexpress" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "category": "dropship",
+        },
+        {
+            "supplier_type": "1688",
+            "name": "1688.com",
+            "description": "Chinese wholesale marketplace — often 30-50% cheaper than AliExpress. Product import and order placement activate once ExiusCart finishes integrating a 1688 API provider — connect now to be ready.",
+            "signup_url": SUPPLIER_SIGNUP_LINKS["1688"],
+            "plan_required": "premium",
+            "connected": "1688" in connected,
+            "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "1688"), False),
+            "locked": "1688" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
             "category": "dropship",
         },
         {
@@ -1922,7 +1997,7 @@ def connect_apikey(
     current_user: User = Depends(get_current_user),
 ):
     _shop_or_404(shop_id, current_user, db)
-    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "printify", "gelato"):
+    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "printify", "gelato", "1688"):
         raise HTTPException(status_code=400, detail="Use /connect/cj for CJ Dropshipping, or /dropship/aliexpress/authorize for AliExpress.")
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)

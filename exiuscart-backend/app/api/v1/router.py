@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery
 
 api_router = APIRouter()
 
@@ -45,3 +45,4 @@ api_router.include_router(lemonsqueezy_webhook.router, prefix="", tags=["Lemon S
 api_router.include_router(daraz.router, prefix="", tags=["Daraz Integration"])
 api_router.include_router(noon.router, prefix="", tags=["Noon Integration"])
 api_router.include_router(ebay.router, prefix="", tags=["eBay Integration"])
+api_router.include_router(tiktok.router, prefix="", tags=["TikTok Shop Integration"])

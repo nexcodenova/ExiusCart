@@ -733,6 +733,16 @@ export const ebayApi = {
     api.get(`/shops/${shopId}/channels/ebay/transactions`, { params: { start_time: startTime, end_time: endTime } }),
 };
 
+// TikTok Shop — OAuth click-to-connect (same pattern as eBay/Daraz).
+// Product listing and order sync endpoints aren't built yet — connect flow
+// only, same incremental order eBay itself shipped in.
+export const tiktokApi = {
+  authorize: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/tiktok/authorize`),
+  getStatus: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/tiktok/status`),
+};
+
 export const usageApi = {
   get: (shopId: string) => api.get(`/shops/${shopId}/usage`),
 };
@@ -814,6 +824,11 @@ export const dropshipApi = {
     api.get(`/shops/${shopId}/dropship/aliexpress/authorize`),
   aliexpressImport: (shopId: string, productUrl: string, sellingPrice?: number) =>
     api.post(`/shops/${shopId}/dropship/aliexpress/import`, { product_url: productUrl, selling_price: sellingPrice }),
+  // Same paste-a-link shape as aliexpressImport above — currently a real
+  // call to a stub endpoint that returns 503 until a 1688 API provider is
+  // wired in on the backend (see dropshipping.py's _fetch_1688_product).
+  china1688Import: (shopId: string, productUrl: string, sellingPrice?: number) =>
+    api.post(`/shops/${shopId}/dropship/1688/import`, { product_url: productUrl, selling_price: sellingPrice }),
 };
 
 export interface BlogPostIn {

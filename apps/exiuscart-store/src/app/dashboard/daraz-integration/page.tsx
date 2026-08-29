@@ -83,7 +83,16 @@ export default function DarazIntegrationPage() {
 
       <div>
         <h1 className="text-xl font-semibold text-foreground">Daraz Integration</h1>
-        <p className="text-sm text-muted-foreground mt-1">Sri Lanka's #1 marketplace — orders sync to ExiusCart automatically.</p>
+        <p className="text-sm text-muted-foreground mt-1">South Asia's largest marketplace — orders sync to ExiusCart automatically.</p>
+      </div>
+
+      {/* Daraz operates as separate local sites per country, all under the
+          same Alibaba-owned Daraz brand — this is the actual coverage, not
+          just Sri Lanka, matching what the channels tile now says too. */}
+      <div className="bg-muted/50 border border-border rounded-xl px-4 py-3.5 text-xs text-muted-foreground space-y-1.5">
+        <p className="font-medium text-foreground">Daraz operates local marketplaces in:</p>
+        <p>Pakistan, Bangladesh, Sri Lanka, Nepal, and Myanmar.</p>
+        <p>Your seller account is tied to whichever of these markets you registered on — the same one your connection below applies to.</p>
       </div>
 
       {oauthResult && (
@@ -118,7 +127,7 @@ export default function DarazIntegrationPage() {
               </div>
               <div>
                 <p className="font-semibold text-foreground text-sm">Daraz</p>
-                <p className="text-xs text-muted-foreground">Sri Lanka's #1 Marketplace</p>
+                <p className="text-xs text-muted-foreground">South Asia's largest marketplace</p>
               </div>
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
@@ -155,7 +164,7 @@ export default function DarazIntegrationPage() {
         <div className="bg-card border border-border rounded-xl">
           <div className="p-5 border-b border-border">
             <p className="font-semibold text-foreground">Connect Daraz</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Sri Lanka's #1 Marketplace</p>
+            <p className="text-xs text-muted-foreground mt-0.5">South Asia's largest marketplace</p>
           </div>
           <div className="p-5 space-y-4">
             {error && (
