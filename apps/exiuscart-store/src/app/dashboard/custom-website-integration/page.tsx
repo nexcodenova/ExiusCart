@@ -32,6 +32,8 @@ const STOREFRONT_ENDPOINTS = (slug: string) => [
   { method: 'POST', path: `/public/store/${slug}/auth/signup`, desc: 'Create a customer account' },
   { method: 'POST', path: `/public/store/${slug}/auth/login`, desc: 'Log in, returns a token' },
   { method: 'GET', path: `/public/store/${slug}/wallet`, desc: 'Balance + history — needs the token from login' },
+  { method: 'GET', path: `/public/download/{token}`, desc: 'Digital product delivery — reveals product/shop name only, for the download page a customer lands on from their delivery email' },
+  { method: 'POST', path: `/public/download/{token}/verify`, desc: 'Body: code — verifies the access code, returns the real file_url' },
   { method: 'GET', path: `/public/store/${slug}/blog`, desc: 'Published blog posts — supports ?tag=' },
   { method: 'GET', path: `/public/store/${slug}/blog/{slug}`, desc: 'Single blog post, full content' },
 ];
