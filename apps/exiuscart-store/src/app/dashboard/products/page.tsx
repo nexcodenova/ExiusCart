@@ -140,7 +140,13 @@ export default function ProductsPage() {
   // Channel category map: { product_id: { connection_id: { channel_type, channel_category_id, channel_category_name } } }
   const [channelCategories, setChannelCategories] = useState<Record<string, Record<string, { channel_type: string; is_listed: boolean; channel_category_id: string; channel_category_name: string }>>>({});
 
-  useEffect(() => {
+  // Pulled out of the mount-only effect below so the Refresh button can
+  // call it too — previously Refresh only re-ran fetchProducts(), so
+  // anything living in this separate state (most visibly: a product's
+  // TheDersi review status flipping to "Pending Approval" after an edit)
+  // never updated without a full hard page reload, which happened to
+  // remount the component and re-run this effect fresh.
+  const fetchChannelStatuses = useCallback(() => {
     if (!shopId) return;
     channelsApi.getAllChannelStatuses(shopId)
       .then((r) => setChannelStatuses(r.data ?? {}))
@@ -149,6 +155,8 @@ export default function ProductsPage() {
       .then((r) => setChannelCategories(r.data ?? {}))
       .catch(() => {});
   }, [shopId]);
+
+  useEffect(() => { fetchChannelStatuses(); }, [fetchChannelStatuses]);
 
   const fetchProducts = useCallback(async () => {
     if (!shopId) return;
@@ -369,7 +377,7 @@ export default function ProductsPage() {
         <div className="flex gap-2 flex-wrap">
           <button
             type="button"
-            onClick={() => fetchProducts()}
+            onClick={() => { fetchProducts(); fetchChannelStatuses(); }}
             className="inline-flex items-center gap-2 border border-border px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition"
             title="Refresh products"
           >
@@ -3641,14 +3649,15 @@ function ProductModal({
                 </div>
 
                 {/* Not connectable yet — honest placeholders, not fake toggles.
-                    eBay and Noon removed from this list — they're real,
+                    eBay and Noon removed from this list previously, and now
+                    WooCommerce and TikTok Shop too — all four are real,
                     connectable channels with their own cards above now, so
                     having them here too was a leftover duplicate that showed
-                    two contradictory statuses for the same channel. */}
+                    two contradictory statuses for the same channel. Amazon
+                    (no backend at all yet) and Instagram Shopping (not built)
+                    are the only ones actually still true to keep here. */}
                 {[
                   { name: 'Amazon' },
-                  { name: 'WooCommerce' },
-                  { name: 'TikTok Shop' },
                   { name: 'Instagram Shopping' },
                 ].map((ch) => (
                   <div key={ch.name} className="bg-muted/40 border border-border rounded-lg p-3 flex items-center justify-between gap-3 opacity-60" style={{ order: 20 }}>
