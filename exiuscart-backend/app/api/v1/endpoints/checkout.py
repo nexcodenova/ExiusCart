@@ -162,6 +162,13 @@ def public_store_checkout(
         ).first()
         if not product:
             raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
+        # Affiliate products have no checkout at all — "Buy" sends the
+        # customer straight to affiliate_url on the storefront, so this
+        # should never actually reach here. Rejected server-side too
+        # (not just by hiding the Add to Cart button), same defense-in-
+        # depth other product-type rules in this codebase already use.
+        if product.product_type == "affiliate":
+            raise HTTPException(status_code=400, detail=f"'{product.name}' is an affiliate product — it can't be added to a cart, only bought via its own link.")
 
         variant = None
         if item.variant_id is not None:

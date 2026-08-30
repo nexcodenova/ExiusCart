@@ -23,9 +23,10 @@ const NAV = [
   {
     heading: 'Resources',
     links: [
-      { label: 'Blog',       href: '/blog'      },
-      { label: 'FAQ',        href: '/faq'       },
-      { label: 'Affiliates', href: '/affiliate' },
+      { label: 'Blog',        href: '/blog'        },
+      { label: 'FAQ',         href: '/faq'         },
+      { label: 'Affiliates',  href: '/affiliate'   },
+      { label: 'Developers',  href: '/developers'  },
     ],
   },
   {

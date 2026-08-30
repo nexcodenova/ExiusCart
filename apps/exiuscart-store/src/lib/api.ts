@@ -758,8 +758,10 @@ export const tiktokApi = {
 // seller pastes their own site's Consumer Key/Secret (from their own
 // WordPress admin), same per-seller-credential pattern as Noon.
 export const woocommerceApi = {
-  connect: (shopId: string, data: { site_url: string; consumer_key: string; consumer_secret: string }) =>
-    api.post(`/shops/${shopId}/channels/woocommerce/connect`, data),
+  connect: (shopId: string, data: {
+    site_url: string; consumer_key: string; consumer_secret: string;
+    wp_username?: string; wp_app_password?: string;
+  }) => api.post(`/shops/${shopId}/channels/woocommerce/connect`, data),
   createListing: (shopId: string, productId: number | string) =>
     api.post(`/shops/${shopId}/channels/woocommerce/products/${productId}/create`),
   getListingStatus: (shopId: string, productId: number | string) =>
@@ -897,8 +899,8 @@ export const blogApi = {
     api.put(`/shops/${shopId}/blog/${postId}`, data),
   remove: (shopId: string, postId: number | string) =>
     api.delete(`/shops/${shopId}/blog/${postId}`),
-  publish: (shopId: string, postId: number | string, published: boolean, pushToShopify = false) =>
-    api.post(`/shops/${shopId}/blog/${postId}/publish`, { published, push_to_shopify: pushToShopify }),
+  publish: (shopId: string, postId: number | string, published: boolean, pushToShopify = false, pushToWoocommerce = false) =>
+    api.post(`/shops/${shopId}/blog/${postId}/publish`, { published, push_to_shopify: pushToShopify, push_to_woocommerce: pushToWoocommerce }),
   uploadImage: (shopId: string, file: File) => {
     const form = new FormData();
     form.append('file', file);

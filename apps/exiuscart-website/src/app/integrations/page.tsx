@@ -20,7 +20,7 @@ const CHANNELS_SECONDARY = [
   {
     label: 'TikTok Shop',
     desc: 'Sync orders and inventory with your TikTok Shop in real time.',
-    status: 'soon' as const,
+    status: 'rolling-out' as const,
     color: '#010101',
     bg: '#f0f0f0',
     svg: (
@@ -43,7 +43,7 @@ const CHANNELS_SECONDARY = [
   {
     label: 'Amazon',
     desc: 'Connect your Amazon seller account — orders, stock, and fulfilment in one place.',
-    status: 'soon' as const,
+    status: 'rolling-out' as const,
     color: '#FF9900',
     bg: '#fffbf0',
     svg: (
@@ -275,6 +275,11 @@ export default function IntegrationsPage() {
                     {status === 'soon' && (
                       <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-gray-500 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-full">
                         Soon
+                      </span>
+                    )}
+                    {status === 'rolling-out' && (
+                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-[#6B3FD9] bg-[#6B3FD9]/10 border border-[#6B3FD9]/20 px-1.5 py-0.5 rounded-full">
+                        Rolling out
                       </span>
                     )}
                   </div>

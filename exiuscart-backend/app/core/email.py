@@ -7,6 +7,7 @@ import smtplib
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from html import escape as _html_escape
 from typing import Optional
 
 from app.core.database import SessionLocal
@@ -1441,12 +1442,29 @@ def send_digital_product_email(
     product_name: str,
     download_page_url: str,
     access_code: str,
+    custom_subject: Optional[str] = None,
+    custom_message: Optional[str] = None,
 ) -> bool:
     """Sent the moment a digital product's order is marked paid — see
     create_digital_deliveries_for_order (app/api/v1/endpoints/digital_delivery.py).
     Deliberately does NOT link straight to the R2 file — download_page_url
     is the gated page that asks for access_code first (see that same
-    file's /public/download endpoints)."""
+    file's /public/download endpoints).
+
+    custom_subject/custom_message are the seller's optional per-product
+    overrides (Product.digital_email_subject/digital_email_message) — only
+    the subject line and greeting paragraph are customizable, the branded
+    wrapper/access-code box/download button/footer never change, so the
+    access-code delivery mechanism itself stays consistent and trustworthy
+    regardless of what a seller writes. custom_message is plain text from
+    a seller-facing form, HTML-escaped here before going into the email —
+    never trust it as raw HTML."""
+    if custom_message and custom_message.strip():
+        greeting_html = "<br>".join(_html_escape(line) for line in custom_message.strip().splitlines())
+    else:
+        greeting_html = f"Hi {_html_escape(customer_name or 'there')}, thanks for your purchase of <strong style=\"color:#fff;\">{_html_escape(product_name)}</strong> — it's ready to download."
+    subject = custom_subject.strip() if custom_subject and custom_subject.strip() else f"Your download from {shop_name} is ready"
+
     html = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -1466,7 +1484,7 @@ def send_digital_product_email(
 
         <tr><td style="padding:28px 32px;">
           <p style="margin:0 0 20px;font-size:14px;color:#e2e8f0;">
-            Hi {customer_name or 'there'}, thanks for your purchase of <strong style="color:#fff;">{product_name}</strong> — it's ready to download.
+            {greeting_html}
           </p>
 
           <table width="100%" cellpadding="0" cellspacing="0" style="text-align:center;margin:0 0 20px;">
@@ -1498,4 +1516,4 @@ def send_digital_product_email(
 </body>
 </html>"""
 
-    return send_email(to_email, f"Your download from {shop_name} is ready", html)
+    return send_email(to_email, subject, html)

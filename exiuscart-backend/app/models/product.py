@@ -51,9 +51,24 @@ class Product(Base):
     # Printful POD products already use). Delivery is a single file, not a
     # license-key pool — see DigitalDelivery (app/models/digital_delivery.py)
     # for the per-order access-code-gated download link this powers.
-    product_type = Column(String(20), default="physical", server_default="physical", nullable=False)  # "physical" | "digital"
+    product_type = Column(String(20), default="physical", server_default="physical", nullable=False)  # "physical" | "digital" | "affiliate"
     digital_file_url = Column(String(1000), nullable=True)
     digital_file_name = Column(String(255), nullable=True)  # original filename, shown to the buyer
+    # Affiliate products — no cart, no checkout, no order in ExiusCart at
+    # all. The storefront shows affiliate_cta_text as the button (falls
+    # back to "Buy Now" if blank) instead of "Add to Cart", linking
+    # straight to affiliate_url. Same "always available" quantity
+    # sentinel as digital products — nothing to ship or count down.
+    affiliate_url = Column(String(1000), nullable=True)
+    affiliate_cta_text = Column(String(60), nullable=True)
+    # Optional per-product override for the delivery email — see
+    # send_digital_product_email (app/core/email.py). Null = the default
+    # subject/greeting is used; the rest of the branded email (header,
+    # access-code box, download button, footer) is never customizable,
+    # only the subject line and the greeting/message text, to keep the
+    # access-code delivery mechanism itself consistent and trustworthy.
+    digital_email_subject = Column(String(255), nullable=True)
+    digital_email_message = Column(Text, nullable=True)
 
     # Real, earned social proof for products with no reviews yet — never
     # fabricated. view_count increments on every real product-detail page

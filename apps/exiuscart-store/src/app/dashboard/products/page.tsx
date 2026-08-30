@@ -7,7 +7,7 @@ import {
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
-  Store, Globe, ShoppingBag, Tag, PlayCircle, Info, Music2, ShoppingCart,
+  Store, Globe, ShoppingBag, Tag, PlayCircle, Info, Music2, ShoppingCart, ExternalLink,
 } from 'lucide-react';
 import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, tiktokApi, woocommerceApi, etsyApi, customProductFieldsApi, CustomProductField, videosApi, ProductVideo as ProductVideoType } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
@@ -119,8 +119,12 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [addModalProductType, setAddModalProductType] = useState<'physical' | 'digital'>('physical');
+  const [addModalProductType, setAddModalProductType] = useState<'physical' | 'digital' | 'affiliate'>('physical');
   const [showDigitalChoice, setShowDigitalChoice] = useState(false);
+  // The digital/affiliate flow is two steps: first pick which type, then
+  // (digital only) pick whether to also link a blog post. Affiliate skips
+  // straight to the form — no blog sub-choice was asked for that type.
+  const [digitalChoiceStep, setDigitalChoiceStep] = useState<'type' | 'digital-sub'>('type');
   const [pendingBlogAfterSave, setPendingBlogAfterSave] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showCsvModal, setShowCsvModal] = useState(false);
@@ -423,10 +427,10 @@ export default function ProductsPage() {
           {!isTheDersiShop && (
             <button
               type="button"
-              onClick={() => setShowDigitalChoice(true)}
+              onClick={() => { setDigitalChoiceStep('type'); setShowDigitalChoice(true); }}
               className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg font-semibold hover:bg-muted transition text-sm text-foreground"
             >
-              <Download className="w-4 h-4" /> Add Digital Product
+              <Download className="w-4 h-4" /> Add Digital / Affiliate
             </button>
           )}
         </div>
@@ -837,13 +841,58 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* "Add Digital Product" choice screen — asked before the actual form,
-          for affiliate/content sellers who want a linked blog post too. */}
-      {showDigitalChoice && (
+      {/* "Add Digital / Affiliate" choice screen — asked before the actual
+          form. Step 1 picks the type; Digital alone gets a step 2 asking
+          whether to also link a blog post (Affiliate skips straight to
+          the form — that combo wasn't asked for). */}
+      {showDigitalChoice && digitalChoiceStep === 'type' && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-foreground mb-1">Add Digital / Affiliate Product</h3>
+            <p className="text-sm text-muted-foreground mb-5">Which kind of product is this?</p>
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={() => setDigitalChoiceStep('digital-sub')}
+                className="w-full text-left px-4 py-3.5 border border-border rounded-xl hover:border-primary/40 hover:bg-muted/50 transition flex items-start gap-3"
+              >
+                <Download className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <span>
+                  <p className="text-sm font-semibold text-foreground">Digital Product</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">An ebook, course, or software license — you upload the file, ExiusCart delivers it by email after purchase.</p>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDigitalChoice(false);
+                  setPendingBlogAfterSave(false);
+                  setEditingProduct(null);
+                  setAddModalProductType('affiliate');
+                  setShowAddModal(true);
+                }}
+                className="w-full text-left px-4 py-3.5 border border-border rounded-xl hover:border-primary/40 hover:bg-muted/50 transition flex items-start gap-3"
+              >
+                <ExternalLink className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <span>
+                  <p className="text-sm font-semibold text-foreground">Affiliate Product</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">"Buy" sends the customer to an external link (e.g. Amazon) — no cart, no checkout, no order created here.</p>
+                </span>
+              </button>
+            </div>
+            <button type="button" onClick={() => setShowDigitalChoice(false)}
+              className="w-full mt-4 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showDigitalChoice && digitalChoiceStep === 'digital-sub' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold text-foreground mb-1">Add Digital Product</h3>
-            <p className="text-sm text-muted-foreground mb-5">Selling an ebook, course, or software license? Choose how you want to start.</p>
+            <p className="text-sm text-muted-foreground mb-5">Choose how you want to start.</p>
             <div className="space-y-2.5">
               <button
                 type="button"
@@ -874,9 +923,9 @@ export default function ProductsPage() {
                 <p className="text-xs text-muted-foreground mt-0.5">Same product form, then straight into a blog post already linked to it — for reviews, affiliate content, launch posts.</p>
               </button>
             </div>
-            <button type="button" onClick={() => setShowDigitalChoice(false)}
+            <button type="button" onClick={() => setDigitalChoiceStep('type')}
               className="w-full mt-4 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition">
-              Cancel
+              Back
             </button>
           </div>
         </div>
@@ -1063,7 +1112,7 @@ function ProductModal({
   channelStatus?: { status: string; rejection_reason?: string };
   onClose: () => void;
   onSaved: (productId?: number) => void;
-  initialProductType?: 'physical' | 'digital';
+  initialProductType?: 'physical' | 'digital' | 'affiliate';
 }) {
   // Price ENTRY defaults to the shop's fixed base currency (baseSym) — the
   // seller can switch entryCurrency below to type in a different one for
@@ -1105,13 +1154,21 @@ function ProductModal({
     isGift: p?.is_gift ?? false,
     supplierId: p?.supplier_id ?? null as number | null,
     isDropshipImported: p?.is_dropship_imported ?? false,
-    productType: (p?.product_type ?? initialProductType ?? 'physical') as 'physical' | 'digital',
+    productType: (p?.product_type ?? initialProductType ?? 'physical') as 'physical' | 'digital' | 'affiliate',
     digitalFileUrl: p?.digital_file_url ?? '',
     digitalFileName: p?.digital_file_name ?? '',
+    digitalEmailSubject: p?.digital_email_subject ?? '',
+    digitalEmailMessage: p?.digital_email_message ?? '',
+    affiliateUrl: p?.affiliate_url ?? '',
+    affiliateCtaText: p?.affiliate_cta_text ?? '',
   });
   const isDigital = formData.productType === 'digital';
+  const isAffiliate = formData.productType === 'affiliate';
   const [uploadingDigitalFile, setUploadingDigitalFile] = useState(false);
   const [digitalFileError, setDigitalFileError] = useState('');
+  const [showDigitalEmailAdvanced, setShowDigitalEmailAdvanced] = useState(
+    !!(p?.digital_email_subject || p?.digital_email_message)
+  );
 
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
 
@@ -1834,6 +1891,10 @@ function ProductModal({
         product_type: formData.productType,
         digital_file_url: isDigital ? (formData.digitalFileUrl || null) : null,
         digital_file_name: isDigital ? (formData.digitalFileName || null) : null,
+        digital_email_subject: isDigital ? (formData.digitalEmailSubject.trim() || null) : null,
+        digital_email_message: isDigital ? (formData.digitalEmailMessage.trim() || null) : null,
+        affiliate_url: isAffiliate ? (formData.affiliateUrl.trim() || null) : null,
+        affiliate_cta_text: isAffiliate ? (formData.affiliateCtaText.trim() || null) : null,
       };
 
       if (product?.id) {
@@ -1968,6 +2029,11 @@ function ProductModal({
             {isDigital && (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                 <Download className="w-3 h-3" /> Digital
+              </span>
+            )}
+            {isAffiliate && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                <ExternalLink className="w-3 h-3" /> Affiliate
               </span>
             )}
           </DialogTitle>
@@ -2504,6 +2570,75 @@ function ProductModal({
                     </label>
                   )}
                   {digitalFileError && <p className="text-xs text-destructive">{digitalFileError}</p>}
+
+                  {/* Advanced: per-product override for the delivery email's
+                      subject + greeting. Only these two pieces are
+                      customizable — the branded wrapper, access-code box,
+                      download button, and footer never change, so the
+                      access-code delivery mechanism itself stays
+                      consistent regardless of what a seller writes here. */}
+                  <button
+                    type="button"
+                    onClick={() => setShowDigitalEmailAdvanced((v) => !v)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition"
+                  >
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showDigitalEmailAdvanced ? 'rotate-180' : ''}`} />
+                    Advanced: Customize delivery email
+                  </button>
+                  {showDigitalEmailAdvanced && (
+                    <div className="space-y-3 bg-muted/30 border border-border rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground">
+                        Leave blank to use the default email. Only the subject and greeting are customizable — the download button and access code stay the same for every buyer.
+                      </p>
+                      <div>
+                        <Label className="text-xs mb-1 block">Email Subject</Label>
+                        <Input
+                          type="text"
+                          value={formData.digitalEmailSubject}
+                          onChange={(e) => setFormData({ ...formData, digitalEmailSubject: e.target.value })}
+                          placeholder={`Your download from ${formData.name || 'your shop'} is ready`}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Greeting / Message</Label>
+                        <textarea
+                          value={formData.digitalEmailMessage}
+                          onChange={(e) => setFormData({ ...formData, digitalEmailMessage: e.target.value })}
+                          rows={3}
+                          placeholder={`Hi there, thanks for your purchase of ${formData.name || 'this product'} — it's ready to download.`}
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : isAffiliate ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-foreground">Affiliate Link</p>
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    No cart, no checkout — the storefront's "Buy" button sends the customer straight here instead.
+                  </p>
+                  <div>
+                    <Label className="text-xs mb-1 block">Destination URL *</Label>
+                    <Input
+                      type="url"
+                      value={formData.affiliateUrl}
+                      onChange={(e) => setFormData({ ...formData, affiliateUrl: e.target.value })}
+                      placeholder="https://www.amazon.com/dp/..."
+                      required={isAffiliate}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Button Text</Label>
+                    <Input
+                      type="text"
+                      value={formData.affiliateCtaText}
+                      onChange={(e) => setFormData({ ...formData, affiliateCtaText: e.target.value })}
+                      placeholder="Buy Now"
+                      maxLength={60}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">Leave blank to use "Buy Now" — e.g. "Buy on Amazon", "View Deal".</p>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">

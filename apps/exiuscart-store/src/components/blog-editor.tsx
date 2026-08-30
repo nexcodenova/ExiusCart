@@ -21,7 +21,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
-  const { checking: checkingChannels, isTheDersiUser, hasAnyChannel } = useBlogChannelStatus(shopId);
+  const { checking: checkingChannels, isTheDersiUser, hasAnyChannel, wooConnected } = useBlogChannelStatus(shopId);
 
   const [title, setTitle] = useState('');
   const [excerpt, setExcerpt] = useState('');
@@ -39,6 +39,7 @@ export function BlogEditor({ postId }: { postId?: number }) {
 
   const [shopifyConnected, setShopifyConnected] = useState(false);
   const [pushToShopify, setPushToShopify] = useState(false);
+  const [pushToWoocommerce, setPushToWoocommerce] = useState(false);
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
@@ -115,10 +116,13 @@ export function BlogEditor({ postId }: { postId?: number }) {
       } else {
         await blogApi.update(shopId, id, buildPayload());
       }
-      const res = await blogApi.publish(shopId, id!, published, pushToShopify);
+      const res = await blogApi.publish(shopId, id!, published, pushToShopify, pushToWoocommerce);
       setStatus(res.data.post.status);
       if (res.data.shopify && !res.data.shopify.ok) {
         setError(`Saved, but Shopify push failed: ${res.data.shopify.error}`);
+      }
+      if (res.data.woocommerce && !res.data.woocommerce.ok) {
+        setError(`Saved, but WooCommerce push failed: ${res.data.woocommerce.error}`);
       }
       if (!postId) router.replace(`/dashboard/blog/${id}`);
     } catch (e: any) {
@@ -325,6 +329,16 @@ export function BlogEditor({ postId }: { postId?: number }) {
                 Also publish to Shopify
               </label>
               <p className="text-xs text-muted-foreground mt-1">Creates or updates a real Article on your connected Shopify store's blog.</p>
+            </div>
+          )}
+
+          {wooConnected && (
+            <div className="border-t border-border pt-4">
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                <input type="checkbox" checked={pushToWoocommerce} onChange={(e) => setPushToWoocommerce(e.target.checked)} className="w-4 h-4" />
+                Also publish to WooCommerce
+              </label>
+              <p className="text-xs text-muted-foreground mt-1">Creates or updates a real post on your WooCommerce site — needs a WordPress Application Password set on the connection page (separate from the product-sync keys).</p>
             </div>
           )}
         </div>

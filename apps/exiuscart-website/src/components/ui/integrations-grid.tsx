@@ -10,17 +10,17 @@ interface IntegrationCard {
   name: string;
   image: string;          // middle illustration/screenshot — placeholder until real art is supplied
   imageSize: string;      // exact px size this box was designed at, documented for whoever creates the art
-  status?: 'live' | 'soon';
+  status?: 'live' | 'soon' | 'rolling-out';
   desc: string;
   core?: boolean;         // ExiusCart + Prodora — grouped in their own boxed pair, matching the heading copy ("at the center")
 }
 
 // All 11 cards in one row now, reading as one continuous strip like the
-// reference. Amazon, TikTok Shop and Etsy are marked status:'soon' — TikTok
-// has real connect-flow code now but hasn't cleared TikTok's own app review
-// yet, Amazon/Etsy have no backend integration at all — all three shown
-// honestly as upcoming rather than claimed as live, unlike
-// TheDersi/Daraz/eBay/Shopify/Noon/Custom Website which ship.
+// reference. Etsy is marked status:'soon' — no backend integration yet.
+// Amazon and TikTok Shop are also status:'soon' but use "(rolling out)"
+// copy, same qualifier as privacy.tsx, since both are actively landing
+// (TikTok: code built, awaiting TikTok's own app review; Amazon: backend
+// build starting) rather than untouched — not claimed live yet either way.
 const CARDS: IntegrationCard[] = [
   {
     id: 'exiuscart', name: 'ExiusCart', status: 'live', core: true,
@@ -38,9 +38,9 @@ const CARDS: IntegrationCard[] = [
     desc: 'Sync products, inventory and orders between Shopify and ExiusCart automatically.',
   },
   {
-    id: 'tiktok', name: 'TikTok Shop', status: 'soon',
+    id: 'tiktok', name: 'TikTok Shop', status: 'rolling-out',
     image: '/integration/tiktok.jpg', imageSize: '480×600',
-    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart. In development.',
+    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart. Rolling out.',
   },
   {
     id: 'etsy', name: 'Etsy', status: 'soon',
@@ -63,9 +63,9 @@ const CARDS: IntegrationCard[] = [
     desc: 'Sell across the Gulf on Noon — list products and manage orders directly from ExiusCart.',
   },
   {
-    id: 'amazon', name: 'Amazon', status: 'soon',
+    id: 'amazon', name: 'Amazon', status: 'rolling-out',
     image: '/integration/amazon.jpg', imageSize: '480×600',
-    desc: 'Connect your Amazon seller account — orders, stock and fulfilment in one place. In development.',
+    desc: 'Connect your Amazon seller account — orders, stock and fulfilment in one place. Rolling out.',
   },
   {
     id: 'daraz', name: 'Daraz', status: 'live',
@@ -93,6 +93,11 @@ function Card({ card, className, square }: { card: IntegrationCard; className?: 
         {card.status === 'soon' && (
           <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-gray-500 bg-white/70 border border-gray-300 px-2 py-1 rounded-full">
             Soon
+          </span>
+        )}
+        {card.status === 'rolling-out' && (
+          <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-[#6B3FD9] bg-white/70 border border-[#6B3FD9]/30 px-2 py-1 rounded-full">
+            Rolling out
           </span>
         )}
       </div>

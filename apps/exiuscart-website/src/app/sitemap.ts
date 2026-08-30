@@ -18,6 +18,8 @@ const BLOG_SLUGS = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  const lastModified = new Date();
+
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE,                                 priority: 1.0, changeFrequency: 'weekly' },
     { url: `${BASE}/pricing`,                    priority: 0.9, changeFrequency: 'monthly' },
@@ -49,5 +51,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: 'monthly' as const,
   }));
 
-  return [...staticPages, ...blogPages];
+  return [...staticPages, ...blogPages].map((entry) => ({ ...entry, lastModified }));
 }

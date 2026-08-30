@@ -162,6 +162,11 @@ async def create_order(
         product = db.query(Product).filter(Product.id == item.product_id).first()
         if not product:
             raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
+        # No real transaction to record for an affiliate product — same
+        # rule checkout.py enforces for the public storefront, applied
+        # here too so POS/manual order creation can't add one either.
+        if product.product_type == "affiliate":
+            raise HTTPException(status_code=400, detail=f"'{product.name}' is an affiliate product — it has no real sale to record, only its own external link.")
 
         item_total = Decimal(str(item.quantity)) * Decimal(str(item.unit_price))
         subtotal += item_total

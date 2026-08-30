@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft, ShoppingCart, Loader2, CheckCircle2, ExternalLink,
+  ArrowLeft, ShoppingCart, Loader2, CheckCircle2, ExternalLink, ChevronDown,
 } from 'lucide-react';
 import { channelsApi, woocommerceApi } from '@/lib/api';
 
@@ -31,6 +31,14 @@ export default function WooCommerceIntegrationPage() {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
 
+  // Optional — separate from the Consumer Key/Secret above. Those only
+  // grant access to WooCommerce's own product/order API; blog publishing
+  // needs a real WordPress Application Password instead (WP core feature
+  // since 5.6). Left blank, product/order sync still works fully.
+  const [showBlogAdvanced, setShowBlogAdvanced] = useState(false);
+  const [wpUsername, setWpUsername] = useState('');
+  const [wpAppPassword, setWpAppPassword] = useState('');
+
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
   const load = () => {
@@ -54,6 +62,8 @@ export default function WooCommerceIntegrationPage() {
         site_url: siteUrl.trim(),
         consumer_key: consumerKey.trim(),
         consumer_secret: consumerSecret.trim(),
+        wp_username: wpUsername.trim() || undefined,
+        wp_app_password: wpAppPassword.trim() || undefined,
       });
       load();
     } catch (err: any) {
@@ -174,6 +184,38 @@ export default function WooCommerceIntegrationPage() {
                 placeholder="cs_..."
                 className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
             </div>
+            <button
+              type="button"
+              onClick={() => setShowBlogAdvanced((v) => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition"
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBlogAdvanced ? 'rotate-180' : ''}`} />
+              Advanced: Enable blog publishing
+            </button>
+            {showBlogAdvanced && (
+              <div className="space-y-3 bg-muted/30 border border-border rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">
+                  Optional — only needed if you want to publish ExiusCart blog posts straight to this site. The Consumer Key/Secret above don't cover this; WordPress requires a separate Application Password for it.
+                </p>
+                <div className="bg-muted/50 rounded-lg px-3 py-2.5 text-xs text-muted-foreground space-y-1">
+                  <p>1. In WordPress admin, go to Users → Profile</p>
+                  <p>2. Scroll to "Application Passwords" — enter a name (e.g. "ExiusCart") and click Add</p>
+                  <p>3. Copy the generated password (only shown once)</p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">WordPress Username</label>
+                  <input type="text" value={wpUsername} onChange={(e) => setWpUsername(e.target.value)}
+                    placeholder="your-wp-username"
+                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">Application Password</label>
+                  <input type="password" value={wpAppPassword} onChange={(e) => setWpAppPassword(e.target.value)}
+                    placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+                </div>
+              </div>
+            )}
             <button type="submit" disabled={connecting}
               className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
               {connecting && <Loader2 className="w-4 h-4 animate-spin" />}

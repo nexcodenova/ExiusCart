@@ -83,6 +83,7 @@ def _post_out(p: BlogPost) -> dict:
         "cta_url": p.cta_url,
         "view_count": p.view_count or 0,
         "shopify_article_id": p.shopify_article_id,
+        "woocommerce_post_id": p.woocommerce_post_id,
         "created_at": p.created_at.isoformat() if p.created_at else None,
         "updated_at": p.updated_at.isoformat() if p.updated_at else None,
     }
@@ -212,6 +213,7 @@ def delete_blog_post(
 class PublishIn(BaseModel):
     published: bool
     push_to_shopify: bool = False
+    push_to_woocommerce: bool = False
 
 
 @router.post("/shops/{shop_id}/blog/{post_id}/publish")
@@ -242,8 +244,12 @@ async def publish_blog_post(
     if data.published and data.push_to_shopify:
         shopify_result = await _push_to_shopify(shop_id, post, db)
 
+    woocommerce_result = None
+    if data.published and data.push_to_woocommerce:
+        woocommerce_result = await _push_to_woocommerce(shop_id, post, db)
+
     db.refresh(post)
-    return {"post": _post_out(post), "shopify": shopify_result}
+    return {"post": _post_out(post), "shopify": shopify_result, "woocommerce": woocommerce_result}
 
 
 # ── Image upload — embedded in the rich editor's content ─────────────────────
@@ -333,6 +339,82 @@ async def _push_to_shopify(shop_id: int, post: BlogPost, db: Session) -> dict:
             return {"ok": True, "article_id": str(article["id"])}
     except Exception as exc:
         logger.error(f"[BLOG->SHOPIFY] shop={shop_id} post={post.id} failed: {exc}")
+        return {"ok": False, "error": str(exc)}
+
+
+# ── WooCommerce — real WordPress Posts API push ──────────────────────────────
+
+async def _push_to_woocommerce(shop_id: int, post: BlogPost, db: Session) -> dict:
+    """Pushes a published post to the seller's connected WooCommerce site
+    as a real WordPress post via wp/v2/posts — WordPress IS a blog engine
+    natively (no separate "articles" concept to build against, unlike
+    Shopify). Uses a WordPress Application Password, NOT the WooCommerce
+    Consumer Key/Secret used for product/order sync elsewhere — those are
+    two separate auth scopes in WordPress (wc/v3 vs wp/v2), confirmed
+    against WordPress's own core REST API docs. Best-effort: failures are
+    reported back, not raised, same as _push_to_shopify above."""
+    from app.models.channel import ChannelConnection
+    from app.api.v1.endpoints.woocommerce import _get_woo_creds
+
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "woocommerce",
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn or not conn.channel_api_key or not conn.channel_api_url:
+        return {"ok": False, "error": "WooCommerce is not connected."}
+
+    creds = _get_woo_creds(conn)
+    wp_username = creds.get("wp_username")
+    wp_app_password = creds.get("wp_app_password")
+    if not wp_username or not wp_app_password:
+        return {"ok": False, "error": "Blog publishing needs a WordPress Application Password — add one on the WooCommerce connection page (this is separate from the Consumer Key/Secret used for product sync)."}
+
+    site_url = conn.channel_api_url.rstrip("/")
+    auth = (wp_username, wp_app_password)
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            featured_media_id = None
+            if post.cover_image_url:
+                img_resp = await client.get(post.cover_image_url)
+                if img_resp.status_code < 300:
+                    filename = post.cover_image_url.rsplit("/", 1)[-1] or "cover.jpg"
+                    media_resp = await client.post(
+                        f"{site_url}/wp-json/wp/v2/media",
+                        auth=auth,
+                        content=img_resp.content,
+                        headers={
+                            "Content-Disposition": f'attachment; filename="{filename}"',
+                            "Content-Type": img_resp.headers.get("content-type", "image/jpeg"),
+                        },
+                    )
+                    if media_resp.status_code < 300:
+                        featured_media_id = media_resp.json().get("id")
+
+            body = {
+                "title": post.title,
+                "content": post.content or "",
+                "excerpt": post.excerpt or "",
+                "status": "publish",
+            }
+            if featured_media_id:
+                body["featured_media"] = featured_media_id
+
+            if post.woocommerce_post_id:
+                r = await client.post(f"{site_url}/wp-json/wp/v2/posts/{post.woocommerce_post_id}", auth=auth, json=body)
+            else:
+                r = await client.post(f"{site_url}/wp-json/wp/v2/posts", auth=auth, json=body)
+
+            if r.status_code >= 300:
+                return {"ok": False, "error": f"WordPress rejected the post: {r.text[:300]}"}
+
+            wp_post = r.json()
+            post.woocommerce_post_id = str(wp_post["id"])
+            db.commit()
+            return {"ok": True, "post_id": str(wp_post["id"])}
+    except Exception as exc:
+        logger.error(f"[BLOG->WOOCOMMERCE] shop={shop_id} post={post.id} failed: {exc}")
         return {"ok": False, "error": str(exc)}
 
 

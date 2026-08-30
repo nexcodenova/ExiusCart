@@ -38,9 +38,52 @@ ExiusCart combines POS (point of sale), inventory management, order management, 
 
 ExiusCart also powers custom storefronts — sellers can connect their own website
 and call ExiusCart's public API directly for products, checkout, payment, and
-customer accounts, no login required.
+customer accounts. All endpoints below require no login/API key unless marked
+"auth: customer" (needs a customer JWT from the login endpoint) or
+"auth: webhook" (called by the payment gateway itself, never by your storefront).
 
-- Full API reference: https://exiuscart.com/developers
+Base URL: https://api.exiuscart.com/api/v1
+Every path below is relative to that base and takes {shop_slug} — the seller's
+own store identifier, shown on their ExiusCart dashboard.
+
+Categories
+- GET  /public/store/{shop_slug}/categories — category tree
+
+Products
+- GET  /public/store/{shop_slug}/products — list; query: search, featured, trending, category
+  Returns product_type: "physical" | "digital" | "affiliate". For "affiliate",
+  render a button using affiliate_cta_text (fallback "Buy Now") linking to
+  affiliate_url instead of Add to Cart — there is no checkout for this type,
+  and the checkout endpoint below rejects it server-side if submitted anyway.
+- GET  /public/store/{shop_slug}/products/{slug} — single product detail
+- GET  /public/store/{shop_slug}/products/{slug}/reviews — approved reviews for one product
+
+Customer auth (auth: none — returns a token to use as "customer" auth below)
+- POST /public/store/{shop_slug}/auth/signup — body: name, email, password
+- POST /public/store/{shop_slug}/auth/login — body: email, password
+  Send the returned token as "Authorization: Bearer <token>" on any endpoint
+  marked "customer" or "optional" below.
+
+Checkout & orders
+- POST /public/store/{shop_slug}/checkout — auth: optional (guest or logged-in customer)
+  body: items [{ product_id, quantity, variant_id? }], name, email, phone?,
+  shipping_address?, use_wallet_amount? (logged-in only)
+  Returns payment gateway request params (PayHere, Stripe, or PayPal — seller-configured)
+- GET  /public/store/{shop_slug}/orders/{order_number}?email=... — guest order lookup
+
+Wallet (auth: customer)
+- GET  /public/store/{shop_slug}/wallet — balance + last 50 transactions
+
+Digital product delivery (auth: none — the download gate itself)
+- GET  /public/download/{token} — reveals product/shop name only
+- POST /public/download/{token}/verify — body: code — returns the real file_url
+
+Blog
+- GET  /public/store/{shop_slug}/blog — published posts; query: tag?
+- GET  /public/store/{shop_slug}/blog/{slug} — single post, full content
+
+Full reference with request/response field lists, error shapes, and payment-
+gateway-specific fields: https://exiuscart.com/developers
 
 ## Company
 

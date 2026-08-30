@@ -52,12 +52,12 @@ const sections: Section[] = [
         method: 'GET', path: '/public/store/{shop_slug}/products', auth: 'none',
         purpose: 'Product listing for a grid/search page.',
         params: 'Query: search, featured, trending, category (slug)',
-        response: 'Array of products: id, name, slug, description, currency, price, compare_at_price, in_stock, product_type, quantity, images[], video_url, videos[], tags[], variants[], category_id, category_slug, category_ids[], category_slugs[], quantity_tiers[], avg_rating, review_count, view_count, units_sold, custom_fields',
+        response: 'Array of products: id, name, slug, description, currency, price, compare_at_price, in_stock, product_type, affiliate_url, affiliate_cta_text, quantity, images[], video_url, videos[], tags[], variants[], category_id, category_slug, category_ids[], category_slugs[], quantity_tiers[], avg_rating, review_count, view_count, units_sold, custom_fields',
       },
       {
         method: 'GET', path: '/public/store/{shop_slug}/products/{slug}', auth: 'none',
         purpose: 'Single product detail page (PDP). Increments the product’s view count on each call.',
-        response: 'Same shape as the listing, single object. category_ids/category_slugs carry every category the product belongs to — a product can be filed under more than one.',
+        response: 'Same shape as the listing, single object. category_ids/category_slugs carry every category the product belongs to — a product can be filed under more than one. product_type is "physical" | "digital" | "affiliate" — for "affiliate", render affiliate_cta_text (fallback "Buy Now") as a link straight to affiliate_url instead of an Add to Cart button; the checkout endpoint below rejects affiliate products server-side if one is submitted anyway.',
       },
       {
         method: 'GET', path: '/public/store/{shop_slug}/products/{slug}/reviews', auth: 'none',

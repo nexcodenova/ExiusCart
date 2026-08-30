@@ -24,8 +24,8 @@ const CURRENCIES = [
 // storefront, not the seller configuring ExiusCart.
 const STOREFRONT_ENDPOINTS = (slug: string) => [
   { method: 'GET', path: `/public/store/${slug}/categories`, desc: 'Category tree' },
-  { method: 'GET', path: `/public/store/${slug}/products`, desc: 'Product list — supports ?category=, ?featured=, ?trending=, ?search=' },
-  { method: 'GET', path: `/public/store/${slug}/products/{slug}`, desc: 'Single product detail — includes rating, view count, units sold' },
+  { method: 'GET', path: `/public/store/${slug}/products`, desc: 'Product list — supports ?category=, ?featured=, ?trending=, ?search=. Check product_type ("physical" | "digital" | "affiliate") — for "affiliate", link straight to affiliate_url instead of Add to Cart' },
+  { method: 'GET', path: `/public/store/${slug}/products/{slug}`, desc: 'Single product detail — includes rating, view count, units sold, affiliate_url/affiliate_cta_text for affiliate products' },
   { method: 'GET', path: `/public/store/${slug}/products/{slug}/reviews`, desc: 'Approved reviews for one product' },
   { method: 'POST', path: `/public/store/${slug}/checkout`, desc: 'Create an order + get payment params' },
   { method: 'GET', path: `/public/store/${slug}/orders/{order_number}?email=`, desc: 'Guest order lookup' },
@@ -50,10 +50,14 @@ function DeveloperReferenceCard({ slug }: { slug: string }) {
         <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
           <Code2 className="w-4 h-4 text-primary" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="font-semibold text-foreground text-sm">Developer Reference</p>
           <p className="text-xs text-muted-foreground">Hand this to whoever's building your website</p>
         </div>
+        <a href="https://exiuscart.com/developers" target="_blank" rel="noopener noreferrer"
+          className="shrink-0 text-xs font-medium text-primary hover:text-primary/80 transition whitespace-nowrap">
+          Full API docs →
+        </a>
       </div>
       <div className="p-5 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

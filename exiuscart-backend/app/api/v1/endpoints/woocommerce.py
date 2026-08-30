@@ -106,6 +106,16 @@ class WooConnectIn(BaseModel):
     site_url: str
     consumer_key: str
     consumer_secret: str
+    # Optional, separate from the WooCommerce keys above — WooCommerce's
+    # Consumer Key/Secret only grants access to WooCommerce's own wc/v3
+    # API (products, orders), NOT WordPress's native wp/v2 Posts API. Blog
+    # publishing (blog.py's _push_to_woocommerce) needs a real WordPress
+    # Application Password instead — a real, first-party WordPress core
+    # feature (since WP 5.6), generated per-user under Users > Profile >
+    # Application Passwords. Left unset, product/order sync still works
+    # fully; only blog push is unavailable until these are added.
+    wp_username: Optional[str] = None
+    wp_app_password: Optional[str] = None
 
 
 @router.post("/shops/{shop_id}/channels/woocommerce/connect")
@@ -160,6 +170,27 @@ def connect_woocommerce(
         raise HTTPException(status_code=400, detail="WooCommerce rejected these credentials — check the Consumer Key/Secret and that the REST API is enabled for this site.")
     if resp.status_code >= 300:
         raise HTTPException(status_code=502, detail=f"Could not verify WooCommerce connection: {resp.status_code} {resp.text[:300]}")
+
+    if data.wp_username and data.wp_app_password:
+        # Separate real call against WordPress core's own API (not the
+        # wc/v3 base _woo_request targets) — /wp/v2/users/me with Basic
+        # Auth is the standard way to confirm an Application Password
+        # actually works, verified the same "before saving" way as the
+        # WooCommerce keys above.
+        try:
+            wp_resp = httpx.get(
+                f"{site_url}/wp-json/wp/v2/users/me",
+                auth=(data.wp_username.strip(), data.wp_app_password.strip()),
+                timeout=15,
+            )
+        except Exception:
+            raise HTTPException(status_code=502, detail="Could not reach WordPress to verify the Application Password.")
+        if wp_resp.status_code == 401:
+            raise HTTPException(status_code=400, detail="WordPress rejected that username/Application Password — double-check both.")
+        if wp_resp.status_code >= 300:
+            raise HTTPException(status_code=502, detail=f"Could not verify the WordPress Application Password: {wp_resp.status_code} {wp_resp.text[:300]}")
+        creds["wp_username"] = data.wp_username.strip()
+        creds["wp_app_password"] = data.wp_app_password.strip()
 
     conn = db.query(ChannelConnection).filter(
         ChannelConnection.shop_id == shop_id,

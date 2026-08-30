@@ -36,6 +36,10 @@ class BlogPost(Base):
     # instead of a seller having to guess whether the push actually worked.
     shopify_article_id = Column(String(100), nullable=True)
     shopify_blog_id = Column(String(100), nullable=True)
+    # Same role for WooCommerce — WordPress's own wp/v2/posts ID, reused on
+    # republish (PUT instead of POST) so a re-push updates the existing
+    # post instead of creating a duplicate.
+    woocommerce_post_id = Column(String(100), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

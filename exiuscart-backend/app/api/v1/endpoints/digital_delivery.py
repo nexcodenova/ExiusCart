@@ -71,6 +71,8 @@ def create_digital_deliveries_for_order(order: Order, db: Session) -> None:
             send_digital_product_email(
                 customer_email, customer_name, order.shop.name if order.shop else "the store",
                 product.name, download_page_url, delivery.access_code,
+                custom_subject=product.digital_email_subject,
+                custom_message=product.digital_email_message,
             )
         except Exception as exc:
             logger.error(f"[Digital Delivery] order={order.id} item={item.id} email send failed: {exc}")

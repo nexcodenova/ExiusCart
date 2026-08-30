@@ -258,6 +258,20 @@ async def create_product(
         # shows as low/out of stock regardless of what quantity was sent.
         product_fields["quantity"] = 999999
         product_fields["low_stock_threshold"] = 0
+    elif product_fields.get("product_type") == "affiliate":
+        # No order/checkout at all for an affiliate product — "Buy" sends
+        # the customer straight to affiliate_url, so a TheDersi catalog
+        # sync (a real physical-goods marketplace) has nothing real to
+        # list here either. Same block, same reasoning as digital above.
+        if is_thedersi_shop(shop_id, db):
+            raise HTTPException(status_code=403, detail={
+                "error": "not_available",
+                "message": "Affiliate products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
+            })
+        if not product_fields.get("affiliate_url"):
+            raise HTTPException(status_code=422, detail="Affiliate products need a destination URL.")
+        product_fields["quantity"] = 999999
+        product_fields["low_stock_threshold"] = 0
 
     new_product = Product(
         **product_fields,
@@ -445,6 +459,17 @@ async def update_product(
                 "error": "not_available",
                 "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
             })
+        if "quantity" not in update_data:
+            update_data["quantity"] = 999999
+            update_data["low_stock_threshold"] = 0
+    elif update_data.get("product_type") == "affiliate":
+        if is_thedersi_shop(shop_id, db):
+            raise HTTPException(status_code=403, detail={
+                "error": "not_available",
+                "message": "Affiliate products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
+            })
+        if not update_data.get("affiliate_url", product.affiliate_url):
+            raise HTTPException(status_code=422, detail="Affiliate products need a destination URL.")
         if "quantity" not in update_data:
             update_data["quantity"] = 999999
             update_data["low_stock_threshold"] = 0
