@@ -80,14 +80,57 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploa
     setUploadingImage(true);
     try {
       const url = await onUploadImage(file);
-      editorRef.current?.focus();
-      const sel = window.getSelection();
-      if (sel && savedRangeRef.current) {
-        sel.removeAllRanges();
-        sel.addRange(savedRangeRef.current);
+      const el = editorRef.current;
+      if (!el) return;
+      el.focus();
+
+      // document.execCommand('insertImage', ...) — the previous approach
+      // here — is deprecated and unreliable in practice: across the real
+      // async gap of an actual upload, the saved selection can go stale
+      // (the range still exists, but Chrome's insertImage silently no-ops
+      // if it doesn't consider the restored selection "live" enough), so
+      // the image upload would succeed but nothing ever appeared in the
+      // editor — no error either, since execCommand doesn't report failure.
+      // Building and inserting the <img> node directly via the real DOM
+      // Range API is the modern, reliable replacement — it either works or
+      // throws, it doesn't silently do nothing.
+      const img = document.createElement('img');
+      img.src = url;
+
+      // Restore the saved range only if it's still actually anchored
+      // inside this editor — if the DOM shifted enough that it isn't
+      // (e.g. the editor's content changed while the upload was in
+      // flight), fall back to appending at the end rather than losing the
+      // upload entirely or inserting into the wrong place.
+      const savedRange = savedRangeRef.current;
+      const rangeStillValid = !!savedRange && el.contains(savedRange.startContainer);
+
+      if (rangeStillValid) {
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(savedRange);
+        savedRange.deleteContents();
+        savedRange.insertNode(img);
+        // Move the cursor to just after the inserted image so typing
+        // continues naturally instead of landing back before it.
+        savedRange.setStartAfter(img);
+        savedRange.setEndAfter(img);
+        sel?.removeAllRanges();
+        sel?.addRange(savedRange);
+      } else {
+        el.appendChild(img);
       }
-      document.execCommand('insertImage', false, url);
-      onChange(editorRef.current?.innerHTML ?? '');
+
+      // Belt-and-suspenders: confirm the node actually landed in the live
+      // DOM before treating this as a success — the exact failure mode
+      // being fixed here was "upload succeeds, nothing visibly happens,
+      // no error either", so silently trusting the insert calls above
+      // would just move that same failure mode one line down.
+      if (!el.contains(img)) {
+        throw new Error('Image insert did not take effect');
+      }
+
+      onChange(el.innerHTML);
     } catch {
       setImageError("Couldn't upload that image — try again.");
     } finally {
