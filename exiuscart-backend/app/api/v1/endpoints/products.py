@@ -273,6 +273,16 @@ async def create_product(
         product_fields["quantity"] = 999999
         product_fields["low_stock_threshold"] = 0
 
+    # TheDersi's own catalog format has nowhere to receive a product FAQ —
+    # ExiusCart-only for now. Silently dropped rather than a hard reject:
+    # unlike product_type above, this is one optional field, not a
+    # fundamental type mismatch, so a TheDersi seller's product should
+    # still save fine, just without the FAQ. The dashboard UI (products
+    # page) already disables the field for TheDersi shops; this is the
+    # server-side half of that, for anyone calling the API directly.
+    if is_thedersi_shop(shop_id, db):
+        product_fields["faq"] = None
+
     new_product = Product(
         **product_fields,
         slug=generate_slug(product_data.name),
@@ -473,6 +483,8 @@ async def update_product(
         if "quantity" not in update_data:
             update_data["quantity"] = 999999
             update_data["low_stock_threshold"] = 0
+    if "faq" in update_data and is_thedersi_shop(shop_id, db):
+        update_data["faq"] = None
     for field, value in update_data.items():
         setattr(product, field, value)
 

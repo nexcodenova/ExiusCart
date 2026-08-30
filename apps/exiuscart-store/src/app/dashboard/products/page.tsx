@@ -2716,51 +2716,63 @@ function ProductModal({
                 )}
               </div>
 
-              {/* ── Product FAQ — shown on the storefront below the description, any product type ── */}
+              {/* ── Product FAQ — shown on the storefront below the description.
+                  ExiusCart-only: TheDersi's own catalog has nowhere to
+                  receive this, regardless of the seller's plan (channel
+                  connection is the real signal here, not plan_type — see
+                  is_thedersi_shop's own comment on the backend). ── */}
               <div className="border-t border-border -mx-6 px-6 pt-6">
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label className="font-medium text-foreground">Product FAQ</Label>
-                  <button
-                    type="button"
-                    onClick={() => setFaqItems((prev) => [...prev, { question: '', answer: '' }])}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add question
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Answer the questions buyers actually ask about this product — shown on the storefront page. Optional.
-                </p>
-                {faqItems.length > 0 && (
-                  <div className="space-y-3">
-                    {faqItems.map((item, i) => (
-                      <div key={i} className="flex gap-2 items-start bg-muted/30 border border-border rounded-lg p-3">
-                        <div className="flex-1 space-y-2 min-w-0">
-                          <Input
-                            type="text"
-                            value={item.question}
-                            onChange={(e) => setFaqItems((prev) => prev.map((f, idx) => idx === i ? { ...f, question: e.target.value } : f))}
-                            placeholder="e.g. Does this come with a warranty?"
-                          />
-                          <textarea
-                            value={item.answer}
-                            onChange={(e) => setFaqItems((prev) => prev.map((f, idx) => idx === i ? { ...f, answer: e.target.value } : f))}
-                            rows={2}
-                            placeholder="Answer shown to buyers"
-                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary outline-none"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setFaqItems((prev) => prev.filter((_, idx) => idx !== i))}
-                          className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
-                          title="Remove"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                <Label className="font-medium text-foreground mb-1.5 block">Product FAQ</Label>
+                {theDersiConnection ? (
+                  <p className="text-xs text-muted-foreground bg-muted/30 border border-border rounded-lg px-3 py-2.5">
+                    TheDersi doesn't support product FAQ right now — this only shows on ExiusCart-powered channels (Custom Website, etc).
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-xs text-muted-foreground">
+                        Answer the questions buyers actually ask about this product — shown on the storefront page. Optional.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setFaqItems((prev) => [...prev, { question: '', answer: '' }])}
+                        className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Add question
+                      </button>
+                    </div>
+                    {faqItems.length > 0 && (
+                      <div className="space-y-3">
+                        {faqItems.map((item, i) => (
+                          <div key={i} className="flex gap-2 items-start bg-muted/30 border border-border rounded-lg p-3">
+                            <div className="flex-1 space-y-2 min-w-0">
+                              <Input
+                                type="text"
+                                value={item.question}
+                                onChange={(e) => setFaqItems((prev) => prev.map((f, idx) => idx === i ? { ...f, question: e.target.value } : f))}
+                                placeholder="e.g. Does this come with a warranty?"
+                              />
+                              <textarea
+                                value={item.answer}
+                                onChange={(e) => setFaqItems((prev) => prev.map((f, idx) => idx === i ? { ...f, answer: e.target.value } : f))}
+                                rows={2}
+                                placeholder="Answer shown to buyers"
+                                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary outline-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setFaqItems((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
+                              title="Remove"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
 
