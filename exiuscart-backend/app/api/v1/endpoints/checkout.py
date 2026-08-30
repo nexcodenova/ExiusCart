@@ -330,6 +330,14 @@ def public_store_order_lookup(shop_slug: str, order_number: str, email: str, db:
             for i in order.items
         ],
         "created_at": order.created_at.isoformat() if order.created_at else None,
+        # Shipment tracking — set by the seller from their dashboard when
+        # they mark the order shipped (see orders.py's ship_order). All
+        # null until that happens; a storefront should treat a null
+        # tracking_number as "not shipped yet", not an error.
+        "tracking_number": order.tracking_number,
+        "carrier": order.carrier,
+        "shipped_at": order.shipped_at.isoformat() if order.shipped_at else None,
+        "estimated_delivery": order.estimated_delivery,
     }
 
 

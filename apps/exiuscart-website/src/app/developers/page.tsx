@@ -139,7 +139,7 @@ const sections: Section[] = [
         method: 'GET', path: '/public/store/{shop_slug}/orders/{order_number}', auth: 'none',
         purpose: 'Guest order lookup/tracking — matched by order number + the email it was placed with.',
         params: 'Query: email (required)',
-        response: '{ order_number, status, payment_status, total, items: [{ product_name, quantity, unit_price, total_price, variant_size, variant_color }], created_at }',
+        response: '{ order_number, status, payment_status, total, items: [{ product_name, quantity, unit_price, total_price, variant_size, variant_color }], created_at, tracking_number, carrier, shipped_at, estimated_delivery }. status is "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" — moves to "confirmed" automatically once payment_status becomes "paid"; every status after that is set manually by the seller from their dashboard. tracking_number/carrier/shipped_at are null until the seller marks the order shipped — treat null as "not shipped yet", not an error.',
       },
       {
         method: 'GET', path: '/public/store/{shop_slug}/payment-return/paypal', auth: 'none',

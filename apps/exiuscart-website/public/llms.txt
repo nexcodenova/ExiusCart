@@ -72,7 +72,10 @@ Checkout & orders
   body: items [{ product_id, quantity, variant_id? }], name, email, phone?,
   shipping_address?, use_wallet_amount? (logged-in only)
   Returns payment gateway request params (PayHere, Stripe, or PayPal — seller-configured)
-- GET  /public/store/{shop_slug}/orders/{order_number}?email=... — guest order lookup
+- GET  /public/store/{shop_slug}/orders/{order_number}?email=... — guest order
+  lookup + tracking. status moves pending -> confirmed automatically on
+  payment; processing/shipped/delivered/cancelled are set by the seller.
+  tracking_number/carrier/shipped_at are null until shipped.
 
 Wallet (auth: customer)
 - GET  /public/store/{shop_slug}/wallet — balance + last 50 transactions

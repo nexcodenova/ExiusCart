@@ -28,7 +28,7 @@ const STOREFRONT_ENDPOINTS = (slug: string) => [
   { method: 'GET', path: `/public/store/${slug}/products/{slug}`, desc: 'Single product detail — includes rating, view count, units sold, affiliate_url/affiliate_cta_text for affiliate products, faq[] and shipping_note if the seller set them' },
   { method: 'GET', path: `/public/store/${slug}/products/{slug}/reviews`, desc: 'Approved reviews for one product' },
   { method: 'POST', path: `/public/store/${slug}/checkout`, desc: 'Create an order + get payment params' },
-  { method: 'GET', path: `/public/store/${slug}/orders/{order_number}?email=`, desc: 'Guest order lookup' },
+  { method: 'GET', path: `/public/store/${slug}/orders/{order_number}?email=`, desc: 'Guest order lookup + tracking — status, tracking_number, carrier, shipped_at, estimated_delivery (tracking fields null until the seller marks it shipped)' },
   { method: 'POST', path: `/public/store/${slug}/auth/signup`, desc: 'Create a customer account' },
   { method: 'POST', path: `/public/store/${slug}/auth/login`, desc: 'Log in, returns a token' },
   { method: 'GET', path: `/public/store/${slug}/wallet`, desc: 'Balance + history — needs the token from login' },
