@@ -70,6 +70,18 @@ class Product(Base):
     digital_email_subject = Column(String(255), nullable=True)
     digital_email_message = Column(Text, nullable=True)
 
+    # Product page FAQ — [{question, answer}, ...], seller-written, shown on
+    # the storefront product page below the description. Same JSON-column
+    # pattern as custom_field_values, not the admin-only *_json Text columns
+    # above (those are Prodora catalog data, entered through admin.py only).
+    faq = Column(JSON, nullable=True)
+    # Physical-product shipping/returns blurb ("Ships in 2-3 days, 7-day
+    # returns") — free text, seller's own words, shown on the storefront
+    # product page. Not type-restricted at the model/API level (an affiliate
+    # or digital seller could theoretically use the field for something
+    # else), but the dashboard only shows the field for physical products.
+    shipping_note = Column(Text, nullable=True)
+
     # Real, earned social proof for products with no reviews yet — never
     # fabricated. view_count increments on every real product-detail page
     # load (raw hits, not unique visitors — see public_store_product_detail

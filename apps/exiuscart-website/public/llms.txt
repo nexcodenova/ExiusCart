@@ -55,6 +55,9 @@ Products
   render a button using affiliate_cta_text (fallback "Buy Now") linking to
   affiliate_url instead of Add to Cart — there is no checkout for this type,
   and the checkout endpoint below rejects it server-side if submitted anyway.
+  Also returns faq (optional [{question, answer}] list, render below the
+  description) and shipping_note (optional free-text shipping/returns blurb,
+  physical products only) — both render only when non-empty.
 - GET  /public/store/{shop_slug}/products/{slug} — single product detail
 - GET  /public/store/{shop_slug}/products/{slug}/reviews — approved reviews for one product
 

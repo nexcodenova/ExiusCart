@@ -54,6 +54,8 @@ class ProductBase(BaseModel):
     digital_email_message: Optional[str] = None  # override the default delivery-email greeting/message
     affiliate_url: Optional[str] = None
     affiliate_cta_text: Optional[str] = None
+    faq: Optional[List[Dict[str, str]]] = None  # [{question, answer}, ...]
+    shipping_note: Optional[str] = None
 
 
 class ProductCreate(ProductBase):
@@ -90,6 +92,8 @@ class ProductUpdate(BaseModel):
     digital_email_message: Optional[str] = None
     affiliate_url: Optional[str] = None
     affiliate_cta_text: Optional[str] = None
+    faq: Optional[List[Dict[str, str]]] = None
+    shipping_note: Optional[str] = None
 
 
 class SupplierRef(BaseModel):

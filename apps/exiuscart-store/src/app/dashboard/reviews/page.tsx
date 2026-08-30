@@ -273,7 +273,9 @@ export default function ReviewsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-foreground">{r.product_name}</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {r.product_name} <span className="font-normal text-muted-foreground">#{r.product_id}</span>
+                    </p>
                     {r.status === 'requested' && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Awaiting customer</span>
                     )}
@@ -341,7 +343,7 @@ export default function ReviewsPage() {
                   className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm">
                   <option value="">Select a product…</option>
                   {products.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}{p.sku ? ` — SKU: ${p.sku}` : ` — #${p.id}`}</option>
+                    <option key={p.id} value={p.id}>{p.name} — #{p.id}{p.sku ? ` (SKU: ${p.sku})` : ''}</option>
                   ))}
                 </select>
               </div>

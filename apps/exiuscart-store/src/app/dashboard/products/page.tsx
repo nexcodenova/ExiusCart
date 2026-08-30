@@ -1161,6 +1161,7 @@ function ProductModal({
     digitalEmailMessage: p?.digital_email_message ?? '',
     affiliateUrl: p?.affiliate_url ?? '',
     affiliateCtaText: p?.affiliate_cta_text ?? '',
+    shippingNote: p?.shipping_note ?? '',
   });
   const isDigital = formData.productType === 'digital';
   const isAffiliate = formData.productType === 'affiliate';
@@ -1168,6 +1169,13 @@ function ProductModal({
   const [digitalFileError, setDigitalFileError] = useState('');
   const [showDigitalEmailAdvanced, setShowDigitalEmailAdvanced] = useState(
     !!(p?.digital_email_subject || p?.digital_email_message)
+  );
+
+  // Product page FAQ — shown on the storefront below the description, any
+  // product type. Rows with a blank question or answer are dropped on save,
+  // not sent as half-empty entries.
+  const [faqItems, setFaqItems] = useState<{ question: string; answer: string }[]>(
+    Array.isArray(p?.faq) ? p.faq.map((f: any) => ({ question: f.question ?? '', answer: f.answer ?? '' })) : []
   );
 
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
@@ -1895,6 +1903,13 @@ function ProductModal({
         digital_email_message: isDigital ? (formData.digitalEmailMessage.trim() || null) : null,
         affiliate_url: isAffiliate ? (formData.affiliateUrl.trim() || null) : null,
         affiliate_cta_text: isAffiliate ? (formData.affiliateCtaText.trim() || null) : null,
+        shipping_note: (!isDigital && !isAffiliate) ? (formData.shippingNote.trim() || null) : null,
+        faq: (() => {
+          const valid = faqItems
+            .map((f) => ({ question: f.question.trim(), answer: f.answer.trim() }))
+            .filter((f) => f.question && f.answer);
+          return valid.length > 0 ? valid : null;
+        })(),
       };
 
       if (product?.id) {
@@ -2663,6 +2678,17 @@ function ProductModal({
                       <Input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" />
                     </div>
                   </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Shipping / Returns Note</Label>
+                    <textarea
+                      value={formData.shippingNote}
+                      onChange={(e) => setFormData({ ...formData, shippingNote: e.target.value })}
+                      rows={2}
+                      placeholder="e.g. Ships in 2-3 business days. 7-day returns."
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary outline-none"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">Shown on the storefront product page. Leave blank to show nothing.</p>
+                  </div>
                 </div>
               )}
 
@@ -2687,6 +2713,54 @@ function ProductModal({
                 </Select>
                 {suppliers.length === 0 && (
                   <p className="text-xs text-muted-foreground mt-1.5">No suppliers yet — add them in <strong>Suppliers</strong>.</p>
+                )}
+              </div>
+
+              {/* ── Product FAQ — shown on the storefront below the description, any product type ── */}
+              <div className="border-t border-border -mx-6 px-6 pt-6">
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label className="font-medium text-foreground">Product FAQ</Label>
+                  <button
+                    type="button"
+                    onClick={() => setFaqItems((prev) => [...prev, { question: '', answer: '' }])}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add question
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Answer the questions buyers actually ask about this product — shown on the storefront page. Optional.
+                </p>
+                {faqItems.length > 0 && (
+                  <div className="space-y-3">
+                    {faqItems.map((item, i) => (
+                      <div key={i} className="flex gap-2 items-start bg-muted/30 border border-border rounded-lg p-3">
+                        <div className="flex-1 space-y-2 min-w-0">
+                          <Input
+                            type="text"
+                            value={item.question}
+                            onChange={(e) => setFaqItems((prev) => prev.map((f, idx) => idx === i ? { ...f, question: e.target.value } : f))}
+                            placeholder="e.g. Does this come with a warranty?"
+                          />
+                          <textarea
+                            value={item.answer}
+                            onChange={(e) => setFaqItems((prev) => prev.map((f, idx) => idx === i ? { ...f, answer: e.target.value } : f))}
+                            rows={2}
+                            placeholder="Answer shown to buyers"
+                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary outline-none"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFaqItems((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 

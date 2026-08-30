@@ -131,6 +131,10 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         "product_type": p.product_type or "physical",
         "affiliate_url": p.affiliate_url,
         "affiliate_cta_text": p.affiliate_cta_text or "Buy Now",
+        # Seller-written FAQ + shipping/returns blurb — both optional, both
+        # render only if non-empty, no fallback copy invented on this side.
+        "faq": p.faq or [],
+        "shipping_note": p.shipping_note,
         "quantity": p.quantity or 0,
         "images": images,
         # Legacy single field — still set by the internal Prodora import

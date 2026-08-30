@@ -25,7 +25,7 @@ const CURRENCIES = [
 const STOREFRONT_ENDPOINTS = (slug: string) => [
   { method: 'GET', path: `/public/store/${slug}/categories`, desc: 'Category tree' },
   { method: 'GET', path: `/public/store/${slug}/products`, desc: 'Product list — supports ?category=, ?featured=, ?trending=, ?search=. Check product_type ("physical" | "digital" | "affiliate") — for "affiliate", link straight to affiliate_url instead of Add to Cart' },
-  { method: 'GET', path: `/public/store/${slug}/products/{slug}`, desc: 'Single product detail — includes rating, view count, units sold, affiliate_url/affiliate_cta_text for affiliate products' },
+  { method: 'GET', path: `/public/store/${slug}/products/{slug}`, desc: 'Single product detail — includes rating, view count, units sold, affiliate_url/affiliate_cta_text for affiliate products, faq[] and shipping_note if the seller set them' },
   { method: 'GET', path: `/public/store/${slug}/products/{slug}/reviews`, desc: 'Approved reviews for one product' },
   { method: 'POST', path: `/public/store/${slug}/checkout`, desc: 'Create an order + get payment params' },
   { method: 'GET', path: `/public/store/${slug}/orders/{order_number}?email=`, desc: 'Guest order lookup' },
