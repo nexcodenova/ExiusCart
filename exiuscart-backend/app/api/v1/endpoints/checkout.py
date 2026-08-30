@@ -30,6 +30,7 @@ from app.models.channel import ChannelConnection
 from app.models.product_variant import ProductVariant
 from app.models.user import User
 from app.api.v1.deps import get_current_user
+from app.core.rate_limit import limiter
 
 SUPPORTED_GATEWAYS = ("payhere", "stripe", "paypal")
 
@@ -136,7 +137,9 @@ class CheckoutIn(BaseModel):
 
 
 @router.post("/public/store/{shop_slug}/checkout")
+@limiter.limit("20/minute")
 def public_store_checkout(
+    request: Request,
     shop_slug: str,
     data: CheckoutIn,
     db: Session = Depends(get_db),
@@ -305,7 +308,8 @@ def _build_payment_params(conn: ChannelConnection, shop: Shop, order: Order, tot
 
 
 @router.get("/public/store/{shop_slug}/orders/{order_number}")
-def public_store_order_lookup(shop_slug: str, order_number: str, email: str, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def public_store_order_lookup(request: Request, shop_slug: str, order_number: str, email: str, db: Session = Depends(get_db)):
     """Guest order lookup — order number + email match, no account required."""
     shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
     if not shop:

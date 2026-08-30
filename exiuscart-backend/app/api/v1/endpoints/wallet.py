@@ -11,7 +11,7 @@ import logging
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -21,6 +21,7 @@ from app.models.customer import Customer
 from app.models.order import Order
 from app.models.wallet import WalletSettings, WalletAccount, WalletTransaction
 from app.api.v1.deps import get_current_user, get_current_customer
+from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -210,7 +211,8 @@ def manual_debit(shop_id: int, account_id: int, data: ManualAdjustIn, db: Sessio
 # ── Customer-facing (storefront) ─────────────────────────────────────────────
 
 @router.get("/public/store/{shop_slug}/wallet")
-def public_wallet_balance(shop_slug: str, db: Session = Depends(get_db), customer: Customer = Depends(get_current_customer)):
+@limiter.limit("30/minute")
+def public_wallet_balance(request: Request, shop_slug: str, db: Session = Depends(get_db), customer: Customer = Depends(get_current_customer)):
     from app.models.shop import Shop
     shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
     if not shop or customer.shop_id != shop.id:

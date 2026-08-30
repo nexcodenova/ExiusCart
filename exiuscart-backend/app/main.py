@@ -1,7 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from starlette.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal
+from app.core.rate_limit import limiter
 from app.api.v1.router import api_router
 import app.models  # noqa: F401 — ensure all models are registered before create_all
 import threading
@@ -209,6 +213,19 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Rate limiting — see app/core/rate_limit.py for the key function (real
+# client IP via nginx's X-Real-IP) and why in-memory storage is deliberate
+# here. Applied per-endpoint via @limiter.limit(...) on the public,
+# no-auth storefront routes (public.py, checkout.py, wallet.py,
+# digital_delivery.py, blog.py) — see those files for the actual limits.
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(status_code=429, content={"detail": "Too many requests. Please try again shortly."})
 
 # Start recurring invoice background scheduler
 _scheduler_thread = threading.Thread(target=_run_recurring_invoice_scheduler, daemon=True)

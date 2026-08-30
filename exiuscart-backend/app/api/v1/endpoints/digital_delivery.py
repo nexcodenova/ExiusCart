@@ -12,12 +12,13 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.email import send_digital_product_email
+from app.core.rate_limit import limiter
 from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.shop import Shop
@@ -97,7 +98,8 @@ def _too_many_attempts(token: str) -> bool:
 
 
 @router.get("/public/download/{token}")
-def get_download_info(token: str, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def get_download_info(request: Request, token: str, db: Session = Depends(get_db)):
     """No-auth — the gate page's first call, before the buyer has entered
     a code. Only ever reveals the product/shop name, never the file."""
     delivery = db.query(DigitalDelivery).filter(DigitalDelivery.download_token == token).first()
@@ -119,10 +121,13 @@ class VerifyCodeIn(BaseModel):
 
 
 @router.post("/public/download/{token}/verify")
-def verify_download_code(token: str, data: VerifyCodeIn, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def verify_download_code(request: Request, token: str, data: VerifyCodeIn, db: Session = Depends(get_db)):
     """No-auth — checks the access code and, only on a match, returns the
-    real file link. Rate-limited per token so the 8-character code can't
-    just be brute-forced from here."""
+    real file link. Rate-limited per token (below, 10/hour) so the
+    8-character code can't be brute-forced against one delivery — and now
+    also per-IP (30/minute) as defense-in-depth against the same attacker
+    spreading guesses across many different tokens instead of one."""
     if _too_many_attempts(token):
         raise HTTPException(status_code=429, detail="Too many attempts — try again in an hour.")
     _verify_attempts.setdefault(token, []).append(time.time())

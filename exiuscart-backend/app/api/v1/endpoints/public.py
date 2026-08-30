@@ -13,6 +13,7 @@ from app.models.user import User
 from app.models.email_otp import EmailOTP
 from app.models.email_log import EmailLog
 from app.models.affiliate import Affiliate
+from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,8 @@ def _first_image(db: Session, product_id: int) -> str | None:
 
 
 @router.get("/public/store/{shop_slug}/categories")
-def public_store_categories(shop_slug: str, channel: str = "custom", db: Session = Depends(get_db)):
+@limiter.limit("120/minute")
+def public_store_categories(request: Request, shop_slug: str, channel: str = "custom", db: Session = Depends(get_db)):
     """No-auth — a custom storefront's category nav/grid reads this
     directly, live, instead of the storefront keeping its own copy.
     First real piece of the public storefront API described for the
@@ -208,7 +210,9 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
 
 
 @router.get("/public/store/{shop_slug}/products")
+@limiter.limit("120/minute")
 def public_store_products(
+    request: Request,
     shop_slug: str,
     search: str | None = None,
     featured: bool | None = None,
@@ -303,7 +307,8 @@ def public_store_products(
 
 
 @router.get("/public/store/{shop_slug}/products/{slug}")
-def public_store_product_detail(shop_slug: str, slug: str, db: Session = Depends(get_db)):
+@limiter.limit("120/minute")
+def public_store_product_detail(request: Request, shop_slug: str, slug: str, db: Session = Depends(get_db)):
     """No-auth — single product detail for a storefront's PDP."""
     from app.models.channel_category import ProductChannelCategory, ProductStorefrontCategory
     from app.models.storefront_category import StorefrontCategory
@@ -385,7 +390,8 @@ def _approved_reviews_out(product_id: int, db: Session) -> list[dict]:
 
 
 @router.get("/public/store/{shop_slug}/products/{slug}/reviews")
-def public_store_product_reviews(shop_slug: str, slug: str, db: Session = Depends(get_db)):
+@limiter.limit("120/minute")
+def public_store_product_reviews(request: Request, shop_slug: str, slug: str, db: Session = Depends(get_db)):
     """No-auth — approved reviews for one product's PDP. Separate from the
     product detail response so a storefront that just needs the list/PDP
     summary isn't forced to download every review's full text every time."""
@@ -427,7 +433,8 @@ def _customer_out(c) -> dict:
 
 
 @router.post("/public/store/{shop_slug}/auth/signup")
-def public_store_signup(shop_slug: str, data: CustomerSignupIn, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def public_store_signup(request: Request, shop_slug: str, data: CustomerSignupIn, db: Session = Depends(get_db)):
     from app.core.security import get_password_hash, create_access_token
     from app.models.customer import Customer
 
@@ -466,7 +473,8 @@ def public_store_signup(shop_slug: str, data: CustomerSignupIn, db: Session = De
 
 
 @router.post("/public/store/{shop_slug}/auth/login")
-def public_store_login(shop_slug: str, data: CustomerLoginIn, db: Session = Depends(get_db)):
+@limiter.limit("15/minute")
+def public_store_login(request: Request, shop_slug: str, data: CustomerLoginIn, db: Session = Depends(get_db)):
     from app.core.security import verify_password, create_access_token
     from app.models.customer import Customer
 

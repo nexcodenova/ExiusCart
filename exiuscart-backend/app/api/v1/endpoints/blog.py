@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Optional, List
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, Request
 from pydantic import BaseModel
 from slugify import slugify
 import uuid
@@ -18,6 +18,7 @@ import uuid
 from app.core.database import get_db
 from sqlalchemy.orm import Session
 from app.core.thedersi import is_thedersi_shop
+from app.core.rate_limit import limiter
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.blog import BlogPost
@@ -421,7 +422,8 @@ async def _push_to_woocommerce(shop_id: int, post: BlogPost, db: Session) -> dic
 # ── Public — Custom Website API ───────────────────────────────────────────────
 
 @router.get("/public/store/{shop_slug}/blog")
-def public_blog_list(shop_slug: str, tag: Optional[str] = None, db: Session = Depends(get_db)):
+@limiter.limit("120/minute")
+def public_blog_list(request: Request, shop_slug: str, tag: Optional[str] = None, db: Session = Depends(get_db)):
     """No-auth — a custom storefront's blog listing reads this directly,
     same pattern as public_store_products."""
     shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
@@ -443,7 +445,8 @@ def public_blog_list(shop_slug: str, tag: Optional[str] = None, db: Session = De
 
 
 @router.get("/public/store/{shop_slug}/blog/{slug}")
-def public_blog_detail(shop_slug: str, slug: str, db: Session = Depends(get_db)):
+@limiter.limit("120/minute")
+def public_blog_detail(request: Request, shop_slug: str, slug: str, db: Session = Depends(get_db)):
     shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Store not found")
