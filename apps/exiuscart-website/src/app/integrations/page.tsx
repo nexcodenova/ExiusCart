@@ -53,6 +53,18 @@ const CHANNELS_SECONDARY = [
     ),
   },
   {
+    label: 'Etsy',
+    desc: 'List products on Etsy and manage orders directly from ExiusCart.',
+    color: '#F1641E',
+    bg: '#fff4ef',
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+        <rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor" />
+        <text x="12" y="17" textAnchor="middle" fontSize="14" fontWeight="700" fontFamily="Georgia, serif" fill="#fff">E</text>
+      </svg>
+    ),
+  },
+  {
     label: 'Facebook & Instagram',
     desc: 'Sell on Facebook Shops and Instagram Shopping. Inventory and orders synced automatically.',
     status: 'soon' as const,

@@ -15,12 +15,11 @@ interface IntegrationCard {
   core?: boolean;         // ExiusCart + Prodora — grouped in their own boxed pair, matching the heading copy ("at the center")
 }
 
-// All 11 cards in one row now, reading as one continuous strip like the
-// reference. Etsy is marked status:'soon' — no backend integration yet.
-// Amazon and TikTok Shop are also status:'soon' but use "(rolling out)"
-// copy, same qualifier as privacy.tsx, since both are actively landing
-// (TikTok: code built, awaiting TikTok's own app review; Amazon: backend
-// build starting) rather than untouched — not claimed live yet either way.
+// 12 cards now — added WooCommerce (live, no third-party approval blocks
+// it). Etsy is 'live' — Etsy approved full production API access
+// 2026-08-31, so it's real and unblocked now, not just code-complete.
+// TikTok Shop and Amazon stay 'rolling-out'/in-progress — see their own
+// comments below.
 const CARDS: IntegrationCard[] = [
   {
     id: 'exiuscart', name: 'ExiusCart', status: 'live', core: true,
@@ -38,19 +37,24 @@ const CARDS: IntegrationCard[] = [
     desc: 'Sync products, inventory and orders between Shopify and ExiusCart automatically.',
   },
   {
-    id: 'tiktok', name: 'TikTok Shop', status: 'rolling-out',
-    image: '/integration/tiktok.jpg', imageSize: '480×600',
-    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart. Rolling out.',
+    id: 'woocommerce', name: 'WooCommerce', status: 'live',
+    image: '/integration/woocommerce.jpg', imageSize: '480×600',
+    desc: 'Sync your WooCommerce store — products, orders and stock managed directly from ExiusCart.',
   },
   {
-    id: 'etsy', name: 'Etsy', status: 'soon',
+    id: 'etsy', name: 'Etsy', status: 'live',
     image: '/integration/etsy.jpg', imageSize: '480×600',
-    desc: 'List products on Etsy and manage orders from ExiusCart. In development.',
+    desc: 'List products on Etsy and manage orders from ExiusCart.',
   },
   {
     id: 'custom-website', name: 'Custom Website', status: 'live',
     image: '/integration/custom-website.jpg', imageSize: '480×600',
     desc: 'Already have your own store? Connect it as a channel — orders, inventory and invoicing handled automatically.',
+  },
+  {
+    id: 'tiktok', name: 'TikTok Shop', status: 'rolling-out',
+    image: '/integration/tiktok.jpg', imageSize: '480×600',
+    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart. Rolling out.',
   },
   {
     id: 'ebay', name: 'eBay', status: 'live',
