@@ -8,7 +8,10 @@ const config: Config = {
   theme: {
     container: {
       center: true,
-      padding: '1.5rem',
+      // Was a flat 1.5rem on every breakpoint — on a ~380-430px phone
+      // that's 3rem (48px) of the screen gone to side padding alone.
+      // Tighter on mobile only; sm+ unchanged.
+      padding: { DEFAULT: '1rem', sm: '1.5rem' },
       screens: { '2xl': '1280px' },
     },
     extend: {

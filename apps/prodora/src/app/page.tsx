@@ -2,8 +2,19 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   Search, TrendingUp, LayoutGrid, Link2, Sparkles, ShieldCheck,
-  ArrowRight, Flame, Package, DollarSign,
+  ArrowRight, Flame, Package, DollarSign, PackagePlus, Truck, RefreshCw, PackageCheck,
 } from 'lucide-react';
+
+// Real fulfillment flow, not illustrative — matches how the CJ/AliExpress/
+// Printful dropship pipeline actually works once a product is imported
+// from Prodora: ExiusCart auto-places the order with whichever supplier
+// the seller connected, then syncs tracking/status back automatically.
+const FULFILLMENT_STEPS = [
+  { icon: PackagePlus, title: 'Import', desc: 'One click sends the product into your ExiusCart store, ready to sell.' },
+  { icon: Truck, title: 'Auto-fulfillment', desc: 'A customer orders — ExiusCart places it with your connected supplier automatically.' },
+  { icon: RefreshCw, title: 'Status sync', desc: 'Tracking number and delivery status sync back with no manual follow-up.' },
+  { icon: PackageCheck, title: 'Delivered', desc: "Your customer gets their order. You never touch the product." },
+];
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -116,11 +127,12 @@ export default function LandingPage() {
                   <path d="M1 5.5C40 2 160 1 199 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </span>{' '}
-              research tool
+              research &amp; auto-fulfillment tool
             </h1>
             <p className="mt-6 text-lg text-muted-foreground">
-              Browse trending, ready-to-sell products with supplier links included — then import
-              the best products to your ExiusCart store in one click.
+              Browse trending, ready-to-sell products with supplier links included, then import
+              them straight into ExiusCart — and sell everywhere, from Shopify to Amazon to your
+              own website, all in one platform.
             </p>
             <div className="flex justify-center">
               <HeroCTAButtons />
@@ -164,6 +176,32 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── Order automation — what happens after a sale. Icon-based, not
+          fake screenshots: no real UI capture of this flow exists yet, so
+          this stays honest about what it is rather than fabricating one. ── */}
+      <section className="container py-20">
+        <div className="text-center mb-14">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground">Fulfillment runs itself</h2>
+          <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
+            Once a product's imported, ExiusCart handles the rest — from order to delivery.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {FULFILLMENT_STEPS.map((step, i) => (
+            <div key={step.title} className="relative rounded-2xl border border-border bg-card p-6">
+              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+                <step.icon className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-foreground mb-1.5">{i + 1}. {step.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+              {i < FULFILLMENT_STEPS.length - 1 && (
+                <ArrowRight className="hidden lg:block absolute top-1/2 -right-3 -translate-y-1/2 w-5 h-5 text-border" />
+              )}
+            </div>
+          ))}
         </div>
       </section>
 

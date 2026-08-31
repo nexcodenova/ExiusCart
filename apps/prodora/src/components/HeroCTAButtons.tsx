@@ -7,11 +7,11 @@ import { useLoginModal } from '@/components/providers/LoginModalProvider';
 export default function HeroCTAButtons() {
   const { open } = useLoginModal();
   return (
-    <div className="mt-8 flex flex-col sm:flex-row items-start gap-3">
-      <Button size="lg" onClick={open}>
+    <div className="mt-8 w-full flex flex-col sm:flex-row items-stretch sm:items-start justify-center gap-3">
+      <Button size="lg" className="w-full sm:w-auto" onClick={open}>
         Get started for free
       </Button>
-      <Button variant="outline" size="lg" onClick={open}>
+      <Button variant="outline" size="lg" className="w-full sm:w-auto" onClick={open}>
         Find winning products
       </Button>
     </div>
