@@ -131,7 +131,7 @@ function CheckoutContent() {
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition flex items-center gap-1.5 ${billing === 'yearly' ? 'bg-[#0B1121] text-white border-[#0B1121]' : 'text-gray-500 border-gray-200 hover:border-gray-400'}`}
               >
                 Yearly
-                <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">Save 15%</span>
+                <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">Save 17%</span>
               </Link>
             </div>
 

@@ -81,3 +81,21 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* Gentle up/down drift for small attention-grabbing badges (pricing
+   discount pills, etc.) — subtle on purpose, not a bounce. Respects
+   prefers-reduced-motion since it's decorative, not functional. */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.animate-float {
+  animation: float-y 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float {
+    animation: none;
+  }
+}

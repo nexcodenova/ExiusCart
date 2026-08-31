@@ -177,16 +177,27 @@ export default function PricingPage() {
               </button>
               <button
                 onClick={() => setBilling('yearly')}
-                className={`px-7 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                className={`relative px-7 py-2.5 rounded-xl font-semibold text-sm transition-all ${
                   billing === 'yearly'
                     ? 'bg-[#0B1121] text-white shadow-sm'
                     : 'text-gray-400 hover:text-gray-700'
                 }`}
               >
                 Yearly
+                {/* Below `lg` the hand-drawn PencilNote below is hidden (no
+                    room for a floating annotation once cards stack), so this
+                    compact badge carries the same savings message at every
+                    size instead of losing it below desktop. Hidden at lg+ so
+                    the two never show at once. 17%, not a round 15/20 — real
+                    savings from pricing.ts's actual numbers (yearly = 10x
+                    monthly, i.e. 2 months free): $12x12=$144 vs $120/yr, and
+                    $29x12=$348 vs $290/yr, both ≈16.7%, rounded to 17%. */}
+                <span className="animate-float lg:hidden absolute -top-3 -right-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm whitespace-nowrap">
+                  -17%
+                </span>
               </button>
               <PencilNote
-                text="save 15% billing yearly!"
+                text="save 17% billing yearly!"
                 rotate={-4}
                 direction="left"
                 wrap
@@ -254,7 +265,7 @@ export default function PricingPage() {
               {starterOriginal && (
                 <div className="mt-3 flex items-center gap-2">
                   <span className="text-sm text-gray-500 line-through">{currSym}{starterOriginal}{period}</span>
-                  <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                  <span className="animate-float text-xs font-bold bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">
                     {Math.round((1 - starterPrice / starterOriginal) * 100)}% OFF
                   </span>
                 </div>
@@ -311,7 +322,7 @@ export default function PricingPage() {
               {premiumOriginal && (
                 <div className="mt-3 flex items-center gap-2">
                   <span className="text-sm text-gray-400 line-through">{currSym}{premiumOriginal}{period}</span>
-                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                  <span className="animate-float text-xs font-bold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full">
                     {Math.round((1 - premiumPrice / premiumOriginal) * 100)}% OFF
                   </span>
                 </div>
