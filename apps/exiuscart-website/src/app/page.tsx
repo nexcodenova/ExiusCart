@@ -1,12 +1,14 @@
 ﻿import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
-import { ArrowRight, Check, Star, Quote, ShoppingCart, Boxes, FileText, Package, BarChart3, Users, Megaphone, Wallet, Truck, Headphones, Calendar, Shield, Globe, Zap } from 'lucide-react';
+import { ArrowRight, Check, Star, Quote, ShoppingCart, Boxes, FileText, Package, BarChart3, Users, Megaphone, Wallet, Truck, Headphones, Calendar, Shield, Globe, Zap, Shirt, type LucideIcon } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { PricingPreview } from '@/components/ui/pricing-preview';
 import { PromoBanner } from '@/components/ui/promo-banner';
 import { LiveStats } from '@/components/ui/live-stats';
 import { IntegrationsGrid } from '@/components/ui/integrations-grid';
+import { Marquee } from '@/components/ui/marquee';
 
 export const metadata: Metadata = {
   title: 'ExiusCart - All-in-One POS, Inventory & Multichannel Selling Platform',
@@ -19,6 +21,42 @@ export const metadata: Metadata = {
     type: 'website',
   },
 };
+
+// Prodora's supplier network — sourcing, not sales channels (see
+// IntegrationsGrid above for those). Placeholder cards on purpose: no
+// real per-supplier artwork exists yet (the "Partner with X" + dashboard
+// mockup composite style the channel cards use), so this ships as
+// bigger name+icon+blurb cards, two rows scrolling opposite directions
+// (matching the MagicUI Marquee reference) — swap in real images once
+// those are built, same card slots.
+interface Supplier { name: string; icon: LucideIcon; blurb: string; }
+const SUPPLIERS: Supplier[] = [
+  { name: 'CJ Dropshipping', icon: Package, blurb: 'Fast fulfillment, huge catalog, warehouses worldwide.' },
+  { name: 'AliExpress', icon: ShoppingCart, blurb: 'Millions of products, direct from verified sellers.' },
+  { name: '1688', icon: Boxes, blurb: "China's wholesale marketplace — factory-direct pricing." },
+  { name: 'Zendrop', icon: Truck, blurb: 'US-based fast shipping for dropshipping stores.' },
+  { name: 'HyperSku', icon: Zap, blurb: 'Branded packaging and fast Southeast Asia shipping.' },
+  { name: 'Print on Demand', icon: Shirt, blurb: 'Printful, Printify & Gelato — print, pack, ship per order.' },
+];
+const SUPPLIERS_ROW_1 = SUPPLIERS.slice(0, 3);
+const SUPPLIERS_ROW_2 = SUPPLIERS.slice(3);
+
+function SupplierCard({ name, icon: Icon, blurb }: Supplier) {
+  return (
+    <div className="w-72 shrink-0 bg-white border border-gray-200 rounded-2xl shadow-sm px-6 py-8">
+      <div className="flex items-center gap-3 mb-5">
+        {/* This box is the real-logo slot — swap the generic lucide Icon
+            for an <Image src="/suppliers/{name}.png" /> here once actual
+            per-supplier logos exist, same w-11 h-11 rounded-xl frame. */}
+        <div className="w-11 h-11 rounded-xl bg-[#6B3FD9]/10 flex items-center justify-center shrink-0">
+          <Icon className="w-5 h-5 text-[#6B3FD9]" />
+        </div>
+        <span className="text-lg font-bold text-gray-900">{name}</span>
+      </div>
+      <p className="text-sm text-gray-500 leading-relaxed">{blurb}</p>
+    </div>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -233,6 +271,42 @@ export default function HomePage() {
         </div>
 
         <IntegrationsGrid />
+      </section>
+
+      {/* ── Supplier network — Prodora's sourcing side, not a sales
+          channel. Auto-scrolling marquee, placeholder cards (see
+          SUPPLIERS/SupplierCard above) until real per-supplier artwork
+          exists. ── */}
+      <section className="bg-[#F5F3EF] pb-20 lg:pb-28">
+        <div className="text-center pb-10 px-6 max-w-2xl mx-auto">
+          <p className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-[0.22em] text-[#6B3FD9] mb-5">
+            Sourced through
+            <span className="inline-flex items-center gap-2.5 font-black text-3xl tracking-tight bg-gradient-to-r from-[#A78BFA] to-[#6B3FD9] bg-clip-text text-transparent normal-case">
+              <span className="inline-flex w-11 h-11 rounded-lg bg-white p-1.5 shrink-0 shadow-sm">
+                <Image src="/prodora-logo.png" alt="" width={44} height={44} className="w-full h-full object-contain" />
+              </span>
+              Prodora
+            </span>
+          </p>
+          <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-[1.05] tracking-tight mb-4">
+            Every major supplier, one connection.
+          </h2>
+          <p className="text-gray-500 text-lg leading-relaxed">
+            CJ, AliExpress, 1688, Zendrop, HyperSku and print-on-demand — source real products without juggling a dozen separate accounts.
+          </p>
+        </div>
+        <div className="flex flex-col gap-4">
+          <Marquee pauseOnHover className="[--duration:28s]">
+            {SUPPLIERS_ROW_1.map((s) => (
+              <SupplierCard key={s.name} {...s} />
+            ))}
+          </Marquee>
+          <Marquee reverse pauseOnHover className="[--duration:28s]">
+            {SUPPLIERS_ROW_2.map((s) => (
+              <SupplierCard key={s.name} {...s} />
+            ))}
+          </Marquee>
+        </div>
       </section>
 
       {/* ── Custom Website — Paddle-inspired SaaS section ── */}

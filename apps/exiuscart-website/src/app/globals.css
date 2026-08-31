@@ -99,3 +99,31 @@
     animation: none;
   }
 }
+
+/* Infinite horizontal scroll for the supplier marquee (components/ui/
+   marquee.tsx) — same visual as MagicUI's Marquee component, built here
+   as plain CSS keyframes (no new dependency) since this app has no
+   framer-motion/motion install. --duration and --gap are set inline per
+   usage; falls back sensibly if omitted. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100% - var(--gap, 1rem))); }
+}
+/* Longhand properties on purpose, not the `animation` shorthand — the
+   shorthand implicitly resets animation-direction to 'normal', and since
+   this rule lives outside any @layer, it would always beat Tailwind's
+   layered `[animation-direction:reverse]` utility regardless of source
+   order, silently breaking the second (reverse) marquee row. Leaving
+   animation-direction out entirely here lets that utility (or its
+   absence, defaulting to 'normal') control direction cleanly. */
+.animate-marquee {
+  animation-name: marquee;
+  animation-duration: var(--duration, 40s);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
