@@ -180,32 +180,30 @@ export function IntegrationsGrid() {
         </h2>
       </div>
 
-      {/* Row 1 — ExiusCart + Prodora, tilted toward each other like a
-          leaning pair of cards, the duo the heading calls "the center".
+      {/* Row 1 — ExiusCart + Prodora. On mobile, stacked vertically at
+          full card width/normal 4:5 ratio (was two tilted cards squeezed
+          to 40vw each side by side — too small to actually read). The
+          tilted "leaning pair" only kicks in from sm+, where there's
+          enough width for two side by side to still read comfortably.
           Plain static content, deliberately outside the sticky scroll-jack
           below — it's only two cards and never needs to scroll, and
           stacking it inside the pinned h-screen container made the total
           content taller than the viewport, clipping it. Found by id (not
           array position) so this survives future reordering. */}
-      <div className="flex justify-center gap-3 sm:gap-10 lg:gap-24 px-6 pb-8 lg:pb-14">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 lg:gap-24 px-6 pb-8 lg:pb-14">
         {(() => {
           const exiuscart = CARDS.find(c => c.id === 'exiuscart');
           const prodora = CARDS.find(c => c.id === 'prodora');
-          // Card's own width defaults to w-[90vw] — sized for the single-
-          // card-at-a-time swipe strip in Row 2. Two of those side by side
-          // would overflow any phone screen, so this pair gets its own
-          // (!important-forced) narrower mobile width that widens back to
-          // the normal card size at sm/lg, matching Card's own breakpoints.
-          const pairWidth = '!w-[40vw] sm:!w-[330px] lg:!w-[360px]';
+          // Below sm: no override, Card's own w-[90vw] default applies —
+          // same size as every other card in the strip. At sm/lg: fixed
+          // width for the side-by-side pair.
+          const pairWidth = 'sm:!w-[330px] lg:!w-[360px]';
           return (
             <>
-              {/* ExiusCart drifts left on hover; Prodora drifts right on
-                  press (`active:` — CSS's closest equivalent to "on click"
-                  without adding React state for a decorative pair that
-                  isn't otherwise interactive). Both still straighten flat
-                  and lift slightly, same as every other card. */}
-              {exiuscart && <Card card={exiuscart} square className={`rotate-[6deg] hover:rotate-0 hover:-translate-x-4 origin-bottom-left ${pairWidth}`} />}
-              {prodora && <Card card={prodora} square className={`rotate-[-6deg] hover:rotate-0 active:translate-x-4 origin-bottom-right ${pairWidth}`} />}
+              {/* Tilt/drift only from sm+ — stacked full-width cards on
+                  mobile don't need to lean into each other. */}
+              {exiuscart && <Card card={exiuscart} className={`sm:rotate-[6deg] sm:hover:rotate-0 sm:hover:-translate-x-4 sm:origin-bottom-left ${pairWidth}`} />}
+              {prodora && <Card card={prodora} className={`sm:rotate-[-6deg] sm:hover:rotate-0 sm:active:translate-x-4 sm:origin-bottom-right ${pairWidth}`} />}
             </>
           );
         })()}

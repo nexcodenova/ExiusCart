@@ -17,8 +17,14 @@ const navLinks = [
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  // Held back until the page (hero image included) has actually finished
-  // loading, so the navbar doesn't pop in before the hero is ready behind it.
+  // Briefly held back so the navbar doesn't pop in on a still-blank page.
+  // Used to gate on the full window `load` event instead — which waits
+  // for every image on the ENTIRE page, not just the hero, including
+  // stuff far below the fold (the marquee/supplier cards etc). That made
+  // the wait grow every time more content was added to the page, which is
+  // exactly why the navbar started taking noticeably longer to appear. A
+  // short fixed delay gets the same "not an instant jarring pop-in"
+  // effect without being coupled to total page weight.
   const [loaded, setLoaded] = useState(false);
   // Auto-hides on scroll-down, reappears on scroll-up — being fixed, it
   // would otherwise sit permanently over whatever content is scrolling past
@@ -26,10 +32,8 @@ export function Navbar() {
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    if (document.readyState === 'complete') { setLoaded(true); return; }
-    const onLoad = () => setLoaded(true);
-    window.addEventListener('load', onLoad);
-    return () => window.removeEventListener('load', onLoad);
+    const t = setTimeout(() => setLoaded(true), 150);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -45,7 +49,19 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, [isOpen]);
 
+  // Lock page scroll while the full-screen mobile menu is open — without
+  // this the page behind it still scrolls (or the menu's own content
+  // scrolls the page instead of itself), which feels broken on a real
+  // full-screen overlay.
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+
   return (
+    <>
     <div
       className={`fixed top-3 left-3 right-3 sm:top-4 sm:left-6 sm:right-6 z-50 transition-all duration-500 ${loaded ? 'opacity-100' : 'opacity-0 pointer-events-none'} ${hidden ? '-translate-y-24 opacity-0 pointer-events-none' : 'translate-y-0'}`}
     >
@@ -98,42 +114,58 @@ export function Navbar() {
           </button>
         </div>
       </nav>
+    </div>
 
-      {/* Mobile Menu — its own floating panel below the pill, not attached flush */}
-      {isOpen && (
-        <div className="md:hidden mt-2 bg-[#0B1121] rounded-3xl shadow-lg shadow-black/20 overflow-hidden">
-          <div className="px-4 py-4 space-y-1">
+    {/* Mobile Menu — full-screen overlay (was a small floating panel that
+        left page content visible/scrollable underneath it, which read as
+        unfinished). Deliberately NOT nested inside the pill's wrapper div
+        above: that div always carries a translate-y-* class (even
+        translate-y-0 counts), and any transform on an ancestor makes it
+        the containing block for a `position: fixed` descendant instead
+        of the viewport — which was silently confining this "full-screen"
+        menu to the pill's own small box instead of covering the actual
+        screen. Sibling-level fixed positioning here isn't affected by
+        that. z-40 vs the pill's z-50 so the pill — with its X close
+        button — stays on top and usable. Fades/scales in rather than
+        just appearing, matching the pill's own transition treatment. */}
+      <div
+        className={`md:hidden fixed inset-0 z-40 bg-[#0B1121] flex flex-col transition-all duration-300 ${
+          isOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+        }`}
+      >
+        <div className="flex-1 overflow-y-auto px-6 pt-28 pb-10">
+          <nav className="flex flex-col">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsOpen(false)}
-                className="block text-gray-400 hover:text-white transition-colors py-3"
+                className="text-2xl font-semibold text-gray-200 hover:text-white transition-colors py-4 border-b border-white/5"
               >
                 {link.label}
               </Link>
             ))}
-            <div className="pt-4 mt-4 border-t border-gray-800 space-y-3">
-              <Link
-                href="https://store.exiuscart.com/login"
-                onClick={() => setIsOpen(false)}
-                className="block text-gray-400 hover:text-white transition-colors py-2"
-              >
-                Login
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-5 py-3 rounded-full transition-all"
-              >
-                Get Started
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+          </nav>
+          <div className="mt-8 space-y-3">
+            <Link
+              href="https://store.exiuscart.com/login"
+              onClick={() => setIsOpen(false)}
+              className="block text-center text-gray-300 hover:text-white border border-white/15 hover:border-white/30 transition-colors py-3.5 rounded-full font-medium"
+            >
+              Login
+            </Link>
+            <Link
+              href="/register"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-5 py-3.5 rounded-full transition-all"
+            >
+              Get Started
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 }
 
