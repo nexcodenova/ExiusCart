@@ -151,6 +151,22 @@
   .float-card { animation: none; }
 }
 
+/* Traveling-light border effect (see components/ui/border-beam.tsx) — a
+   custom-property angle rotated via CSS animation, read by a conic-gradient
+   masked to just the border ring. @property is what makes the gradient
+   animate smoothly instead of snapping between keyframes. */
+@property --border-beam-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes border-beam-spin {
+  to { --border-beam-angle: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="border-beam-spin"] { animation: none !important; }
+}
+
 /* Touch-friendly tap highlight */
 @media (hover: none) {
   button, a, [role="button"] {

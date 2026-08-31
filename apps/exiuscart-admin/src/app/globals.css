@@ -66,3 +66,16 @@
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* Traveling-light border effect (see components/ui/border-beam.tsx) */
+@property --border-beam-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes border-beam-spin {
+  to { --border-beam-angle: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="border-beam-spin"] { animation: none !important; }
+}

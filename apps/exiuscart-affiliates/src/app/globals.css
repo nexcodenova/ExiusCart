@@ -13,3 +13,32 @@ body {
   color: white;
   font-family: system-ui, -apple-system, sans-serif;
 }
+
+/* Gentle floating motion for the login page's feature badges — same
+   pattern as exiuscart-store's login page. Straight up/down only, each
+   badge sets its own --card-delay/--card-duration so the group drifts
+   asynchronously instead of bobbing in lockstep. */
+@keyframes float-card {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+.float-card {
+  animation: float-card var(--card-duration, 4s) ease-in-out infinite;
+  animation-delay: var(--card-delay, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-card { animation: none; }
+}
+
+/* Traveling-light border effect (see components/ui/border-beam.tsx) */
+@property --border-beam-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes border-beam-spin {
+  to { --border-beam-angle: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="border-beam-spin"] { animation: none !important; }
+}

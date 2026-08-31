@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Eye, EyeOff, Loader2, Shield } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { BorderBeam } from '@/components/ui/border-beam';
 
 export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +50,8 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Login Form */}
-        <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-6 sm:p-8">
+        <Card className="relative overflow-hidden p-6 sm:p-8">
+          <BorderBeam />
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm text-gray-400 mb-2">
@@ -118,7 +121,7 @@ export default function AdminLoginPage() {
               Sign In
             </button>
           </form>
-        </div>
+        </Card>
 
         {/* Footer */}
         <p className="text-center text-gray-500 text-sm mt-6">

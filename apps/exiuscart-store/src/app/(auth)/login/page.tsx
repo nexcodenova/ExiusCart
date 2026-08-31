@@ -6,8 +6,10 @@ import { useState, useEffect } from 'react';
 import {
   Eye, EyeOff, Loader2, Megaphone, Mail, Target, UserPlus, Store, TrendingUp,
   ShoppingBag, Package, Boxes, Users, BarChart3, Wallet, Award, Globe, Ticket,
-  CreditCard, LucideIcon,
+  CreditCard, LucideIcon, MessageCircle, Phone, Clock,
 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { BorderBeam } from '@/components/ui/border-beam';
 
 interface FeatureCard {
   label: string;
@@ -52,14 +54,16 @@ const FEATURE_CARDS: FeatureCard[] = [
   { label: 'Payments', icon: CreditCard, top: '68%', left: '16%', delay: 3, duration: 3.6 },
 ];
 
+// Flowing (not absolutely positioned) version — used in the desktop
+// two-column layout's left side, wrapping naturally above the contact
+// block instead of ringing a centered card. Same float-card motion, same
+// per-card delay/duration, just laid out in normal flex flow now.
 function FeatureCardBadge({ card }: { card: FeatureCard }) {
   const Icon = card.icon;
   return (
     <div
-      className="float-card absolute flex items-center gap-2.5 bg-white border border-gray-200 rounded-2xl shadow-sm px-4 py-3"
+      className="float-card flex items-center gap-2.5 bg-white border border-gray-200 rounded-2xl shadow-sm px-4 py-3"
       style={{
-        top: card.top,
-        left: card.left,
         '--card-delay': `${card.delay}s`,
         '--card-duration': `${card.duration}s`,
       } as React.CSSProperties}
@@ -68,6 +72,58 @@ function FeatureCardBadge({ card }: { card: FeatureCard }) {
         <Icon className="w-5 h-5 text-[#6B3FD9]" />
       </div>
       <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">{card.label}</span>
+    </div>
+  );
+}
+
+// Redesigned from the marketing site's Contact page (same real details —
+// WhatsApp/Email/Phone/Hours) but laid out as a compact panel that fits
+// this page's left column rather than a full page section.
+function ContactBlock() {
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-6">
+      <p className="text-xs font-bold uppercase tracking-widest text-[#6B3FD9] mb-4">
+        Need a hand?
+      </p>
+      <div className="space-y-4">
+        <a href="https://wa.me/971562393573" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-[#25D366]/15 rounded-xl flex items-center justify-center shrink-0">
+            <MessageCircle className="w-4.5 h-4.5 text-[#25D366]" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">WhatsApp</p>
+            <span className="text-sm text-gray-900 font-medium group-hover:text-[#6B3FD9] transition-colors">+971 562 393 573</span>
+          </div>
+        </a>
+        <a href="mailto:support@exiuscart.com" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center shrink-0">
+            <Mail className="w-4.5 h-4.5 text-[#6B3FD9]" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Email</p>
+            <span className="text-sm text-gray-900 font-medium group-hover:text-[#6B3FD9] transition-colors">support@exiuscart.com</span>
+          </div>
+        </a>
+        <a href="tel:+971562393573" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center shrink-0">
+            <Phone className="w-4.5 h-4.5 text-[#6B3FD9]" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Phone</p>
+            <span className="text-sm text-gray-900 font-medium group-hover:text-[#6B3FD9] transition-colors">+971 562 393 573</span>
+          </div>
+        </a>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-xl flex items-center justify-center shrink-0">
+            <Clock className="w-4.5 h-4.5 text-[#6B3FD9]" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Business Hours</p>
+            <p className="text-sm text-gray-900 font-medium">Sun–Thu: 9 AM – 6 PM</p>
+            <p className="text-xs text-gray-500">Fri: 9 AM – 12 PM · Sat: Closed</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -170,6 +226,84 @@ export default function LoginPage() {
     }
   };
 
+  // The login card itself — unchanged from before this redesign, just
+  // pulled out so both the new desktop two-column layout and the
+  // untouched mobile layout below can render the exact same markup.
+  const loginFormCard = (
+    <Card className="relative overflow-hidden w-full max-w-sm bg-white border-gray-200 rounded-3xl shadow-sm p-8">
+      <BorderBeam />
+      <h2 className="text-2xl font-bold text-gray-900 mb-1">Log in to your account</h2>
+      <p className="text-gray-500 text-sm mb-8">Sign in to manage your shop</p>
+
+      {error && (
+        <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl px-4 py-3 mb-4">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="text-xs font-medium text-gray-500 mb-1 block">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition"
+            placeholder="Enter your email address"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-gray-500 mb-1 block">Password</label>
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition pr-12"
+              placeholder="Enter your password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 text-gray-500 text-sm cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="rounded border-gray-300 bg-gray-50 accent-[#6B3FD9]"
+          />
+          Remember me
+        </label>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-3 rounded-2xl transition disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+        >
+          {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+          Log in
+        </button>
+      </form>
+
+      <p className="text-center mt-6 text-gray-500 text-sm">
+        Don&apos;t have an ExiusCart account?{' '}
+        <Link href="https://exiuscart.com/register" className="text-[#6B3FD9] font-semibold hover:text-[#5A2EC9] transition">
+          Create account
+        </Link>
+      </p>
+    </Card>
+  );
+
   return (
     <div className="min-h-screen bg-[#F5F3EF] flex flex-col">
       {/* Top bar */}
@@ -180,108 +314,40 @@ export default function LoginPage() {
         </span>
       </div>
 
-      {/* Main — the login form is always centered; on desktop it's ringed
-          by full labeled cards positioned absolutely around it (see
-          FEATURE_CARDS above); on mobile there's no room for that scatter,
-          so the same set becomes icon-only badges wrapped in bands directly
-          above and below the form instead of one scrolling line. */}
-      <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden py-8 lg:py-12 gap-5">
-        {/* Feature cards — desktop only, need real room to ring the card
-            without crowding it */}
-        <div className="hidden lg:block absolute inset-0">
-          {/* Soft brand-colored glow behind the cards, filling the empty space */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-72 h-72 rounded-full bg-[#6B3FD9]/10 blur-3xl" />
-          </div>
+      {/* Desktop (lg+) — feature badges as one row across the top, then
+          contact info (left) + the login card (right) below. Mobile below
+          is untouched — same icon-only bands above/below the centered
+          form as before this redesign. */}
+      <div className="hidden lg:flex flex-1 flex-col items-center px-10 py-6 gap-6">
+        <div className="flex flex-wrap justify-center gap-3 max-w-[90rem]">
           {FEATURE_CARDS.map((card) => (
             <FeatureCardBadge key={card.label} card={card} />
           ))}
         </div>
+        <div className="flex-1 flex items-center">
+          <div className="grid grid-cols-2 gap-16 max-w-6xl w-full items-center">
+            <ContactBlock />
+            <div className="flex justify-center">
+              {loginFormCard}
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* Mobile — first half of the icon set, wrapped above the form */}
-        <div className="lg:hidden flex flex-wrap items-center justify-center gap-2.5 max-w-[280px]">
+      {/* Mobile / tablet (<lg) — unchanged: icon-only bands wrapped above
+          and below the centered form. */}
+      <div className="lg:hidden relative flex-1 flex flex-col items-center justify-center overflow-hidden py-8 gap-5">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 max-w-[280px]">
           {FEATURE_CARDS.slice(0, 8).map((card) => (
             <IconOnlyBadge key={card.label} card={card} />
           ))}
         </div>
 
-        {/* Login form — centered, always on top */}
         <div className="relative z-10 w-full flex justify-center px-6">
-        <div className="w-full max-w-sm bg-white border border-gray-200 rounded-3xl shadow-sm p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">Log in to your account</h2>
-          <p className="text-gray-500 text-sm mb-8">Sign in to manage your shop</p>
-
-          {error && (
-            <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl px-4 py-3 mb-4">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition"
-                placeholder="Enter your email address"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition pr-12"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-
-            <label className="flex items-center gap-2 text-gray-500 text-sm cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="rounded border-gray-300 bg-gray-50 accent-[#6B3FD9]"
-              />
-              Remember me
-            </label>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-3 rounded-2xl transition disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
-            >
-              {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
-              Log in
-            </button>
-          </form>
-
-          <p className="text-center mt-6 text-gray-500 text-sm">
-            Don&apos;t have an ExiusCart account?{' '}
-            <Link href="https://exiuscart.com/register" className="text-[#6B3FD9] font-semibold hover:text-[#5A2EC9] transition">
-              Create account
-            </Link>
-          </p>
-        </div>
+          {loginFormCard}
         </div>
 
-        {/* Mobile — second half of the icon set, wrapped below the form */}
-        <div className="lg:hidden flex flex-wrap items-center justify-center gap-2.5 max-w-[280px]">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 max-w-[280px]">
           {FEATURE_CARDS.slice(8).map((card) => (
             <IconOnlyBadge key={card.label} card={card} />
           ))}
