@@ -12,6 +12,7 @@ import {
 import Navbar from '@/components/layout/Navbar';
 import HeroCTAButtons from '@/components/HeroCTAButtons';
 import OpenLoginButton from '@/components/OpenLoginButton';
+import { IntegrationsGrid } from '@/components/ui/integrations-grid';
 
 const STEPS = [
   {
@@ -94,94 +95,39 @@ export default function LandingPage() {
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         <div className="container pt-14 pb-16 sm:pt-20 sm:pb-20">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            {/* Left column — copy */}
-            <div className="max-w-xl">
-              <Badge className="mb-6">Powered by ExiusCart</Badge>
-              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.12]">
-                Your #1 winning{' '}
-                <span className="relative whitespace-nowrap text-primary">
-                  product
-                  <svg
-                    className="absolute left-0 -bottom-1 w-full"
-                    height="8"
-                    viewBox="0 0 200 8"
-                    fill="none"
-                    preserveAspectRatio="none"
-                  >
-                    <path d="M1 5.5C40 2 160 1 199 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </span>{' '}
-                research tool
-              </h1>
-              <p className="mt-6 text-lg text-muted-foreground">
-                Browse trending, ready-to-sell products with supplier links included — then import
-                the best products to your ExiusCart store in one click.
-              </p>
-              <HeroCTAButtons />
-              <p className="mt-5 text-sm text-muted-foreground">
-                Free for every ExiusCart seller &middot; No credit card required
-              </p>
-            </div>
-
-            {/* Right column — floating product circle.
-                Product images are placeholders from /figma-assets — swap for real Prodora products.
-                Prices are illustrative sample data. */}
-            <div className="relative hidden lg:block h-[520px]">
-              {/* concentric rings */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full bg-primary/[0.03]" />
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] rounded-full border border-primary/10" />
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] h-[240px] rounded-full border border-primary/10" />
-
-              {/* center logo badge */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-primary flex items-center justify-center shadow-lg z-20">
-                <Image src="/prodora-logo.png" alt="Prodora" width={32} height={32} className="brightness-0 invert" />
-              </div>
-
-              {/* product bubbles */}
-              {[
-                { img: '/figma-assets/hero-product-4.png', pos: 'top-2 right-16', size: 'w-28 h-28' },
-                { img: '/figma-assets/hero-product-5.png', pos: 'top-24 left-4', size: 'w-32 h-32' },
-                { img: '/figma-assets/hero-product-1.png', pos: 'bottom-16 left-10', size: 'w-28 h-28' },
-                { img: '/figma-assets/hero-product-3.png', pos: 'bottom-6 right-24', size: 'w-24 h-24' },
-                { img: '/figma-assets/hero-product-6.png', pos: 'top-8 left-1/2', size: 'w-20 h-20' },
-              ].map((p, i) => (
-                <div
-                  key={i}
-                  className={`absolute ${p.pos} ${p.size} rounded-full bg-white border border-border shadow-[0px_8px_30px_-8px_rgba(0,0,0,0.15)] flex items-center justify-center p-3 z-10`}
+          {/* Was a 2-column grid with a floating-product-circle on the
+              right — removed 2026-08-31, it was placeholder art
+              (/figma-assets/hero-product-*.png, illustrative sample
+              prices) never swapped for anything real. Centered single
+              column now instead of leaving an empty half. */}
+          <div className="max-w-xl mx-auto text-center">
+            <Badge className="mb-6">Powered by ExiusCart</Badge>
+            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.12]">
+              Your #1 winning{' '}
+              <span className="relative whitespace-nowrap text-primary">
+                product
+                <svg
+                  className="absolute left-0 -bottom-1 w-full"
+                  height="8"
+                  viewBox="0 0 200 8"
+                  fill="none"
+                  preserveAspectRatio="none"
                 >
-                  <Image src={p.img} alt="Winning product" width={110} height={110} className="w-full h-full object-contain" />
-                </div>
-              ))}
-
-              {/* floating price pills */}
-              <div className="absolute top-16 right-0 rounded-xl bg-white border border-border shadow-md px-3 py-2 z-20">
-                <p className="text-[10px] text-muted-foreground leading-none">Product cost</p>
-                <p className="text-sm font-bold text-foreground leading-tight mt-0.5">$8.75</p>
-              </div>
-              <div className="absolute bottom-28 right-4 rounded-xl bg-white border border-border shadow-md px-3 py-2 z-20">
-                <p className="text-[10px] text-muted-foreground leading-none">Selling price</p>
-                <p className="text-sm font-bold text-foreground leading-tight mt-0.5">$34.99</p>
-              </div>
-              <div className="absolute bottom-10 left-0 rounded-xl bg-white border border-border shadow-md px-3 py-2 z-20">
-                <p className="text-[10px] text-primary leading-none font-medium">Profit / sale</p>
-                <p className="text-sm font-bold text-primary leading-tight mt-0.5">$26.24</p>
-              </div>
+                  <path d="M1 5.5C40 2 160 1 199 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </span>{' '}
+              research tool
+            </h1>
+            <p className="mt-6 text-lg text-muted-foreground">
+              Browse trending, ready-to-sell products with supplier links included — then import
+              the best products to your ExiusCart store in one click.
+            </p>
+            <div className="flex justify-center">
+              <HeroCTAButtons />
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Featured In — PLACEHOLDER: swap in real logos when available, or remove this section if none exist yet ── */}
-      <section className="border-t border-border">
-        <div className="container py-10">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-6">
-            As featured in
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-40">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-6 w-24 rounded bg-foreground/20" />
-            ))}
+            <p className="mt-5 text-sm text-muted-foreground">
+              Free for every ExiusCart seller &middot; No credit card required
+            </p>
           </div>
         </div>
       </section>
@@ -219,6 +165,27 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* ── Every channel, one hub — copied from exiuscart.com's homepage
+          on request (2026-08-31), same IntegrationsGrid component/images,
+          reworded for Prodora's own side: the point here is showing what
+          you plug into once you list through Prodora — ExiusCart itself,
+          then every channel it reaches. ── */}
+      <section className="bg-[#F5F3EF]">
+        <div className="hidden sm:block pt-20 lg:pt-24 pb-10 px-6 text-center max-w-2xl mx-auto">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6B3FD9] mb-5">
+            Connected everywhere
+          </p>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.05] tracking-tight mb-6">
+            Source here,<br />sell anywhere using ExiusCart.
+          </h2>
+          <p className="text-gray-500 text-lg leading-relaxed">
+            Prodora and ExiusCart at the center — every marketplace and channel around them stays in sync automatically.
+          </p>
+        </div>
+
+        <IntegrationsGrid />
       </section>
 
       {/* ── Feature grid ─────────────────────────────────────────────── */}

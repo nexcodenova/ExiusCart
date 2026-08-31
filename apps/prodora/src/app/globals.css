@@ -27,10 +27,19 @@
   margin: 0;
 }
 
+/* overflow-x: hidden used to sit here (on html/body) to stop stray
+   horizontal scrollbars — removed 2026-08-31: it's a well-known cause of
+   position:sticky silently breaking in Chrome (any ancestor with a
+   non-visible overflow value can do this), which is exactly why
+   IntegrationsGrid's scroll-jack effect (position: sticky on its inner
+   track) wasn't working here. exiuscart-website, where that same
+   component works fine, has no equivalent global rule — it handles
+   overflow per-section (overflow-x-auto/overflow-hidden on the specific
+   elements that need it) instead of blanket on html/body. max-width:
+   100vw alone still catches most accidental horizontal overflow. */
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }

@@ -7,16 +7,6 @@ Path in code: `/figma-assets/<filename>`
 
 ---
 
-## Hero — product cards (SAFE placeholders, replace with real Prodora products)
-| File | Use | Replace with |
-|------|-----|--------------|
-| `hero-product-1.png` | Floating product card in hero | A real trending Prodora product photo (square, ~600×600, transparent or white bg) |
-| `hero-product-2.jpeg` | Floating product card in hero | " |
-| `hero-product-3.png` | Floating product card in hero | " |
-| `hero-product-4.png` | Floating product card in hero | " |
-| `hero-product-5.png` | Floating product card in hero | " |
-| `hero-product-6.png` | Floating product card in hero | " |
-
 ## How it works — step screenshots (replace with real Prodora UI screenshots)
 | File | Use | Replace with |
 |------|-----|--------------|
@@ -26,7 +16,12 @@ Path in code: `/figma-assets/<filename>`
 
 ---
 
+Removed 2026-08-31: the hero's floating-product-circle (`hero-product-1..6`)
+and the "As featured in" placeholder section — both were unused/never
+replaced with real content, so the section is gone from the page rather
+than left showing fake data. If either comes back later, drop new files
+here and re-add the matching section in `page.tsx`.
+
 ## Still needed from you (not yet supplied — page uses labeled placeholder slots for these):
-- **Press / "featured in" logos** — only if Prodora has real press mentions. Otherwise that section stays hidden.
 - **Testimonials** — real seller name + photo + quote. No fake ones are used.
 - **Support / chat screenshot** — optional, for a support section.
