@@ -273,15 +273,19 @@ async def create_product(
         product_fields["quantity"] = 999999
         product_fields["low_stock_threshold"] = 0
 
-    # TheDersi's own catalog format has nowhere to receive a product FAQ —
-    # ExiusCart-only for now. Silently dropped rather than a hard reject:
-    # unlike product_type above, this is one optional field, not a
-    # fundamental type mismatch, so a TheDersi seller's product should
-    # still save fine, just without the FAQ. The dashboard UI (products
-    # page) already disables the field for TheDersi shops; this is the
-    # server-side half of that, for anyone calling the API directly.
+    # TheDersi's own catalog format has nowhere to receive a product FAQ,
+    # SEO keywords, a delivery-steps flow, or highlight facts — ExiusCart-only for now.
+    # Silently dropped rather than a hard reject: unlike product_type
+    # above, these are optional fields, not a fundamental type mismatch,
+    # so a TheDersi seller's product should still save fine, just without
+    # them. The dashboard UI (products page) already disables these
+    # fields for TheDersi shops; this is the server-side half of that,
+    # for anyone calling the API directly.
     if is_thedersi_shop(shop_id, db):
         product_fields["faq"] = None
+        product_fields["shipping_steps"] = None
+        product_fields["seo_keywords"] = None
+        product_fields["highlights"] = None
 
     new_product = Product(
         **product_fields,
@@ -483,8 +487,15 @@ async def update_product(
         if "quantity" not in update_data:
             update_data["quantity"] = 999999
             update_data["low_stock_threshold"] = 0
-    if "faq" in update_data and is_thedersi_shop(shop_id, db):
-        update_data["faq"] = None
+    if is_thedersi_shop(shop_id, db):
+        if "faq" in update_data:
+            update_data["faq"] = None
+        if "shipping_steps" in update_data:
+            update_data["shipping_steps"] = None
+        if "seo_keywords" in update_data:
+            update_data["seo_keywords"] = None
+        if "highlights" in update_data:
+            update_data["highlights"] = None
     for field, value in update_data.items():
         setattr(product, field, value)
 

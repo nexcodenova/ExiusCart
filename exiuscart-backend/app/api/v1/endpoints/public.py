@@ -137,6 +137,19 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         # render only if non-empty, no fallback copy invented on this side.
         "faq": p.faq or [],
         "shipping_note": p.shipping_note,
+        # Optional structured delivery steps — render as an arrow-flow
+        # instead of shipping_note's paragraph when present. Storefront
+        # should fall back to shipping_note when this is empty.
+        "shipping_steps": p.shipping_steps or [],
+        # SEO focus keywords the seller is targeting — not a legacy
+        # <meta name="keywords"> dump, meant for the storefront to build
+        # the actual meta title/description and schema.org Product data.
+        "seo_keywords": p.seo_keywords or [],
+        # Short highlight facts shown under the price — [{icon, label}, ...].
+        # `icon` is one of PRODUCT_HIGHLIGHT_ICONS (schemas/product.py) — a
+        # fixed key set, not arbitrary seller text, so the storefront can
+        # map it straight to a real icon component.
+        "highlights": p.highlights or [],
         "quantity": p.quantity or 0,
         "images": images,
         # Legacy single field — still set by the internal Prodora import

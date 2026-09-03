@@ -81,6 +81,32 @@ class Product(Base):
     # or digital seller could theoretically use the field for something
     # else), but the dashboard only shows the field for physical products.
     shipping_note = Column(Text, nullable=True)
+    # Optional structured delivery/fulfillment steps — ["Order confirmed",
+    # "Packed", "Shipped", ...], rendered as a connected arrow-flow on the
+    # storefront product page instead of a paragraph. Separate from
+    # shipping_note above rather than replacing it: sellers who already
+    # wrote a plain-text note keep it working, this is an opt-in upgrade.
+    # Null/empty = storefront falls back to shipping_note.
+    shipping_steps = Column(JSON, nullable=True)
+
+    # SEO focus keywords the seller is targeting for this product —
+    # ["wireless earbuds", "bluetooth headphones", ...]. Not rendered as a
+    # legacy <meta name="keywords"> tag (Google stopped using that for
+    # ranking around 2009) — the storefront app uses these to help build
+    # the actual meta title/description and schema.org Product data, which
+    # is where keyword targeting still matters for search and AI crawlers.
+    seo_keywords = Column(JSON, nullable=True)
+
+    # Short per-product highlight facts shown under the price — [{icon,
+    # label}, ...], e.g. {"icon": "calendar", "label": "1 Year Access"} or
+    # {"icon": "truck", "label": "Ships in 24h"}. Physical and digital both
+    # (unlike shipping_note/shipping_steps above, not restricted to
+    # physical — a digital product benefits just as much, e.g. "Delivered
+    # by Email"). `icon` is one of a fixed key set (see
+    # PRODUCT_HIGHLIGHT_ICONS in schemas/product.py) so every consuming
+    # storefront can map it to a real icon component instead of trusting
+    # arbitrary seller input.
+    highlights = Column(JSON, nullable=True)
 
     # Real, earned social proof for products with no reviews yet — never
     # fabricated. view_count increments on every real product-detail page

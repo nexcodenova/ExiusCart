@@ -754,16 +754,17 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-card rounded-xl border border-border p-4 flex flex-col sm:flex-row gap-4">
+      {/* Filters — compact controls (was py-2.5 + w-5 h-5 icons, felt
+          oversized next to everything else on the page) */}
+      <div className="bg-card rounded-xl border border-border p-3 flex flex-col sm:flex-row gap-2.5">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search by order number..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
+            className="w-full pl-9 pr-3 py-2 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
           />
         </div>
         <div className="relative">
@@ -771,35 +772,35 @@ export default function OrdersPage() {
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
             aria-label="Filter by month"
-            className="appearance-none w-full sm:w-52 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+            className="appearance-none w-full sm:w-44 px-3 py-2 pr-8 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
           >
             <option value="">All Time</option>
             {MONTH_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         </div>
         <div className="relative">
           <select
             value={channelFilter}
             onChange={(e) => setChannelFilter(e.target.value)}
             aria-label="Filter by channel"
-            className="appearance-none w-full sm:w-48 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+            className="appearance-none w-full sm:w-40 px-3 py-2 pr-8 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
           >
             <option value="all">All Channels</option>
             {Object.entries(CHANNEL_META).map(([key, meta]) => (
               <option key={key} value={key}>{meta.label}</option>
             ))}
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         </div>
         <div className="relative">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label="Filter by status"
-            className="appearance-none w-full sm:w-44 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
+            className="appearance-none w-full sm:w-36 px-3 py-2 pr-8 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -812,7 +813,7 @@ export default function OrdersPage() {
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         </div>
       </div>
 

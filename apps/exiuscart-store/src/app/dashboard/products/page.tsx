@@ -1,14 +1,34 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, ChangeEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Plus, Search, Edit, Trash2, Package, X, ChevronDown,
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
-  Store, Globe, ShoppingBag, Tag, PlayCircle, Info, Music2, ShoppingCart, ExternalLink,
+  Store, Globe, ShoppingBag, Tag, PlayCircle, Info, Music2, ShoppingCart, ExternalLink, ArrowRight,
+  Clock, Calendar, Mail, Truck, Shield, Gift,
 } from 'lucide-react';
+
+// Fixed icon keys a product highlight can use — must stay in sync with
+// PRODUCT_HIGHLIGHT_ICONS in the backend (app/schemas/product.py). Curated
+// on purpose, not freeform, so every consuming storefront can map a key to
+// a real icon component instead of trusting arbitrary seller input.
+const HIGHLIGHT_ICONS: { key: string; label: string; Icon: typeof Clock }[] = [
+  { key: 'clock', label: 'Clock', Icon: Clock },
+  { key: 'calendar', label: 'Calendar', Icon: Calendar },
+  { key: 'mail', label: 'Mail', Icon: Mail },
+  { key: 'truck', label: 'Truck', Icon: Truck },
+  { key: 'package', label: 'Package', Icon: Package },
+  { key: 'shield', label: 'Shield', Icon: Shield },
+  { key: 'download', label: 'Download', Icon: Download },
+  { key: 'check-circle', label: 'Check', Icon: CheckCircle },
+  { key: 'refresh-cw', label: 'Refresh', Icon: RefreshCw },
+  { key: 'star', label: 'Star', Icon: Star },
+  { key: 'gift', label: 'Gift', Icon: Gift },
+  { key: 'tag', label: 'Tag', Icon: Tag },
+];
 import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, tiktokApi, woocommerceApi, etsyApi, customProductFieldsApi, CustomProductField, videosApi, ProductVideo as ProductVideoType } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { colorNameToHex } from '@/lib/color-utils';
@@ -454,11 +474,11 @@ export default function ProductsPage() {
           { label: 'Low stock', icon: AlertCircle, value: loading ? '—' : String(lowStockCount), color: lowStockCount > 0 ? 'text-orange-600 dark:text-orange-400' : '' },
           { label: 'Out of stock', icon: AlertCircle, value: loading ? '—' : String(outOfStockCount), color: outOfStockCount > 0 ? 'text-red-600 dark:text-red-400' : '' },
         ].map(({ label, icon: Icon, value, color }) => (
-          <div key={label} className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className="h-4 w-4 text-foreground/70" /></div>
+          <div key={label} className="bg-card rounded-xl border border-border p-2.5 flex items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className="h-3.5 w-3.5 text-foreground/70" /></div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground truncate">{label}</p>
-              <p className={`text-lg font-bold leading-tight tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
+              <p className={`text-base font-bold leading-tight tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
             </div>
           </div>
         ))}
@@ -482,17 +502,17 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+      {/* Filters — compact controls, matching the Orders page treatment */}
+      <div className="bg-card rounded-xl border border-border p-3">
+        <div className="flex flex-col sm:flex-row gap-2.5">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search by name, SKU, or barcode..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground placeholder:text-muted-foreground"
+              className="w-full pl-9 pr-3 py-2 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground placeholder:text-muted-foreground"
             />
           </div>
           <div className="relative">
@@ -500,7 +520,7 @@ export default function ProductsPage() {
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value as typeof channelFilter)}
               aria-label="Filter by channel"
-              className="appearance-none w-full sm:w-48 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
+              className="appearance-none w-full sm:w-44 px-3 py-2 pr-8 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
             >
               <option value="all">All Channels</option>
               <option value="thedersi">TheDersi</option>
@@ -508,35 +528,35 @@ export default function ProductsPage() {
               <option value="ebay">eBay</option>
               <option value="unlisted">Not listed anywhere</option>
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
           {/* Sort + Stock quick-filters */}
-          <div className="flex gap-2 flex-wrap items-center">
+          <div className="flex gap-1.5 flex-wrap items-center">
             <div className="relative">
               <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
-                className="appearance-none pl-8 pr-8 py-1.5 bg-muted border border-border rounded-lg text-xs font-medium text-foreground focus:ring-2 focus:ring-foreground/10 outline-none cursor-pointer">
+                className="appearance-none pl-7 pr-7 py-1.5 bg-muted border border-border rounded-lg text-xs font-medium text-foreground focus:ring-2 focus:ring-foreground/10 outline-none cursor-pointer">
                 <option value="default">Sort: Default</option>
                 <option value="revenue">Sort: Revenue ↓</option>
                 <option value="margin">Sort: Margin ↓</option>
                 <option value="stock">Sort: Stock ↑</option>
               </select>
-              <ArrowUpDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <ArrowUpDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
             </div>
             <button
               onClick={() => setStockFilter('all')}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'all' ? 'bg-foreground text-background border-foreground' : 'bg-muted text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground'}`}
+              className={`text-xs px-2.5 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'all' ? 'bg-foreground text-background border-foreground' : 'bg-muted text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground'}`}
             >All</button>
             {outOfStockCount > 0 && (
               <button
                 onClick={() => setStockFilter('out')}
-                className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'out' ? 'bg-red-500 text-white border-red-500' : 'bg-muted text-red-500 border-red-500/30 hover:border-red-500'}`}
+                className={`text-xs px-2.5 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'out' ? 'bg-red-500 text-white border-red-500' : 'bg-muted text-red-500 border-red-500/30 hover:border-red-500'}`}
               >Out of stock ({outOfStockCount})</button>
             )}
             {lowStockCount > 0 && (
               <button
                 onClick={() => setStockFilter('low')}
-                className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'low' ? 'bg-orange-500 text-white border-orange-500' : 'bg-muted text-orange-500 border-orange-500/30 hover:border-orange-500'}`}
+                className={`text-xs px-2.5 py-1.5 rounded-lg border transition font-medium ${stockFilter === 'low' ? 'bg-orange-500 text-white border-orange-500' : 'bg-muted text-orange-500 border-orange-500/30 hover:border-orange-500'}`}
               >Low stock ({lowStockCount})</button>
             )}
           </div>
@@ -717,7 +737,7 @@ export default function ProductsPage() {
                           return (
                             <div className="flex flex-wrap gap-1">
                               {catEntries.map((entry, i) => (
-                                <span key={i} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                                <span key={i} className="text-xs font-medium text-foreground/70 bg-muted border border-border/60 px-2 py-0.5 rounded-full">
                                   {channelLabel(entry.channel_type)}
                                 </span>
                               ))}
@@ -737,16 +757,23 @@ export default function ProductsPage() {
                       </td>
                       <td className="p-4 text-right">
                         {perfData[product.id]?.margin_pct ? (
-                          <span className={`text-sm font-semibold ${perfData[product.id].margin_pct >= 40 ? 'text-green-600 dark:text-green-400' : perfData[product.id].margin_pct >= 20 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500'}`}>
+                          <span className={`text-sm font-semibold tabular-nums ${perfData[product.id].margin_pct < 20 ? 'text-red-500' : 'text-foreground'}`}>
                             {perfData[product.id].margin_pct}%
                           </span>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </td>
                       <td className="p-4 text-center">
-                        <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                          product.stock === 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400'
-                          : product.stock <= product.lowStockAlert ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
-                          : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>
+                        {/* Color reserved for the two states that actually need
+                            attention — out of stock and low stock. A healthy
+                            stock count is just plain text, not a green badge;
+                            "in stock" isn't news, low stock is. */}
+                        <span className={`inline-flex items-center gap-1.5 text-sm font-medium tabular-nums ${
+                          product.stock === 0 ? 'text-red-500'
+                          : product.stock <= product.lowStockAlert ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-foreground'}`}>
+                          {product.stock !== 0 && product.stock <= product.lowStockAlert && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                          )}
                           {product.stock}
                         </span>
                       </td>
@@ -826,14 +853,20 @@ export default function ProductsPage() {
                       })()}
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <span className="text-sm font-semibold text-foreground">{fmt(product.sellingPrice)}</span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${product.stock === 0 ? 'bg-red-500/10 text-red-600 dark:text-red-400' : product.stock <= product.lowStockAlert ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400' : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium tabular-nums ${
+                          product.stock === 0 ? 'text-red-500'
+                          : product.stock <= product.lowStockAlert ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-muted-foreground'}`}>
+                          {product.stock !== 0 && product.stock <= product.lowStockAlert && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                          )}
                           {product.stock} in stock
                         </span>
                         {perfData[product.id]?.revenue > 0 && (
                           <span className="text-xs text-muted-foreground">{fmt(perfData[product.id].revenue, 0)} earned</span>
                         )}
                         {perfData[product.id]?.margin_pct > 0 && (
-                          <span className={`text-xs font-semibold ${perfData[product.id].margin_pct >= 40 ? 'text-green-600 dark:text-green-400' : 'text-amber-500'}`}>{perfData[product.id].margin_pct}% margin</span>
+                          <span className={`text-xs font-semibold tabular-nums ${perfData[product.id].margin_pct < 20 ? 'text-red-500' : 'text-muted-foreground'}`}>{perfData[product.id].margin_pct}% margin</span>
                         )}
                       </div>
                     </div>
@@ -1185,6 +1218,52 @@ function ProductModal({
   const [faqItems, setFaqItems] = useState<{ question: string; answer: string }[]>(
     Array.isArray(p?.faq) ? p.faq.map((f: any) => ({ question: f.question ?? '', answer: f.answer ?? '' })) : []
   );
+
+  // Optional delivery/fulfillment steps, rendered as an arrow-flow on the
+  // storefront instead of the plain shipping_note paragraph. Separate list
+  // from shipping_note (below) — an opt-in upgrade, not a replacement.
+  // Blank rows are dropped on save, same rule as faqItems above.
+  const [shippingSteps, setShippingSteps] = useState<string[]>(
+    Array.isArray(p?.shipping_steps) ? p.shipping_steps.filter((s: any) => typeof s === 'string') : []
+  );
+
+  // Short highlight facts shown under the price on the storefront — e.g.
+  // "1 Year Access" (calendar), "Delivered by Email" (mail), "Ships in 24h"
+  // (truck). Physical and digital both (unlike shipping_note/shipping_steps
+  // above, which are physical-only) — not shown for affiliate products,
+  // which have no real page of ours to render facts on. `icon` is always
+  // one of PRODUCT_HIGHLIGHT_ICONS below, picked via dropdown, never
+  // freeform — keeps every highlight mappable to a real icon on the
+  // storefront side. Rows with a blank label are dropped on save.
+  const [highlights, setHighlights] = useState<{ icon: string; label: string }[]>(
+    Array.isArray(p?.highlights) ? p.highlights.map((h: any) => ({ icon: h.icon ?? 'star', label: h.label ?? '' })) : []
+  );
+
+  // SEO focus keywords — plain tags the seller is targeting, plus a few
+  // suggested chips derived from the product name/category (client-side
+  // word-split, no AI call) to speed up entry.
+  const [seoKeywords, setSeoKeywords] = useState<string[]>(
+    Array.isArray(p?.seo_keywords) ? p.seo_keywords.filter((s: any) => typeof s === 'string') : []
+  );
+  const [seoKeywordInput, setSeoKeywordInput] = useState('');
+
+  // Suggested keyword chips — plain word-split off the product's own name
+  // and category, no AI call. Just speeds up entry; the seller can ignore
+  // these entirely and type their own tags.
+  const SEO_STOPWORDS = new Set(['the', 'and', 'for', 'with', 'from', 'this', 'that', 'your', 'you', 'are', 'was', 'has', 'have', 'not', 'but', 'all', 'new', 'best', 'top', 'set', 'pcs', 'pack']);
+  const suggestedKeywords = useMemo(() => {
+    const words = `${formData.name} ${formData.category}`
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 3 && !SEO_STOPWORDS.has(w));
+    const already = new Set(seoKeywords.map((k) => k.toLowerCase()));
+    const unique: string[] = [];
+    for (const w of words) {
+      if (!already.has(w) && !unique.includes(w)) unique.push(w);
+      if (unique.length >= 6) break;
+    }
+    return unique;
+  }, [formData.name, formData.category, seoKeywords]);
 
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
 
@@ -1912,6 +1991,17 @@ function ProductModal({
         affiliate_url: isAffiliate ? (formData.affiliateUrl.trim() || null) : null,
         affiliate_cta_text: isAffiliate ? (formData.affiliateCtaText.trim() || null) : null,
         shipping_note: (!isDigital && !isAffiliate) ? (formData.shippingNote.trim() || null) : null,
+        shipping_steps: (!isDigital && !isAffiliate) ? (() => {
+          const valid = shippingSteps.map((s) => s.trim()).filter(Boolean);
+          return valid.length > 0 ? valid : null;
+        })() : null,
+        seo_keywords: seoKeywords.length > 0 ? seoKeywords : null,
+        highlights: (!isAffiliate) ? (() => {
+          const valid = highlights
+            .map((h) => ({ icon: h.icon, label: h.label.trim() }))
+            .filter((h) => h.label);
+          return valid.length > 0 ? valid : null;
+        })() : null,
         faq: (() => {
           const valid = faqItems
             .map((f) => ({ question: f.question.trim(), answer: f.answer.trim() }))
@@ -2777,6 +2867,238 @@ function ProductModal({
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* ── Highlights — short facts shown under the price on the
+                  storefront ("1 Year Access", "Delivered by Email", "Ships
+                  in 24h"). Physical and digital both — not affiliate,
+                  which has no real page of ours to show them on.
+                  ExiusCart-only, same TheDersi gating as everything else
+                  in this section. ── */}
+              {!isAffiliate && (
+                <div className="border-t border-border -mx-6 px-6 pt-6">
+                  <Label className="font-medium text-foreground mb-1.5 block">Highlights</Label>
+                  {theDersiConnection ? (
+                    <p className="text-xs text-muted-foreground bg-muted/30 border border-border rounded-lg px-3 py-2.5">
+                      TheDersi doesn't support product highlights right now — this only shows on ExiusCart-powered channels (Custom Website, etc).
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-xs text-muted-foreground">
+                          3-6 short facts shown right under the price — e.g. "1 Year Access", "Handmade", "Ships in 24h". Optional.
+                        </p>
+                        {highlights.length < 6 && (
+                          <button
+                            type="button"
+                            onClick={() => setHighlights((prev) => [...prev, { icon: 'star', label: '' }])}
+                            className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Add highlight
+                          </button>
+                        )}
+                      </div>
+                      {highlights.length > 0 && (
+                        <div className="space-y-2">
+                          {highlights.map((h, i) => {
+                            const current = HIGHLIGHT_ICONS.find((o) => o.key === h.icon) ?? HIGHLIGHT_ICONS[0];
+                            return (
+                              <div key={i} className="flex gap-2 items-center bg-muted/30 border border-border rounded-lg p-2 pl-3">
+                                <Select
+                                  value={h.icon}
+                                  onValueChange={(v) => setHighlights((prev) => prev.map((x, idx) => idx === i ? { ...x, icon: v } : x))}
+                                >
+                                  <SelectTrigger className="w-28 shrink-0">
+                                    <SelectValue>
+                                      <span className="flex items-center gap-1.5">
+                                        <current.Icon className="w-3.5 h-3.5" />
+                                        <span className="text-xs">{current.label}</span>
+                                      </span>
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {HIGHLIGHT_ICONS.map((o) => (
+                                      <SelectItem key={o.key} value={o.key}>
+                                        <span className="flex items-center gap-1.5">
+                                          <o.Icon className="w-3.5 h-3.5" />
+                                          {o.label}
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Input
+                                  type="text"
+                                  value={h.label}
+                                  onChange={(e) => setHighlights((prev) => prev.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))}
+                                  placeholder="e.g. 1 Year Access"
+                                  maxLength={40}
+                                  className="flex-1"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setHighlights((prev) => prev.filter((_, idx) => idx !== i))}
+                                  className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
+                                  title="Remove"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                          {/* Live preview of the checklist buyers will see */}
+                          {highlights.some((h) => h.label.trim()) && (
+                            <div className="flex flex-wrap gap-x-4 gap-y-1.5 bg-muted/20 border border-dashed border-border rounded-lg px-3 py-2.5">
+                              {highlights.filter((h) => h.label.trim()).map((h, i) => {
+                                const Icon = (HIGHLIGHT_ICONS.find((o) => o.key === h.icon) ?? HIGHLIGHT_ICONS[0]).Icon;
+                                return (
+                                  <span key={i} className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
+                                    <Icon className="w-3.5 h-3.5 text-primary" /> {h.label}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── Delivery Steps — optional structured upgrade to the plain
+                  Shipping / Returns Note above, rendered as a connected
+                  arrow-flow on the storefront ("Order confirmed → Packed →
+                  Shipped → Delivered") instead of a paragraph. Physical
+                  products only, same restriction as the note itself.
+                  ExiusCart-only, same TheDersi gating as FAQ above. ── */}
+              {!isDigital && !isAffiliate && (
+                <div className="border-t border-border -mx-6 px-6 pt-6">
+                  <Label className="font-medium text-foreground mb-1.5 block">Delivery Steps</Label>
+                  {theDersiConnection ? (
+                    <p className="text-xs text-muted-foreground bg-muted/30 border border-border rounded-lg px-3 py-2.5">
+                      TheDersi doesn't support a delivery-steps flow right now — this only shows on ExiusCart-powered channels (Custom Website, etc).
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-xs text-muted-foreground">
+                          Optional. Add each stage of how this product actually gets to the buyer — shown as a visual flow instead of the plain note above. Leave empty to keep showing the note.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setShippingSteps((prev) => [...prev, ''])}
+                          className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add step
+                        </button>
+                      </div>
+                      {shippingSteps.length > 0 && (
+                        <div className="space-y-2">
+                          {shippingSteps.map((step, i) => (
+                            <div key={i} className="flex gap-2 items-center bg-muted/30 border border-border rounded-lg p-2 pl-3">
+                              <span className="shrink-0 text-xs font-semibold text-muted-foreground w-4 text-center">{i + 1}</span>
+                              <Input
+                                type="text"
+                                value={step}
+                                onChange={(e) => setShippingSteps((prev) => prev.map((s, idx) => idx === i ? e.target.value : s))}
+                                placeholder="e.g. Order confirmed"
+                                className="flex-1"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShippingSteps((prev) => prev.filter((_, idx) => idx !== i))}
+                                className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
+                                title="Remove"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                          {/* Live preview of the arrow-flow buyers will see */}
+                          {shippingSteps.filter((s) => s.trim()).length > 1 && (
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 bg-muted/20 border border-dashed border-border rounded-lg px-3 py-2.5">
+                              {shippingSteps.filter((s) => s.trim()).map((step, i, arr) => (
+                                <span key={i} className="flex items-center gap-1.5">
+                                  <span className="text-xs font-medium text-foreground bg-background border border-border rounded-full px-2.5 py-1">{step}</span>
+                                  {i < arr.length - 1 && <ArrowRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── SEO Keywords — feeds meta title/description + schema.org
+                  data on ExiusCart-powered storefronts, not a legacy
+                  meta-keywords dump. All product types, same TheDersi
+                  gating as FAQ/Delivery Steps above. ── */}
+              <div className="border-t border-border -mx-6 px-6 pt-6">
+                <Label className="font-medium text-foreground mb-1.5 block">SEO Keywords</Label>
+                {theDersiConnection ? (
+                  <p className="text-xs text-muted-foreground bg-muted/30 border border-border rounded-lg px-3 py-2.5">
+                    TheDersi doesn't use seller-defined SEO keywords right now — this only shows on ExiusCart-powered channels (Custom Website, etc).
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground mb-1.5">
+                      What buyers actually search for — helps this product's page and search result show up for the right terms. Optional.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                      {seoKeywords.map((kw, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 rounded-full pl-2.5 pr-1 py-1">
+                          {kw}
+                          <button
+                            type="button"
+                            onClick={() => setSeoKeywords((prev) => prev.filter((_, idx) => idx !== i))}
+                            className="p-0.5 rounded-full hover:bg-primary/20 transition"
+                            title="Remove"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <Input
+                        type="text"
+                        value={seoKeywordInput}
+                        onChange={(e) => setSeoKeywordInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ',') {
+                            e.preventDefault();
+                            const tag = seoKeywordInput.trim().replace(/,$/, '');
+                            if (tag && !seoKeywords.some((k) => k.toLowerCase() === tag.toLowerCase())) {
+                              setSeoKeywords((prev) => [...prev, tag]);
+                            }
+                            setSeoKeywordInput('');
+                          } else if (e.key === 'Backspace' && !seoKeywordInput && seoKeywords.length > 0) {
+                            setSeoKeywords((prev) => prev.slice(0, -1));
+                          }
+                        }}
+                        placeholder="Type a keyword, press Enter"
+                        className="flex-1 min-w-[160px] h-7 text-sm border-none shadow-none px-1 focus-visible:ring-0"
+                      />
+                    </div>
+                    {suggestedKeywords.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">Suggested:</span>
+                        {suggestedKeywords.map((kw) => (
+                          <button
+                            key={kw}
+                            type="button"
+                            onClick={() => setSeoKeywords((prev) => [...prev, kw])}
+                            className="text-xs font-medium text-muted-foreground bg-muted/50 hover:bg-muted border border-border rounded-full px-2.5 py-1 transition"
+                          >
+                            + {kw}
+                          </button>
                         ))}
                       </div>
                     )}

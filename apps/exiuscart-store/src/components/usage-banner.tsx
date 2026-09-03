@@ -73,7 +73,7 @@ export function UsageBanner({ shopId, show }: UsageBannerProps) {
   if (items.length === 0) return null;
 
   return (
-    <div className="bg-card border border-border rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+    <div className="bg-card border border-border rounded-xl px-3.5 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-2">
       {items.map(({ key, label, item }) => (
         <Bar key={key} item={item} label={label} />
       ))}

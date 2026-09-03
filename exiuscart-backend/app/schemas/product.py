@@ -3,6 +3,16 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from decimal import Decimal
 
+# Fixed icon keys a product highlight can use — kept small and curated
+# (not freeform) so every consuming storefront (Custom Website/ODTSI, or
+# any future one) can map each key to a real icon component instead of
+# trusting arbitrary seller input. Values are lucide-react names since
+# that's what ExiusCart's own dashboard already uses throughout.
+PRODUCT_HIGHLIGHT_ICONS = (
+    "clock", "calendar", "mail", "truck", "package", "shield",
+    "download", "check-circle", "refresh-cw", "star", "gift", "tag",
+)
+
 
 class CategoryBase(BaseModel):
     name: str
@@ -56,6 +66,9 @@ class ProductBase(BaseModel):
     affiliate_cta_text: Optional[str] = None
     faq: Optional[List[Dict[str, str]]] = None  # [{question, answer}, ...]
     shipping_note: Optional[str] = None
+    shipping_steps: Optional[List[str]] = None  # ["Order confirmed", "Packed", ...]
+    seo_keywords: Optional[List[str]] = None
+    highlights: Optional[List[Dict[str, str]]] = None  # [{icon, label}, ...] — icon from PRODUCT_HIGHLIGHT_ICONS
 
 
 class ProductCreate(ProductBase):
@@ -94,6 +107,9 @@ class ProductUpdate(BaseModel):
     affiliate_cta_text: Optional[str] = None
     faq: Optional[List[Dict[str, str]]] = None
     shipping_note: Optional[str] = None
+    shipping_steps: Optional[List[str]] = None
+    seo_keywords: Optional[List[str]] = None
+    highlights: Optional[List[Dict[str, str]]] = None
 
 
 class SupplierRef(BaseModel):

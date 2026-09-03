@@ -56,8 +56,17 @@ Products
   affiliate_url instead of Add to Cart — there is no checkout for this type,
   and the checkout endpoint below rejects it server-side if submitted anyway.
   Also returns faq (optional [{question, answer}] list, render below the
-  description) and shipping_note (optional free-text shipping/returns blurb,
-  physical products only) — both render only when non-empty.
+  description), shipping_note (optional free-text shipping/returns blurb,
+  physical products only), shipping_steps (optional ordered string array —
+  render as a connected arrow-flow, fall back to shipping_note when empty),
+  seo_keywords (optional string array the seller is targeting — use it
+  to build your own meta title/description and schema.org Product data, not
+  a raw <meta name="keywords"> tag), and highlights (optional
+  [{icon, label}] list of short facts to show under the price, e.g. "1 Year
+  Access" / "Delivered by Email" — never present for affiliate products;
+  icon is always one of: clock, calendar, mail, truck, package, shield,
+  download, check-circle, refresh-cw, star, gift, tag) — all render only
+  when non-empty.
 - GET  /public/store/{shop_slug}/products/{slug} — single product detail
 - GET  /public/store/{shop_slug}/products/{slug}/reviews — approved reviews for one product
 
