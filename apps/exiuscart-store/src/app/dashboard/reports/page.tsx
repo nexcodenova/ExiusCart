@@ -282,8 +282,8 @@ export default function ReportsPage() {
                   <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={32} allowDecimals={false} />
                   <Tooltip content={<Tip fmt={fmt} />} />
                   <ReferenceLine yAxisId="l" y={avgDailySales} stroke="#6366f1" strokeDasharray="6 3" strokeOpacity={0.45} />
-                  <Area yAxisId="l" type="monotone" dataKey="sales" stroke="#6366f1" strokeWidth={2.5} fill="url(#rsales)" dot={false} activeDot={{ r: 4 }} />
-                  <Line yAxisId="r" type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                  <Area yAxisId="l" type="monotone" dataKey="sales" stroke="#6366f1" strokeWidth={2.5} fill="url(#rsales)" dot={false} activeDot={{ r: 4 }} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                  <Line yAxisId="r" type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} isAnimationActive animationDuration={900} animationEasing="ease-out" />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -301,7 +301,7 @@ export default function ReportsPage() {
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                     <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={56} />
                     <Tooltip content={<Tip fmt={fmt} />} cursor={{ fill: '#6366f1', fillOpacity: 0.06 }} />
-                    <Bar dataKey="sales" radius={[6, 6, 0, 0]} maxBarSize={52}>
+                    <Bar dataKey="sales" radius={[6, 6, 0, 0]} maxBarSize={52} isAnimationActive animationDuration={800} animationEasing="ease-out">
                       {dowChart.map((d, i) => (
                         <Cell key={i} fill={d.name === bestDow?.name ? '#6366f1' : '#6366f118'} />
                       ))}
@@ -321,7 +321,7 @@ export default function ReportsPage() {
                   <div className="h-44">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={42} outerRadius={70} paddingAngle={2} stroke="none">
+                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={42} outerRadius={70} paddingAngle={2} stroke="none" isAnimationActive animationDuration={700} animationEasing="ease-out">
                           {pieData.map((_, i) => <Cell key={i} fill={PIE[i % PIE.length]} />)}
                         </Pie>
                         <Tooltip content={<Tip fmt={fmt} />} />

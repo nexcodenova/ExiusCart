@@ -199,9 +199,9 @@ export default function DashboardPage() {
                   );
                 }} />
                 <ReferenceLine yAxisId="l" y={monthlyAvgRev} stroke="#6366f1" strokeDasharray="6 3" strokeOpacity={0.45} />
-                <Area yAxisId="r" type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={2} fill="url(#ordersGradient)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
-                <Line yAxisId="g" type="linear" dataKey="growth" stroke="#f59e0b" strokeWidth={1.5} strokeOpacity={0.85} dot={{ r: 2, fill: '#f59e0b', strokeWidth: 0 }} activeDot={{ r: 4, fill: '#f59e0b' }} />
-                <Line yAxisId="l" type="linear" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#6366f1' }} />
+                <Area yAxisId="r" type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={2} fill="url(#ordersGradient)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                <Line yAxisId="g" type="linear" dataKey="growth" stroke="#f59e0b" strokeWidth={1.5} strokeOpacity={0.85} dot={{ r: 2, fill: '#f59e0b', strokeWidth: 0 }} activeDot={{ r: 4, fill: '#f59e0b' }} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                <Line yAxisId="l" type="linear" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#6366f1' }} isAnimationActive animationDuration={900} animationEasing="ease-out" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -249,7 +249,7 @@ export default function DashboardPage() {
             <div className="relative mx-auto h-40 w-40 mb-4">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={channelPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none">
+                  <Pie data={channelPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none" isAnimationActive animationDuration={700} animationEasing="ease-out">
                     {channelPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Pie>
                   <Tooltip formatter={(v: any, n: any) => [fmt(v, 0), n]} />
@@ -299,7 +299,7 @@ export default function DashboardPage() {
             <div className="relative mx-auto h-40 w-40 mb-4">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={statusPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none">
+                  <Pie data={statusPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none" isAnimationActive animationDuration={700} animationEasing="ease-out">
                     {statusPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Pie>
                   <Tooltip formatter={(v: any, n: any) => [v, n]} />
@@ -389,7 +389,7 @@ export default function DashboardPage() {
                       </div>
                     );
                   }} />
-                  <Bar dataKey="orders" fill="#6366f1" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="orders" fill="#6366f1" radius={[3, 3, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -420,7 +420,7 @@ export default function DashboardPage() {
                       </div>
                     );
                   }} />
-                  <Bar dataKey="orders" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="orders" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out">
                     {(stats?.dailyBreakdown ?? []).map((d, i) => {
                       const maxO = Math.max(...(stats?.dailyBreakdown ?? []).map(x => x.orders), 1);
                       return <Cell key={i} fill={d.orders === maxO ? '#6366f1' : '#6366f120'} />;

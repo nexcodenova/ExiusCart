@@ -201,7 +201,7 @@ export default function AccountingPage() {
                           <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                           <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={56} />
                           <Tooltip content={<AcctTooltip fmt={fmtCurrency} />} />
-                          <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fill="url(#acctRev)" dot={false} activeDot={{ r: 5, fill: '#10b981' }} />
+                          <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fill="url(#acctRev)" dot={false} activeDot={{ r: 5, fill: '#10b981' }} isAnimationActive animationDuration={900} animationEasing="ease-out" />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -212,7 +212,7 @@ export default function AccountingPage() {
                     <div className="h-40">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={vatPie} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={66} paddingAngle={2} stroke="none">
+                          <Pie data={vatPie} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={66} paddingAngle={2} stroke="none" isAnimationActive animationDuration={700} animationEasing="ease-out">
                             {vatPie.map((_, i) => <Cell key={i} fill={VAT_COLORS[i]} />)}
                           </Pie>
                           <Tooltip content={<AcctTooltip fmt={fmtCurrency} />} />
@@ -551,8 +551,8 @@ export default function AccountingPage() {
                             <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={52} />
                             <Tooltip content={<AcctTooltip fmt={fmtCurrency} />} />
                             <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                            <Bar dataKey="inflows" name="Inflows" fill="#10b981" radius={[3, 3, 0, 0]} />
-                            <Bar dataKey="outflows" name="Outflows" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="inflows" name="Inflows" fill="#10b981" radius={[3, 3, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out" />
+                            <Bar dataKey="outflows" name="Outflows" fill="#ef4444" radius={[3, 3, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out" />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
