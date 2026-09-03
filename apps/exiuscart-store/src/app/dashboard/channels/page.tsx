@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Link2, Loader2,
   X, ExternalLink, Lock,
-  ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2,
+  ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2, Store,
 } from 'lucide-react';
 import { channelsApi, shopifyApi, subscriptionApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -221,6 +221,22 @@ export default function ChannelsPage() {
             : () => router.push('/dashboard/woocommerce-integration'),
       actionLabel: hasWooCommerce ? 'Manage WooCommerce' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect WooCommerce')),
     },
+    {
+      id: 'bigcommerce',
+      name: 'BigCommerce',
+      description: 'Sync your BigCommerce store — products, orders, and inventory stay in sync automatically.',
+      icon: <Store className="w-5 h-5 text-[#00C9A7]" />,
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('BigCommerce') : undefined,
+    },
+    {
+      id: 'wix',
+      name: 'Wix Stores',
+      description: 'Connect your Wix store — products, orders, and inventory stay in sync automatically.',
+      icon: <Globe className="w-5 h-5 text-[#000000] dark:text-white" />,
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Wix Stores') : undefined,
+    },
     // ── Row 2: eBay, Amazon, Instagram, TikTok Shop ──
     {
       id: 'ebay',
@@ -300,6 +316,22 @@ export default function ChannelsPage() {
       badge: 'soon',
       onAction: isTheDersiUser ? () => setDersiBlockChannel('Trendyol') : undefined,
     },
+    {
+      id: 'walmart',
+      name: 'Walmart',
+      description: 'Reach US shoppers on Walmart Marketplace. List products and manage orders through ExiusCart.',
+      icon: <Store className="w-5 h-5 text-[#0071CE]" />,
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Walmart') : undefined,
+    },
+    {
+      id: 'jumia',
+      name: 'Jumia',
+      description: "Africa's leading marketplace. List products and manage orders through ExiusCart.",
+      icon: <ShoppingBag className="w-5 h-5 text-[#F68B1E]" />,
+      badge: 'soon',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('Jumia') : undefined,
+    },
     // ── Row 4 (last): Daraz, TheDersi — the two channels TheDersi sellers can use ──
     {
       id: 'daraz',
@@ -327,16 +359,36 @@ export default function ChannelsPage() {
     },
   ];
 
-  // A single flowing grid wraps continuously across every tile — with 11
-  // tiles at 3 columns, item 7 (TikTok) shares a row with items 8-9
-  // (Noon/Trendyol) regardless of the "logical" grouping below. Rendering
-  // each group as its own grid container forces a real line break between
-  // groups instead of relying on column-count arithmetic to land right.
-  const CHANNEL_ROWS = [
-    ['shopify', 'etsy', 'custom_website', 'woocommerce'],
-    ['ebay', 'amazon', 'instagram', 'tiktok'],
-    ['noon', 'trendyol'],
-    ['daraz', 'thedersi'],
+  // Grouped by who owns the customer relationship — not alphabetically,
+  // not by build order. "Your Own Store" channels have no marketplace fees
+  // or competing listings; "Marketplaces" put you in front of shoppers
+  // already browsing there (Etsy included — it's a real marketplace, buyers
+  // browse etsy.com, not your own domain, unlike Shopify/Custom Website/
+  // WooCommerce); "Social Commerce" sells straight from a post or video;
+  // TheDersi gets its own section since it's a managed-seller model with
+  // its own rules (only Daraz alongside it), not a channel you configure
+  // the same way as the rest.
+  const CHANNEL_GROUPS: { label: string; description: string; ids: string[] }[] = [
+    {
+      label: 'Your Own Store',
+      description: 'You own the customer relationship — no marketplace fees, no competing listings.',
+      ids: ['shopify', 'custom_website', 'woocommerce', 'bigcommerce', 'wix'],
+    },
+    {
+      label: 'Marketplaces',
+      description: 'List where shoppers are already browsing and buying.',
+      ids: ['ebay', 'etsy', 'amazon', 'noon', 'daraz', 'trendyol', 'walmart', 'jumia'],
+    },
+    {
+      label: 'Social Commerce',
+      description: 'Sell straight from a post or video, no separate storefront needed.',
+      ids: ['tiktok', 'instagram'],
+    },
+    {
+      label: 'TheDersi',
+      description: "Sri Lanka's #1 fashion marketplace — a managed-seller model with its own rules.",
+      ids: ['thedersi'],
+    },
   ];
 
   return (
@@ -374,14 +426,19 @@ export default function ChannelsPage() {
           <span className="text-sm">Loading channels...</span>
         </div>
       ) : (
-        <div className="space-y-6">
-          <h2 className="text-sm font-medium text-foreground">All Channels</h2>
-          {CHANNEL_ROWS.map((ids, i) => (
-            <div key={i} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ids.map((id) => {
-                const ch = availableChannels.find((c) => c.id === id);
-                return ch ? <ChannelTile key={ch.id} ch={ch} /> : null;
-              })}
+        <div className="space-y-8">
+          {CHANNEL_GROUPS.map((group) => (
+            <div key={group.label} className="space-y-3">
+              <div>
+                <h2 className="text-sm font-medium text-foreground">{group.label}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{group.description}</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {group.ids.map((id) => {
+                  const ch = availableChannels.find((c) => c.id === id);
+                  return ch ? <ChannelTile key={ch.id} ch={ch} /> : null;
+                })}
+              </div>
             </div>
           ))}
         </div>
