@@ -2208,6 +2208,7 @@ function ProductModal({
                   rows={3}
                   maxImages={descriptionImageLimit}
                   onUploadImage={(file) => imagesApi.uploadDescriptionImage(shopId, file)}
+                  enableTagPills
                 />
               </div>
 

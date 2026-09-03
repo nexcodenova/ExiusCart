@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { Bold, Italic, List, ListOrdered, Heading, ImageIcon, Loader2 } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Heading, ImageIcon, Loader2, Tags, X } from 'lucide-react';
 
 interface RichTextEditorProps {
   value: string;
@@ -13,6 +13,27 @@ interface RichTextEditorProps {
   // URL. Omitted entirely (e.g. email-marketing's usage) hides the button.
   onUploadImage?: (file: File) => Promise<string>;
   maxImages?: number;
+  // Shows an "insert tag pills" button — a small popover to type a few
+  // short labels (e.g. "Python", "Data Science") that get inserted as a
+  // wrapped row of pill chips wherever the cursor is. Opt-in per usage
+  // (product description only, for now), same gating pattern as
+  // onUploadImage above.
+  enableTagPills?: boolean;
+}
+
+// Inline styles, not Tailwind classes — this HTML is saved into the
+// product description and rendered raw by whatever storefront pulls it
+// from the public API (Custom Website/ODTSI, or anywhere else). None of
+// those pages load this dashboard's stylesheet, so the pills have to
+// carry their own look directly on each element or they'd render as
+// plain unstyled text on the real storefront.
+const TAG_PILL_ROW_STYLE = 'display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;';
+const TAG_PILL_STYLE = 'display:inline-block;padding:6px 14px;border:1px solid #E2E4E9;border-radius:9999px;font-size:13px;font-weight:500;color:#1F2937;background:#FAFAFA;';
+
+function escapeHtml(s: string): string {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
 }
 
 const TOOLBAR_BUTTONS = [
@@ -33,12 +54,15 @@ function sanitizePastedHtml(html: string): string {
   return clean;
 }
 
-export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploadImage, maxImages = 3 }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploadImage, maxImages = 3, enableTagPills = false }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const savedRangeRef = useRef<Range | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState('');
+  const [showTagPopover, setShowTagPopover] = useState(false);
+  const [tagPillItems, setTagPillItems] = useState<string[]>([]);
+  const [tagPillInput, setTagPillInput] = useState('');
 
   // Sync external value changes (e.g. switching to a different product) into the
   // editor — but only when it's not currently focused, so we never stomp on the
@@ -138,6 +162,58 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploa
     }
   };
 
+  const handleTagPillsButtonClick = () => {
+    // Same reason as the image button: the selection is gone the moment
+    // focus leaves the editor for the popover's own input, so save it now.
+    const sel = window.getSelection();
+    savedRangeRef.current = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+    setTagPillItems([]);
+    setTagPillInput('');
+    setShowTagPopover(true);
+  };
+
+  const handleInsertTagPills = () => {
+    const labels = [...tagPillItems, tagPillInput.trim()].filter(Boolean);
+    if (labels.length === 0) {
+      setShowTagPopover(false);
+      return;
+    }
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('style', TAG_PILL_ROW_STYLE);
+    wrapper.innerHTML = labels.map((label) => `<span style="${TAG_PILL_STYLE}">${escapeHtml(label)}</span>`).join('');
+
+    // Same reliable DOM-Range insert as the image upload above — not
+    // execCommand, and not trusted blindly: verify it actually landed.
+    const savedRange = savedRangeRef.current;
+    const rangeStillValid = !!savedRange && el.contains(savedRange.startContainer);
+
+    if (rangeStillValid) {
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(savedRange);
+      savedRange.deleteContents();
+      savedRange.insertNode(wrapper);
+      savedRange.setStartAfter(wrapper);
+      savedRange.setEndAfter(wrapper);
+      sel?.removeAllRanges();
+      sel?.addRange(savedRange);
+    } else {
+      el.appendChild(wrapper);
+    }
+
+    if (el.contains(wrapper)) {
+      onChange(el.innerHTML);
+    }
+
+    setShowTagPopover(false);
+    setTagPillItems([]);
+    setTagPillInput('');
+  };
+
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     const html = e.clipboardData.getData('text/html');
     if (!html) return; // no HTML on the clipboard — let the browser's default plain-text paste happen, it's already safe
@@ -186,6 +262,78 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploa
               {uploadingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
             </button>
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
+          </>
+        )}
+        {enableTagPills && (
+          <>
+            <div className="w-px h-4 bg-border mx-0.5" />
+            <div className="relative">
+              <button
+                type="button"
+                title="Insert tag pills (e.g. skills, features)"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleTagPillsButtonClick}
+                className="p-1.5 rounded hover:bg-muted transition text-muted-foreground hover:text-foreground"
+              >
+                <Tags className="w-3.5 h-3.5" />
+              </button>
+              {showTagPopover && (
+                <div className="absolute z-20 top-full left-0 mt-1 w-64 bg-card border border-border rounded-lg shadow-lg p-2.5">
+                  <p className="text-xs text-muted-foreground mb-1.5">Short labels, shown as pills wherever your cursor is.</p>
+                  <div className="flex flex-wrap items-center gap-1 mb-2 max-h-24 overflow-y-auto">
+                    {tagPillItems.map((tag, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 rounded-full pl-2 pr-1 py-0.5">
+                        {tag}
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => setTagPillItems((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="p-0.5 rounded-full hover:bg-primary/20 transition"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={tagPillInput}
+                    onChange={(e) => setTagPillInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault();
+                        const tag = tagPillInput.trim().replace(/,$/, '');
+                        if (tag) setTagPillItems((prev) => [...prev, tag]);
+                        setTagPillInput('');
+                      } else if (e.key === 'Escape') {
+                        setShowTagPopover(false);
+                      }
+                    }}
+                    placeholder="Type a label, press Enter"
+                    className="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-md outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <div className="flex items-center justify-end gap-2 mt-2">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setShowTagPopover(false)}
+                      className="text-xs text-muted-foreground hover:text-foreground transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={handleInsertTagPills}
+                      className="text-xs font-medium text-primary-foreground bg-primary hover:bg-primary/90 rounded-md px-2.5 py-1 transition"
+                    >
+                      Insert
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

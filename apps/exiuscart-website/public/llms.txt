@@ -55,6 +55,13 @@ Products
   render a button using affiliate_cta_text (fallback "Buy Now") linking to
   affiliate_url instead of Add to Cart — there is no checkout for this type,
   and the checkout endpoint below rejects it server-side if submitted anyway.
+  description is rich HTML from the seller's dashboard editor — render it
+  with dangerouslySetInnerHTML (or equivalent), not as plain text. It can
+  include a seller-inserted pill row (a <div> of <span> tags, e.g. for
+  skills/features) carrying its own inline style="..." attributes rather
+  than any ExiusCart stylesheet — if you sanitize this HTML before
+  rendering, keep the style attribute allowed on div/span or those pills
+  silently lose their styling.
   Also returns faq (optional [{question, answer}] list, render below the
   description), shipping_note (optional free-text shipping/returns blurb,
   physical products only), shipping_steps (optional ordered string array —
