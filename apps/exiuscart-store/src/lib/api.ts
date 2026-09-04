@@ -772,6 +772,32 @@ export const woocommerceApi = {
     api.post(`/shops/${shopId}/channels/woocommerce/orders/${orderId}/fulfill`, data),
 };
 
+// BigCommerce — same per-seller-credential pattern as WooCommerce/Noon.
+// A seller generates their own store-level API account (store hash +
+// access token) directly in their BigCommerce control panel — no OAuth
+// consent screen, no ExiusCart app to install.
+export const bigcommerceApi = {
+  connect: (shopId: string, data: { store_hash: string; access_token: string }) =>
+    api.post(`/shops/${shopId}/channels/bigcommerce/connect`, data),
+  createListing: (shopId: string, productId: number | string) =>
+    api.post(`/shops/${shopId}/channels/bigcommerce/products/${productId}/create`),
+  getListingStatus: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/channels/bigcommerce/products/${productId}/listing`),
+  syncOrdersNow: (shopId: string, days: number = 7) =>
+    api.post(`/shops/${shopId}/channels/bigcommerce/sync-orders`, null, { params: { days } }),
+  fulfillOrder: (shopId: string, orderId: number | string, data: { tracking_number: string; carrier_name: string }) =>
+    api.post(`/shops/${shopId}/channels/bigcommerce/orders/${orderId}/fulfill`, data),
+};
+
+// Meta Ad Library search — real running ads pulled live, lets a seller
+// check whether a product is already being advertised before committing
+// to list it. Same shared backend core the admin Prodora curation flow
+// uses (app/core/meta_ad_library.py), shop-scoped auth instead of admin.
+export const adIntelligenceApi = {
+  searchMetaAds: (shopId: string, q: string, country: string = 'US') =>
+    api.get(`/shops/${shopId}/meta-ads/search`, { params: { q, country } }),
+};
+
 // Etsy — OAuth2 + PKCE click-to-connect, same shape as eBay/TikTok/Daraz.
 export const etsyApi = {
   authorize: (shopId: string) =>

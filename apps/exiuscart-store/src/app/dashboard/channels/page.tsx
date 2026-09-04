@@ -135,6 +135,7 @@ export default function ChannelsPage() {
   const hasEbay = connections.some((c) => c.channel_type === 'ebay');
   const hasTikTok = connections.some((c) => c.channel_type === 'tiktok');
   const hasWooCommerce = connections.some((c) => c.channel_type === 'woocommerce');
+  const hasBigCommerce = connections.some((c) => c.channel_type === 'bigcommerce');
   const hasEtsy = connections.some((c) => c.channel_type === 'etsy');
   const hasCustomWebsite = connections.some((c) => c.channel_type === 'custom');
   // Detected via an active TheDersi connection, not plan_type — TheDersi's
@@ -226,8 +227,16 @@ export default function ChannelsPage() {
       name: 'BigCommerce',
       description: 'Sync your BigCommerce store — products, orders, and inventory stay in sync automatically.',
       icon: <Store className="w-5 h-5 text-[#00C9A7]" />,
-      badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('BigCommerce') : undefined,
+      badge: hasBigCommerce ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: hasBigCommerce ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: hasBigCommerce
+        ? () => router.push('/dashboard/bigcommerce-integration')
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('BigCommerce')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => router.push('/dashboard/bigcommerce-integration'),
+      actionLabel: hasBigCommerce ? 'Manage BigCommerce' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect BigCommerce')),
     },
     {
       id: 'wix',
@@ -359,15 +368,19 @@ export default function ChannelsPage() {
     },
   ];
 
-  // Grouped by who owns the customer relationship — not alphabetically,
-  // not by build order. "Your Own Store" channels have no marketplace fees
-  // or competing listings; "Marketplaces" put you in front of shoppers
-  // already browsing there (Etsy included — it's a real marketplace, buyers
-  // browse etsy.com, not your own domain, unlike Shopify/Custom Website/
-  // WooCommerce); "Social Commerce" sells straight from a post or video;
-  // TheDersi gets its own section since it's a managed-seller model with
-  // its own rules (only Daraz alongside it), not a channel you configure
-  // the same way as the rest.
+  // Grouped by who owns the customer relationship first (Your Own Store vs.
+  // everything else), then marketplaces split by actual region — not
+  // alphabetically, not by build order. "Your Own Store" channels have no
+  // marketplace fees or competing listings; Etsy sits with the marketplaces
+  // (it's a real marketplace, buyers browse etsy.com, not your own domain);
+  // "Social Commerce" sells straight from a post or video; TheDersi gets its
+  // own section since it's a managed-seller model with its own rules (only
+  // Daraz alongside it), not a channel you configure the same way as the
+  // rest. Region split follows the same Global/Asia/Middle East/Africa
+  // categorization used for the roadmap discussion — eBay/Etsy/Amazon/
+  // Walmart/Trendyol are all "reach anyone anywhere" marketplaces, not
+  // tied to one region, so they sit under Global rather than forcing
+  // Trendyol into a lone "Europe" bucket of one.
   const CHANNEL_GROUPS: { label: string; description: string; ids: string[] }[] = [
     {
       label: 'Your Own Store',
@@ -375,9 +388,24 @@ export default function ChannelsPage() {
       ids: ['shopify', 'custom_website', 'woocommerce', 'bigcommerce', 'wix'],
     },
     {
-      label: 'Marketplaces',
-      description: 'List where shoppers are already browsing and buying.',
-      ids: ['ebay', 'etsy', 'amazon', 'noon', 'daraz', 'trendyol', 'walmart', 'jumia'],
+      label: 'Global Marketplaces',
+      description: 'Reach shoppers across the US, UK, and worldwide.',
+      ids: ['ebay', 'etsy', 'amazon', 'walmart', 'trendyol'],
+    },
+    {
+      label: 'Middle East',
+      description: 'UAE, Saudi Arabia, and the wider Gulf.',
+      ids: ['noon'],
+    },
+    {
+      label: 'Asia',
+      description: "South Asia's biggest marketplaces.",
+      ids: ['daraz'],
+    },
+    {
+      label: 'Africa',
+      description: "The continent's fastest-growing marketplace.",
+      ids: ['jumia'],
     },
     {
       label: 'Social Commerce',

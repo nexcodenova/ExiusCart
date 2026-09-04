@@ -549,7 +549,7 @@ export default function AccountingPage() {
                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.3} vertical={false} />
                             <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} minTickGap={20} />
                             <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={52} />
-                            <Tooltip content={<AcctTooltip fmt={fmtCurrency} />} />
+                            <Tooltip content={<AcctTooltip fmt={fmtCurrency} />} cursor={{ fill: '#6366f1', fillOpacity: 0.06, radius: 3 }} />
                             <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                             <Bar dataKey="inflows" name="Inflows" fill="#10b981" radius={[3, 3, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out" />
                             <Bar dataKey="outflows" name="Outflows" fill="#ef4444" radius={[3, 3, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out" />

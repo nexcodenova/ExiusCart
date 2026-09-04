@@ -2464,16 +2464,10 @@ async def admin_aliexpress_import(
 
 
 # ── Admin — Meta Ad Library search (real ads, Facebook + Instagram) ─────────
-# Meta's Ad Library API (/ads_archive) is free, public, and needs no app
-# review since it only serves already-public archive data — but it does
-# need a real access token from a verified Meta developer account, which
-# only the user can generate (identity verification is required on Meta's
-# side). Until META_AD_LIBRARY_TOKEN is set, this returns a clear "not
-# configured" error instead of silently failing or faking results.
-import os as _os
-
-META_AD_LIBRARY_TOKEN = _os.getenv("META_AD_LIBRARY_TOKEN", "")
-META_GRAPH_BASE = "https://graph.facebook.com/v21.0"
+# Shared core lives in app/core/meta_ad_library.py — the seller-facing
+# equivalent (endpoints/ad_intelligence.py) calls the exact same function,
+# not a second copy of this httpx request.
+from app.core.meta_ad_library import search_meta_ad_library
 
 
 @router.get("/admin/shopping/meta-ads/search")
@@ -2482,35 +2476,7 @@ async def admin_meta_ads_search(
     country: str = "US",
     _: User = Depends(require_superuser),
 ):
-    if not META_AD_LIBRARY_TOKEN:
-        raise HTTPException(status_code=400, detail={
-            "error": "meta_not_configured",
-            "message": "Meta Ad Library isn't connected yet. Generate a long-lived access token from a verified Meta developer account and set META_AD_LIBRARY_TOKEN on the server.",
-        })
-
-    async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(f"{META_GRAPH_BASE}/ads_archive", params={
-            "search_terms": q,
-            "ad_reached_countries": f'["{country}"]',
-            "ad_active_status": "ACTIVE",
-            "fields": "id,ad_snapshot_url,page_name,ad_creative_bodies,publisher_platforms",
-            "limit": 20,
-            "access_token": META_AD_LIBRARY_TOKEN,
-        })
-    data = r.json()
-    if "error" in data:
-        raise HTTPException(status_code=502, detail=f"Meta Ad Library error: {data['error'].get('message', 'Unknown error')}")
-
-    ads = [
-        {
-            "id": a.get("id"),
-            "page_name": a.get("page_name"),
-            "snapshot_url": a.get("ad_snapshot_url"),
-            "body": (a.get("ad_creative_bodies") or [None])[0],
-            "platforms": a.get("publisher_platforms") or [],
-        }
-        for a in (data.get("data") or [])
-    ]
+    ads = await search_meta_ad_library(q, country)
     return {"ads": ads}
 
 

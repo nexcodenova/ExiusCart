@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery, bigcommerce, ad_intelligence
 
 api_router = APIRouter()
 
@@ -48,3 +48,5 @@ api_router.include_router(ebay.router, prefix="", tags=["eBay Integration"])
 api_router.include_router(tiktok.router, prefix="", tags=["TikTok Shop Integration"])
 api_router.include_router(woocommerce.router, prefix="", tags=["WooCommerce Integration"])
 api_router.include_router(etsy.router, prefix="", tags=["Etsy Integration"])
+api_router.include_router(bigcommerce.router, prefix="", tags=["BigCommerce Integration"])
+api_router.include_router(ad_intelligence.router, prefix="", tags=["Ad Intelligence"])

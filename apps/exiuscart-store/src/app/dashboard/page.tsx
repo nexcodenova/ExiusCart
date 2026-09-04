@@ -380,15 +380,18 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.12} vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }} tickLine={false} axisLine={false} interval={5} />
                   <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null;
-                    return (
-                      <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
-                        <p className="font-medium text-foreground mb-1">{label}</p>
-                        <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{payload[0]?.value}</span></p>
-                      </div>
-                    );
-                  }} />
+                  <Tooltip
+                    cursor={{ fill: '#6366f1', fillOpacity: 0.06, radius: 3 }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
+                          <p className="font-medium text-foreground mb-1">{label}</p>
+                          <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{payload[0]?.value}</span></p>
+                        </div>
+                      );
+                    }}
+                  />
                   <Bar dataKey="orders" fill="#6366f1" radius={[3, 3, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out" />
                 </BarChart>
               </ResponsiveContainer>
@@ -411,15 +414,18 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.12} vertical={false} />
                   <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null;
-                    return (
-                      <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
-                        <p className="font-medium text-foreground mb-1">{label}</p>
-                        <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{payload[0]?.value}</span></p>
-                      </div>
-                    );
-                  }} />
+                  <Tooltip
+                    cursor={{ fill: '#6366f1', fillOpacity: 0.06, radius: 4 }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
+                          <p className="font-medium text-foreground mb-1">{label}</p>
+                          <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{payload[0]?.value}</span></p>
+                        </div>
+                      );
+                    }}
+                  />
                   <Bar dataKey="orders" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out">
                     {(stats?.dailyBreakdown ?? []).map((d, i) => {
                       const maxO = Math.max(...(stats?.dailyBreakdown ?? []).map(x => x.orders), 1);

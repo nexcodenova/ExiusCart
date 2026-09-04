@@ -29,7 +29,7 @@ const HIGHLIGHT_ICONS: { key: string; label: string; Icon: typeof Clock }[] = [
   { key: 'gift', label: 'Gift', Icon: Gift },
   { key: 'tag', label: 'Tag', Icon: Tag },
 ];
-import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, tiktokApi, woocommerceApi, etsyApi, customProductFieldsApi, CustomProductField, videosApi, ProductVideo as ProductVideoType } from '@/lib/api';
+import { productsApi, fieldsApi, attributesApi, imagesApi, channelsApi, shopifyApi, variantsApi, usageApi, bundlesApi, suppliersApi, reportsApi, noonApi, ebayApi, tiktokApi, woocommerceApi, etsyApi, customProductFieldsApi, CustomProductField, videosApi, ProductVideo as ProductVideoType, adIntelligenceApi } from '@/lib/api';
 import { UsageBanner } from '@/components/usage-banner';
 import { colorNameToHex } from '@/lib/color-utils';
 import { DarazListingFields } from '@/components/daraz-listing-fields';
@@ -75,6 +75,70 @@ function generateSku(name: string): string {
 function countWords(html: string): number {
   const text = html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ');
   return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+// ── Meta Ad Library search panel ────────────────────────────────────────────
+// Real ads pulled live from Meta's public Ad Library API — same shared
+// backend core the admin Prodora curation flow uses. View-only here (no
+// field to save into on this side, unlike admin's ad_facebook_url) — this
+// is a "is this product actually being advertised" research check before
+// a seller commits to listing it, not a permanent record.
+interface MetaAd { id: string; page_name: string; snapshot_url: string; body: string | null }
+
+function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, onSearch }: {
+  query: string; setQuery: (v: string) => void;
+  ads: MetaAd[]; loading: boolean; error: string; hasSearched: boolean;
+  onSearch: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
+          placeholder="Search by product or brand name…"
+          className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+        />
+        <button
+          type="button"
+          onClick={onSearch}
+          disabled={loading || !query.trim()}
+          className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center gap-1.5"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+        </button>
+      </div>
+      {error && (
+        <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}
+        </div>
+      )}
+      {ads.length > 0 && (
+        <div className="space-y-1.5 max-h-56 overflow-y-auto">
+          {ads.map((ad) => (
+            <a
+              key={ad.id}
+              href={ad.snapshot_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block px-3 py-2 bg-muted/30 hover:bg-muted border border-border rounded-lg transition"
+            >
+              <p className="text-xs font-medium text-foreground truncate">{ad.page_name || 'Unknown advertiser'}</p>
+              {ad.body && <p className="text-xs text-muted-foreground truncate mt-0.5">{ad.body}</p>}
+            </a>
+          ))}
+        </div>
+      )}
+      {!loading && !error && ads.length === 0 && !hasSearched && (
+        <p className="text-xs text-muted-foreground">Type a product or brand name to see if it's already being advertised on Meta.</p>
+      )}
+      {!loading && !error && ads.length === 0 && hasSearched && (
+        <p className="text-xs text-muted-foreground">No ads found for "{query}". Try a different keyword.</p>
+      )}
+    </div>
+  );
 }
 
 interface Product {
@@ -1265,6 +1329,23 @@ function ProductModal({
     return unique;
   }, [formData.name, formData.category, seoKeywords]);
 
+  // Meta Ad Library research — "is this actually being advertised" check
+  // before committing to sell it. View-only, nothing saved on this side.
+  const [showMetaSearch, setShowMetaSearch] = useState(false);
+  const [metaQuery, setMetaQuery] = useState('');
+  const [metaAds, setMetaAds] = useState<MetaAd[]>([]);
+  const [metaLoading, setMetaLoading] = useState(false);
+  const [metaError, setMetaError] = useState('');
+  const [metaHasSearched, setMetaHasSearched] = useState(false);
+  const runMetaSearch = () => {
+    if (!metaQuery.trim()) return;
+    setMetaLoading(true); setMetaError(''); setMetaHasSearched(true);
+    adIntelligenceApi.searchMetaAds(shopId, metaQuery.trim())
+      .then((r) => setMetaAds(r.data?.ads ?? []))
+      .catch((err: any) => setMetaError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Meta Ad Library search failed.'))
+      .finally(() => setMetaLoading(false));
+  };
+
   const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
 
   // Custom fields state
@@ -2270,9 +2351,10 @@ function ProductModal({
                 <p className="text-xs text-muted-foreground mt-1.5">Up to {imageLimit} images total (main + variants) · Max 5MB each · First image is primary.</p>
               </div>
 
-              {/* Size Chart — one optional image, available for any saved product
-                  (no longer tied to the removed generic category picker) */}
-              {product?.id && (
+              {/* Size Chart — one optional image, for physical products only
+                  (a sizing guide makes no sense for a digital download or an
+                  affiliate redirect with no fulfillment of our own) */}
+              {product?.id && !isDigital && !isAffiliate && (
                 <div>
                   <Label className="font-medium text-foreground mb-1.5 block">Size Chart <span className="text-muted-foreground/60">(optional)</span></Label>
                   <div className="flex items-center gap-3">
@@ -3104,6 +3186,40 @@ function ProductModal({
                       </div>
                     )}
                   </>
+                )}
+              </div>
+
+              {/* ── Ad Research — is this product already being advertised
+                  for real? Pulls live from Meta's public Ad Library, same
+                  shared backend the admin Prodora curation flow uses.
+                  View-only research, nothing here gets saved to the
+                  product. ── */}
+              <div className="border-t border-border -mx-6 px-6 pt-6">
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label className="font-medium text-foreground block">Ad Research</Label>
+                  {!showMetaSearch && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowMetaSearch(true); setMetaQuery(formData.name); }}
+                      className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition"
+                    >
+                      <Search className="w-3.5 h-3.5" /> Check Meta Ads
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mb-1.5">
+                  See real ads currently running for this product on Facebook/Instagram — a quick sanity check before you commit to selling it.
+                </p>
+                {showMetaSearch && (
+                  <MetaAdSearchPanel
+                    query={metaQuery}
+                    setQuery={setMetaQuery}
+                    ads={metaAds}
+                    loading={metaLoading}
+                    error={metaError}
+                    hasSearched={metaHasSearched}
+                    onSearch={runMetaSearch}
+                  />
                 )}
               </div>
 
