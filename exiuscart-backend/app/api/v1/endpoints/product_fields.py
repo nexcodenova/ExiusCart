@@ -555,6 +555,25 @@ def set_primary_image(
         if product_obj:
             product_obj.image_url = new_primary.url
 
+        # The public storefront API (public.py) builds its images[] array
+        # by sort_order, not is_primary — that field only ever drove the
+        # dashboard's own star badge and the legacy single image_url
+        # column above. Without this, a seller marking a different image
+        # primary would see the star move in the dashboard but the
+        # storefront (Custom Website/ODTSI, or anywhere else reading
+        # images[0] as the main thumbnail) would keep showing the old one,
+        # since sort_order never changed. Re-sequence so the new primary
+        # becomes sort_order 0, keeping every other image's relative order.
+        others = (
+            db.query(ProductImage)
+            .filter(ProductImage.product_id == product_id, ProductImage.id != image_id)
+            .order_by(ProductImage.sort_order)
+            .all()
+        )
+        new_primary.sort_order = 0
+        for i, img in enumerate(others, start=1):
+            img.sort_order = i
+
     db.commit()
     return {"message": "Primary image updated"}
 

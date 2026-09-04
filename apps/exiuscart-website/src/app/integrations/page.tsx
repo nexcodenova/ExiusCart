@@ -88,6 +88,82 @@ const CHANNELS_SECONDARY = [
     ),
   },
   {
+    label: 'Noon',
+    desc: "The Gulf's leading marketplace — list products and manage Noon orders directly from ExiusCart.",
+    color: '#000000',
+    bg: '#FEEE00',
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+        <rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor" />
+        <text x="12" y="17" textAnchor="middle" fontSize="13" fontWeight="800" fontFamily="Arial, sans-serif" fill="#FEEE00">n</text>
+      </svg>
+    ),
+  },
+  {
+    label: 'BigCommerce',
+    desc: 'Sync your BigCommerce store — products, orders, and inventory stay in sync automatically.',
+    color: '#00C9A7',
+    bg: '#effcf9',
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+        <rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor" />
+        <text x="12" y="16" textAnchor="middle" fontSize="12" fontWeight="800" fontFamily="Arial, sans-serif" fill="#fff">BC</text>
+      </svg>
+    ),
+  },
+  {
+    label: 'Wix Stores',
+    desc: 'Connect your Wix store — products, orders, and inventory stay in sync automatically.',
+    status: 'soon' as const,
+    color: '#000000',
+    bg: '#f2f2f2',
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+        <rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor" />
+        <text x="12" y="17" textAnchor="middle" fontSize="13" fontWeight="800" fontFamily="Georgia, serif" fill="#fff">W</text>
+      </svg>
+    ),
+  },
+  {
+    label: 'Walmart',
+    desc: 'Reach US shoppers on Walmart Marketplace — list products and manage orders through ExiusCart.',
+    status: 'soon' as const,
+    color: '#0071CE',
+    bg: '#eff7ff',
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+        <rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor" />
+        <text x="12" y="17" textAnchor="middle" fontSize="13" fontWeight="800" fontFamily="Arial, sans-serif" fill="#fff">W</text>
+      </svg>
+    ),
+  },
+  {
+    label: 'Jumia',
+    desc: "Africa's leading marketplace — list products and manage orders through ExiusCart.",
+    status: 'soon' as const,
+    color: '#F68B1E',
+    bg: '#fff6ed',
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+        <rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor" />
+        <text x="12" y="17" textAnchor="middle" fontSize="13" fontWeight="800" fontFamily="Arial, sans-serif" fill="#fff">J</text>
+      </svg>
+    ),
+  },
+  {
+    label: 'Trendyol',
+    desc: "Turkey's largest online marketplace — list products and manage orders through ExiusCart.",
+    status: 'soon' as const,
+    color: '#F27A1A',
+    bg: '#fff6ee',
+    svg: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+        <rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor" />
+        <text x="12" y="17" textAnchor="middle" fontSize="13" fontWeight="800" fontFamily="Arial, sans-serif" fill="#fff">T</text>
+      </svg>
+    ),
+  },
+  {
     label: 'Custom Website',
     desc: 'Your own branded storefront powered by ExiusCart — no third-party platform needed.',
     color: '#6B3FD9',

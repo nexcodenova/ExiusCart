@@ -15,11 +15,12 @@ interface IntegrationCard {
   core?: boolean;         // ExiusCart + Prodora — grouped in their own boxed pair, matching the heading copy ("at the center")
 }
 
-// 12 cards now — added WooCommerce (live, no third-party approval blocks
+// 17 cards now — added WooCommerce (live, no third-party approval blocks
 // it). Etsy is 'live' — Etsy approved full production API access
 // 2026-08-31, so it's real and unblocked now, not just code-complete.
 // TikTok Shop and Amazon stay 'rolling-out'/in-progress — see their own
-// comments below.
+// comments below. BigCommerce/Wix/Walmart/Jumia/Trendyol added later —
+// see their own comment further down.
 const CARDS: IntegrationCard[] = [
   {
     id: 'exiuscart', name: 'ExiusCart', status: 'live', core: true,
@@ -81,7 +82,46 @@ const CARDS: IntegrationCard[] = [
     image: '/integration/TheDersi.jpg', imageSize: '480×600',
     desc: "Sri Lanka's #1 fashion marketplace. ExiusCart is the official seller backend — orders and stock sync automatically.",
   },
+  // Image files below don't exist yet — real "Partner with X" art to be
+  // supplied and dropped into /public/integration/ later, same filename
+  // convention as the cards above. Card's own onError hides a broken
+  // image cleanly rather than showing a blank alt icon, so this ships
+  // safely today and picks up the real art with zero code changes once
+  // the file lands.
+  {
+    id: 'bigcommerce', name: 'BigCommerce', status: 'live',
+    image: '/integration/bigcommerce.jpg', imageSize: '480×600',
+    desc: 'Sync your BigCommerce store — products, orders and inventory managed directly from ExiusCart.',
+  },
+  {
+    id: 'wix', name: 'Wix Stores', status: 'soon',
+    image: '/integration/wix.jpg', imageSize: '480×600',
+    desc: 'Connect your Wix store — products, orders and inventory stay in sync automatically. Rolling out.',
+  },
+  {
+    id: 'walmart', name: 'Walmart', status: 'soon',
+    image: '/integration/walmart.jpg', imageSize: '480×600',
+    desc: 'Reach US shoppers on Walmart Marketplace — list products and manage orders through ExiusCart. Rolling out.',
+  },
+  {
+    id: 'jumia', name: 'Jumia', status: 'soon',
+    image: '/integration/jumia.jpg', imageSize: '480×600',
+    desc: "Africa's leading marketplace — list products and manage orders through ExiusCart. Rolling out.",
+  },
+  {
+    id: 'trendyol', name: 'Trendyol', status: 'soon',
+    image: '/integration/trendyol.jpg', imageSize: '480×600',
+    desc: "Turkey's largest online marketplace — list products and manage orders through ExiusCart. Rolling out.",
+  },
 ];
+
+// Two separate lines, each its own independent stick-and-scroll section
+// (not one shared track) — Own Store first, then Marketplaces, TheDersi
+// last since it's a managed-seller model with its own rules. Same
+// grouping already used on the dashboard's Channels page. ExiusCart/
+// Prodora stay in their own static pair above both, untouched.
+const OWN_STORE_IDS = ['shopify', 'custom-website', 'woocommerce', 'bigcommerce', 'wix'];
+const MARKETPLACE_IDS = ['etsy', 'ebay', 'noon', 'amazon', 'daraz', 'tiktok', 'walmart', 'jumia', 'trendyol', 'thedersi'];
 
 function Card({ card, className, square }: { card: IntegrationCard; className?: string; square?: boolean }) {
   return (
@@ -126,8 +166,13 @@ function Card({ card, className, square }: { card: IntegrationCard; className?: 
  * translateX on the card row — the wrapper is sticky-pinned for exactly as
  * long as there's row left to reveal, then normal page scroll resumes.
  * Vanilla scroll-position math instead of a library so no new dependency
- * is needed for one section. */
-export function IntegrationsGrid() {
+ * is needed. Extracted into its own hook so two independent lines can each
+ * run this without duplicating the effect logic — each line gets its own
+ * refs/state, so they pin and scroll on their own, one after the other as
+ * the page scrolls, not sharing one track (that's what caused the
+ * previous overflow-clip bug: two full rows stacked in one shared h-screen
+ * track are taller than the viewport). */
+function useScrollJack() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -161,16 +206,45 @@ export function IntegrationsGrid() {
     return () => window.removeEventListener('scroll', onScroll);
   }, [maxTranslate]);
 
+  return { wrapperRef, trackRef, rowRef, maxTranslate, translate };
+}
+
+/** One independent stick-and-scroll line — its own heading, its own pin,
+ * its own horizontal reveal. Two of these stacked on the page (Own Store,
+ * then Marketplaces) instead of one shared track. */
+function ScrollLine({ heading, kicker, ids }: { heading: string; kicker: string; ids: string[] }) {
+  const { wrapperRef, trackRef, rowRef, maxTranslate, translate } = useScrollJack();
+  const cards = ids.map(id => CARDS.find(c => c.id === id)).filter(Boolean) as IntegrationCard[];
+
+  return (
+    <div ref={wrapperRef} style={{ height: `calc(100vh + ${maxTranslate}px)` }}>
+      <div ref={trackRef} className="sticky top-0 h-screen flex flex-col overflow-hidden">
+        <div className="shrink-0 pt-10 sm:pt-16 lg:pt-10 pb-4 px-6 text-center max-w-2xl mx-auto">
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#6B3FD9] mb-2">{kicker}</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-gray-900 leading-[1.05] tracking-tight">{heading}</h2>
+        </div>
+        <div className="flex-1 flex items-center overflow-hidden">
+          <div
+            ref={rowRef}
+            className="flex gap-4 lg:gap-6 px-6 will-change-transform"
+            style={{ transform: `translateX(-${translate}px)` }}
+          >
+            {cards.map(card => <Card key={card.id} card={card} />)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function IntegrationsGrid() {
   return (
     <>
-      {/* Mobile-only heading, moved here (ahead of Row 1) so it still
-          introduces the section before any cards on phone screens — it used
-          to sit inside the sticky wrapper right before what was the only
-          row of cards; now that Row 1 renders before the sticky wrapper,
-          leaving the heading in its old spot would print it after
-          ExiusCart/Prodora instead of before them. Hidden from sm up —
-          desktop/tablet keep the original heading back in page.tsx as
-          normal-flow content above this section. */}
+      {/* Mobile-only heading, ahead of the ExiusCart/Prodora pair — each
+          ScrollLine below carries its own heading now, this one just
+          introduces the section as a whole before any cards. Hidden from
+          sm up — desktop/tablet keep the original heading as normal-flow
+          content above this section in page.tsx. */}
       <div className="sm:hidden shrink-0 pt-24 pb-4 px-6 text-center max-w-2xl mx-auto">
         <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#6B3FD9] mb-2">
           Connected everywhere
@@ -180,28 +254,22 @@ export function IntegrationsGrid() {
         </h2>
       </div>
 
-      {/* Row 1 — ExiusCart + Prodora. On mobile, stacked vertically at
-          full card width/normal 4:5 ratio (was two tilted cards squeezed
-          to 40vw each side by side — too small to actually read). The
-          tilted "leaning pair" only kicks in from sm+, where there's
-          enough width for two side by side to still read comfortably.
-          Plain static content, deliberately outside the sticky scroll-jack
-          below — it's only two cards and never needs to scroll, and
-          stacking it inside the pinned h-screen container made the total
-          content taller than the viewport, clipping it. Found by id (not
+      {/* Row 1 — ExiusCart + Prodora, tilted toward each other like a
+          leaning pair of cards. On mobile, stacked vertically at full card
+          width/normal 4:5 ratio (was two tilted cards squeezed to 40vw
+          each side by side — too small to actually read). The tilted
+          "leaning pair" only kicks in from sm+, where there's enough width
+          for two side by side to still read comfortably. Plain static
+          content, deliberately outside the sticky scroll-jack lines below —
+          it's only two cards and never needs to scroll. Found by id (not
           array position) so this survives future reordering. */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 lg:gap-24 px-6 pb-8 lg:pb-14">
         {(() => {
           const exiuscart = CARDS.find(c => c.id === 'exiuscart');
           const prodora = CARDS.find(c => c.id === 'prodora');
-          // Below sm: no override, Card's own w-[90vw] default applies —
-          // same size as every other card in the strip. At sm/lg: fixed
-          // width for the side-by-side pair.
           const pairWidth = 'sm:!w-[330px] lg:!w-[360px]';
           return (
             <>
-              {/* Tilt/drift only from sm+ — stacked full-width cards on
-                  mobile don't need to lean into each other. */}
               {exiuscart && <Card card={exiuscart} className={`sm:rotate-[6deg] sm:hover:rotate-0 sm:hover:-translate-x-4 sm:origin-bottom-left ${pairWidth}`} />}
               {prodora && <Card card={prodora} className={`sm:rotate-[-6deg] sm:hover:rotate-0 sm:active:translate-x-4 sm:origin-bottom-right ${pairWidth}`} />}
             </>
@@ -209,22 +277,12 @@ export function IntegrationsGrid() {
         })()}
       </div>
 
-      {/* Row 2 — Shopify onward, the same horizontally scroll-jacked strip
-          as before this whole change, just starting one card later now
-          that ExiusCart/Prodora moved to their own row above. */}
-      <div ref={wrapperRef} style={{ height: `calc(100vh + ${maxTranslate}px)` }}>
-        <div ref={trackRef} className="sticky top-0 h-screen flex flex-col overflow-hidden">
-          <div className="flex-1 flex items-center sm:items-start sm:pt-16 lg:pt-10 overflow-hidden">
-            <div
-              ref={rowRef}
-              className="flex gap-4 lg:gap-6 px-6 will-change-transform"
-              style={{ transform: `translateX(-${translate}px)` }}
-            >
-              {CARDS.filter(card => !card.core).map(card => <Card key={card.id} card={card} />)}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Line 1 — Own Store. Independent stick-and-scroll section. */}
+      <ScrollLine heading="Your Own Store" kicker="Own the customer" ids={OWN_STORE_IDS} />
+
+      {/* Line 2 — Marketplaces, TheDersi last. Independent stick-and-scroll
+          section, same treatment as Line 1, pins and scrolls after it. */}
+      <ScrollLine heading="Sell on Every Marketplace" kicker="Reach every shopper" ids={MARKETPLACE_IDS} />
     </>
   );
 }
