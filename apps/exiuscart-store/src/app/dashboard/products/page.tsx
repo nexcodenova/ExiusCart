@@ -1392,6 +1392,8 @@ function ProductModal({
   const [savedImages, setSavedImages] = useState<ProductImage[]>([]);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
+  const [settingPrimaryId, setSettingPrimaryId] = useState<number | null>(null);
+  const [primaryImageError, setPrimaryImageError] = useState('');
 
   // Videos — YouTube/TikTok links only, no upload. Thumbnail/title come
   // back from the server (oEmbed), not entered by the seller.
@@ -1889,12 +1891,21 @@ function ProductModal({
 
   const setPrimaryImage = async (imageId: number) => {
     if (!product?.id) return;
+    setSettingPrimaryId(imageId);
+    setPrimaryImageError('');
     try {
       await imagesApi.setPrimary(shopId, product.id, String(imageId));
       setSavedImages((prev) =>
         prev.map((img) => ({ ...img, is_primary: img.id === imageId }))
       );
-    } catch {/* no-op */}
+    } catch (err: any) {
+      // Was a silent no-op before — a failed request looked identical to a
+      // successful one (nothing visibly changed either way), which is
+      // exactly the "why isn't it showing" report this was fixed for.
+      setPrimaryImageError(err?.response?.data?.detail ?? "Couldn't set that as the main image — try again.");
+    } finally {
+      setSettingPrimaryId(null);
+    }
   };
 
   const handleAddVideo = async () => {
@@ -2352,10 +2363,22 @@ function ProductModal({
                           <Star className="w-2.5 h-2.5 text-yellow-900 fill-yellow-900" />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1">
+                      {/* Was hover-only (opacity-0 group-hover:opacity-100)
+                          — invisible and untappable on touch devices, since
+                          "hover" doesn't really exist there. Always visible
+                          below sm (touch-primary screens), hover-reveal only
+                          kept for sm+ pointer devices where it's a real
+                          affordance, not a dead end. */}
+                      <div className="absolute inset-0 bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition flex items-center justify-center gap-1">
                         {!img.is_primary && (
-                          <button type="button" onClick={() => setPrimaryImage(img.id)} title="Set as primary" className="p-1 bg-yellow-400 rounded-full hover:bg-yellow-300 transition">
-                            <Star className="w-3 h-3 text-yellow-900" />
+                          <button
+                            type="button"
+                            onClick={() => setPrimaryImage(img.id)}
+                            disabled={settingPrimaryId === img.id}
+                            title="Set as primary"
+                            className="p-1 bg-yellow-400 rounded-full hover:bg-yellow-300 transition disabled:opacity-60"
+                          >
+                            {settingPrimaryId === img.id ? <Loader2 className="w-3 h-3 text-yellow-900 animate-spin" /> : <Star className="w-3 h-3 text-yellow-900" />}
                           </button>
                         )}
                         <button type="button" onClick={() => deleteSavedImage(img.id)} disabled={deletingImageId === img.id} title="Delete" className="p-1 bg-destructive rounded-full hover:bg-destructive/80 transition">
@@ -2384,7 +2407,8 @@ function ProductModal({
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1.5">Up to {imageLimit} images total (main + variants) · Max 5MB each · First image is primary.</p>
+                <p className="text-xs text-muted-foreground mt-1.5">Up to {imageLimit} images total (main + variants) · Max 5MB each · Tap the star on any image to make it the main one.</p>
+                {primaryImageError && <p className="text-xs text-destructive mt-1">{primaryImageError}</p>}
               </div>
 
               {/* Size Chart — one optional image, for physical products only
