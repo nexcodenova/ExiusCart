@@ -247,9 +247,14 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
         ${collapsed ? 'w-[72px]' : 'w-64'}
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border shrink-0">
-          <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
+        {/* Logo — collapsed is only 72px wide (40px of actual room once
+            px-4's 32px is subtracted), and the 28px icon plus the ~32px
+            chevron toggle button need ~60px side by side — they were
+            overflowing/clipping each other in a single justify-between row.
+            Collapsed stacks them vertically instead, using the header's
+            height rather than fighting for horizontal space. */}
+        <div className={`border-b border-sidebar-border shrink-0 ${collapsed ? 'flex flex-col items-center justify-center gap-1.5 py-3' : 'h-16 flex items-center justify-between px-4'}`}>
+          <Link href="/dashboard" className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center' : ''}`}>
             <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} className="flex-shrink-0" />
             {!collapsed && (
               <span className="text-xl font-bold tracking-tight">
@@ -258,13 +263,13 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
             )}
           </Link>
           <button type="button" onClick={onMobileClose} aria-label="Close sidebar"
-            className="p-1.5 rounded-lg text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition lg:hidden">
+            className={`p-1.5 rounded-lg text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition lg:hidden ${collapsed ? 'hidden' : ''}`}>
             <X className="w-5 h-5" />
           </button>
           <button type="button" onClick={() => onCollapsedChange(!collapsed)}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="p-1.5 rounded-lg text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition hidden lg:block">
-            <ChevronLeft className={`w-5 h-5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+            className="p-1 rounded-lg text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition hidden lg:block">
+            <ChevronLeft className={`w-4 h-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
         </div>
 

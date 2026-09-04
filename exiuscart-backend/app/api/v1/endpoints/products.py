@@ -253,11 +253,14 @@ async def create_product(
                 "error": "not_available",
                 "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
             })
-        # Nothing to ship or count down — same "always available" sentinel
-        # Printful POD products already use, so a digital product never
-        # shows as low/out of stock regardless of what quantity was sent.
-        product_fields["quantity"] = 999999
-        product_fields["low_stock_threshold"] = 0
+        # Stock is now seller-controlled for digital, same as physical —
+        # a course with limited seats or software with a finite number of
+        # license keys has real stock to track. The dashboard form
+        # defaults a brand-new digital product's quantity to 999999
+        # client-side (same "always available" sentinel this used to
+        # force unconditionally), so nothing changes for a seller who
+        # doesn't touch the field — this just stops overriding a real
+        # number if they did.
     elif product_fields.get("product_type") == "affiliate":
         # No order/checkout at all for an affiliate product — "Buy" sends
         # the customer straight to affiliate_url, so a TheDersi catalog

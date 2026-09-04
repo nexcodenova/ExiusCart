@@ -377,6 +377,7 @@ export default function ProductsPage() {
   };
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [channelFilter, setChannelFilter] = useState<'all' | 'thedersi' | 'daraz' | 'ebay' | 'unlisted'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'physical' | 'digital' | 'affiliate'>('all');
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [planType, setPlanType] = useState<string>('');
   const [perfData, setPerfData] = useState<Record<string, { revenue: number; revenue_30d: number; units_sold: number; heat: string; margin_pct: number; days_since_sale: number }>>({});
@@ -437,11 +438,19 @@ export default function ProductsPage() {
     ? products.filter(p => p.stock === 0)
     : products;
 
-  const filteredProducts = channelFilter === 'unlisted'
+  const channelFiltered = channelFilter === 'unlisted'
     ? stockFiltered.filter(p => !channelStatuses[p.id] || Object.keys(channelStatuses[p.id]).length === 0)
     : channelFilter !== 'all'
     ? stockFiltered.filter(p => !!channelStatuses[p.id]?.[channelFilter])
     : stockFiltered;
+
+  // Product type isn't on the list page's own narrow Product interface —
+  // reads through `as any` the same way barcode/image_url already do
+  // elsewhere in this file, since the real API response carries it even
+  // though the interface above was never widened for it.
+  const filteredProducts = typeFilter === 'all'
+    ? channelFiltered
+    : channelFiltered.filter(p => ((p as any).product_type ?? 'physical') === typeFilter);
 
   const displayedProducts = [...filteredProducts].sort((a, b) => {
     if (sortBy === 'revenue') return (perfData[b.id]?.revenue ?? 0) - (perfData[a.id]?.revenue ?? 0);
@@ -594,6 +603,20 @@ export default function ProductsPage() {
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
+          <div className="relative">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
+              aria-label="Filter by product type"
+              className="appearance-none w-full sm:w-36 px-3 py-2 pr-8 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
+            >
+              <option value="all">All Types</option>
+              <option value="physical">Physical</option>
+              <option value="digital">Digital</option>
+              <option value="affiliate">Affiliate</option>
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          </div>
           {/* Sort + Stock quick-filters */}
           <div className="flex gap-1.5 flex-wrap items-center">
             <div className="relative">
@@ -637,13 +660,15 @@ export default function ProductsPage() {
           <div className="p-16 text-center">
             <Package className="w-14 h-14 text-muted-foreground mx-auto mb-4 opacity-40" />
             <h3 className="font-semibold text-foreground mb-1">
-              {searchQuery || stockFilter !== 'all' || channelFilter !== 'all' ? 'No products found' : 'No products yet'}
+              {searchQuery || stockFilter !== 'all' || channelFilter !== 'all' || typeFilter !== 'all' ? 'No products found' : 'No products yet'}
             </h3>
             <p className="text-sm text-muted-foreground mb-5">
               {stockFilter !== 'all'
                 ? 'No products match this stock filter'
                 : channelFilter !== 'all'
                 ? 'No products match this channel filter'
+                : typeFilter !== 'all'
+                ? 'No products match this type filter'
                 : searchQuery
                 ? 'Try adjusting your search or filters'
                 : 'Add your first product to start selling'}
@@ -654,6 +679,10 @@ export default function ProductsPage() {
               </button>
             ) : channelFilter !== 'all' ? (
               <button type="button" onClick={() => setChannelFilter('all')} className="inline-flex items-center gap-2 border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition">
+                Clear filter
+              </button>
+            ) : typeFilter !== 'all' ? (
+              <button type="button" onClick={() => setTypeFilter('all')} className="inline-flex items-center gap-2 border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition">
                 Clear filter
               </button>
             ) : !searchQuery && (
@@ -1252,7 +1281,14 @@ function ProductModal({
     costPrice: p?.cost_price ?? p?.costPrice ?? 0,
     sellingPrice: p?.price ?? p?.sellingPrice ?? 0,
     compareAtPrice: p?.compare_at_price ?? p?.compareAtPrice ?? 0,
-    stock: p?.quantity ?? p?.stock ?? 0,
+    // A brand-new digital product defaults to "always available" (999999,
+    // matching what the backend used to force on every digital product
+    // unconditionally) rather than 0 — most digital products genuinely
+    // have no real inventory limit, and defaulting to 0 would silently
+    // show a new one as out-of-stock unless the seller remembers to type
+    // a number. A seller who genuinely has limited copies/licenses just
+    // lowers it. Existing products always show their real stored value.
+    stock: p?.quantity ?? p?.stock ?? (initialProductType === 'digital' ? 999999 : 0),
     lowStockAlert: p?.low_stock_threshold ?? p?.lowStockAlert ?? 5,
     vatPercent: p?.vat_percent ?? p?.vatPercent ?? 5,
     listOnMarketplace: p?.list_on_marketplace ?? true,
@@ -2722,12 +2758,44 @@ function ProductModal({
 
               <div className="border-t border-border" />
 
-              {/* Stock — hidden for digital products, nothing to count down */}
-              {isDigital ? (
+              {/* Stock now applies to physical AND digital (limited license
+                  keys/seats are a real thing) — only hidden for affiliate,
+                  which has no order of its own to ever decrement anything. */}
+              {isAffiliate ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-foreground">Affiliate Link</p>
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    No cart, no checkout — the storefront's "Buy" button sends the customer straight here instead.
+                  </p>
+                  <div>
+                    <Label className="text-xs mb-1 block">Destination URL *</Label>
+                    <Input
+                      type="url"
+                      value={formData.affiliateUrl}
+                      onChange={(e) => setFormData({ ...formData, affiliateUrl: e.target.value })}
+                      placeholder="https://www.amazon.com/dp/..."
+                      required={isAffiliate}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Button Text</Label>
+                    <Input
+                      type="text"
+                      value={formData.affiliateCtaText}
+                      onChange={(e) => setFormData({ ...formData, affiliateCtaText: e.target.value })}
+                      placeholder="Buy Now"
+                      maxLength={60}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">Leave blank to use "Buy Now" — e.g. "Buy on Amazon", "View Deal".</p>
+                  </div>
+                </div>
+              ) : (
+              <div className="space-y-3">
+              {isDigital && (
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-foreground">Digital File</p>
                   <p className="text-xs text-muted-foreground -mt-2">
-                    Delivered automatically by email (with an access code) once the order is paid — no shipping, no stock to track.
+                    Delivered automatically by email (with an access code) once the order is paid — no shipping. Stock is optional below, for products with a limited number of copies or licenses (e.g. a course with limited seats).
                   </p>
                   {formData.digitalFileUrl ? (
                     <div className="flex items-center justify-between gap-3 bg-muted/50 border border-border rounded-lg px-4 py-3">
@@ -2808,69 +2876,51 @@ function ProductModal({
                     </div>
                   )}
                 </div>
-              ) : isAffiliate ? (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-foreground">Affiliate Link</p>
-                  <p className="text-xs text-muted-foreground -mt-2">
-                    No cart, no checkout — the storefront's "Buy" button sends the customer straight here instead.
-                  </p>
+              )}
+
+              {/* Inventory — shared by physical AND digital now (a course
+                  with limited seats, or a software with a finite number of
+                  license keys, has real stock to track too). Affiliate is
+                  the only type excluded — it has no order/checkout of its
+                  own to decrement anything, per the outer isAffiliate branch. */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-foreground">Inventory</p>
+                <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs mb-1 block">Destination URL *</Label>
+                    <Label className="text-xs mb-1 block">
+                      Stock Quantity
+                      {variants.length > 0 && <span className="ml-2 text-primary font-semibold">= {variants.reduce((s, v) => s + v.quantity, 0)} (from variants)</span>}
+                    </Label>
                     <Input
-                      type="url"
-                      value={formData.affiliateUrl}
-                      onChange={(e) => setFormData({ ...formData, affiliateUrl: e.target.value })}
-                      placeholder="https://www.amazon.com/dp/..."
-                      required={isAffiliate}
+                      type="number"
+                      value={variants.length > 0 ? variants.reduce((s, v) => s + v.quantity, 0) : formData.stock}
+                      onChange={(e) => { if (variants.length === 0) setFormData({ ...formData, stock: Number(e.target.value) }); }}
+                      readOnly={variants.length > 0}
+                      min="0"
+                      className={variants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}
                     />
                   </div>
                   <div>
-                    <Label className="text-xs mb-1 block">Button Text</Label>
-                    <Input
-                      type="text"
-                      value={formData.affiliateCtaText}
-                      onChange={(e) => setFormData({ ...formData, affiliateCtaText: e.target.value })}
-                      placeholder="Buy Now"
-                      maxLength={60}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1.5">Leave blank to use "Buy Now" — e.g. "Buy on Amazon", "View Deal".</p>
+                    <Label className="text-xs mb-1 block">Low Stock Alert</Label>
+                    <Input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" />
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-foreground">Inventory</p>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs mb-1 block">
-                        Stock Quantity
-                        {variants.length > 0 && <span className="ml-2 text-primary font-semibold">= {variants.reduce((s, v) => s + v.quantity, 0)} (from variants)</span>}
-                      </Label>
-                      <Input
-                        type="number"
-                        value={variants.length > 0 ? variants.reduce((s, v) => s + v.quantity, 0) : formData.stock}
-                        onChange={(e) => { if (variants.length === 0) setFormData({ ...formData, stock: Number(e.target.value) }); }}
-                        readOnly={variants.length > 0}
-                        min="0"
-                        className={variants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs mb-1 block">Low Stock Alert</Label>
-                      <Input type="number" value={formData.lowStockAlert} onChange={(e) => setFormData({ ...formData, lowStockAlert: Number(e.target.value) })} min="0" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">Shipping / Returns Note</Label>
-                    <textarea
-                      value={formData.shippingNote}
-                      onChange={(e) => setFormData({ ...formData, shippingNote: e.target.value })}
-                      rows={2}
-                      placeholder="e.g. Ships in 2-3 business days. 7-day returns."
-                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary outline-none"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1.5">Shown on the storefront product page. Leave blank to show nothing.</p>
-                  </div>
+              </div>
+
+              {!isDigital && (
+                <div>
+                  <Label className="text-xs mb-1 block">Shipping / Returns Note</Label>
+                  <textarea
+                    value={formData.shippingNote}
+                    onChange={(e) => setFormData({ ...formData, shippingNote: e.target.value })}
+                    rows={2}
+                    placeholder="e.g. Ships in 2-3 business days. 7-day returns."
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm resize-none focus:ring-2 focus:ring-primary outline-none"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1.5">Shown on the storefront product page. Leave blank to show nothing.</p>
                 </div>
+              )}
+              </div>
               )}
 
               <div className="border-t border-border" />

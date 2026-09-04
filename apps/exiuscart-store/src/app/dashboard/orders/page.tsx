@@ -839,7 +839,8 @@ export default function OrdersPage() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
@@ -1033,6 +1034,98 @@ export default function OrdersPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Cards — the desktop table above already hides most
+              columns below sm/md, but Actions can carry up to 4-5
+              full-text-label buttons (Confirm/Packing/Ship/Delivered/
+              Cancel for TheDersi orders) which still cramped into one
+              narrow table cell on a real phone. A stacked card gives
+              every button its own row instead of fighting for width. */}
+          <div className="md:hidden divide-y divide-border">
+            {orders.map((order) => {
+              const meta = order.source === 'pos'
+                ? { label: 'POS', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' }
+                : (CHANNEL_META[order.source] ?? { label: order.source, bg: 'bg-muted', text: 'text-muted-foreground' });
+              return (
+                <div key={order.id} className="p-4" onClick={() => window.location.href = `/dashboard/orders/${order.id}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-1.5 bg-muted rounded-lg shrink-0">
+                        {order.status === 'shipped' ? <Truck className="w-3.5 h-3.5 text-cyan-500" /> : <FileText className="w-3.5 h-3.5 text-muted-foreground" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{order.order_number}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(order.created_at).toLocaleDateString('en-GB')} · {new Date(order.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground shrink-0">{fmt(order.total)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${meta.bg} ${meta.text}`}>{meta.label}</span>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${STATUS_STYLES[order.status] ?? 'bg-muted text-muted-foreground'}`}>{order.status}</span>
+                    {order.customer_name && <span className="text-xs text-muted-foreground truncate">{order.customer_name}</span>}
+                  </div>
+                  {order.status === 'shipped' && order.tracking_number && (
+                    <p className="text-xs text-cyan-600 dark:text-cyan-400 mt-1.5 font-mono">{order.carrier || 'Tracking'}: {order.tracking_number}</p>
+                  )}
+                  {updatingId === order.id ? (
+                    <p className="text-xs text-muted-foreground mt-3">Updating…</p>
+                  ) : order.source === 'thedersi' ? (
+                    <div className="flex items-center gap-1.5 flex-wrap mt-3" onClick={e => e.stopPropagation()}>
+                      {order.status === 'pending' && (
+                        <button onClick={() => handleStatusUpdate(order, 'confirmed')}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 rounded-lg transition font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Confirm
+                        </button>
+                      )}
+                      {order.status === 'confirmed' && (
+                        <button onClick={() => handleStatusUpdate(order, 'packing')}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 rounded-lg transition font-medium">
+                          <Package className="w-3.5 h-3.5" /> Packing
+                        </button>
+                      )}
+                      {canShip(order) && (
+                        <button onClick={() => setShipTarget(order)}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 rounded-lg transition font-medium">
+                          <Truck className="w-3.5 h-3.5" /> Ship
+                        </button>
+                      )}
+                      {order.status === 'shipped' && (
+                        <button onClick={() => handleStatusUpdate(order, 'delivered')}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 rounded-lg transition font-medium">
+                          <PackageCheck className="w-3.5 h-3.5" /> Delivered
+                        </button>
+                      )}
+                      {!['delivered', 'cancelled'].includes(order.status) && (
+                        <button onClick={() => handleStatusUpdate(order, 'cancelled')}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition">
+                          <XCircle className="w-3.5 h-3.5" /> Cancel
+                        </button>
+                      )}
+                    </div>
+                  ) : (canShip(order) || canFulfillOrder(order)) && (
+                    <div className="flex items-center gap-1.5 flex-wrap mt-3" onClick={e => e.stopPropagation()}>
+                      {canShip(order) && (
+                        <button onClick={() => setShipTarget(order)}
+                          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 rounded-lg transition font-medium">
+                          <Truck className="w-3.5 h-3.5" /> Ship
+                        </button>
+                      )}
+                      {canFulfillOrder(order) && (
+                        <button onClick={() => setFulfillTarget(order)}
+                          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition font-medium">
+                          <Package className="w-3.5 h-3.5" /> Fulfill
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          </>
         )}
       </div>
 
