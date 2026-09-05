@@ -174,4 +174,16 @@ export const adminApi = {
   // Settings
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (data: Record<string, any>) => api.put('/admin/settings', data),
+
+  // Testimonials (homepage reviews — not per-product storefront reviews)
+  getTestimonials: () => api.get('/admin/testimonials'),
+  createTestimonial: (data: {
+    company_name: string; subtitle?: string; quote_text: string;
+    rating?: number; reviewer_name?: string; sort_order?: number;
+  }) => api.post('/admin/testimonials', data),
+  updateTestimonial: (id: number, data: Partial<{
+    company_name: string; subtitle: string; quote_text: string;
+    rating: number; reviewer_name: string; is_approved: boolean; sort_order: number;
+  }>) => api.put(`/admin/testimonials/${id}`, data),
+  deleteTestimonial: (id: number) => api.delete(`/admin/testimonials/${id}`),
 };

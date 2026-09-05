@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { Archivo_Black } from 'next/font/google';
 
 const archivoBlack = Archivo_Black({ weight: '400', subsets: ['latin'] });
@@ -104,6 +105,14 @@ const CARDS: IntegrationCard[] = [
     desc: 'Reach US shoppers on Walmart Marketplace — list products and manage orders through ExiusCart. Rolling out.',
   },
   {
+    // Already live on the dashboard's own Channels page (Social Commerce
+    // section, alongside TikTok Shop) — this card was just missing from
+    // the marketing site's own marketplace line.
+    id: 'instagram', name: 'Instagram Shopping', status: 'soon',
+    image: '/integration/instagram.jpg', imageSize: '480×600',
+    desc: 'Tag products in your Instagram posts and stories — orders sync straight to ExiusCart. Rolling out.',
+  },
+  {
     id: 'jumia', name: 'Jumia', status: 'soon',
     image: '/integration/jumia.jpg', imageSize: '480×600',
     desc: "Africa's leading marketplace — list products and manage orders through ExiusCart. Rolling out.",
@@ -121,7 +130,7 @@ const CARDS: IntegrationCard[] = [
 // grouping already used on the dashboard's Channels page. ExiusCart/
 // Prodora stay in their own static pair above both, untouched.
 const OWN_STORE_IDS = ['shopify', 'custom-website', 'woocommerce', 'bigcommerce', 'wix'];
-const MARKETPLACE_IDS = ['etsy', 'ebay', 'noon', 'amazon', 'daraz', 'tiktok', 'walmart', 'jumia', 'trendyol', 'thedersi'];
+const MARKETPLACE_IDS = ['etsy', 'ebay', 'noon', 'amazon', 'daraz', 'tiktok', 'walmart', 'instagram', 'jumia', 'trendyol', 'thedersi'];
 
 function Card({ card, className, square }: { card: IntegrationCard; className?: string; square?: boolean }) {
   return (
@@ -178,6 +187,16 @@ function useScrollJack() {
   const rowRef = useRef<HTMLDivElement>(null);
   const [maxTranslate, setMaxTranslate] = useState(0);
   const [translate, setTranslate] = useState(0);
+  // Real, measured track height — NOT assumed to equal window.innerHeight.
+  // The track's own CSS caps at ~800px (see ScrollLine below) instead of a
+  // bare h-screen, because on a tall/narrow viewport (tablet portrait
+  // especially — 1180px tall is common) a ~560px card row centered inside
+  // a full h-screen track left a huge, ugly empty gap above and below —
+  // visually indistinguishable from "something's cut/broken" mid-scroll.
+  // Capping the track's own height fixes that, but the pin-duration math
+  // below has to track the track's REAL height to match, or the reveal
+  // finishes before/after the element actually unsticks.
+  const [trackHeight, setTrackHeight] = useState(0);
 
   useEffect(() => {
     function measure() {
@@ -185,6 +204,7 @@ function useScrollJack() {
       const rowWidth = rowRef.current.scrollWidth;
       const viewportWidth = trackRef.current.offsetWidth;
       setMaxTranslate(Math.max(0, rowWidth - viewportWidth + 48));
+      setTrackHeight(trackRef.current.offsetHeight);
     }
     measure();
     window.addEventListener('resize', measure);
@@ -194,9 +214,9 @@ function useScrollJack() {
   useEffect(() => {
     function onScroll() {
       const el = wrapperRef.current;
-      if (!el || maxTranslate <= 0) return;
+      if (!el || maxTranslate <= 0 || trackHeight <= 0) return;
       const rect = el.getBoundingClientRect();
-      const scrollable = el.offsetHeight - window.innerHeight;
+      const scrollable = el.offsetHeight - trackHeight;
       if (scrollable <= 0) return;
       const progress = Math.min(1, Math.max(0, -rect.top / scrollable));
       setTranslate(progress * maxTranslate);
@@ -204,21 +224,24 @@ function useScrollJack() {
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
-  }, [maxTranslate]);
+  }, [maxTranslate, trackHeight]);
 
-  return { wrapperRef, trackRef, rowRef, maxTranslate, translate };
+  return { wrapperRef, trackRef, rowRef, maxTranslate, trackHeight, translate };
 }
 
 /** One independent stick-and-scroll line — its own heading, its own pin,
  * its own horizontal reveal. Two of these stacked on the page (Own Store,
- * then Marketplaces) instead of one shared track. */
+ * then Marketplaces) instead of one shared track. Track height caps at
+ * ~800px (min(100vh, 800px)) rather than a bare h-screen/100vh — content
+ * (heading + one card row) naturally needs ~750-800px, so anything taller
+ * than that was pure dead space, not anything the design intended. */
 function ScrollLine({ heading, kicker, ids }: { heading: string; kicker: string; ids: string[] }) {
-  const { wrapperRef, trackRef, rowRef, maxTranslate, translate } = useScrollJack();
+  const { wrapperRef, trackRef, rowRef, maxTranslate, trackHeight, translate } = useScrollJack();
   const cards = ids.map(id => CARDS.find(c => c.id === id)).filter(Boolean) as IntegrationCard[];
 
   return (
-    <div ref={wrapperRef} style={{ height: `calc(100vh + ${maxTranslate}px)` }}>
-      <div ref={trackRef} className="sticky top-0 h-screen flex flex-col overflow-hidden">
+    <div ref={wrapperRef} style={{ height: `calc(${trackHeight || 100}px + ${maxTranslate}px)` }}>
+      <div ref={trackRef} className="sticky top-0 h-[min(100vh,800px)] flex flex-col overflow-hidden">
         <div className="shrink-0 pt-10 sm:pt-16 lg:pt-10 pb-4 px-6 text-center max-w-2xl mx-auto">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#6B3FD9] mb-2">{kicker}</p>
           <h2 className="text-3xl sm:text-4xl font-black text-gray-900 leading-[1.05] tracking-tight">{heading}</h2>
@@ -275,6 +298,46 @@ export function IntegrationsGrid() {
             </>
           );
         })()}
+      </div>
+
+      {/* "What is Prodora" explainer — sits between the ExiusCart/Prodora
+          leaning pair (which only names it) and the two channel lines
+          below. Plain normal-flow content, not part of any sticky track.
+          Gradient top border + glow behind the logo match the same purple
+          -> cyan accent motif already established on this page's Custom
+          Website section, so this doesn't feel like a one-off style. */}
+      <div className="px-6 py-16 sm:py-20">
+        <div className="relative max-w-6xl mx-auto rounded-[2rem] overflow-hidden border border-white/10" style={{ background: '#0B1121' }}>
+          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent 0%, #7B4FE9 30%, #06B6D4 70%, transparent 100%)' }} />
+          <div className="relative p-8 sm:p-12 lg:p-14 flex flex-col sm:flex-row items-center gap-8 sm:gap-12">
+            <div className="relative w-28 h-28 sm:w-36 sm:h-36 shrink-0">
+              <div className="absolute inset-0 rounded-3xl blur-2xl opacity-40" style={{ background: 'radial-gradient(circle, #6B3FD9 0%, transparent 70%)' }} />
+              <div className="relative w-full h-full rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <Image src="/prodora-logo.png" alt="Prodora" width={80} height={80} className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
+              </div>
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#6B3FD9] mb-2">What is Prodora?</p>
+              <h3 className={`${archivoBlack.className} text-2xl sm:text-3xl lg:text-4xl text-white leading-[1.1] tracking-tight mb-4`}>
+                Your product research engine, built into ExiusCart.
+              </h3>
+              <p className="text-gray-400 text-sm sm:text-base leading-relaxed mb-7 max-w-2xl">
+                Prodora finds winning products for you — sourced from CJ Dropshipping, private China suppliers, HyperSku, Zendrop, AliExpress, Alibaba and 1688 — complete with ready-made photos, videos and real reviews. Browse the catalog, pick what you want to sell, and one click adds it straight into your ExiusCart store, priced and ready to go.
+              </p>
+              <a
+                href="https://prodora.exiuscart.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#7B4FE9] text-white font-semibold text-sm px-6 py-3.5 rounded-full transition shadow-[0_0_24px_rgba(107,63,217,0.45)] hover:shadow-[0_0_32px_rgba(107,63,217,0.6)]"
+              >
+                Explore Prodora
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Line 1 — Own Store. Independent stick-and-scroll section. */}

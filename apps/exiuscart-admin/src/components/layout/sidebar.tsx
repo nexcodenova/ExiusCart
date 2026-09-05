@@ -18,6 +18,7 @@ import {
   ShoppingBag,
   Key,
   Newspaper,
+  Star,
 } from 'lucide-react';
 
 export const menuItems = [
@@ -26,6 +27,7 @@ export const menuItems = [
   { href: '/dashboard/affiliates', label: 'Affiliates', icon: Link2 },
   { href: '/dashboard/shopping', label: 'Prodora', icon: ShoppingBag },
   { href: '/dashboard/blogs', label: 'Blogs', icon: Newspaper },
+  { href: '/dashboard/reviews', label: 'Reviews', icon: Star },
   { href: '/dashboard/shops', label: 'Stores', icon: Store },
   { href: '/dashboard/users', label: 'Users', icon: Users },
   { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: Package },

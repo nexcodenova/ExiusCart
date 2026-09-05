@@ -372,6 +372,56 @@ def import_shopping_product(
                 sort_order=v.sort_order,
             ))
 
+    # Auto-carry the supplier link if this seller can actually use it — the
+    # source Prodora catalog product already has a real DropshipProductLink
+    # (CJ or AliExpress) from admin's own import. A seller who has ALREADY
+    # connected that same supplier to their own shop gets the identical
+    # link created for their new product too, same fields a direct import
+    # would set (dropshipping.py's own connect flow), so ordering/auto-
+    # fulfillment works immediately — no manual re-linking needed. A seller
+    # with no matching connection gets nothing here (there's genuinely
+    # nothing to link to yet — auto-ordering has to be billed to their own
+    # supplier account, not admin's, so this can't wire itself up before
+    # they connect one).
+    source_link = (
+        db.query(DropshipProductLink)
+        .filter(DropshipProductLink.product_id == source.id, DropshipProductLink.is_primary == True)
+        .first()
+    )
+    if source_link:
+        seller_connection = (
+            db.query(DropshipConnection)
+            .filter(
+                DropshipConnection.shop_id == shop.id,
+                DropshipConnection.supplier_type == source_link.supplier_type,
+                DropshipConnection.is_active == True,
+            )
+            .first()
+        )
+        if seller_connection:
+            db.add(DropshipProductLink(
+                shop_id=shop.id,
+                product_id=new_product.id,
+                supplier_type=source_link.supplier_type,
+                supplier_product_id=source_link.supplier_product_id,
+                supplier_product_url=source_link.supplier_product_url,
+                supplier_sku=source_link.supplier_sku,
+                supplier_product_name=source_link.supplier_product_name,
+                cost_price=source_link.cost_price,
+                shipping_estimate_days=source_link.shipping_estimate_days,
+                warehouse=source_link.warehouse,
+                is_primary=True,
+            ))
+            # quantity=0 above only made sense when there was no supplier
+            # to fulfill from — a product that's actually linked to a real,
+            # connected supplier shouldn't show as out-of-stock the moment
+            # it's imported. Same "always available, supplier fulfills per
+            # order" sentinel used for Printful/other dropship products
+            # elsewhere in this file — not a live stock check against the
+            # source_link, which isn't guaranteed fresh at this point.
+            new_product.quantity = 999999
+            new_product.low_stock_threshold = 0
+
     db.add(ProdoraImportLog(shop_id=shop.id, product_id=new_product.id))
     db.commit()
     db.refresh(new_product)

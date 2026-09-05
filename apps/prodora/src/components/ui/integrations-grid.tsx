@@ -102,6 +102,14 @@ const CARDS: IntegrationCard[] = [
     desc: 'Reach US shoppers on Walmart Marketplace — list products and manage orders through ExiusCart. Rolling out.',
   },
   {
+    // Already live on the dashboard's own Channels page (Social Commerce
+    // section, alongside TikTok Shop) — this card was just missing from
+    // the marketing site's own marketplace line. Mirrors exiuscart-website.
+    id: 'instagram', name: 'Instagram Shopping', status: 'soon',
+    image: '/integration/instagram.jpg', imageSize: '480×600',
+    desc: 'Tag products in your Instagram posts and stories — orders sync straight to ExiusCart. Rolling out.',
+  },
+  {
     id: 'jumia', name: 'Jumia', status: 'soon',
     image: '/integration/jumia.jpg', imageSize: '480×600',
     desc: "Africa's leading marketplace — list products and manage orders through ExiusCart. Rolling out.",
@@ -119,7 +127,7 @@ const CARDS: IntegrationCard[] = [
 // grouping as exiuscart-website's copy of this component and the
 // dashboard's Channels page.
 const OWN_STORE_IDS = ['shopify', 'custom-website', 'woocommerce', 'bigcommerce', 'wix'];
-const MARKETPLACE_IDS = ['etsy', 'ebay', 'noon', 'amazon', 'daraz', 'tiktok', 'walmart', 'jumia', 'trendyol', 'thedersi'];
+const MARKETPLACE_IDS = ['etsy', 'ebay', 'noon', 'amazon', 'daraz', 'tiktok', 'walmart', 'instagram', 'jumia', 'trendyol', 'thedersi'];
 
 function Card({ card, className, square }: { card: IntegrationCard; className?: string; square?: boolean }) {
   return (
@@ -177,6 +185,17 @@ function useScrollJack() {
   const rowRef = useRef<HTMLDivElement>(null);
   const [maxTranslate, setMaxTranslate] = useState(0);
   const [translate, setTranslate] = useState(0);
+  // Real, measured track height — NOT assumed to equal window.innerHeight.
+  // The track's own CSS caps at ~800px (see ScrollLine below) instead of
+  // the full available height, because on a tall/narrow viewport (tablet
+  // portrait especially — 1180px tall is common) a ~560px card row
+  // centered inside that much space left a huge, ugly empty gap above and
+  // below — visually indistinguishable from "something's cut/broken"
+  // mid-scroll. Capping the track's own height fixes that, but the
+  // pin-duration math below has to track the track's REAL height to
+  // match, or the reveal finishes before/after the element actually
+  // unsticks. Fixed on exiuscart-website's copy first, mirrored here.
+  const [trackHeight, setTrackHeight] = useState(0);
 
   useEffect(() => {
     function measure() {
@@ -184,6 +203,7 @@ function useScrollJack() {
       const rowWidth = rowRef.current.scrollWidth;
       const viewportWidth = trackRef.current.offsetWidth;
       setMaxTranslate(Math.max(0, rowWidth - viewportWidth + 48));
+      setTrackHeight(trackRef.current.offsetHeight);
     }
     measure();
     window.addEventListener('resize', measure);
@@ -193,9 +213,9 @@ function useScrollJack() {
   useEffect(() => {
     function onScroll() {
       const el = wrapperRef.current;
-      if (!el || maxTranslate <= 0) return;
+      if (!el || maxTranslate <= 0 || trackHeight <= 0) return;
       const rect = el.getBoundingClientRect();
-      const scrollable = el.offsetHeight - window.innerHeight;
+      const scrollable = el.offsetHeight - trackHeight;
       if (scrollable <= 0) return;
       const progress = Math.min(1, Math.max(0, -rect.top / scrollable));
       setTranslate(progress * maxTranslate);
@@ -203,27 +223,27 @@ function useScrollJack() {
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
-  }, [maxTranslate]);
+  }, [maxTranslate, trackHeight]);
 
-  return { wrapperRef, trackRef, rowRef, maxTranslate, translate };
+  return { wrapperRef, trackRef, rowRef, maxTranslate, trackHeight, translate };
 }
 
 /** One independent stick-and-scroll line — its own heading, its own pin,
  * its own horizontal reveal. Two of these stacked on the page (Own Store,
- * then Marketplaces) instead of one shared track. top-20/
- * h-[calc(100vh-5rem)] instead of top-0/h-screen (what exiuscart-website
- * uses) — Prodora's Navbar (h-20, sticky top-0 z-50) stays visible all the
- * time, unlike exiuscart-website's (which auto-hides on scroll-down), so
- * pinning to the true viewport top would put it right underneath the
- * navbar, clipping the card titles. Offsetting by the navbar's real
- * height fixes it without touching the navbar itself. */
+ * then Marketplaces) instead of one shared track. top-20 instead of top-0
+ * (what exiuscart-website uses) — Prodora's Navbar (h-20, sticky top-0
+ * z-50) stays visible all the time, unlike exiuscart-website's (which
+ * auto-hides on scroll-down), so pinning to the true viewport top would
+ * put it right underneath the navbar, clipping the card titles. Height
+ * caps at min(the space below the navbar, 800px) — content only needs
+ * ~750-800px, more than that was pure dead space. */
 function ScrollLine({ heading, kicker, ids }: { heading: string; kicker: string; ids: string[] }) {
-  const { wrapperRef, trackRef, rowRef, maxTranslate, translate } = useScrollJack();
+  const { wrapperRef, trackRef, rowRef, maxTranslate, trackHeight, translate } = useScrollJack();
   const cards = ids.map(id => CARDS.find(c => c.id === id)).filter(Boolean) as IntegrationCard[];
 
   return (
-    <div ref={wrapperRef} style={{ height: `calc(100vh + ${maxTranslate}px)` }}>
-      <div ref={trackRef} className="sticky top-20 h-[calc(100vh-5rem)] flex flex-col overflow-hidden">
+    <div ref={wrapperRef} style={{ height: `calc(${trackHeight || 100}px + ${maxTranslate}px)` }}>
+      <div ref={trackRef} className="sticky top-20 h-[min(calc(100vh-5rem),800px)] flex flex-col overflow-hidden">
         <div className="shrink-0 pt-10 pb-4 px-6 text-center max-w-2xl mx-auto">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#6B3FD9] mb-2">{kicker}</p>
           <h2 className="text-3xl sm:text-4xl font-black text-gray-900 leading-[1.05] tracking-tight">{heading}</h2>

@@ -1,12 +1,13 @@
 ﻿import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
-import { ArrowRight, Check, Star, Quote, ShoppingCart, Boxes, FileText, Package, BarChart3, Users, Megaphone, Wallet, Truck, Headphones, Calendar, Shield, Globe, Zap, Shirt, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Check, ShoppingCart, Boxes, FileText, Package, BarChart3, Users, Megaphone, Wallet, Truck, Headphones, Calendar, Shield, Globe, Zap, Shirt, Building2, type LucideIcon } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { PricingPreview } from '@/components/ui/pricing-preview';
 import { PromoBanner } from '@/components/ui/promo-banner';
 import { LiveStats } from '@/components/ui/live-stats';
+import { TestimonialsMarquee } from '@/components/ui/testimonials-marquee';
 import { IntegrationsGrid } from '@/components/ui/integrations-grid';
 import { Marquee } from '@/components/ui/marquee';
 
@@ -34,6 +35,7 @@ const SUPPLIERS: Supplier[] = [
   { name: 'CJ Dropshipping', icon: Package, blurb: 'Fast fulfillment, huge catalog, warehouses worldwide.' },
   { name: 'AliExpress', icon: ShoppingCart, blurb: 'Millions of products, direct from verified sellers.' },
   { name: '1688', icon: Boxes, blurb: "China's wholesale marketplace — factory-direct pricing." },
+  { name: 'Alibaba', icon: Building2, blurb: "The world's largest B2B marketplace — bulk orders straight from manufacturers." },
   { name: 'Zendrop', icon: Truck, blurb: 'US-based fast shipping for dropshipping stores.' },
   { name: 'HyperSku', icon: Zap, blurb: 'Branded packaging and fast Southeast Asia shipping.' },
   { name: 'Print on Demand', icon: Shirt, blurb: 'Printful, Printify & Gelato — print, pack, ship per order.' },
@@ -43,7 +45,7 @@ const SUPPLIERS_ROW_2 = SUPPLIERS.slice(3);
 
 function SupplierCard({ name, icon: Icon, blurb }: Supplier) {
   return (
-    <div className="w-72 shrink-0 bg-white border border-gray-200 rounded-2xl shadow-sm px-6 py-8">
+    <div className="w-64 sm:w-72 shrink-0 bg-white border border-gray-200 rounded-2xl shadow-sm px-5 sm:px-6 py-7 sm:py-8">
       <div className="flex items-center gap-3 mb-5">
         {/* This box is the real-logo slot — swap the generic lucide Icon
             for an <Image src="/suppliers/{name}.png" /> here once actual
@@ -292,7 +294,7 @@ export default function HomePage() {
             Every major supplier, one connection.
           </h2>
           <p className="text-gray-500 text-lg leading-relaxed">
-            CJ, AliExpress, 1688, Zendrop, HyperSku and print-on-demand — source real products without juggling a dozen separate accounts.
+            CJ, AliExpress, 1688, Alibaba, Zendrop, HyperSku and print-on-demand — source real products without juggling a dozen separate accounts.
           </p>
         </div>
         <div className="flex flex-col gap-4">
@@ -476,29 +478,24 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Trusted by Businesses Worldwide
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Real businesses running on ExiusCart — more success stories coming soon
-            </p>
-          </div>
+      {/* Testimonials Section — real reviews, fetched live from the public
+          API and shown as a 2-row auto-scroll marquee (same pattern as the
+          supplier network above). Approved via the admin Reviews page —
+          nothing here is hardcoded, so a new approval appears on this page
+          with no redeploy. */}
+      <section className="py-20">
+        <div className="text-center mb-16 px-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Trusted by Businesses Worldwide
+          </h2>
+          <p className="text-gray-400 max-w-2xl mx-auto">
+            Real businesses running on ExiusCart
+          </p>
+        </div>
 
-          <div className="max-w-2xl mx-auto">
-            <TestimonialCard
-              name="TheDersi"
-              business="Sri Lankan Fashion Marketplace"
-              location="Sri Lanka · #1 Fashion Platform"
-              rating={5}
-              text="TheDersi is Sri Lanka's leading fashion marketplace. Our sellers rely on ExiusCart to manage their products, inventory, and orders — all in one place. It has made running a multi-seller marketplace seamless and efficient."
-              featured
-            />
-          </div>
+        <TestimonialsMarquee />
 
+        <div className="max-w-7xl mx-auto px-4">
           <LiveStats />
         </div>
       </section>
@@ -572,57 +569,6 @@ function BenefitRow({ text }: { text: string }) {
     <div className="flex items-center gap-3">
       <Check className="w-5 h-5 text-[#6B3FD9] flex-shrink-0" />
       <span className="text-gray-300">{text}</span>
-    </div>
-  );
-}
-
-function TestimonialCard({
-  name,
-  business,
-  location,
-  rating,
-  text,
-  featured,
-}: {
-  name: string;
-  business: string;
-  location: string;
-  rating: number;
-  text: string;
-  featured?: boolean;
-}) {
-  return (
-    <div className={`bg-[#151F32] rounded-2xl border p-6 relative ${featured ? 'border-[#6B3FD9]/40 shadow-lg shadow-[#6B3FD9]/10' : 'border-gray-800'}`}>
-      <Quote className="absolute top-6 right-6 w-8 h-8 text-[#6B3FD9]/20" />
-
-      {featured && (
-        <div className="inline-flex items-center gap-1.5 bg-[#7B4FE9]/10 border border-[#7B4FE9]/30 text-[#7B4FE9] text-xs font-bold px-3 py-1 rounded-full mb-4">
-          ✓ Verified Customer
-        </div>
-      )}
-
-      {/* Rating */}
-      <div className="flex gap-1 mb-4">
-        {[...Array(rating)].map((_, i) => (
-          <Star key={i} className="w-4 h-4 fill-[#6B3FD9] text-[#6B3FD9]" />
-        ))}
-      </div>
-
-      {/* Review Text */}
-      <p className="text-gray-300 leading-relaxed mb-6">{text}</p>
-
-      {/* Author */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-[#6B3FD9]/20 flex items-center justify-center">
-          <span className="text-[#6B3FD9] font-semibold text-sm">
-            {name.split(' ').map(n => n[0]).join('')}
-          </span>
-        </div>
-        <div>
-          <p className="text-white font-medium text-sm">{name}</p>
-          <p className="text-gray-500 text-xs">{business} • {location}</p>
-        </div>
-      </div>
     </div>
   );
 }

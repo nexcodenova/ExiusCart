@@ -23,6 +23,18 @@ export function Marquee({
   return (
     <div
       {...props}
+      // Fade-mask at both edges — MagicUI's real Marquee ships with this by
+      // default; this CSS-only recreation never had it, so cards scrolling
+      // in/out looked like they were getting hard-sliced at the edge
+      // rather than fading in/out smoothly. More noticeable on mobile,
+      // where a card's full width is a much bigger share of the viewport,
+      // so there's proportionally more "edge" and less "safe middle."
+      // Both mask-image and the -webkit- prefixed version are set since
+      // Safari still needs the prefix for this property.
+      style={{
+        WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+        maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+      }}
       className={cn('group flex overflow-hidden [--gap:1.5rem] gap-[var(--gap)]', className)}
     >
       {Array.from({ length: repeat }).map((_, i) => (
