@@ -19,16 +19,16 @@ type Period = 'monthly' | 'yearly';
 // the arrow for callouts pointing the other direction. Hidden below `lg`:
 // there's no room for a floating annotation once cards stack to one column.
 function PencilNote({
-  text, className, rotate = -4, flip = false, direction = 'down', wrap = false, wrapWidth = 190,
-}: { text: string | string[]; className?: string; rotate?: number; flip?: boolean; direction?: 'down' | 'left'; wrap?: boolean; wrapWidth?: number }) {
+  text, className, rotate = -4, flip = false, direction = 'down', wrap = false, wrapWidth = 190, color = '#6B3FD9',
+}: { text: string | string[]; className?: string; rotate?: number; flip?: boolean; direction?: 'down' | 'left'; wrap?: boolean; wrapWidth?: number; color?: string }) {
   const lines = Array.isArray(text) ? text : [text];
   // `wrap` trades the single-line layout for a narrow wrapped block — used
   // where the note has no guaranteed open space beside it (e.g. sitting in
   // a grid column with no fixed gutter), so it can't rely on screen width.
   const textEl = (
     <span
-      className={`${caveat.className} text-2xl leading-snug text-[#6B3FD9] ${wrap ? 'whitespace-normal' : 'whitespace-nowrap'} ${direction === 'down' ? 'text-right' : ''}`}
-      style={{ transform: `rotate(${rotate}deg)`, ...(wrap ? { maxWidth: `${wrapWidth}px` } : {}) }}
+      className={`${caveat.className} text-2xl leading-snug ${wrap ? 'whitespace-normal' : 'whitespace-nowrap'} ${direction === 'down' ? 'text-right' : ''}`}
+      style={{ transform: `rotate(${rotate}deg)`, color, ...(wrap ? { maxWidth: `${wrapWidth}px` } : {}) }}
     >
       {lines.map((line, i) => (
         <span key={i} className={wrap ? undefined : 'block'}>{wrap ? `${line} ` : line}</span>
@@ -44,7 +44,8 @@ function PencilNote({
         {textEl}
         <svg
           width="46" height="42" viewBox="0 0 46 42" fill="none"
-          className={`shrink-0 text-[#6B3FD9] ${flip ? 'scale-x-[-1]' : ''}`}
+          className={`shrink-0 ${flip ? 'scale-x-[-1]' : ''}`}
+          style={{ color }}
         >
           <path
             d="M42 4C40 17 31 33 12 39C8 40.3 4.5 40 2 38.3"
@@ -60,7 +61,7 @@ function PencilNote({
   // beside its target (same line) rather than above it.
   return (
     <div className={`hidden lg:flex items-center gap-1.5 pointer-events-none select-none ${className ?? ''}`}>
-      <svg width="40" height="24" viewBox="0 0 40 24" fill="none" className="shrink-0 text-[#6B3FD9]">
+      <svg width="40" height="24" viewBox="0 0 40 24" fill="none" className="shrink-0" style={{ color }}>
         <path d="M38 7C27 8 14 12 4 15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none" />
         <path d="M11 9L4 15L12 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </svg>
@@ -192,7 +193,7 @@ export default function PricingPage() {
                     savings from pricing.ts's actual numbers (yearly = 10x
                     monthly, i.e. 2 months free): $12x12=$144 vs $120/yr, and
                     $29x12=$348 vs $290/yr, both ≈16.7%, rounded to 17%. */}
-                <span className="animate-float lg:hidden absolute -top-3 -right-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm whitespace-nowrap">
+                <span className="animate-float lg:hidden absolute -top-3.5 -right-3.5 bg-red-500 text-white text-sm font-bold px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap">
                   -17%
                 </span>
               </button>
@@ -201,6 +202,7 @@ export default function PricingPage() {
                 rotate={-4}
                 direction="left"
                 wrap
+                color="#EF4444"
                 className="absolute left-full top-1/2 -translate-y-1/2 ml-3"
               />
             </div>
