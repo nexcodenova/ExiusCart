@@ -155,6 +155,7 @@ export default function CustomWebsiteIntegrationPage() {
   const [savingGateway, setSavingGateway] = useState(false);
   const [gatewayError, setGatewayError] = useState('');
   const [gatewaySaved, setGatewaySaved] = useState(false);
+  const [webhookSigningSecret, setWebhookSigningSecret] = useState(''); // Whop-only, see GATEWAY_LABELS
   const [shopSlug, setShopSlug] = useState('');
   const [shopName, setShopName] = useState('');
   const [baseCurrency, setBaseCurrency] = useState('');
@@ -186,10 +187,14 @@ export default function CustomWebsiteIntegrationPage() {
 
   // Credentials are stored in the same two generic columns for every
   // gateway (see checkout.py) — what changes is what to call them.
-  const GATEWAY_LABELS: Record<string, { name: string; idLabel: string; idPlaceholder: string; secretLabel: string; secretPlaceholder: string }> = {
+  const GATEWAY_LABELS: Record<string, { name: string; idLabel: string; idPlaceholder: string; secretLabel: string; secretPlaceholder: string; needsWebhookSecret?: boolean; note?: string }> = {
     payhere: { name: 'PayHere', idLabel: 'Merchant ID', idPlaceholder: 'Your PayHere Merchant ID', secretLabel: 'Merchant Secret', secretPlaceholder: 'Your PayHere Merchant Secret' },
     stripe: { name: 'Stripe', idLabel: 'Secret Key', idPlaceholder: 'sk_live_...', secretLabel: 'Webhook Signing Secret', secretPlaceholder: 'whsec_...' },
     paypal: { name: 'PayPal', idLabel: 'Client ID', idPlaceholder: 'Your PayPal Client ID', secretLabel: 'Client Secret', secretPlaceholder: 'Your PayPal Client Secret' },
+    // No business registration needed to accept payment — Whop is
+    // Merchant of Record. Unlike the others, the amount is computed live
+    // per order (a Checkout Configuration), not a fixed pre-made product.
+    whop: { name: 'Whop (no business registration needed)', idLabel: 'Company ID', idPlaceholder: 'biz_xxxxxxxx', secretLabel: 'API Key', secretPlaceholder: '••••••••••••••••', needsWebhookSecret: true, note: 'Whop is Merchant of Record — you can accept payment without a registered business.' },
   };
   const gatewayLabels = GATEWAY_LABELS[selectedGateway] ?? GATEWAY_LABELS.payhere;
 
@@ -209,8 +214,12 @@ export default function CustomWebsiteIntegrationPage() {
     if (!merchantId.trim() || !merchantSecret.trim()) return;
     setSavingGateway(true); setGatewayError(''); setGatewaySaved(false);
     try {
-      await paymentGatewayApi.set(shopId, { payment_gateway: selectedGateway, merchant_id: merchantId.trim(), merchant_secret: merchantSecret.trim() });
+      await paymentGatewayApi.set(shopId, {
+        payment_gateway: selectedGateway, merchant_id: merchantId.trim(), merchant_secret: merchantSecret.trim(),
+        ...(selectedGateway === 'whop' && webhookSigningSecret.trim() ? { webhook_signing_secret: webhookSigningSecret.trim() } : {}),
+      });
       setMerchantSecret('');
+      setWebhookSigningSecret('');
       setGatewaySaved(true);
       load();
     } catch (err: any) {
@@ -348,7 +357,7 @@ export default function CustomWebsiteIntegrationPage() {
                 {Object.entries(GATEWAY_LABELS).map(([value, l]) => <option key={value} value={value}>{l.name}</option>)}
               </select>
               <p className="text-xs text-muted-foreground mt-1.5">
-                Switching gateways doesn't require any change to how your storefront calls checkout.
+                {gatewayLabels.note ?? "Switching gateways doesn't require any change to how your storefront calls checkout."}
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -365,6 +374,15 @@ export default function CustomWebsiteIntegrationPage() {
                   className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
               </div>
             </div>
+            {gatewayLabels.needsWebhookSecret && (
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Webhook Signing Secret (optional)</label>
+                <input type="password" value={webhookSigningSecret} onChange={(e) => setWebhookSigningSecret(e.target.value)}
+                  placeholder="whsec_•••••••••••• — paste after registering the Notify URL below"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
+                <p className="text-xs text-muted-foreground mt-1.5">Can be added later — without it, incoming payment confirmations won't be signature-verified.</p>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground -mt-2">Stored server-side only — never sent to your website's browser code.</p>
             {gateway?.webhook_url && (
               <CopyBox label="Notify URL — paste into your payment gateway's webhook/notify settings" value={gateway.webhook_url} />

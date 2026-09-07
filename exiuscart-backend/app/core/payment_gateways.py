@@ -5,12 +5,13 @@ see ChannelConnection.payment_gateway (app/models/channel.py) — so adding
 a second gateway later is a new function here plus a branch in
 checkout.py, not a rename or a data migration.
 
-Three gateways implemented: PayHere, Stripe, PayPal. Each stores its
+Four gateways implemented: PayHere, Stripe, PayPal, Whop. Each stores its
 credentials in the same two generic columns (gateway_merchant_id,
 gateway_merchant_secret) — what they actually hold differs per gateway
 (see the label mapping in checkout.py / the frontend), not the schema.
 """
 
+import base64
 import hashlib
 import hmac
 import json
@@ -20,6 +21,7 @@ import httpx
 
 STRIPE_API_BASE = "https://api.stripe.com/v1"
 PAYPAL_API_BASE = "https://api-m.paypal.com"
+WHOP_API_BASE = "https://api.whop.com/api/v1"
 
 
 # ── PayHere ──────────────────────────────────────────────────────────────────
@@ -146,3 +148,68 @@ def paypal_capture_order(client_id: str, client_secret: str, paypal_order_id: st
     )
     resp.raise_for_status()
     return resp.json()
+
+
+# ── Whop ─────────────────────────────────────────────────────────────────────
+# Credentials: gateway_merchant_id holds the Company ID, gateway_merchant_secret
+# holds the Whop API Key (Bearer token). This is a DIFFERENT Whop use case
+# from whop.py's marketplace-channel integration (which lists a fixed-price
+# product ON Whop's own hosted page) — here Whop is used purely as a payment
+# processor for ExiusCart's own storefront checkout, via a dynamic, one-time
+# Checkout Configuration priced at the real live cart total, not a
+# pre-created product. CONFIRMED live against docs.whop.com this session:
+# POST /checkout-configurations takes company_id + a `plan` object
+# (plan_type "one_time", initial_price) + `metadata`, and returns
+# `purchase_url` — the page the shopper is sent to pay on. Webhook
+# verification (payment.succeeded) uses the same Standard Webhooks scheme
+# as whop.py's own webhook — Whop signs every webhook type the same way,
+# regardless of which Whop feature triggered it. Custom Website's own
+# `channel_api_url` field (otherwise unused for this channel type) holds
+# the webhook signing secret, mirroring whop.py's own repurposing of that
+# same field for its marketplace-channel connection.
+
+def whop_create_checkout_configuration(api_key: str, company_id: str, order_number: str, amount: float, currency: str = "usd", redirect_url: str | None = None) -> dict:
+    """order_number is stored in `metadata` so the webhook can match the
+    payment back to the right ExiusCart order — same role Stripe's
+    client_reference_id plays above."""
+    body = {
+        "company_id": company_id,
+        "plan": {
+            "plan_type": "one_time",
+            "initial_price": amount,
+            "currency": currency,
+        },
+        "metadata": {"exiuscart_order_number": order_number},
+    }
+    if redirect_url:
+        body["redirect_url"] = redirect_url
+    resp = httpx.post(
+        f"{WHOP_API_BASE}/checkout-configurations",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json=body,
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def whop_verify_webhook_signature(secret: str, webhook_id: str, webhook_timestamp: str, webhook_signature: str, body: bytes) -> bool:
+    """Standard Webhooks verification (standardwebhooks.com) — identical
+    scheme to whop.py's marketplace-channel webhook, duplicated here
+    rather than imported since this core module shouldn't depend on an
+    endpoints file."""
+    if not secret or not webhook_id or not webhook_timestamp or not webhook_signature:
+        return False
+    try:
+        secret_bytes = base64.b64decode(secret.split("_", 1)[1] if secret.startswith("whsec_") else secret)
+        signed_content = f"{webhook_id}.{webhook_timestamp}.{body.decode('utf-8')}"
+        expected = base64.b64encode(
+            hmac.new(secret_bytes, signed_content.encode("utf-8"), hashlib.sha256).digest()
+        ).decode("utf-8")
+        for entry in webhook_signature.split():
+            _, _, sig = entry.partition(",")
+            if hmac.compare_digest(sig, expected):
+                return True
+        return False
+    except Exception:
+        return False

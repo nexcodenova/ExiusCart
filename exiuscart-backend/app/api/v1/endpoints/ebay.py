@@ -687,6 +687,18 @@ class EbayListingRequest(BaseModel):
     payment_policy_id: str | None = None
     fulfillment_policy_id: str | None = None
     return_policy_id: str | None = None
+    # Lets the seller list fewer units than their real internal stock count.
+    # Defaults to the full stock count (previous, only behaviour) when
+    # omitted, so nothing changes for established sellers. Added because
+    # eBay caps new/growing sellers' total LIVE listing value (quantity ×
+    # price, summed across everything they have listed) via its own
+    # "selling limits" — a real, well-known eBay policy, not an ExiusCart
+    # bug — confirmed live: a 7,121-unit, $49.99 product (a real ExiusCart
+    # product's actual warehouse stock count) was rejected outright since
+    # 7121 × 49.99 ≈ $355,979 blew past a remaining $5,000 allowance by
+    # itself. There was previously no way to list a smaller batch instead
+    # of waiting for eBay to raise the limit.
+    listing_quantity: int | None = None
 
 
 def _log_ebay_sync(db: Session, shop_id: int, product_id: int, success: bool, error: str | None = None):
@@ -767,21 +779,27 @@ def _create_ebay_listing_inner(
     location_key = _ebay_ensure_inventory_location(conn, db, shop, marketplace_id)
 
     # 2. One SKU per real variant, or one SKU from the base product — same
-    # logic Daraz's listing endpoint already uses.
+    # logic Daraz's listing endpoint already uses. listing_quantity, when
+    # given, caps each line at that number rather than the real stock
+    # count (see EbayListingRequest's own docstring on why) — min() so it
+    # can only ever reduce what's listed, never invent stock that isn't
+    # really there.
     variants = product.variants or []
     skus = []
     if variants:
         for v in variants:
+            real_qty = v.quantity or 0
             skus.append({
                 "sku": v.sku or f"{product.sku or product.id}-{v.id}",
-                "quantity": v.quantity or 0,
+                "quantity": min(real_qty, payload.listing_quantity) if payload.listing_quantity is not None else real_qty,
                 "price": float(v.price if v.price is not None else product.price),
                 "image_urls": ([v.image_url] if v.image_url else []) + image_urls,
             })
     else:
+        real_qty = product.quantity or 0
         skus.append({
             "sku": product.sku or str(product.id),
-            "quantity": product.quantity or 0,
+            "quantity": min(real_qty, payload.listing_quantity) if payload.listing_quantity is not None else real_qty,
             "price": float(product.price),
             "image_urls": image_urls,
         })

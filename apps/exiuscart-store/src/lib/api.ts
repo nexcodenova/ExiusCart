@@ -720,6 +720,7 @@ export const ebayApi = {
   createListing: (shopId: string, productId: number | string, data: {
     category_id: string; aspect_values: Record<string, string[]>; condition?: string;
     payment_policy_id?: string; fulfillment_policy_id?: string; return_policy_id?: string;
+    listing_quantity?: number;
   }) => api.post(`/shops/${shopId}/channels/ebay/products/${productId}/create`, data),
   getListingStatus: (shopId: string, productId: number | string) =>
     api.get(`/shops/${shopId}/channels/ebay/products/${productId}/listing`),
@@ -787,6 +788,27 @@ export const bigcommerceApi = {
     api.post(`/shops/${shopId}/channels/bigcommerce/sync-orders`, null, { params: { days } }),
   fulfillOrder: (shopId: string, orderId: number | string, data: { tracking_number: string; carrier_name: string }) =>
     api.post(`/shops/${shopId}/channels/bigcommerce/orders/${orderId}/fulfill`, data),
+};
+
+export const whopApi = {
+  connect: (shopId: string, data: { api_key: string; company_id: string; webhook_signing_secret?: string }) =>
+    api.post(`/shops/${shopId}/channels/whop/connect`, data),
+  createListing: (shopId: string, productId: number | string) =>
+    api.post(`/shops/${shopId}/channels/whop/products/${productId}/create`),
+  getListingStatus: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/channels/whop/products/${productId}/listing`),
+};
+
+// Gumroad — connect + manually LINK an existing product, not create/push.
+// Gumroad's own API blocks programmatic product creation (confirmed via
+// their docs) — see gumroad.py's module docstring for the full reasoning.
+export const gumroadApi = {
+  connect: (shopId: string, data: { access_token: string; webhook_signing_secret?: string }) =>
+    api.post(`/shops/${shopId}/channels/gumroad/connect`, data),
+  linkProduct: (shopId: string, productId: number | string, data: { gumroad_product_id: string }) =>
+    api.post(`/shops/${shopId}/channels/gumroad/products/${productId}/link`, data),
+  getListingStatus: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/channels/gumroad/products/${productId}/listing`),
 };
 
 // Meta Ad Library search — real running ads pulled live, lets a seller
@@ -1050,7 +1072,7 @@ export const customProductFieldsApi = {
 
 export const paymentGatewayApi = {
   get: (shopId: string) => api.get(`/shops/${shopId}/channels/custom/payment-gateway`),
-  set: (shopId: string, data: { payment_gateway: string; merchant_id: string; merchant_secret: string }) =>
+  set: (shopId: string, data: { payment_gateway: string; merchant_id: string; merchant_secret: string; webhook_signing_secret?: string }) =>
     api.put(`/shops/${shopId}/channels/custom/payment-gateway`, data),
 };
 

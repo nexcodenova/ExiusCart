@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Link2, Loader2,
   X, ExternalLink, Lock,
-  ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2, Store,
+  ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2, Store, CreditCard, Download,
 } from 'lucide-react';
 import { channelsApi, shopifyApi, subscriptionApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -137,6 +137,8 @@ export default function ChannelsPage() {
   const hasWooCommerce = connections.some((c) => c.channel_type === 'woocommerce');
   const hasBigCommerce = connections.some((c) => c.channel_type === 'bigcommerce');
   const hasEtsy = connections.some((c) => c.channel_type === 'etsy');
+  const hasWhop = connections.some((c) => c.channel_type === 'whop');
+  const hasGumroad = connections.some((c) => c.channel_type === 'gumroad');
   const hasCustomWebsite = connections.some((c) => c.channel_type === 'custom');
   // Detected via an active TheDersi connection, not plan_type — TheDersi's
   // Growth/Premium tier maps to plan='starter', same as a direct customer,
@@ -366,6 +368,42 @@ export default function ChannelsPage() {
         : () => router.push('/dashboard/thedersi-integration'),
       actionLabel: hasTheDersi ? 'Manage TheDersi' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect TheDersi'),
     },
+    // ── Digital products: Whop, Gumroad ──
+    // Backend integration exists (see whop.py) but has no connect UI yet —
+    // shown as 'soon' here like every other not-yet-connectable channel
+    // until that UI is built.
+    {
+      id: 'whop',
+      name: 'Whop',
+      description: 'Sell digital products with no business registration needed — Whop is Merchant of Record, so it handles payment and tax compliance for you.',
+      icon: <CreditCard className="w-5 h-5 text-[#FA4616]" />,
+      badge: hasWhop ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: hasWhop ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: hasWhop
+        ? () => router.push('/dashboard/whop-integration')
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('Whop')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => router.push('/dashboard/whop-integration'),
+      actionLabel: hasWhop ? 'Manage Whop' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Whop')),
+    },
+    {
+      id: 'gumroad',
+      name: 'Gumroad',
+      description: 'List your digital products on Gumroad and manage orders from ExiusCart.',
+      icon: <Download className="w-5 h-5 text-[#FF90E8]" />,
+      badge: hasGumroad ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
+      badgeLabel: hasGumroad ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      onAction: hasGumroad
+        ? () => router.push('/dashboard/gumroad-integration')
+        : isTheDersiUser
+          ? () => setDersiBlockChannel('Gumroad')
+          : channelLimitReached
+            ? () => setUpgradeLimitModal(true)
+            : () => router.push('/dashboard/gumroad-integration'),
+      actionLabel: hasGumroad ? 'Manage Gumroad' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Gumroad')),
+    },
   ];
 
   // Grouped by who owns the customer relationship first (Your Own Store vs.
@@ -411,6 +449,11 @@ export default function ChannelsPage() {
       label: 'Social Commerce',
       description: 'Sell straight from a post or video, no separate storefront needed.',
       ids: ['tiktok', 'instagram'],
+    },
+    {
+      label: 'Sell Digital Products',
+      description: 'No shipping, no inventory — and no business registration required to get paid.',
+      ids: ['whop', 'gumroad'],
     },
     {
       label: 'TheDersi',

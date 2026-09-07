@@ -51,9 +51,12 @@ const CARDS: IntegrationCard[] = [
     desc: 'Already have your own store? Connect it as a channel — orders, inventory and invoicing handled automatically.',
   },
   {
-    id: 'tiktok', name: 'TikTok Shop', status: 'rolling-out',
+    // TikTok Shop Partner Center approved ExiusCart's application 2026-09-07
+    // (Enterprise Resource Planning partner, UK) — real, not just code-
+    // complete, same bar Etsy/BigCommerce were flipped to 'live' at.
+    id: 'tiktok', name: 'TikTok Shop', status: 'live',
     image: '/integration/tiktok.jpg', imageSize: '480×600',
-    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart. Rolling out.',
+    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart.',
   },
   {
     id: 'ebay', name: 'eBay', status: 'live',

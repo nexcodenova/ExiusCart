@@ -9,6 +9,7 @@ codebase (see orders.py's cancel/restock logic, which already assumes
 "channel" orders defer the stock decrement until payment_status=paid).
 """
 
+import json
 import logging
 import uuid
 from datetime import datetime
@@ -32,7 +33,7 @@ from app.models.user import User
 from app.api.v1.deps import get_current_user
 from app.core.rate_limit import limiter
 
-SUPPORTED_GATEWAYS = ("payhere", "stripe", "paypal")
+SUPPORTED_GATEWAYS = ("payhere", "stripe", "paypal", "whop")
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -291,6 +292,15 @@ def _build_payment_params(conn: ChannelConnection, shop: Shop, order: Order, tot
         )
         return {"gateway": "stripe", "order_id": order.order_number, "redirect_url": session["url"]}
 
+    if conn.payment_gateway == "whop":
+        if not return_url:
+            raise HTTPException(status_code=422, detail="return_url is required for Whop.")
+        from app.core.payment_gateways import whop_create_checkout_configuration
+        config = whop_create_checkout_configuration(
+            conn.gateway_merchant_secret, conn.gateway_merchant_id, order.order_number, float(total), (shop.currency or "USD").lower(), return_url,
+        )
+        return {"gateway": "whop", "order_id": order.order_number, "redirect_url": config.get("purchase_url")}
+
     if conn.payment_gateway == "paypal":
         if not return_url or not cancel_url:
             raise HTTPException(status_code=422, detail="return_url and cancel_url are required for PayPal.")
@@ -426,6 +436,34 @@ async def payment_webhook(shop_slug: str, request: Request, db: Session = Depend
         order_number = event["data"]["object"].get("client_reference_id", "")
         is_paid = True
 
+    elif conn.payment_gateway == "whop":
+        from app.core.payment_gateways import whop_verify_webhook_signature
+        payload_bytes = await request.body()
+        # channel_api_url repurposed to hold the Whop webhook signing
+        # secret (see payment_gateways.py's module note) — only verify if
+        # the seller actually provided one, same "never silently treat
+        # unconfigured as verified" discipline whop.py's own webhook uses.
+        if conn.channel_api_url:
+            ok = whop_verify_webhook_signature(
+                conn.channel_api_url,
+                request.headers.get("webhook-id", ""),
+                request.headers.get("webhook-timestamp", ""),
+                request.headers.get("webhook-signature", ""),
+                payload_bytes,
+            )
+            if not ok:
+                logger.warning(f"[PAYMENT WEBHOOK] shop={shop.id} whop — invalid signature, ignored")
+                raise HTTPException(status_code=400, detail="Invalid signature")
+        try:
+            event = json.loads(payload_bytes)
+        except Exception:
+            raise HTTPException(status_code=422, detail="Invalid webhook payload")
+        event_type = event.get("action") or event.get("type") or event.get("event")
+        if event_type != "payment.succeeded":
+            return {"status": "ignored"}
+        order_number = (event.get("data") or {}).get("metadata", {}).get("exiuscart_order_number", "")
+        is_paid = True
+
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported gateway for webhook: {conn.payment_gateway}")
 
@@ -475,6 +513,10 @@ class PaymentGatewayIn(BaseModel):
     payment_gateway: str
     merchant_id: str
     merchant_secret: str
+    # Whop-only: the webhook signing secret shown once when the seller
+    # registers this shop's webhook URL in their Whop dashboard. Ignored
+    # for every other gateway.
+    webhook_signing_secret: Optional[str] = None
 
 
 def _custom_channel_connection(shop_id: int, db: Session) -> ChannelConnection:
@@ -530,5 +572,7 @@ def set_payment_gateway_settings(
     conn.payment_gateway = payload.payment_gateway
     conn.gateway_merchant_id = payload.merchant_id.strip()
     conn.gateway_merchant_secret = payload.merchant_secret.strip()
+    if payload.payment_gateway == "whop" and payload.webhook_signing_secret:
+        conn.channel_api_url = payload.webhook_signing_secret.strip()  # repurposed field, see payment_gateways.py
     db.commit()
     return {"payment_gateway": conn.payment_gateway, "merchant_id": conn.gateway_merchant_id}

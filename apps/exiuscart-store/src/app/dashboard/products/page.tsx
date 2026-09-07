@@ -1467,6 +1467,13 @@ function ProductModal({
   const [loadingEbayCategories, setLoadingEbayCategories] = useState(false);
   const [ebayAspectValues, setEbayAspectValues] = useState<Record<string, string>>({});
   const [ebayCondition, setEbayCondition] = useState('NEW');
+  // Empty string = list the full real stock count (previous, only
+  // behaviour) — eBay caps new/growing sellers' total live listing VALUE
+  // (quantity × price, summed across everything listed), so a
+  // high-stock/low-price product can blow past that cap in one listing
+  // even though ExiusCart's own stock count is completely real. Lets the
+  // seller list a smaller batch instead of waiting on eBay to raise it.
+  const [ebayListingQuantity, setEbayListingQuantity] = useState('');
   const [ebayListingStatus, setEbayListingStatus] = useState<{ listing_ids: string[] } | null>(null);
   const [listingEbay, setListingEbay] = useState(false);
   const [ebayListingError, setEbayListingError] = useState('');
@@ -1968,10 +1975,12 @@ function ProductModal({
     setListingEbay(true);
     setEbayListingError('');
     try {
+      const qty = ebayListingQuantity.trim() ? parseInt(ebayListingQuantity, 10) : undefined;
       const res = await ebayApi.createListing(shopId, product.id, {
         category_id: otherChannels.ebay.categoryId,
         aspect_values: Object.fromEntries(Object.entries(ebayAspectValues).map(([k, v]) => [k, [v]])),
         condition: ebayCondition,
+        ...(qty !== undefined && !Number.isNaN(qty) ? { listing_quantity: qty } : {}),
       });
       setEbayListingStatus({ listing_ids: res.data?.listing_ids ?? [] });
     } catch (err: any) {
@@ -3634,6 +3643,17 @@ function ProductModal({
                             </div>
                           ) : (
                             <>
+                              <div className="mb-3">
+                                <Label className="font-medium text-foreground mb-1.5">Quantity to list (optional)</Label>
+                                <Input
+                                  type="number" min={1} value={ebayListingQuantity}
+                                  onChange={(e) => setEbayListingQuantity(e.target.value)}
+                                  placeholder={`Full stock (${product.stock ?? 0})`}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1.5">
+                                  eBay caps how much total value new/growing sellers can have listed at once. If eBay rejects a listing for exceeding your selling limit, list a smaller quantity here instead of your full stock.
+                                </p>
+                              </div>
                               <button
                                 type="button"
                                 onClick={handleListOnEbay}
@@ -3643,7 +3663,16 @@ function ProductModal({
                                 {listingEbay && <Loader2 className="w-4 h-4 animate-spin" />}
                                 {listingEbay ? 'Creating listing on eBay…' : 'List on eBay'}
                               </button>
-                              {ebayListingError && <p className="text-xs text-destructive mt-1.5">{ebayListingError}</p>}
+                              {ebayListingError && (
+                                <div className="mt-1.5">
+                                  <p className="text-xs text-destructive">{ebayListingError}</p>
+                                  {ebayListingError.toLowerCase().includes('exceed the number of items') && (
+                                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                      This is eBay's own selling limit, not an ExiusCart error — reduce "Quantity to list" above to fit within what eBay told you remains, or request a limit increase from eBay directly.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
                             </>
                           )}
                         </div>

@@ -54,9 +54,12 @@ const CARDS: IntegrationCard[] = [
     desc: 'Already have your own store? Connect it as a channel — orders, inventory and invoicing handled automatically.',
   },
   {
-    id: 'tiktok', name: 'TikTok Shop', status: 'rolling-out',
+    // TikTok Shop Partner Center approved ExiusCart's application 2026-09-07
+    // (Enterprise Resource Planning partner, UK) — real, not just code-
+    // complete, same bar Etsy/BigCommerce were flipped to 'live' at.
+    id: 'tiktok', name: 'TikTok Shop', status: 'live',
     image: '/integration/tiktok.jpg', imageSize: '480×600',
-    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart. Rolling out.',
+    desc: 'Sync products and orders with TikTok Shop directly from ExiusCart.',
   },
   {
     id: 'ebay', name: 'eBay', status: 'live',
@@ -122,6 +125,20 @@ const CARDS: IntegrationCard[] = [
     image: '/integration/trendyol.jpg', imageSize: '480×600',
     desc: "Turkey's largest online marketplace — list products and manage orders through ExiusCart. Rolling out.",
   },
+  // Digital-product channels — a different category from the marketplaces
+  // above (no shipping/inventory, Whop/Gumroad are Merchant of Record so
+  // sellers don't need their own payment gateway or business registration
+  // to sell). Own ScrollLine below rather than folded into MARKETPLACE_IDS.
+  {
+    id: 'whop', name: 'Whop', status: 'rolling-out',
+    image: '/integration/whop.jpg', imageSize: '480×600',
+    desc: 'Sell digital products with no business registration needed — Whop handles payment and tax compliance for you. Rolling out.',
+  },
+  {
+    id: 'gumroad', name: 'Gumroad', status: 'soon',
+    image: '/integration/gumroad.jpg', imageSize: '480×600',
+    desc: 'List your digital products on Gumroad and manage orders from ExiusCart. Rolling out.',
+  },
 ];
 
 // Two separate lines, each its own independent stick-and-scroll section
@@ -131,8 +148,9 @@ const CARDS: IntegrationCard[] = [
 // Prodora stay in their own static pair above both, untouched.
 const OWN_STORE_IDS = ['shopify', 'custom-website', 'woocommerce', 'bigcommerce', 'wix'];
 const MARKETPLACE_IDS = ['etsy', 'ebay', 'noon', 'amazon', 'daraz', 'tiktok', 'walmart', 'instagram', 'jumia', 'trendyol', 'thedersi'];
+const DIGITAL_PRODUCT_IDS = ['whop', 'gumroad'];
 
-function Card({ card, className, square }: { card: IntegrationCard; className?: string; square?: boolean }) {
+function Card({ card, className, square, hideDescOnMobile }: { card: IntegrationCard; className?: string; square?: boolean; hideDescOnMobile?: boolean }) {
   return (
     <div
       className={`shrink-0 w-[90vw] sm:w-[330px] lg:w-[360px] rounded-3xl p-6 lg:p-7 flex flex-col transition-transform duration-300 hover:-translate-y-1.5 ${className ?? ''}`}
@@ -165,8 +183,13 @@ function Card({ card, className, square }: { card: IntegrationCard; className?: 
         <img src={card.image} alt={card.name} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
       </div>
 
-      {/* Bottom — small description */}
-      <p className="text-gray-600 text-[13px] leading-relaxed">{card.desc}</p>
+      {/* Bottom — small description. Hidden on mobile for the ExiusCart/
+          Prodora leaning pair (hideDescOnMobile) — with those two cards
+          now diagonally overlapping there, keeping the text just adds
+          clutter/height with no room to actually read it comfortably.
+          Every other card everywhere else keeps its description at
+          every width, unaffected. */}
+      <p className={`text-gray-600 text-[13px] leading-relaxed ${hideDescOnMobile ? 'hidden sm:block' : ''}`}>{card.desc}</p>
     </div>
   );
 }
@@ -278,23 +301,27 @@ export function IntegrationsGrid() {
       </div>
 
       {/* Row 1 — ExiusCart + Prodora, tilted toward each other like a
-          leaning pair of cards. On mobile, stacked vertically at full card
-          width/normal 4:5 ratio (was two tilted cards squeezed to 40vw
-          each side by side — too small to actually read). The tilted
-          "leaning pair" only kicks in from sm+, where there's enough width
-          for two side by side to still read comfortably. Plain static
-          content, deliberately outside the sticky scroll-jack lines below —
-          it's only two cards and never needs to scroll. Found by id (not
-          array position) so this survives future reordering. */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 lg:gap-24 px-6 pb-8 lg:pb-14">
+          leaning pair of cards. On mobile, a diagonal overlapping cascade —
+          ExiusCart top-left, Prodora shifted right and pulled up to
+          overlap its bottom-right corner (per the user's own sketch) —
+          narrower cards (72vw, was a plain full-width 90vw stack) so
+          there's room on both sides for the diagonal offset to read.
+          The tilted "leaning pair" kicks in from sm+, where there's
+          enough width for two side by side to still read comfortably.
+          Plain static content, deliberately outside the sticky
+          scroll-jack lines below — it's only two cards and never needs
+          to scroll. Found by id (not array position) so this survives
+          future reordering. */}
+      <div className="relative sm:flex sm:flex-row sm:items-center sm:justify-center gap-6 sm:gap-10 lg:gap-24 px-6 pb-8 lg:pb-14">
         {(() => {
           const exiuscart = CARDS.find(c => c.id === 'exiuscart');
           const prodora = CARDS.find(c => c.id === 'prodora');
           const pairWidth = 'sm:!w-[330px] lg:!w-[360px]';
+          const mobileSize = '!w-[72vw] sm:!w-[330px]';
           return (
             <>
-              {exiuscart && <Card card={exiuscart} className={`sm:rotate-[6deg] sm:hover:rotate-0 sm:hover:-translate-x-4 sm:origin-bottom-left ${pairWidth}`} />}
-              {prodora && <Card card={prodora} className={`sm:rotate-[-6deg] sm:hover:rotate-0 sm:active:translate-x-4 sm:origin-bottom-right ${pairWidth}`} />}
+              {exiuscart && <Card card={exiuscart} hideDescOnMobile className={`${mobileSize} mr-auto sm:mr-0 sm:rotate-[6deg] sm:hover:rotate-0 sm:hover:-translate-x-4 sm:origin-bottom-left ${pairWidth}`} />}
+              {prodora && <Card card={prodora} hideDescOnMobile className={`${mobileSize} ml-auto -mt-10 z-10 sm:mt-0 sm:ml-0 sm:rotate-[-6deg] sm:hover:rotate-0 sm:active:translate-x-4 sm:origin-bottom-right ${pairWidth}`} />}
             </>
           );
         })()}
@@ -346,6 +373,11 @@ export function IntegrationsGrid() {
       {/* Line 2 — Marketplaces, TheDersi last. Independent stick-and-scroll
           section, same treatment as Line 1, pins and scrolls after it. */}
       <ScrollLine heading="Sell on Every Marketplace" kicker="Reach every shopper" ids={MARKETPLACE_IDS} />
+
+      {/* Line 3 — Digital products. Own line since it's a genuinely
+          different selling model (no shipping/inventory, Merchant-of-
+          Record checkout) rather than another marketplace region. */}
+      <ScrollLine heading="Sell Digital Products" kicker="No business registration needed" ids={DIGITAL_PRODUCT_IDS} />
     </>
   );
 }
