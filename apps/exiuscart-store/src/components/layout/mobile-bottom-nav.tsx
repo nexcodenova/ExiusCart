@@ -35,11 +35,6 @@ export function MobileBottomNav() {
 
   return (
     <>
-      {/* More Menu Overlay */}
-      {showMore && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setShowMore(false)} />
-      )}
-
       {/* Upgrade toast */}
       {showUpgrade && (
         <div className="fixed top-4 left-4 right-4 z-[60] lg:hidden">
@@ -56,16 +51,17 @@ export function MobileBottomNav() {
         </div>
       )}
 
-      {/* More Menu Panel */}
+      {/* More Menu — full screen, not a partial sheet, so it's the whole
+          view the moment it opens rather than a strip over the dashboard. */}
       {showMore && (
-        <div className="fixed bottom-16 left-0 right-0 bg-card border-t border-border z-50 lg:hidden rounded-t-2xl animate-slide-up">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-semibold text-foreground">More Options</span>
-            <button type="button" onClick={() => setShowMore(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
+        <div className="fixed inset-0 bg-background z-[55] lg:hidden flex flex-col animate-slide-up">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-border shrink-0">
+            <span className="text-base font-semibold text-foreground">More Options</span>
+            <button type="button" onClick={() => setShowMore(false)} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
               <X className="w-5 h-5" />
             </button>
           </div>
-          <nav className="p-3 grid grid-cols-4 gap-2 max-h-[60vh] overflow-y-auto">
+          <nav className="flex-1 overflow-y-auto p-4 grid grid-cols-4 gap-3 content-start safe-area-pb">
             {moreItems.map((item) => {
               const Icon = item.icon;
               const isPremium = PREMIUM_HREFS.has(item.href);
@@ -78,11 +74,11 @@ export function MobileBottomNav() {
                     key={item.href}
                     type="button"
                     onClick={handlePremiumClick}
-                    className="flex flex-col items-center gap-1 p-3 rounded-xl text-muted-foreground/50 relative"
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl text-muted-foreground/50 relative"
                   >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-[10px] font-medium">{item.label}</span>
-                    <Lock className="w-2.5 h-2.5 absolute top-1.5 right-1.5 text-amber-500" />
+                    <Icon className="w-6 h-6" />
+                    <span className="text-[11px] font-medium text-center">{item.label}</span>
+                    <Lock className="w-3 h-3 absolute top-1.5 right-1.5 text-amber-500" />
                   </button>
                 );
               }
@@ -92,12 +88,12 @@ export function MobileBottomNav() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setShowMore(false)}
-                  className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${
+                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${
                     isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  <Icon className="w-6 h-6" />
+                  <span className="text-[11px] font-medium text-center">{item.label}</span>
                 </Link>
               );
             })}
@@ -105,10 +101,10 @@ export function MobileBottomNav() {
             <button
               type="button"
               onClick={() => { localStorage.removeItem('access_token'); localStorage.removeItem('shop_id'); window.location.href = '/login'; }}
-              className="flex flex-col items-center gap-1 p-3 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
             >
-              <LogOut className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Logout</span>
+              <LogOut className="w-6 h-6" />
+              <span className="text-[11px] font-medium">Logout</span>
             </button>
           </nav>
         </div>

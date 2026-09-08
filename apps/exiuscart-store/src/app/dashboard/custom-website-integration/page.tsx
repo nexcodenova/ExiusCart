@@ -187,14 +187,17 @@ export default function CustomWebsiteIntegrationPage() {
 
   // Credentials are stored in the same two generic columns for every
   // gateway (see checkout.py) — what changes is what to call them.
-  const GATEWAY_LABELS: Record<string, { name: string; idLabel: string; idPlaceholder: string; secretLabel: string; secretPlaceholder: string; needsWebhookSecret?: boolean; note?: string }> = {
-    payhere: { name: 'PayHere', idLabel: 'Merchant ID', idPlaceholder: 'Your PayHere Merchant ID', secretLabel: 'Merchant Secret', secretPlaceholder: 'Your PayHere Merchant Secret' },
-    stripe: { name: 'Stripe', idLabel: 'Secret Key', idPlaceholder: 'sk_live_...', secretLabel: 'Webhook Signing Secret', secretPlaceholder: 'whsec_...' },
-    paypal: { name: 'PayPal', idLabel: 'Client ID', idPlaceholder: 'Your PayPal Client ID', secretLabel: 'Client Secret', secretPlaceholder: 'Your PayPal Client Secret' },
+  const GATEWAY_LABELS: Record<string, { name: string; bestFor: string; idLabel: string; idPlaceholder: string; secretLabel: string; secretPlaceholder: string; needsWebhookSecret?: boolean; note?: string }> = {
+    payhere: { name: 'PayHere', bestFor: 'Sri Lanka — settles in LKR', idLabel: 'Merchant ID', idPlaceholder: 'Your PayHere Merchant ID', secretLabel: 'Merchant Secret', secretPlaceholder: 'Your PayHere Merchant Secret' },
+    stripe: { name: 'Stripe', bestFor: 'Global card payments — requires a registered business', idLabel: 'Secret Key', idPlaceholder: 'sk_live_...', secretLabel: 'Webhook Signing Secret', secretPlaceholder: 'whsec_...' },
+    paypal: { name: 'PayPal', bestFor: 'Global reach — requires a registered business', idLabel: 'Client ID', idPlaceholder: 'Your PayPal Client ID', secretLabel: 'Client Secret', secretPlaceholder: 'Your PayPal Client Secret' },
     // No business registration needed to accept payment — Whop is
     // Merchant of Record. Unlike the others, the amount is computed live
     // per order (a Checkout Configuration), not a fixed pre-made product.
-    whop: { name: 'Whop (no business registration needed)', idLabel: 'Company ID', idPlaceholder: 'biz_xxxxxxxx', secretLabel: 'API Key', secretPlaceholder: '••••••••••••••••', needsWebhookSecret: true, note: 'Whop is Merchant of Record — you can accept payment without a registered business.' },
+    whop: {
+      name: 'Whop', bestFor: 'Any country — no business registration needed', idLabel: 'Company ID', idPlaceholder: 'biz_xxxxxxxx', secretLabel: 'API Key', secretPlaceholder: '••••••••••••••••',
+      needsWebhookSecret: true, note: 'Whop is Merchant of Record — you can accept payment without a registered business.',
+    },
   };
   const gatewayLabels = GATEWAY_LABELS[selectedGateway] ?? GATEWAY_LABELS.payhere;
 
@@ -351,12 +354,33 @@ export default function CustomWebsiteIntegrationPage() {
               <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{gatewayError}</div>
             )}
             <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Gateway</label>
-              <select value={selectedGateway} onChange={(e) => setSelectedGateway(e.target.value)}
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm">
-                {Object.entries(GATEWAY_LABELS).map(([value, l]) => <option key={value} value={value}>{l.name}</option>)}
-              </select>
-              <p className="text-xs text-muted-foreground mt-1.5">
+              <label className="text-sm text-muted-foreground mb-2 block">Gateway</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {Object.entries(GATEWAY_LABELS).map(([value, l]) => {
+                  const active = selectedGateway === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setSelectedGateway(value)}
+                      className={`text-left p-4 rounded-xl border transition-all ${
+                        active
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                          : 'border-border hover:border-primary/30 hover:bg-muted/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-foreground text-sm">{l.name}</p>
+                        <span className={`shrink-0 w-4 h-4 rounded-full border flex items-center justify-center ${active ? 'border-primary bg-primary' : 'border-border'}`}>
+                          {active && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{l.bestFor}</p>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
                 {gatewayLabels.note ?? "Switching gateways doesn't require any change to how your storefront calls checkout."}
               </p>
             </div>

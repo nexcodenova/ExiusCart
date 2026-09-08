@@ -9,6 +9,7 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { TrialBanner } from '@/components/layout/trial-banner';
 import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { ConfirmProvider } from '@/components/ui/confirm-dialog';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { applyBrandColor } from '@/lib/brand-color';
 
 // Only page an expired trial can still reach — everywhere else (Quotations,
@@ -31,8 +32,6 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const mobileMenuOpen = false; // sidebar is desktop-only; mobile uses bottom nav
   const [authed, setAuthed] = useState(false);
   const [trialExpired, setTrialExpired] = useState(false);
   const router = useRouter();
@@ -109,24 +108,22 @@ export default function DashboardLayout({
   return (
     <CurrencyProvider>
       <ConfirmProvider>
-        <div className="min-h-screen bg-background">
-          <ShopSidebar
-            collapsed={sidebarCollapsed}
-            onCollapsedChange={setSidebarCollapsed}
-            mobileOpen={mobileMenuOpen}
-            onMobileClose={() => {}}
-          />
-          <div
-            className={`min-h-screen transition-all duration-300 pb-20 lg:pb-0 ${
-              sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
-            }`}
-          >
+        {/* SidebarProvider now owns collapse state itself (cookie-persisted
+            — a real improvement over the old plain useState, which reset
+            on every reload). Mobile is untouched: SidebarInset's own
+            min-h-screen + the pb-20 here still reserve the same room for
+            MobileBottomNav as before; nothing here ever opens the
+            sidebar's mobile Sheet, so mobile keeps looking exactly as it
+            did pre-rebuild. */}
+        <SidebarProvider>
+          <ShopSidebar />
+          <SidebarInset className="min-h-screen pb-20 lg:pb-0">
             <Header onMenuClick={() => {}} />
             <TrialBanner />
             <main className="p-4 lg:p-6">{children}</main>
-          </div>
-          <MobileBottomNav />
-        </div>
+          </SidebarInset>
+        </SidebarProvider>
+        <MobileBottomNav />
       </ConfirmProvider>
     </CurrencyProvider>
   );

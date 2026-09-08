@@ -14,6 +14,8 @@ import {
 } from 'recharts';
 import { dashboardApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { SparkAreaChart } from '@/components/charts/SparkChart';
+import { BarChart as TremorBarChart } from '@/components/charts/BarChart';
 
 interface DashboardStats {
   sales: number; salesChange: number; orders: number;
@@ -64,6 +66,11 @@ function buildHourly(data: { hour: number; orders: number; sales: number }[]) {
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  // Which donut segment is currently hovered, per chart — dims the other
+  // slices and drives a floating detail box anchored above the ring (see
+  // the box render below); the center label itself always just shows Total.
+  const [activeChannelIdx, setActiveChannelIdx] = useState<number | null>(null);
+  const [activeStatusIdx, setActiveStatusIdx] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const { fmt, sym, convert } = useCurrency();
   const compactFmt = (n: number) => `${sym}${new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(convert(n))}`;
@@ -134,8 +141,8 @@ export default function DashboardPage() {
 
       {/* ── Overview ── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <PeriodCard label="Total Revenue" value={L ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)} delta={monthlyTrendDelta ?? undefined} icon={Wallet} color="indigo" />
-        <PeriodCard label="Total Orders" value={L ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()} delta={monthlyOrdersTrendDelta ?? undefined} icon={ShoppingBag} color="violet" plain />
+        <PeriodCard label="Total Revenue" value={L ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)} delta={monthlyTrendDelta ?? undefined} icon={Wallet} color="indigo" sparkData={stats?.monthlyRevenue12m} sparkKey="revenue" />
+        <PeriodCard label="Total Orders" value={L ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()} delta={monthlyOrdersTrendDelta ?? undefined} icon={ShoppingBag} color="violet" plain sparkData={stats?.monthlyRevenue12m} sparkKey="orders" />
         <PeriodCard label="Total Customers" value={L ? '—' : (stats?.customers ?? 0).toLocaleString()} icon={Users} color="emerald" plain />
         <PeriodCard label="Active Products" value={L ? '—' : (stats?.products ?? 0).toLocaleString()} icon={Boxes} color="amber" plain />
       </div>
@@ -247,15 +254,36 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-2">
             <div className="relative mx-auto h-40 w-40 mb-4">
+              {/* Floating detail box on hover — anchored above the ring so it
+                  never sits over the center Total label (the old cursor-
+                  following tooltip used to land right on top of it). */}
+              {activeChannelIdx !== null && channelPie[activeChannelIdx] && (
+                <div className="pointer-events-none absolute -top-2 left-1/2 z-10 w-max max-w-[10rem] -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                  <p className="flex items-center gap-1.5 font-semibold text-foreground">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: channelPie[activeChannelIdx].color }} />
+                    <span className="truncate">{channelPie[activeChannelIdx].name}</span>
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    <span className="font-bold tabular-nums text-foreground">{fmt(channelPie[activeChannelIdx].value, 0)}</span>
+                    {channelTotal > 0 && <> · {Math.round((channelPie[activeChannelIdx].value / channelTotal) * 100)}%</>}
+                  </p>
+                </div>
+              )}
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={channelPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none" isAnimationActive animationDuration={700} animationEasing="ease-out">
-                    {channelPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  <Pie
+                    data={channelPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none"
+                    isAnimationActive animationDuration={700} animationEasing="ease-out"
+                    onMouseEnter={(_, i) => setActiveChannelIdx(i)}
+                    onMouseLeave={() => setActiveChannelIdx(null)}
+                  >
+                    {channelPie.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} opacity={activeChannelIdx === null || activeChannelIdx === i ? 1 : 0.35} />
+                    ))}
                   </Pie>
-                  <Tooltip formatter={(v: any, n: any) => [fmt(v, 0), n]} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
                 <span className="text-[10px] text-muted-foreground">Total</span>
                 <span className="text-sm font-bold tabular-nums text-foreground">{compactFmt(channelTotal)}</span>
               </div>
@@ -297,15 +325,33 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-2">
             <div className="relative mx-auto h-40 w-40 mb-4">
+              {activeStatusIdx !== null && statusPie[activeStatusIdx] && (
+                <div className="pointer-events-none absolute -top-2 left-1/2 z-10 w-max max-w-[10rem] -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                  <p className="flex items-center gap-1.5 font-semibold text-foreground">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: statusPie[activeStatusIdx].color }} />
+                    <span className="truncate">{statusPie[activeStatusIdx].name}</span>
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    <span className="font-bold tabular-nums text-foreground">{statusPie[activeStatusIdx].value}</span>
+                    {totalOrders > 0 && <> · {Math.round((statusPie[activeStatusIdx].value / totalOrders) * 100)}%</>}
+                  </p>
+                </div>
+              )}
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={statusPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none" isAnimationActive animationDuration={700} animationEasing="ease-out">
-                    {statusPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  <Pie
+                    data={statusPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none"
+                    isAnimationActive animationDuration={700} animationEasing="ease-out"
+                    onMouseEnter={(_, i) => setActiveStatusIdx(i)}
+                    onMouseLeave={() => setActiveStatusIdx(null)}
+                  >
+                    {statusPie.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} opacity={activeStatusIdx === null || activeStatusIdx === i ? 1 : 0.35} />
+                    ))}
                   </Pie>
-                  <Tooltip formatter={(v: any, n: any) => [v, n]} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
                 <span className="text-[10px] text-muted-foreground">Total</span>
                 <span className="text-sm font-bold text-foreground">{totalOrders}</span>
               </div>
@@ -381,7 +427,7 @@ export default function DashboardPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }} tickLine={false} axisLine={false} interval={5} />
                   <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip
-                    cursor={{ fill: '#6366f1', fillOpacity: 0.06, radius: 3 }}
+                    cursor={false}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       return (
@@ -409,31 +455,19 @@ export default function DashboardPage() {
             {(stats?.dailyBreakdown ?? []).every(d => d.orders === 0) ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No orders yet</div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats?.dailyBreakdown ?? []} margin={{ top: 4, right: 4, left: -28, bottom: 0 }} barSize={28}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.12} vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip
-                    cursor={{ fill: '#6366f1', fillOpacity: 0.06, radius: 4 }}
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null;
-                      return (
-                        <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
-                          <p className="font-medium text-foreground mb-1">{label}</p>
-                          <p className="text-muted-foreground">Orders: <span className="font-semibold text-foreground">{payload[0]?.value}</span></p>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Bar dataKey="orders" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={800} animationEasing="ease-out">
-                    {(stats?.dailyBreakdown ?? []).map((d, i) => {
-                      const maxO = Math.max(...(stats?.dailyBreakdown ?? []).map(x => x.orders), 1);
-                      return <Cell key={i} fill={d.orders === maxO ? '#6366f1' : '#6366f120'} />;
-                    })}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              // Swapped to the shared TremorBarChart — the old inline
+              // recharts version drew a full plot-height gray rectangle
+              // behind whatever day was hovered (confirmed visually, same
+              // root cause as the Reports page's Day-of-week chart).
+              <TremorBarChart
+                className="h-full"
+                data={(stats?.dailyBreakdown ?? []).map((d) => ({ day: d.day, Orders: d.orders }))}
+                index="day"
+                categories={['Orders']}
+                colors={['indigo']}
+                showLegend={false}
+                allowDecimals={false}
+              />
             )}
           </div>
         </div>
@@ -553,9 +587,14 @@ export default function DashboardPage() {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function PeriodCard({ icon: Icon, label, value, sub, delta, color, plain, value2, label2 }: {
+function PeriodCard({ icon: Icon, label, value, sub, delta, color, plain, value2, label2, sparkData, sparkKey }: {
   icon: React.ElementType; label: string; value: string; sub?: string;
   delta?: number; color: string; plain?: boolean; value2?: string; label2?: string;
+  // Optional inline trend line (SparkAreaChart) — real month-over-month
+  // data already fetched for this dashboard (monthlyRevenue12m), just
+  // never visualized before. sparkKey picks which field off each entry.
+  sparkData?: { month: string; revenue: number; orders: number; growth: number }[];
+  sparkKey?: 'revenue' | 'orders';
 }) {
   const colorMap: Record<string, string> = {
     indigo: 'text-indigo-600 dark:text-indigo-400',
@@ -576,7 +615,7 @@ function PeriodCard({ icon: Icon, label, value, sub, delta, color, plain, value2
       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconMap[color]}`}>
         <Icon className="h-4 w-4" />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-muted-foreground truncate">{label}</p>
         <p className={`text-lg font-bold leading-tight tabular-nums ${plain ? 'text-foreground' : colorMap[color]}`}>{value}</p>
         {delta !== undefined && delta !== 0 && (
@@ -587,6 +626,15 @@ function PeriodCard({ icon: Icon, label, value, sub, delta, color, plain, value2
         )}
         {sub && !delta && <p className="text-[11px] text-muted-foreground truncate">{sub}</p>}
       </div>
+      {sparkData && sparkKey && sparkData.length > 1 && (
+        <SparkAreaChart
+          data={sparkData}
+          index="month"
+          categories={[sparkKey]}
+          colors={[(color === 'indigo' || color === 'violet' || color === 'emerald' || color === 'amber' || color === 'rose' ? color : 'gray') as any]}
+          className="h-10 w-16 shrink-0"
+        />
+      )}
     </div>
   );
 }

@@ -15,6 +15,10 @@ import {
   Star, MapPin, ShoppingBag, LayoutGrid, FormInput, Coins,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi } from '@/lib/api';
+import {
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
+  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
+} from '@/components/ui/sidebar';
 
 interface MenuItem {
   href: string;
@@ -147,7 +151,8 @@ const GROUPS: MenuGroup[] = [
   },
 ];
 
-// Flat list for mobile bottom nav / external use
+// Flat list for mobile bottom nav / external use — untouched, MobileBottomNav
+// still reads these directly and keeps working exactly as before.
 export const menuItems = GROUPS.flatMap(g => g.items);
 
 // Premium-only hrefs — used by mobile nav to gate these items
@@ -161,15 +166,19 @@ function isPremiumGroup(groupId: string): boolean {
   return PREMIUM_GROUPS.has(groupId);
 }
 
-interface SidebarProps {
-  collapsed: boolean;
-  onCollapsedChange: (c: boolean) => void;
-  mobileOpen: boolean;
-  onMobileClose: () => void;
-}
-
-export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobileClose }: SidebarProps) {
+// Rebuilt on shadcn/ui's real Sidebar primitive (components/ui/sidebar.tsx)
+// instead of a hand-rolled fixed-position <aside> — desktop collapse/expand
+// and all its own state (now cookie-persisted, a free upgrade the old
+// version didn't have) come from SidebarProvider/useSidebar. Mobile is
+// deliberately untouched: MobileBottomNav is still the only mobile nav,
+// confirmed with the user before this rebuild — nothing here ever calls
+// setOpenMobile(true), so the primitive's own mobile Sheet path simply
+// never triggers.
+export function ShopSidebar() {
   const pathname = usePathname();
+  const { state, toggleSidebar } = useSidebar();
+  const collapsed = state === 'collapsed';
+
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
@@ -192,15 +201,11 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
         plan: plan?.plan_type || 'free_trial',
         planLabel: plan?.name || 'Free Trial',
         daysLeft: plan?.daysLeft ?? null,
-        // Detected via an active TheDersi connection, not plan_type —
-        // TheDersi's Growth/Premium tier maps to plan_type='starter', same
-        // as a direct customer, so a plan-string check alone misses them.
         isTheDersi: ((connRes as any)?.data ?? []).some((c: any) => c.channel_type === 'thedersi'),
       });
     }).catch(() => {});
   }, []);
 
-  // Auto-dismiss coming soon banner after 3 s
   useEffect(() => {
     if (!showComingSoon) return;
     const t = setTimeout(() => setShowComingSoon(false), 3000);
@@ -218,17 +223,13 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
 
   function isGroupActive(group: MenuGroup) {
     return group.items.some(item =>
-      item.href === '/dashboard'
-        ? pathname === item.href
-        : pathname.startsWith(item.href)
+      item.href === '/dashboard' ? pathname === item.href : pathname.startsWith(item.href)
     );
   }
 
   function isItemActive(item: MenuItem) {
     if (item.href === '/dashboard') return pathname === item.href;
     if (!(pathname === item.href || pathname.startsWith(item.href + '/'))) return false;
-    // Nested routes (e.g. /dashboard/dropshipping and /dashboard/dropshipping/import)
-    // both prefix-match on the import page — only the longest (most specific) wins.
     const allHrefs = GROUPS.flatMap(g => g.items.map(i => i.href));
     const longestMatch = allHrefs
       .filter(h => pathname === h || pathname.startsWith(h + '/'))
@@ -238,22 +239,11 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
 
   return (
     <>
-      {/* Mobile Overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onMobileClose} />
-      )}
-
-      <aside className={`fixed left-0 top-0 h-full flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 z-50
-        ${collapsed ? 'w-[72px]' : 'w-64'}
-        ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        {/* Logo — collapsed is only 72px wide (40px of actual room once
-            px-4's 32px is subtracted), and the 28px icon plus the ~32px
-            chevron toggle button need ~60px side by side — they were
-            overflowing/clipping each other in a single justify-between row.
-            Collapsed stacks them vertically instead, using the header's
-            height rather than fighting for horizontal space. */}
-        <div className={`border-b border-sidebar-border shrink-0 ${collapsed ? 'flex flex-col items-center justify-center gap-1.5 py-3' : 'h-16 flex items-center justify-between px-4'}`}>
+      <Sidebar collapsible="icon">
+        {/* Logo — collapsed is icon-width only, so logo + toggle stack
+            vertically instead of fighting for horizontal space, same
+            layout the old fixed <aside> version used. */}
+        <SidebarHeader className={`border-b border-sidebar-border ${collapsed ? 'flex flex-col items-center justify-center gap-1.5 py-3' : 'h-16 flex-row flex items-center justify-between px-4'}`}>
           <Link href="/dashboard" className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center' : ''}`}>
             <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} className="flex-shrink-0" />
             {!collapsed && (
@@ -262,142 +252,147 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
               </span>
             )}
           </Link>
-          <button type="button" onClick={onMobileClose} aria-label="Close sidebar"
-            className={`p-1.5 rounded-lg text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition lg:hidden ${collapsed ? 'hidden' : ''}`}>
-            <X className="w-5 h-5" />
-          </button>
-          <button type="button" onClick={() => onCollapsedChange(!collapsed)}
+          <button type="button" onClick={toggleSidebar}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="p-1 rounded-lg text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition hidden lg:block">
+            className="p-1 rounded-lg text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition">
             <ChevronLeft className={`w-4 h-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
           </button>
-        </div>
+        </SidebarHeader>
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto">
-          <div className="p-2 space-y-0.5">
-            {GROUPS.map(group => {
-              const plan = (shopData?.plan || '').toLowerCase();
-              const canAccessPremium = plan === 'premium' || plan === 'thedersi_pro';
-              const isTheDersiBasicPlan = plan === 'thedersi_basic';
-              const locked = isPremiumGroup(group.id) && !canAccessPremium;
-              // Premium/TheDersi Pro users see HR & Services as "Coming Soon"
-              const isComingSoonGroup = isPremiumGroup(group.id) && canAccessPremium;
-              const groupActive = isGroupActive(group);
-              const isOpen = openGroups.has(group.id) || collapsed;
+        <SidebarContent>
+          <SidebarGroup className="p-2 space-y-0.5">
+            <SidebarGroupContent>
+              {GROUPS.map(group => {
+                const plan = (shopData?.plan || '').toLowerCase();
+                const canAccessPremium = plan === 'premium' || plan === 'thedersi_pro';
+                const isTheDersiBasicPlan = plan === 'thedersi_basic';
+                const locked = isPremiumGroup(group.id) && !canAccessPremium;
+                const isComingSoonGroup = isPremiumGroup(group.id) && canAccessPremium;
+                const groupActive = isGroupActive(group);
+                const isOpen = openGroups.has(group.id) || collapsed;
+                const isTheDersiPlan = shopData?.isTheDersi ?? false;
 
-              const isTheDersiPlan = shopData?.isTheDersi ?? false;
-              if (group.label === null) {
-                return group.items
-                  .filter(item => !(item.href === '/dashboard/dropshipping' && isTheDersiPlan))
-                  .map(item => {
-                  const Icon = item.icon;
-                  const active = isItemActive(item);
+                if (group.label === null) {
                   return (
-                    <Link key={item.href} href={item.href} onClick={onMobileClose}
-                      title={collapsed ? item.label : undefined}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                        active ? 'bg-indigo-500/10 text-indigo-400 font-semibold' : 'text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                      }`}>
-                      <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
-                      {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
-                    </Link>
+                    <SidebarMenu key={group.id}>
+                      {group.items
+                        .filter(item => !(item.href === '/dashboard/dropshipping' && isTheDersiPlan))
+                        .map(item => {
+                          const Icon = item.icon;
+                          const active = isItemActive(item);
+                          return (
+                            <SidebarMenuItem key={item.href}>
+                              <SidebarMenuButton asChild isActive={active} tooltip={collapsed ? item.label : undefined}
+                                className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}>
+                                <Link href={item.href}>
+                                  <Icon className="w-5 h-5 flex-shrink-0" />
+                                  <span className="font-medium text-sm">{item.label}</span>
+                                </Link>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          );
+                        })}
+                    </SidebarMenu>
                   );
-                });
-              }
+                }
 
-              return (
-                <div key={group.id} className="pt-4 first:pt-1">
-                  {!collapsed && (
-                    <button type="button" onClick={() => toggleGroup(group.id)}
-                      className={`w-full flex items-center gap-2 px-3 py-1 rounded-lg transition-all text-left ${
-                        groupActive ? 'text-sidebar-foreground' : 'text-sidebar-muted-foreground hover:text-sidebar-foreground'
-                      }`}>
-                      <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
-                      {locked && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">PRO</span>}
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
-                    </button>
-                  )}
+                return (
+                  <div key={group.id} className="pt-4 first:pt-1">
+                    {!collapsed && (
+                      <button type="button" onClick={() => toggleGroup(group.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-1 rounded-lg transition-all text-left ${
+                          groupActive ? 'text-sidebar-foreground' : 'text-sidebar-muted-foreground hover:text-sidebar-foreground'
+                        }`}>
+                        <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
+                        {locked && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">PRO</span>}
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+                      </button>
+                    )}
 
-                  {(isOpen || collapsed) && (
-                    <div className={collapsed ? 'space-y-0.5 mt-0.5' : 'mt-1 space-y-0.5'}>
-                      {group.items.map(item => {
-                        const Icon = item.icon;
-                        const active = isItemActive(item);
-                        if (locked) {
-                          return (
-                            <div key={item.href} className="relative group/lock">
-                              <button type="button"
-                                onClick={() => isTheDersiBasicPlan ? setShowTheDersiModal(true) : setShowUpgradeModal(true)}
-                                title={collapsed ? item.label : undefined}
-                                className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm w-full text-left text-sidebar-muted-foreground/50 hover:bg-sidebar-accent/50 cursor-pointer">
-                                <Icon className={`w-4 h-4 flex-shrink-0 ${collapsed ? 'mx-auto w-5 h-5' : ''}`} />
-                                {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
-                                {!collapsed && <Shield className="w-3 h-3 text-amber-400 flex-shrink-0" />}
-                              </button>
-                              {/* Hover tooltip */}
-                              {!collapsed && (
-                                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-[60] hidden group-hover/lock:block pointer-events-none">
-                                  <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
-                                    {isTheDersiBasicPlan ? 'Only for TheDersi Pro' : 'Only for Premium plan'}
+                    {(isOpen || collapsed) && (
+                      <SidebarMenu className={collapsed ? 'space-y-0.5 mt-0.5' : 'mt-1 space-y-0.5'}>
+                        {group.items.map(item => {
+                          const Icon = item.icon;
+                          const active = isItemActive(item);
+
+                          if (locked) {
+                            return (
+                              <SidebarMenuItem key={item.href} className="relative group/lock">
+                                <SidebarMenuButton
+                                  onClick={() => isTheDersiBasicPlan ? setShowTheDersiModal(true) : setShowUpgradeModal(true)}
+                                  tooltip={collapsed ? item.label : undefined}
+                                  className="text-sidebar-muted-foreground/50 hover:bg-sidebar-accent/50"
+                                >
+                                  <Icon className="w-4 h-4 flex-shrink-0" />
+                                  {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
+                                  {!collapsed && <Shield className="w-3 h-3 text-amber-400 flex-shrink-0" />}
+                                </SidebarMenuButton>
+                                {!collapsed && (
+                                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-[60] hidden group-hover/lock:block pointer-events-none">
+                                    <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
+                                      {isTheDersiBasicPlan ? 'Only for TheDersi Pro' : 'Only for Premium plan'}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        }
-                        if (isComingSoonGroup) {
+                                )}
+                              </SidebarMenuItem>
+                            );
+                          }
+                          if (isComingSoonGroup) {
+                            return (
+                              <SidebarMenuItem key={item.href}>
+                                <SidebarMenuButton
+                                  isActive={active}
+                                  tooltip={collapsed ? item.label : undefined}
+                                  onClick={() => setShowComingSoon(true)}
+                                  className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}
+                                >
+                                  <Icon className="w-4 h-4 flex-shrink-0" />
+                                  {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
+                                  {!collapsed && <Sparkles className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            );
+                          }
                           return (
-                            <button key={item.href} type="button"
-                              onClick={() => { setShowComingSoon(true); onMobileClose(); }}
-                              title={collapsed ? item.label : undefined}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-sm w-full text-left ${
-                                active ? 'bg-indigo-500/10 text-indigo-400 font-semibold' : 'text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                              }`}>
-                              <Icon className={`w-4 h-4 flex-shrink-0 ${collapsed ? 'mx-auto w-5 h-5' : ''}`} />
-                              {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
-                              {!collapsed && <Sparkles className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
-                            </button>
+                            <SidebarMenuItem key={item.href}>
+                              <SidebarMenuButton asChild isActive={active} tooltip={collapsed ? item.label : undefined}
+                                className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}>
+                                <Link href={item.href}>
+                                  <Icon className="w-4 h-4 flex-shrink-0" />
+                                  <span className="font-medium">{item.label}</span>
+                                </Link>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
                           );
-                        }
-                        return (
-                          <Link key={item.href} href={item.href} onClick={onMobileClose}
-                            title={collapsed ? item.label : undefined}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-sm ${
-                              active ? 'bg-indigo-500/10 text-indigo-400 font-semibold' : 'text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                            }`}>
-                            <Icon className={`w-4 h-4 flex-shrink-0 ${collapsed ? 'mx-auto w-5 h-5' : ''}`} />
-                            {!collapsed && <span className="font-medium">{item.label}</span>}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </nav>
+                        })}
+                      </SidebarMenu>
+                    )}
+                  </div>
+                );
+              })}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-        {/* Footer */}
-        <div className="shrink-0 border-t border-sidebar-border bg-sidebar">
-          <div className="p-3">
-            <button
-              type="button"
-              aria-label="Logout"
-              onClick={() => {
-                localStorage.removeItem('access_token');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
-              }}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-muted-foreground hover:bg-destructive/10 hover:text-destructive w-full transition ${collapsed ? 'justify-center' : ''}`}
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span className="font-medium text-sm">Logout</span>}
-            </button>
-          </div>
-        </div>
-      </aside>
+        <SidebarFooter className="border-t border-sidebar-border">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip={collapsed ? 'Logout' : undefined}
+                onClick={() => {
+                  localStorage.removeItem('access_token');
+                  localStorage.removeItem('user');
+                  window.location.href = '/login';
+                }}
+                className="text-sidebar-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut className="w-5 h-5 flex-shrink-0" />
+                {!collapsed && <span className="font-medium text-sm">Logout</span>}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
 
       {/* Coming Soon top banner — for premium/thedersi_pro clicking HR & Services */}
       {showComingSoon && (
@@ -464,7 +459,6 @@ export function ShopSidebar({ collapsed, onCollapsedChange, mobileOpen, onMobile
           </div>
         </div>
       )}
-
     </>
   );
 }

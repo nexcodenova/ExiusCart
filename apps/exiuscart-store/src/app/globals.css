@@ -136,19 +136,13 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Gentle floating motion for the login page's feature cards — straight up
-   and down only, no tilt. Each card sets its own --card-delay/--card-duration
-   so the group drifts asynchronously instead of bobbing in lockstep. */
-@keyframes float-card {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-14px); }
-}
+/* Login page's feature-card icons — deliberately static now (was a
+   gentle up/down float, removed per explicit request: fixed on both
+   desktop and mobile, not just mobile). Class name kept as-is so the
+   markup using it (login/page.tsx) doesn't need touching — it just no
+   longer does anything. */
 .float-card {
-  animation: float-card var(--card-duration, 4s) ease-in-out infinite;
-  animation-delay: var(--card-delay, 0s);
-}
-@media (prefers-reduced-motion: reduce) {
-  .float-card { animation: none; }
+  animation: none;
 }
 
 /* Traveling-light border effect (see components/ui/border-beam.tsx) — a

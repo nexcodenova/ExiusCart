@@ -8,11 +8,14 @@ import {
   AlertCircle, CheckCircle, Clock, Flame, Snowflake,
 } from 'lucide-react';
 import {
-  ResponsiveContainer, ComposedChart, Area, Line, BarChart, Bar, PieChart, Pie, Cell,
+  ResponsiveContainer, ComposedChart, Area, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
 } from 'recharts';
+// (recharts' own BarChart/Bar removed — the Day-of-week chart below now
+// uses the shared TremorBarChart component instead)
 import { reportsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { BarChart as TremorBarChart } from '@/components/charts/BarChart';
 
 const PIE = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#a855f7', '#14b8a6'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -293,22 +296,28 @@ export default function ReportsPage() {
           <div className="grid gap-5 lg:grid-cols-3">
             <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
               <h2 className="mb-1 font-semibold text-foreground">Day-of-week performance</h2>
-              <p className="mb-4 text-xs text-muted-foreground">Average revenue earned per day of the week — best day highlighted</p>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dowChart} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="4 4" stroke="#94a3b8" strokeOpacity={0.18} vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={56} />
-                    <Tooltip content={<Tip fmt={fmt} />} cursor={{ fill: '#6366f1', fillOpacity: 0.06 }} />
-                    <Bar dataKey="sales" radius={[6, 6, 0, 0]} maxBarSize={52} isAnimationActive animationDuration={800} animationEasing="ease-out">
-                      {dowChart.map((d, i) => (
-                        <Cell key={i} fill={d.name === bestDow?.name ? '#6366f1' : '#6366f118'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <p className="mb-4 text-xs text-muted-foreground">
+                Average revenue earned per day of the week{bestDow?.sales ? ` — ${bestDow.name} is your best day` : ''}
+              </p>
+              {/* Swapped from the old inline recharts block (raw `cursor`
+                  fill on Tooltip) to the shared TremorBarChart — the old
+                  version drew a full plot-height gray rectangle behind
+                  whatever day was hovered, most obviously wrong on a
+                  zero-revenue day, confirmed visually before this change,
+                  not assumed. showCursor defaults to false specifically to
+                  avoid that. Loses the old per-bar "best day" color
+                  distinction (this component colors by data series, not
+                  by individual bar) — the caption above says which day it
+                  is instead. */}
+              <TremorBarChart
+                className="h-64"
+                data={dowChart.map((d) => ({ name: d.name, Revenue: d.sales }))}
+                index="name"
+                categories={['Revenue']}
+                colors={['indigo']}
+                showLegend={false}
+                valueFormatter={(n: number) => fmt(n)}
+              />
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
