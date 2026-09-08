@@ -1,6 +1,6 @@
 """
 Symmetric encryption for third-party credentials at rest — CJ Dropshipping
-password, supplier API keys (Zendrop/HyperSKU/Wiio). These were previously
+password, supplier API keys (HyperSKU). These were previously
 stored as base64 (CJ) or plain text (the others), neither of which is real
 encryption: anyone with database read access — a backup, a leaked dump —
 could recover every connected seller's real credentials instantly.

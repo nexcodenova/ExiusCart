@@ -19,9 +19,8 @@ interface SupplierLink {
 
 const SUPPLIER_LABELS: Record<string, string> = {
   cj: 'CJ Dropshipping',
-  zendrop: 'Zendrop',
   hypersku: 'HyperSKU',
-  wiio: 'Wiio',
+  eprolo: 'EPROLO',
   printful: 'Printful',
   aliexpress: 'AliExpress',
 };

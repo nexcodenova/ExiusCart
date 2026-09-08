@@ -81,9 +81,8 @@ export default function DropshipOrdersPage() {
           className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none">
           <option value="">All suppliers</option>
           <option value="cj">CJ Dropshipping</option>
-          <option value="zendrop">Zendrop</option>
           <option value="hypersku">HyperSKU</option>
-          <option value="wiio">Wiio</option>
+          <option value="eprolo">EPROLO</option>
         </select>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
           className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none">

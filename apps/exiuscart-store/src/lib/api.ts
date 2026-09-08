@@ -870,6 +870,16 @@ export const dropshipApi = {
     api.post(`/shops/${shopId}/dropship/connect/printful`, data),
   connectApiKey: (shopId: string, data: { supplier_type: string; api_key: string }) =>
     api.post(`/shops/${shopId}/dropship/connect/apikey`, data),
+  connectHyperSKU: (shopId: string, username: string, password: string) =>
+    api.post(`/shops/${shopId}/dropship/connect/hypersku`, { username, password }),
+  hyperskuSearch: (shopId: string, page = 1) =>
+    api.get(`/shops/${shopId}/dropship/hypersku/search`, { params: { page } }),
+  hyperskuMyProducts: (shopId: string, page = 1) =>
+    api.get(`/shops/${shopId}/dropship/hypersku/my-products`, { params: { page } }),
+  hyperskuProductDetail: (shopId: string, hyperskuPid: string) =>
+    api.get(`/shops/${shopId}/dropship/hypersku/product/${hyperskuPid}`),
+  hyperskuImport: (shopId: string, hyperskuPid: string, sellingPrice?: number) =>
+    api.post(`/shops/${shopId}/dropship/hypersku/import`, { hypersku_pid: hyperskuPid, selling_price: sellingPrice }),
   printfulCatalog: (shopId: string, categoryId?: number) =>
     api.get(`/shops/${shopId}/dropship/printful/catalog`, { params: categoryId ? { category_id: categoryId } : {} }),
   printfulProductDetail: (shopId: string, printfulId: number) =>

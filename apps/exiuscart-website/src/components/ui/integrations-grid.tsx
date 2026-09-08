@@ -349,7 +349,7 @@ export function IntegrationsGrid() {
                 Your product research engine, built into ExiusCart.
               </h3>
               <p className="text-gray-400 text-sm sm:text-base leading-relaxed mb-7 max-w-2xl">
-                Prodora finds winning products for you — sourced from CJ Dropshipping, private China suppliers, HyperSku, Zendrop, AliExpress, Alibaba and 1688 — complete with ready-made photos, videos and real reviews. Browse the catalog, pick what you want to sell, and one click adds it straight into your ExiusCart store, priced and ready to go.
+                Prodora finds winning products for you — sourced from CJ Dropshipping, private China suppliers, HyperSku, EPROLO, AliExpress, Alibaba and 1688 — complete with ready-made photos, videos and real reviews. Browse the catalog, pick what you want to sell, and one click adds it straight into your ExiusCart store, priced and ready to go.
               </p>
               <a
                 href="https://prodora.exiuscart.com"

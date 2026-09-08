@@ -36,8 +36,8 @@ const SUPPLIERS: Supplier[] = [
   { name: 'AliExpress', icon: ShoppingCart, blurb: 'Millions of products, direct from verified sellers.' },
   { name: '1688', icon: Boxes, blurb: "China's wholesale marketplace — factory-direct pricing." },
   { name: 'Alibaba', icon: Building2, blurb: "The world's largest B2B marketplace — bulk orders straight from manufacturers." },
-  { name: 'Zendrop', icon: Truck, blurb: 'US-based fast shipping for dropshipping stores.' },
   { name: 'HyperSku', icon: Zap, blurb: 'Branded packaging and fast Southeast Asia shipping.' },
+  { name: 'EPROLO', icon: Truck, blurb: 'Free to use, pay per order — fashion, gadgets & custom branding.' },
   { name: 'Print on Demand', icon: Shirt, blurb: 'Printful, Printify & Gelato — print, pack, ship per order.' },
 ];
 const SUPPLIERS_ROW_1 = SUPPLIERS.slice(0, 3);
@@ -294,7 +294,7 @@ export default function HomePage() {
             Every major supplier, one connection.
           </h2>
           <p className="text-gray-500 text-lg leading-relaxed">
-            CJ, AliExpress, 1688, Alibaba, Zendrop, HyperSku and print-on-demand — source real products without juggling a dozen separate accounts.
+            CJ, AliExpress, 1688, Alibaba, HyperSku, EPROLO and print-on-demand — source real products without juggling a dozen separate accounts.
           </p>
         </div>
         <div className="flex flex-col gap-4">

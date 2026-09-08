@@ -1,5 +1,5 @@
 """
-Dropshipping integration — CJ Dropshipping, Zendrop, HyperSKU, Wiio.
+Dropshipping integration — CJ Dropshipping, HyperSKU.
 
 Plan limits:
   starter    → CJ only (1 supplier)
@@ -43,15 +43,24 @@ router = APIRouter()
 # ── Supplier signup links (affiliate — update these when you have the links) ──
 SUPPLIER_SIGNUP_LINKS = {
     "cj":         "https://www.cjdropshipping.com/register.html?token=bce7840c-d60b-46e7-b39c-872e1572796c",  # CJ affiliate — 2% of referred sellers' CJ revenue for 1yr
-    "zendrop":    "https://app.zendrop.com/signup",                 # replace with affiliate link
     "hypersku":   "https://www.hypersku.com/register",              # replace with affiliate link
-    "wiio":       "https://wiio.com/register",                      # replace with affiliate link
-    # Real order-placement API exists (AliExpress Open Platform's
-    # AE-Dropshipper category: createOrder/shippingInfo/productDetails),
-    # but it's gated behind an app application + audit — ExiusCart hasn't
-    # been approved yet, so this is scaffolding: the connection is stored
-    # the same way as the other API-key suppliers, but nothing actually
-    # calls AliExpress until real App Key/Secret + OAuth are wired in.
+    # Free, no monthly fee (confirmed — EPROLO's own "forever free" policy,
+    # pay product+shipping only, same shape as CJ/HyperSKU). Their real API
+    # docs aren't public though — confirmed via search: getting them requires
+    # messaging EPROLO's own support chat (the avatar on eprolo.com/eprolo-api/)
+    # and asking, same gate HyperSKU's docs were behind until a real account
+    # surfaced them. Scaffolding only until those docs come back: connect via
+    # a pasted API key (unverified, no endpoint to check it against yet), no
+    # browse/import/order-forwarding built.
+    "eprolo":     "https://eprolo.com/",
+    # OAuth, product fetch/search, import, order placement, shipping
+    # estimate, and tracking sync are all fully wired against AliExpress
+    # Open Platform's real AE-Dropshipper API (createOrder/shippingInfo/
+    # productDetails). It self-disables with a clean 503 if
+    # ALIEXPRESS_APP_KEY/ALIEXPRESS_APP_SECRET aren't set — those only exist
+    # once ExiusCart's own app is approved by AliExpress's app-review
+    # process, so whether this is actually live depends on that approval,
+    # not on any code here.
     "aliexpress": "https://developers.aliexpress.com/",
     # 1688.com (Alibaba's Chinese domestic wholesale marketplace) has no
     # direct foreign-facing open API — real access goes through a
@@ -112,6 +121,282 @@ async def _cj_fetch_stock(vid: str, token: str) -> Optional[int]:
         return None
 PRINTFUL_BASE = "https://api.printful.com"
 
+# HyperSKU — confirmed from real, complete endpoint docs (username/password
+# → token, plus product/list and getPrivateProduct with full field names).
+# Two auth modes exist: a full OAuth app flow
+# (clientId/clientSecret, needs ExiusCart to register an app at
+# app.hypersku.com/application/auth — a platform-level step, not done),
+# and a simpler username+password "rapid integration" mode that just needs
+# the SELLER's own HyperSKU account manager to flip on API access for their
+# account — same shape as CJ's now-deprecated email+password mode, so this
+# reuses DropshipConnection's existing supplier_email/supplier_password_enc
+# columns rather than adding new ones. Order creation uses getLogisticsInfo-Sku
+# (pick a shipping option) then orders/create — see fulfill_order.
+HYPERSKU_BASE = "https://api.hypersku.com/api"
+
+
+async def _hypersku_get_token(username: str, password: str) -> str:
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(f"{HYPERSKU_BASE}/auth/admin/token", json={
+            "username": username,
+            "password": password,
+        })
+    try:
+        data = r.json()
+    except Exception:
+        raise HTTPException(status_code=502, detail="HyperSKU returned a non-JSON response.")
+    if data.get("status") != 0 or not data.get("token"):
+        logger.error(f"[HyperSKU Auth] login failed — status={r.status_code} response={data}")
+        raise HTTPException(status_code=400, detail={
+            "error": "hypersku_auth_failed",
+            "message": data.get("message") or "Could not connect to HyperSKU. Check your username/password, and confirm API access is enabled on your HyperSKU account (ask your Account Manager).",
+        })
+    return data["token"]
+
+
+async def _hypersku_ensure_token(conn: DropshipConnection, db: Session) -> str:
+    """HyperSKU's token docs don't specify an expiry/refresh shape for this
+    mode, so — like CJ before token caching was worth it — just re-auth each
+    time using the stored username/password rather than guessing an expiry."""
+    if not conn.supplier_email or not conn.supplier_password_enc:
+        raise HTTPException(status_code=400, detail={
+            "error": "hypersku_reconnect_required",
+            "message": "HyperSKU session expired. Please reconnect your HyperSKU account.",
+        })
+    password = decrypt(conn.supplier_password_enc)
+    token = await _hypersku_get_token(conn.supplier_email, password)
+    conn.access_token = token
+    db.commit()
+    return token
+
+
+def _parse_hypersku_product(p: dict) -> dict:
+    skus = p.get("skuList") or []
+    primary = skus[0] if skus else {}
+    return {
+        "pid": str(p.get("productId") or ""),
+        "name": p.get("subject") or "",
+        "image": primary.get("image") or (p.get("images") or [""])[0],
+        "images": p.get("images") or [],
+        "cost_price": float(primary.get("discountPrice") or primary.get("price") or 0),
+        "category": p.get("category") or "",
+        "description": p.get("description") or "",
+        "sku": str(primary.get("skuId") or ""),
+        "stock": sum(int(s.get("inventory") or 0) for s in skus) if skus else None,
+    }
+
+
+async def _get_hypersku_conn_or_400(shop_id: int, db: Session) -> DropshipConnection:
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id,
+        DropshipConnection.supplier_type == "hypersku",
+        DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail={
+            "error": "hypersku_not_connected",
+            "message": "Connect HyperSKU first in the Dropshipping section.",
+        })
+    return conn
+
+
+class HyperSKUConnectIn(BaseModel):
+    username: str
+    password: str
+
+
+@router.post("/shops/{shop_id}/dropship/connect/hypersku")
+async def connect_hypersku(
+    shop_id: int,
+    data: HyperSKUConnectIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    _check_supplier_allowed(plan, "hypersku", shop_id, db)
+
+    # Verify against HyperSKU's real API before saving — same discipline as CJ.
+    token = await _hypersku_get_token(data.username, data.password)
+
+    existing = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id,
+        DropshipConnection.supplier_type == "hypersku",
+    ).first()
+    enc_password = encrypt(data.password)
+    if existing:
+        existing.supplier_email = data.username
+        existing.supplier_password_enc = enc_password
+        existing.access_token = token
+        existing.is_active = True
+    else:
+        db.add(DropshipConnection(
+            shop_id=shop_id,
+            supplier_type="hypersku",
+            supplier_email=data.username,
+            supplier_password_enc=enc_password,
+            access_token=token,
+        ))
+    db.commit()
+    return {"connected": True, "supplier_type": "hypersku", "message": "HyperSKU connected successfully."}
+
+
+@router.get("/shops/{shop_id}/dropship/hypersku/search")
+async def hypersku_search_products(
+    shop_id: int,
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+        raise HTTPException(status_code=403, detail="HyperSKU product browse is not available on your plan.")
+
+    conn = await _get_hypersku_conn_or_400(shop_id, db)
+    token = await _hypersku_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{HYPERSKU_BASE}/customer/admin/product/list", params={"page": page}, headers={"Authorization": token})
+    data = r.json()
+    if data.get("status") != 0:
+        raise HTTPException(status_code=502, detail=data.get("message") or "HyperSKU API error.")
+
+    rows = (data.get("data") or {}).get("rows") or []
+    return {"products": [_parse_hypersku_product(p) for p in rows], "total": (data.get("data") or {}).get("total", 0), "page": page}
+
+
+@router.get("/shops/{shop_id}/dropship/hypersku/my-products")
+async def hypersku_my_products(
+    shop_id: int,
+    page: int = 1,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """The seller's own curated shortlist on HyperSKU's site — same role as
+    CJ's 'My Product' tab."""
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+        raise HTTPException(status_code=403, detail="HyperSKU product browse is not available on your plan.")
+
+    conn = await _get_hypersku_conn_or_400(shop_id, db)
+    token = await _hypersku_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{HYPERSKU_BASE}/customer/admin/product/getPrivateProduct", params={"page": page}, headers={"Authorization": token})
+    data = r.json()
+    if data.get("status") != 0:
+        raise HTTPException(status_code=502, detail=data.get("message") or "HyperSKU API error.")
+
+    rows = (data.get("data") or {}).get("rows") or []
+    return {"products": [_parse_hypersku_product(p) for p in rows], "total": (data.get("data") or {}).get("total", 0), "page": page}
+
+
+@router.get("/shops/{shop_id}/dropship/hypersku/product/{hypersku_pid}")
+async def hypersku_get_product_detail(
+    shop_id: int,
+    hypersku_pid: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    conn = await _get_hypersku_conn_or_400(shop_id, db)
+    token = await _hypersku_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{HYPERSKU_BASE}/customer/admin/product/list", params={"productId": hypersku_pid}, headers={"Authorization": token})
+    data = r.json()
+    if data.get("status") != 0:
+        raise HTTPException(status_code=502, detail=data.get("message") or "HyperSKU API error.")
+
+    rows = (data.get("data") or {}).get("rows") or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="Product not found on HyperSKU.")
+    return {"product": _parse_hypersku_product(rows[0])}
+
+
+class HyperSKUImportIn(BaseModel):
+    hypersku_pid: str
+    selling_price: Optional[float] = None
+
+
+@router.post("/shops/{shop_id}/dropship/hypersku/import")
+async def hypersku_import_product(
+    shop_id: int,
+    body: HyperSKUImportIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.product import Product
+    from app.models.product_fields import ProductImage
+    from app.api.v1.endpoints.products import generate_slug, PLAN_PRODUCT_LIMITS
+
+    shop = _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+        raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
+
+    limit = PLAN_PRODUCT_LIMITS.get(plan, 25)
+    if limit != -1:
+        count = db.query(Product).filter(Product.shop_id == shop_id).count()
+        if count >= limit:
+            raise HTTPException(status_code=403, detail=f"Product limit reached ({limit} on your plan). Upgrade to add more.")
+
+    conn = await _get_hypersku_conn_or_400(shop_id, db)
+    token = await _hypersku_ensure_token(conn, db)
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{HYPERSKU_BASE}/customer/admin/product/list", params={"productId": body.hypersku_pid}, headers={"Authorization": token})
+    data = r.json()
+    rows = (data.get("data") or {}).get("rows") or []
+    if data.get("status") != 0 or not rows:
+        raise HTTPException(status_code=502, detail=data.get("message") or "Failed to fetch product from HyperSKU.")
+
+    h = _parse_hypersku_product(rows[0])
+    name = h["name"] or "HyperSKU Product"
+
+    if body.selling_price:
+        price = body.selling_price
+    else:
+        from app.core.currency import convert_amount
+        target_currency = shop.base_currency or shop.currency or "USD"
+        price = round(await convert_amount(h["cost_price"] * 2, "USD", target_currency), 2)
+
+    product = Product(
+        shop_id=shop_id,
+        name=name,
+        description=_sanitize_supplier_html(h["description"]) or name,
+        price=price,
+        cost_price=h["cost_price"],
+        sku=h["sku"] or body.hypersku_pid[:50],
+        quantity=h["stock"] if h["stock"] is not None else 0,
+        low_stock_threshold=5,
+        slug=generate_slug(name),
+    )
+    db.add(product)
+    db.flush()
+
+    for i, url in enumerate((h["images"] or [])[:10]):
+        db.add(ProductImage(product_id=product.id, url=url, sort_order=i, is_primary=(i == 0)))
+
+    db.add(DropshipProductLink(
+        shop_id=shop_id,
+        product_id=product.id,
+        supplier_type="hypersku",
+        supplier_product_id=body.hypersku_pid,
+        supplier_sku=h["sku"],
+        supplier_product_name=name,
+        cost_price=h["cost_price"],
+        is_primary=True,
+    ))
+
+    db.commit()
+    db.refresh(product)
+    logger.info(f"[HyperSKU Import] shop={shop_id} imported product={product.id} hypersku_pid={body.hypersku_pid}")
+    return {"product_id": product.id, "name": product.name, "price": product.price, "cost_price": h["cost_price"]}
+
+
 # Dropship suppliers forward an order to be picked, packed and shipped from
 # their own stock. POD (print-on-demand) suppliers instead print a design
 # onto a blank product per order — no inventory to forward, a design/mockup
@@ -119,18 +404,19 @@ PRINTFUL_BASE = "https://api.printful.com"
 # their own "Print-on-Demand" section instead of listing all eight the same way.
 POD_SUPPLIERS = {"printful", "printify", "gelato"}
 
-# The 3 suppliers that actually auto-fulfill orders today (CJ fully, Printful
-# fully, AliExpress pending their own API approval for order placement) —
-# Zendrop/HyperSKU/Wiio/Printify/Gelato only support connecting an account,
-# nothing places orders through them yet, so they stay Premium-only rather
-# than something a Starter seller could "choose".
+# Suppliers that actually auto-fulfill orders today: CJ, Printful, HyperSKU
+# fully; AliExpress pending their own API approval for order placement
+# (ALIEXPRESS_APP_KEY unset = disabled). Printify/Gelato only support
+# connecting an account, nothing places orders through them yet. HyperSKU
+# stays Premium-only here deliberately, not because it's incomplete — this
+# is a plan-tier/pricing call, left as-is rather than changed unilaterally.
 STARTER_SUPPLIER_CHOICES = {"cj", "aliexpress", "printful"}
 
 PLAN_ALLOWED_SUPPLIERS = {
-    # 1688 is Premium-only for now, like zendrop/hypersku/wiio — the
-    # pricing page's Starter copy ("CJ, AliExpress, or Printful") doesn't
-    # mention it, so it isn't added to STARTER_SUPPLIER_CHOICES.
-    "premium":       {"cj", "zendrop", "hypersku", "wiio", "aliexpress", "printful", "printify", "gelato", "1688"},
+    # 1688/eprolo are Premium-only for now, like hypersku — the pricing
+    # page's Starter copy ("CJ, AliExpress, or Printful") doesn't mention
+    # them, so they aren't added to STARTER_SUPPLIER_CHOICES.
+    "premium":       {"cj", "hypersku", "aliexpress", "printful", "printify", "gelato", "1688", "eprolo"},
     "starter":       STARTER_SUPPLIER_CHOICES,
     "free_trial":    set(),
     "thedersi_basic":  set(),
@@ -310,7 +596,7 @@ class CJImportIn(BaseModel):
     selling_price: Optional[float] = None   # seller sets markup; defaults to 2× cost
 
 class APIKeyConnectIn(BaseModel):
-    supplier_type: str   # zendrop / hypersku / wiio / aliexpress
+    supplier_type: str   # printify / gelato / 1688 / eprolo
     api_key: str
 
 class ProductLinkIn(BaseModel):
@@ -1785,17 +2071,6 @@ def list_connections(
             "category": "dropship",
         },
         {
-            "supplier_type": "zendrop",
-            "name": "Zendrop",
-            "description": "Requires your own Zendrop account ($49–79/mo paid to Zendrop).",
-            "signup_url": SUPPLIER_SIGNUP_LINKS["zendrop"],
-            "plan_required": "premium",
-            "connected": "zendrop" in connected,
-            "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "zendrop"), False),
-            "locked": "zendrop" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
-            "category": "dropship",
-        },
-        {
             "supplier_type": "hypersku",
             "name": "HyperSKU",
             "description": "Free to use — pay per order. Strong in Asia-Pacific & UAE.",
@@ -1807,14 +2082,14 @@ def list_connections(
             "category": "dropship",
         },
         {
-            "supplier_type": "wiio",
-            "name": "Wiio",
-            "description": "Pay per order. Strong quality control and private label options.",
-            "signup_url": SUPPLIER_SIGNUP_LINKS["wiio"],
+            "supplier_type": "eprolo",
+            "name": "EPROLO",
+            "description": "Free to use — pay per order only. Product import and order placement activate once ExiusCart's EPROLO API access is set up — connect now to be ready.",
+            "signup_url": SUPPLIER_SIGNUP_LINKS["eprolo"],
             "plan_required": "premium",
-            "connected": "wiio" in connected,
-            "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "wiio"), False),
-            "locked": "wiio" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
+            "connected": "eprolo" in connected,
+            "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "eprolo"), False),
+            "locked": "eprolo" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
             "category": "dropship",
         },
         {
@@ -1990,17 +2265,21 @@ async def connect_printful(
 
 
 @router.post("/shops/{shop_id}/dropship/connect/apikey")
-def connect_apikey(
+async def connect_apikey(
     shop_id: int,
     data: APIKeyConnectIn,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     _shop_or_404(shop_id, current_user, db)
-    if data.supplier_type not in ("zendrop", "hypersku", "wiio", "printify", "gelato", "1688"):
-        raise HTTPException(status_code=400, detail="Use /connect/cj for CJ Dropshipping, or /dropship/aliexpress/authorize for AliExpress.")
+    if data.supplier_type not in ("printify", "gelato", "1688", "eprolo"):
+        raise HTTPException(status_code=400, detail="Use /connect/cj for CJ Dropshipping, /connect/hypersku for HyperSKU, or /dropship/aliexpress/authorize for AliExpress.")
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)
+
+    # None of printify/gelato/1688/eprolo have anything confirmed-callable to verify
+    # against yet, unlike CJ/HyperSKU/AliExpress — accepted blindly for now,
+    # same scaffolding-first treatment as before those had real APIs wired in.
 
     existing = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop_id,
@@ -2507,7 +2786,121 @@ async def fulfill_order(
             "message": "Order sent to AliExpress. Tracking will appear here once it ships.",
         }
 
-    # Other suppliers (Zendrop, HyperSKU, Wiio) — placeholder for their APIs
+    if data.supplier_type == "hypersku":
+        conn = await _get_hypersku_conn_or_400(shop_id, db)
+        token = await _hypersku_ensure_token(conn, db)
+
+        from app.models.order import OrderItem
+        items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+        if not items:
+            raise HTTPException(status_code=400, detail="Order has no items.")
+
+        sku_items = []
+        for item in items:
+            link = db.query(DropshipProductLink).filter(
+                DropshipProductLink.product_id == item.product_id,
+                DropshipProductLink.supplier_type == "hypersku",
+            ).first()
+            if not link or not link.supplier_sku:
+                raise HTTPException(status_code=400, detail={
+                    "error": "no_supplier_link",
+                    "message": f"Product '{item.product_name}' does not have a HyperSKU supplier link. Re-import it from HyperSKU.",
+                })
+            sku_items.append({"skuId": int(link.supplier_sku), "num": item.quantity})
+
+        shipping = {}
+        if order.shipping_address:
+            import json
+            try:
+                shipping = json.loads(order.shipping_address)
+            except Exception:
+                shipping = {"address": order.shipping_address}
+        country_code = (shipping.get("country_code") or "US").upper()
+
+        # HyperSKU requires picking a logistics option before placing the
+        # order (same two-step shape as CJ's freightCalculate ->
+        # createOrderV2) — confirmed from their own getLogisticsInfo-Sku docs.
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                r = await client.post(
+                    f"{HYPERSKU_BASE}/customer/admin/logistics/getLogisticsInfo-Sku",
+                    json={"countryCode": country_code, "skuItems": sku_items},
+                    headers={"Authorization": token, "Content-Type": "application/json"},
+                )
+            logi = r.json()
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"HyperSKU logistics lookup failed: {str(e)}")
+
+        options = logi.get("data") or []
+        if logi.get("status") != 0 or not options:
+            raise HTTPException(status_code=400, detail={
+                "error": "hypersku_no_logistics",
+                "message": logi.get("message") or f"HyperSKU has no shipping option to {country_code} for this product.",
+            })
+        # Cheapest option — no UI step to let the seller pick yet, matching
+        # how CJ's own createOrderV2 call doesn't expose that choice either.
+        cheapest = min(options, key=lambda o: o.get("discountedPrices") or o.get("amount") or 0)
+        logistics_id = cheapest.get("id")
+
+        hs_payload = {
+            "logisticsId": logistics_id,
+            "shippingAddress": {
+                "firstName": shipping.get("name", "").split(" ")[0] if shipping.get("name") else "",
+                "lastName": " ".join(shipping.get("name", "").split(" ")[1:]) if shipping.get("name") else "",
+                "address1": shipping.get("address", ""),
+                "address2": "",
+                "city": shipping.get("city", ""),
+                "province": shipping.get("province", ""),
+                "zip": shipping.get("zip", ""),
+                "country": shipping.get("country", ""),
+                "countryCode": country_code,
+                "phone": shipping.get("phone", ""),
+            },
+            "skuItems": sku_items,
+            "thirdOrderId": order.id,
+            "thirdOrderName": order.order_number,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                r = await client.post(
+                    f"{HYPERSKU_BASE}/customer/admin/orders/create",
+                    json=hs_payload,
+                    headers={"Authorization": token, "Content-Type": "application/json"},
+                )
+            result = r.json()
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"HyperSKU API error: {str(e)}")
+
+        if result.get("status") != 0:
+            ds_order = DropshipOrder(
+                shop_id=shop_id, order_id=order_id, supplier_type="hypersku",
+                status="failed", error_message=(result.get("message") or "Unknown HyperSKU error")[:2000],
+            )
+            db.add(ds_order)
+            order.fulfillment_status = "failed"
+            db.commit()
+            raise HTTPException(status_code=400, detail={
+                "error": "hypersku_order_failed",
+                "message": result.get("message") or "HyperSKU rejected this order. Check product SKUs and shipping address.",
+            })
+
+        hs_order_id = str(((result.get("data") or {}).get("orderBaseInfo") or {}).get("orderId") or "")
+        ds_order = DropshipOrder(
+            shop_id=shop_id, order_id=order_id, supplier_type="hypersku",
+            supplier_order_id=hs_order_id, status="processing",
+        )
+        db.add(ds_order)
+        order.fulfillment_status = "sent"
+        db.commit()
+        return {
+            "fulfilled": True,
+            "supplier_type": "hypersku",
+            "supplier_order_id": hs_order_id,
+            "message": "Order sent to HyperSKU. Tracking will appear here once it ships.",
+        }
+
+    # Other suppliers — placeholder for their APIs
     raise HTTPException(status_code=501, detail=f"{data.supplier_type.title()} order forwarding coming soon.")
 
 
@@ -2892,5 +3285,104 @@ def sync_aliexpress_tracking_job(db_session_factory) -> None:
 
     except Exception as e:
         logger.error(f"[AliExpress Tracking] Job error: {e}")
+    finally:
+        db.close()
+
+
+def sync_hypersku_tracking_job(db_session_factory) -> None:
+    """
+    Poll HyperSKU for status/tracking updates on all processing/sent dropship
+    orders. Called every 2 hours by the background scheduler in main.py, same
+    cadence as the other supplier tracking jobs.
+
+    getOrdersStatus takes an array of HyperSKU's own numeric orderIds and
+    returns one entry per order — batched one call per shop instead of one
+    per order (their docs confirm the request body is just a plain array).
+
+    UNVERIFIED against a real order: HyperSKU's docs don't spell out what
+    orderBaseInfo.status's integer values actually mean, so — same discipline
+    as sync_aliexpress_tracking_job before its own status strings were
+    confirmed — this keys off tracking-number presence for "shipped" rather
+    than guessing a status code, and logs the raw status for whoever verifies
+    this against a real shipped order.
+    """
+    db = db_session_factory()
+    try:
+        pending = db.query(DropshipOrder).filter(
+            DropshipOrder.supplier_type == "hypersku",
+            DropshipOrder.status.in_(["processing", "sent"]),
+            DropshipOrder.supplier_order_id.isnot(None),
+        ).all()
+
+        if not pending:
+            return
+
+        logger.info(f"[HyperSKU Tracking] Checking {len(pending)} pending orders")
+
+        by_shop: dict = {}
+        for ds_order in pending:
+            by_shop.setdefault(ds_order.shop_id, []).append(ds_order)
+
+        for shop_id, orders in by_shop.items():
+            conn = db.query(DropshipConnection).filter(
+                DropshipConnection.shop_id == shop_id,
+                DropshipConnection.supplier_type == "hypersku",
+                DropshipConnection.is_active == True,
+            ).first()
+            if not conn or not conn.access_token:
+                continue
+            token = conn.access_token
+
+            order_ids = [int(o.supplier_order_id) for o in orders if o.supplier_order_id and o.supplier_order_id.isdigit()]
+            if not order_ids:
+                continue
+
+            try:
+                with httpx.Client(timeout=20) as client:
+                    r = client.post(
+                        f"{HYPERSKU_BASE}/customer/admin/orders/status",
+                        json=order_ids,
+                        headers={"Authorization": token, "Content-Type": "application/json"},
+                    )
+                data = r.json()
+            except Exception as e:
+                logger.error(f"[HyperSKU Tracking] shop={shop_id} request failed: {e}")
+                continue
+
+            items_by_order_id = {
+                item.get("orderId"): item for item in (data.get("logisticsItems") or [])
+            }
+
+            for ds_order in orders:
+                if not ds_order.supplier_order_id or not ds_order.supplier_order_id.isdigit():
+                    continue
+                item = items_by_order_id.get(int(ds_order.supplier_order_id))
+                if not item:
+                    continue
+
+                tracking_number = item.get("trackingNumber")
+                carrier = item.get("trackingCompany")
+
+                if tracking_number:
+                    ds_order.tracking_number = tracking_number
+                if carrier:
+                    ds_order.carrier = carrier
+                if tracking_number and ds_order.status in ("processing", "sent"):
+                    ds_order.status = "shipped"
+                    if not ds_order.shipped_at:
+                        ds_order.shipped_at = datetime.now(timezone.utc)
+
+                if tracking_number:
+                    from app.models.order import Order as ShopOrder
+                    order = db.query(ShopOrder).filter(ShopOrder.id == ds_order.order_id).first()
+                    if order and not order.tracking_number:
+                        order.tracking_number = tracking_number
+                        order.carrier = carrier or order.carrier
+
+                db.commit()
+                logger.info(f"[HyperSKU Tracking] order={ds_order.order_id} tracking={tracking_number} status={ds_order.status}")
+
+    except Exception as e:
+        logger.error(f"[HyperSKU Tracking] Job error: {e}")
     finally:
         db.close()

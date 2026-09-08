@@ -410,7 +410,7 @@ async def get_products(
 
     products = query.offset(skip).limit(limit).all()
 
-    # Which of these came from a dropship import (CJ/Zendrop/etc.) — drives
+    # Which of these came from a dropship import (CJ/HyperSKU/etc.) — drives
     # SKU-lock in the edit form so sellers don't sever the supplier link.
     product_ids = [p.id for p in products]
     dropship_ids = set()

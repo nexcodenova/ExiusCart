@@ -245,9 +245,8 @@ function CopyBtn({ value }: { value: string }) {
 
 const SUPPLIER_LABELS: Record<string, string> = {
   cj: 'CJ Dropshipping',
-  zendrop: 'Zendrop',
   hypersku: 'HyperSKU',
-  wiio: 'Wiio',
+  eprolo: 'EPROLO',
   printful: 'Printful',
 };
 
@@ -255,9 +254,8 @@ const SUPPLIER_LABELS: Record<string, string> = {
 // full names ("CJ Dropshipping") don't fit a dense table cell.
 const SUPPLIER_SHORT: Record<string, string> = {
   cj: 'CJ',
-  zendrop: 'Zendrop',
   hypersku: 'HyperSKU',
-  wiio: 'Wiio',
+  eprolo: 'EPROLO',
   printful: 'Printful',
 };
 
@@ -392,7 +390,7 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
                 {isStarter && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 pt-1">
                     <Lock className="w-3 h-3 shrink-0" />
-                    <span>Upgrade to Premium to use Zendrop, HyperSKU & Wiio</span>
+                    <span>Upgrade to Premium to use HyperSKU</span>
                   </div>
                 )}
               </div>

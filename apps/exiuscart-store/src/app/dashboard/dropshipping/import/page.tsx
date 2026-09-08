@@ -122,11 +122,12 @@ function PrintfulImportModal({ shopId, product, onClose, onImported }: {
 
 // ── Import Modal ──────────────────────────────────────────────────────────────
 
-function CJImportModal({ shopId, product, onClose, onImported }: {
+function CJImportModal({ shopId, product, onClose, onImported, supplier = 'cj' }: {
   shopId: string;
   product: CJProduct;
   onClose: () => void;
   onImported: (productId: number, name: string) => void;
+  supplier?: 'cj' | 'hypersku';
 }) {
   const { baseSym, baseCurrency } = useCurrency();
   const [detail, setDetail] = useState<CJProductDetail | null>(null);
@@ -135,31 +136,35 @@ function CJImportModal({ shopId, product, onClose, onImported }: {
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
   const [imgIdx, setImgIdx] = useState(0);
+  const supplierLabel = supplier === 'hypersku' ? 'HyperSKU' : 'CJ';
 
   useEffect(() => {
     setLoadingDetail(true);
-    dropshipApi.cjProductDetail(shopId, product.pid)
+    const fetchDetail = supplier === 'hypersku' ? dropshipApi.hyperskuProductDetail : dropshipApi.cjProductDetail;
+    fetchDetail(shopId, product.pid)
       .then((r) => {
         const d = r.data?.product as CJProductDetail;
         setDetail(d);
-        // Not pre-filled with cost*2 anymore — CJ's cost is always USD, and
-        // this store's price is in its own base currency (baseSym), so a
-        // client-side "2x" guess would show a raw USD number mislabeled as
-        // that currency. Left blank, the backend computes 2x and converts
+        // Not pre-filled with cost*2 anymore — the supplier's cost is always
+        // USD, and this store's price is in its own base currency (baseSym),
+        // so a client-side "2x" guess would show a raw USD number mislabeled
+        // as that currency. Left blank, the backend computes 2x and converts
         // it properly using a real exchange rate.
       })
       .catch(() => setDetail(null))
       .finally(() => setLoadingDetail(false));
-  }, [shopId, product.pid]);
+  }, [shopId, product.pid, supplier]);
 
   const handleImport = async () => {
     setImporting(true); setError('');
     try {
       const price = parseFloat(sellingPrice) || undefined;
-      const r = await dropshipApi.cjImport(shopId, product.pid, price);
+      const r = supplier === 'hypersku'
+        ? await dropshipApi.hyperskuImport(shopId, product.pid, price)
+        : await dropshipApi.cjImport(shopId, product.pid, price);
       onImported(r.data.product_id, r.data.name);
     } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Import failed. Please try again.');
+      setError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Import failed. Please try again.');
     } finally { setImporting(false); }
   };
 
@@ -208,7 +213,7 @@ function CJImportModal({ shopId, product, onClose, onImported }: {
             {/* Pricing */}
             <div className="bg-muted/50 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">CJ Cost Price (USD)</span>
+                <span className="text-muted-foreground">{supplierLabel} Cost Price (USD)</span>
                 <span className="font-semibold text-foreground">${(detail?.cost_price ?? product.cost_price).toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -265,11 +270,26 @@ export default function ImportProductsPage() {
   const [cjConnected, setCjConnected] = useState(false);
   const [printfulConnected, setPrintfulConnected] = useState(false);
   const [aliexpressConnected, setAliexpressConnected] = useState(false);
+  const [hyperskuConnected, setHyperskuConnected] = useState(false);
   const [isTheDersiUser, setIsTheDersiUser] = useState(false);
 
   // Only relevant once more than one supplier is connected — otherwise the
   // page just shows whichever one is available with no switcher at all.
-  const [supplier, setSupplier] = useState<'cj' | 'printful' | 'aliexpress'>('cj');
+  const [supplier, setSupplier] = useState<'cj' | 'printful' | 'aliexpress' | 'hypersku'>('cj');
+
+  // HyperSKU has real catalog + "my products" endpoints (see backend), but
+  // catalog list has no keyword filter — so this is two flat lists (tab
+  // switch, no search box), not CJ's debounced search.
+  const [hyperskuTab, setHyperskuTab] = useState<'catalog' | 'my'>('catalog');
+  const [hyperskuProducts, setHyperskuProducts] = useState<CJProduct[]>([]);
+  const [loadingHypersku, setLoadingHypersku] = useState(false);
+  const [hyperskuLoaded, setHyperskuLoaded] = useState(false);
+  const [hyperskuError, setHyperskuError] = useState('');
+  const [hyperskuMy, setHyperskuMy] = useState<CJProduct[]>([]);
+  const [loadingHyperskuMy, setLoadingHyperskuMy] = useState(false);
+  const [hyperskuMyLoaded, setHyperskuMyLoaded] = useState(false);
+  const [hyperskuMyError, setHyperskuMyError] = useState('');
+  const [hyperskuImportTarget, setHyperskuImportTarget] = useState<CJProduct | null>(null);
 
   const [aliexpressUrl, setAliexpressUrl] = useState('');
   const [aliexpressSellingPrice, setAliexpressSellingPrice] = useState('');
@@ -309,10 +329,12 @@ export default function ImportProductsPage() {
         const cj = suppliers.some((s: any) => s.supplier_type === 'cj' && s.connected);
         const printful = suppliers.some((s: any) => s.supplier_type === 'printful' && s.connected);
         const aliexpress = suppliers.some((s: any) => s.supplier_type === 'aliexpress' && s.connected);
+        const hypersku = suppliers.some((s: any) => s.supplier_type === 'hypersku' && s.connected);
         setCjConnected(cj);
         setPrintfulConnected(printful);
         setAliexpressConnected(aliexpress);
-        setSupplier(cj ? 'cj' : printful ? 'printful' : 'aliexpress');
+        setHyperskuConnected(hypersku);
+        setSupplier(cj ? 'cj' : printful ? 'printful' : aliexpress ? 'aliexpress' : 'hypersku');
         setIsTheDersiUser((connRes.data ?? []).some((c: any) => c.channel_type === 'thedersi'));
       })
       .catch(() => {})
@@ -327,6 +349,26 @@ export default function ImportProductsPage() {
       .catch(() => {})
       .finally(() => { setLoadingPrintful(false); setPrintfulLoaded(true); });
   }, [supplier, printfulLoaded, shopId, printfulConnected]);
+
+  useEffect(() => {
+    if (supplier !== 'hypersku' || hyperskuTab !== 'catalog' || hyperskuLoaded || !shopId || !hyperskuConnected) return;
+    setLoadingHypersku(true);
+    setHyperskuError('');
+    dropshipApi.hyperskuSearch(shopId)
+      .then((r) => setHyperskuProducts(r.data?.products ?? []))
+      .catch((e: any) => setHyperskuError(e?.response?.data?.detail ?? 'Could not load HyperSKU\'s catalog — HyperSKU may be unreachable right now.'))
+      .finally(() => { setLoadingHypersku(false); setHyperskuLoaded(true); });
+  }, [supplier, hyperskuTab, hyperskuLoaded, shopId, hyperskuConnected]);
+
+  useEffect(() => {
+    if (supplier !== 'hypersku' || hyperskuTab !== 'my' || hyperskuMyLoaded || !shopId || !hyperskuConnected) return;
+    setLoadingHyperskuMy(true);
+    setHyperskuMyError('');
+    dropshipApi.hyperskuMyProducts(shopId)
+      .then((r) => setHyperskuMy(r.data?.products ?? []))
+      .catch((e: any) => setHyperskuMyError(e?.response?.data?.detail ?? 'Could not load your HyperSKU products — HyperSKU may be unreachable right now.'))
+      .finally(() => { setLoadingHyperskuMy(false); setHyperskuMyLoaded(true); });
+  }, [supplier, hyperskuTab, hyperskuMyLoaded, shopId, hyperskuConnected]);
 
   useEffect(() => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
@@ -390,7 +432,7 @@ export default function ImportProductsPage() {
     );
   }
 
-  const connectedCount = [cjConnected, printfulConnected, aliexpressConnected].filter(Boolean).length;
+  const connectedCount = [cjConnected, printfulConnected, aliexpressConnected, hyperskuConnected].filter(Boolean).length;
 
   if (connectedCount === 0) {
     return (
@@ -405,7 +447,7 @@ export default function ImportProductsPage() {
           </div>
           <h2 className="text-lg font-semibold text-foreground">Connect a supplier first</h2>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            You need an active CJ Dropshipping, Printful, or AliExpress connection before you can browse and import products.
+            You need an active CJ Dropshipping, Printful, AliExpress, or HyperSKU connection before you can browse and import products.
           </p>
           <Link href="/dashboard/dropshipping"
             className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
@@ -423,6 +465,7 @@ export default function ImportProductsPage() {
         <p className="text-sm text-muted-foreground mt-1">
           {supplier === 'cj' ? "Search CJ's catalog and import directly to your store with one click."
             : supplier === 'printful' ? 'Bring your already-designed Printful products into your store.'
+            : supplier === 'hypersku' ? "Browse HyperSKU's catalog and import directly to your store."
             : 'Paste an AliExpress product link and import it directly.'}
         </p>
       </div>
@@ -454,7 +497,115 @@ export default function ImportProductsPage() {
               <ShoppingBag className="w-3.5 h-3.5" /> AliExpress
             </button>
           )}
+          {hyperskuConnected && (
+            <button onClick={() => setSupplier('hypersku')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
+                supplier === 'hypersku' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
+              }`}>
+              <Package className="w-3.5 h-3.5" /> HyperSKU
+            </button>
+          )}
         </div>
+      )}
+
+      {supplier === 'hypersku' && (
+        <>
+          {/* Tabs — no keyword search on HyperSKU's catalog endpoint, so this
+              is two flat lists, not a debounced search box like CJ's. */}
+          <div className="flex gap-1 border-b border-border">
+            <button onClick={() => setHyperskuTab('catalog')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
+                hyperskuTab === 'catalog' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}>
+              Browse Catalog
+            </button>
+            <button onClick={() => setHyperskuTab('my')}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
+                hyperskuTab === 'my' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}>
+              My HyperSKU Products
+            </button>
+          </div>
+
+          {importedId && (
+            <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
+              </div>
+              <Link href={`/dashboard/products?edit=${importedId.id}`}
+                className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
+                Edit product <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
+
+          {(hyperskuTab === 'catalog' ? loadingHypersku : loadingHyperskuMy) && (
+            <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Loading HyperSKU products…</span>
+            </div>
+          )}
+
+          {(hyperskuTab === 'catalog' ? hyperskuError : hyperskuMyError) && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {hyperskuTab === 'catalog' ? hyperskuError : hyperskuMyError}
+            </div>
+          )}
+
+          {(() => {
+            const list = hyperskuTab === 'catalog' ? hyperskuProducts : hyperskuMy;
+            const loaded = hyperskuTab === 'catalog' ? hyperskuLoaded : hyperskuMyLoaded;
+            const loading = hyperskuTab === 'catalog' ? loadingHypersku : loadingHyperskuMy;
+            const err = hyperskuTab === 'catalog' ? hyperskuError : hyperskuMyError;
+            return (
+              <>
+                {!loading && loaded && !err && list.length === 0 && (
+                  <div className="text-center py-20 text-sm text-muted-foreground max-w-md mx-auto">
+                    {hyperskuTab === 'catalog' ? 'Nothing came back from HyperSKU right now. Try again shortly.' : "Nothing here yet — add products to your HyperSKU shortlist on their own site first."}
+                  </div>
+                )}
+                {list.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {list.map((p) => (
+                      <div key={p.pid} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col hover:border-primary/40 transition group">
+                        <div className="relative aspect-square bg-muted">
+                          {p.image
+                            ? <Image src={p.image} alt={p.name} fill className="object-cover group-hover:scale-105 transition duration-300" unoptimized />
+                            : <div className="absolute inset-0 flex items-center justify-center"><Package className="w-8 h-8 text-muted-foreground/30" /></div>
+                          }
+                        </div>
+                        <div className="p-3 flex flex-col gap-2 flex-1">
+                          <p className="text-xs text-foreground font-medium line-clamp-2 leading-snug">{p.name}</p>
+                          <div className="flex items-center justify-between mt-auto">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground">HyperSKU cost</p>
+                              <p className="text-sm font-bold text-foreground">${p.cost_price.toFixed(2)}</p>
+                            </div>
+                            <button onClick={() => { setHyperskuImportTarget(p); setImportedId(null); }}
+                              className="text-xs px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium shrink-0">
+                              Import
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+
+          {hyperskuImportTarget && (
+            <CJImportModal
+              shopId={shopId}
+              product={hyperskuImportTarget}
+              supplier="hypersku"
+              onClose={() => setHyperskuImportTarget(null)}
+              onImported={(id, name) => { setImportedId({ id, name }); setHyperskuImportTarget(null); }}
+            />
+          )}
+        </>
       )}
 
       {supplier === 'aliexpress' && (
@@ -513,7 +664,7 @@ export default function ImportProductsPage() {
         </div>
       )}
 
-      {supplier !== 'aliexpress' && (supplier === 'printful' ? (
+      {supplier !== 'aliexpress' && supplier !== 'hypersku' && (supplier === 'printful' ? (
         <>
           <p className="text-xs text-muted-foreground -mt-2">
             Products you&apos;ve designed on Printful&apos;s own site (Design Lab / Product Templates → Published) — already mocked up, ready to import.

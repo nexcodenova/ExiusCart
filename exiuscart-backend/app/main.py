@@ -283,6 +283,19 @@ def _run_aliexpress_tracking_scheduler():
 _aliexpress_tracking_thread = threading.Thread(target=_run_aliexpress_tracking_scheduler, daemon=True)
 _aliexpress_tracking_thread.start()
 
+# Start HyperSKU tracking sync (every 2 hours)
+def _run_hypersku_tracking_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.dropshipping import sync_hypersku_tracking_job
+            sync_hypersku_tracking_job(SessionLocal)
+        except Exception as exc:
+            logger.error(f"[HyperSKU Tracking scheduler] {exc}")
+        time.sleep(2 * 3600)
+
+_hypersku_tracking_thread = threading.Thread(target=_run_hypersku_tracking_scheduler, daemon=True)
+_hypersku_tracking_thread.start()
+
 # Auto-expire overdue subscriptions (checked daily) — recurring affiliate
 # commissions are now generated only from real payment events (Lemon Squeezy
 # webhook or manual admin approval), never from a blind timer.

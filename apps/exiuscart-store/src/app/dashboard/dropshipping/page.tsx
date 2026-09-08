@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff, Zap, Boxes, Layers, ShoppingBag, Shirt, Palette, Printer, Globe } from 'lucide-react';
+import { CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff, Boxes, ShoppingBag, Shirt, Palette, Printer, Globe, Truck } from 'lucide-react';
 import { dropshipApi, channelsApi } from '@/lib/api';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -18,9 +18,8 @@ function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 // Update these when you have affiliate signup links
 const SIGNUP_LINKS: Record<string, string> = {
   cj:         'https://www.cjdropshipping.com/register.html?token=bce7840c-d60b-46e7-b39c-872e1572796c',  // affiliate — 2% of referred sellers' CJ revenue for 1yr
-  zendrop:    'https://app.zendrop.com/signup',
   hypersku:   'https://www.hypersku.com/register',
-  wiio:       'https://wiio.com/register',
+  eprolo:     'https://eprolo.com/',
   aliexpress: 'https://developers.aliexpress.com/',
   // 1688 has no direct foreign-facing signup of its own — points at the
   // marketplace itself as an informational link, not a real API-key
@@ -38,9 +37,8 @@ const SIGNUP_LINKS: Record<string, string> = {
 // dashboard/register link did after connecting).
 const DASHBOARD_LINKS: Record<string, string> = {
   cj:         'https://cjdropshipping.com/my-product',
-  zendrop:    'https://app.zendrop.com/',
   hypersku:   'https://www.hypersku.com/',
-  wiio:       'https://wiio.com/',
+  eprolo:     'https://eprolo.com/app/home.html',
   aliexpress: 'https://developers.aliexpress.com/',
   '1688':     'https://www.1688.com/',
   printful:   'https://www.printful.com/dashboard',
@@ -49,15 +47,14 @@ const DASHBOARD_LINKS: Record<string, string> = {
 };
 
 // Per-brand accent so the supplier grid reads at a glance instead of every
-// card looking identical. CJ/Zendrop use their real logo full-bleed (own
-// background baked in); HyperSKU uses a cropped icon-only mark (its source
-// file is a wide wordmark, cropped down to just the peak symbol) centered
-// on our own tint, same treatment as Wiio/AliExpress's lucide-icon fallback.
+// card looking identical. CJ uses its real logo full-bleed (own background
+// baked in); HyperSKU uses a cropped icon-only mark (its source file is a
+// wide wordmark, cropped down to just the peak symbol) centered on our own
+// tint, same treatment as AliExpress's lucide-icon fallback.
 const SUPPLIER_STYLE: Record<string, { icon: React.ElementType; color: string; bg: string; logo?: string; logoFit?: 'cover' | 'contain' }> = {
   cj:         { icon: Package,     color: 'text-orange-500', bg: 'bg-orange-500/10', logo: '/dropshipping/cj_logo.png',       logoFit: 'cover'   },
-  zendrop:    { icon: Zap,         color: 'text-violet-500', bg: 'bg-violet-500/10', logo: '/dropshipping/zendrop_logo.png', logoFit: 'cover'   },
   hypersku:   { icon: Boxes,       color: 'text-teal-500',   bg: 'bg-teal-500/10',   logo: '/dropshipping/hypersku_icon.png', logoFit: 'contain' },
-  wiio:       { icon: Layers,      color: 'text-rose-500',   bg: 'bg-rose-500/10'   },
+  eprolo:     { icon: Truck,       color: 'text-sky-500',    bg: 'bg-sky-500/10'   },
   aliexpress: { icon: ShoppingBag, color: 'text-red-500',    bg: 'bg-red-500/10'   },
   '1688':     { icon: Globe,       color: 'text-orange-600', bg: 'bg-orange-600/10' },
   printful:   { icon: Shirt,       color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
@@ -210,7 +207,79 @@ function PrintfulConnectModal({ shopId, onConnected, onClose }: {
   );
 }
 
-// ── API Key Modal (Zendrop, HyperSKU, Wiio, AliExpress, Printify, Gelato) ──
+// ── HyperSKU Connect Modal ────────────────────────────────────────────────────
+// Username+password, not a single API key — HyperSKU's "rapid integration"
+// mode needs both, plus API access enabled on the seller's own account by
+// their HyperSKU Account Manager first.
+
+function HyperSKUConnectModal({ shopId, onConnected, onClose }: {
+  shopId: string; onConnected: () => void; onClose: () => void;
+}) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const connect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true); setError('');
+    try {
+      await dropshipApi.connectHyperSKU(shopId, username, password);
+      onConnected();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Connection failed. Check your username and password.');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Connect HyperSKU</DialogTitle>
+          <DialogDescription>Sign in with your HyperSKU account</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={connect} className="p-5 space-y-4">
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{error}</div>
+          )}
+          <div>
+            <Label className="mb-1.5 block">Username / Email *</Label>
+            <Input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="you@example.com" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block">Password *</Label>
+            <div className="relative">
+              <Input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required
+                placeholder="Your HyperSKU password" className="pr-10" />
+              <button type="button" onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 leading-relaxed">
+            HyperSKU needs API access enabled on your account first — ask your HyperSKU Account Manager to turn this on if connecting fails.
+          </p>
+          <Button type="submit" disabled={saving} className="w-full">
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saving ? 'Connecting...' : 'Connect HyperSKU'}
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Don&apos;t have a HyperSKU account?{' '}
+            <a href={SIGNUP_LINKS.hypersku} target="_blank" rel="noopener noreferrer"
+              className="text-primary underline hover:text-primary/80">
+              Create one free →
+            </a>
+          </p>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── API Key Modal (Printify, Gelato, 1688, EPROLO) ──
 
 function ApiKeyModal({ supplier, shopId, onConnected, onClose }: {
   supplier: Supplier; shopId: string; onConnected: () => void; onClose: () => void;
@@ -410,7 +479,12 @@ function SupplierCard({ supplier, shopId, plan, onRefresh }: {
           onConnected={() => { setShowModal(false); onRefresh(); }}
           onClose={() => setShowModal(false)} />
       )}
-      {showModal && supplier.supplier_type !== 'cj' && supplier.supplier_type !== 'printful' && (
+      {showModal && supplier.supplier_type === 'hypersku' && (
+        <HyperSKUConnectModal shopId={shopId}
+          onConnected={() => { setShowModal(false); onRefresh(); }}
+          onClose={() => setShowModal(false)} />
+      )}
+      {showModal && !['cj', 'printful', 'hypersku'].includes(supplier.supplier_type) && (
         <ApiKeyModal supplier={supplier} shopId={shopId}
           onConnected={() => { setShowModal(false); onRefresh(); }}
           onClose={() => setShowModal(false)} />
@@ -484,7 +558,7 @@ export default function DropshippingPage() {
           </div>
           <h2 className="text-lg font-semibold text-foreground">Dropshipping is for direct ExiusCart sellers</h2>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Your store is managed by <strong className="text-foreground">TheDersi</strong>, and your orders are fulfilled through TheDersi&apos;s own logistics. Dropshipping and print-on-demand suppliers like CJ, Zendrop, AliExpress, Printful &amp; Gelato are only available to sellers on a direct ExiusCart plan (Starter or Premium).
+            Your store is managed by <strong className="text-foreground">TheDersi</strong>, and your orders are fulfilled through TheDersi&apos;s own logistics. Dropshipping and print-on-demand suppliers like CJ, HyperSKU, AliExpress, Printful &amp; Gelato are only available to sellers on a direct ExiusCart plan (Starter or Premium).
           </p>
           <Button asChild className="mt-6">
             <Link href="/dashboard/channels">Back to Channels</Link>
@@ -534,7 +608,7 @@ export default function DropshippingPage() {
           <CardContent className="flex items-center justify-between gap-4 px-5 py-4">
             <div>
               <p className="text-sm font-semibold text-foreground">CJ Dropshipping is included in your Starter plan</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Upgrade to Premium to unlock Zendrop, HyperSKU, Wiio, AliExpress, Printful, Printify, Gelato, and auto-fulfill.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Upgrade to Premium to unlock HyperSKU, EPROLO, AliExpress, Printful, Printify, Gelato, and auto-fulfill.</p>
             </div>
             <Button asChild size="sm" className="shrink-0 whitespace-nowrap">
               <Link href="/dashboard/billing">Upgrade to Premium</Link>
