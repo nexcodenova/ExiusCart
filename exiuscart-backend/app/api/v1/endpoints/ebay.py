@@ -31,6 +31,7 @@ equivalent of Daraz's _daraz_signed_request — the one function every future
 eBay API call (orders, inventory, finances) is built on.
 """
 import os
+import re
 import json
 import base64
 import hashlib
@@ -107,6 +108,39 @@ EBAY_DEFAULT_MARKETPLACE = "EBAY_US"
 
 def _ebay_marketplace_id(country_code: str) -> str:
     return EBAY_MARKETPLACE_BY_COUNTRY.get((country_code or "").strip().upper(), EBAY_DEFAULT_MARKETPLACE)
+
+
+EBAY_DESCRIPTION_MAX = 4000  # confirmed live: eBay's own errorId 25718 rejection
+
+
+def _ebay_safe_description(description: str, fallback: str) -> str:
+    """eBay hard-caps createOrReplaceInventoryItem's description at 4000
+    characters (errorId 25718, confirmed live — a real listing was rejected
+    with 'The length should be between 1 and 4000 characters' before this
+    existed). The raw HTML was being sent uncapped, unlike TikTok's own
+    listing code, which already truncates to ITS limit — this was the one
+    channel that didn't.
+
+    Word/Google Docs pastes into the rich text editor leave behind
+    <!--StartFragment-->/<!--EndFragment--> clipboard markers — pure bloat,
+    no visual effect, stripped first since they're often what pushes an
+    otherwise-reasonable description over the limit. If it still doesn't
+    fit, HTML tags are stripped to plain text and truncated — safer than
+    truncating raw HTML, which risks cutting mid-tag and leaving eBay a
+    malformed fragment instead of just a shorter one."""
+    html = description or fallback
+    if not html:
+        return fallback[:EBAY_DESCRIPTION_MAX]
+
+    html = re.sub(r"<!--\s*(Start|End)Fragment\s*-->", "", html, flags=re.IGNORECASE)
+    if len(html) <= EBAY_DESCRIPTION_MAX:
+        return html
+
+    plain = re.sub(r"<[^>]+>", " ", html)
+    plain = re.sub(r"\s+", " ", plain).strip()
+    if len(plain) <= EBAY_DESCRIPTION_MAX:
+        return plain
+    return plain[:EBAY_DESCRIPTION_MAX - 1].rstrip() + "…"
 
 
 def _ebay_token_request(grant_type: str, **params) -> dict | None:
@@ -813,7 +847,7 @@ def _create_ebay_listing_inner(
             "condition": payload.condition,
             "product": {
                 "title": product.name[:80],
-                "description": product.description or product.name,
+                "description": _ebay_safe_description(product.description, product.name),
                 "aspects": payload.aspect_values,
                 "imageUrls": sku_row["image_urls"][:12],
             },

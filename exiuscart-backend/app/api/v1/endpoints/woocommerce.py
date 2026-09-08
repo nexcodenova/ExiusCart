@@ -36,6 +36,7 @@ Rather than assume a plugin exists, fulfillment here marks the order
 order note containing the tracking info as text — always available, no
 plugin dependency, honest about what's actually guaranteed to work.
 """
+import re
 import json
 import logging
 import secrets
@@ -57,6 +58,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 WC_API_PATH = "/wp-json/wc/v3"
+
+
+def _strip_clipboard_fragments(html: str) -> str:
+    """Word/Google Docs pastes into the rich text editor leave behind
+    <!--StartFragment-->/<!--EndFragment--> clipboard markers — pure bloat,
+    no visual effect. WooCommerce's own post_content column has no real
+    length limit worth capping against (unlike eBay's confirmed 4,000-char
+    cap that actually rejected a live listing), so this is just cleanup,
+    not a length fix."""
+    if not html:
+        return html
+    return re.sub(r"<!--\s*(Start|End)Fragment\s*-->", "", html, flags=re.IGNORECASE)
 
 
 def _get_woo_connection(shop_id: int, db: Session) -> ChannelConnection:
@@ -258,7 +271,7 @@ def create_woocommerce_product(
         "name": product.name,
         "type": "simple",
         "regular_price": str(product.price),
-        "description": product.description or product.name,
+        "description": _strip_clipboard_fragments(product.description) or product.name,
         "sku": product.sku or f"EXIUSCART-{product.id}",
         "manage_stock": True,
         "stock_quantity": int(product.quantity or 0),

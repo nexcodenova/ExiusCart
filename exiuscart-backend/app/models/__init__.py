@@ -49,3 +49,4 @@ from app.models.subscription_payment import SubscriptionPayment
 from app.models.quotation import Quotation
 from app.models.email_log import EmailLog
 from app.models.email_template import EmailTemplate
+from app.models.product_ad_video import ProductAdVideo

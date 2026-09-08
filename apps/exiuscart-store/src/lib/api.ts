@@ -113,6 +113,16 @@ export const productsApi = {
   },
 };
 
+// ── AI Product Videos (Higgsfield) ───────────────────────
+export const videoGenApi = {
+  generate: (shopId: string, productId: number | string, data: { prompt?: string; model?: string; aspect_ratio?: string; duration?: string }) =>
+    api.post(`/shops/${shopId}/products/${productId}/videos/generate`, data),
+  list: (shopId: string, productId: number | string) =>
+    api.get(`/shops/${shopId}/products/${productId}/videos`),
+  status: (shopId: string, videoId: number | string) =>
+    api.get(`/shops/${shopId}/videos/${videoId}/status`),
+};
+
 // ── Orders ────────────────────────────────────────────
 export const ordersApi = {
   getAll: (shopId: string, params?: { status?: string; search?: string; month?: string; source?: string; limit?: number }) =>

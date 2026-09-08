@@ -296,6 +296,23 @@ def _run_hypersku_tracking_scheduler():
 _hypersku_tracking_thread = threading.Thread(target=_run_hypersku_tracking_scheduler, daemon=True)
 _hypersku_tracking_thread.start()
 
+# Poll pending Higgsfield AI video generation jobs (every 3 minutes — these
+# typically finish in under a minute per Higgsfield's own docs, so this is
+# a much shorter interval than the 2h supplier-tracking jobs above; it's a
+# safety net for a seller who isn't sitting on the page waiting, not the
+# primary path — check_video_status in video_gen.py handles the live case).
+def _run_video_gen_poll_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.video_gen import sync_pending_videos_job
+            sync_pending_videos_job(SessionLocal)
+        except Exception as exc:
+            logger.error(f"[Video Gen Poll scheduler] {exc}")
+        time.sleep(3 * 60)
+
+_video_gen_poll_thread = threading.Thread(target=_run_video_gen_poll_scheduler, daemon=True)
+_video_gen_poll_thread.start()
+
 # Auto-expire overdue subscriptions (checked daily) — recurring affiliate
 # commissions are now generated only from real payment events (Lemon Squeezy
 # webhook or manual admin approval), never from a blind timer.

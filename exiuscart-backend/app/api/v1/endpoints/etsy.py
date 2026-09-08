@@ -37,6 +37,7 @@ Every substantive Etsy API call goes through _etsy_api_request, the Etsy
 equivalent of eBay's _ebay_api_request / TikTok's _tiktok_api_request.
 """
 import os
+import re
 import time
 import base64
 import hashlib
@@ -75,6 +76,30 @@ STOREFRONT_BASE = "https://store.exiuscart.com"
 ETSY_SCOPES = " ".join([
     "listings_r", "listings_w", "transactions_r", "transactions_w", "shops_r",
 ])
+
+
+ETSY_DESCRIPTION_MAX = 10000  # confirmed across Etsy's own listing character-limit guidance
+
+
+def _etsy_safe_description(description: str, fallback: str) -> str:
+    """Same landmine as eBay's own description field — sent uncapped before
+    this existed. Etsy's real limit (10,000 chars) is more generous than
+    eBay's 4,000, so this is a preventive fix (no confirmed live rejection
+    yet), not a reactive one. Strips Word/Google Docs clipboard fragment
+    markers first — pure bloat, no visual effect — then falls back to
+    plain-text truncation only if still over the limit, same reasoning as
+    _ebay_safe_description in ebay.py (avoids cutting raw HTML mid-tag)."""
+    html = description or fallback
+    if not html:
+        return fallback[:ETSY_DESCRIPTION_MAX]
+    html = re.sub(r"<!--\s*(Start|End)Fragment\s*-->", "", html, flags=re.IGNORECASE)
+    if len(html) <= ETSY_DESCRIPTION_MAX:
+        return html
+    plain = re.sub(r"<[^>]+>", " ", html)
+    plain = re.sub(r"\s+", " ", plain).strip()
+    if len(plain) <= ETSY_DESCRIPTION_MAX:
+        return plain
+    return plain[:ETSY_DESCRIPTION_MAX - 1].rstrip() + "…"
 
 
 def _generate_pkce_pair() -> tuple[str, str]:
@@ -398,7 +423,7 @@ def create_etsy_listing(
     body = {
         "quantity": int(product.quantity or 0),
         "title": product.name[:140],  # Etsy's own title length cap
-        "description": product.description or product.name,
+        "description": _etsy_safe_description(product.description, product.name),
         "price": round(float(product.price) * 100),  # confirmed: pennies, not a decimal string
         "who_made": data.who_made,
         "when_made": data.when_made,

@@ -95,6 +95,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/events',           label: 'Events',          icon: Calendar       },
       { href: '/dashboard/surveys',          label: 'Surveys',         icon: ClipboardCheck },
       { href: '/dashboard/ai-seo',           label: 'AI SEO Tools',    icon: Sparkles       },
+      { href: '/dashboard/products/videos',  label: 'AI Product Videos', icon: Sparkles    },
     ],
   },
   {

@@ -25,6 +25,7 @@ _daraz_signed_request and reused for every future Daraz API call (orders,
 products, etc.), not just auth.
 """
 import os
+import re
 import time
 import hmac
 import hashlib
@@ -93,6 +94,29 @@ DARAZ_COUNTRY_CURRENCY = {
     "NP": "NPR",
     "MM": "MMK",
 }
+
+
+def _strip_clipboard_fragments(html: str) -> str:
+    """Word/Google Docs pastes into the rich text editor leave behind
+    <!--StartFragment-->/<!--EndFragment--> clipboard markers — pure bloat,
+    no visual effect. Real bug found live on eBay (errorId 25718, a
+    description rejected for exceeding their 4,000-char cap, largely padded
+    out by these) — applied everywhere a description gets sent externally,
+    not just there."""
+    if not html:
+        return html
+    return re.sub(r"<!--\s*(Start|End)Fragment\s*-->", "", html, flags=re.IGNORECASE)
+
+
+# Daraz/Lazada Open Platform doesn't publish confirmed max lengths for
+# short_description or description (checked open.daraz.com/open.lazada.com —
+# not stated). These are defensive backstops against pathological content
+# (the kind of thing that already happened for real: a CJ import once left
+# a product with a 7MB description from an inline base64 image, see
+# _sanitize_supplier_html in dropshipping.py) rather than a confirmed Daraz
+# limit — unlike EBAY_DESCRIPTION_MAX/ETSY_DESCRIPTION_MAX, which are real.
+DARAZ_SHORT_DESCRIPTION_MAX = 2000
+DARAZ_DESCRIPTION_MAX = 20000
 
 
 def _daraz_api_base(country_code: str) -> str:
@@ -487,10 +511,11 @@ def create_daraz_listing(
     # 2. Build Attributes: the product's own name/description plus whatever
     # category-specific fields the seller filled in (brand, material,
     # warranty, etc. — varies per category, see GetCategoryAttributes).
+    clean_description = _strip_clipboard_fragments(product.description or "")
     attributes = {
         "name": product.name,
-        "short_description": product.description or product.name,
-        "description": product.description or "",
+        "short_description": (clean_description or product.name)[:DARAZ_SHORT_DESCRIPTION_MAX],
+        "description": clean_description[:DARAZ_DESCRIPTION_MAX],
         **payload.attribute_values,
     }
     if payload.brand:

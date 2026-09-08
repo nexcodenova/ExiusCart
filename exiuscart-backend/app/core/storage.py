@@ -91,6 +91,34 @@ def upload_digital_file(contents: bytes, shop_id: int, product_id: int, ext: str
     return url
 
 
+def upload_product_video(contents: bytes, shop_id: int, product_id: int, ext: str = "mp4", content_type: str = "video/mp4") -> str:
+    """Upload a Higgsfield-generated ad video to R2 and return the public CDN
+    URL. Higgsfield's own output URL is only guaranteed for 7 days (their
+    docs are explicit about this) — this re-hosts it permanently, same
+    reasoning as _rehost_printful_image in dropshipping.py."""
+    if not _R2_ACCOUNT_ID or not _R2_ACCESS_KEY_ID or not _R2_SECRET_ACCESS_KEY:
+        raise RuntimeError(
+            "R2 credentials not configured. "
+            "Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL in .env"
+        )
+
+    filename = f"{uuid.uuid4()}.{ext}"
+    key = f"product-videos/{shop_id}/{product_id}/{filename}"
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=_R2_BUCKET,
+        Key=key,
+        Body=contents,
+        ContentType=content_type,
+        CacheControl="public, max-age=31536000",
+    )
+
+    url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    logger.info(f"[R2 UPLOAD video] {url}")
+    return url
+
+
 def upload_shop_image(contents: bytes, shop_id: int, image_type: str, ext: str, content_type: str = "image/jpeg") -> str:
     """Upload a shop profile image (logo/banner) to R2 and return the public CDN URL."""
     if not _R2_ACCOUNT_ID or not _R2_ACCESS_KEY_ID or not _R2_SECRET_ACCESS_KEY:

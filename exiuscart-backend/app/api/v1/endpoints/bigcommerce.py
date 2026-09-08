@@ -37,6 +37,7 @@ this file set already uses for TikTok vs. WooCommerce):
     shipping_method, items[]), unlike WooCommerce's plugin-only gap
     noted in woocommerce.py's own docstring.
 """
+import re
 import logging
 import secrets
 from typing import Optional
@@ -60,6 +61,22 @@ BC_API_HOST = "https://api.bigcommerce.com/stores"
 # BigCommerce's own "Shipped" status_id — confirmed stable/well-known
 # across their v2 Orders API, not seller-configurable.
 BC_STATUS_SHIPPED = 2
+
+
+def _strip_clipboard_fragments(html: str) -> str:
+    """Word/Google Docs pastes into the rich text editor leave behind
+    <!--StartFragment-->/<!--EndFragment--> clipboard markers — pure bloat,
+    no visual effect."""
+    if not html:
+        return html
+    return re.sub(r"<!--\s*(Start|End)Fragment\s*-->", "", html, flags=re.IGNORECASE)
+
+
+# BigCommerce doesn't publish a confirmed max length for the product
+# description field itself — the closest confirmed number is their category
+# description cap (65,642 chars), used here as an evidence-based backstop
+# against pathological content (not a confirmed product-description limit).
+BIGCOMMERCE_DESCRIPTION_MAX = 65642
 
 
 def _get_bc_connection(shop_id: int, db: Session) -> ChannelConnection:
@@ -219,7 +236,7 @@ def create_bigcommerce_product(
         "type": "physical",
         "weight": float(getattr(product, "weight", None) or 0.5),
         "price": float(product.price),
-        "description": product.description or product.name,
+        "description": (_strip_clipboard_fragments(product.description) or product.name)[:BIGCOMMERCE_DESCRIPTION_MAX],
         "sku": product.sku or f"EXIUSCART-{product.id}",
         "inventory_tracking": "product",
         "inventory_level": int(product.quantity or 0),
