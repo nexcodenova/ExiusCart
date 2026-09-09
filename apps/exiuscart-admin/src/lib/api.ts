@@ -113,6 +113,19 @@ export const adminApi = {
   metaAdsSearch: (q: string, country = 'US') =>
     api.get('/admin/shopping/meta-ads/search', { params: { q, country } }),
 
+  // Prodora Digital Bundles — ExiusCart's own design packs sold to sellers.
+  listDigitalBundles: () => api.get('/admin/prodora-bundles'),
+  createDigitalBundle: (data: any) => api.post('/admin/prodora-bundles', data),
+  updateDigitalBundle: (id: number, data: any) => api.put(`/admin/prodora-bundles/${id}`, data),
+  deleteDigitalBundle: (id: number) => api.delete(`/admin/prodora-bundles/${id}`),
+  uploadBundleFile: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/admin/prodora-bundles/upload-file', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  grantBundlePurchase: (bundleId: number, shopId: number) =>
+    api.post(`/admin/prodora-bundles/${bundleId}/grant`, { shop_id: shopId }),
+
   // Website blog (exiuscart.com/blog) — written here, read live by the
   // marketing site via /public/store/exiuscart-website/blog.
   listWebsiteBlogPosts: (statusFilter?: string) =>

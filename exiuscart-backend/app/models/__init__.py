@@ -50,3 +50,9 @@ from app.models.quotation import Quotation
 from app.models.email_log import EmailLog
 from app.models.email_template import EmailTemplate
 from app.models.product_ad_video import ProductAdVideo
+from app.models.checkout_attempt import CheckoutAttempt
+from app.models.higgsfield_connection import HiggsfieldConnection
+from app.models.storefront_event import StorefrontEvent
+from app.models.prodora_digital import ProdoraDigitalBundle, ProdoraDigitalPurchase
+from app.models.social_posting import SocialAccountConnection, SocialPost
+from app.models.whatsapp_marketing import WhatsAppConnection, WhatsAppTemplate, WhatsAppCampaign, WhatsAppMessageLog

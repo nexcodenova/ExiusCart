@@ -161,6 +161,24 @@ def process_drip_flows(db: Session):
                     from app.core.email import send_email as _send_email, with_thedersi_footer
                     subj = (cfg.get("subject") or "").replace("{name}", lead.name or "there")
                     body = (cfg.get("body_html") or f"<p>Hi {lead.name or 'there'},</p>").replace("{name}", lead.name or "there")
+                    # {cart_items}/{cart_total} — only relevant for cart_abandoned
+                    # flows, but checked for any flow that happens to use them,
+                    # same as {name} isn't gated to a specific trigger_type either.
+                    if "{cart_items}" in body or "{cart_total}" in body:
+                        from app.models.checkout_attempt import CheckoutAttempt
+                        attempt = (
+                            db.query(CheckoutAttempt)
+                            .filter(CheckoutAttempt.shop_id == lead.shop_id, CheckoutAttempt.email == (lead.email or "").lower())
+                            .order_by(CheckoutAttempt.created_at.desc())
+                            .first()
+                        )
+                        items = (attempt.cart_snapshot if attempt else None) or []
+                        items_html = "".join(
+                            f"<li>{i.get('quantity', 1)} × {i.get('name', 'Item')}</li>" for i in items
+                        )
+                        total = sum(float(i.get("price", 0)) * int(i.get("quantity", 1)) for i in items)
+                        body = body.replace("{cart_items}", f"<ul>{items_html}</ul>" if items else "")
+                        body = body.replace("{cart_total}", f"{total:.2f}")
                     body = with_thedersi_footer(body, lead.shop_id)
                     ok = _send_email(to=lead.email, subject=subj, html_body=body)
                     if ok:
@@ -230,6 +248,85 @@ def _auto_enroll(lead: ShopLead, trigger_type: str, db: Session, trigger_data: d
             flow_id=flow.id, lead_id=lead.id, shop_id=lead.shop_id,
             current_step_order=0, status="active", next_run_at=first_run,
         ))
+
+
+def sync_abandoned_carts(db: Session):
+    """cart_abandoned trigger — checks every shop with an active
+    cart_abandoned flow for checkout attempts past their configured window
+    with no matching order, and enrolls those shoppers into recovery.
+    Called every 15 min by the background scheduler in main.py.
+
+    Deliberately NOT full cart-session tracking — this is the minimal
+    piece that didn't already exist (see checkout.py's checkout-started
+    endpoint): a snapshot row per checkout-start, matched here against a
+    real Order by email once the window passes.
+    """
+    from app.models.checkout_attempt import CheckoutAttempt
+    from app.models.customer import Customer
+    from app.models.order import Order
+
+    now = datetime.now(timezone.utc)
+    flows = (
+        db.query(DripFlow)
+        .filter(DripFlow.trigger_type == "cart_abandoned", DripFlow.is_active == True)
+        .all()
+    )
+    for flow in flows:
+        window_hours = float((flow.trigger_config or {}).get("window_hours", 24))
+        cutoff = now - timedelta(hours=window_hours)
+        attempts = (
+            db.query(CheckoutAttempt)
+            .filter(
+                CheckoutAttempt.shop_id == flow.shop_id,
+                CheckoutAttempt.handled == False,
+                CheckoutAttempt.created_at <= cutoff,
+            )
+            .all()
+        )
+        for attempt in attempts:
+            # A real order for this email, placed after checkout started —
+            # they didn't actually abandon, they just took a while.
+            order = (
+                db.query(Order)
+                .join(Customer, Order.customer_id == Customer.id)
+                .filter(
+                    Order.shop_id == flow.shop_id,
+                    sql_func.lower(Customer.email) == attempt.email,
+                    Order.created_at >= attempt.created_at,
+                )
+                .first()
+            )
+            if order:
+                attempt.handled = True
+                attempt.order_id = order.id
+                continue
+
+            lead = (
+                db.query(ShopLead)
+                .filter(ShopLead.shop_id == flow.shop_id, sql_func.lower(ShopLead.email) == attempt.email)
+                .first()
+            )
+            if not lead:
+                lead = ShopLead(
+                    shop_id=flow.shop_id, name=attempt.email.split("@")[0],
+                    email=attempt.email, source="cart_abandoned",
+                )
+                db.add(lead)
+                db.flush()
+                _apply_score(lead)
+            _auto_enroll(lead, "cart_abandoned", db)
+            attempt.handled = True
+
+    db.commit()
+
+
+def sync_abandoned_carts_job():
+    """Entry point for the background thread — creates its own DB session."""
+    db = SessionLocal()
+    try:
+        sync_abandoned_carts(db)
+    finally:
+        db.close()
 
 
 def _shop(shop_id: int, user: User, db: Session) -> Shop:

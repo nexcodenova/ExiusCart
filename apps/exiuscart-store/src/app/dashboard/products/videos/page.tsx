@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Sparkles, AlertCircle, Lock, RefreshCw, Film } from 'lucide-react';
+import { Search, Loader2, Sparkles, AlertCircle, Lock, RefreshCw, Film, Eye, EyeOff, ExternalLink, X } from 'lucide-react';
 import Image from 'next/image';
 import { productsApi, videoGenApi } from '@/lib/api';
 
@@ -29,10 +29,80 @@ const MODELS: { value: string; label: string; hint: string }[] = [
   { value: 'bytedance/seedance-lite/image-to-video', label: 'Seedance Lite', hint: 'Cheapest, quick turnaround' },
 ];
 
+// ── Connect Your Own Higgsfield Account ──────────────────────────────────────
+// BYOK, not a platform key — the seller signs up for their own Higgsfield
+// plan and generation runs on their own account, so ExiusCart never pays
+// per-video. See video_gen.py for the full reasoning.
+
+function HiggsfieldConnectModal({ shopId, onClose, onConnected }: {
+  shopId: string; onClose: () => void; onConnected: () => void;
+}) {
+  const [keyId, setKeyId] = useState('');
+  const [keySecret, setKeySecret] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const connect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true); setError('');
+    try {
+      await videoGenApi.connectHiggsfield(shopId, keyId.trim(), keySecret.trim());
+      onConnected();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not save these credentials. Please try again.');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <p className="font-semibold text-foreground">Connect Higgsfield</p>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg text-muted-foreground"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={connect} className="p-5 space-y-4">
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{error}</div>
+          )}
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">Key ID *</label>
+            <input type="text" value={keyId} onChange={(e) => setKeyId(e.target.value)} required
+              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">Key Secret *</label>
+            <div className="relative">
+              <input type={showSecret ? 'text' : 'password'} value={keySecret} onChange={(e) => setKeySecret(e.target.value)} required
+                className="w-full px-3 py-2.5 pr-10 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:ring-2 focus:ring-primary" />
+              <button type="button" onClick={() => setShowSecret((v) => !v)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 leading-relaxed">
+            Find these at <span className="font-medium text-foreground">cloud.higgsfield.ai</span> under API Keys, on your own Higgsfield account. Generation runs on your own Higgsfield plan — ExiusCart never sees or pays for it.
+          </p>
+          <button type="submit" disabled={saving}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saving ? 'Connecting…' : 'Connect Higgsfield'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductVideosPage() {
   const [shopId, setShopId] = useState('');
   const [checking, setChecking] = useState(true);
   const [locked, setLocked] = useState(false);
+
+  const [higgsfieldConnected, setHiggsfieldConnected] = useState<boolean | null>(null);
+  const [higgsfieldSignupUrl, setHiggsfieldSignupUrl] = useState('');
+  const [showConnectModal, setShowConnectModal] = useState(false);
 
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -58,7 +128,10 @@ export default function ProductVideosPage() {
     // check indirectly — instead just try loading products; if the shop
     // isn't Premium, the actual /videos/generate call surfaces that 403
     // once they try, same lazy-gate pattern as the dropshipping suppliers.
-    setChecking(false);
+    videoGenApi.higgsfieldStatus(shopId)
+      .then((r) => { setHiggsfieldConnected(!!r.data?.connected); setHiggsfieldSignupUrl(r.data?.signup_url ?? ''); })
+      .catch(() => setHiggsfieldConnected(false))
+      .finally(() => setChecking(false));
   }, [shopId]);
 
   useEffect(() => {
@@ -114,6 +187,8 @@ export default function ProductVideosPage() {
       const detail = e?.response?.data?.detail;
       if (detail?.error === 'upgrade_required') {
         setLocked(true);
+      } else if (detail?.error === 'higgsfield_not_connected') {
+        setHiggsfieldConnected(false);
       } else {
         setGenerateError(detail?.message ?? detail ?? 'Could not start generation. Please try again.');
       }
@@ -129,6 +204,48 @@ export default function ProductVideosPage() {
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm">Loading…</span>
         </div>
+      </div>
+    );
+  }
+
+  if (!higgsfieldConnected) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto space-y-6">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-primary" />
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">AI Product Videos</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Turn a product photo into a ready-to-run ad video.</p>
+          </div>
+        </div>
+        <div className="border border-border rounded-2xl bg-card p-8 sm:p-10 flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
+            <Film className="w-7 h-7 text-primary" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground">Connect your own Higgsfield account</h2>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-md">
+            Video generation runs on your own Higgsfield plan (starts at $19/mo), not ExiusCart's — that keeps costs predictable and entirely in your control. Sign up, grab your API keys, then connect below.
+          </p>
+          <div className="flex items-center gap-3 mt-6">
+            {higgsfieldSignupUrl && (
+              <a href={higgsfieldSignupUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition">
+                Sign up on Higgsfield <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+            <button onClick={() => setShowConnectModal(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+              Connect Higgsfield
+            </button>
+          </div>
+        </div>
+        {showConnectModal && (
+          <HiggsfieldConnectModal
+            shopId={shopId}
+            onClose={() => setShowConnectModal(false)}
+            onConnected={() => { setShowConnectModal(false); setHiggsfieldConnected(true); }}
+          />
+        )}
       </div>
     );
   }

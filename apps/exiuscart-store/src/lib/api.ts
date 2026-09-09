@@ -121,6 +121,28 @@ export const videoGenApi = {
     api.get(`/shops/${shopId}/products/${productId}/videos`),
   status: (shopId: string, videoId: number | string) =>
     api.get(`/shops/${shopId}/videos/${videoId}/status`),
+  higgsfieldStatus: (shopId: string) =>
+    api.get(`/shops/${shopId}/ai/higgsfield/status`),
+  connectHiggsfield: (shopId: string, apiKeyId: string, apiKeySecret: string) =>
+    api.post(`/shops/${shopId}/ai/higgsfield/connect`, { api_key_id: apiKeyId, api_key_secret: apiKeySecret }),
+  disconnectHiggsfield: (shopId: string) =>
+    api.delete(`/shops/${shopId}/ai/higgsfield/connect`),
+};
+
+// ── Storefront Insights (own tracking + Microsoft Clarity) ───────────────
+export const storefrontInsightsApi = {
+  funnel: (shopId: string, days = 30) =>
+    api.get(`/shops/${shopId}/storefront-insights/funnel`, { params: { days } }),
+  searchTerms: (shopId: string, days = 30) =>
+    api.get(`/shops/${shopId}/storefront-insights/search-terms`, { params: { days } }),
+  clarityStatus: (shopId: string) =>
+    api.get(`/shops/${shopId}/clarity/status`),
+  connectClarity: (shopId: string, projectId: string, apiToken: string) =>
+    api.post(`/shops/${shopId}/clarity/connect`, { project_id: projectId, api_token: apiToken }),
+  disconnectClarity: (shopId: string) =>
+    api.delete(`/shops/${shopId}/clarity/connect`),
+  claritySummary: (shopId: string) =>
+    api.get(`/shops/${shopId}/clarity/summary`),
 };
 
 // ── Orders ────────────────────────────────────────────
@@ -620,6 +642,15 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels`),
   getSyncLogs: (shopId: string, params?: { channel_type?: string; success?: boolean; limit?: number }) =>
     api.get(`/shops/${shopId}/channel-sync-logs`, { params }),
+  getListingsStats: (shopId: string, days = 7) =>
+    api.get(`/shops/${shopId}/channel-listings/stats`, { params: { days } }),
+  getListings: (shopId: string, params: {
+    search?: string; channel_types?: string; statuses?: string; actions?: string; supplier_types?: string;
+    date_from?: string; date_to?: string; only_needs_action?: boolean; show_retries?: boolean;
+    page?: number; page_size?: number;
+  }) => api.get(`/shops/${shopId}/channel-listings`, { params }),
+  getListingDetail: (shopId: string, logId: number) =>
+    api.get(`/shops/${shopId}/channel-listings/${logId}`),
   connect: (shopId: string, data: {
     channel_type: string;
     channel_api_key: string;
@@ -647,6 +678,8 @@ export const channelsApi = {
     api.put(`/shops/${shopId}/channels/${channelId}/currency`, { channel_currency: channelCurrency }),
   getAllChannelStatuses: (shopId: string) =>
     api.get(`/shops/${shopId}/channel-statuses`),
+  getStats: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/stats`),
   getAllProductChannelCategories: (shopId: string) =>
     api.get(`/shops/${shopId}/product-channel-categories`),
   getProductChannelStatus: (shopId: string, productId: string) =>
@@ -874,6 +907,8 @@ export const balanceSheetApi = {
 export const dropshipApi = {
   getConnections: (shopId: string) =>
     api.get(`/shops/${shopId}/dropship/connections`),
+  getStats: (shopId: string) =>
+    api.get(`/shops/${shopId}/dropship/stats`),
   connectCJ: (shopId: string, data: { api_key: string }) =>
     api.post(`/shops/${shopId}/dropship/connect/cj`, data),
   connectPrintful: (shopId: string, data: { api_key: string }) =>
@@ -1094,6 +1129,9 @@ export const paymentGatewayApi = {
   get: (shopId: string) => api.get(`/shops/${shopId}/channels/custom/payment-gateway`),
   set: (shopId: string, data: { payment_gateway: string; merchant_id: string; merchant_secret: string; webhook_signing_secret?: string }) =>
     api.put(`/shops/${shopId}/channels/custom/payment-gateway`, data),
+  getStats: (shopId: string) => api.get(`/shops/${shopId}/channels/custom/stats`),
+  getSalesSeries: (shopId: string, days = 7) => api.get(`/shops/${shopId}/channels/custom/sales-series`, { params: { days } }),
+  getTrafficSeries: (shopId: string, days = 7) => api.get(`/shops/${shopId}/channels/custom/traffic-series`, { params: { days } }),
 };
 
 export const payrollApi = {
@@ -1125,4 +1163,41 @@ export const branchApi = {
   update: (shopId: string, id: number, data: any) => api.patch(`/shops/${shopId}/branches/${id}`, data),
   delete: (shopId: string, id: number) => api.delete(`/shops/${shopId}/branches/${id}`),
   setMain: (shopId: string, id: number) => api.patch(`/shops/${shopId}/branches/${id}/set-main`, {}),
+};
+
+// ── Social Media Post Automation (Facebook/Instagram/TikTok) ─────────────
+export const socialPostingApi = {
+  getConnections: (shopId: string) => api.get(`/shops/${shopId}/social/connections`),
+  disconnect: (shopId: string, connId: number) => api.delete(`/shops/${shopId}/social/connections/${connId}`),
+  facebookAuthorize: (shopId: string) => api.get(`/shops/${shopId}/social/facebook/authorize`),
+  facebookPages: (shopId: string) => api.get(`/shops/${shopId}/social/facebook/pages`),
+  facebookConnectPage: (shopId: string, pageId: string) =>
+    api.post(`/shops/${shopId}/social/facebook/connect-page`, { page_id: pageId }),
+  tiktokAuthorize: (shopId: string) => api.get(`/shops/${shopId}/social/tiktok/authorize`),
+  createPost: (shopId: string, data: { file: File; caption: string; platforms: string[]; scheduledAt?: string; productId?: number }) => {
+    const form = new FormData();
+    form.append('file', data.file);
+    form.append('caption', data.caption);
+    form.append('platforms', data.platforms.join(','));
+    if (data.scheduledAt) form.append('scheduled_at', data.scheduledAt);
+    if (data.productId) form.append('product_id', String(data.productId));
+    return api.post(`/shops/${shopId}/social/posts`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  listPosts: (shopId: string) => api.get(`/shops/${shopId}/social/posts`),
+  cancelPost: (shopId: string, postId: number) => api.delete(`/shops/${shopId}/social/posts/${postId}`),
+};
+
+// ── WhatsApp Marketing (BYOK — seller's own WhatsApp Business Account) ────
+export const whatsappApi = {
+  connect: (shopId: string, data: { waba_id: string; phone_number_id: string; access_token: string }) =>
+    api.post(`/shops/${shopId}/whatsapp/connect`, data),
+  status: (shopId: string) => api.get(`/shops/${shopId}/whatsapp/status`),
+  disconnect: (shopId: string) => api.delete(`/shops/${shopId}/whatsapp/connect`),
+  syncTemplates: (shopId: string) => api.post(`/shops/${shopId}/whatsapp/templates/sync`),
+  listTemplates: (shopId: string) => api.get(`/shops/${shopId}/whatsapp/templates`),
+  createCampaign: (shopId: string, data: { name: string; template_id: number }) =>
+    api.post(`/shops/${shopId}/whatsapp/campaigns`, data),
+  listCampaigns: (shopId: string) => api.get(`/shops/${shopId}/whatsapp/campaigns`),
+  deleteCampaign: (shopId: string, id: number) => api.delete(`/shops/${shopId}/whatsapp/campaigns/${id}`),
+  sendCampaign: (shopId: string, id: number) => api.post(`/shops/${shopId}/whatsapp/campaigns/${id}/send`),
 };

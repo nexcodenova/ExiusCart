@@ -1632,6 +1632,72 @@ async def update_product_channel_status(
     }
 
 
+@router.get("/shops/{shop_id}/channels/stats")
+def get_channel_stats(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Real per-channel product/order counts for the Sales Channels
+    dashboard's stat cards — powers the redesigned connections page.
+    Deliberately NOT including Shopify: it's tracked through a completely
+    separate system (shopify_integration.py, no ChannelConnection row), so
+    its own product/order counts belong to that page, not faked here as 0.
+
+    products = how many of this shop's products have ever been pushed to
+    that channel (a ChannelProductStatus row exists), regardless of
+    approval outcome — matches every *_integration.py's own listing flow.
+    orders = how many of this shop's orders came in through that channel
+    (a ChannelOrderMeta row), the same real ledger tiktok.py/daraz.py/etc.
+    already write to on every synced order."""
+    from app.models.channel_product_status import ChannelProductStatus
+    from app.models.channel_order_meta import ChannelOrderMeta
+    from sqlalchemy import func as sql_func
+
+    _shop_or_404(shop_id, current_user, db)
+
+    connections = db.query(ChannelConnection).filter(ChannelConnection.shop_id == shop_id).all()
+
+    product_counts = dict(
+        db.query(ChannelProductStatus.channel_type, sql_func.count(ChannelProductStatus.id))
+        .filter(ChannelProductStatus.shop_id == shop_id)
+        .group_by(ChannelProductStatus.channel_type)
+        .all()
+    )
+    order_counts = dict(
+        db.query(ChannelOrderMeta.channel_type, sql_func.count(ChannelOrderMeta.id))
+        .join(Order, ChannelOrderMeta.order_id == Order.id)
+        .filter(Order.shop_id == shop_id)
+        .group_by(ChannelOrderMeta.channel_type)
+        .all()
+    )
+
+    channels = {}
+    total_products, total_orders = 0, 0
+    for conn in connections:
+        products = product_counts.get(conn.channel_type, 0)
+        orders = order_counts.get(conn.channel_type, 0)
+        total_products += products
+        total_orders += orders
+        channels[conn.channel_type] = {
+            "connected": True,
+            "is_active": conn.is_active,
+            "products_synced": products,
+            "orders_synced": orders,
+            "last_synced_at": conn.last_synced_at.isoformat() if conn.last_synced_at else None,
+        }
+
+    return {
+        "summary": {
+            "connected_channels": len(connections),
+            "active_channels": sum(1 for c in connections if c.is_active),
+            "products_synced": total_products,
+            "orders_synced": total_orders,
+        },
+        "channels": channels,
+    }
+
+
 @router.get("/shops/{shop_id}/channel-statuses")
 def get_all_channel_statuses(
     shop_id: int,
@@ -1822,6 +1888,318 @@ def get_channel_sync_logs(
         }
         for r in rows
     ]
+
+
+# ── Channel Listings dashboard — richer, filterable/paginated view ─────────
+#
+# Built alongside get_channel_sync_logs above rather than replacing it (that
+# endpoint isn't used anywhere else, but changing its shape in place risked
+# more than adding a new one). Powers the Channel Listings page's real
+# stats/filters/pagination/detail-drawer — every field here traces to a
+# real column on ChannelSyncLog/ChannelProductStatus/Product/DropshipProductLink,
+# nothing fabricated. Two real gaps, disclosed rather than faked:
+#   - No "duration" exists — ChannelSyncLog only records one completion
+#     timestamp, not a start time, so there's nothing to compute a duration
+#     from. Returned as null; the frontend shows "—".
+#   - "Open listing" only has a real public URL for eBay/Etsy (stable,
+#     well-known URL conventions) — every other channel's listing lives on
+#     a seller-specific or non-guessable URL, so it's omitted rather than
+#     invented for those.
+
+# Known-stable, publicly documented listing URL conventions — NOT included
+# for Daraz/Noon/TikTok/WooCommerce/BigCommerce/Custom/Whop/Gumroad since
+# those need a seller-specific domain or a slug this table doesn't store.
+_LISTING_URL_TEMPLATES: dict = {
+    "ebay": "https://www.ebay.com/itm/{external_id}",
+    "etsy": "https://www.etsy.com/listing/{external_id}",
+}
+
+
+def _listing_status(sync_success: bool, product_status: Optional[str]) -> str:
+    """The 4-state status the dashboard shows, combining two real signals:
+    did the API call itself succeed (ChannelSyncLog.success), and — if it
+    did — what the channel's own review decided (ChannelProductStatus.status,
+    written by eBay/TikTok/Daraz/etc's own create_listing handlers)."""
+    if not sync_success:
+        return "failed"
+    if product_status == "pending_review":
+        return "processing"
+    if product_status == "rejected":
+        return "warning"
+    return "success"
+
+
+@router.get("/shops/{shop_id}/channel-listings/stats")
+def get_channel_listings_stats(
+    shop_id: int,
+    days: int = 7,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Stat cards + success-rate bar + the "most failures are caused by"
+    insight — all real, all from ChannelSyncLog, compared against the
+    identical-length window immediately before it for the trend %."""
+    from app.models.channel_sync_log import ChannelSyncLog
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import func as sql_func
+
+    _shop_or_404(shop_id, current_user, db)
+    now = datetime.now(timezone.utc)
+    window_start = now - timedelta(days=days)
+    prev_start = window_start - timedelta(days=days)
+
+    def _counts(start, end):
+        rows = db.query(ChannelSyncLog.success, sql_func.count(ChannelSyncLog.id)).filter(
+            ChannelSyncLog.shop_id == shop_id,
+            ChannelSyncLog.created_at >= start,
+            ChannelSyncLog.created_at < end,
+        ).group_by(ChannelSyncLog.success).all()
+        succ = sum(c for ok, c in rows if ok)
+        fail = sum(c for ok, c in rows if not ok)
+        return succ, fail
+
+    succ, fail = _counts(window_start, now)
+    prev_succ, prev_fail = _counts(prev_start, window_start)
+    total, prev_total = succ + fail, prev_succ + prev_fail
+
+    def _pct_change(now_val, prev_val):
+        if prev_val == 0:
+            return None
+        return round(100 * (now_val - prev_val) / prev_val, 1)
+
+    # "Needs attention" = failed + rejected-but-succeeded (warning state) —
+    # the rejected count comes from ChannelProductStatus, scoped to products
+    # touched by a sync log in this window so it reflects recent activity.
+    from app.models.channel_product_status import ChannelProductStatus
+    recent_product_ids = [r[0] for r in db.query(ChannelSyncLog.product_id).filter(
+        ChannelSyncLog.shop_id == shop_id, ChannelSyncLog.created_at >= window_start, ChannelSyncLog.product_id.isnot(None),
+    ).distinct().all()]
+    warning_count = 0
+    if recent_product_ids:
+        warning_count = db.query(func.count(ChannelProductStatus.id)).filter(
+            ChannelProductStatus.shop_id == shop_id,
+            ChannelProductStatus.product_id.in_(recent_product_ids),
+            ChannelProductStatus.status == "rejected",
+        ).scalar() or 0
+
+    # Real "most common cause of failure" — grouped by action, not a parsed
+    # guess at every channel's differently-worded error text.
+    top_action_row = db.query(ChannelSyncLog.action, sql_func.count(ChannelSyncLog.id)).filter(
+        ChannelSyncLog.shop_id == shop_id, ChannelSyncLog.success == False,
+        ChannelSyncLog.created_at >= window_start,
+    ).group_by(ChannelSyncLog.action).order_by(sql_func.count(ChannelSyncLog.id).desc()).first()
+
+    return {
+        "total_activity": total,
+        "successful": succ,
+        "failed": fail,
+        "needs_attention": fail + warning_count,
+        "success_rate": round(100 * succ / total, 1) if total else None,
+        "trend": {
+            "total_activity": _pct_change(total, prev_total),
+            "successful": _pct_change(succ, prev_succ),
+            "failed": _pct_change(fail, prev_fail),
+        },
+        "top_failing_action": top_action_row[0] if top_action_row else None,
+        "top_failing_action_count": top_action_row[1] if top_action_row else 0,
+    }
+
+
+@router.get("/shops/{shop_id}/channel-listings")
+def get_channel_listings(
+    shop_id: int,
+    search: Optional[str] = None,
+    channel_types: Optional[str] = None,   # comma-separated
+    statuses: Optional[str] = None,        # comma-separated: success,failed,warning,processing
+    actions: Optional[str] = None,         # comma-separated: create_listing,update_stock,update_price,sync_order
+    supplier_types: Optional[str] = None,  # comma-separated dropship supplier_type, real via DropshipProductLink
+    date_from: Optional[str] = None,       # ISO date
+    date_to: Optional[str] = None,
+    only_needs_action: bool = False,
+    show_retries: bool = True,
+    page: int = 1,
+    page_size: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """The real, filterable/paginated feed behind the Channel Listings
+    table. show_retries=False collapses to only the latest attempt per
+    (product_id, channel_type, action) — the raw table is append-only so
+    every retry already has its own row; this just chooses whether to show
+    all of them or the current state only."""
+    from app.models.channel_sync_log import ChannelSyncLog
+    from app.models.channel_product_status import ChannelProductStatus
+    from app.models.dropship import DropshipProductLink
+    from datetime import datetime
+
+    shop = _shop_or_404(shop_id, current_user, db)
+    query = db.query(ChannelSyncLog).filter(ChannelSyncLog.shop_id == shop_id)
+
+    if channel_types:
+        query = query.filter(ChannelSyncLog.channel_type.in_(channel_types.split(",")))
+    if actions:
+        query = query.filter(ChannelSyncLog.action.in_(actions.split(",")))
+    if date_from:
+        query = query.filter(ChannelSyncLog.created_at >= datetime.fromisoformat(date_from))
+    if date_to:
+        query = query.filter(ChannelSyncLog.created_at <= datetime.fromisoformat(date_to))
+
+    rows = query.order_by(ChannelSyncLog.created_at.desc()).limit(2000).all()
+
+    if not show_retries:
+        seen = set()
+        deduped = []
+        for r in rows:
+            key = (r.product_id, r.channel_type, r.action)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(r)
+        rows = deduped
+
+    # Attempt number — real count of how many times this exact
+    # (product, channel, action) combo has been attempted, up to and
+    # including this row (append-only table, so counting rows at-or-before
+    # this one's timestamp is the real ordinal).
+    attempt_counts: dict = {}
+    for r in sorted(rows, key=lambda x: x.created_at):
+        key = (r.product_id, r.channel_type, r.action)
+        attempt_counts[key] = attempt_counts.get(key, 0) + 1
+        r._attempt_number = attempt_counts[key]  # type: ignore[attr-defined]
+
+    product_ids = list({r.product_id for r in rows if r.product_id})
+    products = {}
+    if product_ids:
+        products = {p.id: p for p in db.query(Product).filter(Product.id.in_(product_ids)).all()}
+
+    statuses_map: dict = {}
+    if product_ids:
+        for s in db.query(ChannelProductStatus).filter(
+            ChannelProductStatus.shop_id == shop_id, ChannelProductStatus.product_id.in_(product_ids),
+        ).all():
+            statuses_map[(s.product_id, s.channel_type)] = s.status
+
+    supplier_map: dict = {}
+    if product_ids:
+        for link in db.query(DropshipProductLink).filter(
+            DropshipProductLink.shop_id == shop_id, DropshipProductLink.product_id.in_(product_ids), DropshipProductLink.is_primary == True,
+        ).all():
+            supplier_map[link.product_id] = link.supplier_type
+
+    def _row_out(r):
+        product = products.get(r.product_id)
+        computed_status = _listing_status(r.success, statuses_map.get((r.product_id, r.channel_type)))
+        url_template = _LISTING_URL_TEMPLATES.get(r.channel_type)
+        listing_url = url_template.format(external_id=r.external_id) if (url_template and r.external_id) else None
+        return {
+            "id": r.id,
+            "product_id": r.product_id,
+            "product_name": product.name if product else None,
+            "product_sku": product.sku if product else None,
+            "product_image_url": product.image_url if product else None,
+            "channel_type": r.channel_type,
+            "store_name": shop.name,
+            "supplier_type": supplier_map.get(r.product_id),
+            "action": r.action,
+            "status": computed_status,
+            "success": r.success,
+            "external_id": r.external_id,
+            "listing_url": listing_url,
+            "error_message": r.error_message,
+            "attempt_number": getattr(r, "_attempt_number", 1),
+            "created_at": r.created_at,
+        }
+
+    out_rows = [_row_out(r) for r in rows]
+
+    if search:
+        s = search.lower()
+        out_rows = [r for r in out_rows if
+                    (r["product_name"] and s in r["product_name"].lower()) or
+                    (r["product_sku"] and s in r["product_sku"].lower()) or
+                    (r["product_id"] and s == str(r["product_id"]))]
+
+    if statuses:
+        wanted = set(statuses.split(","))
+        out_rows = [r for r in out_rows if r["status"] in wanted]
+
+    if supplier_types:
+        wanted_suppliers = set(supplier_types.split(","))
+        out_rows = [r for r in out_rows if r["supplier_type"] in wanted_suppliers]
+
+    if only_needs_action:
+        out_rows = [r for r in out_rows if r["status"] in ("failed", "warning")]
+
+    total = len(out_rows)
+    start = (max(page, 1) - 1) * page_size
+    page_rows = out_rows[start:start + page_size]
+
+    return {"total": total, "page": page, "page_size": page_size, "rows": page_rows}
+
+
+@router.get("/shops/{shop_id}/channel-listings/{log_id}")
+def get_channel_listing_detail(
+    shop_id: int,
+    log_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Full detail for the listing-details drawer — the same row plus its
+    real attempt history (every ChannelSyncLog row for the same product +
+    channel + action), used as the real "listing progress" timeline instead
+    of a fabricated Queued/Processing generic animation."""
+    from app.models.channel_sync_log import ChannelSyncLog
+    from app.models.channel_product_status import ChannelProductStatus
+    from app.models.dropship import DropshipProductLink
+
+    shop = _shop_or_404(shop_id, current_user, db)
+    log = db.query(ChannelSyncLog).filter(ChannelSyncLog.id == log_id, ChannelSyncLog.shop_id == shop_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Listing activity not found")
+
+    product = db.query(Product).filter(Product.id == log.product_id).first() if log.product_id else None
+    product_status = None
+    if log.product_id:
+        ps = db.query(ChannelProductStatus).filter(
+            ChannelProductStatus.shop_id == shop_id, ChannelProductStatus.product_id == log.product_id,
+            ChannelProductStatus.channel_type == log.channel_type,
+        ).first()
+        product_status = ps.status if ps else None
+
+    supplier_type = None
+    if log.product_id:
+        link = db.query(DropshipProductLink).filter(
+            DropshipProductLink.shop_id == shop_id, DropshipProductLink.product_id == log.product_id, DropshipProductLink.is_primary == True,
+        ).first()
+        supplier_type = link.supplier_type if link else None
+
+    history = db.query(ChannelSyncLog).filter(
+        ChannelSyncLog.shop_id == shop_id, ChannelSyncLog.product_id == log.product_id,
+        ChannelSyncLog.channel_type == log.channel_type, ChannelSyncLog.action == log.action,
+    ).order_by(ChannelSyncLog.created_at.asc()).all()
+
+    url_template = _LISTING_URL_TEMPLATES.get(log.channel_type)
+    listing_url = url_template.format(external_id=log.external_id) if (url_template and log.external_id) else None
+
+    return {
+        "id": log.id,
+        "product_id": log.product_id,
+        "product_name": product.name if product else None,
+        "product_sku": product.sku if product else None,
+        "product_image_url": product.image_url if product else None,
+        "channel_type": log.channel_type,
+        "store_name": shop.name,
+        "supplier_type": supplier_type,
+        "action": log.action,
+        "status": _listing_status(log.success, product_status),
+        "external_id": log.external_id,
+        "listing_url": listing_url,
+        "error_message": log.error_message,
+        "history": [
+            {"success": h.success, "error_message": h.error_message, "created_at": h.created_at}
+            for h in history
+        ],
+    }
 
 
 # ── Storefront Categories — Shopify & Custom Website only ──────────────────

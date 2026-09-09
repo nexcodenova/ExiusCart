@@ -31,7 +31,9 @@ class DripFlow(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     trigger_type = Column(String(50), nullable=False)
-    # lead_created | status_changed | score_above | no_activity_days
+    # lead_created | status_changed | score_above | no_activity_days | cart_abandoned
+    # cart_abandoned config: {"window_hours": 24} — see marketing.py's
+    # sync_abandoned_carts_job and checkout.py's checkout-started endpoint
     trigger_config = Column(JSON, nullable=True)
     is_active = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

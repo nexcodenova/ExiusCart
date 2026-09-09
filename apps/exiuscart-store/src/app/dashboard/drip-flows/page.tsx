@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import {
   Plus, X, Loader2, Trash2, Edit2, Play, Pause, GitBranch,
   Mail, MessageCircle, Clock, RefreshCw, ChevronDown, ChevronUp,
-  Users, CheckCircle, Zap, ArrowRight, Info, AlertCircle,
+  Users, CheckCircle, Zap, ArrowRight, Info, AlertCircle, ShoppingCart,
 } from 'lucide-react';
 import Link from 'next/link';
 import { dripFlowsApi, leadsApi } from '@/lib/api';
@@ -11,7 +11,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type TriggerType = 'lead_created' | 'status_changed' | 'score_above' | 'no_activity_days';
+type TriggerType = 'lead_created' | 'status_changed' | 'score_above' | 'no_activity_days' | 'cart_abandoned';
 type StepType = 'wait' | 'send_email' | 'send_whatsapp' | 'update_status';
 
 interface FlowStep {
@@ -51,6 +51,7 @@ const TRIGGER_LABELS: Record<TriggerType, string> = {
   status_changed: 'Lead Status Changed',
   score_above: 'Score Crosses Threshold',
   no_activity_days: 'No Activity for X Days',
+  cart_abandoned: 'Cart Abandoned',
 };
 
 const TRIGGER_ICONS: Record<TriggerType, React.ReactNode> = {
@@ -58,6 +59,7 @@ const TRIGGER_ICONS: Record<TriggerType, React.ReactNode> = {
   status_changed: <RefreshCw className="w-3.5 h-3.5" />,
   score_above: <ArrowRight className="w-3.5 h-3.5" />,
   no_activity_days: <Clock className="w-3.5 h-3.5" />,
+  cart_abandoned: <ShoppingCart className="w-3.5 h-3.5" />,
 };
 
 const STEP_LABELS: Record<StepType, string> = {
@@ -553,6 +555,24 @@ export default function DripFlowsPage() {
                       className="w-20 px-2.5 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
                     />
                     <span className="text-sm text-muted-foreground">days of no activity</span>
+                  </div>
+                )}
+                {formTrigger === 'cart_abandoned' && (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">If no order within</span>
+                      <input
+                        type="number" min={1}
+                        value={formTriggerConfig.window_hours ?? 24}
+                        onChange={e => setFormTriggerConfig({ window_hours: Number(e.target.value) })}
+                        className="w-20 px-2.5 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground focus:ring-2 focus:ring-primary outline-none"
+                      />
+                      <span className="text-sm text-muted-foreground">hours of starting checkout</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                      <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      Fires when a shopper gives a real email at checkout on your storefront but no order shows up in this window. Use <code className="text-[11px] bg-muted px-1 py-0.5 rounded">{'{cart_items}'}</code> and <code className="text-[11px] bg-muted px-1 py-0.5 rounded">{'{cart_total}'}</code> in an email step to show what they left behind.
+                    </p>
                   </div>
                 )}
               </div>

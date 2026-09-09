@@ -238,6 +238,12 @@ def public_store_checkout(
         status="pending",
         payment_status="pending",
         source="channel",
+        # Every order created through this endpoint came from the seller's
+        # own Custom Website (it's the only checkout path this file
+        # exposes) — tagged here so the Custom Website Integration page can
+        # show real order/revenue counts for this channel specifically,
+        # since Order has no dedicated channel-type column of its own.
+        notes="Custom Website order",
         subtotal=subtotal,
         discount_amount=wallet_discount,
         total=total,
@@ -263,6 +269,58 @@ def public_store_checkout(
 
     payment_params = _build_payment_params(conn, shop, order, total, data.return_url, data.cancel_url)
     return {"order_number": order.order_number, "total": float(total), "payment": payment_params}
+
+
+class CheckoutStartedIn(BaseModel):
+    email: str
+    items: List[CheckoutItemIn]
+
+
+@router.post("/public/store/{shop_slug}/checkout-started")
+@limiter.limit("20/minute")
+def public_checkout_started(
+    request: Request,
+    shop_slug: str,
+    data: CheckoutStartedIn,
+    db: Session = Depends(get_db),
+):
+    """Fired by the storefront the moment a real email is captured at
+    checkout — BEFORE order submission. Not full cart-session tracking:
+    one snapshot row, not a running session. This is the only piece
+    Abandoned Cart recovery needed that didn't already exist — everything
+    downstream (matching against a real Order, enrolling into a Drip Flow)
+    runs off this row (see marketing.py's sync_abandoned_carts_job)."""
+    from app.models.checkout_attempt import CheckoutAttempt
+
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    email = data.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail="A valid email is required.")
+    if not data.items:
+        raise HTTPException(status_code=422, detail="Cart is empty.")
+
+    snapshot = []
+    for item in data.items:
+        if item.quantity < 1:
+            continue
+        product = db.query(Product).filter(Product.id == item.product_id, Product.shop_id == shop.id).first()
+        if not product:
+            continue
+        snapshot.append({
+            "product_id": product.id,
+            "name": product.name,
+            "quantity": item.quantity,
+            "price": float(product.price),
+        })
+    if not snapshot:
+        raise HTTPException(status_code=422, detail="No valid items in cart.")
+
+    db.add(CheckoutAttempt(shop_id=shop.id, email=email, cart_snapshot=snapshot))
+    db.commit()
+    return {"ok": True}
 
 
 def _build_payment_params(conn: ChannelConnection, shop: Shop, order: Order, total: Decimal, return_url: Optional[str], cancel_url: Optional[str]) -> dict:
@@ -576,3 +634,184 @@ def set_payment_gateway_settings(
         conn.channel_api_url = payload.webhook_signing_secret.strip()  # repurposed field, see payment_gateways.py
     db.commit()
     return {"payment_gateway": conn.payment_gateway, "merchant_id": conn.gateway_merchant_id}
+
+
+@router.get("/shops/{shop_id}/channels/custom/stats")
+def get_custom_website_stats(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Real numbers for the Custom Website Integration page's stat cards.
+    Unlike Shopify/eBay/etc, Custom Website has no per-product sync state —
+    every active product is already reachable through the public API by
+    definition — so "products" here means active catalog size, not a sync
+    count. Orders/revenue are scoped to orders actually placed through THIS
+    channel via the `notes` marker set at creation in create_checkout()
+    above (Order has no dedicated channel-type column) — orders placed
+    before this marker existed won't be counted, which is a real, disclosed
+    limit, not a bug."""
+    from datetime import datetime, timezone, timedelta
+
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id, ChannelConnection.channel_type == "custom",
+    ).first()
+
+    active_products = db.query(func.count(Product.id)).filter(
+        Product.shop_id == shop_id, Product.is_active == True,
+    ).scalar() or 0
+
+    orders_q = db.query(Order).filter(Order.shop_id == shop_id, Order.notes == "Custom Website order")
+    order_count = orders_q.count()
+    revenue = db.query(func.coalesce(func.sum(Order.total), 0)).filter(
+        Order.shop_id == shop_id, Order.notes == "Custom Website order",
+    ).scalar() or 0
+
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_orders = orders_q.filter(Order.created_at >= today_start).count()
+    today_revenue = db.query(func.coalesce(func.sum(Order.total), 0)).filter(
+        Order.shop_id == shop_id, Order.notes == "Custom Website order", Order.created_at >= today_start,
+    ).scalar() or 0
+
+    # "Orders per 100 views" — NOT a session-based conversion rate (there's
+    # no session/cookie tracking on StorefrontEvent by design, see its own
+    # docstring), so a true visitor-conversion % isn't computable. This is
+    # the honest thing that IS real: how many real page views on this
+    # storefront turned into an order, over the same 30-day window.
+    from app.models.storefront_event import StorefrontEvent
+    window_start = datetime.now(timezone.utc) - timedelta(days=30)
+    views_30d = db.query(func.count(StorefrontEvent.id)).filter(
+        StorefrontEvent.shop_id == shop_id, StorefrontEvent.event_type == "view", StorefrontEvent.created_at >= window_start,
+    ).scalar() or 0
+    orders_30d = orders_q.filter(Order.created_at >= window_start).count()
+    orders_per_100_views = round(100 * orders_30d / views_30d, 1) if views_30d else None
+
+    refunds_count = orders_q.filter(Order.payment_status == "refunded").count()
+
+    last_order = orders_q.order_by(Order.created_at.desc()).first()
+    recent_20 = orders_q.order_by(Order.created_at.desc()).limit(20).all()
+    paid_count = sum(1 for o in recent_20 if (o.payment_status or "").lower() == "paid")
+    recent_success_rate = round(100 * paid_count / len(recent_20), 1) if recent_20 else None
+
+    recent = orders_q.order_by(Order.created_at.desc()).limit(8).all()
+    customer_ids = list({o.customer_id for o in recent if o.customer_id})
+    customer_names = {}
+    if customer_ids:
+        customer_names = {c.id: c.name for c in db.query(Customer).filter(Customer.id.in_(customer_ids)).all()}
+    recent_orders = [
+        {
+            "id": o.id,
+            "order_number": o.order_number,
+            "customer_name": customer_names.get(o.customer_id),
+            "total": float(o.total),
+            "status": o.status,
+            "payment_status": o.payment_status,
+            "fulfillment_status": o.fulfillment_status,
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+        }
+        for o in recent
+    ]
+
+    return {
+        "active_products": active_products,
+        "orders": order_count,
+        "revenue": float(revenue),
+        "today_orders": today_orders,
+        "today_revenue": float(today_revenue),
+        "orders_per_100_views": orders_per_100_views,
+        "recent_success_rate": recent_success_rate,
+        "refunds_count": refunds_count,
+        "connected_at": conn.created_at.isoformat() if conn and conn.created_at else None,
+        "last_order_at": last_order.created_at.isoformat() if last_order and last_order.created_at else None,
+        "recent_orders": recent_orders,
+    }
+
+
+@router.get("/shops/{shop_id}/channels/custom/sales-series")
+def get_custom_website_sales_series(
+    shop_id: int,
+    days: int = 7,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Real daily revenue/orders for the Website Sales chart — grouped in
+    Python rather than a DB-specific date_trunc so this works identically
+    regardless of the underlying database engine."""
+    from datetime import datetime, timezone, timedelta
+    from collections import OrderedDict
+
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    days = min(max(days, 1), 365)
+    start = datetime.now(timezone.utc) - timedelta(days=days - 1)
+    start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    orders = db.query(Order).filter(
+        Order.shop_id == shop_id, Order.notes == "Custom Website order", Order.created_at >= start,
+    ).all()
+
+    buckets: "OrderedDict[str, dict]" = OrderedDict()
+    for i in range(days):
+        day = (start + timedelta(days=i)).date().isoformat()
+        buckets[day] = {"date": day, "revenue": 0.0, "orders": 0}
+    for o in orders:
+        if not o.created_at:
+            continue
+        day = o.created_at.date().isoformat()
+        if day in buckets:
+            buckets[day]["revenue"] += float(o.total)
+            buckets[day]["orders"] += 1
+
+    return {"series": list(buckets.values())}
+
+
+@router.get("/shops/{shop_id}/channels/custom/traffic-series")
+def get_custom_website_traffic_series(
+    shop_id: int,
+    days: int = 7,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Real daily visitor activity for the Website Traffic chart — page
+    views and add-to-carts from StorefrontEvent, the same real tracking
+    already powering "Orders per 100 Views". No session/visitor-count
+    exists (StorefrontEvent deliberately doesn't track sessions), so this
+    is real event counts per day, not unique-visitor numbers."""
+    from datetime import datetime, timezone, timedelta
+    from collections import OrderedDict
+    from app.models.storefront_event import StorefrontEvent
+
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    days = min(max(days, 1), 365)
+    start = datetime.now(timezone.utc) - timedelta(days=days - 1)
+    start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    events = db.query(StorefrontEvent.event_type, StorefrontEvent.created_at).filter(
+        StorefrontEvent.shop_id == shop_id, StorefrontEvent.created_at >= start,
+    ).all()
+
+    buckets: "OrderedDict[str, dict]" = OrderedDict()
+    for i in range(days):
+        day = (start + timedelta(days=i)).date().isoformat()
+        buckets[day] = {"date": day, "views": 0, "add_to_cart": 0}
+    for event_type, created_at in events:
+        if not created_at:
+            continue
+        day = created_at.date().isoformat()
+        if day not in buckets:
+            continue
+        if event_type == "view":
+            buckets[day]["views"] += 1
+        elif event_type == "add_to_cart":
+            buckets[day]["add_to_cart"] += 1
+
+    return {"series": list(buckets.values())}
