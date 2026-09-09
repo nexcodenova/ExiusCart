@@ -305,8 +305,8 @@ export default function CustomWebsiteIntegrationPage() {
             <div className="space-y-5">
               <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5">
                 <div className="space-y-5">
-                  <SalesChart shopId={shopId} refundsCount={stats?.refunds_count ?? 0} />
                   <TrafficChart shopId={shopId} />
+                  <SalesChart shopId={shopId} refundsCount={stats?.refunds_count ?? 0} />
                 </div>
                 <IntegrationHealth
                   connected={!!connection}
