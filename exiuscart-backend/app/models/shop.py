@@ -52,6 +52,13 @@ class Shop(Base):
     # ExiusCart dashboard theme
     accent_color = Column(String(7), nullable=True)
     font_family = Column(String(50), nullable=True)
+    # Microsoft Clarity (free heatmaps/session recordings/funnels) — project ID
+    # is public (goes in the storefront's own tracking script), the API token
+    # (Data Export API, learn.microsoft.com/clarity) is encrypted since it's
+    # a real credential. Stored directly on Shop, same pattern as brand_color
+    # above — one value each, no need for a dedicated connection table.
+    clarity_project_id = Column(String(100), nullable=True)
+    clarity_api_token_enc = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

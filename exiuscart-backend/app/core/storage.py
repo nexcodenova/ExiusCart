@@ -119,6 +119,32 @@ def upload_product_video(contents: bytes, shop_id: int, product_id: int, ext: st
     return url
 
 
+def upload_social_media(contents: bytes, shop_id: int, ext: str, content_type: str = "image/jpeg") -> str:
+    """Upload a social post's image/video to R2. Both Meta's Content
+    Publishing API and TikTok's Content Posting API (PULL_FROM_URL mode)
+    require the media to be reachable at a public URL at the time they fetch
+    it — this permanent public CDN URL is what gets handed to them, same
+    reasoning as upload_product_video's re-hosting of Higgsfield output."""
+    if not _R2_ACCOUNT_ID or not _R2_ACCESS_KEY_ID or not _R2_SECRET_ACCESS_KEY:
+        raise RuntimeError("R2 credentials not configured.")
+
+    filename = f"{uuid.uuid4()}.{ext}"
+    key = f"social-posts/{shop_id}/{filename}"
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=_R2_BUCKET,
+        Key=key,
+        Body=contents,
+        ContentType=content_type,
+        CacheControl="public, max-age=31536000",
+    )
+
+    url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    logger.info(f"[R2 UPLOAD social] {url}")
+    return url
+
+
 def upload_shop_image(contents: bytes, shop_id: int, image_type: str, ext: str, content_type: str = "image/jpeg") -> str:
     """Upload a shop profile image (logo/banner) to R2 and return the public CDN URL."""
     if not _R2_ACCOUNT_ID or not _R2_ACCESS_KEY_ID or not _R2_SECRET_ACCESS_KEY:

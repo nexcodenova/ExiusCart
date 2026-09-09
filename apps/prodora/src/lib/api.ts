@@ -142,6 +142,40 @@ export const shoppingApi = {
   },
 };
 
+// ── Digital Bundles — ExiusCart's own design packs, sold through
+// ExiusCart's own Whop store rather than sourced from a supplier. Same
+// auth (prodoraAuth token) as everything else in this app.
+export interface DigitalBundle {
+  id: number;
+  name: string;
+  description: string | null;
+  cover_image_url: string | null;
+  price: number;
+  suggested_resale_price: number | null;
+  resale_notes: string | null;
+  ad_facebook_url: string | null;
+  ad_tiktok_url: string | null;
+  ad_instagram_url: string | null;
+  ad_pinterest_url: string | null;
+  whop_checkout_url: string | null;
+  purchased: boolean;
+}
+
+export const digitalBundlesApi = {
+  list: async (): Promise<DigitalBundle[]> => {
+    const response = await apiClient.get('/prodora/digital-bundles');
+    return response.data?.bundles ?? [];
+  },
+  download: async (id: number): Promise<{ editable_file_url: string | null; pdf_file_url: string | null }> => {
+    const response = await apiClient.get(`/prodora/digital-bundles/${id}/download`);
+    return response.data;
+  },
+  import: async (id: number): Promise<{ product_id: number; name: string }> => {
+    const response = await apiClient.post(`/prodora/digital-bundles/${id}/import`);
+    return response.data;
+  },
+};
+
 export interface ShippingOption {
   logistic_name: string;
   price: number;

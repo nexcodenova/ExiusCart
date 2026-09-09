@@ -2151,6 +2151,87 @@ def list_connections(
     return {"plan": plan, "suppliers": suppliers}
 
 
+@router.get("/shops/{shop_id}/dropship/stats")
+def get_dropship_stats(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Real numbers for the Suppliers dashboard's stat cards and connected-
+    suppliers table — sourced from DropshipProductLink (a row per product
+    actually imported from a supplier) and DropshipOrder (a row per order
+    actually forwarded to one), never fabricated. Also returns a handful of
+    the shop's most recently sourced products (with real image/price) for
+    the dashboard's product preview strip."""
+    from sqlalchemy import func as sql_func
+    from app.models.product import Product
+
+    _shop_or_404(shop_id, current_user, db)
+
+    product_counts = dict(
+        db.query(DropshipProductLink.supplier_type, sql_func.count(DropshipProductLink.id))
+        .filter(DropshipProductLink.shop_id == shop_id)
+        .group_by(DropshipProductLink.supplier_type)
+        .all()
+    )
+    order_counts = dict(
+        db.query(DropshipOrder.supplier_type, sql_func.count(DropshipOrder.id))
+        .filter(DropshipOrder.shop_id == shop_id)
+        .group_by(DropshipOrder.supplier_type)
+        .all()
+    )
+    fulfilled_counts = dict(
+        db.query(DropshipOrder.supplier_type, sql_func.count(DropshipOrder.id))
+        .filter(DropshipOrder.shop_id == shop_id, DropshipOrder.status.in_(["shipped", "delivered"]))
+        .group_by(DropshipOrder.supplier_type)
+        .all()
+    )
+
+    all_supplier_types = set(product_counts) | set(order_counts)
+    by_supplier = {
+        st: {
+            "products": product_counts.get(st, 0),
+            "orders": order_counts.get(st, 0),
+            "fulfilled": fulfilled_counts.get(st, 0),
+        }
+        for st in all_supplier_types
+    }
+
+    total_products = sum(product_counts.values())
+    total_orders = sum(order_counts.values())
+    total_fulfilled = sum(fulfilled_counts.values())
+
+    recent_links = (
+        db.query(DropshipProductLink)
+        .filter(DropshipProductLink.shop_id == shop_id)
+        .order_by(DropshipProductLink.created_at.desc())
+        .limit(4)
+        .all()
+    )
+    recent_products = []
+    for link in recent_links:
+        product = db.query(Product).filter(Product.id == link.product_id).first()
+        if not product:
+            continue
+        recent_products.append({
+            "id": product.id,
+            "name": product.name,
+            "image_url": product.image_url,
+            "price": float(product.price),
+            "cost_price": float(link.cost_price) if link.cost_price is not None else None,
+            "supplier_type": link.supplier_type,
+        })
+
+    return {
+        "products_sourced": total_products,
+        "automated_orders": total_orders,
+        "fulfilled_orders": total_fulfilled,
+        "fulfillment_rate": round(100 * total_fulfilled / total_orders, 1) if total_orders else None,
+        "by_supplier": by_supplier,
+        "recent_products": recent_products,
+    }
+
+
 @router.post("/shops/{shop_id}/dropship/connect/cj")
 async def connect_cj(
     shop_id: int,

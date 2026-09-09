@@ -120,7 +120,10 @@ export default function DashboardLayout({
           <SidebarInset className="min-h-screen pb-20 lg:pb-0">
             <Header onMenuClick={() => {}} />
             <TrialBanner />
-            <main className="p-4 lg:p-6">{children}</main>
+            {/* Tightened from p-4 lg:p-6 — the extra 8px on desktop read as
+                dead space between the header and each page's own heading,
+                per feedback to reduce gaps across the app generally. */}
+            <main className="p-4 lg:p-5">{children}</main>
           </SidebarInset>
         </SidebarProvider>
         <MobileBottomNav />

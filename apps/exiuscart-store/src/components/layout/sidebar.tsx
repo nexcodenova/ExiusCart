@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, ShoppingCart, FileText, Users, Package, Boxes,
@@ -12,7 +12,7 @@ import {
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw, ListChecks,
-  Star, MapPin, ShoppingBag, LayoutGrid, FormInput, Coins,
+  Star, MapPin, ShoppingBag, LayoutGrid, FormInput, Coins, Share2, MessageCircle, CheckCircle2,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi } from '@/lib/api';
 import {
@@ -68,13 +68,32 @@ const GROUPS: MenuGroup[] = [
     ],
   },
   {
-    id: 'channels',
-    label: 'Channels',
+    id: 'sales-channels',
+    label: 'Sales Channels',
+    icon: Link2,
     items: [
-      { href: '/dashboard/channels',         label: 'Channels',         icon: Link2      },
-      { href: '/dashboard/channel-listings', label: 'Channel Listings', icon: ListChecks },
-      { href: '/dashboard/storefront-categories', label: 'Storefront Categories', icon: LayoutGrid },
-      { href: '/dashboard/dropshipping',        label: 'Dropshipping',    icon: Truck       },
+      { href: '/dashboard/channels',                    label: 'All Channels',       icon: Link2       },
+      { href: '/dashboard/channels?status=Connected',   label: 'Connected Channels', icon: CheckCircle2 },
+      { href: '/dashboard/channel-listings',            label: 'Channel Listings',   icon: ListChecks  },
+      { href: '/dashboard/storefront-categories',       label: 'Channel Categories', icon: LayoutGrid  },
+      { href: '/dashboard/orders',                      label: 'Channel Orders',     icon: FileText    },
+    ],
+  },
+  {
+    id: 'dropship-suppliers',
+    label: 'Dropship Suppliers',
+    icon: Truck,
+    items: [
+      { href: '/dashboard/dropshipping',              label: 'All Dropship Suppliers', icon: Truck        },
+      { href: '/dashboard/dropshipping?view=connected', label: 'Connected Suppliers', icon: CheckCircle2 },
+      { href: '/dashboard/dropshipping/orders',       label: 'Supplier Orders',       icon: ClipboardList },
+    ],
+  },
+  {
+    id: 'source-products',
+    label: 'Source Products',
+    icon: ShoppingBag,
+    items: [
       { href: '/dashboard/dropshipping/import', label: 'Import Products', icon: ShoppingBag },
     ],
   },
@@ -96,6 +115,9 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/surveys',          label: 'Surveys',         icon: ClipboardCheck },
       { href: '/dashboard/ai-seo',           label: 'AI SEO Tools',    icon: Sparkles       },
       { href: '/dashboard/products/videos',  label: 'AI Product Videos', icon: Sparkles    },
+      { href: '/dashboard/storefront-insights', label: 'Storefront Insights', icon: BarChart3 },
+      { href: '/dashboard/social-posting',    label: 'Social Posting',  icon: Share2         },
+      { href: '/dashboard/whatsapp-marketing', label: 'WhatsApp Marketing', icon: MessageCircle },
     ],
   },
   {
@@ -177,6 +199,7 @@ function isPremiumGroup(groupId: string): boolean {
 // never triggers.
 export function ShopSidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
 
@@ -222,20 +245,39 @@ export function ShopSidebar() {
     });
   }
 
+  // A few items now share a base path with a more specific sibling (e.g.
+  // "All Channels" → /dashboard/channels vs "Connected Channels" →
+  // /dashboard/channels?status=Connected) — plain pathname comparison can't
+  // tell them apart since usePathname() never includes the query string, so
+  // matching also checks that every query param the item's href declares is
+  // actually present in the current URL, and ties are broken toward the
+  // more specific (longer path, then more query params) match.
+  function matchesItem(item: MenuItem) {
+    const [path, queryStr] = item.href.split('?');
+    if (path === '/dashboard') return pathname === path;
+    if (!(pathname === path || pathname.startsWith(path + '/'))) return false;
+    if (!queryStr) return true;
+    const required = new URLSearchParams(queryStr);
+    for (const [key, value] of required.entries()) {
+      if (searchParams.get(key) !== value) return false;
+    }
+    return true;
+  }
+
   function isGroupActive(group: MenuGroup) {
-    return group.items.some(item =>
-      item.href === '/dashboard' ? pathname === item.href : pathname.startsWith(item.href)
-    );
+    return group.items.some(matchesItem);
   }
 
   function isItemActive(item: MenuItem) {
-    if (item.href === '/dashboard') return pathname === item.href;
-    if (!(pathname === item.href || pathname.startsWith(item.href + '/'))) return false;
-    const allHrefs = GROUPS.flatMap(g => g.items.map(i => i.href));
-    const longestMatch = allHrefs
-      .filter(h => pathname === h || pathname.startsWith(h + '/'))
-      .sort((a, b) => b.length - a.length)[0];
-    return item.href === longestMatch;
+    if (!matchesItem(item)) return false;
+    const candidates = GROUPS.flatMap(g => g.items).filter(matchesItem);
+    const best = candidates.sort((a, b) => {
+      const [aPath, aQuery] = a.href.split('?');
+      const [bPath, bQuery] = b.href.split('?');
+      if (aPath.length !== bPath.length) return bPath.length - aPath.length;
+      return (bQuery?.length ?? 0) - (aQuery?.length ?? 0);
+    })[0];
+    return item.href === best.href;
   }
 
   return (

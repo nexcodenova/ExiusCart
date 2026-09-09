@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { LayoutGrid, Flame, Tag } from 'lucide-react';
+import { LayoutGrid, Flame, Tag, Download } from 'lucide-react';
 import { shoppingApi, Category } from '@/lib/api';
 
 // Persistent left nav — same on every authenticated page (browse, product
@@ -33,6 +33,7 @@ export default function Sidebar() {
         <div className="space-y-0.5">
           <SidebarNavItem href="/browse" label="All Products" icon={LayoutGrid} active={currentView === 'all'} />
           <SidebarNavItem href="/browse?view=trending" label="Trending" icon={Flame} active={currentView === 'trending'} />
+          <SidebarNavItem href="/browse?view=digital" label="Digital Products" icon={Download} active={currentView === 'digital'} />
         </div>
 
         <div>

@@ -11,9 +11,21 @@ same discipline as Zendrop/HyperSKU's response parsing before those were
 confirmed live. Needs checking against a real generated video before fully
 trusting it.
 
-Also self-disables (503) if HIGGSFIELD_API_KEY_ID/SECRET aren't set — same
-pattern as AliExpress's ALIEXPRESS_APP_KEY gate. Get credentials at
-https://cloud.higgsfield.ai.
+BYOK, not a platform-wide key — each shop connects its OWN Higgsfield
+account (HiggsfieldConnection, encrypted). Switched from a shared
+HIGGSFIELD_API_KEY_ID/SECRET env var after checking Higgsfield's real
+pricing: Veo 3.1 runs ~$1.90-$4.40/video even on their cheapest plan, so
+ExiusCart paying centrally and reselling at any reasonable flat fee risks
+losing money on any seller who generates more than a handful a month.
+Same shape as HyperSKU's connection — sign up for a plan (via ExiusCart's
+Higgsfield affiliate link, 25% commission for 12 months per referral),
+paste the key, ExiusCart never touches the underlying API cost.
+
+Credentials are stored without a live verification call on connect —
+unlike CJ/HyperSKU, Higgsfield doesn't document a cheap "check this key"
+endpoint to verify against, so a bad key surfaces on the first real
+generation attempt instead (with a clear error), same honest gap as
+printify/gelato/1688's own unverified connect in dropshipping.py.
 
 When a seller doesn't type their own prompt, this asks Claude (already the
 AI vendor this codebase uses — see ai_seo.py's own ANTHROPIC_API_KEY usage,
@@ -36,17 +48,21 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.encryption import encrypt, decrypt
 from app.models.user import User
 from app.models.subscription import Subscription
 from app.models.product_ad_video import ProductAdVideo
+from app.models.higgsfield_connection import HiggsfieldConnection
 from app.api.v1.deps import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 HIGGSFIELD_BASE = "https://api.higgsfield.ai"
-HIGGSFIELD_API_KEY_ID = os.getenv("HIGGSFIELD_API_KEY_ID", "")
-HIGGSFIELD_API_KEY_SECRET = os.getenv("HIGGSFIELD_API_KEY_SECRET", "")
+# Apply for this once you have a track record: https://higgsfield.ai/affiliate
+# (up to 25% commission for 12 months, no waiting period) — swap in the real
+# tracked link once issued.
+HIGGSFIELD_SIGNUP_LINK = "https://higgsfield.ai/"
 
 CLAUDE_MODEL = "claude-haiku-4-5-20251001"  # same fast/cheap model ai_seo.py uses
 
@@ -114,19 +130,71 @@ def _get_plan(shop_id: int, db: Session) -> str:
     return sub.plan_type if sub else "free_trial"
 
 
-def _higgsfield_headers() -> dict:
+def _higgsfield_headers(key_id: str, key_secret: str) -> dict:
     return {
-        "Authorization": f"Key {HIGGSFIELD_API_KEY_ID}:{HIGGSFIELD_API_KEY_SECRET}",
+        "Authorization": f"Key {key_id}:{key_secret}",
         "Content-Type": "application/json",
     }
 
 
-def _require_higgsfield_configured():
-    if not HIGGSFIELD_API_KEY_ID or not HIGGSFIELD_API_KEY_SECRET:
-        raise HTTPException(status_code=503, detail={
-            "error": "video_gen_not_configured",
-            "message": "AI video generation isn't configured yet — set HIGGSFIELD_API_KEY_ID and HIGGSFIELD_API_KEY_SECRET (create at cloud.higgsfield.ai).",
+def _get_higgsfield_creds(shop_id: int, db: Session) -> tuple[str, str]:
+    conn = db.query(HiggsfieldConnection).filter(
+        HiggsfieldConnection.shop_id == shop_id, HiggsfieldConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail={
+            "error": "higgsfield_not_connected",
+            "message": "Connect your own Higgsfield account first — AI video generation runs on your own Higgsfield plan, not ExiusCart's.",
         })
+    return decrypt(conn.api_key_id_enc), decrypt(conn.api_key_secret_enc)
+
+
+class HiggsfieldConnectIn(BaseModel):
+    api_key_id: str
+    api_key_secret: str
+
+
+@router.get("/shops/{shop_id}/ai/higgsfield/status")
+def higgsfield_status(shop_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(HiggsfieldConnection).filter(
+        HiggsfieldConnection.shop_id == shop_id, HiggsfieldConnection.is_active == True,
+    ).first()
+    return {"connected": conn is not None, "signup_url": HIGGSFIELD_SIGNUP_LINK}
+
+
+@router.post("/shops/{shop_id}/ai/higgsfield/connect")
+def connect_higgsfield(
+    shop_id: int, body: HiggsfieldConnectIn,
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    if not body.api_key_id.strip() or not body.api_key_secret.strip():
+        raise HTTPException(status_code=422, detail="Both the Key ID and Key Secret are required.")
+
+    existing = db.query(HiggsfieldConnection).filter(HiggsfieldConnection.shop_id == shop_id).first()
+    if existing:
+        existing.api_key_id_enc = encrypt(body.api_key_id.strip())
+        existing.api_key_secret_enc = encrypt(body.api_key_secret.strip())
+        existing.is_active = True
+    else:
+        db.add(HiggsfieldConnection(
+            shop_id=shop_id,
+            api_key_id_enc=encrypt(body.api_key_id.strip()),
+            api_key_secret_enc=encrypt(body.api_key_secret.strip()),
+        ))
+    db.commit()
+    return {"connected": True}
+
+
+@router.delete("/shops/{shop_id}/ai/higgsfield/connect")
+def disconnect_higgsfield(shop_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(HiggsfieldConnection).filter(HiggsfieldConnection.shop_id == shop_id).first()
+    if conn:
+        conn.is_active = False
+        db.commit()
+    return {"connected": False}
 
 
 def _extract_video_url(data: dict) -> Optional[str]:
@@ -170,7 +238,7 @@ async def generate_product_video(
     from app.models.product_fields import ProductImage
 
     _shop_or_404(shop_id, current_user, db)
-    _require_higgsfield_configured()
+    key_id, key_secret = _get_higgsfield_creds(shop_id, db)
 
     plan = _get_plan(shop_id, db)
     if plan != "premium":
@@ -221,7 +289,7 @@ async def generate_product_video(
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.post(f"{HIGGSFIELD_BASE}{ALLOWED_MODELS[body.model]}", json=payload, headers=_higgsfield_headers())
+            r = await client.post(f"{HIGGSFIELD_BASE}{ALLOWED_MODELS[body.model]}", json=payload, headers=_higgsfield_headers(key_id, key_secret))
         data = r.json()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Higgsfield API error: {str(e)}")
@@ -288,10 +356,10 @@ async def check_video_status(
     if video.status in ("ready", "failed") or not video.request_id:
         return {"id": video.id, "status": video.status, "video_url": video.video_url, "error_message": video.error_message}
 
-    _require_higgsfield_configured()
+    key_id, key_secret = _get_higgsfield_creds(shop_id, db)
     try:
         async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.get(f"{HIGGSFIELD_BASE}/requests/{video.request_id}/status", headers=_higgsfield_headers())
+            r = await client.get(f"{HIGGSFIELD_BASE}/requests/{video.request_id}/status", headers=_higgsfield_headers(key_id, key_secret))
         data = r.json()
     except Exception as e:
         return {"id": video.id, "status": video.status, "video_url": video.video_url, "error_message": None, "poll_error": str(e)}
@@ -330,10 +398,9 @@ def sync_pending_videos_job(db_session_factory) -> None:
     """Poll Higgsfield for any queued/processing video generation jobs.
     Called every few minutes by the background scheduler in main.py — videos
     typically finish in under a minute per Higgsfield's own docs, but this
-    catches anything a seller didn't sit on the page waiting for."""
-    if not HIGGSFIELD_API_KEY_ID or not HIGGSFIELD_API_KEY_SECRET:
-        return
-
+    catches anything a seller didn't sit on the page waiting for. Each shop
+    has its own connection (BYOK) — cached per shop_id so a shop with several
+    pending videos doesn't decrypt its credentials once per video."""
     db = db_session_factory()
     try:
         pending = db.query(ProductAdVideo).filter(
@@ -344,11 +411,21 @@ def sync_pending_videos_job(db_session_factory) -> None:
             return
 
         logger.info(f"[Higgsfield Poll] Checking {len(pending)} pending videos")
+        creds_by_shop: dict = {}
 
         for video in pending:
+            if video.shop_id not in creds_by_shop:
+                conn = db.query(HiggsfieldConnection).filter(
+                    HiggsfieldConnection.shop_id == video.shop_id, HiggsfieldConnection.is_active == True,
+                ).first()
+                creds_by_shop[video.shop_id] = (decrypt(conn.api_key_id_enc), decrypt(conn.api_key_secret_enc)) if conn else None
+            creds = creds_by_shop[video.shop_id]
+            if not creds:
+                continue  # disconnected since the video was submitted — nothing to poll with
+
             try:
                 with httpx.Client(timeout=20) as client:
-                    r = client.get(f"{HIGGSFIELD_BASE}/requests/{video.request_id}/status", headers=_higgsfield_headers())
+                    r = client.get(f"{HIGGSFIELD_BASE}/requests/{video.request_id}/status", headers=_higgsfield_headers(*creds))
                 data = r.json()
             except Exception as e:
                 logger.error(f"[Higgsfield Poll] video={video.id} request failed: {e}")

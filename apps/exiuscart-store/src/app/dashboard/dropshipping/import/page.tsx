@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, X, Loader2, Package, Lock, Search, ShoppingBag, ChevronRight, AlertCircle, Shirt } from 'lucide-react';
-import { dropshipApi, channelsApi } from '@/lib/api';
+import { CheckCircle2, X, Loader2, Package, Lock, Search, ShoppingBag, ChevronRight, AlertCircle, Shirt, Megaphone, ExternalLink } from 'lucide-react';
+import { dropshipApi, channelsApi, adIntelligenceApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -120,6 +120,86 @@ function PrintfulImportModal({ shopId, product, onClose, onImported }: {
   );
 }
 
+// ── Meta Ad Library check ────────────────────────────────────────────────────
+// Real running ads pulled live from Meta's public Ad Library — same shared
+// backend the admin Prodora curation screen already uses. Here it's just a
+// confidence signal before importing, not something to attach anywhere:
+// "is this actually being advertised right now, by someone?"
+
+interface MetaAd { id: string; page_name: string; snapshot_url: string; body: string | null }
+
+function MetaAdCheck({ shopId, defaultQuery }: { shopId: string; defaultQuery: string }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(defaultQuery);
+  const [ads, setAds] = useState<MetaAd[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const runSearch = async () => {
+    if (!query.trim()) return;
+    setLoading(true); setError(''); setHasSearched(true);
+    try {
+      const r = await adIntelligenceApi.searchMetaAds(shopId, query.trim());
+      setAds(r.data?.ads ?? []);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Meta Ad Library search failed.');
+    } finally { setLoading(false); }
+  };
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && !hasSearched) runSearch();
+  };
+
+  return (
+    <div>
+      <button type="button" onClick={toggle}
+        className="w-full flex items-center justify-between text-xs px-3 py-2 border border-border rounded-lg text-muted-foreground hover:bg-muted transition">
+        <span className="flex items-center gap-1.5"><Megaphone className="w-3.5 h-3.5" /> See real ads for this product</span>
+        <span>{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div className="mt-2 p-3 bg-muted/50 border border-border rounded-lg space-y-2">
+          <div className="flex gap-2">
+            <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runSearch(); } }}
+              placeholder="Search by product or brand name…"
+              className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary outline-none" />
+            <button type="button" onClick={runSearch} disabled={loading}
+              className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-60 flex items-center gap-1.5">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            </button>
+          </div>
+          {error && (
+            <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}
+            </div>
+          )}
+          {ads.length > 0 && (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {ads.map((ad) => (
+                <a key={ad.id} href={ad.snapshot_url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-2 px-3 py-2 bg-background hover:bg-muted border border-border rounded-lg transition">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">{ad.page_name || 'Unknown advertiser'}</p>
+                    {ad.body && <p className="text-xs text-muted-foreground truncate mt-0.5">{ad.body}</p>}
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                </a>
+              ))}
+            </div>
+          )}
+          {!loading && !error && ads.length === 0 && hasSearched && (
+            <p className="text-xs text-muted-foreground">No running ads found for &ldquo;{query}&rdquo;. Try a shorter or different keyword.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Import Modal ──────────────────────────────────────────────────────────────
 
 function CJImportModal({ shopId, product, onClose, onImported, supplier = 'cj' }: {
@@ -209,6 +289,8 @@ function CJImportModal({ shopId, product, onClose, onImported, supplier = 'cj' }
               <p className="font-semibold text-foreground leading-snug">{detail?.name ?? product.name}</p>
               {detail?.category && <p className="text-xs text-muted-foreground">{detail.category}</p>}
             </div>
+
+            <MetaAdCheck shopId={shopId} defaultQuery={detail?.name ?? product.name} />
 
             {/* Pricing */}
             <div className="bg-muted/50 rounded-xl p-4 space-y-3">
@@ -611,15 +693,18 @@ export default function ImportProductsPage() {
       {supplier === 'aliexpress' && (
         <div className="max-w-xl space-y-4">
           {importedId && (
-            <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                  <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
+                </div>
+                <Link href={`/dashboard/products?edit=${importedId.id}`}
+                  className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
+                  Edit product <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
-              <Link href={`/dashboard/products?edit=${importedId.id}`}
-                className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
-                Edit product <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
+              <MetaAdCheck shopId={shopId} defaultQuery={importedId.name} />
             </div>
           )}
           <div className="bg-card border border-border rounded-2xl p-5 space-y-4">

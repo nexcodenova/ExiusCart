@@ -1,508 +1,57 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff, Boxes, ShoppingBag, Shirt, Palette, Printer, Globe, Truck } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { CheckCircle2, Loader2, Package, Lock, Globe, Truck, Search, Plus, ArrowDownToLine, FileText } from 'lucide-react';
 import { dropshipApi, channelsApi } from '@/lib/api';
 import Link from 'next/link';
-import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useConfirm } from '@/components/ui/confirm-dialog';
+import StatCard from '@/components/dropshipping/StatCard';
+import Workflow from '@/components/dropshipping/Workflow';
+import RecentProducts, { RecentProduct } from '@/components/dropshipping/RecentProducts';
+import ConnectedSuppliersTable, { ConnectedSupplierRow } from '@/components/dropshipping/ConnectedSuppliersTable';
+import TrustPanel from '@/components/dropshipping/TrustPanel';
+import SupplierCard, { Supplier, SUPPLIER_STYLE, DASHBOARD_LINKS } from '@/components/dropshipping/SupplierCard';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
-// Update these when you have affiliate signup links
-const SIGNUP_LINKS: Record<string, string> = {
-  cj:         'https://www.cjdropshipping.com/register.html?token=bce7840c-d60b-46e7-b39c-872e1572796c',  // affiliate — 2% of referred sellers' CJ revenue for 1yr
-  hypersku:   'https://www.hypersku.com/register',
-  eprolo:     'https://eprolo.com/',
-  aliexpress: 'https://developers.aliexpress.com/',
-  // 1688 has no direct foreign-facing signup of its own — points at the
-  // marketplace itself as an informational link, not a real API-key
-  // signup flow, same scaffolding-first treatment as AliExpress got
-  // before its own App Key/Secret existed.
-  '1688':     'https://www.1688.com/',
-  printful:   'https://www.printful.com/dashboard/register',
-  printify:   'https://printify.com/app/register',
-  gelato:     'https://www.gelato.com/sign-up',
-};
-
-// "Open X" for an already-connected supplier must land on the real logged-in
-// dashboard, not the signup page above — a signup/register URL 404s or loops
-// once the seller already has an account (this is what Printful's
-// dashboard/register link did after connecting).
-const DASHBOARD_LINKS: Record<string, string> = {
-  cj:         'https://cjdropshipping.com/my-product',
-  hypersku:   'https://www.hypersku.com/',
-  eprolo:     'https://eprolo.com/app/home.html',
-  aliexpress: 'https://developers.aliexpress.com/',
-  '1688':     'https://www.1688.com/',
-  printful:   'https://www.printful.com/dashboard',
-  printify:   'https://printify.com/app/store',
-  gelato:     'https://www.gelato.com/dashboard',
-};
-
-// Per-brand accent so the supplier grid reads at a glance instead of every
-// card looking identical. CJ uses its real logo full-bleed (own background
-// baked in); HyperSKU uses a cropped icon-only mark (its source file is a
-// wide wordmark, cropped down to just the peak symbol) centered on our own
-// tint, same treatment as AliExpress's lucide-icon fallback.
-const SUPPLIER_STYLE: Record<string, { icon: React.ElementType; color: string; bg: string; logo?: string; logoFit?: 'cover' | 'contain' }> = {
-  cj:         { icon: Package,     color: 'text-orange-500', bg: 'bg-orange-500/10', logo: '/dropshipping/cj_logo.png',       logoFit: 'cover'   },
-  hypersku:   { icon: Boxes,       color: 'text-teal-500',   bg: 'bg-teal-500/10',   logo: '/dropshipping/hypersku_icon.png', logoFit: 'contain' },
-  eprolo:     { icon: Truck,       color: 'text-sky-500',    bg: 'bg-sky-500/10'   },
-  aliexpress: { icon: ShoppingBag, color: 'text-red-500',    bg: 'bg-red-500/10'   },
-  '1688':     { icon: Globe,       color: 'text-orange-600', bg: 'bg-orange-600/10' },
-  printful:   { icon: Shirt,       color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-  printify:   { icon: Palette,     color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
-  gelato:     { icon: Printer,     color: 'text-amber-500',  bg: 'bg-amber-500/10' },
-};
-
-interface Supplier {
-  supplier_type: string;
-  name: string;
-  description: string;
-  signup_url: string;
-  plan_required: string;
-  connected: boolean;
-  auto_fulfill_enabled: boolean;
-  locked: boolean;
-  category: 'dropship' | 'pod';
-}
-
-// ── CJ Connect Modal ──────────────────────────────────────────────────────────
-
-function CJConnectModal({ shopId, onConnected, onClose }: {
-  shopId: string; onConnected: () => void; onClose: () => void;
-}) {
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const connect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true); setError('');
-    try {
-      await dropshipApi.connectCJ(shopId, { api_key: apiKey });
-      onConnected();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Connection failed. Check your API key.');
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Connect CJ Dropshipping</DialogTitle>
-          <DialogDescription>Paste your CJ API key</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={connect} className="p-5 space-y-4">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{error}</div>
-          )}
-          <div>
-            <Label className="mb-1.5 block">CJ API Key *</Label>
-            <div className="relative">
-              <Input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
-                placeholder="CJUserNum@api@..." className="pr-10" />
-              <button type="button" onClick={() => setShowApiKey((v) => !v)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showApiKey ? 'Hide API key' : 'Show API key'}>
-                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 leading-relaxed">
-            CJ requires an API key, not your account password. Generate one at{' '}
-            <a href="https://www.cjdropshipping.com/my.html#/authorize/API" target="_blank" rel="noopener noreferrer"
-              className="text-primary underline hover:text-primary/80">
-              My CJ → API management
-            </a>{' '}
-            → Add API → Type: &quot;API Key&quot;. It&apos;s encrypted and stored securely, and never shown again after saving.
-          </p>
-          <Button type="submit" disabled={saving} className="w-full">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {saving ? 'Connecting...' : 'Connect CJ Dropshipping'}
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            Don&apos;t have a CJ account?{' '}
-            <a href={SIGNUP_LINKS.cj} target="_blank" rel="noopener noreferrer"
-              className="text-primary underline hover:text-primary/80">
-              Create one free →
-            </a>
-          </p>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Printful Connect Modal ────────────────────────────────────────────────────
-
-function PrintfulConnectModal({ shopId, onConnected, onClose }: {
-  shopId: string; onConnected: () => void; onClose: () => void;
-}) {
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const connect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true); setError('');
-    try {
-      await dropshipApi.connectPrintful(shopId, { api_key: apiKey });
-      onConnected();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Connection failed. Check your API token.');
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Connect Printful</DialogTitle>
-          <DialogDescription>Paste your Printful Private API Token</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={connect} className="p-5 space-y-4">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{error}</div>
-          )}
-          <div>
-            <Label className="mb-1.5 block">Printful API Token *</Label>
-            <div className="relative">
-              <Input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
-                placeholder="Paste your token" className="pr-10" />
-              <button type="button" onClick={() => setShowApiKey((v) => !v)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showApiKey ? 'Hide API token' : 'Show API token'}>
-                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 leading-relaxed">
-            Generate a Private Token from your Printful account under Settings → Stores → API. It&apos;s verified against your real store on connect, then encrypted and stored securely.
-          </p>
-          <Button type="submit" disabled={saving} className="w-full">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {saving ? 'Connecting...' : 'Connect Printful'}
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            Don&apos;t have a Printful account?{' '}
-            <a href={SIGNUP_LINKS.printful} target="_blank" rel="noopener noreferrer"
-              className="text-primary underline hover:text-primary/80">
-              Create one free →
-            </a>
-          </p>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── HyperSKU Connect Modal ────────────────────────────────────────────────────
-// Username+password, not a single API key — HyperSKU's "rapid integration"
-// mode needs both, plus API access enabled on the seller's own account by
-// their HyperSKU Account Manager first.
-
-function HyperSKUConnectModal({ shopId, onConnected, onClose }: {
-  shopId: string; onConnected: () => void; onClose: () => void;
-}) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const connect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true); setError('');
-    try {
-      await dropshipApi.connectHyperSKU(shopId, username, password);
-      onConnected();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Connection failed. Check your username and password.');
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Connect HyperSKU</DialogTitle>
-          <DialogDescription>Sign in with your HyperSKU account</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={connect} className="p-5 space-y-4">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{error}</div>
-          )}
-          <div>
-            <Label className="mb-1.5 block">Username / Email *</Label>
-            <Input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="you@example.com" />
-          </div>
-          <div>
-            <Label className="mb-1.5 block">Password *</Label>
-            <div className="relative">
-              <Input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required
-                placeholder="Your HyperSKU password" className="pr-10" />
-              <button type="button" onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5 leading-relaxed">
-            HyperSKU needs API access enabled on your account first — ask your HyperSKU Account Manager to turn this on if connecting fails.
-          </p>
-          <Button type="submit" disabled={saving} className="w-full">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {saving ? 'Connecting...' : 'Connect HyperSKU'}
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            Don&apos;t have a HyperSKU account?{' '}
-            <a href={SIGNUP_LINKS.hypersku} target="_blank" rel="noopener noreferrer"
-              className="text-primary underline hover:text-primary/80">
-              Create one free →
-            </a>
-          </p>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── API Key Modal (Printify, Gelato, 1688, EPROLO) ──
-
-function ApiKeyModal({ supplier, shopId, onConnected, onClose }: {
-  supplier: Supplier; shopId: string; onConnected: () => void; onClose: () => void;
-}) {
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const connect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true); setError('');
-    try {
-      await dropshipApi.connectApiKey(shopId, { supplier_type: supplier.supplier_type, api_key: apiKey });
-      onConnected();
-    } catch (err: any) {
-      setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Connection failed. Check your API key.');
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Connect {supplier.name}</DialogTitle>
-          <DialogDescription>Paste your {supplier.name} API key</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={connect} className="p-5 space-y-4">
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{error}</div>
-          )}
-          <div>
-            <Label className="mb-1.5 block">{supplier.name} API Key *</Label>
-            <div className="relative">
-              <Input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
-                placeholder="Paste your API key here" className="pr-10" />
-              <button type="button" onClick={() => setShowApiKey((v) => !v)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showApiKey ? 'Hide API key' : 'Show API key'}>
-                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5">
-            Find your API key in your {supplier.name} dashboard under Settings → API or Developer.
-          </p>
-          <Button type="submit" disabled={saving} className="w-full">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {saving ? 'Connecting...' : `Connect ${supplier.name}`}
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            Don&apos;t have a {supplier.name} account?{' '}
-            <a href={SIGNUP_LINKS[supplier.supplier_type] ?? supplier.signup_url} target="_blank" rel="noopener noreferrer"
-              className="text-primary underline hover:text-primary/80">
-              Sign up →
-            </a>
-          </p>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Supplier Card ─────────────────────────────────────────────────────────────
-
-function SupplierCard({ supplier, shopId, plan, onRefresh }: {
-  supplier: Supplier; shopId: string; plan: string; onRefresh: () => void;
-}) {
-  const confirm = useConfirm();
-  const [showModal, setShowModal] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [togglingAuto, setTogglingAuto] = useState(false);
-  const [connectingAliexpress, setConnectingAliexpress] = useState(false);
-  const [aliexpressError, setAliexpressError] = useState('');
-
-  // AliExpress is real OAuth2 (one shared ExiusCart app, the seller
-  // authorizes their own AliExpress account) — no form/modal, just a
-  // redirect, same shape as eBay's Connect button.
-  const connectAliexpress = async () => {
-    setConnectingAliexpress(true); setAliexpressError('');
-    try {
-      const res = await dropshipApi.aliexpressAuthorize(shopId);
-      window.location.href = res.data.authorize_url;
-    } catch (e: any) {
-      setAliexpressError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Could not start AliExpress connection. Try again.');
-      setConnectingAliexpress(false);
-    }
-  };
-
-  const disconnect = async () => {
-    if (!(await confirm({ title: `Disconnect ${supplier.name}?`, description: 'Pending orders will not be affected.', variant: 'destructive' }))) return;
-    setDisconnecting(true);
-    try {
-      await dropshipApi.disconnect(shopId, supplier.supplier_type);
-      onRefresh();
-    } finally { setDisconnecting(false); }
-  };
-
-  const toggleAuto = async () => {
-    setTogglingAuto(true);
-    try {
-      await dropshipApi.toggleAutoFulfill(shopId, !supplier.auto_fulfill_enabled);
-      onRefresh();
-    } finally { setTogglingAuto(false); }
-  };
-
-  const style = SUPPLIER_STYLE[supplier.supplier_type] ?? { icon: Package, color: 'text-primary', bg: 'bg-muted' };
-  const SupplierIcon = style.icon;
-
-  return (
-    <>
-      <Card className={
-        supplier.locked ? 'opacity-60' :
-        supplier.connected ? 'border-green-500/30 bg-green-500/5' :
-        ''
-      }>
-        <CardContent className="p-5 flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${
-              supplier.locked ? 'bg-muted' : style.logo && style.logoFit === 'cover' ? '' : style.bg
-            }`}>
-              {style.logo && !supplier.locked ? (
-                <Image src={style.logo} alt={supplier.name} width={40} height={40}
-                  className={style.logoFit === 'contain' ? 'w-2/3 h-2/3 object-contain' : 'w-full h-full object-cover'} />
-              ) : (
-                <SupplierIcon className={`w-5 h-5 ${supplier.locked ? 'text-muted-foreground' : style.color}`} />
-              )}
-            </div>
-            <Badge variant={supplier.locked ? 'muted' : supplier.connected ? 'success' : 'default'}>
-              {supplier.locked ? 'Premium only' : supplier.connected ? 'Connected' : 'Available'}
-            </Badge>
-          </div>
-
-          <div className="flex-1">
-            <p className="font-semibold text-foreground text-sm">{supplier.name}</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{supplier.description}</p>
-          </div>
-
-          {/* Auto-fulfill toggle — Premium + connected only */}
-          {supplier.connected && plan === 'premium' && (
-            <div className="flex items-center justify-between py-3 px-3 bg-muted/50 rounded-lg">
-              <div>
-                <p className="text-xs font-medium text-foreground">Auto-fulfill orders</p>
-                <p className="text-xs text-muted-foreground">Send new orders to {supplier.name} automatically</p>
-              </div>
-              <button onClick={toggleAuto} disabled={togglingAuto} className="text-primary transition shrink-0">
-                {togglingAuto ? <Loader2 className="w-5 h-5 animate-spin" /> :
-                  supplier.auto_fulfill_enabled
-                    ? <ToggleRight className="w-8 h-8" />
-                    : <ToggleLeft className="w-8 h-8 text-muted-foreground" />
-                }
-              </button>
-            </div>
-          )}
-
-          {/* Action buttons */}
-          {supplier.locked ? (
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/dashboard/billing">
-                <Lock className="w-3.5 h-3.5" /> Upgrade to Premium
-              </Link>
-            </Button>
-          ) : supplier.connected ? (
-            <div className="flex gap-2">
-              <Button asChild variant="outline" size="sm" className="flex-1">
-                <a href={DASHBOARD_LINKS[supplier.supplier_type] ?? supplier.signup_url} target="_blank" rel="noopener noreferrer">
-                  Open {supplier.name} <ExternalLink className="w-3 h-3" />
-                </a>
-              </Button>
-              <Button variant="destructive" size="sm" onClick={disconnect} disabled={disconnecting}>
-                {disconnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Disconnect'}
-              </Button>
-            </div>
-          ) : supplier.supplier_type === 'aliexpress' ? (
-            <div className="space-y-1.5">
-              <Button className="w-full" onClick={connectAliexpress} disabled={connectingAliexpress}>
-                {connectingAliexpress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                {connectingAliexpress ? 'Redirecting…' : `Connect ${supplier.name}`}
-              </Button>
-              {aliexpressError && <p className="text-xs text-destructive">{aliexpressError}</p>}
-            </div>
-          ) : (
-            <Button className="w-full" onClick={() => setShowModal(true)}>
-              Connect {supplier.name}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {showModal && supplier.supplier_type === 'cj' && (
-        <CJConnectModal shopId={shopId}
-          onConnected={() => { setShowModal(false); onRefresh(); }}
-          onClose={() => setShowModal(false)} />
-      )}
-      {showModal && supplier.supplier_type === 'printful' && (
-        <PrintfulConnectModal shopId={shopId}
-          onConnected={() => { setShowModal(false); onRefresh(); }}
-          onClose={() => setShowModal(false)} />
-      )}
-      {showModal && supplier.supplier_type === 'hypersku' && (
-        <HyperSKUConnectModal shopId={shopId}
-          onConnected={() => { setShowModal(false); onRefresh(); }}
-          onClose={() => setShowModal(false)} />
-      )}
-      {showModal && !['cj', 'printful', 'hypersku'].includes(supplier.supplier_type) && (
-        <ApiKeyModal supplier={supplier} shopId={shopId}
-          onConnected={() => { setShowModal(false); onRefresh(); }}
-          onClose={() => setShowModal(false)} />
-      )}
-    </>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+interface DropshipStats {
+  products_sourced: number;
+  automated_orders: number;
+  fulfilled_orders: number;
+  fulfillment_rate: number | null;
+  by_supplier: Record<string, { products: number; orders: number; fulfilled: number }>;
+  recent_products: RecentProduct[];
+}
+
+const CATEGORY_FILTERS = ['All', 'Dropshipping', 'Print-on-Demand'] as const;
+
 export default function DropshippingPage() {
+  const searchParams = useSearchParams();
   const [shopId, setShopId] = useState('');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [plan, setPlan] = useState('');
   const [hasTheDersi, setHasTheDersi] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DropshipStats | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<typeof CATEGORY_FILTERS[number]>('All');
+  const discoverRef = useRef<HTMLDivElement>(null);
+  const connectedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
+
+  // ?view=connected — the sidebar's "Connected Suppliers" link deep-links
+  // here rather than being a separate page, scrolling straight to the real
+  // connected-suppliers table below instead of duplicating it elsewhere.
+  useEffect(() => {
+    if (searchParams.get('view') !== 'connected' || loading) return;
+    connectedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [searchParams, loading]);
 
   const load = () => {
     if (!shopId) return;
@@ -518,21 +67,47 @@ export default function DropshippingPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    dropshipApi.getStats(shopId).then((r) => setStats(r.data)).catch(() => {});
   };
 
   useEffect(() => { load(); }, [shopId]);
 
   const connectedCount = suppliers.filter((s) => s.connected).length;
+  const availableCount = suppliers.filter((s) => !s.connected && !s.locked).length;
   // Detected via an active TheDersi connection, not plan_type — TheDersi's
   // Growth/Premium tier maps to plan='starter', same as a direct customer,
   // so a plan-string check alone would miss those sellers.
   const isTheDersiUser = hasTheDersi;
 
+  const filteredSuppliers = useMemo(() => suppliers.filter((s) => {
+    const searchMatch = !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.description.toLowerCase().includes(search.toLowerCase());
+    const categoryMatch = categoryFilter === 'All' ? true : categoryFilter === 'Dropshipping' ? s.category === 'dropship' : s.category === 'pod';
+    return searchMatch && categoryMatch;
+  }), [suppliers, search, categoryFilter]);
+
+  const connectedSupplierRows: ConnectedSupplierRow[] = suppliers
+    .filter((s) => s.connected)
+    .map((s) => {
+      const style = SUPPLIER_STYLE[s.supplier_type] ?? { icon: Package, color: 'text-primary', bg: 'bg-muted' };
+      const supplierStats = stats?.by_supplier[s.supplier_type];
+      return {
+        supplierType: s.supplier_type,
+        name: s.name,
+        icon: style.icon,
+        color: style.color,
+        bg: style.bg,
+        products: supplierStats?.products ?? 0,
+        orders: supplierStats?.orders ?? 0,
+        fulfilled: supplierStats?.fulfilled ?? 0,
+        dashboardUrl: DASHBOARD_LINKS[s.supplier_type] ?? s.signup_url,
+      };
+    });
+
   // While the plan is still loading, show only a spinner — never flash the
   // supplier cards / "How it works" before we know if the user is a TheDersi seller.
   if (loading) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm">Loading…</span>
@@ -544,7 +119,7 @@ export default function DropshippingPage() {
   // TheDersi sellers don't get dropshipping — their fulfilment is handled by TheDersi
   if (isTheDersiUser) {
     return (
-      <div className="p-6 max-w-5xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-8">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Suppliers</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -569,38 +144,30 @@ export default function DropshippingPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Suppliers</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Connect a dropshipping or print-on-demand supplier. ExiusCart forwards orders to them automatically.
-        </p>
+    <div className="max-w-[1400px] mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <p className="text-xs text-muted-foreground mb-2">Suppliers / Dropshipping</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Find suppliers. Source products. <span className="text-primary">Fulfill automatically.</span>
+          </h1>
+          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+            Connect trusted suppliers, discover products and automate fulfillment from one centralized ecommerce workspace.
+          </p>
+        </div>
+        <div className="flex gap-2.5 shrink-0">
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/helpdesk"><FileText className="w-4 h-4" /> View Documentation</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/dropshipping/import"><ArrowDownToLine className="w-4 h-4" /> Import Products</Link>
+          </Button>
+          <Button onClick={() => discoverRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+            <Plus className="w-4 h-4" /> Connect Supplier
+          </Button>
+        </div>
       </div>
-
-      {/* How it works */}
-      <Card className="bg-muted/40 rounded-xl">
-        <CardContent className="px-5 py-4 space-y-2">
-          <p className="text-sm font-medium text-foreground">How it works</p>
-          <div className="grid sm:grid-cols-4 gap-3 text-xs text-muted-foreground">
-            <div className="flex items-start gap-2">
-              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold text-[10px]">1</span>
-              <span>Connect a supplier below</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold text-[10px]">2</span>
-              <span>Go to <strong className="text-foreground">Import Products</strong> and click <strong className="text-foreground">Import</strong> on anything you want to sell — ExiusCart creates the listing automatically</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold text-[10px]">3</span>
-              <span>Order comes in → click <strong className="text-foreground">Fulfill</strong> on the order (or auto-fulfill on Premium)</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold text-[10px]">4</span>
-              <span>Supplier ships to customer — tracking appears here automatically</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Starter banner */}
       {!loading && plan === 'starter' && (
@@ -624,33 +191,76 @@ export default function DropshippingPage() {
         </div>
       ) : (
         <>
-          {connectedCount > 0 && (
-            <div className="flex items-center gap-2 text-sm text-green-500 font-medium">
-              <CheckCircle2 className="w-4 h-4" />
-              {connectedCount} supplier{connectedCount > 1 ? 's' : ''} connected
-            </div>
-          )}
-
-          <div>
-            <p className="text-sm font-semibold text-foreground mb-1">Dropshipping</p>
-            <p className="text-xs text-muted-foreground mb-3">Ready-made products — supplier picks, packs and ships from their own stock.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-              {suppliers.filter((s) => s.category === 'dropship').map((s) => (
-                <SupplierCard key={s.supplier_type} supplier={s} shopId={shopId} plan={plan} onRefresh={load} />
-              ))}
-            </div>
+          {/* Stat cards — real numbers from /dropship/stats + the
+              connections list already loaded above */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <StatCard icon={<Truck className="w-5 h-5" />} title="Connected Suppliers" value={connectedCount} />
+            <StatCard icon={<Globe className="w-5 h-5" />} title="Available Suppliers" value={availableCount} iconClassName="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
+            <StatCard icon={<Package className="w-5 h-5" />} title="Products Sourced" value={(stats?.products_sourced ?? 0).toLocaleString()} iconClassName="bg-violet-500/10 text-violet-600 dark:text-violet-400" />
+            <StatCard icon={<CheckCircle2 className="w-5 h-5" />} title="Automated Orders" value={(stats?.automated_orders ?? 0).toLocaleString()} iconClassName="bg-green-500/10 text-green-600 dark:text-green-400" />
           </div>
 
-          <div>
-            <p className="text-sm font-semibold text-foreground mb-1">Print-on-Demand</p>
-            <p className="text-xs text-muted-foreground mb-3">Custom hoodies, tees, mugs & more — design once, the provider prints and ships each order automatically. No inventory to hold.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-              {suppliers.filter((s) => s.category === 'pod').map((s) => (
-                <SupplierCard key={s.supplier_type} supplier={s} shopId={shopId} plan={plan} onRefresh={load} />
-              ))}
+          {/* Discover suppliers */}
+          <div ref={discoverRef} className="scroll-mt-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-foreground">Discover suppliers</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Find suppliers and sourcing partners that match your products and fulfillment needs.</p>
             </div>
+
+            <div className="flex flex-col lg:flex-row gap-3 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search suppliers..."
+                  className="w-full h-10 pl-10 pr-3 bg-muted border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="flex rounded-xl bg-muted p-1 shrink-0">
+                {CATEGORY_FILTERS.map((f) => (
+                  <button key={f} onClick={() => setCategoryFilter(f)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${categoryFilter === f ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {connectedCount > 0 && (
+              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium mb-3">
+                <CheckCircle2 className="w-4 h-4" />
+                {connectedCount} supplier{connectedCount > 1 ? 's' : ''} connected
+              </div>
+            )}
+
+            {filteredSuppliers.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border py-16 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                  <Search className="w-5 h-5" />
+                </div>
+                <h3 className="mt-4 font-semibold text-foreground">No suppliers found</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Try another search or filter.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+                {filteredSuppliers.map((s) => (
+                  <SupplierCard key={s.supplier_type} supplier={s} shopId={shopId} plan={plan} onRefresh={load}
+                    stat={stats?.by_supplier[s.supplier_type]} />
+                ))}
+              </div>
+            )}
           </div>
 
+          <Workflow />
+
+          <RecentProducts products={stats?.recent_products ?? []} />
+
+          <div ref={connectedRef} className="scroll-mt-6">
+            <ConnectedSuppliersTable rows={connectedSupplierRows} />
+          </div>
+
+          <TrustPanel />
         </>
       )}
     </div>

@@ -244,6 +244,23 @@ def _run_drip_flow_scheduler():
 _drip_thread = threading.Thread(target=_run_drip_flow_scheduler, daemon=True)
 _drip_thread.start()
 
+# Start abandoned-cart checker (every 15 minutes) — matches checkout attempts
+# against real orders and enrolls genuinely-abandoned ones into cart_abandoned
+# Drip Flows. Runs more often than the 5-min drip runner above needs to be
+# accurate about, but the window itself (1hr/24hr, seller-configured) is what
+# actually controls how soon a shopper gets followed up with, not this interval.
+def _run_abandoned_cart_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.marketing import sync_abandoned_carts_job
+            sync_abandoned_carts_job()
+        except Exception as exc:
+            logger.error(f"[Abandoned Cart scheduler] {exc}")
+        time.sleep(15 * 60)
+
+_abandoned_cart_thread = threading.Thread(target=_run_abandoned_cart_scheduler, daemon=True)
+_abandoned_cart_thread.start()
+
 # Start CJ tracking sync (every 2 hours)
 def _run_cj_tracking_scheduler():
     while True:
@@ -312,6 +329,20 @@ def _run_video_gen_poll_scheduler():
 
 _video_gen_poll_thread = threading.Thread(target=_run_video_gen_poll_scheduler, daemon=True)
 _video_gen_poll_thread.start()
+
+# Publish due scheduled social posts (every 5 minutes) — matches the drip
+# flow runner's cadence, plenty tight for a "schedule for later today" tool.
+def _run_social_posting_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.social_posting import run_scheduled_social_posts_job
+            run_scheduled_social_posts_job()
+        except Exception as exc:
+            logger.error(f"[Social Posting scheduler] {exc}")
+        time.sleep(5 * 60)
+
+_social_posting_thread = threading.Thread(target=_run_social_posting_scheduler, daemon=True)
+_social_posting_thread.start()
 
 # Auto-expire overdue subscriptions (checked daily) — recurring affiliate
 # commissions are now generated only from real payment events (Lemon Squeezy

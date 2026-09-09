@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery, bigcommerce, ad_intelligence, testimonials, whop, gumroad, video_gen
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery, bigcommerce, ad_intelligence, testimonials, whop, gumroad, video_gen, storefront_insights, prodora_digital, social_posting, whatsapp_marketing
 
 api_router = APIRouter()
 
@@ -52,5 +52,9 @@ api_router.include_router(bigcommerce.router, prefix="", tags=["BigCommerce Inte
 api_router.include_router(whop.router, prefix="", tags=["Whop Integration"])
 api_router.include_router(gumroad.router, prefix="", tags=["Gumroad Integration"])
 api_router.include_router(video_gen.router, prefix="", tags=["AI Video Generation"])
+api_router.include_router(storefront_insights.router, prefix="", tags=["Storefront Insights"])
+api_router.include_router(prodora_digital.router, prefix="", tags=["Prodora Digital Bundles"])
+api_router.include_router(social_posting.router, prefix="", tags=["Social Posting"])
+api_router.include_router(whatsapp_marketing.router, prefix="", tags=["WhatsApp Marketing"])
 api_router.include_router(ad_intelligence.router, prefix="", tags=["Ad Intelligence"])
 api_router.include_router(testimonials.router, prefix="", tags=["Testimonials"])

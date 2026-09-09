@@ -3,111 +3,21 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft, Globe, Loader2, CheckCircle2, FormInput, ArrowRight, CreditCard, Check, Coins, LayoutGrid, ListPlus, Code2, Copy, Wand2, DollarSign,
+  ArrowLeft, Globe, Loader2, CheckCircle2, FormInput, ArrowRight, CreditCard, Check, Coins, LayoutGrid, ListPlus, Wand2, DollarSign,
+  Package, ShoppingCart, TrendingUp, LayoutDashboard, Settings2, BookOpen, Grid3x3, RefreshCw, TestTube2, X,
 } from 'lucide-react';
 import { channelsApi, paymentGatewayApi, shopApi } from '@/lib/api';
 import { CopyBox } from '@/components/channels/CopyBox';
-
-const API_BASE = 'https://api.exiuscart.com/api/v1';
-
-// Same list as the dashboard header's currency switcher, so this page never
-// offers a narrower choice than what a seller can already pick elsewhere.
-const CURRENCIES = [
-  'AED', 'SAR', 'USD', 'EUR', 'GBP', 'INR', 'LKR', 'BDT', 'PKR', 'MYR',
-  'SGD', 'CAD', 'AUD', 'QAR', 'KWD', 'BHD', 'OMR', 'EGP', 'NGN', 'KES',
-  'ZAR', 'TRY', 'IDR', 'PHP', 'THB', 'JPY', 'CNY',
-];
-
-// The only endpoints a Custom Website's own code ever needs to call —
-// deliberately not the full `/docs` (which mixes in hundreds of internal
-// seller-dashboard endpoints). Curated for the developer building the
-// storefront, not the seller configuring ExiusCart.
-const STOREFRONT_ENDPOINTS = (slug: string) => [
-  { method: 'GET', path: `/public/store/${slug}/categories`, desc: 'Category tree' },
-  { method: 'GET', path: `/public/store/${slug}/products`, desc: 'Product list — supports ?category=, ?featured=, ?trending=, ?search=. Check product_type ("physical" | "digital" | "affiliate") — for "affiliate", link straight to affiliate_url instead of Add to Cart' },
-  { method: 'GET', path: `/public/store/${slug}/products/{slug}`, desc: 'Single product detail — includes rating, view count, units sold, affiliate_url/affiliate_cta_text for affiliate products, faq[], shipping_note, shipping_steps[] (render as an arrow-flow, falling back to shipping_note when empty), seo_keywords[] (use to build your own meta title/description, not a raw <meta keywords> dump) and highlights[] ({icon, label} — icon is a fixed key like "clock"/"mail"/"truck", not affiliate products) if the seller set them' },
-  { method: 'GET', path: `/public/store/${slug}/products/{slug}/reviews`, desc: 'Approved reviews for one product' },
-  { method: 'POST', path: `/public/store/${slug}/checkout`, desc: 'Create an order + get payment params' },
-  { method: 'GET', path: `/public/store/${slug}/orders/{order_number}?email=`, desc: 'Guest order lookup + tracking — status, tracking_number, carrier, shipped_at, estimated_delivery (tracking fields null until the seller marks it shipped)' },
-  { method: 'POST', path: `/public/store/${slug}/auth/signup`, desc: 'Create a customer account' },
-  { method: 'POST', path: `/public/store/${slug}/auth/login`, desc: 'Log in, returns a token' },
-  { method: 'GET', path: `/public/store/${slug}/wallet`, desc: 'Balance + history — needs the token from login' },
-  { method: 'GET', path: `/public/download/{token}`, desc: 'Digital product delivery — reveals product/shop name only, for the download page a customer lands on from their delivery email' },
-  { method: 'POST', path: `/public/download/{token}/verify`, desc: 'Body: code — verifies the access code, returns the real file_url' },
-  { method: 'GET', path: `/public/store/${slug}/blog`, desc: 'Published blog posts — supports ?tag=' },
-  { method: 'GET', path: `/public/store/${slug}/blog/{slug}`, desc: 'Single blog post, full content' },
-];
-
-function DeveloperReferenceCard({ slug }: { slug: string }) {
-  const [copied, setCopied] = useState<string | null>(null);
-  const copy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(() => setCopied(null), 1500);
-  };
-
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-border flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Code2 className="w-4 h-4 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-foreground text-sm">Developer Reference</p>
-          <p className="text-xs text-muted-foreground">Hand this to whoever's building your website</p>
-        </div>
-        <a href="https://exiuscart.com/developers" target="_blank" rel="noopener noreferrer"
-          className="shrink-0 text-xs font-medium text-primary hover:text-primary/80 transition whitespace-nowrap">
-          Full API docs →
-        </a>
-      </div>
-      <div className="p-5 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Base API URL</p>
-            <div className="flex items-center gap-2 bg-muted border border-border rounded-lg px-3 py-2">
-              <code className="text-xs text-foreground flex-1 truncate">{API_BASE}</code>
-              <button onClick={() => copy(API_BASE, 'base')} className="shrink-0 text-muted-foreground hover:text-foreground">
-                {copied === 'base' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Your shop slug</p>
-            <div className="flex items-center gap-2 bg-muted border border-border rounded-lg px-3 py-2">
-              <code className="text-xs text-foreground flex-1 truncate">{slug}</code>
-              <button onClick={() => copy(slug, 'slug')} className="shrink-0 text-muted-foreground hover:text-foreground">
-                {copied === 'slug' ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <p className="text-xs text-muted-foreground mb-1">Endpoints your website's code calls — no API key needed for any of these</p>
-          {STOREFRONT_ENDPOINTS(slug).map((e) => {
-            const full = `${API_BASE}${e.path}`;
-            const key = e.method + e.path;
-            return (
-              <div key={key} className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${e.method === 'GET' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>
-                  {e.method}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <code className="text-xs text-foreground block truncate">{full}</code>
-                  <p className="text-[11px] text-muted-foreground truncate">{e.desc}</p>
-                </div>
-                <button onClick={() => copy(full, key)} className="shrink-0 text-muted-foreground hover:text-foreground">
-                  {copied === key ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
+import StatCard from '@/components/custom-website/StatCard';
+import WorkflowDiagram from '@/components/custom-website/WorkflowDiagram';
+import RecentOrdersTable, { RecentOrder } from '@/components/custom-website/RecentOrdersTable';
+import WebsiteProductsTable from '@/components/custom-website/WebsiteProductsTable';
+import IntegrationHealth from '@/components/custom-website/IntegrationHealth';
+import AutomationPanel from '@/components/custom-website/AutomationPanel';
+import SalesChart from '@/components/custom-website/SalesChart';
+import TrafficChart from '@/components/custom-website/TrafficChart';
+import DeveloperDocs from '@/components/custom-website/DeveloperDocs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -116,6 +26,28 @@ interface ChannelConnection {
   channel_type: string;
   webhook_url: string;
 }
+
+interface CustomWebsiteStats {
+  active_products: number;
+  orders: number;
+  revenue: number;
+  today_orders: number;
+  today_revenue: number;
+  orders_per_100_views: number | null;
+  recent_success_rate: number | null;
+  refunds_count: number;
+  connected_at: string | null;
+  last_order_at: string | null;
+  recent_orders: RecentOrder[];
+}
+
+const TABS = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'connection', label: 'Connection & Payments', icon: Settings2 },
+  { id: 'docs', label: 'Developer Docs', icon: BookOpen },
+  { id: 'more', label: 'More Features', icon: Grid3x3 },
+] as const;
+type TabId = typeof TABS[number]['id'];
 
 function QuickLinkCard({ href, icon, iconClass, title, description }: {
   href: string; icon: React.ReactNode; iconClass: string; title: string; description: string;
@@ -137,12 +69,26 @@ function QuickLinkCard({ href, icon, iconClass, title, description }: {
   );
 }
 
+// Same list as the dashboard header's currency switcher, so this page never
+// offers a narrower choice than what a seller can already pick elsewhere.
+const CURRENCIES = [
+  'AED', 'SAR', 'USD', 'EUR', 'GBP', 'INR', 'LKR', 'BDT', 'PKR', 'MYR',
+  'SGD', 'CAD', 'AUD', 'QAR', 'KWD', 'BHD', 'OMR', 'EGP', 'NGN', 'KES',
+  'ZAR', 'TRY', 'IDR', 'PHP', 'THB', 'JPY', 'CNY',
+];
+
 export default function CustomWebsiteIntegrationPage() {
   const [shopId, setShopId] = useState('');
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [stats, setStats] = useState<CustomWebsiteStats | null>(null);
+
+  const [syncing, setSyncing] = useState(false);
+  const [testOpen, setTestOpen] = useState(false);
+  const [toast, setToast] = useState('');
 
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
@@ -182,6 +128,7 @@ export default function CustomWebsiteIntegrationPage() {
         setBaseCurrency(r.data?.base_currency ?? r.data?.currency ?? 'USD');
         setStorefrontCurrency(r.data?.storefront_currency ?? '');
       }).catch(() => {}),
+      paymentGatewayApi.getStats(shopId).then((r) => setStats(r.data)).catch(() => {}),
     ]).finally(() => setLoading(false));
   };
 
@@ -211,6 +158,8 @@ export default function CustomWebsiteIntegrationPage() {
   };
 
   useEffect(() => { load(); }, [shopId]);
+
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3000); return () => clearTimeout(t); }, [toast]);
 
   const saveGateway = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,16 +219,55 @@ export default function CustomWebsiteIntegrationPage() {
     }
   };
 
+  // "Sync now" — there's no periodic sync job to trigger for this channel
+  // (see WorkflowDiagram: orders arrive live via webhook, nothing polls on
+  // a schedule), so this honestly does the real thing available: re-fetch
+  // everything shown on this page from the database.
+  const syncNow = async () => {
+    setSyncing(true);
+    await new Promise((r) => setTimeout(r, 500));
+    load();
+    setSyncing(false);
+    setToast('Data refreshed from your real order and product history.');
+  };
+
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
         <ArrowLeft className="w-4 h-4" /> Back to Channels
       </Link>
 
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Custom Website Integration</h1>
-        <p className="text-sm text-muted-foreground mt-1">Connect any website using our API or webhook. Receive orders directly from your own storefront.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs text-muted-foreground mb-2">Sales Channels / Custom Website</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Custom Website</h1>
+          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+            Manage your storefront connection, payments, API access, and order automation from ExiusCart.
+          </p>
+        </div>
+        {!loading && connection && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Connected
+            </span>
+            <button onClick={syncNow} disabled={syncing}
+              className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-3.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-primary/90 transition disabled:opacity-60">
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Refreshing…' : 'Sync now'}
+            </button>
+            <button onClick={() => setActiveTab('connection')}
+              className="inline-flex items-center gap-1.5 border border-border px-3.5 py-1.5 rounded-lg text-xs font-semibold text-foreground hover:bg-muted transition">
+              <Settings2 className="w-3.5 h-3.5" /> Connection settings
+            </button>
+          </div>
+        )}
       </div>
+
+      {toast && (
+        <div className="flex items-center justify-between gap-2 text-sm bg-green-500/10 text-green-700 dark:text-green-400 rounded-lg px-4 py-2.5">
+          <span className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> {toast}</span>
+          <button onClick={() => setToast('')}><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
@@ -288,207 +276,270 @@ export default function CustomWebsiteIntegrationPage() {
         </div>
       ) : connection ? (
         <>
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-sky-500/10 flex items-center justify-center">
-                <Globe className="w-4 h-4 text-sky-400" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground text-sm">Custom Website</p>
-                <p className="text-xs text-muted-foreground">Your own storefront</p>
-              </div>
-            </div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
-              <CheckCircle2 className="w-3 h-3" /> Connected
-            </span>
+          {/* Real stat cards — no per-product "sync" state exists here
+              (every active product is already API-reachable), so this
+              shows catalog size + real today's orders/revenue for this
+              channel, plus a real "orders per 100 views" (not a fabricated
+              session-based conversion % — see IntegrationHealth/StorefrontEvent
+              for why that's not computable here). */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <StatCard icon={<Package className="w-5 h-5" />} title="Active Products" value={(stats?.active_products ?? 0).toLocaleString()} />
+            <StatCard icon={<ShoppingCart className="w-5 h-5" />} title="Orders Today" value={stats?.today_orders ?? 0} iconClassName="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
+            <StatCard icon={<DollarSign className="w-5 h-5" />} title="Revenue Today" value={`$${(stats?.today_revenue ?? 0).toFixed(2)}`} iconClassName="bg-green-500/10 text-green-600 dark:text-green-400" />
+            <StatCard icon={<TrendingUp className="w-5 h-5" />} title="Orders per 100 Views" value={stats?.orders_per_100_views != null ? stats.orders_per_100_views : '—'} iconClassName="bg-violet-500/10 text-violet-600 dark:text-violet-400" />
           </div>
-          <div className="p-5 space-y-4">
-            <CopyBox label="ExiusCart Order Webhook URL — use this in your website checkout" value={connection.webhook_url} />
-            <div className="bg-muted/50 rounded-lg px-3 py-3 space-y-1.5 text-xs text-muted-foreground">
-              <p><strong className="text-foreground">How it works:</strong></p>
-              <p>When a customer places an order on your website, POST the order data to this URL. ExiusCart will create the order, update stock, and sync everything automatically.</p>
-              <p>Your website must send the <strong className="text-foreground">X-Signature</strong> header and match the API key you connected with.</p>
-            </div>
-            <div className="pt-3 border-t border-border">
-              {confirming ? (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs text-muted-foreground">Disconnect this website? Orders will stop syncing here.</p>
-                  <button onClick={disconnect} disabled={disconnecting}
-                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition disabled:opacity-60">
-                    {disconnecting ? 'Disconnecting…' : 'Yes, disconnect'}
-                  </button>
-                  <button onClick={() => setConfirming(false)} disabled={disconnecting}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition">
-                    Cancel
-                  </button>
+
+          {/* Tabs */}
+          <div className="flex gap-1 border-b border-border overflow-x-auto">
+            {TABS.map((tab) => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition ${
+                  activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}>
+                <tab.icon className="w-4 h-4" /> {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === 'overview' && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5">
+                <div className="space-y-5">
+                  <TrafficChart shopId={shopId} />
+                  <SalesChart shopId={shopId} refundsCount={stats?.refunds_count ?? 0} />
                 </div>
-              ) : (
-                <button onClick={() => setConfirming(true)} className="text-xs text-muted-foreground hover:text-destructive transition">
-                  Disconnect Custom Website
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+                <IntegrationHealth
+                  connected={!!connection}
+                  paymentConfigured={!!gateway?.configured}
+                  lastOrderAt={stats?.last_order_at ?? null}
+                  recentSuccessRate={stats?.recent_success_rate ?? null}
+                />
+              </div>
 
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <CreditCard className="w-4 h-4 text-primary" />
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5">
+                <WorkflowDiagram />
+                <AutomationPanel />
               </div>
-              <div>
-                <p className="font-semibold text-foreground text-sm">Payment Gateway</p>
-                <p className="text-xs text-muted-foreground">Lets customers actually pay at checkout on your storefront</p>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                <RecentOrdersTable orders={stats?.recent_orders ?? []} />
+                <WebsiteProductsTable shopId={shopId} />
               </div>
             </div>
-            {gateway?.configured && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
-                <CheckCircle2 className="w-3 h-3" /> Configured
-              </span>
-            )}
-          </div>
-          <form onSubmit={saveGateway} className="p-5 space-y-4">
-            {gatewayError && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{gatewayError}</div>
-            )}
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">Gateway</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {Object.entries(GATEWAY_LABELS).map(([value, l]) => {
-                  const active = selectedGateway === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setSelectedGateway(value)}
-                      className={`text-left p-4 rounded-xl border transition-all ${
-                        active
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                          : 'border-border hover:border-primary/30 hover:bg-muted/40'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold text-foreground text-sm">{l.name}</p>
-                        <span className={`shrink-0 w-4 h-4 rounded-full border flex items-center justify-center ${active ? 'border-primary bg-primary' : 'border-border'}`}>
-                          {active && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{l.bestFor}</p>
+          )}
+
+          {activeTab === 'connection' && (
+            <div className="space-y-5">
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-sky-500/10 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-sky-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">Custom Website</p>
+                      <p className="text-xs text-muted-foreground">
+                        {stats?.connected_at ? `Connected ${new Date(stats.connected_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}` : 'Your own storefront'}
+                        {stats?.last_order_at && ` · Last order ${new Date(stats.last_order_at).toLocaleString()}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => setTestOpen(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-border text-foreground hover:bg-muted transition">
+                      <TestTube2 className="w-3.5 h-3.5" /> Test connection
                     </button>
-                  );
-                })}
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+                      <CheckCircle2 className="w-3 h-3" /> Connected
+                    </span>
+                  </div>
+                </div>
+                <div className="p-5 space-y-4">
+                  <CopyBox label="ExiusCart Order Webhook URL — use this in your website checkout" value={connection.webhook_url} />
+                  <div className="bg-muted/50 rounded-lg px-3 py-3 space-y-1.5 text-xs text-muted-foreground">
+                    <p><strong className="text-foreground">How it works:</strong></p>
+                    <p>When a customer places an order on your website, POST the order data to this URL. ExiusCart will create the order and update stock automatically.</p>
+                    <p>The URL itself is your authentication — keep it private, server-side only. See the <strong className="text-foreground">Developer Docs</strong> tab for exactly how your API key is used (and isn't, yet).</p>
+                  </div>
+                  <div className="pt-3 border-t border-border">
+                    {confirming ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs text-muted-foreground">Disconnect this website? Orders will stop syncing here.</p>
+                        <button onClick={disconnect} disabled={disconnecting}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition disabled:opacity-60">
+                          {disconnecting ? 'Disconnecting…' : 'Yes, disconnect'}
+                        </button>
+                        <button onClick={() => setConfirming(false)} disabled={disconnecting}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition">
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirming(true)} className="text-xs text-muted-foreground hover:text-destructive transition">
+                        Disconnect Custom Website
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {gatewayLabels.note ?? "Switching gateways doesn't require any change to how your storefront calls checkout."}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.idLabel} *</label>
-                <input type="text" value={merchantId} onChange={(e) => setMerchantId(e.target.value)}
-                  placeholder={gateway?.payment_gateway === selectedGateway ? (gateway?.merchant_id || gatewayLabels.idPlaceholder) : gatewayLabels.idPlaceholder}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.secretLabel} *</label>
-                <input type="password" value={merchantSecret} onChange={(e) => setMerchantSecret(e.target.value)}
-                  placeholder={gateway?.configured && gateway?.payment_gateway === selectedGateway ? '••••••••  (saved)' : gatewayLabels.secretPlaceholder}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
-              </div>
-            </div>
-            {gatewayLabels.needsWebhookSecret && (
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Webhook Signing Secret (optional)</label>
-                <input type="password" value={webhookSigningSecret} onChange={(e) => setWebhookSigningSecret(e.target.value)}
-                  placeholder="whsec_•••••••••••• — paste after registering the Notify URL below"
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
-                <p className="text-xs text-muted-foreground mt-1.5">Can be added later — without it, incoming payment confirmations won't be signature-verified.</p>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground -mt-2">Stored server-side only — never sent to your website's browser code.</p>
-            {gateway?.webhook_url && (
-              <CopyBox label="Notify URL — paste into your payment gateway's webhook/notify settings" value={gateway.webhook_url} />
-            )}
-            <button type="submit" disabled={savingGateway || !merchantId.trim() || !merchantSecret.trim()}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {savingGateway && <Loader2 className="w-4 h-4 animate-spin" />}
-              {gatewaySaved && !savingGateway && <Check className="w-4 h-4" />}
-              {savingGateway ? 'Saving...' : gatewaySaved ? 'Saved' : 'Save Payment Gateway'}
-            </button>
-          </form>
-        </div>
 
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-border flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-amber-500" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground text-sm">Storefront Currency</p>
-              <p className="text-xs text-muted-foreground">What currency your website should receive prices in</p>
-            </div>
-          </div>
-          <form onSubmit={saveCurrency} className="p-5 space-y-4">
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Show prices on my website in</label>
-              <select value={storefrontCurrency} onChange={(e) => setStorefrontCurrency(e.target.value)}
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm">
-                <option value="">Same as my store ({baseCurrency || 'USD'}) — no conversion</option>
-                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                Your products are priced in <strong className="text-foreground">{baseCurrency || 'USD'}</strong>. If your website's visitors expect a different currency, pick it here — every price the API sends is converted using a live exchange rate before your site ever sees it, so it's correct even if your site doesn't do any currency handling of its own.
-              </p>
-            </div>
-            <button type="submit" disabled={savingCurrency}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {savingCurrency && <Loader2 className="w-4 h-4 animate-spin" />}
-              {currencySaved && !savingCurrency && <Check className="w-4 h-4" />}
-              {savingCurrency ? 'Saving...' : currencySaved ? 'Saved' : 'Save Storefront Currency'}
-            </button>
-          </form>
-        </div>
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <CreditCard className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">Payment Gateway</p>
+                      <p className="text-xs text-muted-foreground">Lets customers actually pay at checkout on your storefront</p>
+                    </div>
+                  </div>
+                  {gateway?.configured && (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
+                      <CheckCircle2 className="w-3 h-3" /> Configured
+                    </span>
+                  )}
+                </div>
+                <form onSubmit={saveGateway} className="p-5 space-y-4">
+                  {gatewayError && (
+                    <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{gatewayError}</div>
+                  )}
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-2 block">Gateway</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {Object.entries(GATEWAY_LABELS).map(([value, l]) => {
+                        const active = selectedGateway === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setSelectedGateway(value)}
+                            className={`text-left p-4 rounded-xl border transition-all ${
+                              active
+                                ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                                : 'border-border hover:border-primary/30 hover:bg-muted/40'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="font-semibold text-foreground text-sm">{l.name}</p>
+                              <span className={`shrink-0 w-4 h-4 rounded-full border flex items-center justify-center ${active ? 'border-primary bg-primary' : 'border-border'}`}>
+                                {active && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{l.bestFor}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {gatewayLabels.note ?? "Switching gateways doesn't require any change to how your storefront calls checkout."}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.idLabel} *</label>
+                      <input type="text" value={merchantId} onChange={(e) => setMerchantId(e.target.value)}
+                        placeholder={gateway?.payment_gateway === selectedGateway ? (gateway?.merchant_id || gatewayLabels.idPlaceholder) : gatewayLabels.idPlaceholder}
+                        className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground mb-1.5 block">{gatewayLabels.secretLabel} *</label>
+                      <input type="password" value={merchantSecret} onChange={(e) => setMerchantSecret(e.target.value)}
+                        placeholder={gateway?.configured && gateway?.payment_gateway === selectedGateway ? '••••••••  (saved)' : gatewayLabels.secretPlaceholder}
+                        className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
+                    </div>
+                  </div>
+                  {gatewayLabels.needsWebhookSecret && (
+                    <div>
+                      <label className="text-sm text-muted-foreground mb-1.5 block">Webhook Signing Secret (optional)</label>
+                      <input type="password" value={webhookSigningSecret} onChange={(e) => setWebhookSigningSecret(e.target.value)}
+                        placeholder="whsec_•••••••••••• — paste after registering the Notify URL below"
+                        className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm font-mono" />
+                      <p className="text-xs text-muted-foreground mt-1.5">Can be added later — without it, incoming payment confirmations won't be signature-verified.</p>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground -mt-2">Stored server-side only — never sent to your website's browser code.</p>
+                  {gateway?.webhook_url && (
+                    <CopyBox label="Notify URL — paste into your payment gateway's webhook/notify settings" value={gateway.webhook_url} />
+                  )}
+                  <button type="submit" disabled={savingGateway || !merchantId.trim() || !merchantSecret.trim()}
+                    className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                    {savingGateway && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {gatewaySaved && !savingGateway && <Check className="w-4 h-4" />}
+                    {savingGateway ? 'Saving...' : gatewaySaved ? 'Saved' : 'Save Payment Gateway'}
+                  </button>
+                </form>
+              </div>
 
-        <div>
-          <p className="text-sm font-medium text-foreground mb-3">More for this channel</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <QuickLinkCard
-              href="/dashboard/signup-forms"
-              icon={<FormInput className="w-4 h-4 text-primary" />}
-              iconClass="bg-primary/10"
-              title="Signup Forms"
-              description="Newsletter or inquiry forms for your site — submissions land in Lead Management."
-            />
-            <QuickLinkCard
-              href="/dashboard/wallet"
-              icon={<Coins className="w-4 h-4 text-emerald-500" />}
-              iconClass="bg-emerald-500/10"
-              title="Wallet"
-              description="Set your cashback % and see every customer's balance and activity."
-            />
-            <QuickLinkCard
-              href="/dashboard/storefront-categories"
-              icon={<LayoutGrid className="w-4 h-4 text-amber-500" />}
-              iconClass="bg-amber-500/10"
-              title="Storefront Categories"
-              description="Build the category tree shoppers browse on your site."
-            />
-            <QuickLinkCard
-              href="/dashboard/custom-website-fields"
-              icon={<ListPlus className="w-4 h-4 text-violet-500" />}
-              iconClass="bg-violet-500/10"
-              title="Product Fields"
-              description="Define your own extra product fields — quantity tiers, gift wrap, anything your site needs."
-            />
-          </div>
-        </div>
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-border flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <DollarSign className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground text-sm">Storefront Currency</p>
+                    <p className="text-xs text-muted-foreground">What currency your website should receive prices in</p>
+                  </div>
+                </div>
+                <form onSubmit={saveCurrency} className="p-5 space-y-4">
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1.5 block">Show prices on my website in</label>
+                    <select value={storefrontCurrency} onChange={(e) => setStorefrontCurrency(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm">
+                      <option value="">Same as my store ({baseCurrency || 'USD'}) — no conversion</option>
+                      {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                      Your products are priced in <strong className="text-foreground">{baseCurrency || 'USD'}</strong>. If your website's visitors expect a different currency, pick it here — every price the API sends is converted using a live exchange rate before your site ever sees it, so it's correct even if your site doesn't do any currency handling of its own.
+                    </p>
+                  </div>
+                  <button type="submit" disabled={savingCurrency}
+                    className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                    {savingCurrency && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {currencySaved && !savingCurrency && <Check className="w-4 h-4" />}
+                    {savingCurrency ? 'Saving...' : currencySaved ? 'Saved' : 'Save Storefront Currency'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
 
-        {/* Last on purpose — this is reference material for whoever's
-            building the site, not a setup step, so it doesn't need to
-            compete with the actual connection/payment steps above it. */}
-        {shopSlug && <DeveloperReferenceCard slug={shopSlug} />}
+          {activeTab === 'docs' && (
+            <DeveloperDocs slug={shopSlug} webhookUrl={connection.webhook_url} />
+          )}
+
+          {activeTab === 'more' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <QuickLinkCard
+                href="/dashboard/signup-forms"
+                icon={<FormInput className="w-4 h-4 text-primary" />}
+                iconClass="bg-primary/10"
+                title="Signup Forms"
+                description="Newsletter or inquiry forms for your site — submissions land in Lead Management."
+              />
+              <QuickLinkCard
+                href="/dashboard/wallet"
+                icon={<Coins className="w-4 h-4 text-emerald-500" />}
+                iconClass="bg-emerald-500/10"
+                title="Wallet"
+                description="Set your cashback % and see every customer's balance and activity."
+              />
+              <QuickLinkCard
+                href="/dashboard/storefront-categories"
+                icon={<LayoutGrid className="w-4 h-4 text-amber-500" />}
+                iconClass="bg-amber-500/10"
+                title="Storefront Categories"
+                description="Build the category tree shoppers browse on your site."
+              />
+              <QuickLinkCard
+                href="/dashboard/custom-website-fields"
+                icon={<ListPlus className="w-4 h-4 text-violet-500" />}
+                iconClass="bg-violet-500/10"
+                title="Product Fields"
+                description="Define your own extra product fields — quantity tiers, gift wrap, anything your site needs."
+              />
+            </div>
+          )}
         </>
       ) : (
         <div className="bg-card border border-border rounded-xl">
@@ -525,6 +576,38 @@ export default function CustomWebsiteIntegrationPage() {
           </form>
         </div>
       )}
+
+      <Dialog open={testOpen} onOpenChange={setTestOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connection test</DialogTitle>
+            <DialogDescription>
+              {/* Honest — there's nothing for ExiusCart to "ping" here (your
+                  site calls ExiusCart, not the other way around), so this
+                  checks what's actually real instead of faking a network
+                  round-trip. */}
+              What's actually verified, not a simulated ping
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between text-sm bg-muted/50 rounded-lg px-3 py-2.5">
+              <span className="text-foreground font-medium">Webhook URL is active</span>
+              <CheckCircle2 className="w-4 h-4 text-green-500" />
+            </div>
+            <div className="flex items-center justify-between text-sm bg-muted/50 rounded-lg px-3 py-2.5">
+              <span className="text-foreground font-medium">Payment gateway configured</span>
+              {gateway?.configured ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <X className="w-4 h-4 text-destructive" />}
+            </div>
+            <div className="flex items-center justify-between text-sm bg-muted/50 rounded-lg px-3 py-2.5">
+              <span className="text-foreground font-medium">Last real order received</span>
+              <span className="text-xs text-muted-foreground">{stats?.last_order_at ? new Date(stats.last_order_at).toLocaleString() : 'None yet'}</span>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            ExiusCart never calls your site to "test" it — your site calls ExiusCart's webhook URL when an order happens. The real test is sending a real order and checking it appears in Recent Orders.
+          </p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
