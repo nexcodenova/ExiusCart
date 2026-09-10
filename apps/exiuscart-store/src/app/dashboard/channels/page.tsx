@@ -212,6 +212,7 @@ export default function ChannelsPage() {
     },
     {
       id: 'wix',
+      channelType: 'wix',
       name: 'Wix Stores',
       category: 'Your Own Store',
       description: 'Connect your Wix store — products, orders, and inventory stay in sync automatically.',
