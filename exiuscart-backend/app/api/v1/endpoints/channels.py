@@ -668,6 +668,7 @@ def list_channels(
             "id": c.id,
             "channel_type": c.channel_type,
             "channel_seller_id": c.channel_seller_id,
+            "channel_api_url": c.channel_api_url,
             "channel_warehouse_code": c.channel_warehouse_code,
             "seller_country": c.seller_country,
             "channel_currency": c.channel_currency,
@@ -704,6 +705,36 @@ def set_channel_currency(
     conn.channel_currency = (data.channel_currency or "").strip().upper() or None
     db.commit()
     return {"channel_currency": conn.channel_currency}
+
+
+class ChannelSiteUrlIn(BaseModel):
+    site_url: Optional[str] = None
+
+
+@router.put("/shops/{shop_id}/channels/{channel_id}/site-url")
+def set_channel_site_url(
+    shop_id: int,
+    channel_id: int,
+    data: ChannelSiteUrlIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """The public address of the seller's own storefront (Custom Website /
+    WooCommerce / BigCommerce). Stored in channel_api_url — used for the
+    'View site' link and to show the real site name instead of the internal
+    shop slug. Normalized to include a scheme; null clears it."""
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id, ChannelConnection.shop_id == shop_id,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Channel connection not found")
+    url = (data.site_url or "").strip()
+    if url and not url.lower().startswith(("http://", "https://")):
+        url = "https://" + url
+    conn.channel_api_url = url.rstrip("/") or None
+    db.commit()
+    return {"channel_api_url": conn.channel_api_url}
 
 
 @router.delete("/shops/{shop_id}/channels/{channel_id}", status_code=200)

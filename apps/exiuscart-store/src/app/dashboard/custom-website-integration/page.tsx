@@ -19,6 +19,7 @@ import TrafficChart from '@/components/custom-website/TrafficChart';
 import DeveloperDocs from '@/components/custom-website/DeveloperDocs';
 import ConnectionHealthGauge from '@/components/custom-website/ConnectionHealthGauge';
 import ConnectionActivityChart from '@/components/custom-website/ConnectionActivityChart';
+import PaymentLogo from '@/components/custom-website/PaymentLogo';
 import ChannelListingActivity from '@/components/channel-listings/ChannelListingActivity';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -32,6 +33,12 @@ interface ChannelConnection {
   id: number;
   channel_type: string;
   webhook_url: string;
+  channel_api_url?: string | null;
+}
+
+function siteHost(url?: string | null): string {
+  if (!url) return '';
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url.replace(/^https?:\/\//, '').replace(/\/$/, ''); }
 }
 
 interface CustomWebsiteStats {
@@ -122,6 +129,10 @@ export default function CustomWebsiteIntegrationPage() {
   const [rotating, setRotating] = useState(false);
   const [rotateConfirm, setRotateConfirm] = useState(false);
 
+  const [siteUrl, setSiteUrl] = useState('');
+  const [savingSiteUrl, setSavingSiteUrl] = useState(false);
+  const [siteUrlSaved, setSiteUrlSaved] = useState(false);
+
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
   const load = () => {
@@ -129,7 +140,9 @@ export default function CustomWebsiteIntegrationPage() {
     Promise.all([
       channelsApi.getConnections(shopId).then((r) => {
         const conns: ChannelConnection[] = r.data ?? [];
-        setConnection(conns.find((c) => c.channel_type === 'custom') ?? null);
+        const custom = conns.find((c) => c.channel_type === 'custom') ?? null;
+        setConnection(custom);
+        setSiteUrl(custom?.channel_api_url ?? '');
       }),
       paymentGatewayApi.get(shopId).then((r) => {
         setGateway(r.data);
@@ -247,6 +260,24 @@ export default function CustomWebsiteIntegrationPage() {
     }
   };
 
+  // The seller's real storefront address — stored on the connection and used
+  // for the "View site" link and the displayed site name.
+  const saveSiteUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!connection) return;
+    setSavingSiteUrl(true); setSiteUrlSaved(false);
+    try {
+      const r = await channelsApi.setChannelSiteUrl(shopId, connection.id, siteUrl.trim() || null);
+      const saved = r.data?.channel_api_url ?? null;
+      setSiteUrl(saved ?? '');
+      setConnection((c) => (c ? { ...c, channel_api_url: saved } : c));
+      setSiteUrlSaved(true);
+      setTimeout(() => setSiteUrlSaved(false), 2000);
+    } finally {
+      setSavingSiteUrl(false);
+    }
+  };
+
   // Rotation is real: it regenerates ChannelConnection.webhook_secret, which
   // IS the credential (the secret lives in the URL path itself — there's no
   // separate signing key here, see Developer Docs). The old URL stops
@@ -350,6 +381,30 @@ export default function CustomWebsiteIntegrationPage() {
 
           {activeTab === 'overview' && (
             <div className="space-y-5">
+              {/* Connected-site identity strip */}
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                <div className="grid h-9 w-9 place-items-center rounded-lg bg-foreground text-background text-sm font-bold shrink-0">
+                  {(siteHost(connection.channel_api_url) || shopName || 'W').charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-foreground truncate">{siteHost(connection.channel_api_url) || shopName || 'Custom Website'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {stats?.connected_at ? `Connected ${new Date(stats.connected_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : 'Connected'}
+                    {stats?.last_order_at ? ` · Last order ${new Date(stats.last_order_at).toLocaleDateString()}` : ''}
+                  </p>
+                </div>
+                <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 shrink-0">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Connected
+                </span>
+                {connection.channel_api_url ? (
+                  <a href={connection.channel_api_url} target="_blank" rel="noopener noreferrer"
+                    className="text-xs font-semibold text-primary hover:opacity-80 shrink-0">View site ↗</a>
+                ) : (
+                  <button onClick={() => setActiveTab('connection')}
+                    className="text-xs font-semibold text-primary hover:opacity-80 shrink-0">Add website address →</button>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5">
                 <div className="space-y-5">
                   <TrafficChart shopId={shopId} />
@@ -394,19 +449,19 @@ export default function CustomWebsiteIntegrationPage() {
                       <CardTitle className="flex items-center gap-2 text-base">
                         <Webhook className="w-5 h-5 text-primary" /> Storefront connection
                       </CardTitle>
-                      <CardDescription>Your order webhook endpoint and API connection for {shopName || 'your storefront'}.</CardDescription>
+                      <CardDescription>Your order webhook endpoint and API connection for {siteHost(connection.channel_api_url) || shopName || 'your storefront'}.</CardDescription>
                     </div>
-                    {shopSlug && (
-                      <a href={`https://${shopSlug}`} target="_blank" rel="noopener noreferrer"
+                    {connection.channel_api_url && (
+                      <a href={connection.channel_api_url} target="_blank" rel="noopener noreferrer"
                         className="shrink-0 text-xs font-semibold text-primary hover:opacity-80">View site ↗</a>
                     )}
                   </CardHeader>
                   <CardContent className="space-y-5">
                     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
                       <div className="grid h-10 w-10 place-items-center rounded-lg bg-foreground text-background text-sm font-bold">
-                        {(shopName || 'W').charAt(0).toUpperCase()}
+                        {(siteHost(connection.channel_api_url) || shopName || 'W').charAt(0).toUpperCase()}
                       </div>
-                      <p className="font-bold text-foreground">{shopSlug || shopName || 'Custom Website'}</p>
+                      <p className="font-bold text-foreground">{siteHost(connection.channel_api_url) || shopName || 'Custom Website'}</p>
                       <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/10 gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Connected
                       </Badge>
@@ -416,6 +471,23 @@ export default function CustomWebsiteIntegrationPage() {
                         </span>
                       )}
                     </div>
+
+                    {/* Real: the seller's own storefront address — powers the
+                        "View site" link and the name shown above. */}
+                    <form onSubmit={saveSiteUrl} className="space-y-1.5">
+                      <label className="text-xs font-medium text-foreground">Your website address</label>
+                      <div className="flex gap-2">
+                        <input type="text" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)}
+                          placeholder="blackroot.store  or  https://blackroot.store"
+                          className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm" />
+                        <button type="submit" disabled={savingSiteUrl}
+                          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60">
+                          {savingSiteUrl ? <Loader2 className="w-4 h-4 animate-spin" /> : siteUrlSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                          {savingSiteUrl ? 'Saving…' : siteUrlSaved ? 'Saved' : 'Save'}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Used for the “View site” link and to label this connection. https:// is added if you leave it out.</p>
+                    </form>
 
                     <CopyBox label="Order webhook URL — POST your website's orders here" value={connection.webhook_url} />
 
@@ -515,14 +587,11 @@ export default function CustomWebsiteIntegrationPage() {
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {Object.entries(GATEWAY_LABELS).map(([value, l]) => {
                           const active = selectedGateway === value;
-                          const badgeColor = ({ payhere: 'bg-blue-600', stripe: 'bg-violet-600', paypal: 'bg-blue-800', whop: 'bg-[#FA4616]' } as Record<string, string>)[value] ?? 'bg-slate-600';
                           return (
                             <button key={value} type="button" onClick={() => setSelectedGateway(value)}
                               className={`rounded-xl border p-3 text-left transition ${active ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/40 hover:bg-muted/40'}`}>
                               <div className="flex items-center justify-between">
-                                <span className={`grid h-8 w-8 place-items-center rounded-lg text-[11px] font-black text-white ${badgeColor}`}>
-                                  {l.name.slice(0, 2).toUpperCase()}
-                                </span>
+                                <PaymentLogo id={value} name={l.name} size={32} />
                                 <span className={`h-4 w-4 rounded-full border-2 ${active ? 'border-primary bg-primary' : 'border-border'}`} />
                               </div>
                               <p className="mt-2.5 text-sm font-bold text-foreground">{l.name}</p>

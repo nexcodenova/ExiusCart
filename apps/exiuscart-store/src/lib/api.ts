@@ -676,6 +676,8 @@ export const channelsApi = {
     api.delete(`/shops/${shopId}/channels/${channelId}`),
   setChannelCurrency: (shopId: string, channelId: number, channelCurrency: string | null) =>
     api.put(`/shops/${shopId}/channels/${channelId}/currency`, { channel_currency: channelCurrency }),
+  setChannelSiteUrl: (shopId: string, channelId: number, siteUrl: string | null) =>
+    api.put(`/shops/${shopId}/channels/${channelId}/site-url`, { site_url: siteUrl }),
   getAllChannelStatuses: (shopId: string) =>
     api.get(`/shops/${shopId}/channel-statuses`),
   getStats: (shopId: string) =>
