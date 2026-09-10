@@ -251,6 +251,7 @@ export default function ChannelsPage() {
     },
     {
       id: 'instagram',
+      channelType: 'instagram',
       name: 'Instagram Shopping',
       category: 'Social Commerce',
       description: 'Tag products in your Instagram posts and stories. Orders sync to ExiusCart.',
@@ -302,6 +303,7 @@ export default function ChannelsPage() {
     },
     {
       id: 'trendyol',
+      channelType: 'trendyol',
       name: 'Trendyol',
       category: 'Global Marketplaces',
       description: "Turkey's largest online marketplace. List products and manage orders through ExiusCart.",
@@ -321,6 +323,7 @@ export default function ChannelsPage() {
     },
     {
       id: 'jumia',
+      channelType: 'jumia',
       name: 'Jumia',
       category: 'Africa',
       description: "Africa's leading marketplace. List products and manage orders through ExiusCart.",

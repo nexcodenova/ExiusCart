@@ -1,5 +1,5 @@
 import {
-  ShoppingBag, Tag, Music2, Globe, ShoppingCart, CreditCard, Download, Link2, Store, Package,
+  ShoppingBag, Tag, Music2, Globe, ShoppingCart, CreditCard, Download, Link2, Store, Package, Instagram,
 } from 'lucide-react';
 
 // icon/color is the fallback treatment; `logo` points at a real brand SVG
@@ -19,12 +19,15 @@ export const CHANNEL_META: Record<string, {
   amazon:      { label: 'Amazon',         icon: Package, color: 'text-orange-400', bg: 'bg-orange-400/10', logo: '/channel-logos/amazon.svg', wide: true },
   walmart:     { label: 'Walmart',        icon: ShoppingCart, color: 'text-[#0071DC]', bg: 'bg-[#0071DC]/10', logo: '/channel-logos/walmart.svg', wide: true },
   wix:         { label: 'Wix',            icon: Globe, color: 'text-foreground', bg: 'bg-foreground/10', logo: '/channel-logos/wix.svg', wide: true },
-  tiktok:      { label: 'TikTok Shop',    icon: Music2, color: 'text-foreground', bg: 'bg-foreground/10' },
-  noon:        { label: 'Noon',           icon: ShoppingBag, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+  tiktok:      { label: 'TikTok Shop',    icon: Music2, color: 'text-foreground', bg: 'bg-foreground/10', logo: '/channel-logos/tiktok.svg' },
+  noon:        { label: 'Noon',           icon: ShoppingBag, color: 'text-yellow-500', bg: 'bg-yellow-500/10', logo: '/channel-logos/noon.svg' },
   daraz:       { label: 'Daraz',          icon: ShoppingBag, color: 'text-orange-500', bg: 'bg-orange-500/10' },
   thedersi:    { label: 'TheDersi',       icon: Link2, color: 'text-primary', bg: 'bg-primary/10' },
-  whop:        { label: 'Whop',           icon: CreditCard, color: 'text-[#FA4616]', bg: 'bg-[#FA4616]/10' },
-  gumroad:     { label: 'Gumroad',        icon: Download, color: 'text-[#FF90E8]', bg: 'bg-[#FF90E8]/10' },
+  whop:        { label: 'Whop',           icon: CreditCard, color: 'text-[#FA4616]', bg: 'bg-[#FA4616]/10', logo: '/channel-logos/whop.svg', wide: true },
+  gumroad:     { label: 'Gumroad',        icon: Download, color: 'text-[#FF90E8]', bg: 'bg-[#FF90E8]/10', logo: '/channel-logos/gumroad.svg' },
+  instagram:   { label: 'Instagram Shopping', icon: Instagram, color: 'text-pink-500', bg: 'bg-pink-500/10', logo: '/channel-logos/instagram.svg' },
+  trendyol:    { label: 'Trendyol',       icon: ShoppingBag, color: 'text-[#F27A1A]', bg: 'bg-[#F27A1A]/10', logo: '/channel-logos/trendyol.svg', wide: true },
+  jumia:       { label: 'Jumia',          icon: ShoppingBag, color: 'text-[#F68B1E]', bg: 'bg-[#F68B1E]/10', logo: '/channel-logos/jumia.svg', wide: true },
 };
 
 export function channelMeta(channelType: string) {
