@@ -2366,7 +2366,9 @@ def get_channel_listing_detail(
 # customer-facing category list for those two specifically, powering the
 # public storefront category endpoint below.
 
-from app.models.storefront_category import StorefrontCategory, STOREFRONT_CATEGORY_CHANNELS
+from app.models.storefront_category import (
+    StorefrontCategory, STOREFRONT_CATEGORY_CHANNELS, READ_ONLY_CATEGORY_CHANNELS,
+)
 
 
 class StorefrontCategoryIn(BaseModel):
@@ -2375,6 +2377,17 @@ class StorefrontCategoryIn(BaseModel):
     icon_url: Optional[str] = None
     sort_order: int = 0
     parent_id: Optional[int] = None  # None = Main. Set = Sub (or Sub-sub if parent itself has a parent).
+    is_published: bool = True
+    visibility: str = "nav_and_grid"   # nav_and_grid | nav_only | hidden
+    is_featured: bool = False
+    seo_title: Optional[str] = None
+    seo_description: Optional[str] = None
+
+
+class StorefrontCategoryBulkIn(BaseModel):
+    channel_type: str
+    names: List[str]
+    parent_id: Optional[int] = None
 
 
 def _check_storefront_channel(shop_id: int, channel_type: str, db: Session):
@@ -2399,8 +2412,13 @@ def _check_storefront_channel(shop_id: int, channel_type: str, db: Session):
 
 
 def _cat_out(r: StorefrontCategory) -> dict:
-    return {"id": r.id, "channel_type": r.channel_type, "name": r.name, "slug": r.slug,
-            "icon_url": r.icon_url, "sort_order": r.sort_order, "parent_id": r.parent_id}
+    return {
+        "id": r.id, "channel_type": r.channel_type, "name": r.name, "slug": r.slug,
+        "icon_url": r.icon_url, "sort_order": r.sort_order, "parent_id": r.parent_id,
+        "is_published": bool(r.is_published), "visibility": r.visibility or "nav_and_grid",
+        "is_featured": bool(r.is_featured), "seo_title": r.seo_title, "seo_description": r.seo_description,
+        "created_at": r.created_at, "updated_at": r.updated_at,
+    }
 
 
 @router.get("/shops/{shop_id}/storefront-categories")
@@ -2420,7 +2438,29 @@ def list_storefront_categories(
         StorefrontCategory.shop_id == shop_id,
         StorefrontCategory.channel_type == channel_type,
     ).order_by(StorefrontCategory.sort_order).all()
-    return [_cat_out(r) for r in rows]
+
+    # Real per-category product count. ProductStorefrontCategory.category_id
+    # is the storefront category's own id stored as a string (see
+    # set_product_channel_category), scoped to this channel's connection.
+    from sqlalchemy import func as sql_func
+    from app.models.channel_category import ProductStorefrontCategory
+    counts: dict = {}
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == channel_type,
+        ChannelConnection.is_active == True,
+    ).first()
+    if conn and rows:
+        id_strs = [str(r.id) for r in rows]
+        for cat_id, cnt in db.query(
+            ProductStorefrontCategory.category_id, sql_func.count(ProductStorefrontCategory.id),
+        ).filter(
+            ProductStorefrontCategory.channel_connection_id == conn.id,
+            ProductStorefrontCategory.category_id.in_(id_strs),
+        ).group_by(ProductStorefrontCategory.category_id).all():
+            counts[str(cat_id)] = cnt
+
+    return [{**_cat_out(r), "product_count": counts.get(str(r.id), 0)} for r in rows]
 
 
 @router.get("/shops/{shop_id}/storefront-categories/icon-presign")
@@ -2467,6 +2507,11 @@ def create_storefront_category(
         icon_url=data.icon_url,
         sort_order=data.sort_order,
         parent_id=data.parent_id,
+        is_published=data.is_published,
+        visibility=data.visibility if data.visibility in ("nav_and_grid", "nav_only", "hidden") else "nav_and_grid",
+        is_featured=data.is_featured,
+        seo_title=(data.seo_title or None),
+        seo_description=(data.seo_description or None),
     )
     db.add(cat)
     db.commit()
@@ -2504,6 +2549,12 @@ def update_storefront_category(
     cat.icon_url = data.icon_url
     cat.sort_order = data.sort_order
     cat.parent_id = data.parent_id
+    cat.is_published = data.is_published
+    if data.visibility in ("nav_and_grid", "nav_only", "hidden"):
+        cat.visibility = data.visibility
+    cat.is_featured = data.is_featured
+    cat.seo_title = (data.seo_title or None)
+    cat.seo_description = (data.seo_description or None)
     db.commit()
     return _cat_out(cat)
 
@@ -2524,3 +2575,111 @@ def delete_storefront_category(
     db.delete(cat)  # cascades to children — see model's cascade="all, delete-orphan"
     db.commit()
     return {"message": "Category deleted"}
+
+
+@router.get("/shops/{shop_id}/storefront-categories/summary")
+def storefront_categories_summary(
+    shop_id: int,
+    channel_type: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Real counts for the Storefront Categories stat cards — main vs sub
+    categories, how many products are filed under at least one category,
+    and how many active products have none yet."""
+    _shop_or_404(shop_id, current_user, db)
+    from sqlalchemy import func as sql_func
+    from app.models.channel_category import ProductStorefrontCategory
+
+    rows = db.query(StorefrontCategory.id, StorefrontCategory.parent_id).filter(
+        StorefrontCategory.shop_id == shop_id,
+        StorefrontCategory.channel_type == channel_type,
+    ).all()
+    main_count = sum(1 for _id, pid in rows if pid is None)
+    sub_count = sum(1 for _id, pid in rows if pid is not None)
+
+    products_categorized = 0
+    products_uncategorized = 0
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == channel_type,
+        ChannelConnection.is_active == True,
+    ).first()
+    if conn:
+        active_ids = {
+            r[0] for r in db.query(Product.id).filter(
+                Product.shop_id == shop_id, Product.is_active == True,
+            ).all()
+        }
+        filed_ids = {
+            r[0] for r in db.query(ProductStorefrontCategory.product_id).filter(
+                ProductStorefrontCategory.channel_connection_id == conn.id,
+            ).distinct().all()
+        }
+        products_categorized = len(active_ids & filed_ids)
+        products_uncategorized = len(active_ids - filed_ids)
+
+    return {
+        "main_count": main_count,
+        "sub_count": sub_count,
+        "products_categorized": products_categorized,
+        "products_uncategorized": products_uncategorized,
+    }
+
+
+@router.post("/shops/{shop_id}/storefront-categories/bulk", status_code=201)
+def bulk_create_storefront_categories(
+    shop_id: int,
+    data: StorefrontCategoryBulkIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Quick import — one category name per line. Creates them at the given
+    parent (or as Main categories), skipping blanks and names that already
+    exist at that level. No CSV parsing, no external fetch — just names."""
+    _shop_or_404(shop_id, current_user, db)
+    _check_storefront_channel(shop_id, data.channel_type, db)
+
+    if data.parent_id is not None:
+        parent = db.query(StorefrontCategory).filter(
+            StorefrontCategory.id == data.parent_id,
+            StorefrontCategory.shop_id == shop_id,
+            StorefrontCategory.channel_type == data.channel_type,
+        ).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent category not found")
+
+    existing = {
+        c.name.strip().lower()
+        for c in db.query(StorefrontCategory).filter(
+            StorefrontCategory.shop_id == shop_id,
+            StorefrontCategory.channel_type == data.channel_type,
+            StorefrontCategory.parent_id == data.parent_id,
+        ).all()
+    }
+    base_order = db.query(func.count(StorefrontCategory.id)).filter(
+        StorefrontCategory.shop_id == shop_id,
+        StorefrontCategory.channel_type == data.channel_type,
+        StorefrontCategory.parent_id == data.parent_id,
+    ).scalar() or 0
+
+    created = []
+    seen = set()
+    for raw in data.names:
+        name = (raw or "").strip()
+        key = name.lower()
+        if not name or key in existing or key in seen:
+            continue
+        seen.add(key)
+        cat = StorefrontCategory(
+            shop_id=shop_id, channel_type=data.channel_type, name=name,
+            slug=f"{slugify(name)}-{uuid.uuid4().hex[:6]}",
+            sort_order=base_order + len(created), parent_id=data.parent_id,
+        )
+        db.add(cat)
+        created.append(cat)
+
+    db.commit()
+    for c in created:
+        db.refresh(c)
+    return {"created": [_cat_out(c) for c in created], "skipped": len(data.names) - len(created)}

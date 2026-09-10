@@ -46,9 +46,16 @@ def public_store_categories(request: Request, shop_slug: str, channel: str = "cu
     rows = db.query(StorefrontCategory).filter(
         StorefrontCategory.shop_id == shop.id,
         StorefrontCategory.channel_type == channel,
+        StorefrontCategory.is_published == True,
+        StorefrontCategory.visibility != "hidden",
     ).order_by(StorefrontCategory.sort_order).all()
     return [
-        {"id": r.id, "name": r.name, "slug": r.slug, "icon_url": r.icon_url, "parent_id": r.parent_id}
+        {
+            "id": r.id, "name": r.name, "slug": r.slug, "icon_url": r.icon_url, "parent_id": r.parent_id,
+            # "nav_and_grid" | "nav_only" — lets the storefront decide where to render it
+            "visibility": r.visibility or "nav_and_grid",
+            "is_featured": bool(r.is_featured),
+        }
         for r in rows
     ]
 

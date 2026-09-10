@@ -637,6 +637,19 @@ export const variantsApi = {
 };
 
 // ── Channel Integrations ───────────────────────────────
+export interface StorefrontCategoryPayload {
+  channel_type: string;
+  name: string;
+  icon_url?: string;
+  sort_order?: number;
+  parent_id?: number | null;
+  is_published?: boolean;
+  visibility?: 'nav_and_grid' | 'nav_only' | 'hidden';
+  is_featured?: boolean;
+  seo_title?: string | null;
+  seo_description?: string | null;
+}
+
 export const channelsApi = {
   getConnections: (shopId: string) =>
     api.get(`/shops/${shopId}/channels`),
@@ -710,10 +723,14 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/daraz/products/${productId}/qc-status`),
   listStorefrontCategories: (shopId: string, channelType: string) =>
     api.get(`/shops/${shopId}/storefront-categories`, { params: { channel_type: channelType } }),
-  createStorefrontCategory: (shopId: string, data: { channel_type: string; name: string; icon_url?: string; sort_order?: number; parent_id?: number | null }) =>
+  storefrontCategoriesSummary: (shopId: string, channelType: string) =>
+    api.get(`/shops/${shopId}/storefront-categories/summary`, { params: { channel_type: channelType } }),
+  createStorefrontCategory: (shopId: string, data: StorefrontCategoryPayload) =>
     api.post(`/shops/${shopId}/storefront-categories`, data),
-  updateStorefrontCategory: (shopId: string, categoryId: number, data: { channel_type: string; name: string; icon_url?: string; sort_order?: number; parent_id?: number | null }) =>
+  updateStorefrontCategory: (shopId: string, categoryId: number, data: StorefrontCategoryPayload) =>
     api.put(`/shops/${shopId}/storefront-categories/${categoryId}`, data),
+  bulkCreateStorefrontCategories: (shopId: string, data: { channel_type: string; names: string[]; parent_id?: number | null }) =>
+    api.post(`/shops/${shopId}/storefront-categories/bulk`, data),
   deleteStorefrontCategory: (shopId: string, categoryId: number) =>
     api.delete(`/shops/${shopId}/storefront-categories/${categoryId}`),
   uploadStorefrontCategoryIcon: async (shopId: string, file: File) => {
