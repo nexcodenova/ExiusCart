@@ -1973,41 +1973,44 @@ def get_channel_listings_stats(
         fail = sum(c for ok, c in rows if not ok)
         return succ, fail
 
-    succ, fail = _counts(window_start, now)
+    # Trend windows (last N days vs the N days before) — only used for the
+    # small "+X%" indicator, not the headline number.
+    win_succ, win_fail = _counts(window_start, now)
     prev_succ, prev_fail = _counts(prev_start, window_start)
-    total, prev_total = succ + fail, prev_succ + prev_fail
+    win_total, prev_total = win_succ + win_fail, prev_succ + prev_fail
+
+    # Headline numbers are ALL-TIME so the stat cards match what the table
+    # below actually lists (the table defaults to "all time"). A 7-day
+    # window was silently hiding real older activity from the cards.
+    all_rows = db.query(ChannelSyncLog.success, sql_func.count(ChannelSyncLog.id)).filter(
+        ChannelSyncLog.shop_id == shop_id,
+    ).group_by(ChannelSyncLog.success).all()
+    succ = sum(c for ok, c in all_rows if ok)
+    fail = sum(c for ok, c in all_rows if not ok)
 
     def _pct_change(now_val, prev_val):
         if prev_val == 0:
             return None
         return round(100 * (now_val - prev_val) / prev_val, 1)
 
-    # "Needs attention" = failed + rejected-but-succeeded (warning state) —
-    # the rejected count comes from ChannelProductStatus, scoped to products
-    # touched by a sync log in this window so it reflects recent activity.
+    # "Needs attention" = failed syncs + products the channel itself rejected
+    # (ChannelProductStatus.status == "rejected"), all-time to match above.
     from app.models.channel_product_status import ChannelProductStatus
-    recent_product_ids = [r[0] for r in db.query(ChannelSyncLog.product_id).filter(
-        ChannelSyncLog.shop_id == shop_id, ChannelSyncLog.created_at >= window_start, ChannelSyncLog.product_id.isnot(None),
-    ).distinct().all()]
-    warning_count = 0
-    if recent_product_ids:
-        warning_count = db.query(func.count(ChannelProductStatus.id)).filter(
-            ChannelProductStatus.shop_id == shop_id,
-            ChannelProductStatus.product_id.in_(recent_product_ids),
-            ChannelProductStatus.status == "rejected",
-        ).scalar() or 0
+    warning_count = db.query(sql_func.count(ChannelProductStatus.id)).filter(
+        ChannelProductStatus.shop_id == shop_id,
+        ChannelProductStatus.status == "rejected",
+    ).scalar() or 0
 
     # Real "most common cause of failure" — grouped by action, not a parsed
     # guess at every channel's differently-worded error text.
     top_action_row = db.query(ChannelSyncLog.action, sql_func.count(ChannelSyncLog.id)).filter(
         ChannelSyncLog.shop_id == shop_id, ChannelSyncLog.success == False,
-        ChannelSyncLog.created_at >= window_start,
     ).group_by(ChannelSyncLog.action).order_by(sql_func.count(ChannelSyncLog.id).desc()).first()
 
     # Custom Website writes no ChannelSyncLog rows (no push step) — count its
     # active products as real "available" listings so the totals aren't
-    # blind to that channel. Not folded into the trend (there's no per-day
-    # event to compare windows on).
+    # blind to that channel, exactly matching the synthetic rows the
+    # listings feed shows for it.
     custom_available = 0
     custom_conn = db.query(ChannelConnection).filter(
         ChannelConnection.shop_id == shop_id,
@@ -2019,19 +2022,19 @@ def get_channel_listings_stats(
             Product.shop_id == shop_id, Product.is_active == True,
         ).scalar() or 0
 
-    total_with_custom = total + custom_available
-    succ_with_custom = succ + custom_available
+    total = succ + fail + custom_available
+    successful = succ + custom_available
 
     return {
-        "total_activity": total_with_custom,
-        "successful": succ_with_custom,
+        "total_activity": total,
+        "successful": successful,
         "failed": fail,
         "needs_attention": fail + warning_count,
-        "success_rate": round(100 * succ_with_custom / total_with_custom, 1) if total_with_custom else None,
+        "success_rate": round(100 * successful / total, 1) if total else None,
         "trend": {
-            "total_activity": _pct_change(total, prev_total),
-            "successful": _pct_change(succ, prev_succ),
-            "failed": _pct_change(fail, prev_fail),
+            "total_activity": _pct_change(win_total, prev_total),
+            "successful": _pct_change(win_succ, prev_succ),
+            "failed": _pct_change(win_fail, prev_fail),
         },
         "top_failing_action": top_action_row[0] if top_action_row else None,
         "top_failing_action_count": top_action_row[1] if top_action_row else 0,

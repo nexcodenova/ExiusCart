@@ -52,7 +52,7 @@ export default function ListingDrawer({ detail, loading, onClose }: {
   const tips = detail ? fixTips(detail.error_message) : [];
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-30 w-full sm:w-[380px] overflow-y-auto border-l border-border bg-card shadow-2xl">
+    <aside className="fixed top-0 sm:top-16 bottom-0 right-0 z-50 w-full sm:w-[380px] overflow-y-auto border-l border-border bg-card shadow-2xl">
       <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-5 py-4 z-10">
         <h2 className="font-bold text-foreground">Listing details</h2>
         <button onClick={onClose} className="rounded-md p-1.5 hover:bg-muted text-muted-foreground">
