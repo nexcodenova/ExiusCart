@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Plus, LayoutGrid, Edit, Trash2, X, Loader2, ArrowUp, ArrowDown,
   ImageIcon, Upload, Link2, CornerDownRight, AlertCircle, Search, ChevronDown, ChevronRight,
-  FolderTree, Layers3, Package, Globe, Copy, Check, Eye, Boxes, AlertTriangle, Star, Lock,
+  FolderTree, Layers3, Package, Copy, Check, Eye, Boxes, AlertTriangle, Star,
 } from 'lucide-react';
 import { channelsApi, type StorefrontCategoryPayload } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -420,8 +420,9 @@ export default function StorefrontCategoriesPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-semibold text-primary">
-            Sales Channels <span className="mx-1 text-muted-foreground/50">/</span> {channelLabel}
+          <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+            Sales Channels <span className="text-muted-foreground/50">/</span>
+            <ChannelLogo channelType={channelType} size={13} /> {channelLabel}
           </p>
           <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-foreground">Storefront Categories</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -508,8 +509,8 @@ export default function StorefrontCategoriesPage() {
         <Card>
           <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary shrink-0">
-                {readOnly ? <Lock className="w-5 h-5" /> : <Globe className="w-5 h-5" />}
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-muted shrink-0 overflow-hidden">
+                <ChannelLogo channelType={channelType} size={22} />
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">

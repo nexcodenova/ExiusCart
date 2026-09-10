@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { channelMeta } from './channelMeta';
 
 // Renders the real brand SVG from /public/channel-logos when channelMeta has
@@ -20,10 +20,18 @@ export default function ChannelLogo({
   const [fileOk, setFileOk] = useState(Boolean(meta.logo));
   const Icon = meta.icon;
 
+  // Re-try the image whenever the channel changes — this component is often
+  // reused in place (e.g. a picker button) where the prop changes but the
+  // instance doesn't, which would otherwise leave a stale "failed" state.
+  useEffect(() => {
+    setFileOk(Boolean(meta.logo));
+  }, [channelType, meta.logo]);
+
   if (fileOk && meta.logo) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
+        key={meta.logo}
         src={meta.logo}
         alt={meta.label}
         title={meta.label}
