@@ -1,9 +1,11 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import ChannelLogo from '@/components/channel-listings/ChannelLogo';
 
 export interface SyncedChannel {
   name: string;
+  channelType?: string;
   lastSyncedAt: string | null;
 }
 
@@ -51,6 +53,7 @@ export default function SyncCenter({ channels, onRefresh, refreshing }: { channe
               <div key={c.name} className="flex items-center justify-between rounded-xl bg-card/70 px-3 py-2.5">
                 <div className="flex items-center gap-2.5">
                   <span className="w-2 h-2 rounded-full bg-green-500" />
+                  {c.channelType && <ChannelLogo channelType={c.channelType} size={14} />}
                   <span className="text-xs font-medium text-foreground">{c.name}</span>
                 </div>
                 <span className="text-[10px] font-medium text-muted-foreground">{timeAgo(c.lastSyncedAt)}</span>

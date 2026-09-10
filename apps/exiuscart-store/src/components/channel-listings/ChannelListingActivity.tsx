@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Loader2, Package, ArrowRight, CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { channelsApi } from '@/lib/api';
 import { channelMeta } from './channelMeta';
+import ChannelLogo from './ChannelLogo';
 import type { ListingRow } from './ListingsTable';
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
@@ -51,9 +52,12 @@ export default function ChannelListingActivity({
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border">
-        <div>
-          <p className="font-semibold text-foreground text-sm">Listing activity</p>
-          <p className="text-xs text-muted-foreground">Every {meta.label} listing, stock sync and price update</p>
+        <div className="flex items-center gap-2.5">
+          <ChannelLogo channelType={channelType} size={18} />
+          <div>
+            <p className="font-semibold text-foreground text-sm">Listing activity</p>
+            <p className="text-xs text-muted-foreground">Every {meta.label} listing, stock sync and price update</p>
+          </div>
         </div>
         <Link
           href={`/dashboard/channel-listings?channel=${channelType}`}

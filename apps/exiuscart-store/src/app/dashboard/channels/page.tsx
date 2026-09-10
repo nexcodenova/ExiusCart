@@ -122,6 +122,7 @@ export default function ChannelsPage() {
     // ── Row 1: Shopify, Custom Website, WooCommerce ──
     {
       id: 'shopify',
+      channelType: 'shopify',
       name: 'Shopify',
       category: 'Your Own Store',
       description: 'Sync your Shopify store — products, orders, and inventory stay in sync automatically.',
@@ -239,6 +240,7 @@ export default function ChannelsPage() {
     },
     {
       id: 'amazon',
+      channelType: 'amazon',
       name: 'Amazon',
       category: 'Global Marketplaces',
       description: 'List and manage your Amazon products and orders through ExiusCart.',
@@ -308,6 +310,7 @@ export default function ChannelsPage() {
     },
     {
       id: 'walmart',
+      channelType: 'walmart',
       name: 'Walmart',
       category: 'Global Marketplaces',
       description: 'Reach US shoppers on Walmart Marketplace. List products and manage orders through ExiusCart.',
@@ -417,6 +420,7 @@ export default function ChannelsPage() {
     .filter((c) => c.badge === 'live' && c.channelType)
     .map((c) => ({
       name: c.name,
+      channelType: c.channelType,
       lastSyncedAt: connections.find((conn) => conn.channel_type === c.channelType)?.last_synced_at ?? null,
     }));
 

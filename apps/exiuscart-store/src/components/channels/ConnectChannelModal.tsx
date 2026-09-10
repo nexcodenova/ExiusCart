@@ -1,6 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Lock, ChevronRight } from 'lucide-react';
 import type { ChannelDef } from './ChannelCard';
+import { channelMeta } from '@/components/channel-listings/channelMeta';
+import ChannelLogo from '@/components/channel-listings/ChannelLogo';
 
 // Deliberately NOT a generic multi-step "enter store URL, fake OAuth"
 // wizard the way a from-scratch mockup would build it — every channel here
@@ -35,8 +37,10 @@ export default function ConnectChannelModal({
               disabled={!channel.onAction}
               className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border border-border hover:bg-muted hover:border-primary/30 transition text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="w-9 h-9 rounded-lg bg-muted/70 ring-1 ring-border flex items-center justify-center shrink-0">
-                {channel.icon}
+              <div className="w-9 h-9 rounded-lg bg-muted/70 ring-1 ring-border flex items-center justify-center shrink-0 overflow-hidden">
+                {channel.channelType && channelMeta(channel.channelType).logo
+                  ? <ChannelLogo channelType={channel.channelType} size={20} />
+                  : channel.icon}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground">{channel.name}</p>

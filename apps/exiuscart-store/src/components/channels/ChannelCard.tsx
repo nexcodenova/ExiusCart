@@ -2,6 +2,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Lock, Package, ShoppingCart, Clock3 } from 'lucide-react';
+import { channelMeta } from '@/components/channel-listings/channelMeta';
+import ChannelLogo from '@/components/channel-listings/ChannelLogo';
 
 export interface ChannelDef {
   id: string;
@@ -9,6 +11,7 @@ export interface ChannelDef {
   category: string;
   description: string;
   icon: React.ReactNode;
+  channelType?: string;
   badge: 'live' | 'connect' | 'soon' | 'locked';
   badgeLabel?: string;
   onAction?: () => void;
@@ -57,8 +60,10 @@ export default function ChannelCard({ channel, stat }: { channel: ChannelDef; st
     }`}>
       <CardContent className="p-5 flex flex-col gap-3.5">
         <div className="flex items-start justify-between gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-muted/70 ring-1 ring-border flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:ring-primary/20 transition-all duration-200">
-            {channel.icon}
+          <div className="w-12 h-12 rounded-2xl bg-muted/70 ring-1 ring-border flex items-center justify-center shrink-0 overflow-hidden group-hover:scale-105 group-hover:ring-primary/20 transition-all duration-200">
+            {channel.channelType && channelMeta(channel.channelType).logo
+              ? <ChannelLogo channelType={channel.channelType} size={26} />
+              : channel.icon}
           </div>
           <Badge variant={badgeVariant[channel.badge]} className="shrink-0 gap-1.5">
             <span className={`w-1.5 h-1.5 rounded-full ${
