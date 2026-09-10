@@ -39,7 +39,7 @@ export default function FlowDiagram() {
           <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:flex-col gap-2.5">
             {SOURCE_NODES.map((node) => (
               <div key={node.label} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card">
-                <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 overflow-hidden ${channelMeta(node.channelType).logo ? 'bg-muted/60' : node.className}`}>
+                <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 overflow-hidden ${node.className}`}>
                   {channelMeta(node.channelType).logo
                     ? <ChannelLogo channelType={node.channelType} size={14} />
                     : <node.icon className="w-3.5 h-3.5" />}
