@@ -2439,10 +2439,12 @@ def list_storefront_categories(
         StorefrontCategory.channel_type == channel_type,
     ).order_by(StorefrontCategory.sort_order).all()
 
-    # Real per-category product count. ProductStorefrontCategory.category_id
-    # is the storefront category's own id stored as a string (see
-    # set_product_channel_category), scoped to this channel's connection.
-    from sqlalchemy import func as sql_func
+    # Real per-category product count — a ROLLUP: this category plus every
+    # descendant, counting each product once even if it's filed under both a
+    # parent and a child. ProductStorefrontCategory.category_id is the
+    # storefront category's own id stored as a string, scoped to this
+    # channel's connection.
+    from collections import defaultdict
     from app.models.channel_category import ProductStorefrontCategory
     counts: dict = {}
     conn = db.query(ChannelConnection).filter(
@@ -2451,16 +2453,24 @@ def list_storefront_categories(
         ChannelConnection.is_active == True,
     ).first()
     if conn and rows:
-        id_strs = [str(r.id) for r in rows]
-        for cat_id, cnt in db.query(
-            ProductStorefrontCategory.category_id, sql_func.count(ProductStorefrontCategory.id),
-        ).filter(
-            ProductStorefrontCategory.channel_connection_id == conn.id,
-            ProductStorefrontCategory.category_id.in_(id_strs),
-        ).group_by(ProductStorefrontCategory.category_id).all():
-            counts[str(cat_id)] = cnt
+        direct: dict = defaultdict(set)
+        for cid, pid in db.query(
+            ProductStorefrontCategory.category_id, ProductStorefrontCategory.product_id,
+        ).filter(ProductStorefrontCategory.channel_connection_id == conn.id).all():
+            direct[str(cid)].add(pid)
+        children: dict = defaultdict(list)
+        for r in rows:
+            children[r.parent_id].append(r.id)
 
-    return [{**_cat_out(r), "product_count": counts.get(str(r.id), 0)} for r in rows]
+        def _subtree(cid):
+            s = set(direct.get(str(cid), ()))
+            for ch in children.get(cid, ()):
+                s |= _subtree(ch)
+            return s
+
+        counts = {r.id: len(_subtree(r.id)) for r in rows}
+
+    return [{**_cat_out(r), "product_count": counts.get(r.id, 0)} for r in rows]
 
 
 @router.get("/shops/{shop_id}/storefront-categories/icon-presign")

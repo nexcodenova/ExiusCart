@@ -458,7 +458,7 @@ export default function StorefrontCategoriesPage() {
             <div className="relative">
               <button type="button" onClick={() => setPickerOpen(o => !o)}
                 className="w-full flex items-center gap-2 px-3 py-2 bg-muted border border-border rounded-lg text-foreground text-sm">
-                <ChannelLogo channelType={channelType} size={16} />
+                <ChannelLogo channelType={channelType} size={18} />
                 <span className="flex-1 text-left truncate">{channelLabel}</span>
                 <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
               </button>
@@ -471,7 +471,7 @@ export default function StorefrontCategoriesPage() {
                       <button key={o.value} type="button"
                         onClick={() => { setChannelType(o.value); setSelectedId(null); setSearch(''); setPickerOpen(false); }}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left transition ${channelType === o.value ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
-                        <ChannelLogo channelType={o.value} size={16} /> {o.label}
+                        <ChannelLogo channelType={o.value} size={18} /> {o.label}
                       </button>
                     ))}
                     <p className="px-2 py-1 mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Marketplaces — view only</p>
@@ -479,7 +479,7 @@ export default function StorefrontCategoriesPage() {
                       <button key={o.value} type="button"
                         onClick={() => { setChannelType(o.value); setSelectedId(null); setSearch(''); setPickerOpen(false); }}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left transition ${channelType === o.value ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
-                        <ChannelLogo channelType={o.value} size={16} /> {o.label}
+                        <ChannelLogo channelType={o.value} size={18} /> {o.label}
                       </button>
                     ))}
                   </div>
@@ -488,10 +488,19 @@ export default function StorefrontCategoriesPage() {
             </div>
           </CardContent>
         </Card>
-        <MetricCard icon={FolderTree} title="Main categories" value={loading ? '—' : mainCount} />
-        <MetricCard icon={Layers3} title="Sub-categories" value={loading ? '—' : subCount} />
-        <MetricCard icon={Package} title="Products categorized" value={loading ? '—' : productsCategorized.toLocaleString()} />
-        <MetricCard icon={AlertTriangle} title="Products need a category" value={loading || readOnly ? '—' : productsUncategorized} danger={!readOnly && productsUncategorized > 0} />
+        {readOnly ? (
+          <>
+            <MetricCard icon={FolderTree} title={`${channelLabel} categories synced`} value={loading ? '—' : readOnlyCats.length} />
+            <div className="hidden sm:block xl:col-span-3" />
+          </>
+        ) : (
+          <>
+            <MetricCard icon={FolderTree} title="Main categories" value={loading ? '—' : mainCount} />
+            <MetricCard icon={Layers3} title="Sub-categories" value={loading ? '—' : subCount} />
+            <MetricCard icon={Package} title="Products categorized" value={loading ? '—' : productsCategorized.toLocaleString()} />
+            <MetricCard icon={AlertTriangle} title="Products need a category" value={loading ? '—' : productsUncategorized} danger={productsUncategorized > 0} />
+          </>
+        )}
       </div>
 
       {/* Connected strip */}
@@ -542,24 +551,14 @@ export default function StorefrontCategoriesPage() {
           </CardContent>
         </Card>
       ) : loading ? (
-        readOnly ? (
-          <Card className="overflow-hidden">
-            <div className="border-b border-border p-4"><div className="h-4 w-40 bg-muted rounded animate-pulse" /></div>
-            <div className="divide-y divide-border">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-3" style={{ paddingLeft: `${12 + (i % 3) * 26}px` }}>
-                  <div className="w-8 h-8 rounded-lg bg-muted animate-pulse shrink-0" />
-                  <div className="h-3.5 bg-muted rounded animate-pulse" style={{ width: `${140 + (i * 23) % 160}px` }} />
-                </div>
-              ))}
-            </div>
-          </Card>
-        ) : (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_400px]">
-            <div className="h-96 bg-card rounded-xl border border-border animate-pulse" />
-            <div className="h-96 bg-card rounded-xl border border-border animate-pulse" />
-          </div>
-        )
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-3 py-24">
+            <span className="grid h-12 w-12 place-items-center rounded-full border-2 border-border">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </span>
+            <p className="text-sm text-muted-foreground">Loading {channelLabel} categories…</p>
+          </CardContent>
+        </Card>
       ) : readOnly ? (
         <Card className="overflow-hidden">
           <div className="border-b border-border p-4 flex items-center justify-between">
