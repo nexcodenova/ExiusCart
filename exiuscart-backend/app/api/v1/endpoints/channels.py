@@ -1915,6 +1915,21 @@ _LISTING_URL_TEMPLATES: dict = {
 }
 
 
+def _product_image(product) -> Optional[str]:
+    """The product's main image for the Channel Listings table. Many
+    dropship-imported products have image_url empty and their real images
+    only in the ProductImage relationship (ordered by sort_order, so [0] is
+    the main one) — fall through to that instead of showing a blank box."""
+    if not product:
+        return None
+    if product.image_url:
+        return product.image_url
+    for img in (product.images or []):
+        if img.url:
+            return img.url
+    return None
+
+
 def _listing_status(sync_success: bool, product_status: Optional[str]) -> str:
     """The 4-state status the dashboard shows, combining two real signals:
     did the API call itself succeed (ChannelSyncLog.success), and — if it
@@ -1989,12 +2004,30 @@ def get_channel_listings_stats(
         ChannelSyncLog.created_at >= window_start,
     ).group_by(ChannelSyncLog.action).order_by(sql_func.count(ChannelSyncLog.id).desc()).first()
 
+    # Custom Website writes no ChannelSyncLog rows (no push step) — count its
+    # active products as real "available" listings so the totals aren't
+    # blind to that channel. Not folded into the trend (there's no per-day
+    # event to compare windows on).
+    custom_available = 0
+    custom_conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == "custom",
+        ChannelConnection.is_active == True,
+    ).first()
+    if custom_conn:
+        custom_available = db.query(sql_func.count(Product.id)).filter(
+            Product.shop_id == shop_id, Product.is_active == True,
+        ).scalar() or 0
+
+    total_with_custom = total + custom_available
+    succ_with_custom = succ + custom_available
+
     return {
-        "total_activity": total,
-        "successful": succ,
+        "total_activity": total_with_custom,
+        "successful": succ_with_custom,
         "failed": fail,
         "needs_attention": fail + warning_count,
-        "success_rate": round(100 * succ / total, 1) if total else None,
+        "success_rate": round(100 * succ_with_custom / total_with_custom, 1) if total_with_custom else None,
         "trend": {
             "total_activity": _pct_change(total, prev_total),
             "successful": _pct_change(succ, prev_succ),
@@ -2030,7 +2063,7 @@ def get_channel_listings(
     from app.models.channel_sync_log import ChannelSyncLog
     from app.models.channel_product_status import ChannelProductStatus
     from app.models.dropship import DropshipProductLink
-    from datetime import datetime
+    from datetime import datetime, timezone as _dt_timezone
 
     shop = _shop_or_404(shop_id, current_user, db)
     query = db.query(ChannelSyncLog).filter(ChannelSyncLog.shop_id == shop_id)
@@ -2096,7 +2129,7 @@ def get_channel_listings(
             "product_id": r.product_id,
             "product_name": product.name if product else None,
             "product_sku": product.sku if product else None,
-            "product_image_url": product.image_url if product else None,
+            "product_image_url": _product_image(product),
             "channel_type": r.channel_type,
             "store_name": shop.name,
             "supplier_type": supplier_map.get(r.product_id),
@@ -2108,9 +2141,70 @@ def get_channel_listings(
             "error_message": r.error_message,
             "attempt_number": getattr(r, "_attempt_number", 1),
             "created_at": r.created_at,
+            "synthetic": False,
         }
 
     out_rows = [_row_out(r) for r in rows]
+
+    # ── Custom Website ────────────────────────────────────────────────────
+    # There is no per-product "push" for Custom Website (the storefront
+    # pulls products from the API live), so it writes no ChannelSyncLog
+    # rows and would otherwise be invisible on this page. Surface every
+    # active product as an honest "available via API" entry, clearly marked
+    # synthetic (negative id, action "available", success) so it's never
+    # mistaken for a real sync attempt. Skipped when the current filters
+    # can't include a successful custom row anyway.
+    want_custom = (not channel_types) or ("custom" in channel_types.split(","))
+    filters_allow_success = not only_needs_action and not (statuses and "success" not in statuses.split(","))
+    if want_custom and filters_allow_success:
+        custom_conn = db.query(ChannelConnection).filter(
+            ChannelConnection.shop_id == shop_id,
+            ChannelConnection.channel_type == "custom",
+            ChannelConnection.is_active == True,
+        ).first()
+        if custom_conn:
+            df = datetime.fromisoformat(date_from) if date_from else None
+            dt = datetime.fromisoformat(date_to) if date_to else None
+            active_products = db.query(Product).filter(
+                Product.shop_id == shop_id, Product.is_active == True,
+            ).all()
+            for p in active_products:
+                ts = p.updated_at or p.created_at
+                if df and ts and ts < df:
+                    continue
+                if dt and ts and ts > dt:
+                    continue
+                out_rows.append({
+                    "id": -p.id,
+                    "product_id": p.id,
+                    "product_name": p.name,
+                    "product_sku": p.sku,
+                    "product_image_url": _product_image(p),
+                    "channel_type": "custom",
+                    "store_name": shop.name,
+                    "supplier_type": supplier_map.get(p.id),
+                    "action": "available",
+                    "status": "success",
+                    "success": True,
+                    "external_id": None,
+                    "listing_url": None,
+                    "error_message": None,
+                    "attempt_number": 1,
+                    "created_at": ts,
+                    "synthetic": True,
+                })
+
+    # Real rows arrived DB-sorted; synthetic rows were appended after, so
+    # re-sort the combined list newest-first. Normalize to naive-UTC so a
+    # mix of tz-aware and naive timestamps can't raise on comparison.
+    def _ts_key(row):
+        ts = row["created_at"]
+        if ts is None:
+            return datetime.min
+        if ts.tzinfo is not None:
+            return ts.astimezone(_dt_timezone.utc).replace(tzinfo=None)
+        return ts
+    out_rows.sort(key=_ts_key, reverse=True)
 
     if search:
         s = search.lower()
@@ -2153,6 +2247,35 @@ def get_channel_listing_detail(
     from app.models.dropship import DropshipProductLink
 
     shop = _shop_or_404(shop_id, current_user, db)
+
+    # Synthetic Custom Website row (see get_channel_listings) — id is the
+    # negative product id, there is no real ChannelSyncLog behind it.
+    if log_id < 0:
+        p = db.query(Product).filter(Product.id == -log_id, Product.shop_id == shop_id).first()
+        if not p:
+            raise HTTPException(status_code=404, detail="Listing activity not found")
+        link = db.query(DropshipProductLink).filter(
+            DropshipProductLink.shop_id == shop_id, DropshipProductLink.product_id == p.id,
+            DropshipProductLink.is_primary == True,
+        ).first()
+        return {
+            "id": log_id,
+            "product_id": p.id,
+            "product_name": p.name,
+            "product_sku": p.sku,
+            "product_image_url": _product_image(p),
+            "channel_type": "custom",
+            "store_name": shop.name,
+            "supplier_type": link.supplier_type if link else None,
+            "action": "available",
+            "status": "success",
+            "external_id": None,
+            "listing_url": None,
+            "error_message": None,
+            "history": [],
+            "synthetic": True,
+        }
+
     log = db.query(ChannelSyncLog).filter(ChannelSyncLog.id == log_id, ChannelSyncLog.shop_id == shop_id).first()
     if not log:
         raise HTTPException(status_code=404, detail="Listing activity not found")
@@ -2186,7 +2309,7 @@ def get_channel_listing_detail(
         "product_id": log.product_id,
         "product_name": product.name if product else None,
         "product_sku": product.sku if product else None,
-        "product_image_url": product.image_url if product else None,
+        "product_image_url": _product_image(product),
         "channel_type": log.channel_type,
         "store_name": shop.name,
         "supplier_type": supplier_type,

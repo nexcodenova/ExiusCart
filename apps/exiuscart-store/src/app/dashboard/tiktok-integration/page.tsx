@@ -7,6 +7,7 @@ import {
   ArrowLeft, Music2, Loader2, CheckCircle2, X,
 } from 'lucide-react';
 import { channelsApi, tiktokApi } from '@/lib/api';
+import ChannelListingActivity from '@/components/channel-listings/ChannelListingActivity';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -125,6 +126,7 @@ export default function TikTokIntegrationPage() {
           <span className="text-sm">Loading...</span>
         </div>
       ) : connection ? (
+        <div className="space-y-5">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -166,6 +168,8 @@ export default function TikTokIntegrationPage() {
               )}
             </div>
           </div>
+        </div>
+        <ChannelListingActivity shopId={shopId} channelType="tiktok" />
         </div>
       ) : (
         <div className="bg-card border border-border rounded-xl">

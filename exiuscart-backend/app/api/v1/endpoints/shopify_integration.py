@@ -174,6 +174,7 @@ async def _push_products(store: ShopifyStore, db: Session, shop_id: int):
     # that doesn't need a seller to state it manually.
     target_currency = store.currency or source_currency
     from app.core.currency import convert_amount_sync
+    from app.models.channel_sync_log import ChannelSyncLog
 
     products = db.query(Product).filter(Product.shop_id == shop_id, Product.is_active == True).all()
     processed = 0; failed = 0
@@ -196,6 +197,8 @@ async def _push_products(store: ShopifyStore, db: Session, shop_id: int):
                     }],
                 }
             }
+            _ok = False
+            _err = None
             try:
                 resp = await client.post(
                     _shopify_url(store.shopify_domain, "products.json"),
@@ -204,11 +207,23 @@ async def _push_products(store: ShopifyStore, db: Session, shop_id: int):
                 )
                 if resp.status_code in (200, 201):
                     processed += 1
+                    _ok = True
                 else:
                     failed += 1
-            except Exception:
+                    _err = f"Shopify returned {resp.status_code}: {resp.text[:300]}"
+            except Exception as _e:
                 failed += 1
+                _err = str(_e)[:300]
+            # Per-product record for the Channel Listings page. Shopify's own
+            # ShopifySyncLog only stores a batch total, so without this
+            # Shopify would be the one connected channel with no per-product
+            # listing history there.
+            db.add(ChannelSyncLog(
+                shop_id=shop_id, product_id=p.id, channel_type="shopify",
+                action="listing", success=_ok, error_message=_err,
+            ))
 
+    db.commit()
     store.products_synced = processed
     store.last_product_sync = datetime.now(timezone.utc)
     log.status = "success" if failed == 0 else "partial"

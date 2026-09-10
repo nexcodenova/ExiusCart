@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { ShoppingBag, Link, Link2Off, RefreshCw, Package, ShoppingCart, BarChart2, CheckCircle, XCircle, AlertCircle, Settings, X, ExternalLink, Zap, FormInput, ArrowRight } from 'lucide-react';
 import { shopifyApi } from '@/lib/api';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import ChannelListingActivity from '@/components/channel-listings/ChannelListingActivity';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -230,6 +231,8 @@ export default function ShopifyIntegrationPage() {
               </table>
             </div>
           )}
+
+          <ChannelListingActivity shopId={shopId} channelType="shopify" />
         </>
       )}
 

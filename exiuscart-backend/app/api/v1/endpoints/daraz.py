@@ -480,6 +480,14 @@ def create_daraz_listing(
     product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    # Daraz is a physical-goods marketplace — digital/affiliate products
+    # don't belong here (see the same guard on eBay). Sell those through the
+    # Custom Website, Whop, or Gumroad.
+    if (product.product_type or "physical") != "physical":
+        raise HTTPException(
+            status_code=400,
+            detail=f"“{product.name}” is a {product.product_type} product. Daraz only lists physical products — sell digital items through your Custom Website, Whop, or Gumroad.",
+        )
 
     # 1. Migrate images to Daraz's own repository first — CreateProduct
     # needs Daraz-hosted URLs, not arbitrary external ones.

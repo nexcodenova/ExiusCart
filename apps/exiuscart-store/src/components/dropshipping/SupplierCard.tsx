@@ -56,7 +56,7 @@ export const SUPPLIER_STYLE: Record<string, { icon: React.ElementType; color: st
   cj:         { icon: Package,     color: 'text-orange-500', bg: 'bg-orange-500/10', logo: '/dropshipping/cj_logo.png',       logoFit: 'cover'   },
   hypersku:   { icon: Boxes,       color: 'text-teal-500',   bg: 'bg-teal-500/10',   logo: '/dropshipping/hypersku_icon.png', logoFit: 'contain' },
   eprolo:     { icon: Truck,       color: 'text-sky-500',    bg: 'bg-sky-500/10'   },
-  aliexpress: { icon: ShoppingBag, color: 'text-red-500',    bg: 'bg-red-500/10'   },
+  aliexpress: { icon: ShoppingBag, color: 'text-red-500',    bg: 'bg-red-500/10', logo: '/dropship-supplier-logos/aliexpress.svg', logoFit: 'contain' },
   '1688':     { icon: Globe,       color: 'text-orange-600', bg: 'bg-orange-600/10' },
   printful:   { icon: Shirt,       color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
   printify:   { icon: Palette,     color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { channelsApi } from '@/lib/api';
 import { CopyBox } from '@/components/channels/CopyBox';
+import ChannelListingActivity from '@/components/channel-listings/ChannelListingActivity';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -97,6 +98,7 @@ export default function TheDersiIntegrationPage() {
           <span className="text-sm">Loading...</span>
         </div>
       ) : connection && !webhookUrl ? (
+        <div className="space-y-5">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -160,6 +162,8 @@ export default function TheDersiIntegrationPage() {
               )}
             </div>
           </div>
+        </div>
+        <ChannelListingActivity shopId={shopId} channelType="thedersi" />
         </div>
       ) : webhookUrl ? (
         <div className="bg-card rounded-xl border border-border p-6 space-y-5">

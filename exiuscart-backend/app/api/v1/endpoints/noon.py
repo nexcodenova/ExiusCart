@@ -340,6 +340,14 @@ def create_noon_product(
     product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    # noon is a physical-goods marketplace — digital/affiliate products
+    # don't belong here (see the same guard on eBay). Sell those through the
+    # Custom Website, Whop, or Gumroad.
+    if (product.product_type or "physical") != "physical":
+        raise HTTPException(
+            status_code=400,
+            detail=f"“{product.name}” is a {product.product_type} product. noon only lists physical products — sell digital items through your Custom Website, Whop, or Gumroad.",
+        )
 
     image_urls = [img.url for img in (product.images or []) if img.url]
     if not image_urls and product.image_url:

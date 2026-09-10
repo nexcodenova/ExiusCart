@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { X, Check, XCircle as XIcon, Copy, Pencil, ExternalLink, Package, AlertTriangle, Loader2 } from 'lucide-react';
 import { channelMeta } from './channelMeta';
+import ChannelLogo from './ChannelLogo';
 import StatusBadge, { ListingStatus } from './StatusBadge';
 
 export interface ListingDetail {
@@ -19,11 +20,12 @@ export interface ListingDetail {
   listing_url: string | null;
   error_message: string | null;
   history: { success: boolean; error_message: string | null; created_at: string }[];
+  synthetic?: boolean;
 }
 
 const ACTION_LABELS: Record<string, string> = {
   create_listing: 'Create Listing', update_stock: 'Update Stock', update_price: 'Update Price',
-  sync_order: 'Sync Order', listing_status: 'Listing Status',
+  sync_order: 'Sync Order', listing_status: 'Listing Status', listing: 'Listing', available: 'Available',
 };
 
 // Real tips for the specific failure patterns this codebase's own channel
@@ -81,7 +83,7 @@ export default function ListingDrawer({ detail, loading, onClose }: {
                 <dt className="text-muted-foreground">Store</dt><dd className="font-semibold text-foreground">{detail.store_name}</dd>
               </dl>
               <div className="mt-2 flex items-center gap-1.5">
-                {meta && <meta.icon className={`w-3.5 h-3.5 ${meta.color}`} />}
+                <ChannelLogo channelType={detail.channel_type} size={14} />
                 <span className="text-xs font-medium text-foreground">{meta?.label}</span>
               </div>
             </div>
@@ -90,7 +92,13 @@ export default function ListingDrawer({ detail, loading, onClose }: {
           <div className="my-5 border-t border-border" />
 
           <h4 className="text-sm font-bold text-foreground">Attempt history</h4>
-          <p className="text-xs text-muted-foreground mt-0.5 mb-3">{ACTION_LABELS[detail.action] ?? detail.action} — real attempts recorded for this listing</p>
+          {detail.synthetic ? (
+            <p className="text-xs text-muted-foreground mt-0.5 mb-3 leading-relaxed">
+              Custom Website has no push step — your storefront reads this product straight from the ExiusCart API whenever it loads. There's no sync attempt to record: as long as the product is active and Custom Website is connected, it's live.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-0.5 mb-3">{ACTION_LABELS[detail.action] ?? detail.action} — real attempts recorded for this listing</p>
+          )}
           <div className="space-y-4 border-l-2 border-border pl-4">
             {detail.history.map((h, i) => (
               <div key={i} className="relative">

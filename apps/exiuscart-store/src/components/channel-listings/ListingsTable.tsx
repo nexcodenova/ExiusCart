@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Package, ExternalLink, MoreHorizontal, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { channelMeta } from './channelMeta';
+import ChannelLogo from './ChannelLogo';
 import StatusBadge, { ListingStatus } from './StatusBadge';
 
 export interface ListingRow {
@@ -19,11 +20,12 @@ export interface ListingRow {
   error_message: string | null;
   attempt_number: number;
   created_at: string;
+  synthetic?: boolean;
 }
 
 const ACTION_LABELS: Record<string, string> = {
   create_listing: 'Create Listing', update_stock: 'Update Stock', update_price: 'Update Price',
-  sync_order: 'Sync Order', listing_status: 'Listing Status',
+  sync_order: 'Sync Order', listing_status: 'Listing Status', listing: 'Listing', available: 'Available',
 };
 
 export default function ListingsTable({
@@ -96,10 +98,18 @@ export default function ListingsTable({
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-full ${meta.bg} ${meta.color}`}>
-                        <meta.icon className="w-3 h-3" /> {meta.label}
-                      </span>
-                      <p className="text-[11px] text-muted-foreground mt-1">{r.store_name}</p>
+                      {meta.wide ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted/60">
+                          <ChannelLogo channelType={r.channel_type} size={16} />
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-full ${meta.bg} ${meta.color}`}>
+                          <ChannelLogo channelType={r.channel_type} size={12} /> {meta.label}
+                        </span>
+                      )}
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {r.store_name}{r.synthetic ? ' · via API' : ''}
+                      </p>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{ACTION_LABELS[r.action] ?? r.action}</td>
                     <td className="px-4 py-3"><StatusBadge status={r.status} /></td>

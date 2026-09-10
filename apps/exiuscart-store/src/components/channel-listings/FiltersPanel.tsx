@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Search, X, Filter, ChevronDown } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { CHANNEL_META } from './channelMeta';
+import ChannelLogo from './ChannelLogo';
 import type { ListingStatus } from './StatusBadge';
 import DateRangePicker, { DateRangeValue, dateRangeLabel } from './DateRangePicker';
 
@@ -40,7 +41,7 @@ function toggle<T>(arr: T[], value: T): T[] {
 // multi-select — same shape as the reference's Sales channels control.
 function MultiSelectBox({ placeholder, options, selected, onToggle }: {
   placeholder: string;
-  options: { value: string; label: string; icon?: React.ElementType; color?: string }[];
+  options: { value: string; label: string; icon?: React.ElementType; color?: string; channelType?: string }[];
   selected: string[];
   onToggle: (value: string) => void;
 }) {
@@ -56,7 +57,9 @@ function MultiSelectBox({ placeholder, options, selected, onToggle }: {
               const opt = options.find((o) => o.value === v);
               return (
                 <span key={v} className="inline-flex items-center gap-1 bg-card border border-border rounded-md px-2 py-1 text-xs font-medium text-foreground">
-                  {opt?.icon && <opt.icon className={`w-3 h-3 ${opt.color ?? ''}`} />}
+                  {opt?.channelType
+                    ? <ChannelLogo channelType={opt.channelType} size={12} />
+                    : opt?.icon && <opt.icon className={`w-3 h-3 ${opt.color ?? ''}`} />}
                   {opt?.label ?? v}
                   <X className="w-3 h-3 text-muted-foreground hover:text-foreground"
                     onClick={(e) => { e.stopPropagation(); onToggle(v); }} />
@@ -76,7 +79,9 @@ function MultiSelectBox({ placeholder, options, selected, onToggle }: {
             return (
               <button key={opt.value} onClick={() => onToggle(opt.value)}
                 className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium text-left transition ${active ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
-                {opt.icon && <opt.icon className={`w-3.5 h-3.5 ${active ? '' : opt.color ?? ''}`} />}
+                {opt.channelType
+                  ? <ChannelLogo channelType={opt.channelType} size={14} />
+                  : opt.icon && <opt.icon className={`w-3.5 h-3.5 ${active ? '' : opt.color ?? ''}`} />}
                 {opt.label}
               </button>
             );
@@ -98,7 +103,7 @@ export default function FiltersPanel({
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
-  const channelOptions = activeChannels.map((c) => ({ value: c, label: CHANNEL_META[c]?.label ?? c, icon: CHANNEL_META[c]?.icon, color: CHANNEL_META[c]?.color }));
+  const channelOptions = activeChannels.map((c) => ({ value: c, label: CHANNEL_META[c]?.label ?? c, icon: CHANNEL_META[c]?.icon, color: CHANNEL_META[c]?.color, channelType: c }));
   const supplierOptions = activeSuppliers.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }));
 
   const activeFilterChips: { key: string; label: string; onRemove: () => void }[] = [

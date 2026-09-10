@@ -55,6 +55,14 @@ export default function ChannelListingsPage() {
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
+  // Deep link from an integration page's "View all" — pre-filter to that
+  // one channel. Read from the raw query string so no Suspense boundary is
+  // needed around useSearchParams.
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get('channel');
+    if (c) setFilters((f) => ({ ...f, channels: [c] }));
+  }, []);
+
   useEffect(() => {
     if (!shopId) return;
     channelsApi.getConnections(shopId).then((r) => {

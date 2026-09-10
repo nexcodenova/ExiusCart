@@ -19,6 +19,7 @@ import TrafficChart from '@/components/custom-website/TrafficChart';
 import DeveloperDocs from '@/components/custom-website/DeveloperDocs';
 import ConnectionHealthGauge from '@/components/custom-website/ConnectionHealthGauge';
 import ConnectionActivityChart from '@/components/custom-website/ConnectionActivityChart';
+import ChannelListingActivity from '@/components/channel-listings/ChannelListingActivity';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
@@ -366,6 +367,8 @@ export default function CustomWebsiteIntegrationPage() {
                 <RecentOrdersTable orders={stats?.recent_orders ?? []} />
                 <WebsiteProductsTable shopId={shopId} />
               </div>
+
+              <ChannelListingActivity shopId={shopId} channelType="custom" />
             </div>
           )}
 

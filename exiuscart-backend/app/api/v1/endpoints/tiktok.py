@@ -433,6 +433,14 @@ def create_tiktok_listing(
     product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    # TikTok Shop is a physical-goods marketplace — digital/affiliate
+    # products don't belong here (see the same guard on eBay). Sell those
+    # through the Custom Website, Whop, or Gumroad.
+    if (product.product_type or "physical") != "physical":
+        raise HTTPException(
+            status_code=400,
+            detail=f"“{product.name}” is a {product.product_type} product. TikTok Shop only lists physical products — sell digital items through your Custom Website, Whop, or Gumroad.",
+        )
 
     images = db.query(ProductImage).filter(ProductImage.product_id == product_id).order_by(ProductImage.sort_order).all()
     uploaded_uris = []

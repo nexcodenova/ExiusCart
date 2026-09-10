@@ -6,6 +6,7 @@ import {
   ArrowLeft, ShoppingBag, Loader2, CheckCircle2, Warehouse, RefreshCw, AlertCircle,
 } from 'lucide-react';
 import { channelsApi, noonApi } from '@/lib/api';
+import ChannelListingActivity from '@/components/channel-listings/ChannelListingActivity';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -124,6 +125,7 @@ export default function NoonIntegrationPage() {
           <span className="text-sm">Loading...</span>
         </div>
       ) : connection ? (
+        <div className="space-y-5">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -220,6 +222,8 @@ export default function NoonIntegrationPage() {
               )}
             </div>
           </div>
+        </div>
+        <ChannelListingActivity shopId={shopId} channelType="noon" />
         </div>
       ) : (
         <div className="bg-card border border-border rounded-xl">

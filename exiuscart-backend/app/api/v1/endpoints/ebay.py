@@ -785,6 +785,15 @@ def _create_ebay_listing_inner(
     product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    # eBay's Inventory API is for physical goods — a digital or affiliate
+    # product gets rejected on eBay's side ("eBay rejected the inventory
+    # item"), which is exactly the failed-listing noise this guard stops.
+    # Digital items belong on the Custom Website, Whop, or Gumroad instead.
+    if (product.product_type or "physical") != "physical":
+        raise HTTPException(
+            status_code=400,
+            detail=f"“{product.name}” is a {product.product_type} product. eBay only lists physical products — sell digital items through your Custom Website, Whop, or Gumroad.",
+        )
 
     # 1. Resolve Business Policy IDs: request body overrides, else fall back
     # to the seller's saved defaults. Never fabricate one.
