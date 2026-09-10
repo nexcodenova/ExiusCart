@@ -1,19 +1,21 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { ShoppingBag, Tag, Music2, ShoppingCart, Package, Truck, Boxes } from 'lucide-react';
+import { ShoppingCart, Package, Truck, Boxes } from 'lucide-react';
 import { channelMeta } from '@/components/channel-listings/channelMeta';
 import ChannelLogo from '@/components/channel-listings/ChannelLogo';
 
-// Real brand logo when one exists in /public/channel-logos (see ChannelLogo),
-// otherwise the brand-coloured icon chip — same treatment as each channel's
-// own card.
-const SOURCE_NODES = [
-  { label: 'Shopify', channelType: 'shopify', icon: ShoppingBag, className: 'bg-[#96BF48]/10 text-[#96BF48]' },
-  { label: 'Amazon', channelType: 'amazon', icon: Package, className: 'bg-orange-400/10 text-orange-500' },
-  { label: 'eBay', channelType: 'ebay', icon: Tag, className: 'bg-[#E53238]/10 text-[#E53238]' },
-  { label: 'Etsy', channelType: 'etsy', icon: ShoppingBag, className: 'bg-orange-600/10 text-orange-600' },
-  { label: 'TikTok Shop', channelType: 'tiktok', icon: Music2, className: 'bg-foreground/10 text-foreground' },
-  { label: 'Noon', channelType: 'noon', icon: ShoppingBag, className: 'bg-yellow-500/10 text-yellow-600' },
-  { label: 'Daraz', channelType: 'daraz', icon: ShoppingBag, className: 'bg-orange-500/10 text-orange-500' },
+// Every channel ExiusCart can pull from — real brand logo when one exists
+// in /public/channel-logos (see ChannelLogo), otherwise the brand-coloured
+// icon chip. Laid out as two vertical columns.
+const SOURCE_CHANNELS = [
+  'shopify', 'ebay',
+  'woocommerce', 'etsy',
+  'bigcommerce', 'amazon',
+  'wix', 'walmart',
+  'custom', 'tiktok',
+  'thedersi', 'instagram',
+  'whop', 'noon',
+  'gumroad', 'daraz',
+  'trendyol', 'jumia',
 ];
 
 const OUTPUT_NODES = [
@@ -35,18 +37,22 @@ export default function FlowDiagram() {
         </div>
 
         <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-6">
-          {/* Sources */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:flex-col gap-2.5">
-            {SOURCE_NODES.map((node) => (
-              <div key={node.label} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card">
-                <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 overflow-hidden ${node.className}`}>
-                  {channelMeta(node.channelType).logo
-                    ? <ChannelLogo channelType={node.channelType} size={14} />
-                    : <node.icon className="w-3.5 h-3.5" />}
-                </span>
-                <span className="text-xs font-medium text-foreground whitespace-nowrap">{node.label}</span>
-              </div>
-            ))}
+          {/* Sources — every channel, two columns */}
+          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:min-w-[320px]">
+            {SOURCE_CHANNELS.map((ct) => {
+              const meta = channelMeta(ct);
+              const Icon = meta.icon;
+              return (
+                <div key={ct} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-card min-w-0">
+                  <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 overflow-hidden ${meta.bg}`}>
+                    {meta.logo
+                      ? <ChannelLogo channelType={ct} size={14} />
+                      : <Icon className={`w-3.5 h-3.5 ${meta.color}`} />}
+                  </span>
+                  <span className="text-xs font-medium text-foreground truncate">{meta.label}</span>
+                </div>
+              );
+            })}
           </div>
 
           {/* Connector */}

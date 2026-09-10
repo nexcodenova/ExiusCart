@@ -6,17 +6,12 @@ entry for it, and falls back to the brand-coloured lucide icon otherwise.
 Adding a real SVG here + the one-line `logo:` in channelMeta.ts is the whole
 step to give a channel its real mark everywhere it appears.
 
-## Present (wired)
+## Present (wired) — every channel
 
-shopify · woocommerce · bigcommerce · ebay · etsy · amazon · walmart · wix ·
-tiktok · noon · whop · gumroad · instagram · trendyol · jumia
+shopify · woocommerce · bigcommerce · wix · ebay · etsy · amazon · walmart ·
+tiktok · instagram · noon · daraz · trendyol · jumia · whop · gumroad · thedersi
 
-## Still needed
-
-| File to add | Channel | Source |
-|---|---|---|
-| daraz.svg | Daraz | Daraz brand assets / logo pack |
-| thedersi.svg | TheDersi | your own TheDersi logo |
+(`thedersi.jpg` and `daraz.svg` — non-svg is fine, `<img>` takes any format.)
 
 Rules: **SVG only**, exact lowercase filename = the channel key, real brand
 artwork (not AI-generated). Wide wordmarks get `wide: true` in channelMeta;
