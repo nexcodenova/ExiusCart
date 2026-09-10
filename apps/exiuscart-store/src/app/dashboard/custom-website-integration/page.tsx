@@ -310,7 +310,7 @@ export default function CustomWebsiteIntegrationPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-[1500px] mx-auto space-y-6">
       <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
         <ArrowLeft className="w-4 h-4" /> Back to Channels
       </Link>
