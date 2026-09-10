@@ -52,8 +52,14 @@ export default function ListingDrawer({ detail, loading, onClose }: {
   const tips = detail ? fixTips(detail.error_message) : [];
 
   return (
-    <aside className="fixed top-0 sm:top-16 bottom-0 right-0 z-50 w-full sm:w-[380px] overflow-y-auto border-l border-border bg-card shadow-2xl">
-      <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-5 py-4 z-10">
+    <aside
+      // top:64px is the app header height — set inline so the panel always
+      // sits *below* the sticky header (never on top of the profile/currency
+      // controls) regardless of how Tailwind purges responsive utilities.
+      style={{ top: 64 }}
+      className="fixed right-0 bottom-0 left-0 sm:left-auto z-[60] flex flex-col w-full sm:w-[400px] border-t sm:border-t-0 border-l border-border bg-card shadow-2xl"
+    >
+      <div className="flex items-center justify-between border-b border-border bg-card px-5 py-4 shrink-0">
         <h2 className="font-bold text-foreground">Listing details</h2>
         <button onClick={onClose} className="rounded-md p-1.5 hover:bg-muted text-muted-foreground">
           <X className="w-4 h-4" />
@@ -61,11 +67,11 @@ export default function ListingDrawer({ detail, loading, onClose }: {
       </div>
 
       {loading || !detail ? (
-        <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
+        <div className="flex-1 flex items-center justify-center py-24 text-muted-foreground gap-2">
           <Loader2 className="w-5 h-5 animate-spin" /> <span className="text-sm">Loading…</span>
         </div>
       ) : (
-        <div className="p-5">
+        <div className="flex-1 overflow-y-auto p-5">
           <div className="flex gap-3">
             <div className="relative w-16 h-16 rounded-lg bg-muted overflow-hidden shrink-0">
               {detail.product_image_url ? (

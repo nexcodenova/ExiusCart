@@ -119,6 +119,7 @@ export default function ChannelListingsPage() {
   const refreshAll = () => { loadStats(); loadRows(); };
 
   return (
+    <>
     <div className={`max-w-[1400px] mx-auto space-y-6 ${openId ? 'sm:pr-[400px]' : ''} transition-all`}>
       <div className="flex items-center justify-between gap-4">
         <div>
@@ -176,12 +177,17 @@ export default function ChannelListingsPage() {
           hasActiveFilters={!!(filters.search || filters.channels.length || filters.statuses.length || filters.actions.length || filters.suppliers.length || filters.onlyNeedsAction || filters.dateRange.preset !== 'all')} />
       )}
 
-      {openId && (
-        <>
-          <div className="fixed inset-0 bg-black/30 z-20 sm:hidden" onClick={() => setOpenId(null)} />
-          <ListingDrawer detail={detail} loading={loadingDetail} onClose={() => setOpenId(null)} />
-        </>
-      )}
     </div>
+
+    {/* Rendered outside the max-w wrapper so the fixed panel takes no stray
+        margin from its space-y-6 siblings and anchors exactly under the
+        64px app header. */}
+    {openId && (
+      <>
+        <div className="fixed inset-0 bg-black/40 z-[55] sm:hidden" onClick={() => setOpenId(null)} />
+        <ListingDrawer detail={detail} loading={loadingDetail} onClose={() => setOpenId(null)} />
+      </>
+    )}
+    </>
   );
 }
