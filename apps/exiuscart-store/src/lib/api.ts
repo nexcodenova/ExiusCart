@@ -1132,6 +1132,7 @@ export const paymentGatewayApi = {
   getStats: (shopId: string) => api.get(`/shops/${shopId}/channels/custom/stats`),
   getSalesSeries: (shopId: string, days = 7) => api.get(`/shops/${shopId}/channels/custom/sales-series`, { params: { days } }),
   getTrafficSeries: (shopId: string, days = 7) => api.get(`/shops/${shopId}/channels/custom/traffic-series`, { params: { days } }),
+  rotateWebhookSecret: (shopId: string) => api.post(`/shops/${shopId}/channels/custom/rotate-webhook-secret`, {}),
 };
 
 export const payrollApi = {

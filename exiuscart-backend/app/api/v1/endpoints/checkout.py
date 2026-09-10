@@ -665,6 +665,15 @@ def get_custom_website_stats(
         Product.shop_id == shop_id, Product.is_active == True,
     ).scalar() or 0
 
+    # Real replacement for the mockup's fabricated "3 products require
+    # attention" — Custom Website has no per-product channel-review state
+    # to draw a real issue count from (no ChannelProductStatus rows get
+    # written for it, see _listing_status's docstring in channels.py), but
+    # out-of-stock IS real and directly actionable.
+    out_of_stock_count = db.query(func.count(Product.id)).filter(
+        Product.shop_id == shop_id, Product.is_active == True, Product.quantity == 0,
+    ).scalar() or 0
+
     orders_q = db.query(Order).filter(Order.shop_id == shop_id, Order.notes == "Custom Website order")
     order_count = orders_q.count()
     revenue = db.query(func.coalesce(func.sum(Order.total), 0)).filter(
@@ -718,6 +727,7 @@ def get_custom_website_stats(
 
     return {
         "active_products": active_products,
+        "out_of_stock_count": out_of_stock_count,
         "orders": order_count,
         "revenue": float(revenue),
         "today_orders": today_orders,
@@ -815,3 +825,37 @@ def get_custom_website_traffic_series(
             buckets[day]["add_to_cart"] += 1
 
     return {"series": list(buckets.values())}
+
+
+@router.post("/shops/{shop_id}/channels/custom/rotate-webhook-secret")
+def rotate_custom_webhook_secret(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Real rotation — generates a brand new webhook_secret, which changes
+    the actual webhook URL (the secret is embedded in the URL path, see
+    _webhook_url in channels.py). The OLD URL stops working the instant
+    this runs, same real security property "rotating a secret" is supposed
+    to have. The seller must update their website's checkout code with the
+    new URL before their next order, or orders will start failing — this
+    endpoint doesn't soften that, it's the real tradeoff of rotation."""
+    import secrets as secrets_module
+    from app.models.channel import ChannelConnection
+
+    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id, ChannelConnection.channel_type == "custom", ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Custom Website is not connected.")
+
+    conn.webhook_secret = secrets_module.token_urlsafe(32)
+    db.commit()
+
+    import os as os_module
+    base = os_module.getenv("EXIUSCART_API_BASE", "https://api.exiuscart.com/api/v1")
+    return {"webhook_url": f"{base}/channels/webhook/{conn.webhook_secret}"}
