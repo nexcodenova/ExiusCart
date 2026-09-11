@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Link, Link2Off, RefreshCw, Package, ShoppingCart, BarChart2, CheckCircle, XCircle, AlertCircle, Settings, X, ExternalLink, Zap, FormInput, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { ShoppingBag, Link2Off, RefreshCw, Package, ShoppingCart, BarChart2, CheckCircle, XCircle, AlertCircle, Settings, X, ExternalLink, Zap, FormInput, ArrowRight, KeyRound, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { shopifyApi } from '@/lib/api';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
+import TheDersiRestrictionNotice, { useIsTheDersiUser } from '@/components/channels/TheDersiRestriction';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -17,10 +19,10 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ShopifyIntegrationPage() {
   const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
+  const isTheDersiUser = useIsTheDersiUser(shopId);
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
-  const [showConnectModal, setShowConnectModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [connectForm, setConnectForm] = useState({ shopify_domain: '', access_token: '' });
   const [connecting, setConnecting] = useState(false);
@@ -49,7 +51,7 @@ export default function ShopifyIntegrationPage() {
     setConnecting(true); setConnectError('');
     try {
       await shopifyApi.connect(shopId, connectForm);
-      setShowConnectModal(false); load();
+      load();
     } catch (e: any) {
       if (!e?.response) {
         setConnectError('Cannot reach the server. Make sure the backend is running on port 8000.');
@@ -90,11 +92,17 @@ export default function ShopifyIntegrationPage() {
         </div>
       )}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Shopify Integration</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Connect your Shopify store — sync products, orders and inventory automatically</p>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/channels" aria-label="Back to Channels"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition shrink-0">
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Shopify Integration</h1>
+            <p className="text-sm text-muted-foreground mt-1">Connect your Shopify store — sync products, orders and inventory automatically</p>
+          </div>
         </div>
-        {isConnected ? (
+        {isConnected && (
           <div className="flex gap-2">
             <button onClick={() => setShowSettingsModal(true)} className="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
               <Settings className="w-4 h-4" /> Settings
@@ -103,15 +111,130 @@ export default function ShopifyIntegrationPage() {
               <Link2Off className="w-4 h-4" /> Disconnect
             </button>
           </div>
-        ) : (
-          <button onClick={() => setShowConnectModal(true)} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">
-            <Link className="w-4 h-4" /> Connect Shopify Store
-          </button>
         )}
       </div>
 
-      {/* Connection Status Banner */}
-      {!loading && (
+      {/* Same real gate as connect_channel enforces server-side for every
+          other channel — Shopify's connect flow has always been direct API
+          calls (shopifyApi.connect), not routed through that shared
+          endpoint, so it never had the 403 either. This UI notice plus the
+          server-side check added in shopify_integration.py is the whole fix. */}
+      {!loading && !isConnected && isTheDersiUser && (
+        <TheDersiRestrictionNotice channelKey="shopify" />
+      )}
+
+      {/* ── Before connect — real capabilities only. No "Secure & encrypted"
+          claim: the access token is stored server-side today, but not
+          actually encrypted at rest yet (a real gap, tracked separately —
+          not something to imply is already solved here). ── */}
+      {!loading && !isTheDersiUser && !isConnected && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { icon: Zap, label: 'Real-time order sync', desc: 'Orders arrive via webhook the moment they happen' },
+              { icon: RefreshCw, label: 'Two-way sync', desc: 'Push products & inventory, pull orders' },
+              { icon: KeyRound, label: 'Private app based', desc: 'One access token — no app review, no OAuth wait' },
+              { icon: ShieldCheck, label: 'Stored server-side', desc: 'Never sent to your storefront or browser' },
+            ].map((f) => (
+              <div key={f.label} className="rounded-xl border border-border bg-card p-3.5 flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                  <f.icon className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-foreground">{f.label}</p>
+                  <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,1fr)] items-start">
+            <div className="bg-card border border-border rounded-xl">
+              <div className="p-5 border-b border-border">
+                <p className="font-semibold text-foreground">Connect your Shopify store</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Paste a Private App access token to start syncing</p>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-400">
+                  You need a <strong>Private App</strong> or <strong>Custom App</strong> access token from your Shopify admin. Go to: Settings → Apps → Develop apps.
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Shopify Store Domain *</label>
+                  <input value={connectForm.shopify_domain} onChange={e => setConnectForm(f => ({ ...f, shopify_domain: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="mystore (or mystore.myshopify.com)" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Admin API Access Token *</label>
+                  <input type="password" value={connectForm.access_token} onChange={e => setConnectForm(f => ({ ...f, access_token: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+                    placeholder="shpat_xxxxxxxxxxxxxxxx" />
+                </div>
+                {connectError && <p className="text-sm text-destructive">{connectError}</p>}
+                <button onClick={connect} disabled={connecting}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60">
+                  {connecting ? 'Connecting…' : 'Connect & Start Syncing'}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground">Need help?</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">The real 4-step flow is right below.</p>
+                  </div>
+                </div>
+                <a href="#how-it-works" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+                  Jump to "How it works" ↓
+                </a>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                    <ShoppingBag className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground">What syncs</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">Orders arrive automatically via webhook. Products and inventory push out when you hit "Sync" from the connected dashboard.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="how-it-works" className="rounded-xl border border-border bg-muted/30 p-5 scroll-mt-6">
+            <h2 className="text-sm font-bold text-foreground mb-4">How it works</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { icon: KeyRound, title: '1. Get an access token', desc: 'Shopify Admin → Settings → Apps → Develop apps.' },
+                { icon: FormInput, title: '2. Paste domain & token', desc: 'Enter both fields above.' },
+                { icon: CheckCircle, title: '3. We verify it', desc: "We check the token works before saving anything." },
+                { icon: RefreshCw, title: '4. Start syncing', desc: 'Orders flow in via webhook; sync products/inventory anytime.' },
+              ].map((s) => (
+                <div key={s.title} className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                    <s.icon className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-foreground">{s.title}</p>
+                    <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{s.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Connection Status Banner — connected state only now; the
+          not-connected experience is the redesigned block above. */}
+      {!loading && isConnected && (
         <div className={`rounded-xl border p-5 flex items-center gap-4 ${isConnected ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isConnected ? 'bg-green-100 dark:bg-green-900/40' : 'bg-gray-100 dark:bg-gray-700'}`}>
             <ShoppingBag className={`w-6 h-6 ${isConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
@@ -236,42 +359,6 @@ export default function ShopifyIntegrationPage() {
         </>
       )}
 
-      {/* Connect Modal */}
-      {showConnectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-green-600" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Connect Shopify Store</h2>
-              </div>
-              <button onClick={() => setShowConnectModal(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300">
-                You need a <strong>Private App</strong> or <strong>Custom App</strong> access token from your Shopify admin. Go to: Settings → Apps → Develop apps.
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Shopify Store Domain *</label>
-                <input value={connectForm.shopify_domain} onChange={e => setConnectForm(f => ({ ...f, shopify_domain: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                  placeholder="mystore (or mystore.myshopify.com)" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Admin API Access Token *</label>
-                <input type="password" value={connectForm.access_token} onChange={e => setConnectForm(f => ({ ...f, access_token: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                  placeholder="shpat_xxxxxxxxxxxxxxxx" />
-              </div>
-              {connectError && <p className="text-sm text-red-600 dark:text-red-400">{connectError}</p>}
-            </div>
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
-              <button onClick={() => setShowConnectModal(false)} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
-              <button onClick={connect} disabled={connecting} className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">{connecting ? 'Connecting...' : 'Connect Store'}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Settings Modal */}
       {showSettingsModal && store && (

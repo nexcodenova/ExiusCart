@@ -19,7 +19,7 @@ function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 // directory page's job; this is a static reference, so it never needs a
 // data fetch and can't go stale.
 const CHANNELS: { key: string; category: string; method: 'OAuth' | 'API key'; path: string }[] = [
-  { key: 'shopify', category: 'eCommerce Platform', method: 'OAuth', path: 'shopify' },
+  { key: 'shopify', category: 'eCommerce Platform', method: 'API key', path: 'shopify' },
   { key: 'etsy', category: 'Marketplace', method: 'OAuth', path: 'etsy' },
   { key: 'custom', category: 'Your Own Store', method: 'API key', path: 'custom-website' },
   { key: 'woocommerce', category: 'eCommerce Platform', method: 'API key', path: 'woocommerce' },
@@ -96,7 +96,7 @@ export default function ChannelDocsPage() {
           </div>
           <p className="font-semibold text-foreground text-sm">1. Connect</p>
           <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-            Either you're redirected to the channel to authorize ExiusCart (<strong className="text-foreground">OAuth</strong> — Shopify, Etsy, eBay, Daraz, TikTok, BigCommerce), or you paste API credentials from that channel's own developer settings (<strong className="text-foreground">API key</strong> — WooCommerce, Noon, TheDersi, Whop, Gumroad, Custom Website). Each channel's own page tells you which, and walks through it.
+            Either you're redirected to the channel to authorize ExiusCart (<strong className="text-foreground">OAuth</strong> — Etsy, eBay, Daraz, TikTok, BigCommerce), or you paste API credentials from that channel's own developer settings (<strong className="text-foreground">API key</strong> — Shopify, WooCommerce, Noon, TheDersi, Whop, Gumroad, Custom Website). Each channel's own page tells you which, and walks through it.
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
@@ -131,7 +131,7 @@ export default function ChannelDocsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-muted-foreground leading-relaxed">
             <div className="flex gap-2.5">
               <KeyRound className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-              <p>API keys you paste in are encrypted before they're stored — ExiusCart's own staff can't read them back out in plain text, and they're never shown again in full after you save them.</p>
+              <p>API keys you paste in are stored server-side and never sent to your website's browser code.</p>
             </div>
             <div className="flex gap-2.5">
               <Link2 className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />

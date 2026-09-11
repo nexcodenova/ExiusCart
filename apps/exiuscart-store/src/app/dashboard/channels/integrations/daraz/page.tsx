@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, ShoppingBag, Loader2, CheckCircle2, ExternalLink, X,
+  ArrowLeft, ShoppingBag, Loader2, CheckCircle2, ExternalLink, X, ShieldCheck, ListChecks, FileText, Link2Off, LifeBuoy, Globe,
 } from 'lucide-react';
 import { channelsApi } from '@/lib/api';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
+import BeforeConnectLayout, { SidebarCard } from '@/components/channels/BeforeConnect';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -77,14 +78,16 @@ export default function DarazIntegrationPage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
-        <ArrowLeft className="w-4 h-4" /> Back to Channels
-      </Link>
-
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Daraz Integration</h1>
-        <p className="text-sm text-muted-foreground mt-1">South Asia's largest marketplace — orders sync to ExiusCart automatically.</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard/channels" aria-label="Back to Channels"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition shrink-0">
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Daraz Integration</h1>
+          <p className="text-sm text-muted-foreground mt-1">South Asia's largest marketplace — orders sync to ExiusCart automatically.</p>
+        </div>
       </div>
 
       {/* Daraz operates as separate local sites per country, all under the
@@ -120,7 +123,7 @@ export default function DarazIntegrationPage() {
           <span className="text-sm">Loading...</span>
         </div>
       ) : connection ? (
-        <div className="space-y-5">
+        <div className="space-y-5 max-w-3xl">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -165,73 +168,96 @@ export default function DarazIntegrationPage() {
         <ChannelListingActivity shopId={shopId} channelType="daraz" />
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-xl">
-          <div className="p-5 border-b border-border">
-            <p className="font-semibold text-foreground">Connect Daraz</p>
-            <p className="text-xs text-muted-foreground mt-0.5">South Asia's largest marketplace</p>
-          </div>
-          <div className="p-5 space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
-              </div>
-            )}
+        <BeforeConnectLayout
+          accentClass="bg-orange-500/10 text-orange-500"
+          badges={[
+            { icon: ShieldCheck, label: 'OAuth secured', desc: "You authorize on Daraz's own site — no password shared" },
+            { icon: ListChecks, label: 'Tracked in Channel Listings', desc: 'Every listing attempt, success or failure' },
+            { icon: FileText, label: 'Manage in Channel Orders', desc: 'Daraz orders show up alongside every other channel' },
+            { icon: Link2Off, label: 'Disconnect anytime', desc: 'Your Daraz account and listings stay untouched' },
+          ]}
+          sidebar={<>
+            <SidebarCard icon={LifeBuoy} iconClass="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              title="Need help?" desc={'The real 3-step flow is right below.'}
+              action={<a href="#how-it-works" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Jump to "How it works" ↓</a>} />
+            <SidebarCard icon={Globe} iconClass="bg-orange-500/10 text-orange-500"
+              title="5 markets, one connection" desc="Pakistan, Bangladesh, Sri Lanka, Nepal and Myanmar — connect the account for whichever market you registered on." />
+          </>}
+          steps={[
+            { icon: ShieldCheck, title: '1. Authorize on Daraz', desc: 'Log into your own seller account.' },
+            { icon: CheckCircle2, title: '2. Approve access', desc: "Grant ExiusCart's access request." },
+            { icon: ArrowLeft, title: '3. Come back, connected', desc: 'Your account shows as connected here.' },
+            { icon: ListChecks, title: '4. List & manage', desc: 'Assign products from Channel Categories.' },
+          ]}
+        >
+          <div className="bg-card border border-border rounded-xl">
+            <div className="p-5 border-b border-border">
+              <p className="font-semibold text-foreground">Connect Daraz</p>
+              <p className="text-xs text-muted-foreground mt-0.5">South Asia's largest marketplace</p>
+            </div>
+            <div className="p-5 space-y-4">
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                  {error}
+                </div>
+              )}
 
-            {hasAccount === null && (
-              <>
-                <p className="text-sm text-muted-foreground">Do you already have a Daraz seller account?</p>
-                <div className="grid grid-cols-2 gap-3">
+              {hasAccount === null && (
+                <>
+                  <p className="text-sm text-muted-foreground">Do you already have a Daraz seller account?</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setHasAccount(true)}
+                      className="py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
+                      Yes, I have one
+                    </button>
+                    <button onClick={() => setHasAccount(false)}
+                      className="py-2.5 bg-muted border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted/70 transition">
+                      Not yet
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {hasAccount === true && (
+                <>
+                  <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+                    <p><strong className="text-foreground">What happens next:</strong></p>
+                    <p>• Daraz opens in a new tab — log into your own seller account there</p>
+                    <p>• Approve ExiusCart's access request</p>
+                    <p>• Come back to this tab — it'll be connected once you're done</p>
+                  </div>
+                  <button onClick={startAuthorize} disabled={connecting}
+                    className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                    {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {connecting ? 'Opening Daraz...' : 'Continue to Daraz'}
+                  </button>
+                  <button onClick={() => setHasAccount(null)} className="w-full text-xs text-muted-foreground hover:text-foreground">
+                    ← Back
+                  </button>
+                </>
+              )}
+
+              {hasAccount === false && (
+                <>
+                  <div className="bg-muted/50 rounded-lg px-4 py-3 text-sm text-muted-foreground">
+                    You'll need a Daraz seller account before you can connect. It's free to create — once you're registered and approved as a seller, come back here and connect.
+                  </div>
+                  <a href="https://sellercenter.daraz.lk/apps/register/index" target="_blank" rel="noopener noreferrer"
+                    className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition flex items-center justify-center gap-2">
+                    Create Daraz Seller Account <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
                   <button onClick={() => setHasAccount(true)}
-                    className="py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-                    Yes, I have one
+                    className="w-full py-2.5 bg-muted border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted/70 transition">
+                    I've created my account
                   </button>
-                  <button onClick={() => setHasAccount(false)}
-                    className="py-2.5 bg-muted border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted/70 transition">
-                    Not yet
+                  <button onClick={() => setHasAccount(null)} className="w-full text-xs text-muted-foreground hover:text-foreground">
+                    ← Back
                   </button>
-                </div>
-              </>
-            )}
-
-            {hasAccount === true && (
-              <>
-                <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-                  <p><strong className="text-foreground">What happens next:</strong></p>
-                  <p>• Daraz opens in a new tab — log into your own seller account there</p>
-                  <p>• Approve ExiusCart's access request</p>
-                  <p>• Come back to this tab — it'll be connected once you're done</p>
-                </div>
-                <button onClick={startAuthorize} disabled={connecting}
-                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-                  {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {connecting ? 'Opening Daraz...' : 'Continue to Daraz'}
-                </button>
-                <button onClick={() => setHasAccount(null)} className="w-full text-xs text-muted-foreground hover:text-foreground">
-                  ← Back
-                </button>
-              </>
-            )}
-
-            {hasAccount === false && (
-              <>
-                <div className="bg-muted/50 rounded-lg px-4 py-3 text-sm text-muted-foreground">
-                  You'll need a Daraz seller account before you can connect. It's free to create — once you're registered and approved as a seller, come back here and connect.
-                </div>
-                <a href="https://sellercenter.daraz.lk/apps/register/index" target="_blank" rel="noopener noreferrer"
-                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition flex items-center justify-center gap-2">
-                  Create Daraz Seller Account <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-                <button onClick={() => setHasAccount(true)}
-                  className="w-full py-2.5 bg-muted border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted/70 transition">
-                  I've created my account
-                </button>
-                <button onClick={() => setHasAccount(null)} className="w-full text-xs text-muted-foreground hover:text-foreground">
-                  ← Back
-                </button>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        </BeforeConnectLayout>
       )}
     </div>
   );

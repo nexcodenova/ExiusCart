@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   ArrowLeft, Globe, Loader2, CheckCircle2, FormInput, ArrowRight, CreditCard, Check, Coins, LayoutGrid, ListPlus, Wand2, DollarSign,
   Package, ShoppingCart, TrendingUp, LayoutDashboard, Settings2, BookOpen, Grid3x3, RefreshCw, TestTube2, X, KeyRound, AlertTriangle, ArrowLeftRight,
+  Zap, LifeBuoy, ChevronDown,
 } from 'lucide-react';
 import { channelsApi, paymentGatewayApi, shopApi } from '@/lib/api';
 import { CopyBox } from '@/components/channels/CopyBox';
@@ -21,6 +22,8 @@ import ConnectionHealthGauge from '@/components/custom-website/ConnectionHealthG
 import ConnectionActivityChart from '@/components/custom-website/ConnectionActivityChart';
 import PaymentLogo from '@/components/custom-website/PaymentLogo';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
+import ChannelLogo from '@/components/channels/ChannelLogo';
+import TheDersiRestrictionNotice, { useIsTheDersiUser } from '@/components/channels/TheDersiRestriction';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -94,6 +97,7 @@ const CURRENCIES = [
 
 export default function CustomWebsiteIntegrationPage() {
   const [shopId, setShopId] = useState('');
+  const isTheDersiUser = useIsTheDersiUser(shopId);
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -108,6 +112,7 @@ export default function CustomWebsiteIntegrationPage() {
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showPreConnectDocs, setShowPreConnectDocs] = useState(false);
 
   const [gateway, setGateway] = useState<{ configured: boolean; payment_gateway: string | null; merchant_id: string | null; webhook_url: string } | null>(null);
   const [selectedGateway, setSelectedGateway] = useState('payhere');
@@ -311,17 +316,24 @@ export default function CustomWebsiteIntegrationPage() {
 
   return (
     <div className="max-w-[1500px] mx-auto space-y-6">
-      <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
-        <ArrowLeft className="w-4 h-4" /> Back to Channels
-      </Link>
-
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">Sales Channels / Custom Website</p>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Custom Website</h1>
-          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-            Manage your storefront connection, payments, API access, and order automation from ExiusCart.
-          </p>
+        <div className="flex items-start gap-3">
+          <Link href="/dashboard/channels" aria-label="Back to Channels"
+            className="mt-0.5 inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition shrink-0">
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <p className="text-xs text-muted-foreground mb-2">Sales Channels / Custom Website</p>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center shrink-0">
+                <ChannelLogo channelType="custom" size={22} />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Custom Website</h1>
+            </div>
+            <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+              Manage your storefront connection, payments, API access, and order automation from ExiusCart.
+            </p>
+          </div>
         </div>
         {!loading && connection && (
           <div className="flex items-center gap-2 shrink-0">
@@ -820,39 +832,142 @@ export default function CustomWebsiteIntegrationPage() {
             </div>
           )}
         </>
+      ) : isTheDersiUser ? (
+        <TheDersiRestrictionNotice channelKey="custom" />
       ) : (
-        <div className="bg-card border border-border rounded-xl">
-          <div className="p-5 border-b border-border">
-            <p className="font-semibold text-foreground">Connect Custom Website</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Get an order webhook URL for your own storefront</p>
-          </div>
-          <form onSubmit={connect} className="p-5 space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
+        <div className="space-y-5">
+          {/* Real capabilities only — no fabricated 4th claim like "full
+              control over what syncs" (there's no granular sync toggle for
+              this channel, it's the whole catalog + inbound webhook). */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { icon: Zap, label: 'Real-time sync', desc: 'Orders arrive the instant your site sends them' },
+              { icon: KeyRound, label: 'Secure & encrypted', desc: 'Your secret is never shown again after you save it' },
+              { icon: Wand2, label: 'Easy setup', desc: 'One field, no OAuth redirect' },
+              { icon: Globe, label: 'Any tech stack', desc: 'Just an HTTP POST — no SDK required' },
+            ].map((f) => (
+              <div key={f.label} className="rounded-xl border border-border bg-card p-3.5 flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <f.icon className="w-4 h-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-foreground">{f.label}</p>
+                  <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{f.desc}</p>
+                </div>
               </div>
-            )}
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">API Key *</label>
-              <div className="flex items-center gap-2">
-                <input type="text" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
-                  placeholder="Choose any secret key, e.g. mysite_secret_key_123"
-                  className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
-                <button type="button" onClick={generateApiKey}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2.5 border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition">
-                  <Wand2 className="w-3.5 h-3.5" /> Generate
+            ))}
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,1fr)] items-start">
+            <div className="bg-card border border-border rounded-xl">
+              <div className="p-5 border-b border-border">
+                <p className="font-semibold text-foreground">Connect Custom Website</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Get an order webhook URL for your own storefront</p>
+              </div>
+              <form onSubmit={connect} className="p-5 space-y-4">
+                {error && (
+                  <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                    {error}
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1.5 block">API Key *</label>
+                  <div className="flex items-center gap-2">
+                    <input type="text" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
+                      placeholder="Choose any secret key, e.g. mysite_secret_key_123"
+                      className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm" />
+                    <button type="button" onClick={generateApiKey}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2.5 border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition">
+                      <Wand2 className="w-3.5 h-3.5" /> Generate
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This is a shared secret between your website and ExiusCart. Choose any string — you'll use it when sending orders from your site. "Generate" makes one from your store name.
+                  </p>
+                </div>
+                <button type="submit" disabled={saving}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {saving ? 'Connecting...' : 'Connect & Get Webhook URL'}
+                </button>
+              </form>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <LifeBuoy className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground">Need help?</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">The real 4-step flow is right below.</p>
+                  </div>
+                </div>
+                <a href="#how-it-works" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+                  Jump to "How it works" <ChevronDown className="w-3.5 h-3.5" />
+                </a>
+              </div>
+
+              <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground">Secure connection</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">Your webhook secret is encrypted and never shown again in full after you save it.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
+                    <BookOpen className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground">Developer resources</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">The real public API — products, checkout, accounts. Works whether you've connected yet or not.</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowPreConnectDocs((s) => !s)}
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+                  {showPreConnectDocs ? 'Hide' : 'Open'} developer docs
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                This is a shared secret between your website and ExiusCart. Choose any string — you'll use it when sending orders from your site. "Generate" makes one from your store name.
-              </p>
             </div>
-            <button type="submit" disabled={saving}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {saving ? 'Connecting...' : 'Connect & Get Webhook URL'}
-            </button>
-          </form>
+          </div>
+
+          {showPreConnectDocs && <DeveloperDocs slug={shopSlug} shopId={shopId} webhookUrl={null} />}
+
+          {/* Real 4-step flow — matches connect() below exactly, no
+              fabricated "Verify" step (there's nothing to verify before
+              your site actually sends its first order). */}
+          <div id="how-it-works" className="rounded-xl border border-border bg-muted/30 p-5 scroll-mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <LifeBuoy className="w-4 h-4 text-primary" />
+              <h2 className="text-sm font-bold text-foreground">How it works</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { icon: KeyRound, title: '1. Add API key', desc: 'Choose a secret key above — anything works.' },
+                { icon: Webhook, title: '2. Get webhook URL', desc: "We generate a unique webhook URL for your store." },
+                { icon: ArrowRight, title: '3. Send events', desc: 'POST order, product, or customer events to that URL.' },
+                { icon: RefreshCw, title: '4. Start syncing', desc: 'Your data appears in ExiusCart automatically.' },
+              ].map((s) => (
+                <div key={s.title} className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <s.icon className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-foreground">{s.title}</p>
+                    <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{s.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

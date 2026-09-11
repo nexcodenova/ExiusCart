@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft, Download, Loader2, CheckCircle2,
+  ArrowLeft, Download, Loader2, CheckCircle2, KeyRound, Link2, FileText, Link2Off, LifeBuoy,
 } from 'lucide-react';
 import { channelsApi, gumroadApi } from '@/lib/api';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
+import TheDersiRestrictionNotice, { useIsTheDersiUser } from '@/components/channels/TheDersiRestriction';
+import BeforeConnectLayout, { SidebarCard } from '@/components/channels/BeforeConnect';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -24,6 +26,7 @@ interface ChannelConnection {
 // is pointed at the URL shown after connecting.
 export default function GumroadIntegrationPage() {
   const [shopId, setShopId] = useState('');
+  const isTheDersiUser = useIsTheDersiUser(shopId);
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -87,14 +90,16 @@ export default function GumroadIntegrationPage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
-        <ArrowLeft className="w-4 h-4" /> Back to Channels
-      </Link>
-
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Gumroad Integration</h1>
-        <p className="text-sm text-muted-foreground mt-1">List your digital products on Gumroad and manage orders from ExiusCart.</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard/channels" aria-label="Back to Channels"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition shrink-0">
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Gumroad Integration</h1>
+          <p className="text-sm text-muted-foreground mt-1">List your digital products on Gumroad and manage orders from ExiusCart.</p>
+        </div>
       </div>
 
       {loading ? (
@@ -103,7 +108,7 @@ export default function GumroadIntegrationPage() {
           <span className="text-sm">Loading...</span>
         </div>
       ) : connection ? (
-        <div className="space-y-5">
+        <div className="space-y-5 max-w-3xl">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -158,44 +163,69 @@ export default function GumroadIntegrationPage() {
         </div>
         <ChannelListingActivity shopId={shopId} channelType="gumroad" />
         </div>
+      ) : isTheDersiUser ? (
+        <TheDersiRestrictionNotice channelKey="gumroad" />
       ) : (
-        <div className="bg-card border border-border rounded-xl">
-          <div className="p-5 border-b border-border">
-            <p className="font-semibold text-foreground">Connect Gumroad</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Paste your own Gumroad access token</p>
-          </div>
-          <form onSubmit={connect} className="p-5 space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
+        <BeforeConnectLayout
+          accentClass="bg-[#FF90E8]/10 text-[#FF90E8]"
+          badges={[
+            { icon: KeyRound, label: 'Your own access token', desc: 'Generated in your Gumroad account — you control it' },
+            { icon: Link2, label: 'Link, not create', desc: "Gumroad's API can't create listings — create on Gumroad, then link" },
+            { icon: FileText, label: 'Manage in Channel Orders', desc: 'Gumroad orders show up alongside every other channel' },
+            { icon: Link2Off, label: 'Disconnect anytime', desc: 'Your Gumroad listings stay untouched' },
+          ]}
+          sidebar={<>
+            <SidebarCard icon={LifeBuoy} iconClass="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              title="Need help?" desc={'The real 4-step flow is right below.'}
+              action={<a href="#how-it-works" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Jump to "How it works" ↓</a>} />
+            <SidebarCard icon={Download} iconClass="bg-[#FF90E8]/10 text-[#FF90E8]"
+              title="What syncs" desc="Create the product on Gumroad first, then link it from that ExiusCart product's edit page — orders sync in once your Ping endpoint is set." />
+          </>}
+          steps={[
+            { icon: KeyRound, title: '1. Generate an access token', desc: 'Gumroad Settings → Advanced → Applications.' },
+            { icon: Link2, title: '2. Paste token here', desc: 'Optionally add the webhook secret later.' },
+            { icon: CheckCircle2, title: '3. Set your Ping endpoint', desc: "We'll show the exact URL once connected." },
+            { icon: FileText, title: '4. Link your product', desc: "From the product's edit page in ExiusCart." },
+          ]}
+        >
+          <div className="bg-card border border-border rounded-xl">
+            <div className="p-5 border-b border-border">
+              <p className="font-semibold text-foreground">Connect Gumroad</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Paste your own Gumroad access token</p>
+            </div>
+            <form onSubmit={connect} className="p-5 space-y-4">
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                  {error}
+                </div>
+              )}
+              <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+                <p><strong className="text-foreground">Don't have this yet?</strong></p>
+                <p>1. In your Gumroad account, go to Settings → Advanced → Applications</p>
+                <p>2. Create an application, then click "Generate access token"</p>
+                <p>3. Copy the access token shown</p>
               </div>
-            )}
-            <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-              <p><strong className="text-foreground">Don't have this yet?</strong></p>
-              <p>1. In your Gumroad account, go to Settings → Advanced → Applications</p>
-              <p>2. Create an application, then click "Generate access token"</p>
-              <p>3. Copy the access token shown</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Access Token *</label>
-              <input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} required
-                placeholder="••••••••••••••••"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Webhook Signing Secret (optional)</label>
-              <input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)}
-                placeholder="Paste after registering your Ping endpoint"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-              <p className="text-xs text-muted-foreground mt-1.5">Can be added later — without it, incoming orders won't be signature-verified.</p>
-            </div>
-            <button type="submit" disabled={connecting}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {connecting ? 'Verifying...' : 'Connect Gumroad'}
-            </button>
-          </form>
-        </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Access Token *</label>
+                <input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} required
+                  placeholder="••••••••••••••••"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Webhook Signing Secret (optional)</label>
+                <input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)}
+                  placeholder="Paste after registering your Ping endpoint"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+                <p className="text-xs text-muted-foreground mt-1.5">Can be added later — without it, incoming orders won't be signature-verified.</p>
+              </div>
+              <button type="submit" disabled={connecting}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {connecting ? 'Verifying...' : 'Connect Gumroad'}
+              </button>
+            </form>
+          </div>
+        </BeforeConnectLayout>
       )}
     </div>
   );

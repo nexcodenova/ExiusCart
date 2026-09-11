@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft, Store, Loader2, CheckCircle2,
+  ArrowLeft, Store, Loader2, CheckCircle2, KeyRound, ListChecks, FileText, Link2Off, LifeBuoy, Zap,
 } from 'lucide-react';
 import { channelsApi, bigcommerceApi } from '@/lib/api';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
+import TheDersiRestrictionNotice, { useIsTheDersiUser } from '@/components/channels/TheDersiRestriction';
+import BeforeConnectLayout, { SidebarCard } from '@/components/channels/BeforeConnect';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -22,6 +24,7 @@ interface ChannelConnection {
 // through.
 export default function BigCommerceIntegrationPage() {
   const [shopId, setShopId] = useState('');
+  const isTheDersiUser = useIsTheDersiUser(shopId);
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -75,14 +78,16 @@ export default function BigCommerceIntegrationPage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
-        <ArrowLeft className="w-4 h-4" /> Back to Channels
-      </Link>
-
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">BigCommerce Integration</h1>
-        <p className="text-sm text-muted-foreground mt-1">Sync your BigCommerce store — products, orders, and inventory sync to ExiusCart.</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard/channels" aria-label="Back to Channels"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition shrink-0">
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">BigCommerce Integration</h1>
+          <p className="text-sm text-muted-foreground mt-1">Sync your BigCommerce store — products, orders, and inventory sync to ExiusCart.</p>
+        </div>
       </div>
 
       {loading ? (
@@ -91,7 +96,7 @@ export default function BigCommerceIntegrationPage() {
           <span className="text-sm">Loading...</span>
         </div>
       ) : connection ? (
-        <div className="space-y-5">
+        <div className="space-y-5 max-w-3xl">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -134,43 +139,68 @@ export default function BigCommerceIntegrationPage() {
         </div>
         <ChannelListingActivity shopId={shopId} channelType="bigcommerce" />
         </div>
+      ) : isTheDersiUser ? (
+        <TheDersiRestrictionNotice channelKey="bigcommerce" />
       ) : (
-        <div className="bg-card border border-border rounded-xl">
-          <div className="p-5 border-b border-border">
-            <p className="font-semibold text-foreground">Connect BigCommerce</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Paste your own store's API credentials</p>
-          </div>
-          <form onSubmit={connect} className="p-5 space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
+        <BeforeConnectLayout
+          accentClass="bg-[#00C9A7]/10 text-[#00C9A7]"
+          badges={[
+            { icon: KeyRound, label: 'Your own store, your own token', desc: 'Store-level API account you generate and control' },
+            { icon: Zap, label: 'No review step', desc: 'Listings go live on your store immediately, unlike Daraz or Noon' },
+            { icon: FileText, label: 'Manage in Channel Orders', desc: 'BigCommerce orders show up alongside every other channel' },
+            { icon: Link2Off, label: 'Disconnect anytime', desc: 'Your store and listings stay untouched' },
+          ]}
+          sidebar={<>
+            <SidebarCard icon={LifeBuoy} iconClass="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              title="Need help?" desc={'The real 4-step flow is right below.'}
+              action={<a href="#how-it-works" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Jump to "How it works" ↓</a>} />
+            <SidebarCard icon={Store} iconClass="bg-[#00C9A7]/10 text-[#00C9A7]"
+              title="What syncs" desc="Assign a product to BigCommerce from Channel Categories to list it — every attempt, success or failure, is tracked in Channel Listings." />
+          </>}
+          steps={[
+            { icon: KeyRound, title: '1. Create API account', desc: 'Settings → Store-level API accounts.' },
+            { icon: ListChecks, title: '2. Paste credentials here', desc: 'Store hash & access token.' },
+            { icon: Zap, title: '3. Connect instantly', desc: 'No marketplace review — you own the store.' },
+            { icon: FileText, title: '4. List & manage', desc: 'Assign products from Channel Categories.' },
+          ]}
+        >
+          <div className="bg-card border border-border rounded-xl">
+            <div className="p-5 border-b border-border">
+              <p className="font-semibold text-foreground">Connect BigCommerce</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Paste your own store's API credentials</p>
+            </div>
+            <form onSubmit={connect} className="p-5 space-y-4">
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                  {error}
+                </div>
+              )}
+              <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+                <p><strong className="text-foreground">Don't have these yet?</strong></p>
+                <p>1. In your BigCommerce admin, go to Settings → Store-level API accounts</p>
+                <p>2. Click "Create API Account" — grant Products and Orders read/write scopes</p>
+                <p>3. Copy the Access Token shown (only shown once) and your store hash (in your admin URL, e.g. store-<strong>abc123</strong>.mybigcommerce.com)</p>
               </div>
-            )}
-            <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-              <p><strong className="text-foreground">Don't have these yet?</strong></p>
-              <p>1. In your BigCommerce admin, go to Settings → Store-level API accounts</p>
-              <p>2. Click "Create API Account" — grant Products and Orders read/write scopes</p>
-              <p>3. Copy the Access Token shown (only shown once) and your store hash (in your admin URL, e.g. store-<strong>abc123</strong>.mybigcommerce.com)</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Store Hash *</label>
-              <input type="text" value={storeHash} onChange={(e) => setStoreHash(e.target.value)} required
-                placeholder="abc123"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Access Token *</label>
-              <input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} required
-                placeholder="••••••••••••••••"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-            </div>
-            <button type="submit" disabled={connecting}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {connecting ? 'Verifying...' : 'Connect BigCommerce'}
-            </button>
-          </form>
-        </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Store Hash *</label>
+                <input type="text" value={storeHash} onChange={(e) => setStoreHash(e.target.value)} required
+                  placeholder="abc123"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Access Token *</label>
+                <input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} required
+                  placeholder="••••••••••••••••"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+              </div>
+              <button type="submit" disabled={connecting}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {connecting ? 'Verifying...' : 'Connect BigCommerce'}
+              </button>
+            </form>
+          </div>
+        </BeforeConnectLayout>
       )}
     </div>
   );

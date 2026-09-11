@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft, CreditCard, Loader2, CheckCircle2,
+  ArrowLeft, CreditCard, Loader2, CheckCircle2, KeyRound, ListChecks, FileText, Link2Off, LifeBuoy, ShieldCheck,
 } from 'lucide-react';
 import { channelsApi, whopApi } from '@/lib/api';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
+import TheDersiRestrictionNotice, { useIsTheDersiUser } from '@/components/channels/TheDersiRestriction';
+import BeforeConnectLayout, { SidebarCard } from '@/components/channels/BeforeConnect';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -23,6 +25,7 @@ interface ChannelConnection {
 // the Channels page's own "Sell Digital Products" section copy.
 export default function WhopIntegrationPage() {
   const [shopId, setShopId] = useState('');
+  const isTheDersiUser = useIsTheDersiUser(shopId);
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -88,14 +91,16 @@ export default function WhopIntegrationPage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
-        <ArrowLeft className="w-4 h-4" /> Back to Channels
-      </Link>
-
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Whop Integration</h1>
-        <p className="text-sm text-muted-foreground mt-1">Sell digital products with no business registration needed — Whop is Merchant of Record.</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard/channels" aria-label="Back to Channels"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition shrink-0">
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Whop Integration</h1>
+          <p className="text-sm text-muted-foreground mt-1">Sell digital products with no business registration needed — Whop is Merchant of Record.</p>
+        </div>
       </div>
 
       {loading ? (
@@ -104,7 +109,7 @@ export default function WhopIntegrationPage() {
           <span className="text-sm">Loading...</span>
         </div>
       ) : connection ? (
-        <div className="space-y-5">
+        <div className="space-y-5 max-w-3xl">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -160,50 +165,75 @@ export default function WhopIntegrationPage() {
         </div>
         <ChannelListingActivity shopId={shopId} channelType="whop" />
         </div>
+      ) : isTheDersiUser ? (
+        <TheDersiRestrictionNotice channelKey="whop" />
       ) : (
-        <div className="bg-card border border-border rounded-xl">
-          <div className="p-5 border-b border-border">
-            <p className="font-semibold text-foreground">Connect Whop</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Paste your own Whop Company API credentials</p>
-          </div>
-          <form onSubmit={connect} className="p-5 space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
+        <BeforeConnectLayout
+          accentClass="bg-[#FA4616]/10 text-[#FA4616]"
+          badges={[
+            { icon: KeyRound, label: 'Your own API key', desc: 'Company API key you generate and control in your Whop dashboard' },
+            { icon: ShieldCheck, label: 'Merchant of Record', desc: 'Whop handles payment & tax compliance — no business registration needed' },
+            { icon: FileText, label: 'Manage in Channel Orders', desc: 'Whop orders show up alongside every other channel' },
+            { icon: Link2Off, label: 'Disconnect anytime', desc: 'Your Whop listings stay untouched' },
+          ]}
+          sidebar={<>
+            <SidebarCard icon={LifeBuoy} iconClass="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              title="Need help?" desc={'The real 4-step flow is right below.'}
+              action={<a href="#how-it-works" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Jump to "How it works" ↓</a>} />
+            <SidebarCard icon={CreditCard} iconClass="bg-[#FA4616]/10 text-[#FA4616]"
+              title="What syncs" desc="Assign a product to Whop from Channel Categories to list it — every attempt, success or failure, is tracked in Channel Listings." />
+          </>}
+          steps={[
+            { icon: KeyRound, title: '1. Create an API key', desc: 'Whop dashboard → Developer → API Keys.' },
+            { icon: ListChecks, title: '2. Paste key & Company ID', desc: 'Both come from your Whop dashboard.' },
+            { icon: ShieldCheck, title: '3. Register the webhook', desc: "We'll show the exact URL once connected." },
+            { icon: FileText, title: '4. List & manage', desc: 'Assign products from Channel Categories.' },
+          ]}
+        >
+          <div className="bg-card border border-border rounded-xl">
+            <div className="p-5 border-b border-border">
+              <p className="font-semibold text-foreground">Connect Whop</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Paste your own Whop Company API credentials</p>
+            </div>
+            <form onSubmit={connect} className="p-5 space-y-4">
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                  {error}
+                </div>
+              )}
+              <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+                <p><strong className="text-foreground">Don't have these yet?</strong></p>
+                <p>1. In your Whop dashboard, go to Developer → API Keys and create a Company API key</p>
+                <p>2. Copy your Company ID (shown in your dashboard URL / Company settings)</p>
+                <p>3. Optional now, needed before orders can sync: register a webhook (Developer → Webhooks) for <code className="font-mono">payment.succeeded</code> — we'll show you the exact URL to use once connected</p>
               </div>
-            )}
-            <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-              <p><strong className="text-foreground">Don't have these yet?</strong></p>
-              <p>1. In your Whop dashboard, go to Developer → API Keys and create a Company API key</p>
-              <p>2. Copy your Company ID (shown in your dashboard URL / Company settings)</p>
-              <p>3. Optional now, needed before orders can sync: register a webhook (Developer → Webhooks) for <code className="font-mono">payment.succeeded</code> — we'll show you the exact URL to use once connected</p>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Company ID *</label>
-              <input type="text" value={companyId} onChange={(e) => setCompanyId(e.target.value)} required
-                placeholder="biz_xxxxxxxx"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">API Key *</label>
-              <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
-                placeholder="••••••••••••••••"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Webhook Signing Secret (optional)</label>
-              <input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)}
-                placeholder="whsec_•••••••••••• — paste after registering the webhook"
-                className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-              <p className="text-xs text-muted-foreground mt-1.5">Can be added later — without it, incoming orders won't be signature-verified.</p>
-            </div>
-            <button type="submit" disabled={connecting}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {connecting ? 'Verifying...' : 'Connect Whop'}
-            </button>
-          </form>
-        </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Company ID *</label>
+                <input type="text" value={companyId} onChange={(e) => setCompanyId(e.target.value)} required
+                  placeholder="biz_xxxxxxxx"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">API Key *</label>
+                <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
+                  placeholder="••••••••••••••••"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1.5 block">Webhook Signing Secret (optional)</label>
+                <input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)}
+                  placeholder="whsec_•••••••••••• — paste after registering the webhook"
+                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
+                <p className="text-xs text-muted-foreground mt-1.5">Can be added later — without it, incoming orders won't be signature-verified.</p>
+              </div>
+              <button type="submit" disabled={connecting}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {connecting ? 'Verifying...' : 'Connect Whop'}
+              </button>
+            </form>
+          </div>
+        </BeforeConnectLayout>
       )}
     </div>
   );

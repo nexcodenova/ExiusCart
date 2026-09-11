@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Store, Loader2, CheckCircle2, X,
+  ArrowLeft, Store, Loader2, CheckCircle2, X, ShieldCheck, ListChecks, FileText, Link2Off, LifeBuoy,
 } from 'lucide-react';
 import { channelsApi, etsyApi } from '@/lib/api';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
+import TheDersiRestrictionNotice, { useIsTheDersiUser } from '@/components/channels/TheDersiRestriction';
+import BeforeConnectLayout, { SidebarCard } from '@/components/channels/BeforeConnect';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -23,6 +25,7 @@ interface ChannelConnection {
 export default function EtsyIntegrationPage() {
   const router = useRouter();
   const [shopId, setShopId] = useState('');
+  const isTheDersiUser = useIsTheDersiUser(shopId);
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -78,14 +81,16 @@ export default function EtsyIntegrationPage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
-        <ArrowLeft className="w-4 h-4" /> Back to Channels
-      </Link>
-
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Etsy Integration</h1>
-        <p className="text-sm text-muted-foreground mt-1">List products on Etsy and manage orders directly from ExiusCart.</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard/channels" aria-label="Back to Channels"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition shrink-0">
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Etsy Integration</h1>
+          <p className="text-sm text-muted-foreground mt-1">List products on Etsy and manage orders directly from ExiusCart.</p>
+        </div>
       </div>
 
       {oauthResult && (
@@ -112,7 +117,7 @@ export default function EtsyIntegrationPage() {
           <span className="text-sm">Loading...</span>
         </div>
       ) : connection ? (
-        <div className="space-y-5">
+        <div className="space-y-5 max-w-3xl">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -153,32 +158,57 @@ export default function EtsyIntegrationPage() {
         </div>
         <ChannelListingActivity shopId={shopId} channelType="etsy" />
         </div>
+      ) : isTheDersiUser ? (
+        <TheDersiRestrictionNotice channelKey="etsy" />
       ) : (
-        <div className="bg-card border border-border rounded-xl">
-          <div className="p-5 border-b border-border">
-            <p className="font-semibold text-foreground">Connect Etsy</p>
-            <p className="text-xs text-muted-foreground mt-0.5">List products and manage orders on Etsy</p>
-          </div>
-          <div className="p-5 space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
-              </div>
-            )}
-
-            <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-              <p><strong className="text-foreground">What happens next:</strong></p>
-              <p>• Etsy opens in a new tab — log into your own shop there</p>
-              <p>• Approve ExiusCart's access request</p>
-              <p>• Come back to this tab — your shop will show as connected</p>
+        <BeforeConnectLayout
+          accentClass="bg-[#F1641E]/10 text-[#F1641E]"
+          badges={[
+            { icon: ShieldCheck, label: 'OAuth secured', desc: "You authorize on Etsy's own site — no password shared" },
+            { icon: ListChecks, label: 'Tracked in Channel Listings', desc: 'Every listing attempt, success or failure' },
+            { icon: FileText, label: 'Manage in Channel Orders', desc: 'Etsy orders show up alongside every other channel' },
+            { icon: Link2Off, label: 'Disconnect anytime', desc: 'Your Etsy shop and listings stay untouched' },
+          ]}
+          sidebar={<>
+            <SidebarCard icon={LifeBuoy} iconClass="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              title="Need help?" desc={'The real 3-step flow is right below.'}
+              action={<a href="#how-it-works" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Jump to "How it works" ↓</a>} />
+            <SidebarCard icon={Store} iconClass="bg-[#F1641E]/10 text-[#F1641E]"
+              title="What syncs" desc="Assign a product to Etsy from Channel Categories to list it — every attempt, success or failure, is tracked in Channel Listings." />
+          </>}
+          steps={[
+            { icon: ShieldCheck, title: '1. Authorize on Etsy', desc: 'Log into your own Etsy shop.' },
+            { icon: CheckCircle2, title: '2. Approve access', desc: "Grant ExiusCart's access request." },
+            { icon: ArrowLeft, title: '3. Come back, connected', desc: 'Your shop shows as connected here.' },
+            { icon: ListChecks, title: '4. List & manage', desc: 'Assign products from Channel Categories.' },
+          ]}
+        >
+          <div className="bg-card border border-border rounded-xl">
+            <div className="p-5 border-b border-border">
+              <p className="font-semibold text-foreground">Connect Etsy</p>
+              <p className="text-xs text-muted-foreground mt-0.5">List products and manage orders on Etsy</p>
             </div>
-            <button onClick={startAuthorize} disabled={connecting}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {connecting ? 'Opening Etsy...' : 'Continue to Etsy'}
-            </button>
+            <div className="p-5 space-y-4">
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                  {error}
+                </div>
+              )}
+
+              <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+                <p><strong className="text-foreground">What happens next:</strong></p>
+                <p>• Etsy opens in a new tab — log into your own shop there</p>
+                <p>• Approve ExiusCart's access request</p>
+                <p>• Come back to this tab — your shop will show as connected</p>
+              </div>
+              <button onClick={startAuthorize} disabled={connecting}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {connecting ? 'Opening Etsy...' : 'Continue to Etsy'}
+              </button>
+            </div>
           </div>
-        </div>
+        </BeforeConnectLayout>
       )}
     </div>
   );

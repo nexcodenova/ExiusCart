@@ -689,6 +689,12 @@ export const channelsApi = {
   }) => api.put(`/shops/${shopId}/products/${productId}/channel-category`, data),
   disconnectChannel: (shopId: string, channelId: number) =>
     api.delete(`/shops/${shopId}/channels/${channelId}`),
+  regenerateWebhook: (shopId: string, channelId: number) =>
+    api.post(`/shops/${shopId}/channels/${channelId}/regenerate-webhook`),
+  getChannelDashboard: (shopId: string, channelType: string) =>
+    api.get(`/shops/${shopId}/channels/${channelType}/dashboard`),
+  syncChannel: (shopId: string, channelId: number) =>
+    api.post(`/shops/${shopId}/channels/${channelId}/sync`),
   setChannelCurrency: (shopId: string, channelId: number, channelCurrency: string | null) =>
     api.put(`/shops/${shopId}/channels/${channelId}/currency`, { channel_currency: channelCurrency }),
   setChannelSiteUrl: (shopId: string, channelId: number, siteUrl: string | null) =>

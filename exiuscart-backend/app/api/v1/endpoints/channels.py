@@ -676,6 +676,8 @@ def list_channels(
             "last_synced_at": c.last_synced_at,
             "webhook_url": _webhook_url(c),
             "seller_status": c.seller_status,
+            "created_at": c.created_at,
+            "auto_payout_enabled": c.auto_payout_enabled,
         }
         for c in conns
     ]
@@ -755,6 +757,29 @@ def disconnect_channel(
     conn.is_active = False
     db.commit()
     return {"message": f"Disconnected from {conn.channel_type}"}
+
+
+@router.post("/shops/{shop_id}/channels/{channel_id}/regenerate-webhook")
+def regenerate_channel_webhook(
+    shop_id: int,
+    channel_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Rotates the webhook secret a channel calls back on — for when a
+    seller suspects theirs leaked, or just wants a fresh one. The old URL
+    stops working the instant this commits, so the seller must re-paste
+    the new one into the channel's own dashboard (same as the first-time
+    connect flow) before new orders/webhooks resume."""
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id, ChannelConnection.shop_id == shop_id,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    conn.webhook_secret = secrets.token_urlsafe(32)
+    db.commit()
+    return {"webhook_url": _webhook_url(conn)}
 
 
 @router.post("/shops/{shop_id}/channels/{channel_id}/sync")
@@ -2917,4 +2942,198 @@ def get_channel_orders_stats(
         "awaiting_fulfillment": awaiting,
         "needs_attention": attention,
         "daily": daily,
+    }
+
+
+# ── Per-channel "Connected" dashboard ───────────────────────────────────────
+#
+# One consolidated call for the redesigned connected-state page (TheDersi
+# first, same shape works for every other channel) — KPIs, the sync-activity
+# daily series, recent activity, and top products, all real and scoped to a
+# single channel_type. Reuses the exact same Order/DropshipOrder join and
+# channel-resolution logic as Channel Orders above, so the numbers here
+# always agree with what that page shows filtered to this one channel.
+@router.get("/shops/{shop_id}/channels/{channel_type}/dashboard")
+def get_channel_dashboard(
+    shop_id: int,
+    channel_type: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from sqlalchemy import func as sql_func
+    from app.models.channel_sync_log import ChannelSyncLog
+
+    _shop_or_404(shop_id, current_user, db)
+
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.shop_id == shop_id,
+        ChannelConnection.channel_type == channel_type,
+        ChannelConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail=f"Not connected to {channel_type}")
+
+    # ── Orders KPIs + daily series — channel-scoped slice of the same query
+    # Channel Orders' own stats endpoint uses. ──
+    q, _DropshipOrder = _channel_orders_joined(db, shop_id)
+    q = q.filter(_channel_type_expr() == channel_type)
+    orders_count = q.count()
+    revenue = float(
+        q.filter(Order.payment_status == "paid").with_entities(sql_func.coalesce(sql_func.sum(Order.total), 0)).scalar() or 0
+    )
+    day_col = sql_func.date(Order.created_at)
+    daily_rows = (
+        q.with_entities(day_col.label("day"), sql_func.count(Order.id), sql_func.coalesce(sql_func.sum(Order.total), 0))
+        .group_by(day_col).order_by(day_col).all()
+    )
+    daily = [{"day": str(d), "orders": c, "revenue": float(r)} for d, c, r in daily_rows]
+
+    # ── Products listed — latest create_listing attempt per product on this
+    # channel, counted where it actually succeeded. Real, but a known
+    # simplification: doesn't re-check a later channel-side rejection
+    # (ChannelProductStatus) the way the Channel Listings page's status
+    # column does — good enough for a headline count, not a status feed. ──
+    if channel_type == "custom":
+        # No push step for Custom Website (storefront pulls products live) —
+        # same convention channel-listings/stats uses for it.
+        products_listed = db.query(sql_func.count(Product.id)).filter(
+            Product.shop_id == shop_id, Product.is_active == True,
+        ).scalar() or 0
+    else:
+        listing_rows = db.query(ChannelSyncLog.product_id, ChannelSyncLog.success).filter(
+            ChannelSyncLog.shop_id == shop_id,
+            ChannelSyncLog.channel_type == channel_type,
+            ChannelSyncLog.action == "create_listing",
+        ).order_by(ChannelSyncLog.created_at.asc()).all()
+        latest_by_product: Dict[int, bool] = {}
+        for pid, success in listing_rows:
+            if pid is not None:
+                latest_by_product[pid] = success
+        products_listed = sum(1 for ok in latest_by_product.values() if ok)
+
+    # ── Recent activity — real ChannelSyncLog rows (listings/stock/price)
+    # merged with real new-order events for this channel, newest first. ──
+    log_rows = db.query(ChannelSyncLog).filter(
+        ChannelSyncLog.shop_id == shop_id,
+        ChannelSyncLog.channel_type == channel_type,
+    ).order_by(ChannelSyncLog.created_at.desc()).limit(20).all()
+    log_product_ids = list({r.product_id for r in log_rows if r.product_id})
+    log_products = {p.id: p for p in db.query(Product).filter(Product.id.in_(log_product_ids)).all()} if log_product_ids else {}
+
+    action_label = {
+        "create_listing": "Listing created",
+        "update_stock": "Stock synced",
+        "update_price": "Price updated",
+        "update_listing": "Listing updated",
+        "delete_listing": "Listing removed",
+        "sync_order": "Order synced",
+    }
+    activity: List[dict] = []
+    for r in log_rows:
+        product = log_products.get(r.product_id)
+        activity.append({
+            "kind": "product",
+            "title": action_label.get(r.action, r.action.replace("_", " ").capitalize()),
+            "description": product.name if product else (r.error_message or ""),
+            "success": r.success,
+            "image_url": _product_image(product) if product else None,
+            "created_at": r.created_at,
+        })
+
+    recent_orders = q.order_by(Order.created_at.desc()).limit(20).all()
+    order_customer_ids = list({o.customer_id for o, _d in recent_orders if o.customer_id})
+    order_customers = {c.id: c for c in db.query(Customer).filter(Customer.id.in_(order_customer_ids)).all()} if order_customer_ids else {}
+    for order, _dropship in recent_orders:
+        customer = order_customers.get(order.customer_id) if order.customer_id else None
+        activity.append({
+            "kind": "order",
+            "title": "New order imported",
+            "description": f"#{order.order_number} · {customer.name if customer else 'Guest'} · {float(order.total):.2f}",
+            "success": True,
+            "image_url": None,
+            "created_at": order.created_at,
+        })
+
+    def _ts_key(row):
+        ts = row["created_at"]
+        if ts is None:
+            return datetime.min
+        return ts.replace(tzinfo=None) if ts.tzinfo else ts
+    activity.sort(key=_ts_key, reverse=True)
+    activity = activity[:12]
+
+    # ── Top products — real revenue/quantity from this channel's order
+    # items, with a real 30-day-vs-prior-30-day revenue trend per product. ──
+    channel_order_ids = [row[0] for row in q.with_entities(Order.id).all()]
+    top_products: List[dict] = []
+    if channel_order_ids:
+        now = datetime.now(timezone.utc)
+        window_start = now - timedelta(days=30)
+        prev_start = window_start - timedelta(days=30)
+
+        item_rows = (
+            db.query(
+                OrderItem.product_id, OrderItem.product_name,
+                sql_func.sum(OrderItem.quantity), sql_func.sum(OrderItem.total_price),
+            )
+            .filter(OrderItem.order_id.in_(channel_order_ids))
+            .group_by(OrderItem.product_id, OrderItem.product_name)
+            .order_by(sql_func.sum(OrderItem.total_price).desc())
+            .limit(5)
+            .all()
+        )
+        pids = [pid for pid, _n, _q, _r in item_rows if pid]
+        products_map = {p.id: p for p in db.query(Product).filter(Product.id.in_(pids)).all()} if pids else {}
+
+        def _revenue_in(pid, start, end):
+            if pid is None:
+                return 0.0
+            val = (
+                db.query(sql_func.coalesce(sql_func.sum(OrderItem.total_price), 0))
+                .join(Order, Order.id == OrderItem.order_id)
+                .filter(
+                    OrderItem.order_id.in_(channel_order_ids),
+                    OrderItem.product_id == pid,
+                    Order.created_at >= start, Order.created_at < end,
+                )
+                .scalar()
+            )
+            return float(val or 0)
+
+        for pid, pname, qty, revenue_total in item_rows:
+            product = products_map.get(pid)
+            cur = _revenue_in(pid, window_start, now)
+            prev = _revenue_in(pid, prev_start, window_start)
+            growth = round(100 * (cur - prev) / prev, 1) if prev else None
+            top_products.append({
+                "product_id": pid,
+                "name": product.name if product else (pname or "Deleted product"),
+                "image_url": _product_image(product) if product else None,
+                "orders": int(qty or 0),
+                "revenue": float(revenue_total or 0),
+                "growth_pct": growth,
+            })
+
+    return {
+        "channel_type": channel_type,
+        "connection": {
+            "id": conn.id,
+            "channel_seller_id": conn.channel_seller_id,
+            "channel_api_url": conn.channel_api_url,
+            "channel_currency": conn.channel_currency,
+            "seller_status": conn.seller_status,
+            "webhook_url": _webhook_url(conn),
+            "created_at": conn.created_at,
+            "last_synced_at": conn.last_synced_at,
+            "auto_payout_enabled": conn.auto_payout_enabled,
+        },
+        "kpis": {
+            "total_orders": orders_count,
+            "revenue": round(revenue, 2),
+            "products_listed": products_listed,
+            "last_synced_at": conn.last_synced_at,
+        },
+        "daily": daily,
+        "recent_activity": activity,
+        "top_products": top_products,
     }

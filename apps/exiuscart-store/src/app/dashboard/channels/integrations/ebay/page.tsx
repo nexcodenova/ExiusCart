@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Tag, Loader2, CheckCircle2, ExternalLink, X, AlertCircle, RefreshCw,
+  ArrowLeft, Tag, Loader2, CheckCircle2, ExternalLink, X, AlertCircle, RefreshCw, ShieldCheck, ListChecks, FileText, Link2Off, LifeBuoy, MapPin,
 } from 'lucide-react';
 import { channelsApi, ebayApi } from '@/lib/api';
 import { ChannelCurrencyField } from '@/components/channels/ChannelCurrencyField';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
+import TheDersiRestrictionNotice, { useIsTheDersiUser } from '@/components/channels/TheDersiRestriction';
+import BeforeConnectLayout, { SidebarCard } from '@/components/channels/BeforeConnect';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -23,6 +25,7 @@ interface ChannelConnection {
 export default function EbayIntegrationPage() {
   const router = useRouter();
   const [shopId, setShopId] = useState('');
+  const isTheDersiUser = useIsTheDersiUser(shopId);
   const [connection, setConnection] = useState<ChannelConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -113,14 +116,16 @@ export default function EbayIntegrationPage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <Link href="/dashboard/channels" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
-        <ArrowLeft className="w-4 h-4" /> Back to Channels
-      </Link>
-
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">eBay Integration</h1>
-        <p className="text-sm text-muted-foreground mt-1">List products on eBay and manage all orders directly from ExiusCart.</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/dashboard/channels" aria-label="Back to Channels"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition shrink-0">
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">eBay Integration</h1>
+          <p className="text-sm text-muted-foreground mt-1">List products on eBay and manage all orders directly from ExiusCart.</p>
+        </div>
       </div>
 
       {oauthResult && (
@@ -147,7 +152,7 @@ export default function EbayIntegrationPage() {
           <span className="text-sm">Loading...</span>
         </div>
       ) : connection ? (
-        <div className="space-y-5">
+        <div className="space-y-5 max-w-3xl">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div className="flex items-center gap-3">
@@ -228,51 +233,76 @@ export default function EbayIntegrationPage() {
         </div>
         <ChannelListingActivity shopId={shopId} channelType="ebay" />
         </div>
+      ) : isTheDersiUser ? (
+        <TheDersiRestrictionNotice channelKey="ebay" />
       ) : (
-        <div className="bg-card border border-border rounded-xl">
-          <div className="p-5 border-b border-border">
-            <p className="font-semibold text-foreground">Connect eBay</p>
-            <p className="text-xs text-muted-foreground mt-0.5">List products and manage orders on eBay</p>
-          </div>
-          <div className="p-5 space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
+        <BeforeConnectLayout
+          accentClass="bg-[#E53238]/10 text-[#E53238]"
+          badges={[
+            { icon: ShieldCheck, label: 'OAuth secured', desc: "You authorize on eBay's own site — no password shared" },
+            { icon: ListChecks, label: 'Tracked in Channel Listings', desc: 'Every listing attempt, success or failure' },
+            { icon: FileText, label: 'Manage in Channel Orders', desc: 'eBay orders show up alongside every other channel' },
+            { icon: Link2Off, label: 'Disconnect anytime', desc: 'Your eBay account and listings stay untouched' },
+          ]}
+          sidebar={<>
+            <SidebarCard icon={LifeBuoy} iconClass="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              title="Need help?" desc={'The real 4-step flow is right below.'}
+              action={<a href="#how-it-works" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Jump to "How it works" ↓</a>} />
+            <SidebarCard icon={MapPin} iconClass="bg-[#E53238]/10 text-[#E53238]"
+              title="Why we ask for your country" desc="eBay rejects listings whose item location doesn't match your account's registered country — we ask directly rather than guessing from your ExiusCart shop's country." />
+          </>}
+          steps={[
+            { icon: ShieldCheck, title: '1. Authorize on eBay', desc: 'Log into your own eBay account.' },
+            { icon: CheckCircle2, title: '2. Approve access', desc: "Grant ExiusCart's access request." },
+            { icon: RefreshCw, title: '3. Pick Business Policies', desc: 'Choose your payment/fulfillment/return policies.' },
+            { icon: ListChecks, title: '4. List & manage', desc: 'Assign products from Channel Categories.' },
+          ]}
+        >
+          <div className="bg-card border border-border rounded-xl">
+            <div className="p-5 border-b border-border">
+              <p className="font-semibold text-foreground">Connect eBay</p>
+              <p className="text-xs text-muted-foreground mt-0.5">List products and manage orders on eBay</p>
+            </div>
+            <div className="p-5 space-y-4">
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
+                  {error}
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  Country your eBay seller account is registered under *
+                </label>
+                <input
+                  type="text"
+                  value={sellerCountry}
+                  onChange={(e) => setSellerCountry(e.target.value)}
+                  placeholder="e.g. Sri Lanka, UAE, United States"
+                  className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  This must match the country eBay has on file for your seller account — not
+                  necessarily your ExiusCart shop's country. eBay rejects listings whose item
+                  location doesn't match your account's registered country, so we ask directly
+                  rather than guessing.
+                </p>
               </div>
-            )}
 
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                Country your eBay seller account is registered under *
-              </label>
-              <input
-                type="text"
-                value={sellerCountry}
-                onChange={(e) => setSellerCountry(e.target.value)}
-                placeholder="e.g. Sri Lanka, UAE, United States"
-                className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm"
-              />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                This must match the country eBay has on file for your seller account — not
-                necessarily your ExiusCart shop's country. eBay rejects listings whose item
-                location doesn't match your account's registered country, so we ask directly
-                rather than guessing.
-              </p>
+              <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
+                <p><strong className="text-foreground">What happens next:</strong></p>
+                <p>• eBay opens in a new tab — log into your own account there</p>
+                <p>• Approve ExiusCart's access request</p>
+                <p>• Come back to this tab — then choose your Business Policies to finish setup</p>
+              </div>
+              <button onClick={startAuthorize} disabled={connecting || !sellerCountry.trim()}
+                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {connecting ? 'Opening eBay...' : 'Continue to eBay'}
+              </button>
             </div>
-
-            <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1.5">
-              <p><strong className="text-foreground">What happens next:</strong></p>
-              <p>• eBay opens in a new tab — log into your own account there</p>
-              <p>• Approve ExiusCart's access request</p>
-              <p>• Come back to this tab — then choose your Business Policies to finish setup</p>
-            </div>
-            <button onClick={startAuthorize} disabled={connecting || !sellerCountry.trim()}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {connecting ? 'Opening eBay...' : 'Continue to eBay'}
-            </button>
           </div>
-        </div>
+        </BeforeConnectLayout>
       )}
 
       {showPoliciesModal && (

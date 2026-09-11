@@ -12,6 +12,7 @@ from app.models.order import Order, OrderItem
 from app.models.customer import Customer
 from app.models.shopify_integration import ShopifyStore, ShopifySyncLog
 from app.api.v1.deps import get_current_user
+from app.core.thedersi import is_thedersi_shop
 import os
 
 
@@ -84,6 +85,21 @@ def get_shopify_status(shop_id: int, current_user: User = Depends(get_current_us
 async def connect_shopify(shop_id: int, body: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Connect a Shopify store using private app credentials (access token + domain)."""
     _shop(shop_id, current_user, db)
+
+    # Same restriction connect_channel enforces for every other channel
+    # (channels.py) — Shopify has its own separate connect system (no
+    # ChannelConnection row) and was never wired into that check, so a
+    # TheDersi-managed shop could connect Shopify with nothing stopping it
+    # server-side. Closing that here, not just in the UI.
+    if is_thedersi_shop(shop_id, db):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "channel_not_available",
+                "message": "Your plan is managed by TheDersi. Only TheDersi and Daraz channels are available on TheDersi plans.",
+            },
+        )
+
     domain = body.get("shopify_domain", "").strip().lower()
     access_token = body.get("access_token", "").strip()
     if not domain or not access_token:
