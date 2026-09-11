@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Bell, Search, User, Sun, Moon, GitBranch, ChevronDown,
+  Bell, Search, User, Sun, Moon, ChevronDown, Crown,
   Settings, CreditCard, LogOut, UserCircle,
 } from 'lucide-react';
 import { useTheme } from '@/components/providers/theme-provider';
@@ -116,11 +116,14 @@ export function Header({ onMenuClick }: HeaderProps) {
       </Link>
 
       {/* Search */}
-      <div className="hidden md:flex items-center flex-1 max-w-md ml-4">
-        <div className="relative w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input type="text" placeholder="Search products, orders..."
-            className="w-full pl-11 pr-4 py-2.5 bg-muted/60 border border-transparent rounded-xl focus:bg-background focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none text-foreground placeholder:text-muted-foreground transition" />
+      <div className="hidden md:flex items-center flex-1 max-w-xl ml-4">
+        <div className="group relative w-full">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-indigo-500 transition-colors" />
+          <input type="text" placeholder="Search products, orders, customers…"
+            className="w-full h-11 pl-11 pr-16 bg-muted/50 border border-border/60 rounded-xl text-sm text-foreground placeholder:text-muted-foreground/80 outline-none transition-all focus:bg-background focus:border-indigo-400/70 focus:ring-4 focus:ring-indigo-500/10 focus:shadow-sm" />
+          <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-0.5 rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="text-xs">⌘</span>K
+          </kbd>
         </div>
       </div>
 
@@ -148,31 +151,29 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         {/* Active branch — also carries the shop's plan + days left, moved
             here from the sidebar's old shop-info block */}
-        {activeBranchName && (
-          <Link href="/dashboard/branches"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 rounded-xl text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition">
-            <GitBranch className="w-3.5 h-3.5" />
-            <span className="max-w-[120px] truncate">{activeBranchName}</span>
+        {(planLabel || daysLeft != null) && (
+          <Link href="/dashboard/billing"
+            title={activeBranchName ? `Branch: ${activeBranchName}` : undefined}
+            className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 rounded-xl text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition">
             {planLabel && (
-              <>
-                <span className="opacity-40">·</span>
-                <span className="text-[10px]">{planLabel}</span>
-              </>
+              <span className="inline-flex items-center gap-1 font-semibold">
+                <Crown className="w-3.5 h-3.5" /> {planLabel}
+              </span>
             )}
             {daysLeft != null && (
               <>
-                <span className="opacity-40">·</span>
-                <span className="opacity-70">{daysLeft}d</span>
+                {planLabel && <span className="opacity-30">·</span>}
+                <span className="opacity-75 whitespace-nowrap">{daysLeft}d left</span>
               </>
             )}
           </Link>
         )}
 
-        {/* Currency */}
+        {/* Currency — plain text, no boxed pill */}
         <div ref={currencyRef} className="relative">
           <button type="button" onClick={() => !isTheDersiShop && setShowCurrencyDrop(v => !v)}
             title={isTheDersiShop ? 'LKR — TheDersi marketplace' : 'Change currency'}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground hover:bg-muted transition">
+            className="hidden sm:flex items-center gap-1 px-1.5 py-1 rounded-md text-xs font-medium text-foreground hover:bg-muted transition">
             <span>{currency}</span>
             {!isTheDersiShop && <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showCurrencyDrop ? 'rotate-180' : ''}`} />}
           </button>

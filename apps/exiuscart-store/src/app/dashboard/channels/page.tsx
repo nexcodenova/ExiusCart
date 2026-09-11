@@ -10,13 +10,13 @@ import { channelsApi, shopifyApi, subscriptionApi } from '@/lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import StatCard from '@/components/channels/StatCard';
-import ChannelCard, { ChannelDef, ChannelStat } from '@/components/channels/ChannelCard';
-import ConnectChannelModal from '@/components/channels/ConnectChannelModal';
-import FlowDiagram from '@/components/channels/FlowDiagram';
-import HowItWorks from '@/components/channels/HowItWorks';
-import SecurityPanel from '@/components/channels/SecurityPanel';
-import SyncCenter from '@/components/channels/SyncCenter';
+import StatCard from '@/components/channels/directory/StatCard';
+import ChannelCard, { ChannelDef, ChannelStat } from '@/components/channels/directory/ChannelCard';
+import ConnectChannelModal from '@/components/channels/directory/ConnectChannelModal';
+import FlowDiagram from '@/components/channels/directory/FlowDiagram';
+import HowItWorks from '@/components/channels/directory/HowItWorks';
+import SecurityPanel from '@/components/channels/directory/SecurityPanel';
+import SyncCenter from '@/components/channels/directory/SyncCenter';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -130,12 +130,12 @@ export default function ChannelsPage() {
       badge: shopifyConnected ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: shopifyConnected ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: shopifyConnected
-        ? () => router.push('/dashboard/shopify-integration')
+        ? () => router.push('/dashboard/channels/integrations/shopify')
         : isTheDersiUser
           ? () => setDersiBlockChannel('Shopify')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/shopify-integration'),
+            : () => router.push('/dashboard/channels/integrations/shopify'),
       actionLabel: shopifyConnected ? 'Manage Shopify' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Shopify')),
     },
     {
@@ -148,12 +148,12 @@ export default function ChannelsPage() {
       badge: hasEtsy ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: hasEtsy ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: hasEtsy
-        ? () => router.push('/dashboard/etsy-integration')
+        ? () => router.push('/dashboard/channels/integrations/etsy')
         : isTheDersiUser
           ? () => setDersiBlockChannel('Etsy')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/etsy-integration'),
+            : () => router.push('/dashboard/channels/integrations/etsy'),
       actionLabel: hasEtsy ? 'Manage Etsy' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Etsy')),
     },
     {
@@ -166,12 +166,12 @@ export default function ChannelsPage() {
       badge: hasCustomWebsite ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: hasCustomWebsite ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: hasCustomWebsite
-        ? () => router.push('/dashboard/custom-website-integration')
+        ? () => router.push('/dashboard/channels/integrations/custom-website')
         : isTheDersiUser
           ? () => setDersiBlockChannel('Custom Website')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/custom-website-integration'),
+            : () => router.push('/dashboard/channels/integrations/custom-website'),
       actionLabel: hasCustomWebsite ? 'Manage Website' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Website')),
     },
     {
@@ -184,12 +184,12 @@ export default function ChannelsPage() {
       badge: hasWooCommerce ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: hasWooCommerce ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: hasWooCommerce
-        ? () => router.push('/dashboard/woocommerce-integration')
+        ? () => router.push('/dashboard/channels/integrations/woocommerce')
         : isTheDersiUser
           ? () => setDersiBlockChannel('WooCommerce')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/woocommerce-integration'),
+            : () => router.push('/dashboard/channels/integrations/woocommerce'),
       actionLabel: hasWooCommerce ? 'Manage WooCommerce' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect WooCommerce')),
     },
     {
@@ -202,12 +202,12 @@ export default function ChannelsPage() {
       badge: hasBigCommerce ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: hasBigCommerce ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: hasBigCommerce
-        ? () => router.push('/dashboard/bigcommerce-integration')
+        ? () => router.push('/dashboard/channels/integrations/bigcommerce')
         : isTheDersiUser
           ? () => setDersiBlockChannel('BigCommerce')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/bigcommerce-integration'),
+            : () => router.push('/dashboard/channels/integrations/bigcommerce'),
       actionLabel: hasBigCommerce ? 'Manage BigCommerce' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect BigCommerce')),
     },
     {
@@ -231,11 +231,11 @@ export default function ChannelsPage() {
       badge: hasEbay ? 'live' : (isTheDersiUser ? 'locked' : (canUseEbay ? 'connect' : 'locked')),
       badgeLabel: hasEbay ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (canUseEbay ? 'Available' : 'Premium only')),
       onAction: hasEbay
-        ? () => router.push('/dashboard/ebay-integration')
+        ? () => router.push('/dashboard/channels/integrations/ebay')
         : isTheDersiUser
           ? () => setDersiBlockChannel('eBay')
           : canUseEbay
-            ? () => router.push('/dashboard/ebay-integration')
+            ? () => router.push('/dashboard/channels/integrations/ebay')
             : () => setEbayLocked(true),
       actionLabel: hasEbay ? 'Manage eBay' : (isTheDersiUser ? 'Learn more' : (canUseEbay ? 'Connect eBay' : 'Upgrade to Premium')),
     },
@@ -274,12 +274,12 @@ export default function ChannelsPage() {
       badge: hasTikTok ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: hasTikTok ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: hasTikTok
-        ? () => router.push('/dashboard/tiktok-integration')
+        ? () => router.push('/dashboard/channels/integrations/tiktok')
         : isTheDersiUser
           ? () => setDersiBlockChannel('TikTok Shop')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/tiktok-integration'),
+            : () => router.push('/dashboard/channels/integrations/tiktok'),
       actionLabel: hasTikTok ? 'Manage TikTok Shop' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect TikTok Shop')),
     },
     // ── Row 3: Noon, Trendyol ──
@@ -293,12 +293,12 @@ export default function ChannelsPage() {
       badge: hasNoon ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: hasNoon ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: hasNoon
-        ? () => router.push('/dashboard/noon-integration')
+        ? () => router.push('/dashboard/channels/integrations/noon')
         : isTheDersiUser
           ? () => setDersiBlockChannel('Noon')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/noon-integration'),
+            : () => router.push('/dashboard/channels/integrations/noon'),
       actionLabel: hasNoon ? 'Manage Noon' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Noon')),
     },
     {
@@ -342,7 +342,7 @@ export default function ChannelsPage() {
       badge: hasDaraz ? 'live' : canUseDaraz ? 'connect' : 'locked',
       badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : (isTheDersiUser ? 'TheDersi Pro only' : 'Premium only'),
       onAction: hasDaraz || canUseDaraz
-        ? () => router.push('/dashboard/daraz-integration')
+        ? () => router.push('/dashboard/channels/integrations/daraz')
         : () => setDarazLocked(true),
       actionLabel: hasDaraz ? 'Manage Daraz' : 'Connect Daraz',
     },
@@ -357,7 +357,7 @@ export default function ChannelsPage() {
       badgeLabel: hasTheDersi ? 'Connected' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
       onAction: channelLimitReached && !hasTheDersi
         ? () => setUpgradeLimitModal(true)
-        : () => router.push('/dashboard/thedersi-integration'),
+        : () => router.push('/dashboard/channels/integrations/thedersi'),
       actionLabel: hasTheDersi ? 'Manage TheDersi' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect TheDersi'),
     },
     // ── Digital products: Whop, Gumroad ──
@@ -371,12 +371,12 @@ export default function ChannelsPage() {
       badge: hasWhop ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: hasWhop ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: hasWhop
-        ? () => router.push('/dashboard/whop-integration')
+        ? () => router.push('/dashboard/channels/integrations/whop')
         : isTheDersiUser
           ? () => setDersiBlockChannel('Whop')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/whop-integration'),
+            : () => router.push('/dashboard/channels/integrations/whop'),
       actionLabel: hasWhop ? 'Manage Whop' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Whop')),
     },
     {
@@ -389,12 +389,12 @@ export default function ChannelsPage() {
       badge: hasGumroad ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
       badgeLabel: hasGumroad ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
       onAction: hasGumroad
-        ? () => router.push('/dashboard/gumroad-integration')
+        ? () => router.push('/dashboard/channels/integrations/gumroad')
         : isTheDersiUser
           ? () => setDersiBlockChannel('Gumroad')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
-            : () => router.push('/dashboard/gumroad-integration'),
+            : () => router.push('/dashboard/channels/integrations/gumroad'),
       actionLabel: hasGumroad ? 'Manage Gumroad' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Gumroad')),
     },
   ];

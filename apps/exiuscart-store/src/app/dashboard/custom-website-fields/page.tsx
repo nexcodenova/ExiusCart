@@ -71,7 +71,7 @@ export default function CustomWebsiteFieldsPage() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <Link href="/dashboard/custom-website-integration" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
+      <Link href="/dashboard/channels/integrations/custom-website" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition">
         <ArrowLeft className="w-4 h-4" /> Back to Custom Website
       </Link>
 

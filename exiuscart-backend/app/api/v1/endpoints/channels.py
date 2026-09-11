@@ -1703,11 +1703,29 @@ def get_channel_stats(
         .all()
     )
 
+    # Custom Website has no per-product push/review step (no ChannelProductStatus
+    # rows) and its orders aren't tagged via ChannelOrderMeta (they're marked by
+    # Order.notes == "Custom Website order" instead — see checkout.py's
+    # create_checkout) — so the generic counts above are always 0 for it, even
+    # with real products and orders. Compute its real numbers directly rather
+    # than showing a false "0" on a connected channel.
+    custom_products = custom_orders = None
+    if any(c.channel_type == "custom" for c in connections):
+        custom_products = db.query(sql_func.count(Product.id)).filter(
+            Product.shop_id == shop_id, Product.is_active == True,
+        ).scalar() or 0
+        custom_orders = db.query(sql_func.count(Order.id)).filter(
+            Order.shop_id == shop_id, Order.notes == "Custom Website order",
+        ).scalar() or 0
+
     channels = {}
     total_products, total_orders = 0, 0
     for conn in connections:
-        products = product_counts.get(conn.channel_type, 0)
-        orders = order_counts.get(conn.channel_type, 0)
+        if conn.channel_type == "custom":
+            products, orders = custom_products or 0, custom_orders or 0
+        else:
+            products = product_counts.get(conn.channel_type, 0)
+            orders = order_counts.get(conn.channel_type, 0)
         total_products += products
         total_orders += orders
         channels[conn.channel_type] = {

@@ -74,8 +74,8 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/dashboard/channels',                    label: 'All Channels',       icon: Link2       },
       { href: '/dashboard/channels?status=Connected',   label: 'Connected Channels', icon: CheckCircle2 },
-      { href: '/dashboard/channel-listings',            label: 'Channel Listings',   icon: ListChecks  },
-      { href: '/dashboard/storefront-categories',       label: 'Channel Categories', icon: LayoutGrid  },
+      { href: '/dashboard/channels/listings',           label: 'Channel Listings',   icon: ListChecks  },
+      { href: '/dashboard/channels/categories',         label: 'Channel Categories', icon: LayoutGrid  },
       { href: '/dashboard/orders',                      label: 'Channel Orders',     icon: FileText    },
     ],
   },

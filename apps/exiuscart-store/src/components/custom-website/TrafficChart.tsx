@@ -69,7 +69,12 @@ export default function TrafficChart({ shopId }: { shopId: string }) {
             <Loader2 className="w-4 h-4 animate-spin" /> <span className="text-xs">Loading…</span>
           </div>
         ) : totalViews === 0 ? (
-          <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-4">No page views tracked in this period yet.</div>
+          <div className="h-full flex flex-col items-center justify-center text-sm text-muted-foreground text-center px-6 gap-1.5">
+            <p>No page views tracked in this period yet.</p>
+            <p className="text-xs max-w-sm">
+              This only fills in once your website calls ExiusCart's tracking endpoint on page load — see <strong className="text-foreground">POST /public/store/&#123;slug&#125;/track</strong> in the <strong className="text-foreground">Developer Docs</strong> tab.
+            </p>
+          </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={series} margin={{ left: 0, right: 8, top: 8 }}>

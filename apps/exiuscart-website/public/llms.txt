@@ -104,6 +104,20 @@ Blog
 - GET  /public/store/{shop_slug}/blog — published posts; query: tag?
 - GET  /public/store/{shop_slug}/blog/{slug} — single post, full content
 
+Abandoned cart recovery
+- POST /public/store/{shop_slug}/checkout-started — body: email, items[].
+  Fire this the instant a real email is captured at checkout, before order
+  submission — the only signal ExiusCart's abandoned-cart recovery emails
+  run on.
+
+Popups & signup forms (only relevant if the seller has built one in their
+ExiusCart dashboard — keyed off the shop's numeric ID, not {shop_slug})
+- GET  /public/popups/{shop_id} — active on-site popups to render
+- POST /public/popups/{popup_id}/track?event=impression|click
+- GET  /public/signup-forms/{shop_id} — active embeddable lead/signup forms
+- POST /public/signup-forms/{form_id}/track — call once on impression
+- POST /public/signup-forms/{form_id}/submit — body: answers: {field_id: value}
+
 Full reference with request/response field lists, error shapes, and payment-
 gateway-specific fields: https://exiuscart.com/developers
 

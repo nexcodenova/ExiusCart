@@ -1154,17 +1154,6 @@ export const paymentGatewayApi = {
   rotateWebhookSecret: (shopId: string) => api.post(`/shops/${shopId}/channels/custom/rotate-webhook-secret`, {}),
 };
 
-export const payrollApi = {
-  getStaff: (shopId: string) => api.get(`/shops/${shopId}/payroll/staff`),
-  createStaff: (shopId: string, data: any) => api.post(`/shops/${shopId}/payroll/staff`, data),
-  updateStaff: (shopId: string, staffId: number, data: any) => api.patch(`/shops/${shopId}/payroll/staff/${staffId}`, data),
-  deleteStaff: (shopId: string, staffId: number) => api.delete(`/shops/${shopId}/payroll/staff/${staffId}`),
-  getRuns: (shopId: string) => api.get(`/shops/${shopId}/payroll/runs`),
-  createRun: (shopId: string, data: any) => api.post(`/shops/${shopId}/payroll/runs`, data),
-  getRun: (shopId: string, runId: number) => api.get(`/shops/${shopId}/payroll/runs/${runId}`),
-  markPaid: (shopId: string, runId: number) => api.patch(`/shops/${shopId}/payroll/runs/${runId}/pay`, {}),
-};
-
 export const loyaltyApi = {
   getSettings: (shopId: string) => api.get(`/shops/${shopId}/loyalty/settings`),
   updateSettings: (shopId: string, data: any) => api.patch(`/shops/${shopId}/loyalty/settings`, data),
