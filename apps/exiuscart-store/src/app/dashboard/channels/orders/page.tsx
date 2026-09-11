@@ -6,6 +6,8 @@ import {
   Receipt, PackageSearch, AlertTriangle, Truck, X,
 } from 'lucide-react';
 import { channelsApi, dropshipApi } from '@/lib/api';
+import { useCurrency } from '@/components/providers/currency-provider';
+import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import StatCard from '@/components/channels/listings/StatCard';
 import FiltersPanel, { OrderFiltersState, DEFAULT_ORDER_FILTERS } from '@/components/channels/orders/FiltersPanel';
 import OrdersTable, { ChannelOrderRow } from '@/components/channels/orders/OrdersTable';
@@ -21,6 +23,28 @@ const PAGE_SIZE = 50;
 interface Stats {
   total_revenue: number; orders_count: number; average_order_value: number;
   awaiting_fulfillment: number; needs_attention: number;
+  daily: { day: string; orders: number; revenue: number }[];
+}
+
+// Real trend line built from the stats endpoint's own per-day breakdown —
+// renders nothing until there are at least 2 real days to draw between.
+function MiniSparkline({ data, dataKey, color }: { data: { day: string }[]; dataKey: string; color: string }) {
+  if (!data || data.length < 2) return null;
+  return (
+    <div className="pointer-events-none absolute bottom-0 right-0 h-8 w-20 opacity-70">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data}>
+          <defs>
+            <linearGradient id={`co-spark-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={1.5} fill={`url(#co-spark-${dataKey})`} isAnimationActive={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
 }
 
 function dateRangeToApiParams(range: OrderFiltersState['dateRange']): { date_from?: string; date_to?: string } {
@@ -47,6 +71,7 @@ function downloadCsv(rows: ChannelOrderRow[]) {
 }
 
 export default function ChannelOrdersPage() {
+  const { fmt } = useCurrency();
   const [shopId, setShopId] = useState('');
   const [activeChannels, setActiveChannels] = useState<string[]>([]);
   const [activeSuppliers, setActiveSuppliers] = useState<string[]>([]);
@@ -163,12 +188,15 @@ export default function ChannelOrdersPage() {
       {/* Stat cards — real, from /channels/orders/stats, scoped to whatever
           channel + date filters are active so they always match the table. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        <StatCard title="Revenue (paid)" value={loadingStats ? '—' : `$${(stats?.total_revenue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-          icon={<DollarSign className="w-4 h-4" />} iconClassName="bg-primary/10 text-primary" />
+        <StatCard title="Revenue (paid)" value={loadingStats ? '—' : fmt(stats?.total_revenue ?? 0)}
+          icon={<DollarSign className="w-4 h-4" />} iconClassName="bg-primary/10 text-primary"
+          sparkline={<MiniSparkline data={stats?.daily ?? []} dataKey="revenue" color="#6366f1" />} />
         <StatCard title="Orders" value={loadingStats ? '—' : (stats?.orders_count ?? 0)}
-          icon={<ShoppingBag className="w-4 h-4" />} iconClassName="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
-        <StatCard title="Average order value" value={loadingStats ? '—' : `$${(stats?.average_order_value ?? 0).toFixed(2)}`}
-          icon={<Receipt className="w-4 h-4" />} iconClassName="bg-green-500/10 text-green-600 dark:text-green-400" />
+          icon={<ShoppingBag className="w-4 h-4" />} iconClassName="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          sparkline={<MiniSparkline data={stats?.daily ?? []} dataKey="orders" color="#3b82f6" />} />
+        <StatCard title="Average order value" value={loadingStats ? '—' : fmt(stats?.average_order_value ?? 0)}
+          icon={<Receipt className="w-4 h-4" />} iconClassName="bg-green-500/10 text-green-600 dark:text-green-400"
+          sparkline={<MiniSparkline data={(stats?.daily ?? []).map((d) => ({ ...d, aov: d.orders ? d.revenue / d.orders : 0 }))} dataKey="aov" color="#22c55e" />} />
         <StatCard title="Awaiting fulfillment" value={loadingStats ? '—' : (stats?.awaiting_fulfillment ?? 0)}
           icon={<PackageSearch className="w-4 h-4" />} iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400" />
         <StatCard title="Needs attention" value={loadingStats ? '—' : (stats?.needs_attention ?? 0)}

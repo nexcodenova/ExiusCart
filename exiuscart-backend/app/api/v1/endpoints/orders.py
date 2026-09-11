@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from pydantic import BaseModel
 import uuid
@@ -28,6 +28,8 @@ from app.models.bundle_component import BundleComponent
 from app.models.product_variant import ProductVariant
 from app.models.channel import ChannelConnection
 from app.models.dropship import DropshipOrder
+from app.models.activity_log import ActivityLog
+from app.core.activity import log_activity
 
 router = APIRouter()
 
@@ -261,6 +263,11 @@ async def create_order(
     db.commit()
     db.refresh(new_order)
 
+    # Not logged for POS — POS sales are unlimited/constant and would drown
+    # out the handful of channel/website events sellers actually watch for.
+    if not is_pos:
+        log_activity(db, shop_id, "order_created", "New order received", f"#{new_order.order_number}", order_id=new_order.id)
+
     if is_pos:
         from app.api.v1.endpoints.digital_delivery import create_digital_deliveries_for_order
         create_digital_deliveries_for_order(new_order, db)
@@ -313,9 +320,12 @@ NATIVE_ORDER_SOURCES = {"pos", "whatsapp", "online", "shopify"}
 async def get_orders(
     shop_id: int,
     status: Optional[str] = None,
+    payment_status: Optional[str] = None,
     source: Optional[str] = None,
     search: Optional[str] = None,
-    month: Optional[str] = None,  # format: "2025-01"
+    month: Optional[str] = None,  # format: "2025-01" — superseded by date_from/date_to below where both are given
+    date_from: Optional[str] = None,  # "YYYY-MM-DD" — real arbitrary range, unlike month
+    date_to: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(200, ge=1, le=2000),
     current_user: User = Depends(get_current_user),
@@ -325,6 +335,8 @@ async def get_orders(
 
     if status:
         query = query.filter(Order.status == status)
+    if payment_status:
+        query = query.filter(Order.payment_status == payment_status)
     if source:
         if source in NATIVE_ORDER_SOURCES:
             query = query.filter(Order.source == source)
@@ -338,7 +350,15 @@ async def get_orders(
             )
     if search:
         query = query.filter(Order.order_number.ilike(f"%{search}%"))
-    if month:
+    if date_from or date_to:
+        # Real arbitrary calendar range — same shape as Channel Orders' own
+        # date filter, so the Orders page's date picker can be the same
+        # real component instead of a whole-month-only list.
+        if date_from:
+            query = query.filter(Order.created_at >= datetime.fromisoformat(date_from))
+        if date_to:
+            query = query.filter(Order.created_at < datetime.fromisoformat(date_to) + timedelta(days=1))
+    elif month:
         try:
             year, mon = int(month[:4]), int(month[5:7])
             month_start = datetime(year, mon, 1, tzinfo=timezone.utc)
@@ -380,6 +400,32 @@ async def get_orders(
         for o in orders:
             o.channel_type = meta_by_order_id.get(o.id) or ("custom" if o.notes == "Custom Website order" else None)
     return orders
+
+
+@router.get("/shops/{shop_id}/activity-log")
+async def get_activity_log(
+    shop_id: int,
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Real order/payment lifecycle events for the Orders page's Recent
+    Activity panel — see app/models/activity_log.py for exact coverage."""
+    rows = (
+        db.query(ActivityLog)
+        .filter(ActivityLog.shop_id == shop_id)
+        .order_by(ActivityLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return {"events": [
+        {
+            "id": r.id, "event_type": r.event_type, "title": r.title,
+            "description": r.description, "order_id": r.order_id,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]}
 
 
 @router.get("/shops/{shop_id}/orders/{order_id}", response_model=OrderResponse)
@@ -457,6 +503,7 @@ async def ship_order(
     db.commit()
     db.refresh(order)
 
+    log_activity(db, shop_id, "order_shipped", "Order shipped", f"#{order.order_number}", order_id=order.id)
     _notify_channel_order(order_id, "shipped", db, tracking_number=data.tracking_number, tracking_courier=data.carrier, delivery_cost=data.delivery_cost)
 
     return order
@@ -503,6 +550,11 @@ async def update_order_status(
     order.status = data.status
     db.commit()
     db.refresh(order)
+
+    if data.status == "cancelled" and previous_status != "cancelled":
+        log_activity(db, shop_id, "order_cancelled", "Order cancelled", f"#{order.order_number}", order_id=order.id)
+    elif data.status == "delivered" and previous_status != "delivered":
+        log_activity(db, shop_id, "order_delivered", "Order delivered", f"#{order.order_number}", order_id=order.id)
 
     # Push restored stock back to TheDersi so the marketplace count matches
     from app.api.v1.endpoints.channels import _bg_push_stock
@@ -865,7 +917,7 @@ async def refund_order(
     # the gate immediately rather than leaving it valid until its normal
     # 30-day window runs out.
     from app.models.digital_delivery import DigitalDelivery
-    from datetime import datetime, timezone
+    from datetime import datetime, timezone, timedelta
     db.query(DigitalDelivery).filter(DigitalDelivery.order_id == order.id).update(
         {"expires_at": datetime.now(timezone.utc)}
     )

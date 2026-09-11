@@ -32,6 +32,7 @@ from app.models.product_variant import ProductVariant
 from app.models.user import User
 from app.api.v1.deps import get_current_user
 from app.core.rate_limit import limiter
+from app.core.activity import log_activity
 
 SUPPORTED_GATEWAYS = ("payhere", "stripe", "paypal", "whop")
 
@@ -267,6 +268,8 @@ def public_store_checkout(
     db.commit()
     db.refresh(order)
 
+    log_activity(db, shop.id, "order_created", "New order received", f"#{order.order_number}", order_id=order.id)
+
     payment_params = _build_payment_params(conn, shop, order, total, data.return_url, data.cancel_url)
     return {"order_number": order.order_number, "total": float(total), "payment": payment_params}
 
@@ -434,6 +437,12 @@ def _mark_order_paid_or_failed(order: Order, is_paid: bool, db: Session):
                     if variant:
                         variant.quantity = max(0, (variant.quantity or 0) - item.quantity)
         db.commit()
+
+        # No currency symbol here — shops price in different currencies
+        # (AED/LKR/USD/...) and this description has no Shop row in scope
+        # to format against; the frontend already knows the shop's currency
+        # and formats order.total itself wherever it needs to.
+        log_activity(db, order.shop_id, "payment_received", "Payment received", f"Order #{order.order_number}", order_id=order.id)
 
         from app.api.v1.endpoints.wallet import credit_wallet_for_order
         credit_wallet_for_order(order, db)

@@ -55,3 +55,4 @@ from app.models.storefront_event import StorefrontEvent
 from app.models.prodora_digital import ProdoraDigitalBundle, ProdoraDigitalPurchase
 from app.models.social_posting import SocialAccountConnection, SocialPost
 from app.models.whatsapp_marketing import WhatsAppConnection, WhatsAppTemplate, WhatsAppCampaign, WhatsAppMessageLog
+from app.models.activity_log import ActivityLog

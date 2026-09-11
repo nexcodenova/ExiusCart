@@ -17,6 +17,8 @@ import FlowDiagram from '@/components/channels/directory/FlowDiagram';
 import HowItWorks from '@/components/channels/directory/HowItWorks';
 import SecurityPanel from '@/components/channels/directory/SecurityPanel';
 import SyncCenter from '@/components/channels/directory/SyncCenter';
+import ChannelLogo from '@/components/channels/ChannelLogo';
+import { channelMeta } from '@/components/channels/channelMeta';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -132,7 +134,7 @@ export default function ChannelsPage() {
       onAction: shopifyConnected
         ? () => router.push('/dashboard/channels/integrations/shopify')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('Shopify')
+          ? () => setDersiBlockChannel('shopify')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/shopify'),
@@ -150,7 +152,7 @@ export default function ChannelsPage() {
       onAction: hasEtsy
         ? () => router.push('/dashboard/channels/integrations/etsy')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('Etsy')
+          ? () => setDersiBlockChannel('etsy')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/etsy'),
@@ -168,7 +170,7 @@ export default function ChannelsPage() {
       onAction: hasCustomWebsite
         ? () => router.push('/dashboard/channels/integrations/custom-website')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('Custom Website')
+          ? () => setDersiBlockChannel('custom')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/custom-website'),
@@ -186,7 +188,7 @@ export default function ChannelsPage() {
       onAction: hasWooCommerce
         ? () => router.push('/dashboard/channels/integrations/woocommerce')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('WooCommerce')
+          ? () => setDersiBlockChannel('woocommerce')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/woocommerce'),
@@ -204,7 +206,7 @@ export default function ChannelsPage() {
       onAction: hasBigCommerce
         ? () => router.push('/dashboard/channels/integrations/bigcommerce')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('BigCommerce')
+          ? () => setDersiBlockChannel('bigcommerce')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/bigcommerce'),
@@ -218,7 +220,7 @@ export default function ChannelsPage() {
       description: 'Connect your Wix store — products, orders, and inventory stay in sync automatically.',
       icon: <Globe className="w-5 h-5 text-[#000000] dark:text-white" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Wix Stores') : undefined,
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('wix') : undefined,
     },
     // ── Row 2: eBay, Amazon, Instagram, TikTok Shop ──
     {
@@ -233,7 +235,7 @@ export default function ChannelsPage() {
       onAction: hasEbay
         ? () => router.push('/dashboard/channels/integrations/ebay')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('eBay')
+          ? () => setDersiBlockChannel('ebay')
           : canUseEbay
             ? () => router.push('/dashboard/channels/integrations/ebay')
             : () => setEbayLocked(true),
@@ -247,7 +249,7 @@ export default function ChannelsPage() {
       description: 'List and manage your Amazon products and orders through ExiusCart.',
       icon: <Package className="w-5 h-5 text-orange-400" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Amazon') : undefined,
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('amazon') : undefined,
     },
     {
       id: 'instagram',
@@ -257,7 +259,7 @@ export default function ChannelsPage() {
       description: 'Tag products in your Instagram posts and stories. Orders sync to ExiusCart.',
       icon: <Instagram className="w-5 h-5 text-pink-400" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Instagram Shopping') : undefined,
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('instagram') : undefined,
     },
     {
       // Gated the same way as Noon/Shopify/Custom Website — Starter picks
@@ -276,7 +278,7 @@ export default function ChannelsPage() {
       onAction: hasTikTok
         ? () => router.push('/dashboard/channels/integrations/tiktok')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('TikTok Shop')
+          ? () => setDersiBlockChannel('tiktok')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/tiktok'),
@@ -295,7 +297,7 @@ export default function ChannelsPage() {
       onAction: hasNoon
         ? () => router.push('/dashboard/channels/integrations/noon')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('Noon')
+          ? () => setDersiBlockChannel('noon')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/noon'),
@@ -309,7 +311,7 @@ export default function ChannelsPage() {
       description: "Turkey's largest online marketplace. List products and manage orders through ExiusCart.",
       icon: <ShoppingBag className="w-5 h-5 text-[#F27A1A]" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Trendyol') : undefined,
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('trendyol') : undefined,
     },
     {
       id: 'walmart',
@@ -319,7 +321,7 @@ export default function ChannelsPage() {
       description: 'Reach US shoppers on Walmart Marketplace. List products and manage orders through ExiusCart.',
       icon: <Store className="w-5 h-5 text-[#0071CE]" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Walmart') : undefined,
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('walmart') : undefined,
     },
     {
       id: 'jumia',
@@ -329,7 +331,7 @@ export default function ChannelsPage() {
       description: "Africa's leading marketplace. List products and manage orders through ExiusCart.",
       icon: <ShoppingBag className="w-5 h-5 text-[#F68B1E]" />,
       badge: 'soon',
-      onAction: isTheDersiUser ? () => setDersiBlockChannel('Jumia') : undefined,
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('jumia') : undefined,
     },
     // ── Row 4 (last): Daraz, TheDersi — the two channels TheDersi sellers can use ──
     {
@@ -373,7 +375,7 @@ export default function ChannelsPage() {
       onAction: hasWhop
         ? () => router.push('/dashboard/channels/integrations/whop')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('Whop')
+          ? () => setDersiBlockChannel('whop')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/whop'),
@@ -391,7 +393,7 @@ export default function ChannelsPage() {
       onAction: hasGumroad
         ? () => router.push('/dashboard/channels/integrations/gumroad')
         : isTheDersiUser
-          ? () => setDersiBlockChannel('Gumroad')
+          ? () => setDersiBlockChannel('gumroad')
           : channelLimitReached
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/gumroad'),
@@ -444,7 +446,7 @@ export default function ChannelsPage() {
         </div>
         <div className="flex gap-2.5 shrink-0">
           <Button variant="outline" asChild>
-            <Link href="/dashboard/helpdesk"><FileText className="w-4 h-4" /> View Documentation</Link>
+            <Link href="/dashboard/channels/docs"><FileText className="w-4 h-4" /> View Documentation</Link>
           </Button>
           <Button onClick={() => setConnectModalOpen(true)}>
             <Plus className="w-4 h-4" /> Connect Channel
@@ -594,7 +596,7 @@ export default function ChannelsPage() {
           <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="w-10 h-10 rounded-full bg-[#E53238]/10 flex items-center justify-center shrink-0">
-                <Tag className="w-5 h-5 text-[#E53238]" />
+                <ChannelLogo channelType="ebay" size={22} />
               </div>
               <button type="button" onClick={() => setEbayLocked(false)}
                 className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
@@ -620,7 +622,7 @@ export default function ChannelsPage() {
           <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
-                <ShoppingBag className="w-5 h-5 text-orange-500" />
+                <ChannelLogo channelType="daraz" size={22} />
               </div>
               <button type="button" onClick={() => setDarazLocked(false)}
                 className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
@@ -648,7 +650,7 @@ export default function ChannelsPage() {
           <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Link2 className="w-5 h-5 text-primary" />
+                <ChannelLogo channelType={dersiBlockChannel} size={22} />
               </div>
               <button type="button" onClick={() => setDersiBlockChannel(null)}
                 className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
@@ -656,9 +658,9 @@ export default function ChannelsPage() {
               </button>
             </div>
             <div>
-              <p className="font-semibold text-foreground">{dersiBlockChannel}</p>
+              <p className="font-semibold text-foreground">{channelMeta(dersiBlockChannel).label}</p>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                {dersiBlockChannel} is only available for direct ExiusCart sellers. Your store is managed by TheDersi — you can sell on <strong className="text-foreground">TheDersi</strong>, and on <strong className="text-foreground">Daraz</strong> with TheDersi Pro.
+                {channelMeta(dersiBlockChannel).label} is only available for direct ExiusCart sellers. Your store is managed by TheDersi — you can sell on <strong className="text-foreground">TheDersi</strong>, and on <strong className="text-foreground">Daraz</strong> with TheDersi Pro.
               </p>
             </div>
             <button type="button" onClick={() => setDersiBlockChannel(null)}

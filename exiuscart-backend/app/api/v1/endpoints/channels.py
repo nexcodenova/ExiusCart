@@ -29,6 +29,7 @@ from pydantic import BaseModel
 
 from app.core.database import get_db, SessionLocal
 from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature, is_thedersi_shop
+from app.core.activity import log_activity
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -1158,6 +1159,8 @@ async def receive_order_webhook(
     ))
 
     db.commit()
+
+    log_activity(db, conn.shop_id, "order_created", "New order received", f"#{order_number}", order_id=order.id)
 
     # Push updated stock to TheDersi for all products whose stock changed
     for pid in stock_changed_product_ids:
@@ -2898,10 +2901,20 @@ def get_channel_orders_stats(
     awaiting = q.filter(_fulfillment_key_expr(DropshipOrder) == "awaiting").count()
     attention = q.filter(_needs_attention_expr(DropshipOrder)).count()
 
+    # Real per-day series for the KPI cards' sparklines — grouped straight
+    # off the same filtered query, not a separate approximation.
+    day_col = sql_func.date(Order.created_at)
+    daily_rows = (
+        q.with_entities(day_col.label("day"), sql_func.count(Order.id), sql_func.coalesce(sql_func.sum(Order.total), 0))
+        .group_by(day_col).order_by(day_col).all()
+    )
+    daily = [{"day": str(d), "orders": c, "revenue": float(r)} for d, c, r in daily_rows]
+
     return {
         "total_revenue": round(revenue, 2),
         "orders_count": orders_count,
         "average_order_value": round(revenue / orders_count, 2) if orders_count else 0,
         "awaiting_fulfillment": awaiting,
         "needs_attention": attention,
+        "daily": daily,
     }

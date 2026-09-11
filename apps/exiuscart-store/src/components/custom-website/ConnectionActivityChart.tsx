@@ -43,7 +43,8 @@ export default function ConnectionActivityChart({ shopId }: { shopId: string }) 
               <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={10}
                 tickFormatter={(d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} />
               <YAxis tickLine={false} axisLine={false} fontSize={10} width={24} allowDecimals={false} />
-              <Tooltip labelFormatter={(d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} />
+              <Tooltip labelFormatter={(d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                cursor={false} />
               <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

@@ -5,6 +5,7 @@ import { Loader2, ArrowUpRight } from 'lucide-react';
 import ChannelLogo from '../ChannelLogo';
 import { CHANNEL_META } from '../channelMeta';
 import { PaymentBadge, FulfillmentBadge } from './OrderBadges';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 export interface ChannelOrderRow {
   id: number;
@@ -37,6 +38,7 @@ export default function OrdersTable({
   onToggleSelectAll: (checked: boolean) => void;
 }) {
   const router = useRouter();
+  const { fmt } = useCurrency();
   const allSelected = rows.length > 0 && selected.length === rows.length;
   const goToOrder = (id: number) => router.push(`/dashboard/orders/${id}`);
 
@@ -97,7 +99,7 @@ export default function OrdersTable({
                 {order.customer_email && <p className="text-xs text-muted-foreground">{order.customer_email}</p>}
               </td>
               <td className="px-3 py-3 text-muted-foreground">{order.items_count} item{order.items_count === 1 ? '' : 's'}</td>
-              <td className="px-3 py-3 font-bold text-foreground">${order.total.toFixed(2)}</td>
+              <td className="px-3 py-3 font-bold text-foreground">{fmt(order.total)}</td>
               <td className="px-3 py-3"><PaymentBadge status={order.payment_status} /></td>
               <td className="px-3 py-3"><FulfillmentBadge fulfillmentKey={order.fulfillment_key} label={order.fulfillment_label} /></td>
               <td className="px-3 py-3 text-muted-foreground">{order.supplier_label ?? '—'}</td>

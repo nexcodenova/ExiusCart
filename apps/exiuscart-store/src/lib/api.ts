@@ -147,7 +147,7 @@ export const storefrontInsightsApi = {
 
 // ── Orders ────────────────────────────────────────────
 export const ordersApi = {
-  getAll: (shopId: string, params?: { status?: string; search?: string; month?: string; source?: string; limit?: number }) =>
+  getAll: (shopId: string, params?: { status?: string; payment_status?: string; search?: string; month?: string; date_from?: string; date_to?: string; source?: string; limit?: number }) =>
     api.get(`/shops/${shopId}/orders`, { params }),
   getOne: (shopId: string, orderId: string) =>
     api.get(`/shops/${shopId}/orders/${orderId}`),
@@ -177,6 +177,8 @@ export const ordersApi = {
   },
   setDeliveryCost: (shopId: string, orderId: string, deliveryCost: number) =>
     api.post(`/shops/${shopId}/orders/${orderId}/delivery-cost`, { delivery_cost: deliveryCost }),
+  getActivityLog: (shopId: string, limit = 10) =>
+    api.get(`/shops/${shopId}/activity-log`, { params: { limit } }),
 };
 
 // ── Customers ─────────────────────────────────────────
