@@ -75,6 +75,10 @@ class OrderResponse(BaseModel):
     # order not yet fulfilled).
     fulfillment_supplier: Optional[str] = None
     fulfillment_status: Optional[str] = None
+    # Real channel this order came through (ebay/daraz/custom/etc., resolved
+    # from ChannelOrderMeta or Order.notes) — None for POS/WhatsApp/online/
+    # Shopify orders, which are already distinguishable via `source`.
+    channel_type: Optional[str] = None
     items: List[OrderItemResponse] = []
     created_at: datetime
 

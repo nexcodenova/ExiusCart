@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, Landmark, BarChart2, RefreshCw, Lock, ChevronRight } from 'lucide-react';
+import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, Landmark, BarChart2, RefreshCw, Lock, ChevronRight, MessageCircle, Globe, Calendar as CalendarIcon } from 'lucide-react';
 import Link from 'next/link';
-import { ordersApi, subscriptionApi, dropshipApi, channelsApi } from '@/lib/api';
+import { ordersApi, subscriptionApi, dropshipApi, channelsApi, shopifyApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { channelMeta } from '@/components/channels/channelMeta';
+import ChannelLogo from '@/components/channels/ChannelLogo';
 
 function getMonthOptions() {
   const options: { value: string; label: string }[] = [];
@@ -50,6 +53,12 @@ interface Order {
   estimated_delivery: string | null;
   fulfillment_supplier: string | null;
   fulfillment_status: string | null;
+  // Real channel this order came through (ebay/daraz/custom/thedersi/etc.)
+  // — resolved server-side from ChannelOrderMeta since `source` itself is
+  // just "channel" for every connected marketplace (see NATIVE_ORDER_SOURCES
+  // below). Null for POS/WhatsApp/online/Shopify orders, which `source`
+  // already identifies on its own.
+  channel_type: string | null;
   items: OrderItem[];
   created_at: string;
 }
@@ -77,15 +86,116 @@ interface ShipModalProps {
 
 const FREE_DELIVERY_THRESHOLD = 10000;
 
-const CHANNEL_META: Record<string, { label: string; bg: string; text: string; dot: string; border: string }> = {
-  pos:            { label: 'Point of Sale',   bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500', border: 'border-emerald-500/20' },
-  thedersi:       { label: 'TheDersi',        bg: 'bg-indigo-500/10',  text: 'text-indigo-600 dark:text-indigo-400',   dot: 'bg-indigo-500',  border: 'border-indigo-500/20' },
-  shopify:        { label: 'Shopify',         bg: 'bg-green-500/10',   text: 'text-green-600 dark:text-green-400',     dot: 'bg-green-500',   border: 'border-green-500/20' },
-  custom_website: { label: 'Custom Website',  bg: 'bg-blue-500/10',    text: 'text-blue-600 dark:text-blue-400',       dot: 'bg-blue-500',    border: 'border-blue-500/20' },
-  daraz:          { label: 'Daraz',           bg: 'bg-orange-500/10',  text: 'text-orange-600 dark:text-orange-400',   dot: 'bg-orange-500',  border: 'border-orange-500/20' },
-  website:        { label: 'Website',         bg: 'bg-purple-500/10',  text: 'text-purple-600 dark:text-purple-400',   dot: 'bg-purple-500',  border: 'border-purple-500/20' },
-  manual:         { label: 'Manual',          bg: 'bg-gray-500/10',    text: 'text-gray-600 dark:text-gray-400',       dot: 'bg-gray-400',    border: 'border-gray-500/20' },
+// Order.source only ever literally holds these three plus "shopify" and the
+// generic "channel" bucket (see OrderSource enum backend-side) — every real
+// marketplace (eBay, Daraz, Custom Website, TheDersi, ...) writes
+// source="channel" and is told apart via order.channel_type instead (see
+// the Order interface above). These three are ExiusCart's own native
+// order-taking methods, not third-party "sales channels", so they get their
+// own small icon set rather than living in the shared channel-logo registry.
+const NATIVE_SOURCE_META: Record<string, { label: string; icon: React.ElementType; className: string }> = {
+  pos: { label: 'Point of Sale', icon: ShoppingCart, className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  whatsapp: { label: 'WhatsApp', icon: MessageCircle, className: 'bg-green-500/10 text-green-600 dark:text-green-400' },
+  online: { label: 'Online Store', icon: Globe, className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
 };
+
+// One real channel identity for an order — native source (POS/WhatsApp/
+// Online) or a real connected sales channel (with its real brand logo),
+// used consistently across the revenue breakdown, the channel filter, and
+// every order row/card below. `key` is what the backend's ?source= filter
+// (or the resolved channel_type) actually matches.
+function channelVisual(key: string): { key: string; label: string; icon: React.ReactNode; className: string } {
+  const native = NATIVE_SOURCE_META[key];
+  if (native) {
+    const Icon = native.icon;
+    return { key, label: native.label, icon: <Icon className="w-3 h-3" />, className: native.className };
+  }
+  const meta = channelMeta(key);
+  return { key, label: meta.label, icon: <ChannelLogo channelType={key} size={12} />, className: 'bg-muted text-foreground' };
+}
+
+function ChannelPill({ order }: { order: Order }) {
+  const v = channelVisual(order.channel_type ?? order.source);
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full self-start ${v.className}`}>
+      {v.icon} {v.label}
+    </span>
+  );
+}
+
+// Same "trigger button + popover checklist" shape as Channel Listings' own
+// filters. Real capability here is one whole month at a time (the backend
+// only ever takes a "YYYY-MM"), not an arbitrary range — so this is a
+// month picker, not a full date-range calendar, on purpose.
+function MonthPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = value ? MONTH_OPTIONS.find((o) => o.value === value)?.label ?? value : 'All time';
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="w-full sm:w-48 h-[38px] px-3 flex items-center gap-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30">
+          <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+          <span className="truncate">{current}</span>
+          <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2" align="start">
+        <div className="max-h-80 overflow-y-auto space-y-0.5">
+          <button onClick={() => { onChange(''); setOpen(false); }}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-left transition ${!value ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
+            All time {!value && <Check className="w-3.5 h-3.5" />}
+          </button>
+          {MONTH_OPTIONS.map((o) => (
+            <button key={o.value} onClick={() => { onChange(o.value); setOpen(false); }}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-left transition ${value === o.value ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
+              {o.label} {value === o.value && <Check className="w-3.5 h-3.5" />}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Single-select channel filter with real brand logos — only channels
+// actually connected are offered (picking a disconnected one would always
+// silently match zero orders, same trap the old plain <select> fell into
+// by listing all ~18 CHANNEL_META entries regardless of connection state).
+function ChannelFilterPicker({ options, value, onChange }: {
+  options: { key: string; label: string; icon: React.ReactNode }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = options.find((o) => o.key === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="w-full sm:w-48 h-[38px] px-3 flex items-center gap-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30">
+          {current ? current.icon : <Package className="w-4 h-4 text-muted-foreground shrink-0" />}
+          <span className="truncate">{current ? current.label : 'All Channels'}</span>
+          <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2" align="start">
+        <div className="max-h-80 overflow-y-auto space-y-0.5">
+          <button onClick={() => { onChange('all'); setOpen(false); }}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-left transition ${value === 'all' ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
+            All Channels
+          </button>
+          {options.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-3 py-2">No channels connected yet</p>
+          ) : options.map((o) => (
+            <button key={o.key} onClick={() => { onChange(o.key); setOpen(false); }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-left transition ${value === o.key ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
+              {o.icon} {o.label}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -97,7 +207,11 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
   const [error, setError] = useState('');
 
   const isFreeDelivery = Number(order.total) >= FREE_DELIVERY_THRESHOLD;
-  const isTheDersi = order.source === 'thedersi';
+  // Was `order.source === 'thedersi'` — always false, since TheDersi orders
+  // (like every connected channel) actually carry source="channel"; the
+  // real channel type only ever showed up on order.channel_type. This
+  // modal's TheDersi-specific delivery-cost field was silently dead.
+  const isTheDersi = order.channel_type === 'thedersi';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -458,6 +572,12 @@ export default function OrdersPage() {
   const [plan, setPlan] = useState('');
   const [hasTheDersi, setHasTheDersi] = useState(false);
   const [connectedSuppliers, setConnectedSuppliers] = useState<string[]>([]);
+  // Real connected sales channels, for the channel filter dropdown below —
+  // only channels actually connected are offered, same convention as
+  // Channel Listings/Channel Orders (never list ones that would always
+  // silently match zero orders).
+  const [connectedChannelTypes, setConnectedChannelTypes] = useState<string[]>([]);
+  const [hasShopify, setHasShopify] = useState(false);
   const [fulfillTarget, setFulfillTarget] = useState<Order | null>(null);
   const { fmt } = useCurrency();
 
@@ -474,7 +594,11 @@ export default function OrdersPage() {
   const channelBreakdown = useMemo(() => {
     const map: Record<string, { orders: number; revenue: number; cash: number; card: number; bankTransfer: number; split: number }> = {};
     for (const o of salesOrders) {
-      const src = o.source || 'other';
+      // Bucket by the real channel (eBay, Daraz, Custom Website, ...) when
+      // there is one — every connected channel otherwise collapsed into one
+      // meaningless "channel" bucket, since that's the literal value of
+      // Order.source for all of them.
+      const src = o.channel_type || o.source || 'other';
       if (!map[src]) map[src] = { orders: 0, revenue: 0, cash: 0, card: 0, bankTransfer: 0, split: 0 };
       map[src].orders += 1;
       map[src].revenue += Number(o.total);
@@ -489,6 +613,13 @@ export default function OrdersPage() {
     return Object.entries(map).sort((a, b) => b[1].revenue - a[1].revenue);
   }, [salesOrders]);
 
+  // Native order-taking methods are always offered; real sales channels only
+  // once actually connected.
+  const channelFilterOptions = useMemo(() => {
+    const keys = ['pos', 'whatsapp', 'online', ...(hasShopify ? ['shopify'] : []), ...connectedChannelTypes];
+    return keys.map((k) => { const v = channelVisual(k); return { key: k, label: v.label, icon: v.icon }; });
+  }, [hasShopify, connectedChannelTypes]);
+
   useEffect(() => { setShopId(localStorage.getItem('shop_id') ?? ''); }, []);
 
   useEffect(() => {
@@ -500,8 +631,17 @@ export default function OrdersPage() {
     // TheDersi's Growth/Premium tier maps to plan_type='starter', same as
     // a direct customer, so a plan-string check alone misses them.
     channelsApi.getConnections(shopId)
-      .then((r) => setHasTheDersi((r.data ?? []).some((c: any) => c.channel_type === 'thedersi')))
+      .then((r) => {
+        const connections = r.data ?? [];
+        setHasTheDersi(connections.some((c: any) => c.channel_type === 'thedersi'));
+        setConnectedChannelTypes(connections.map((c: any) => c.channel_type));
+      })
       .catch(() => {});
+    // Shopify is tracked through a completely separate system (no
+    // ChannelConnection row), so it needs its own status check.
+    shopifyApi.getStatus(shopId)
+      .then((r) => setHasShopify(Boolean(r.data?.connected)))
+      .catch(() => setHasShopify(false));
     dropshipApi.getConnections(shopId)
       .then((r) => {
         const active = (r.data?.connections ?? []).filter((c: any) => c.is_active).map((c: any) => c.supplier_type as string);
@@ -699,16 +839,16 @@ export default function OrdersPage() {
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {channelBreakdown.map(([channel, stats]) => {
-              const meta = CHANNEL_META[channel] ?? { label: channel, bg: 'bg-muted', text: 'text-foreground', dot: 'bg-gray-400', border: 'border-border' };
+              const v = channelVisual(channel);
               const pct = totalRevenue > 0 ? (stats.revenue / totalRevenue) * 100 : 0;
               return (
-                <div key={channel} className={`rounded-xl border ${meta.border} bg-card p-3`}>
+                <div key={channel} className="rounded-xl border border-border bg-card p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${meta.dot} shrink-0`} />
-                      <p className={`text-xs font-semibold ${meta.text}`}>{meta.label}</p>
+                      {v.icon}
+                      <p className="text-xs font-semibold text-foreground">{v.label}</p>
                     </div>
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${meta.bg} ${meta.text}`}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${v.className}`}>
                       {pct.toFixed(0)}%
                     </span>
                   </div>
@@ -741,9 +881,11 @@ export default function OrdersPage() {
                     </div>
                   )}
 
-                  {/* Revenue bar */}
+                  {/* Revenue bar — one consistent fill colour across every
+                      channel now that real logos (not per-channel dot
+                      colours) are what tells channels apart */}
                   <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-                    <div className={`h-full ${meta.dot} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
@@ -765,34 +907,8 @@ export default function OrdersPage() {
             className="w-full pl-9 pr-3 py-2 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
           />
         </div>
-        <div className="relative">
-          <select
-            value={monthFilter}
-            onChange={(e) => setMonthFilter(e.target.value)}
-            aria-label="Filter by month"
-            className="appearance-none w-full sm:w-44 px-3 py-2 pr-8 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-          >
-            <option value="">All Time</option>
-            {MONTH_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        </div>
-        <div className="relative">
-          <select
-            value={channelFilter}
-            onChange={(e) => setChannelFilter(e.target.value)}
-            aria-label="Filter by channel"
-            className="appearance-none w-full sm:w-40 px-3 py-2 pr-8 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-          >
-            <option value="all">All Channels</option>
-            {Object.entries(CHANNEL_META).map(([key, meta]) => (
-              <option key={key} value={key}>{meta.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        </div>
+        <MonthPicker value={monthFilter} onChange={setMonthFilter} />
+        <ChannelFilterPicker options={channelFilterOptions} value={channelFilter} onChange={setChannelFilter} />
         <div className="relative">
           <select
             value={statusFilter}
@@ -884,24 +1000,19 @@ export default function OrdersPage() {
                         <span className="text-xs text-muted-foreground">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</span>
                       </td>
                       <td className="p-3 hidden sm:table-cell">
-                        {order.source === 'pos' ? (
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 self-start">POS</span>
-                            {order.notes && (() => {
-                              const m = order.notes.match(/Payment:\s*(\w+)/i);
-                              if (!m) return null;
-                              const method = m[1].toLowerCase();
-                              const cls = method === 'cash' ? 'text-green-600 dark:text-green-400'
-                                : method === 'card' ? 'text-blue-600 dark:text-blue-400'
-                                : method === 'split' ? 'text-purple-600 dark:text-purple-400'
-                                : 'text-muted-foreground';
-                              return <p className={`text-xs capitalize font-medium ${cls}`}>{method}</p>;
-                            })()}
-                          </div>
-                        ) : (() => {
-                          const meta = CHANNEL_META[order.source] ?? { label: order.source, bg: 'bg-muted', text: 'text-muted-foreground', dot: 'bg-gray-400', border: 'border-border' };
-                          return <span className={`text-xs px-2 py-1 rounded-full self-start ${meta.bg} ${meta.text}`}>{meta.label}</span>;
-                        })()}
+                        <div className="flex flex-col gap-1">
+                          <ChannelPill order={order} />
+                          {order.source === 'pos' && order.notes && (() => {
+                            const m = order.notes.match(/Payment:\s*(\w+)/i);
+                            if (!m) return null;
+                            const method = m[1].toLowerCase();
+                            const cls = method === 'cash' ? 'text-green-600 dark:text-green-400'
+                              : method === 'card' ? 'text-blue-600 dark:text-blue-400'
+                              : method === 'split' ? 'text-purple-600 dark:text-purple-400'
+                              : 'text-muted-foreground';
+                            return <p className={`text-xs capitalize font-medium ${cls}`}>{method}</p>;
+                          })()}
+                        </div>
                       </td>
                       <td className="p-3 text-right">
                         <span className="text-sm font-semibold text-foreground">{fmt(order.total)}</span>
@@ -1041,9 +1152,6 @@ export default function OrdersPage() {
               every button its own row instead of fighting for width. */}
           <div className="md:hidden divide-y divide-border">
             {orders.map((order) => {
-              const meta = order.source === 'pos'
-                ? { label: 'POS', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' }
-                : (CHANNEL_META[order.source] ?? { label: order.source, bg: 'bg-muted', text: 'text-muted-foreground' });
               return (
                 <div key={order.id} className="p-4" onClick={() => window.location.href = `/dashboard/orders/${order.id}`}>
                   <div className="flex items-start justify-between gap-3">
@@ -1061,7 +1169,7 @@ export default function OrdersPage() {
                     <span className="text-sm font-semibold text-foreground shrink-0">{fmt(order.total)}</span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${meta.bg} ${meta.text}`}>{meta.label}</span>
+                    <ChannelPill order={order} />
                     <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${STATUS_STYLES[order.status] ?? 'bg-muted text-muted-foreground'}`}>{order.status}</span>
                     {order.customer_name && <span className="text-xs text-muted-foreground truncate">{order.customer_name}</span>}
                   </div>

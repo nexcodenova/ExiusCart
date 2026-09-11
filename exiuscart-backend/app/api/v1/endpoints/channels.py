@@ -18,7 +18,7 @@ import uuid
 import logging
 import httpx
 from slugify import slugify
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
@@ -2711,3 +2711,197 @@ def bulk_create_storefront_categories(
     for c in created:
         db.refresh(c)
     return {"created": [_cat_out(c) for c in created], "skipped": len(data.names) - len(created)}
+
+
+# ── Channel Orders ─────────────────────────────────────────────────────────
+# A channel-performance view, not a second order-management UI — it lists
+# only orders that actually came through a connected sales channel (a
+# ChannelOrderMeta row, written by every marketplace channel on sync — see
+# get_channel_stats above — or Order.notes == "Custom Website order" for
+# Custom Website, which has no ChannelOrderMeta). POS/WhatsApp/native online
+# orders are deliberately excluded; that's what the main Orders page is for.
+# Clicking a row on the frontend goes straight to the existing
+# /dashboard/orders/{id} detail page — this file has no order-detail
+# endpoint of its own, on purpose.
+#
+# "Needs attention" is real, not decorative: payment_status=="failed" or a
+# dropship send to the supplier that itself failed. Every filter below is
+# applied in SQL (not fetched-then-filtered-in-Python) so pagination and the
+# stats endpoint's totals stay accurate together.
+
+SUPPLIER_LABELS = {"cj": "CJ Dropshipping", "hypersku": "HyperSKU", "aliexpress": "AliExpress", "printful": "Printful"}
+
+# Raw fulfillment "key" (what's filtered on) -> display label shown in the UI.
+# Distinct from dropship/order status strings because the two source columns
+# don't share a vocabulary (dropship has "pending", order has "confirmed" —
+# both mean "Awaiting" here) — no fabricated states like "On hold" invented
+# to fill a gap; a payment failure surfaces via needs_attention instead.
+FULFILLMENT_LABELS = {
+    "awaiting": "Awaiting", "processing": "Processing", "shipped": "Shipped",
+    "delivered": "Delivered", "cancelled": "Cancelled", "failed": "Failed",
+}
+
+
+def _channel_type_expr():
+    from sqlalchemy import case
+    return case(
+        (ChannelOrderMeta.channel_type.isnot(None), ChannelOrderMeta.channel_type),
+        (Order.notes == "Custom Website order", "custom"),
+        else_=None,
+    )
+
+
+def _fulfillment_key_expr(dropship_order_model):
+    from sqlalchemy import case
+    return case(
+        (dropship_order_model.status == "pending", "awaiting"),
+        (dropship_order_model.status.isnot(None), dropship_order_model.status),
+        (Order.status.in_(["pending", "confirmed"]), "awaiting"),
+        else_=Order.status,
+    )
+
+
+def _needs_attention_expr(dropship_order_model):
+    from sqlalchemy import or_
+    return or_(Order.payment_status == "failed", dropship_order_model.status == "failed")
+
+
+def _channel_orders_joined(db: Session, shop_id: int):
+    """Bare Order+DropshipOrder join, filtered down to real channel orders —
+    the shared base every endpoint below adds its own SELECT/filters onto.
+    Kept free of labeled columns so it's safe to reuse with .with_entities()
+    for aggregates (a .subquery() here would collide Order.id/status against
+    DropshipOrder.id/status, which both use those same column names)."""
+    from app.models.dropship import DropshipOrder
+    q = (
+        db.query(Order, DropshipOrder)
+        .outerjoin(ChannelOrderMeta, ChannelOrderMeta.order_id == Order.id)
+        .outerjoin(DropshipOrder, DropshipOrder.order_id == Order.id)
+        .filter(Order.shop_id == shop_id)
+        .filter(_channel_type_expr().isnot(None))
+    )
+    return q, DropshipOrder
+
+
+def _channel_orders_base_query(db: Session, shop_id: int):
+    q, DropshipOrder = _channel_orders_joined(db, shop_id)
+    channel_expr = _channel_type_expr().label("channel_type")
+    fulfillment_expr = _fulfillment_key_expr(DropshipOrder).label("fulfillment_key")
+    attention_expr = _needs_attention_expr(DropshipOrder).label("needs_attention")
+    q = q.with_entities(Order, channel_expr, DropshipOrder, fulfillment_expr, attention_expr)
+    return q, DropshipOrder
+
+
+def _apply_shared_filters(q, channel: Optional[str], date_from: Optional[str], date_to: Optional[str]):
+    if channel:
+        wanted = [c.strip() for c in channel.split(",") if c.strip()]
+        if wanted:
+            q = q.filter(_channel_type_expr().in_(wanted))
+    if date_from:
+        q = q.filter(Order.created_at >= datetime.fromisoformat(date_from))
+    if date_to:
+        q = q.filter(Order.created_at < datetime.fromisoformat(date_to) + timedelta(days=1))
+    return q
+
+
+def _channel_order_out(order: Order, channel_type: str, dropship, fulfillment_key: str, needs_attention: bool, customers: Dict[int, Customer]) -> dict:
+    customer = customers.get(order.customer_id) if order.customer_id else None
+    return {
+        "id": order.id,
+        "order_number": order.order_number,
+        "channel_type": channel_type,
+        "customer_name": customer.name if customer else "Guest",
+        "customer_email": customer.email if customer else None,
+        "items_count": len(order.items),
+        "total": float(order.total),
+        "payment_status": order.payment_status,
+        "fulfillment_key": fulfillment_key,
+        "fulfillment_label": FULFILLMENT_LABELS.get(fulfillment_key, (fulfillment_key or "awaiting").capitalize()),
+        "supplier_type": dropship.supplier_type if dropship else None,
+        "supplier_label": SUPPLIER_LABELS.get(dropship.supplier_type) if dropship else None,
+        "tracking_number": (dropship.tracking_number if dropship else None) or order.tracking_number,
+        "needs_attention": bool(needs_attention),
+        "created_at": order.created_at.isoformat() if order.created_at else None,
+    }
+
+
+@router.get("/shops/{shop_id}/channels/orders")
+def get_channel_orders(
+    shop_id: int,
+    channel: Optional[str] = None,           # comma-separated channel_types
+    payment_status: Optional[str] = None,
+    fulfillment: Optional[str] = None,        # one of FULFILLMENT_LABELS' keys
+    needs_attention: Optional[bool] = None,
+    search: Optional[str] = None,
+    date_from: Optional[str] = None,         # "YYYY-MM-DD"
+    date_to: Optional[str] = None,
+    min_total: Optional[float] = None,
+    max_total: Optional[float] = None,
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    q, DropshipOrder = _channel_orders_base_query(db, shop_id)
+    q = _apply_shared_filters(q, channel, date_from, date_to)
+
+    if payment_status:
+        q = q.filter(Order.payment_status == payment_status)
+    if fulfillment:
+        q = q.filter(_fulfillment_key_expr(DropshipOrder) == fulfillment)
+    if needs_attention is True:
+        q = q.filter(_needs_attention_expr(DropshipOrder))
+    if search:
+        like = f"%{search}%"
+        q = q.outerjoin(Customer, Customer.id == Order.customer_id).filter(
+            (Order.order_number.ilike(like)) | (Customer.name.ilike(like)) |
+            (Customer.email.ilike(like)) | (Order.tracking_number.ilike(like))
+        )
+    if min_total is not None:
+        q = q.filter(Order.total >= min_total)
+    if max_total is not None:
+        q = q.filter(Order.total <= max_total)
+
+    total_count = q.count()
+    rows = q.order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
+
+    customer_ids = [o.customer_id for o, *_ in rows if o.customer_id]
+    customers = {c.id: c for c in db.query(Customer).filter(Customer.id.in_(customer_ids)).all()} if customer_ids else {}
+
+    out = [_channel_order_out(o, ch, ds, fk, na, customers) for o, ch, ds, fk, na in rows]
+    return {"orders": out, "total": total_count}
+
+
+@router.get("/shops/{shop_id}/channels/orders/stats")
+def get_channel_orders_stats(
+    shop_id: int,
+    channel: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """KPI row above the Channel Orders table — same channel-orders-only
+    scope and channel/date filters as the list endpoint, so the numbers
+    always match what's filtered in below them."""
+    from sqlalchemy import func as sql_func
+
+    _shop_or_404(shop_id, current_user, db)
+    q, DropshipOrder = _channel_orders_joined(db, shop_id)
+    q = _apply_shared_filters(q, channel, date_from, date_to)
+
+    orders_count = q.count()
+    revenue = float(
+        q.filter(Order.payment_status == "paid").with_entities(sql_func.coalesce(sql_func.sum(Order.total), 0)).scalar() or 0
+    )
+    awaiting = q.filter(_fulfillment_key_expr(DropshipOrder) == "awaiting").count()
+    attention = q.filter(_needs_attention_expr(DropshipOrder)).count()
+
+    return {
+        "total_revenue": round(revenue, 2),
+        "orders_count": orders_count,
+        "average_order_value": round(revenue / orders_count, 2) if orders_count else 0,
+        "awaiting_fulfillment": awaiting,
+        "needs_attention": attention,
+    }

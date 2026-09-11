@@ -298,6 +298,17 @@ async def create_order(
     return new_order
 
 
+# Order.source only ever holds these four literal values (see OrderSource
+# enum) — every connected sales channel (eBay, Daraz, Custom Website, etc.)
+# writes the generic source="channel" instead and is told apart afterwards
+# via ChannelOrderMeta.channel_type (or, for Custom Website, Order.notes).
+# The channel filter used to just do `Order.source == source`, so picking
+# any real marketplace from that dropdown silently matched zero orders —
+# only "shopify" ever actually worked. Fixed below to resolve real channel
+# types the same way channels.py's own Channel Orders view does.
+NATIVE_ORDER_SOURCES = {"pos", "whatsapp", "online", "shopify"}
+
+
 @router.get("/shops/{shop_id}/orders", response_model=List[OrderResponse])
 async def get_orders(
     shop_id: int,
@@ -315,7 +326,16 @@ async def get_orders(
     if status:
         query = query.filter(Order.status == status)
     if source:
-        query = query.filter(Order.source == source)
+        if source in NATIVE_ORDER_SOURCES:
+            query = query.filter(Order.source == source)
+        elif source == "custom":
+            query = query.filter(Order.notes == "Custom Website order")
+        else:
+            query = query.filter(
+                db.query(ChannelOrderMeta)
+                .filter(ChannelOrderMeta.order_id == Order.id, ChannelOrderMeta.channel_type == source)
+                .exists()
+            )
     if search:
         query = query.filter(Order.order_number.ilike(f"%{search}%"))
     if month:
@@ -352,6 +372,13 @@ async def get_orders(
             d = by_order_id.get(o.id)
             o.fulfillment_supplier = d.supplier_type if d else None
             o.fulfillment_status = d.status if d else None
+
+        # Real per-channel type for display (eBay/Daraz/Custom Website/etc.)
+        # — same resolution as the filter above, batched the same way.
+        metas = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id.in_(order_ids)).all()
+        meta_by_order_id = {m.order_id: m.channel_type for m in metas}
+        for o in orders:
+            o.channel_type = meta_by_order_id.get(o.id) or ("custom" if o.notes == "Custom Website order" else None)
     return orders
 
 

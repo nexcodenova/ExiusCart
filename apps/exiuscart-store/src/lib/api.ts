@@ -695,6 +695,13 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channel-statuses`),
   getStats: (shopId: string) =>
     api.get(`/shops/${shopId}/channels/stats`),
+  getChannelOrders: (shopId: string, params: {
+    channel?: string; payment_status?: string; fulfillment?: string; needs_attention?: boolean;
+    search?: string; date_from?: string; date_to?: string; min_total?: number; max_total?: number;
+    skip?: number; limit?: number;
+  }) => api.get(`/shops/${shopId}/channels/orders`, { params }),
+  getChannelOrdersStats: (shopId: string, params?: { channel?: string; date_from?: string; date_to?: string }) =>
+    api.get(`/shops/${shopId}/channels/orders/stats`, { params }),
   getAllProductChannelCategories: (shopId: string) =>
     api.get(`/shops/${shopId}/product-channel-categories`),
   getProductChannelStatus: (shopId: string, productId: string) =>
