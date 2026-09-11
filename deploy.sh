@@ -36,6 +36,16 @@ build_app() {
   echo "--- Building $PM2_NAME ---"
   cd "$PROJECT_DIR/$APP_DIR"
 
+  # .next/types is pure TypeScript route-stub metadata — never read by the
+  # running server (only .next/server, .next/static etc. matter at runtime),
+  # so deleting it from the OLD, still-serving .next is zero-downtime-safe.
+  # Necessary because tsconfig.json's include (".next/types/**/*.ts") is a
+  # hardcoded literal path that ignores NEXT_DIST_DIR, so it always also
+  # typechecks whatever's left in the OLD .next/types — including stubs for
+  # routes since renamed or deleted, which fail with "Cannot find module"
+  # since their source no longer exists. Without this, any deploy that
+  # renames/removes a page route fails here even though the actual code is fine.
+  rm -rf .next/types
   rm -rf .next-staging
   NEXT_DIST_DIR=.next-staging npm run build || true
   if [ ! -f .next-staging/BUILD_ID ]; then
