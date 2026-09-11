@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft, Loader2, CheckCircle2, X, KeyRound, ArrowLeftRight, FileText, Link2Off, LifeBuoy, Link2,
-  RefreshCw, Settings, MoreHorizontal, LayoutDashboard, Package, ShoppingCart, FileClock, ChevronRight,
+  RefreshCw, Settings, MoreHorizontal, LayoutDashboard, FileClock, ChevronRight,
 } from 'lucide-react';
 import { channelsApi } from '@/lib/api';
 import { CopyBox } from '@/components/channels/CopyBox';
@@ -13,7 +13,6 @@ import { channelMeta } from '@/components/channels/channelMeta';
 import BeforeConnectLayout, { SidebarCard } from '@/components/channels/BeforeConnect';
 import ChannelDashboardOverview from '@/components/channels/dashboard/ChannelDashboardOverview';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
-import ChannelOrdersMini from '@/components/channels/dashboard/ChannelOrdersMini';
 import ChannelLogsMini from '@/components/channels/dashboard/ChannelLogsMini';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -31,10 +30,13 @@ interface ChannelConnection {
   last_synced_at?: string | null;
 }
 
+// Products and Orders intentionally aren't separate tabs here — Channel
+// Listings and Channel Orders already are the full, dedicated pages for
+// that (linked from Overview's Recent Activity / Top Products cards);
+// duplicating them as tabs on every channel page would just be two more
+// places to keep in sync for no real benefit.
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'products', label: 'Products', icon: Package },
-  { id: 'orders', label: 'Orders', icon: ShoppingCart },
   { id: 'logs', label: 'Logs', icon: FileClock },
   { id: 'settings', label: 'Settings', icon: Settings },
 ] as const;
@@ -264,14 +266,6 @@ export default function TheDersiIntegrationPage() {
                 onDisconnected={() => setConnection(null)}
                 refreshKey={dashboardRefresh}
               />
-            </TabsContent>
-
-            <TabsContent value="products" className="mt-5">
-              <ChannelListingActivity shopId={shopId} channelType="thedersi" limit={15} />
-            </TabsContent>
-
-            <TabsContent value="orders" className="mt-5">
-              <ChannelOrdersMini shopId={shopId} channelType="thedersi" limit={15} />
             </TabsContent>
 
             <TabsContent value="logs" className="mt-5">

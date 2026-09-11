@@ -2988,22 +2988,42 @@ def get_channel_dashboard(
     )
     daily = [{"day": str(d), "orders": c, "revenue": float(r)} for d, c, r in daily_rows]
 
-    # ── Products listed — latest create_listing attempt per product on this
-    # channel, counted where it actually succeeded. Real, but a known
-    # simplification: doesn't re-check a later channel-side rejection
-    # (ChannelProductStatus) the way the Channel Listings page's status
-    # column does — good enough for a headline count, not a status feed. ──
+    # ── Products listed — the real "was this actually listed" signal
+    # differs by channel:
+    #   - TheDersi (MARKETPLACE_CHANNELS) pushes through the generic
+    #     _push_one/_bg_push_product path, which writes NO ChannelSyncLog row
+    #     at all — the real signal there is ProductChannelCategory.is_listed
+    #     for this exact connection (what _bg_push_product itself acts on).
+    #   - Custom Website has no push step (storefront pulls products live) —
+    #     same convention channel-listings/stats uses: count the active catalog.
+    #   - Every OAuth/API-key channel logs its own ChannelSyncLog row per
+    #     attempt, but the action name isn't universally "create_listing" —
+    #     eBay/Shopify log "listing", Gumroad logs "link_product" (it can't
+    #     create listings, only link ones the seller made on Gumroad itself).
+    # Counted where the latest attempt succeeded; a known simplification vs.
+    # the Channel Listings page's status column (doesn't re-check a later
+    # channel-side rejection) — good enough for a headline count, not a
+    # status feed.
+    LISTING_ACTION_BY_CHANNEL = {
+        "etsy": "create_listing", "tiktok": "create_listing", "woocommerce": "create_listing",
+        "bigcommerce": "create_listing", "whop": "create_listing", "daraz": "create_listing",
+        "noon": "create_listing", "ebay": "listing", "shopify": "listing", "gumroad": "link_product",
+    }
     if channel_type == "custom":
-        # No push step for Custom Website (storefront pulls products live) —
-        # same convention channel-listings/stats uses for it.
         products_listed = db.query(sql_func.count(Product.id)).filter(
             Product.shop_id == shop_id, Product.is_active == True,
         ).scalar() or 0
+    elif channel_type in MARKETPLACE_CHANNELS:
+        products_listed = db.query(sql_func.count(ProductChannelCategory.id)).filter(
+            ProductChannelCategory.channel_connection_id == conn.id,
+            ProductChannelCategory.is_listed == True,
+        ).scalar() or 0
     else:
+        action_name = LISTING_ACTION_BY_CHANNEL.get(channel_type, "create_listing")
         listing_rows = db.query(ChannelSyncLog.product_id, ChannelSyncLog.success).filter(
             ChannelSyncLog.shop_id == shop_id,
             ChannelSyncLog.channel_type == channel_type,
-            ChannelSyncLog.action == "create_listing",
+            ChannelSyncLog.action == action_name,
         ).order_by(ChannelSyncLog.created_at.asc()).all()
         latest_by_product: Dict[int, bool] = {}
         for pid, success in listing_rows:
