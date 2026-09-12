@@ -439,8 +439,13 @@ def get_shop_subscription(
         # Prefer the real amount actually charged (handles USD/AED and
         # monthly/yearly correctly); only fall back to the catalogue list
         # price for subs that haven't been charged yet (e.g. pending_approval).
+        # Both branches are priced in sub.currency (what this subscription was
+        # actually quoted/charged in at the time) — NOT necessarily shop.currency,
+        # which is just the shop's current display preference and can be
+        # changed anytime after the fact without touching what was charged.
+        sub_currency = sub.currency or shop.currency or "AED"
         real_price = float(sub.amount_paid) if sub.amount_paid else plan_price(
-            sub.plan_type, sub.billing_type or "monthly", shop.currency or "AED"
+            sub.plan_type, sub.billing_type or "monthly", sub_currency
         )
 
         plan_info = {
@@ -448,6 +453,7 @@ def get_shop_subscription(
             "source": source,
             "name": cat.get("name", sub.plan_type.replace("_", " ").title()),
             "price": real_price,
+            "currency": sub_currency,
             "billing_type": sub.billing_type or "monthly",
             "status": sub.status,
             "is_trial": sub.plan_type == "free_trial" and sub.status == "trial",
@@ -471,18 +477,46 @@ def get_shop_subscription(
     history = []
     for s in all_subs:
         cat = PLAN_CATALOGUE.get(s.plan_type, {})
+        s_currency = s.currency or shop.currency or "AED"
         history_amount = float(s.amount_paid) if s.amount_paid else plan_price(
-            s.plan_type, s.billing_type or "monthly", s.currency or "AED"
+            s.plan_type, s.billing_type or "monthly", s_currency
         )
         history.append({
             "id": s.id,
             "date": s.created_at.isoformat(),
             "description": f"{cat.get('name', s.plan_type.capitalize())} Plan — {s.billing_type}",
             "amount": history_amount,
+            "currency": s_currency,
             "status": s.status,
         })
 
     return {"plan": plan_info, "history": history}
+
+
+@router.get("/{shop_id}/subscription/usage")
+def get_subscription_usage(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Real usage numbers for the Billing page's usage panel. Only counts
+    what's actually trackable today — there's no storage-quota system in
+    this app at all, so that's deliberately not returned rather than
+    inventing a number for it. Product/staff *limits* are advertised plan
+    copy (PLAN_CATALOGUE has no enforced product cap, and there's no real
+    staff/team-member backend yet), so only the real *used* counts are
+    computed here — the frontend pairs them with the plan's advertised cap."""
+    shop = db.query(Shop).filter(
+        Shop.id == shop_id, Shop.owner_id == current_user.id
+    ).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    products_used = db.query(func.count(Product.id)).filter(
+        Product.shop_id == shop_id, Product.is_active == True,
+    ).scalar() or 0
+
+    return {"products_used": products_used}
 
 
 @router.post("/{shop_id}/subscription/upgrade")

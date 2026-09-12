@@ -8,8 +8,13 @@ import {
   Coins, Lock, ShoppingBag, ExternalLink, Package,
   GitBranch, Percent, Tag, Clock, HardDrive, Sparkles,
   TrendingUp, BadgeCheck, ArrowRight, Infinity,
+  ChevronRight, Calendar, DollarSign, Rocket, LifeBuoy,
 } from 'lucide-react';
-import { useCurrency, type Currency } from '@/components/providers/currency-provider';
+import Link from 'next/link';
+import { useCurrency, symFor, type Currency } from '@/components/providers/currency-provider';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 // ── Pricing config ─────────────────────────────────────────────────────────────
 const CURRENCY_META: Record<Currency, { symbol: string; flag: string; country: string; paymentNote: string }> = {
@@ -23,6 +28,13 @@ const CURRENCY_META: Record<Currency, { symbol: string; flag: string; country: s
 const PLAN_RANK: Record<string, number> = { free_trial: 0, starter: 1, premium: 2 };
 const TD_RANK:   Record<string, number> = { free: 0, growth: 1, pro: 2 };
 
+// Advertised product ceiling per plan — real marketing copy already used in
+// each plan's feature list below (e.g. "Up to 1,000 products"), not a
+// server-enforced cap (PLAN_CATALOGUE tracks staff limits but not products).
+// Paired with the real product count from /subscription/usage so the
+// sidebar's usage bar shows a genuine count against a genuine plan promise.
+const PRODUCT_CAP: Record<string, number | null> = { free_trial: 25, starter: 1000, premium: null };
+
 const PLAN_PRICING: Record<Currency, { starter: number; premium: number; extraStaff: number }> = {
   AED: { starter: 45,   premium: 99,   extraStaff: 15  },
   USD: { starter: 12,   premium: 29,   extraStaff: 5   },
@@ -31,24 +43,38 @@ const PLAN_PRICING: Record<Currency, { starter: number; premium: number; extraSt
   INR: { starter: 999,  premium: 2399, extraStaff: 399 },
 };
 
-// Yearly billing is only wired up to a real Lemon Squeezy checkout for AED
-// and USD (the only two currencies with live LS variants right now).
-// LKR/EUR/INR are display-only currencies today — a shop on one of those
-// still checks out through the AED variant regardless — so we don't offer
-// a fabricated yearly price for them until that's resolved.
-const YEARLY_PRICING: Partial<Record<Currency, { starter: number; premium: number }>> = {
-  AED: { starter: 459, premium: 999 },
-  USD: { starter: 120, premium: 290 },
-};
+// Yearly price — computed, not hand-picked per currency: 2 months free
+// (pay for 10, matching exiuscart.com/pricing's real "save 17% billing
+// yearly" — 2/12 ≈ 16.7%, the site rounds it to 17%), applied uniformly so
+// every currency gets a real yearly price instead of only AED/USD.
+// Checkout itself is billing_type-based, not currency-based (see
+// VARIANT_MAP in lemonsqueezy.py — one yearly variant for every currency),
+// so there was never a real reason to gate this to two of five currencies.
+function yearlyPrice(monthly: number): number {
+  return monthly * 10;
+}
+
+// PLAN_PRICING (and yearlyPrice()'s output) are fixed, business-set price
+// points already denominated in the given currency (AED shops really pay
+// AED 45/month, not a live-converted amount) — never run them through
+// useCurrency()'s fmt(),
+// which assumes its input is in the shop's baseCurrency and would convert
+// it a second time (e.g. AED 999 ends up shown as "AED 3,668.83", the FX
+// rate applied on top of an amount that was never in the base currency to
+// begin with). This formats them with the right symbol, no conversion.
+function fmtPlanPrice(amount: number, currency: Currency): string {
+  const formatted = amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const sym = symFor(currency);
+  return sym.length <= 1 ? `${sym}${formatted}` : `${sym} ${formatted}`;
+}
 
 type BillingPeriod = 'monthly' | 'yearly';
 
-const makePlans = (currency: Currency, fmt: (n: number) => string, period: BillingPeriod) => {
+const makePlans = (currency: Currency, period: BillingPeriod) => {
   const p = PLAN_PRICING[currency];
-  const yearly = YEARLY_PRICING[currency];
-  const useYearly = period === 'yearly' && !!yearly;
-  const starterPrice = useYearly ? yearly!.starter : p.starter;
-  const premiumPrice = useYearly ? yearly!.premium : p.premium;
+  const useYearly = period === 'yearly';
+  const starterPrice = useYearly ? yearlyPrice(p.starter) : p.starter;
+  const premiumPrice = useYearly ? yearlyPrice(p.premium) : p.premium;
   const periodLabel = useYearly ? 'year' : 'month';
   return [
     {
@@ -76,7 +102,7 @@ const makePlans = (currency: Currency, fmt: (n: number) => string, period: Billi
       id: 'starter',
       name: 'Starter',
       price: starterPrice,
-      priceLabel: fmt(starterPrice),
+      priceLabel: fmtPlanPrice(starterPrice, currency),
       period: periodLabel,
       description: 'For growing shops ready to scale',
       badge: 'Most Popular',
@@ -98,7 +124,7 @@ const makePlans = (currency: Currency, fmt: (n: number) => string, period: Billi
       id: 'premium',
       name: 'Premium',
       price: premiumPrice,
-      priceLabel: fmt(premiumPrice),
+      priceLabel: fmtPlanPrice(premiumPrice, currency),
       period: periodLabel,
       description: 'Full power for serious operations',
       badge: null,
@@ -189,7 +215,7 @@ const THEDERSI_PLANS = [
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function BillingPage() {
-  const { currency, fmt } = useCurrency();
+  const { currency, convertBetween } = useCurrency();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'card' | 'dkc'>('card');
@@ -204,6 +230,7 @@ export default function BillingPage() {
   const [isTheDersiShop, setIsTheDersiShop] = useState(false);
   const [isDowngradeFlow, setIsDowngradeFlow] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+  const [productsUsed, setProductsUsed] = useState<number | null>(null);
 
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
@@ -223,12 +250,14 @@ export default function BillingPage() {
           setIsTheDersiShop(res.data?.some((c: any) => c.channel_type === 'thedersi') ?? false);
         })
         .catch(() => {});
+
+      subscriptionApi.getUsage(shopId)
+        .then((res) => setProductsUsed(res.data?.products_used ?? null))
+        .catch(() => {});
     });
   }, [shopId]);
 
-  const yearlyAvailable = !!YEARLY_PRICING[currency];
-  const effectivePeriod: BillingPeriod = yearlyAvailable ? billingPeriod : 'monthly';
-  const plans = makePlans(currency, fmt, effectivePeriod);
+  const plans = makePlans(currency, billingPeriod);
   const meta = CURRENCY_META[currency];
 
   const theDersiPlanType = currentPlan?.plan_type ?? 'thedersi_basic';
@@ -258,14 +287,14 @@ export default function BillingPage() {
       // Real paid upgrades (not downgrades, not free trial) go through Lemon
       // Squeezy checkout — the plan only activates once payment is confirmed.
       if (!isDowngradeFlow && (selectedPlan === 'starter' || selectedPlan === 'premium')) {
-        const res = await subscriptionApi.createCheckout(shopId, selectedPlan, effectivePeriod);
+        const res = await subscriptionApi.createCheckout(shopId, selectedPlan, billingPeriod);
         window.location.href = res.data.checkout_url;
         return;
       }
 
       // Downgrades (and any other plan changes) stay as an offline request —
       // no payment is needed to move to a lower/free plan.
-      await subscriptionApi.requestUpgrade(shopId, selectedPlan, effectivePeriod);
+      await subscriptionApi.requestUpgrade(shopId, selectedPlan, billingPeriod);
       const plan = plans.find(p => p.id === selectedPlan);
       setUpgradeSuccess(
         isDowngradeFlow
@@ -486,19 +515,45 @@ export default function BillingPage() {
   }
 
   // ── Standard ExiusCart billing experience ──────────────────────────────────
+  const staffUnlimited = (currentPlan?.staffIncluded ?? 1) === 0;
+  const productCap = PRODUCT_CAP[currentPlan?.plan_type ?? 'free_trial'];
+  const isPremium = currentPlan?.plan_type === 'premium';
+  // What was actually charged (currentPlan.currency, real — a subscription
+  // bought in AED stays an AED amount forever) converted into whatever
+  // currency the display toggle is on right now — real FX conversion via
+  // useCurrency(), never a same-number-different-label mislabel.
+  const planPriceDisplay = currentPlan
+    ? convertBetween(currentPlan.price, (currentPlan.currency as Currency) || currency, currency)
+    : 0;
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/dashboard/settings" className="hover:text-foreground">Settings</Link>
+        <ChevronRight className="w-3.5 h-3.5" />
+        <span className="text-foreground font-medium">Billing &amp; Subscription</span>
+      </div>
+
+      {/* Page Header + upsell banner */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Billing &amp; Subscription</h1>
-          <p className="text-muted-foreground text-sm">Manage your plan and billing</p>
+          <p className="text-muted-foreground text-sm mt-1">Manage your plan, payment methods, and billing history.</p>
         </div>
 
-        <div className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl bg-card text-sm font-medium text-foreground">
-          <span className="text-lg">{meta.flag}</span>
-          <span>{currency}</span>
-        </div>
+        {!isPremium && (
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/10 via-purple-500/10 to-pink-500/10 border border-primary/20 px-5 py-4 flex items-center gap-4 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+              <Rocket className="w-5 h-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground text-sm">Grow bigger with ExiusCart</p>
+              <p className="text-xs text-muted-foreground">Unlock more features and scale your business.</p>
+            </div>
+            <Button onClick={() => handleUpgrade('premium')} className="shrink-0">Upgrade Plan</Button>
+          </div>
+        )}
       </div>
 
       {/* Payment method notice */}
@@ -536,125 +591,152 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* Current Plan */}
-      <div className="bg-card rounded-xl border border-border p-6">
-        {loading ? (
-          <div className="h-20 bg-muted rounded-lg animate-pulse" />
-        ) : !currentPlan ? (
-          <div className="text-center py-6">
-            <p className="text-muted-foreground text-sm">No active subscription. Choose a plan below.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
-                <Crown className="w-7 h-7 text-primary" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-foreground">{currentPlan.name} Plan</h2>
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Current</span>
-                </div>
-                <p className="text-muted-foreground text-sm mt-1">
-                  {currentPlan.is_trial
-                    ? `Free trial${currentPlan.daysLeft != null ? ` · ${currentPlan.daysLeft} day${currentPlan.daysLeft !== 1 ? 's' : ''} left` : ''}`
-                    : `${currentPlan.price} ${currency}/${currentPlan.billing_type === 'yearly' ? 'year' : 'month'}${currentPlan.nextBilling ? ` · Next billing: ${formatDate(currentPlan.nextBilling)}` : ''}`
-                  }
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => setShowAddStaffModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition">
-                <Plus className="w-4 h-4" /> Add Staff
-              </button>
-              {!currentPlan.is_trial && (
-                <button type="button" onClick={handleManageBilling} disabled={portalLoading}
-                  title="Cancel, pause, or update your payment method on Lemon Squeezy"
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition disabled:opacity-60">
-                  {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-                  Manage Billing
-                </button>
-              )}
-              {currentPlan?.plan_type === 'premium' ? (
-                <button type="button" onClick={() => handleUpgrade('starter', true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-500/10 transition">
-                  Downgrade to Starter
-                </button>
-              ) : (
-                <button type="button" onClick={() => handleUpgrade('premium')}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition">
-                  <Zap className="w-4 h-4" /> Upgrade
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Staff Pricing Info */}
-      <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-foreground">Need More Staff?</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add extra staff accounts for just{' '}
-              <span className="font-bold text-foreground">{fmt(PLAN_PRICING[currency].extraStaff)}/month</span> each.
-              Each staff member gets their own login with up to 2-device access.
-            </p>
-          </div>
+      {/* KPI cards */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-28 bg-muted rounded-xl animate-pulse" />)}
         </div>
-      </div>
-
-      {/* Plans */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Available Plans</h2>
-          <div className="flex items-center gap-3">
-            {yearlyAvailable && (
-              <div className="inline-flex items-center bg-muted rounded-lg p-1 text-sm font-medium">
-                <button type="button" onClick={() => setBillingPeriod('monthly')}
-                  className={`px-3 py-1.5 rounded-md transition ${billingPeriod === 'monthly' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
-                  Monthly
-                </button>
-                <button type="button" onClick={() => setBillingPeriod('yearly')}
-                  className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${billingPeriod === 'yearly' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
-                  Yearly
-                  <span className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">Save ~15%</span>
-                </button>
+      ) : !currentPlan ? (
+        <Card className="p-6 text-center">
+          <p className="text-muted-foreground text-sm">No active subscription. Choose a plan below.</p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Crown className="w-5 h-5 text-primary" />
               </div>
-            )}
-            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <span className="text-lg">{meta.flag}</span> Prices in {currency}
+              {!currentPlan.is_trial && <Badge variant="success">Active</Badge>}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">Current Plan</p>
+            <p className="text-lg font-bold text-foreground">{currentPlan.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {currentPlan.is_trial ? `${currentPlan.daysLeft ?? 0} day${currentPlan.daysLeft === 1 ? '' : 's'} left` : `Billed ${currentPlan.billing_type}`}
+            </p>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="w-11 h-11 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">{currentPlan.is_trial ? 'Trial Ends' : 'Next Billing Date'}</p>
+            <p className="text-lg font-bold text-foreground">{formatDate(currentPlan.nextBilling)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {currentPlan.daysLeft != null ? `In ${currentPlan.daysLeft} day${currentPlan.daysLeft === 1 ? '' : 's'}` : '—'}
+            </p>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="w-11 h-11 rounded-xl bg-green-500/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">{currentPlan.billing_type === 'yearly' ? 'Yearly Amount' : 'Monthly Amount'}</p>
+            <p className="text-lg font-bold text-foreground">{currentPlan.price === 0 ? 'Free' : fmtPlanPrice(planPriceDisplay, currency)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {currentPlan.billing_type === 'yearly' ? `That's ${fmtPlanPrice(planPriceDisplay / 12, currency)}/month` : ' '}
+            </p>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="w-11 h-11 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                <Users className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">Staff Allowance</p>
+            <p className="text-lg font-bold text-foreground">{staffUnlimited ? 'Unlimited' : `Up to ${currentPlan.staffIncluded}`}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Included in your plan</p>
+          </Card>
+        </div>
+      )}
+
+      {/* Actions */}
+      {currentPlan && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="outline" onClick={() => setShowAddStaffModal(true)}>
+            <Plus className="w-4 h-4" /> Add Staff
+          </Button>
+          {!currentPlan.is_trial && (
+            <Button variant="outline" onClick={handleManageBilling} disabled={portalLoading}
+              title="Cancel, pause, or update your payment method on Lemon Squeezy">
+              {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+              Manage Billing
+            </Button>
+          )}
+          {isPremium ? (
+            <Button variant="outline" onClick={() => handleUpgrade('starter', true)}
+              className="border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10">
+              Downgrade to Starter
+            </Button>
+          ) : (
+            <Button onClick={() => handleUpgrade('premium')}>
+              <Zap className="w-4 h-4" /> Upgrade
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Plans header + toggle */}
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Choose the Right Plan for Your Business</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Upgrade, downgrade or customize your plan anytime.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center bg-muted rounded-lg p-1 text-sm font-medium">
+              <button type="button" onClick={() => setBillingPeriod('monthly')}
+                className={`px-3 py-1.5 rounded-md transition ${billingPeriod === 'monthly' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                Monthly
+              </button>
+              <button type="button" onClick={() => setBillingPeriod('yearly')}
+                className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${billingPeriod === 'yearly' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                Yearly
+                <span className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">Save 17%</span>
+              </button>
+            </div>
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5 shrink-0">
+              <span className="text-lg">{meta.flag}</span> {currency}
             </span>
           </div>
         </div>
+      </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
+      {/* Plan grid + sidebar */}
+      <div className="grid gap-5 xl:grid-cols-[1fr_300px] items-start">
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {plans.map((plan) => {
             const isCurrent = plan.name === currentPlan?.name;
             const currentRank = PLAN_RANK[currentPlan?.plan_type ?? 'free_trial'] ?? 0;
             const thisRank = PLAN_RANK[plan.id] ?? 0;
             const isDowngrade = !isCurrent && thisRank < currentRank;
+            const PlanIcon = plan.id === 'premium' ? Crown : plan.id === 'starter' ? Zap : Package;
             return (
-              <div key={plan.id}
-                className={`bg-card rounded-xl border-2 p-6 relative ${plan.popular ? 'border-primary' : 'border-border'}`}>
+              <Card key={plan.id}
+                className={`p-5 relative flex flex-col ${plan.popular ? 'border-primary shadow-sm' : ''}`}>
                 {plan.badge && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1">
+                    <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1 shadow">
                       <Star className="w-3 h-3" /> {plan.badge}
                     </span>
                   </div>
                 )}
-                <div className="text-center mb-6">
-                  <h3 className="text-lg font-bold text-foreground">{plan.name}</h3>
-                  <div className="mt-2">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${plan.popular ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                  <PlanIcon className="w-5 h-5" />
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-base font-bold text-foreground">{plan.name}</h3>
+                  <div className="mt-1">
                     {plan.price === 0 ? (
-                      <span className="text-3xl font-bold text-foreground">Free</span>
+                      <span className="text-2xl font-bold text-foreground">Free</span>
                     ) : (
                       <>
-                        <span className="text-3xl font-bold text-foreground">{plan.priceLabel}</span>
+                        <span className="text-2xl font-bold text-foreground">{plan.priceLabel}</span>
                         <span className="text-muted-foreground text-sm">/{plan.period}</span>
                       </>
                     )}
@@ -662,9 +744,9 @@ export default function BillingPage() {
                   {plan.id === 'free_trial' && (
                     <p className="text-xs text-orange-500 font-medium mt-1">14-day trial</p>
                   )}
-                  <p className="text-sm text-muted-foreground mt-2">{plan.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1.5">{plan.description}</p>
                 </div>
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-2.5 my-5 flex-1">
                   {plan.features.map((f, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm">
                       {f.text.includes('storage')
@@ -677,55 +759,109 @@ export default function BillingPage() {
                   ))}
                 </ul>
                 {isCurrent ? (
-                  <button disabled className="w-full py-3 rounded-lg font-medium bg-muted text-muted-foreground cursor-not-allowed">
-                    Current Plan
-                  </button>
+                  <Button disabled variant="secondary" className="w-full">Current Plan</Button>
                 ) : plan.id === 'free_trial' ? null : isDowngrade ? (
-                  <button type="button" onClick={() => handleUpgrade(plan.id, true)}
-                    className="w-full py-3 rounded-lg font-medium transition border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10">
+                  <Button variant="outline" onClick={() => handleUpgrade(plan.id, true)}
+                    className="w-full border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10">
                     Downgrade to {plan.name}
-                  </button>
+                  </Button>
                 ) : (
-                  <button type="button" onClick={() => handleUpgrade(plan.id)}
-                    className={`w-full py-3 rounded-lg font-medium transition ${plan.popular ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'border border-border text-foreground hover:bg-muted'}`}>
-                    Upgrade to {plan.name}
-                  </button>
+                  <Button onClick={() => handleUpgrade(plan.id)} variant={plan.popular ? 'default' : 'outline'} className="w-full">
+                    {plan.popular ? `Upgrade to ${plan.name}` : `Switch to ${plan.name}`}
+                  </Button>
                 )}
-              </div>
+              </Card>
             );
           })}
         </div>
-      </div>
 
-      {/* DKC Crypto Banner */}
-      <div className="bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-yellow-500/10 border border-yellow-500/30 rounded-xl p-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Coins className="w-6 h-6 text-yellow-500" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-foreground">Pay with DKC Coin</h3>
-              <span className="text-xs bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-2 py-0.5 rounded-full font-medium">Coming Soon</span>
+        {/* Sidebar */}
+        <div className="space-y-4">
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-foreground">Payment Method</h3>
+              {!currentPlan?.is_trial && (
+                <button type="button" onClick={handleManageBilling} disabled={portalLoading}
+                  className="text-xs font-semibold text-primary hover:underline disabled:opacity-60">
+                  Manage
+                </button>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Pay for your subscription using <span className="font-semibold text-yellow-600 dark:text-yellow-400">DKC</span> — our native crypto coin.
-              Enjoy up to <span className="font-semibold text-foreground">20% discount</span> when paying with DKC.
-              Get early access by holding DKC in your wallet.
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <CreditCard className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">
+                  {currentPlan?.is_trial ? 'No card on file yet' : 'Managed securely via Lemon Squeezy'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">{meta.paymentNote}</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-5 bg-gradient-to-br from-yellow-500/5 to-orange-500/5 border-yellow-500/30">
+            <div className="flex items-center gap-2 mb-1">
+              <Coins className="w-4 h-4 text-yellow-500" />
+              <h3 className="text-sm font-bold text-foreground">Pay with DKC Coin</h3>
+              <Badge className="ml-auto bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-transparent text-[10px]">Coming Soon</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Pay with <span className="font-semibold text-yellow-600 dark:text-yellow-400">DKC</span>, our native coin, for up to{' '}
+              <span className="font-semibold text-foreground">20% off</span>. Early access for holders.
             </p>
-          </div>
-          <button type="button"
-            className="px-4 py-2 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded-lg text-sm font-medium border border-yellow-500/30 cursor-not-allowed opacity-70"
-            disabled>
-            Coming Soon
-          </button>
+          </Card>
+
+          <Card className="p-5">
+            <h3 className="text-sm font-bold text-foreground mb-3">Your Usage</h3>
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-muted-foreground flex items-center gap-1.5"><Package className="w-3.5 h-3.5" /> Products</span>
+                  <span className="font-medium text-foreground">
+                    {productsUsed ?? '—'}{productCap != null ? ` / ${productCap.toLocaleString()}` : ''}
+                  </span>
+                </div>
+                {productCap != null && productsUsed != null && (
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(100, (productsUsed / productCap) * 100)}%` }} />
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Staff Accounts</span>
+                <span className="font-medium text-foreground">{staffUnlimited ? 'Unlimited' : `Up to ${currentPlan?.staffIncluded ?? 1}`}</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border">
+              Extra staff accounts: {fmtPlanPrice(PLAN_PRICING[currency].extraStaff, currency)}/month each.
+            </p>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <LifeBuoy className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">Need Help?</p>
+                <p className="text-xs text-muted-foreground">Our support team is here for you.</p>
+              </div>
+            </div>
+            <Link href="/dashboard/helpdesk" className="mt-3 inline-flex w-full">
+              <Button variant="outline" className="w-full">Get Support</Button>
+            </Link>
+          </Card>
         </div>
       </div>
 
       {/* Billing History */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="p-4 border-b border-border flex items-center justify-between">
-          <h2 className="font-semibold text-foreground">Billing History</h2>
+          <div>
+            <h2 className="font-semibold text-foreground">Billing History</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">View and download your past invoices.</p>
+          </div>
           <button type="button" className="text-sm text-primary hover:underline flex items-center gap-1">
             <Download className="w-4 h-4" /> Download All
           </button>
@@ -746,7 +882,9 @@ export default function BillingPage() {
                 <tr key={item.id} className="hover:bg-muted/30 transition">
                   <td className="p-4 text-sm text-muted-foreground">{formatDate(item.date)}</td>
                   <td className="p-4 text-sm text-foreground">{item.description}</td>
-                  <td className="p-4 text-sm text-foreground text-right font-medium">{item.amount} {currency}</td>
+                  <td className="p-4 text-sm text-foreground text-right font-medium">
+                    {fmtPlanPrice(convertBetween(item.amount, item.currency || currency, currency), currency)}
+                  </td>
                   <td className="p-4 text-center">
                     <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 capitalize">{item.status}</span>
                   </td>
@@ -760,7 +898,7 @@ export default function BillingPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       {/* Add Extra Staff Modal */}
       {showAddStaffModal && (
@@ -773,7 +911,7 @@ export default function BillingPage() {
               <div className="bg-muted/50 rounded-lg p-4 text-center">
                 <p className="text-sm text-muted-foreground mb-1">Cost per extra staff</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {fmt(PLAN_PRICING[currency].extraStaff)}
+                  {fmtPlanPrice(PLAN_PRICING[currency].extraStaff, currency)}
                   <span className="text-sm font-normal text-muted-foreground">/month</span>
                 </p>
               </div>
@@ -790,7 +928,7 @@ export default function BillingPage() {
               <div className="bg-primary/5 rounded-lg p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Monthly cost</span>
-                  <span className="text-xl font-bold text-primary">{fmt(extraStaffCount * PLAN_PRICING[currency].extraStaff)}</span>
+                  <span className="text-xl font-bold text-primary">{fmtPlanPrice(extraStaffCount * PLAN_PRICING[currency].extraStaff, currency)}</span>
                 </div>
               </div>
               <div className="flex gap-3">

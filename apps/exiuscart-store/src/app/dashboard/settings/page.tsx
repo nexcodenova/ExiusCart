@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { shopApi, channelsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -30,7 +31,11 @@ type SettingsTab = 'general' | 'tax' | 'storefront' | 'security' | 'notification
 export default function SettingsPage() {
   const { syncCurrency } = useCurrency();
   const confirm = useConfirm();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get('tab') as SettingsTab) || 'general';
+  const [activeTab, setActiveTab] = useState<SettingsTab>(
+    ['general', 'tax', 'storefront', 'security', 'notifications'].includes(initialTab) ? initialTab : 'general'
+  );
   const [baseCurrency, setBaseCurrency] = useState('');
   const [originalBaseCurrency, setOriginalBaseCurrency] = useState('');
   const [baseCurrencySaving, setBaseCurrencySaving] = useState(false);

@@ -13,6 +13,10 @@ import {
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw, ListChecks,
   Star, MapPin, ShoppingBag, LayoutGrid, FormInput, Coins, Share2, MessageCircle, CheckCircle2,
+  Percent, Gift, MapPinned, Undo2, Search, Palette, Layers, Image as ImageIcon, ImagePlus,
+  LayoutTemplate, FolderOpen, Shapes, Bot, Wand2, FileEdit, LineChart, Workflow,
+  History, Rocket, Users2, Plug, Network, Cable, Wrench, KeyRound, FileClock,
+  TrendingUp, Bell,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi } from '@/lib/api';
 import {
@@ -50,14 +54,25 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/pos',          label: 'Point of Sale', icon: ShoppingCart  },
       { href: '/dashboard/orders',       label: 'Orders',        icon: FileText      },
       { href: '/dashboard/wholesale',    label: 'Wholesale',     icon: Boxes         },
-      { href: '/dashboard/customers',    label: 'Customers',     icon: Users         },
       { href: '/dashboard/quotations',   label: 'Quotations',    icon: ClipboardList },
       { href: '/dashboard/reservations', label: 'Reservations',  icon: BookmarkCheck },
     ],
   },
   {
-    id: 'inventory',
-    label: 'Inventory',
+    id: 'commerce',
+    label: 'Commerce',
+    icon: Store,
+    accent: 'text-blue-400',
+    items: [
+      { href: '/dashboard/customers',   label: 'Customers',   icon: Users   },
+      { href: '/dashboard/discounts',   label: 'Discounts',   icon: Percent },
+      { href: '/dashboard/gift-cards',  label: 'Gift Cards',  icon: Gift    },
+      { href: '/dashboard/reviews',     label: 'Reviews',     icon: Star    },
+    ],
+  },
+  {
+    id: 'catalog',
+    label: 'Catalog',
     icon: Boxes,
     accent: 'text-green-500',
     items: [
@@ -80,21 +95,52 @@ const GROUPS: MenuGroup[] = [
     ],
   },
   {
-    id: 'dropship-suppliers',
-    label: 'Dropship Suppliers',
+    id: 'fulfillment',
+    label: 'Fulfillment',
     icon: Truck,
     items: [
-      { href: '/dashboard/dropshipping',              label: 'All Dropship Suppliers', icon: Truck        },
-      { href: '/dashboard/dropshipping?view=connected', label: 'Connected Suppliers', icon: CheckCircle2 },
-      { href: '/dashboard/dropshipping/orders',       label: 'Supplier Orders',       icon: ClipboardList },
+      { href: '/dashboard/dropshipping',                label: 'All Dropship Suppliers', icon: Truck        },
+      { href: '/dashboard/dropshipping?view=connected', label: 'Connected Suppliers',    icon: CheckCircle2 },
+      { href: '/dashboard/dropshipping/orders',         label: 'Supplier Orders',        icon: ClipboardList },
+      { href: '/dashboard/dropshipping/tracking',       label: 'Supplier Tracking',      icon: MapPinned    },
+      { href: '/dashboard/dropshipping/returns',        label: 'Supplier Returns',       icon: Undo2        },
     ],
   },
   {
     id: 'source-products',
-    label: 'Source Products',
+    label: 'Product Sourcing',
     icon: ShoppingBag,
     items: [
-      { href: '/dashboard/dropshipping/import', label: 'Import Products', icon: ShoppingBag },
+      { href: '/dashboard/dropshipping/import', label: 'Import Products',  icon: ShoppingBag },
+      { href: '/dashboard/product-research',    label: 'Product Research', icon: Search      },
+    ],
+  },
+  {
+    id: 'product-studio',
+    label: 'Product Studio',
+    icon: Palette,
+    items: [
+      { href: '/dashboard/design-studio',      label: 'Design Studio',    icon: Palette         },
+      { href: '/dashboard/mockup-studio',       label: 'Mockup Studio',    icon: Layers          },
+      { href: '/dashboard/ai-product-images',   label: 'AI Product Images', icon: ImageIcon     },
+      { href: '/dashboard/lifestyle-images',    label: 'Lifestyle Images', icon: ImagePlus       },
+      { href: '/dashboard/design-templates',    label: 'Templates',       icon: LayoutTemplate   },
+      { href: '/dashboard/my-designs',          label: 'My Designs',      icon: FolderOpen       },
+      { href: '/dashboard/brand-assets',        label: 'Brand Assets',    icon: Shapes           },
+    ],
+  },
+  {
+    id: 'ai-commerce',
+    label: 'AI Commerce',
+    icon: Bot,
+    items: [
+      { href: '/dashboard/ai-assistant',         label: 'AI Assistant',         icon: Bot       },
+      { href: '/dashboard/ai-product-creator',   label: 'AI Product Creator',   icon: Wand2     },
+      { href: '/dashboard/ai-listing-generator', label: 'AI Listing Generator', icon: FileEdit  },
+      { href: '/dashboard/ai-marketing',         label: 'AI Marketing',         icon: Megaphone },
+      { href: '/dashboard/ai-analytics',         label: 'AI Analytics',         icon: LineChart },
+      { href: '/dashboard/ai-automations',       label: 'AI Automations',       icon: Workflow  },
+      { href: '/dashboard/ai-activity',          label: 'AI Activity',          icon: History   },
     ],
   },
   {
@@ -103,21 +149,42 @@ const GROUPS: MenuGroup[] = [
     icon: Megaphone,
     accent: 'text-purple-500',
     items: [
-      { href: '/dashboard/leads',             label: 'Lead Management', icon: Target         },
-      { href: '/dashboard/blog',              label: 'Blog',            icon: BookOpen       },
-      { href: '/dashboard/signup-forms',      label: 'Signup Forms',    icon: FormInput      },
-      { href: '/dashboard/drip-flows',        label: 'Drip Flows',      icon: GitBranch      },
-      { href: '/dashboard/email-marketing',   label: 'Email Marketing', icon: Mail           },
-      { href: '/dashboard/sms-marketing',    label: 'SMS Marketing',   icon: MessageSquare  },
-      { href: '/dashboard/popups',           label: 'Smart Upsells',   icon: Sparkles       },
-      { href: '/dashboard/reviews',          label: 'Reviews',         icon: Star           },
-      { href: '/dashboard/events',           label: 'Events',          icon: Calendar       },
-      { href: '/dashboard/surveys',          label: 'Surveys',         icon: ClipboardCheck },
-      { href: '/dashboard/ai-seo',           label: 'AI SEO Tools',    icon: Sparkles       },
-      { href: '/dashboard/products/videos',  label: 'AI Product Videos', icon: Sparkles    },
-      { href: '/dashboard/storefront-insights', label: 'Storefront Insights', icon: BarChart3 },
-      { href: '/dashboard/social-posting',    label: 'Social Posting',  icon: Share2         },
+      { href: '/dashboard/marketing',          label: 'Overview',          icon: Megaphone      },
+      { href: '/dashboard/campaigns',          label: 'Campaigns',         icon: Rocket         },
+      { href: '/dashboard/leads',              label: 'Lead Management',   icon: Target         },
+      { href: '/dashboard/customer-segments',  label: 'Customer Segments', icon: Users2         },
+      { href: '/dashboard/email-marketing',    label: 'Email Marketing',   icon: Mail           },
+      { href: '/dashboard/sms-marketing',      label: 'SMS Marketing',     icon: MessageSquare  },
       { href: '/dashboard/whatsapp-marketing', label: 'WhatsApp Marketing', icon: MessageCircle },
+      { href: '/dashboard/drip-flows',         label: 'Abandoned Cart',    icon: Undo2          },
+      { href: '/dashboard/social-posting',     label: 'Social Media',      icon: Share2         },
+      { href: '/dashboard/ads',                label: 'Ads',               icon: Megaphone      },
+      { href: '/dashboard/drip-flows',         label: 'Automations',       icon: GitBranch      },
+      { href: '/dashboard/blog',               label: 'Blog',              icon: BookOpen       },
+      { href: '/dashboard/signup-forms',       label: 'Signup Forms',      icon: FormInput      },
+      { href: '/dashboard/popups',             label: 'Smart Upsells',     icon: Sparkles       },
+      { href: '/dashboard/events',             label: 'Events',            icon: Calendar       },
+      { href: '/dashboard/surveys',            label: 'Surveys',           icon: ClipboardCheck },
+      { href: '/dashboard/ai-seo',             label: 'AI SEO Tools',      icon: Sparkles       },
+      { href: '/dashboard/products/videos',    label: 'AI Product Videos', icon: Sparkles       },
+      { href: '/dashboard/storefront-insights', label: 'Storefront Insights', icon: BarChart3   },
+    ],
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    icon: BarChart3,
+    accent: 'text-sky-500',
+    items: [
+      { href: '/dashboard/analytics',            label: 'Overview',    icon: BarChart3 },
+      { href: '/dashboard/reports?tab=sales',     label: 'Sales',       icon: TrendingUp },
+      { href: '/dashboard/analytics/products',    label: 'Products',   icon: Package   },
+      { href: '/dashboard/analytics/channels',    label: 'Channels',   icon: Link2     },
+      { href: '/dashboard/analytics/customers',   label: 'Customers',  icon: Users     },
+      { href: '/dashboard/analytics/marketing',   label: 'Marketing',  icon: Megaphone },
+      { href: '/dashboard/analytics/fulfillment', label: 'Fulfillment', icon: Truck    },
+      { href: '/dashboard/reports?tab=profitability', label: 'Profit', icon: DollarSign },
+      { href: '/dashboard/reports',                label: 'Reports',   icon: FileText  },
     ],
   },
   {
@@ -132,9 +199,36 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/wallet',       label: 'Wallet',       icon: Coins        },
       { href: '/dashboard/credit-notes',        label: 'Credit Notes',       icon: Receipt   },
       { href: '/dashboard/recurring-invoices',  label: 'Recurring Invoices', icon: RefreshCw },
-      { href: '/dashboard/reports',    label: 'Reports',    icon: BarChart3},
       { href: '/dashboard/payout',     label: 'Earnings',   icon: CreditCard },
-      { href: '/dashboard/billing',    label: 'Billing',    icon: CreditCard },
+    ],
+  },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    icon: Plug,
+    items: [
+      { href: '/dashboard/integrations',            label: 'All Integrations', icon: Plug     },
+      { href: '/dashboard/channels',                 label: 'Sales Channels',   icon: Link2    },
+      { href: '/dashboard/dropshipping',              label: 'Fulfillment',     icon: Truck    },
+      { href: '/dashboard/integrations/marketing',    label: 'Marketing',       icon: Megaphone },
+      { href: '/dashboard/integrations/payments',     label: 'Payments',        icon: CreditCard },
+      { href: '/dashboard/integrations/shipping',     label: 'Shipping',        icon: Truck     },
+      { href: '/dashboard/settings/webhooks',         label: 'Developer',       icon: Wrench    },
+    ],
+  },
+  {
+    id: 'mcp',
+    label: 'MCP & AI Connections',
+    icon: Network,
+    items: [
+      { href: '/dashboard/mcp',              label: 'MCP Overview',  icon: Network     },
+      { href: '/dashboard/mcp/connected',     label: 'Connected AI',  icon: Cable       },
+      { href: '/dashboard/mcp/claude',        label: 'Claude',        icon: Bot         },
+      { href: '/dashboard/mcp/chatgpt',       label: 'ChatGPT',       icon: Bot         },
+      { href: '/dashboard/mcp/tools',         label: 'MCP Tools',     icon: Wrench      },
+      { href: '/dashboard/mcp/permissions',   label: 'Permissions',   icon: Shield      },
+      { href: '/dashboard/mcp/api-keys',      label: 'API Keys',      icon: KeyRound    },
+      { href: '/dashboard/mcp/activity',      label: 'Activity Logs', icon: FileClock   },
     ],
   },
   {
@@ -166,10 +260,16 @@ const GROUPS: MenuGroup[] = [
     icon: Settings,
     accent: 'text-gray-400',
     items: [
-      { href: '/dashboard/branches',           label: 'Branches',      icon: GitBranch  },
-      { href: '/dashboard/staff',              label: 'Staff & Roles', icon: Shield     },
-      { href: '/dashboard/customization',      label: 'Customization', icon: Paintbrush },
-      { href: '/dashboard/settings',           label: 'Settings',      icon: Settings   },
+      { href: '/dashboard/settings',                    label: 'Store Settings',      icon: Settings   },
+      { href: '/dashboard/settings?tab=general',        label: 'Business',            icon: Store      },
+      { href: '/dashboard/branches',                    label: 'Branches',            icon: GitBranch  },
+      { href: '/dashboard/staff',                        label: 'Team',                icon: Shield     },
+      { href: '/dashboard/staff',                        label: 'Roles & Permissions', icon: Shield     },
+      { href: '/dashboard/billing',                      label: 'Billing',             icon: CreditCard },
+      { href: '/dashboard/settings?tab=notifications',  label: 'Notifications',       icon: Bell       },
+      { href: '/dashboard/settings?tab=security',        label: 'Security',            icon: Shield     },
+      { href: '/dashboard/customization',                label: 'Customization',       icon: Paintbrush },
+      { href: '/dashboard/settings/webhooks',            label: 'Developer',           icon: Wrench     },
     ],
   },
 ];
@@ -346,6 +446,7 @@ export function ShopSidebar() {
                         className={`w-full flex items-center gap-2 px-3 py-1 rounded-lg transition-all text-left ${
                           groupActive ? 'text-sidebar-foreground' : 'text-sidebar-muted-foreground hover:text-sidebar-foreground'
                         }`}>
+                        {group.icon && <group.icon className={`w-4 h-4 shrink-0 ${group.accent ?? ''}`} />}
                         <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
                         {locked && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">PRO</span>}
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
@@ -353,7 +454,12 @@ export function ShopSidebar() {
                     )}
 
                     {(isOpen || collapsed) && (
-                      <SidebarMenu className={collapsed ? 'space-y-0.5 mt-0.5' : 'mt-1 space-y-0.5'}>
+                      // Indented + a left guide line when expanded, so a
+                      // sub-item reads as nested under its group header
+                      // instead of continuing the same flush-left line —
+                      // collapsed (icon-only) mode skips both since there's
+                      // no room and no header row to nest under.
+                      <SidebarMenu className={collapsed ? 'space-y-0.5 mt-0.5' : 'mt-1 space-y-0.5 ml-4 pl-2 border-l border-sidebar-border/60'}>
                         {group.items.map(item => {
                           const Icon = item.icon;
                           const active = isItemActive(item);

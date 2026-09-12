@@ -334,6 +334,8 @@ export const subscriptionApi = {
     api.post(`/shops/${shopId}/subscription/checkout`, { plan, billing_type: billingType }),
   getBillingPortal: (shopId: string) =>
     api.get(`/shops/${shopId}/subscription/portal`),
+  getUsage: (shopId: string) =>
+    api.get(`/shops/${shopId}/subscription/usage`),
 };
 
 // ── Shop Fields (Custom Product Fields) ───────────────

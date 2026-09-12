@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   BarChart3, TrendingUp, DollarSign, ShoppingCart, FileText, Package, Trophy,
   Boxes, CalendarDays, Zap, ArrowUpRight, ArrowDownRight,
@@ -41,7 +42,11 @@ export default function ReportsPage() {
   const [channelRevenue, setChannelRevenue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
-  const [activeTab, setActiveTab] = useState<'sales' | 'pl' | 'aging' | 'profitability'>('sales');
+  const searchParams = useSearchParams();
+  const initialReportTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<'sales' | 'pl' | 'aging' | 'profitability'>(
+    (['sales', 'pl', 'aging', 'profitability'] as const).includes(initialReportTab as any) ? (initialReportTab as any) : 'sales'
+  );
   // P&L
   const [plData, setPlData] = useState<any>(null);
   const [plLoading, setPlLoading] = useState(false);
