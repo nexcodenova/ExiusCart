@@ -33,3 +33,14 @@ export const CHANNEL_META: Record<string, {
 export function channelMeta(channelType: string) {
   return CHANNEL_META[channelType] ?? { label: channelType, icon: Store, color: 'text-muted-foreground', bg: 'bg-muted' };
 }
+
+// channel_type as stored on ChannelConnection doesn't always match the
+// integration page's own route folder — "custom" is the one real mismatch
+// today (app/dashboard/channels/integrations/custom-website/, not /custom/)
+// since that folder predates this channel_type naming. Anything not listed
+// here uses its channel_type as-is.
+const CHANNEL_ROUTE_OVERRIDES: Record<string, string> = { custom: 'custom-website' };
+
+export function channelIntegrationPath(channelType: string): string {
+  return CHANNEL_ROUTE_OVERRIDES[channelType] ?? channelType;
+}

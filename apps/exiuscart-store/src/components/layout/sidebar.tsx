@@ -18,16 +18,25 @@ import {
   History, Rocket, Users2, Plug, Network, Cable, Wrench, KeyRound, FileClock,
   TrendingUp, Bell,
 } from 'lucide-react';
-import { shopApi, subscriptionApi, channelsApi } from '@/lib/api';
+import { shopApi, subscriptionApi, channelsApi, dropshipApi } from '@/lib/api';
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from '@/components/ui/sidebar';
+import ChannelLogo from '@/components/channels/ChannelLogo';
+import { channelMeta, channelIntegrationPath } from '@/components/channels/channelMeta';
+import { SUPPLIER_STYLE } from '@/components/dropshipping/SupplierCard';
 
 interface MenuItem {
   href: string;
   label: string;
   icon: React.ElementType;
+  // 'channels' | 'suppliers' — this item expands in place to list the
+  // shop's real connected channels/suppliers (fetched below), each linking
+  // straight to that one integration/supplier instead of just the filtered
+  // list view. Collapsed (icon-only) sidebar mode ignores this and the item
+  // behaves like a normal link — no room to show a second nested level there.
+  nestedKey?: 'channels' | 'suppliers';
 }
 interface MenuGroup {
   id: string;
@@ -88,7 +97,7 @@ const GROUPS: MenuGroup[] = [
     icon: Link2,
     items: [
       { href: '/dashboard/channels',                    label: 'All Channels',       icon: Link2       },
-      { href: '/dashboard/channels?status=Connected',   label: 'Connected Channels', icon: CheckCircle2 },
+      { href: '/dashboard/channels?status=Connected',   label: 'Connected Channels', icon: CheckCircle2, nestedKey: 'channels' },
       { href: '/dashboard/channels/listings',           label: 'Channel Listings',   icon: ListChecks  },
       { href: '/dashboard/channels/categories',         label: 'Channel Categories', icon: LayoutGrid  },
       { href: '/dashboard/channels/orders',             label: 'Channel Orders',     icon: FileText    },
@@ -100,7 +109,7 @@ const GROUPS: MenuGroup[] = [
     icon: Truck,
     items: [
       { href: '/dashboard/dropshipping',                label: 'All Dropship Suppliers', icon: Truck        },
-      { href: '/dashboard/dropshipping?view=connected', label: 'Connected Suppliers',    icon: CheckCircle2 },
+      { href: '/dashboard/dropshipping?view=connected', label: 'Connected Suppliers',    icon: CheckCircle2, nestedKey: 'suppliers' },
       { href: '/dashboard/dropshipping/orders',         label: 'Supplier Orders',        icon: ClipboardList },
       { href: '/dashboard/dropshipping/tracking',       label: 'Supplier Tracking',      icon: MapPinned    },
       { href: '/dashboard/dropshipping/returns',        label: 'Supplier Returns',       icon: Undo2        },
@@ -307,10 +316,15 @@ export function ShopSidebar() {
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null; isTheDersi: boolean } | null>(null);
+  const [connectedChannels, setConnectedChannels] = useState<{ channel_type: string }[]>([]);
+  const [connectedSuppliers, setConnectedSuppliers] = useState<{ supplier_type: string; name: string }[]>([]);
   // Every group always starts collapsed — just the group name, nothing
   // expanded — on every page load and every login, no exceptions. Clicking
   // a group only opens it for the current session; it's not remembered.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  // Same "starts closed every load, opens for the session only" rule as
+  // openGroups above, one level deeper — keyed by the item's own href.
+  const [openNested, setOpenNested] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') : null;
@@ -318,17 +332,31 @@ export function ShopSidebar() {
       shopApi.getMyShop().catch(() => null),
       shopId ? subscriptionApi.getCurrent(shopId).catch(() => null) : Promise.resolve(null),
       shopId ? channelsApi.getConnections(shopId).catch(() => null) : Promise.resolve(null),
-    ]).then(([shopRes, subRes, connRes]) => {
+      shopId ? dropshipApi.getConnections(shopId).catch(() => null) : Promise.resolve(null),
+    ]).then(([shopRes, subRes, connRes, dropRes]) => {
       const plan = subRes?.data?.plan;
+      const channels: { channel_type: string }[] = (connRes as any)?.data ?? [];
       setShopData({
         name: shopRes?.data?.name || '',
         plan: plan?.plan_type || 'free_trial',
         planLabel: plan?.name || 'Free Trial',
         daysLeft: plan?.daysLeft ?? null,
-        isTheDersi: ((connRes as any)?.data ?? []).some((c: any) => c.channel_type === 'thedersi'),
+        isTheDersi: channels.some((c) => c.channel_type === 'thedersi'),
       });
+      setConnectedChannels(channels);
+      const suppliers: { supplier_type: string; name: string; connected: boolean }[] = (dropRes as any)?.data?.suppliers ?? [];
+      setConnectedSuppliers(suppliers.filter((s) => s.connected));
     }).catch(() => {});
   }, []);
+
+  function toggleNested(href: string) {
+    setOpenNested((prev) => {
+      const next = new Set(prev);
+      if (next.has(href)) next.delete(href);
+      else next.add(href);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!showComingSoon) return;
@@ -500,6 +528,77 @@ export function ShopSidebar() {
                                   {!collapsed && <Sparkles className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
                                 </SidebarMenuButton>
                               </SidebarMenuItem>
+                            );
+                          }
+                          if (item.nestedKey && !collapsed) {
+                            const nestedOpen = openNested.has(item.href);
+                            const list = item.nestedKey === 'channels' ? connectedChannels : connectedSuppliers;
+                            return (
+                              <div key={item.href}>
+                                <SidebarMenuItem>
+                                  <SidebarMenuButton
+                                    onClick={() => toggleNested(item.href)}
+                                    isActive={active}
+                                    className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}
+                                  >
+                                    <Icon className="w-4 h-4 flex-shrink-0" />
+                                    <span className="font-medium flex-1 text-left">{item.label}</span>
+                                    {list.length > 0 && (
+                                      <span className="text-[10px] text-sidebar-muted-foreground/70">{list.length}</span>
+                                    )}
+                                    <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${nestedOpen ? '' : '-rotate-90'}`} />
+                                  </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                {nestedOpen && (
+                                  <SidebarMenu className="mt-0.5 space-y-0.5 ml-4 pl-2 border-l border-sidebar-border/60">
+                                    {list.length === 0 ? (
+                                      <p className="px-2 py-1.5 text-xs text-sidebar-muted-foreground/60">
+                                        None connected yet
+                                      </p>
+                                    ) : item.nestedKey === 'channels' ? (
+                                      (list as { channel_type: string }[]).map((c) => {
+                                        const meta = channelMeta(c.channel_type);
+                                        return (
+                                          <SidebarMenuItem key={c.channel_type}>
+                                            <SidebarMenuButton asChild className="text-sidebar-muted-foreground">
+                                              <Link href={`/dashboard/channels/integrations/${channelIntegrationPath(c.channel_type)}`}>
+                                                <ChannelLogo channelType={c.channel_type} size={16} />
+                                                <span className="font-medium">{meta.label}</span>
+                                              </Link>
+                                            </SidebarMenuButton>
+                                          </SidebarMenuItem>
+                                        );
+                                      })
+                                    ) : (
+                                      (list as { supplier_type: string; name: string }[]).map((s) => {
+                                        const style = SUPPLIER_STYLE[s.supplier_type];
+                                        const SupplierIcon = style?.icon ?? Package;
+                                        return (
+                                          <SidebarMenuItem key={s.supplier_type}>
+                                            <SidebarMenuButton asChild className="text-sidebar-muted-foreground">
+                                              <Link href="/dashboard/dropshipping?view=connected">
+                                                {/* Real brand logo where one exists (same asset
+                                                    SupplierCard's own header uses) — plain icon
+                                                    fallback for suppliers with no logo file yet,
+                                                    never a made-up mark. */}
+                                                {style?.logo ? (
+                                                  <span className="w-4 h-4 rounded-sm overflow-hidden shrink-0 flex items-center justify-center bg-sidebar-accent">
+                                                    <Image src={style.logo} alt={s.name} width={16} height={16}
+                                                      className={style.logoFit === 'contain' ? 'w-3 h-3 object-contain' : 'w-full h-full object-cover'} />
+                                                  </span>
+                                                ) : (
+                                                  <SupplierIcon className={`w-4 h-4 flex-shrink-0 ${style?.color ?? ''}`} />
+                                                )}
+                                                <span className="font-medium">{s.name}</span>
+                                              </Link>
+                                            </SidebarMenuButton>
+                                          </SidebarMenuItem>
+                                        );
+                                      })
+                                    )}
+                                  </SidebarMenu>
+                                )}
+                              </div>
                             );
                           }
                           return (
