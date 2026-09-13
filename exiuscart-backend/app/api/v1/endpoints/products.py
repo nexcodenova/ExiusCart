@@ -388,6 +388,7 @@ async def get_products(
     category: Optional[str] = None,
     search: Optional[str] = None,
     is_gift_card: Optional[bool] = None,
+    is_gift: Optional[bool] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -411,6 +412,9 @@ async def get_products(
 
     if is_gift_card is not None:
         query = query.filter(Product.is_gift_card == is_gift_card)
+
+    if is_gift is not None:
+        query = query.filter(Product.is_gift == is_gift)
 
     products = query.offset(skip).limit(limit).all()
 

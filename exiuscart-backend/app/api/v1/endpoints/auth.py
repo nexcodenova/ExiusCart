@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from jose import JWTError, jwt
+import jwt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -343,7 +343,7 @@ def setup_password(data: SetupPasswordIn, db: Session = Depends(get_db)):
             settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
         )
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(status_code=400, detail="Setup link is invalid or has expired")
 
     if payload.get("purpose") != "setup_password":

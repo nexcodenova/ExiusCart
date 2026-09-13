@@ -23,7 +23,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
-from jose import jwt
+import jwt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 

@@ -45,7 +45,7 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from jose import jwt
+import jwt
 from pydantic import BaseModel
 
 from app.core.database import get_db

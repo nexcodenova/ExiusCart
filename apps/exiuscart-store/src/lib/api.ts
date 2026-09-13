@@ -88,7 +88,7 @@ export const dashboardApi = {
 
 // ── Products ──────────────────────────────────────────
 export const productsApi = {
-  getAll: (shopId: string, params?: { search?: string; category?: string; is_gift_card?: boolean }) =>
+  getAll: (shopId: string, params?: { search?: string; category?: string; is_gift_card?: boolean; is_gift?: boolean }) =>
     api.get(`/shops/${shopId}/products`, { params }),
   create: (shopId: string, data: any) =>
     api.post(`/shops/${shopId}/products`, data),

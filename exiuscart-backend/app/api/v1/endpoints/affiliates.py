@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from jose import JWTError, jwt
+import jwt
 
 from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash, verify_password
@@ -22,7 +22,7 @@ def get_current_affiliate(authorization: str = Header(None), db: Session = Depen
     token = authorization[7:]
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
     sub = payload.get("sub", "")
     if not sub.startswith("affiliate:"):
@@ -95,7 +95,7 @@ def affiliate_setup_password(data: AffiliateSetupIn, db: Session = Depends(get_d
             settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
         )
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(status_code=400, detail="Setup link is invalid or has expired.")
 
     if payload.get("purpose") != "affiliate_setup":
