@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, ShoppingCart, FileText, Users, Package, Boxes,
   Truck, Store, ClipboardList, BookOpen, Wallet, BarChart3,
-  Settings, LogOut, ChevronLeft, X, CreditCard,
+  Settings, LogOut, ChevronLeft, CreditCard,
   UserCheck, Paintbrush, GitBranch, Shield, ChevronDown,
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
@@ -15,7 +15,7 @@ import {
   Star, MapPin, ShoppingBag, LayoutGrid, FormInput, Coins, Share2, MessageCircle, CheckCircle2,
   Percent, Gift, MapPinned, Undo2, Search, Palette, Layers, Image as ImageIcon, ImagePlus,
   LayoutTemplate, FolderOpen, Shapes, Bot, Wand2, FileEdit, LineChart, Workflow,
-  History, Rocket, Users2, Plug, Network, Cable, Wrench, KeyRound, FileClock,
+  History, Rocket, Users2, Network, Cable, Wrench, KeyRound, FileClock,
   TrendingUp, Bell,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi, dropshipApi } from '@/lib/api';
@@ -212,20 +212,6 @@ const GROUPS: MenuGroup[] = [
     ],
   },
   {
-    id: 'integrations',
-    label: 'Integrations',
-    icon: Plug,
-    items: [
-      { href: '/dashboard/integrations',            label: 'All Integrations', icon: Plug     },
-      { href: '/dashboard/channels',                 label: 'Sales Channels',   icon: Link2    },
-      { href: '/dashboard/dropshipping',              label: 'Fulfillment',     icon: Truck    },
-      { href: '/dashboard/integrations/marketing',    label: 'Marketing',       icon: Megaphone },
-      { href: '/dashboard/integrations/payments',     label: 'Payments',        icon: CreditCard },
-      { href: '/dashboard/integrations/shipping',     label: 'Shipping',        icon: Truck     },
-      { href: '/dashboard/settings/webhooks',         label: 'Developer',       icon: Wrench    },
-    ],
-  },
-  {
     id: 'mcp',
     label: 'MCP & AI Connections',
     icon: Network,
@@ -314,7 +300,6 @@ export function ShopSidebar() {
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showTheDersiModal, setShowTheDersiModal] = useState(false);
-  const [showComingSoon, setShowComingSoon] = useState(false);
   const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null; isTheDersi: boolean } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<{ channel_type: string }[]>([]);
   const [connectedSuppliers, setConnectedSuppliers] = useState<{ supplier_type: string; name: string }[]>([]);
@@ -357,12 +342,6 @@ export function ShopSidebar() {
       return next;
     });
   }
-
-  useEffect(() => {
-    if (!showComingSoon) return;
-    const t = setTimeout(() => setShowComingSoon(false), 3000);
-    return () => clearTimeout(t);
-  }, [showComingSoon]);
 
   function toggleGroup(id: string) {
     setOpenGroups(prev => {
@@ -438,7 +417,6 @@ export function ShopSidebar() {
                 const canAccessPremium = plan === 'premium' || plan === 'thedersi_pro';
                 const isTheDersiBasicPlan = plan === 'thedersi_basic';
                 const locked = isPremiumGroup(group.id) && !canAccessPremium;
-                const isComingSoonGroup = isPremiumGroup(group.id) && canAccessPremium;
                 const groupActive = isGroupActive(group);
                 const isOpen = openGroups.has(group.id) || collapsed;
                 const isTheDersiPlan = shopData?.isTheDersi ?? false;
@@ -511,22 +489,6 @@ export function ShopSidebar() {
                                     </div>
                                   </div>
                                 )}
-                              </SidebarMenuItem>
-                            );
-                          }
-                          if (isComingSoonGroup) {
-                            return (
-                              <SidebarMenuItem key={item.href}>
-                                <SidebarMenuButton
-                                  isActive={active}
-                                  tooltip={collapsed ? item.label : undefined}
-                                  onClick={() => setShowComingSoon(true)}
-                                  className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}
-                                >
-                                  <Icon className="w-4 h-4 flex-shrink-0" />
-                                  {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
-                                  {!collapsed && <Sparkles className="w-3 h-3 text-indigo-400 flex-shrink-0" />}
-                                </SidebarMenuButton>
                               </SidebarMenuItem>
                             );
                           }
@@ -641,22 +603,6 @@ export function ShopSidebar() {
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-
-      {/* Coming Soon top banner — for premium/thedersi_pro clicking HR & Services */}
-      {showComingSoon && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] w-max max-w-[calc(100vw-2rem)]">
-          <div className="flex items-center gap-3 bg-foreground text-background px-5 py-3 rounded-xl shadow-2xl animate-in slide-in-from-top-2 duration-200">
-            <Sparkles className="w-4 h-4 flex-shrink-0 text-indigo-400" />
-            <div>
-              <p className="font-semibold text-sm">Coming Soon</p>
-              <p className="text-xs opacity-60">This feature is currently in development</p>
-            </div>
-            <button onClick={() => setShowComingSoon(false)} className="ml-2 p-1 hover:opacity-60 transition rounded">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Upgrade modal — for free_trial / starter users */}
       {showUpgradeModal && (

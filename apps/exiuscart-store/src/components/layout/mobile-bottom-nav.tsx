@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { menuItems, PREMIUM_HREFS } from './sidebar';
 import { MoreHorizontal, X, LogOut, Lock } from 'lucide-react';
-import { shopApi } from '@/lib/api';
+import { subscriptionApi } from '@/lib/api';
 
 export function MobileBottomNav() {
   const pathname = usePathname();
@@ -14,10 +14,16 @@ export function MobileBottomNav() {
   const [plan, setPlan] = useState('');
 
   useEffect(() => {
-    shopApi.getMyShop()
+    // ShopResponse (shopApi.getMyShop) has no subscription field at all —
+    // this used to read res.data.subscription.plan, which was always
+    // undefined, so canAccessPremium was permanently false regardless of
+    // the shop's real plan. The real plan lives on GET /subscription, same
+    // endpoint the desktop sidebar already reads correctly.
+    const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') : null;
+    if (!shopId) return;
+    subscriptionApi.getCurrent(shopId)
       .then((res) => {
-        const sub = res.data?.subscription;
-        setPlan((sub?.plan || '').toLowerCase());
+        setPlan((res.data?.plan?.plan_type || '').toLowerCase());
       })
       .catch(() => {});
   }, []);

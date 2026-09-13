@@ -282,7 +282,13 @@ function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="sidebar-content"
       data-sidebar="content"
-      className={cn('flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden', className)}
+      // Collapsed (icon-only) mode used to force overflow-hidden here — fine
+      // for a typical rail that's just top-level icons, but this sidebar
+      // flattens every sub-item into the collapsed rail too, so the list is
+      // often taller than the viewport. overflow-hidden silently clipped
+      // whatever didn't fit, with no way to reach it — scroll needs to stay
+      // on in both modes.
+      className={cn('flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden', className)}
       {...props}
     />
   );
