@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, X, Loader2, Package, Lock, Search, ShoppingBag, ChevronRight, AlertCircle, Shirt, Megaphone, ExternalLink } from 'lucide-react';
+import {
+  CheckCircle2, X, Loader2, Package, Lock, Search, ShoppingBag, ChevronRight, AlertCircle, Shirt,
+  Megaphone, ExternalLink, Lightbulb, Link2, ClipboardPaste, Info, Zap, Settings2, Tag, Image as ImageIcon,
+} from 'lucide-react';
 import { dropshipApi, channelsApi, adIntelligenceApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -344,6 +348,96 @@ function CJImportModal({ shopId, product, onClose, onImported, supplier = 'cj' }
   );
 }
 
+// ── How to import (sidebar) ──────────────────────────────────────────────────
+// Genuinely describes each supplier's real import flow — no step here that
+// isn't backed by an actual endpoint/behaviour used elsewhere on this page.
+
+const SUPPLIER_LABEL: Record<'cj' | 'printful' | 'aliexpress' | 'hypersku', string> = {
+  cj: 'CJ', printful: 'Printful', aliexpress: 'AliExpress', hypersku: 'HyperSKU',
+};
+
+const IMPORT_STEPS: Record<'cj' | 'printful' | 'aliexpress' | 'hypersku', { title: string; desc: string }[]> = {
+  cj: [
+    { title: 'Search the catalog', desc: 'Type a keyword above to search CJ’s live catalog.' },
+    { title: 'Review the product', desc: 'Check its real photos, description and USD cost.' },
+    { title: 'Set your price', desc: 'Leave it blank to auto-calculate 2x cost, converted to your currency.' },
+    { title: 'Import', desc: 'It’s added straight to My Products.' },
+    { title: 'Edit anytime', desc: 'Title, images, description and price can all be changed after.' },
+  ],
+  printful: [
+    { title: 'Design on Printful', desc: 'Publish a product on Printful’s own dashboard first.' },
+    { title: 'It appears here', desc: 'Synced automatically under “My Printful Products”.' },
+    { title: 'Import it', desc: 'Real variants and mockup images come across as-is.' },
+    { title: 'Start selling', desc: 'Printful prints and ships each order for you automatically.' },
+  ],
+  aliexpress: [
+    { title: 'Find a product', desc: 'Go to AliExpress and find a product you want to import.' },
+    { title: 'Copy the product link', desc: 'Copy the product URL from your browser.' },
+    { title: 'Paste the link here', desc: 'Paste it in the box on the left and click “Import to My Products”.' },
+    { title: 'Review and edit', desc: 'Check the product details, edit price, description and images if needed.' },
+    { title: 'Start selling', desc: 'The product is added to your store, ready to sell.' },
+  ],
+  hypersku: [
+    { title: 'Browse the catalog', desc: 'Browse HyperSKU’s catalog, or check “My HyperSKU Products”.' },
+    { title: 'Set your price', desc: 'Leave it blank to auto-calculate 2x cost, converted to your currency.' },
+    { title: 'Import', desc: 'It’s added straight to My Products, ready to edit.' },
+  ],
+};
+
+const IMPORT_PRO_TIP: Record<'cj' | 'printful' | 'aliexpress' | 'hypersku', string> = {
+  cj: 'Before you commit, use the “See real ads for this product” check in the import dialog — it pulls real, currently-running ads from Meta’s Ad Library so you can gauge demand first.',
+  printful: 'Since you’re selling your own designs, there’s no external cost to compare — just make sure your retail price on Printful’s side already covers their base cost before publishing.',
+  aliexpress: 'After importing, use the “See real ads for this product” check that appears below — it pulls real, currently-running ads from Meta’s Ad Library so you can gauge demand.',
+  hypersku: 'Before you commit, use the “See real ads for this product” check in the import dialog — it pulls real, currently-running ads from Meta’s Ad Library so you can gauge demand first.',
+};
+
+function ImportHelpPanel({ supplier }: { supplier: 'cj' | 'printful' | 'aliexpress' | 'hypersku' }) {
+  const steps = IMPORT_STEPS[supplier];
+  return (
+    <aside className="lg:sticky lg:top-6 space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <p className="text-sm font-semibold text-foreground mb-4">How to import from {SUPPLIER_LABEL[supplier]}?</p>
+        <ol>
+          {steps.map((step, i) => (
+            <li key={i} className="relative flex gap-3 pb-5 last:pb-0">
+              {i < steps.length - 1 && (
+                <span className="absolute left-[13px] top-7 bottom-0 w-px bg-border" aria-hidden="true" />
+              )}
+              <span className="relative z-10 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0">
+                {i + 1}
+              </span>
+              <div className="pt-0.5">
+                <p className="text-sm font-semibold text-foreground">{step.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{step.desc}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-4 flex gap-3">
+        <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center shrink-0">
+          <Lightbulb className="w-4 h-4 text-green-600 dark:text-green-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Pro Tip</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{IMPORT_PRO_TIP[supplier]}</p>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function FeatureChip({ icon: Icon, label, colorClass }: { icon: React.ElementType; label: string; colorClass: string }) {
+  return (
+    <div className="bg-card border border-border rounded-xl p-3.5 flex flex-col items-center text-center gap-2">
+      <div className={`w-9 h-9 rounded-full flex items-center justify-center ${colorClass}`}>
+        <Icon className="w-4 h-4" />
+      </div>
+      <span className="text-xs font-medium text-foreground">{label}</span>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ImportProductsPage() {
@@ -541,7 +635,8 @@ export default function ImportProductsPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
+    <div className="space-y-6 min-w-0">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Import Products</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -707,44 +802,112 @@ export default function ImportProductsPage() {
               <MetaAdCheck shopId={shopId} defaultQuery={importedId.name} />
             </div>
           )}
-          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">AliExpress product link</label>
-            <input type="text" value={aliexpressUrl} onChange={(e) => setAliexpressUrl(e.target.value)}
-              placeholder="https://www.aliexpress.com/item/1005001234567890.html"
-              className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary outline-none" />
-            <p className="text-xs text-muted-foreground mt-1.5">
-              Find and pick the product on AliExpress&apos;s own site, then paste its link here — everything (images, variants, description) imports automatically.
+
+          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-5">
+            {/* Header */}
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                <ShoppingBag className="w-5 h-5 text-red-500" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-foreground">Import from AliExpress</p>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">Recommended</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">Paste any AliExpress product link and import it directly to your store.</p>
+              </div>
+            </div>
+
+            {/* Product link */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground block">AliExpress product link</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1 min-w-0">
+                  <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input type="text" value={aliexpressUrl} onChange={(e) => setAliexpressUrl(e.target.value)}
+                    placeholder="https://www.aliexpress.com/item/…"
+                    className="w-full pl-9 pr-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary outline-none" />
+                </div>
+                <button type="button"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (text) setAliexpressUrl(text.trim());
+                    } catch { /* clipboard permission denied — user can still paste manually */ }
+                  }}
+                  className="px-3 py-2.5 border border-border rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted transition flex items-center gap-1.5 shrink-0">
+                  <ClipboardPaste className="w-3.5 h-3.5" /> Paste
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 text-xs text-sky-700 dark:text-sky-300 bg-sky-500/10 rounded-lg px-3 py-2.5">
+              <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>You can use any AliExpress product link. We&apos;ll automatically fetch the product title, images, variants, price, description and more.</span>
+            </div>
+
+            {/* Selling price */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <label className="text-sm font-medium text-foreground">Selling price <span className="font-normal text-muted-foreground">(optional)</span></label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>Leave blank to auto-calculate: 2x the product&apos;s cost, converted to your store&apos;s currency.</TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                  <input type="number" step="0.01" min="0" value={aliexpressSellingPrice} onChange={(e) => setAliexpressSellingPrice(e.target.value)}
+                    placeholder="Leave blank to use 2x cost"
+                    className="w-full pl-6 pr-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary outline-none" />
+                </div>
+                <span className="shrink-0 text-[11px] font-semibold pl-1.5 pr-2.5 py-1.5 rounded-full bg-primary/10 text-primary flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] flex items-center justify-center font-bold">2x</span>
+                  Auto-calculate
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">Set your selling price or leave blank to auto-calculate (2x cost, converted to your store&apos;s currency).</p>
+            </div>
+
+            {aliexpressError && (
+              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {aliexpressError}
+              </div>
+            )}
+
+            <button
+              onClick={async () => {
+                if (!aliexpressUrl.trim()) return;
+                setImportingAliexpress(true); setAliexpressError('');
+                try {
+                  const price = parseFloat(aliexpressSellingPrice) || undefined;
+                  const r = await dropshipApi.aliexpressImport(shopId, aliexpressUrl.trim(), price);
+                  setImportedId({ id: r.data.product_id, name: r.data.name });
+                  setAliexpressUrl(''); setAliexpressSellingPrice('');
+                } catch (e: any) {
+                  setAliexpressError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Import failed. Check the link and try again.');
+                } finally { setImportingAliexpress(false); }
+              }}
+              disabled={importingAliexpress || !aliexpressUrl.trim()}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+              {importingAliexpress ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
+              {importingAliexpress ? 'Importing…' : 'Import to My Products'}
+            </button>
+
+            <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+              <Lock className="w-3 h-3" /> Safe &amp; secure. We only use the product link to fetch public product information.
             </p>
           </div>
-          <div>
-            <label className="text-sm text-muted-foreground mb-1.5 block">Selling price <span className="opacity-60 font-normal">— optional, leave blank to use 2x cost, converted to your store&apos;s currency</span></label>
-            <input type="number" step="0.01" min="0" value={aliexpressSellingPrice} onChange={(e) => setAliexpressSellingPrice(e.target.value)}
-              className="w-40 px-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground" />
-          </div>
-          {aliexpressError && (
-            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0" /> {aliexpressError}
-            </div>
-          )}
-          <button
-            onClick={async () => {
-              if (!aliexpressUrl.trim()) return;
-              setImportingAliexpress(true); setAliexpressError('');
-              try {
-                const price = parseFloat(aliexpressSellingPrice) || undefined;
-                const r = await dropshipApi.aliexpressImport(shopId, aliexpressUrl.trim(), price);
-                setImportedId({ id: r.data.product_id, name: r.data.name });
-                setAliexpressUrl(''); setAliexpressSellingPrice('');
-              } catch (e: any) {
-                setAliexpressError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Import failed. Check the link and try again.');
-              } finally { setImportingAliexpress(false); }
-            }}
-            disabled={importingAliexpress || !aliexpressUrl.trim()}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-            {importingAliexpress ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
-            {importingAliexpress ? 'Importing…' : 'Import to My Products'}
-          </button>
+
+          {/* Feature strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <FeatureChip icon={Zap} label="Fast Import" colorClass="bg-green-500/10 text-green-600 dark:text-green-400" />
+            <FeatureChip icon={ImageIcon} label="Complete Data" colorClass="bg-purple-500/10 text-purple-600 dark:text-purple-400" />
+            <FeatureChip icon={Settings2} label="Auto Pricing" colorClass="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
+            <FeatureChip icon={Tag} label="Start Selling" colorClass="bg-orange-500/10 text-orange-600 dark:text-orange-400" />
           </div>
         </div>
       )}
@@ -952,6 +1115,9 @@ export default function ImportProductsPage() {
       )}
       </>
       ))}
+    </div>
+
+    <ImportHelpPanel supplier={supplier} />
     </div>
   );
 }

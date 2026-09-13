@@ -542,11 +542,15 @@ export function ShopSidebar() {
                                                 {/* Real brand logo where one exists (same asset
                                                     SupplierCard's own header uses) — plain icon
                                                     fallback for suppliers with no logo file yet,
-                                                    never a made-up mark. */}
+                                                    never a made-up mark. Rendered on an explicit
+                                                    white chip (not the dark sidebar background)
+                                                    since these source files carry their own light
+                                                    backdrop — on the navy sidebar that backdrop
+                                                    read as a mismatched patch rather than a logo. */}
                                                 {style?.logo ? (
-                                                  <span className="w-4 h-4 rounded-sm overflow-hidden shrink-0 flex items-center justify-center bg-sidebar-accent">
-                                                    <Image src={style.logo} alt={s.name} width={16} height={16}
-                                                      className={style.logoFit === 'contain' ? 'w-3 h-3 object-contain' : 'w-full h-full object-cover'} />
+                                                  <span className="w-5 h-5 rounded-md overflow-hidden shrink-0 flex items-center justify-center bg-white p-0.5 ring-1 ring-black/5">
+                                                    <Image src={style.logo} alt={s.name} width={20} height={20}
+                                                      className="w-full h-full object-contain" />
                                                   </span>
                                                 ) : (
                                                   <SupplierIcon className={`w-4 h-4 flex-shrink-0 ${style?.color ?? ''}`} />
