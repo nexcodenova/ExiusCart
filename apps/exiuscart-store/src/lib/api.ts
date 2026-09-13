@@ -697,6 +697,10 @@ export const channelsApi = {
     api.get(`/shops/${shopId}/channels/${channelType}/dashboard`),
   syncChannel: (shopId: string, channelId: number) =>
     api.post(`/shops/${shopId}/channels/${channelId}/sync`),
+  getSyncSettings: (shopId: string, channelId: number) =>
+    api.get(`/shops/${shopId}/channels/${channelId}/sync-settings`),
+  setSyncSettings: (shopId: string, channelId: number, data: { auto_sync_orders: boolean; sync_frequency_minutes: number }) =>
+    api.put(`/shops/${shopId}/channels/${channelId}/sync-settings`, data),
   setChannelCurrency: (shopId: string, channelId: number, channelCurrency: string | null) =>
     api.put(`/shops/${shopId}/channels/${channelId}/currency`, { channel_currency: channelCurrency }),
   setChannelSiteUrl: (shopId: string, channelId: number, siteUrl: string | null) =>
@@ -790,6 +794,8 @@ export const ebayApi = {
     api.get(`/shops/${shopId}/channels/ebay/authorize`, { params: { seller_country: sellerCountry } }),
   setSellerCountry: (shopId: string, country: string) =>
     api.put(`/shops/${shopId}/channels/ebay/seller-country`, { country }),
+  getMarketplace: (shopId: string) =>
+    api.get(`/shops/${shopId}/channels/ebay/marketplace`),
   getBusinessPolicies: (shopId: string) =>
     api.get(`/shops/${shopId}/channels/ebay/business-policies`),
   saveBusinessPolicies: (shopId: string, data: { payment_policy_id: string; fulfillment_policy_id: string; return_policy_id: string }) =>

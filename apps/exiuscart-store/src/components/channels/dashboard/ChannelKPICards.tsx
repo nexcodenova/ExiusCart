@@ -1,6 +1,6 @@
 'use client';
 
-import { ShoppingCart, Package, Coins, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Package, Coins, RefreshCw, Activity } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { timeAgo, type ChannelDashboardKPIs } from './types';
@@ -31,7 +31,7 @@ function KPICard({ icon: Icon, iconClass, label, value, sub }: {
 export default function ChannelKPICards({ kpis }: { kpis: ChannelDashboardKPIs }) {
   const { fmt } = useCurrency();
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
       <KPICard icon={ShoppingCart} iconClass="bg-violet-500/10 text-violet-600 dark:text-violet-400"
         label="Total Orders" value={kpis.total_orders.toLocaleString()} sub="All time on this channel" />
       <KPICard icon={Package} iconClass="bg-blue-500/10 text-blue-600 dark:text-blue-400"
@@ -40,6 +40,9 @@ export default function ChannelKPICards({ kpis }: { kpis: ChannelDashboardKPIs }
         label="Revenue" value={fmt(kpis.revenue)} sub="Paid orders, all time" />
       <KPICard icon={RefreshCw} iconClass="bg-amber-500/10 text-amber-600 dark:text-amber-400"
         label="Last Sync" value={timeAgo(kpis.last_synced_at)} sub={kpis.last_synced_at ? 'Auto-sync on new orders' : 'No sync recorded yet'} />
+      <KPICard icon={Activity} iconClass={kpis.health_pct == null ? 'bg-muted text-muted-foreground' : kpis.health_pct >= 90 ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}
+        label="Integration Health" value={kpis.health_pct == null ? '—' : `${kpis.health_pct}%`}
+        sub={kpis.health_pct == null ? 'No sync activity yet' : `${kpis.health_failed_count} failed attempt${kpis.health_failed_count === 1 ? '' : 's'}, all time`} />
     </div>
   );
 }

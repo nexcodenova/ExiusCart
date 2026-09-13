@@ -740,6 +740,62 @@ def set_channel_site_url(
     return {"channel_api_url": conn.channel_api_url}
 
 
+# ── Per-connection automation settings — real, channel-agnostic ────────────
+# Only fields an actual background scheduler reads belong here (see main.py's
+# per-channel sync threads) — never a UI toggle with nothing behind it.
+DEFAULT_SYNC_SETTINGS = {"auto_sync_orders": False, "sync_frequency_minutes": 30}
+ALLOWED_SYNC_FREQUENCIES = {15, 30, 60, 180}
+
+
+@router.get("/shops/{shop_id}/channels/{channel_id}/sync-settings")
+def get_channel_sync_settings(
+    shop_id: int,
+    channel_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id, ChannelConnection.shop_id == shop_id,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Channel connection not found")
+    settings = {**DEFAULT_SYNC_SETTINGS, **(conn.sync_settings or {})}
+    return {
+        **settings,
+        "last_auto_synced_at": conn.last_auto_synced_at,
+    }
+
+
+class ChannelSyncSettingsIn(BaseModel):
+    auto_sync_orders: bool
+    sync_frequency_minutes: int
+
+
+@router.put("/shops/{shop_id}/channels/{channel_id}/sync-settings")
+def set_channel_sync_settings(
+    shop_id: int,
+    channel_id: int,
+    data: ChannelSyncSettingsIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(ChannelConnection).filter(
+        ChannelConnection.id == channel_id, ChannelConnection.shop_id == shop_id,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Channel connection not found")
+    if data.sync_frequency_minutes not in ALLOWED_SYNC_FREQUENCIES:
+        raise HTTPException(status_code=400, detail=f"sync_frequency_minutes must be one of {sorted(ALLOWED_SYNC_FREQUENCIES)}")
+    conn.sync_settings = {
+        "auto_sync_orders": data.auto_sync_orders,
+        "sync_frequency_minutes": data.sync_frequency_minutes,
+    }
+    db.commit()
+    return {**conn.sync_settings, "last_auto_synced_at": conn.last_auto_synced_at}
+
+
 @router.delete("/shops/{shop_id}/channels/{channel_id}", status_code=200)
 def disconnect_channel(
     shop_id: int,
@@ -3134,6 +3190,18 @@ def get_channel_dashboard(
                 "growth_pct": growth,
             })
 
+    # ── Integration health — real success/fail ratio from this channel's own
+    # ChannelSyncLog rows (all-time, same convention channel-listings/stats
+    # uses). None when there's no activity yet to compute a ratio from —
+    # the frontend shows "—", never a fabricated 100%. ──
+    health_rows = db.query(ChannelSyncLog.success, sql_func.count(ChannelSyncLog.id)).filter(
+        ChannelSyncLog.shop_id == shop_id, ChannelSyncLog.channel_type == channel_type,
+    ).group_by(ChannelSyncLog.success).all()
+    health_succ = sum(c for ok, c in health_rows if ok)
+    health_fail = sum(c for ok, c in health_rows if not ok)
+    health_total = health_succ + health_fail
+    health_pct = round(100 * health_succ / health_total, 1) if health_total else None
+
     return {
         "channel_type": channel_type,
         "connection": {
@@ -3152,6 +3220,8 @@ def get_channel_dashboard(
             "revenue": round(revenue, 2),
             "products_listed": products_listed,
             "last_synced_at": conn.last_synced_at,
+            "health_pct": health_pct,
+            "health_failed_count": health_fail,
         },
         "daily": daily,
         "recent_activity": activity,

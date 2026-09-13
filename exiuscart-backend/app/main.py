@@ -193,6 +193,13 @@ _MIGRATIONS = [
     "ALTER TABLE product_channel_categories ADD COLUMN IF NOT EXISTS is_gift BOOLEAN DEFAULT FALSE NOT NULL;",
     "ALTER TABLE product_channel_categories ALTER COLUMN channel_category_id DROP NOT NULL;",
     "ALTER TABLE product_channel_categories ALTER COLUMN channel_category_name DROP NOT NULL;",
+    # Generic per-connection automation settings — {auto_sync_orders: bool,
+    # sync_frequency_minutes: int, last_auto_synced_at is tracked separately
+    # below since it needs indexed/typed access from the scheduler, not just
+    # JSON}. Channel-agnostic on purpose so any channel's own scheduler can
+    # read/write the same shape instead of each getting bespoke columns.
+    "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS sync_settings JSONB;",
+    "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS last_auto_synced_at TIMESTAMPTZ;",
 ]
 
 for _sql in _MIGRATIONS:
@@ -397,6 +404,55 @@ def _run_daraz_order_sync_scheduler():
 
 _daraz_order_sync_thread = threading.Thread(target=_run_daraz_order_sync_scheduler, daemon=True)
 _daraz_order_sync_thread.start()
+
+# eBay auto order sync — opt-in per connection via ChannelConnection.sync_settings
+# (auto_sync_orders + sync_frequency_minutes), set from the integration page's
+# real Automation tab. Ticks every 5 minutes and only actually syncs a given
+# connection once its own configured frequency has elapsed — never fabricated,
+# every "next sync" the frontend shows is computed from last_auto_synced_at +
+# this same interval.
+def _run_ebay_auto_sync_scheduler():
+    from datetime import datetime, timezone, timedelta
+    while True:
+        try:
+            from app.models.channel import ChannelConnection
+            from app.models.shop import Shop
+            from app.api.v1.endpoints.ebay import sync_ebay_orders
+            db = SessionLocal()
+            try:
+                now = datetime.now(timezone.utc)
+                conns = db.query(ChannelConnection).filter(
+                    ChannelConnection.channel_type == "ebay",
+                    ChannelConnection.is_active == True,
+                ).all()
+                for conn in conns:
+                    settings = conn.sync_settings or {}
+                    if not settings.get("auto_sync_orders"):
+                        continue
+                    freq = int(settings.get("sync_frequency_minutes") or 30)
+                    last = conn.last_auto_synced_at
+                    if last:
+                        last_utc = last if last.tzinfo else last.replace(tzinfo=timezone.utc)
+                        if (now - last_utc).total_seconds() < freq * 60:
+                            continue
+                    shop = db.query(Shop).filter(Shop.id == conn.shop_id).first()
+                    if not shop:
+                        continue
+                    try:
+                        start = now - timedelta(days=2)  # overlap window — real order sync already skips duplicates
+                        sync_ebay_orders(conn, shop, db, start.strftime("%Y-%m-%dT%H:%M:%S.000Z"), now.strftime("%Y-%m-%dT%H:%M:%S.000Z"))
+                        conn.last_auto_synced_at = now
+                        db.commit()
+                    except Exception as exc:
+                        logger.error(f"[eBay Auto Sync] shop={conn.shop_id} {exc}")
+            finally:
+                db.close()
+        except Exception as exc:
+            logger.error(f"[eBay Auto Sync scheduler] {exc}")
+        time.sleep(5 * 60)
+
+_ebay_auto_sync_thread = threading.Thread(target=_run_ebay_auto_sync_scheduler, daemon=True)
+_ebay_auto_sync_thread.start()
 
 # CORS middleware
 # allow_origins=["*"] together with allow_credentials=True is invalid per the CORS

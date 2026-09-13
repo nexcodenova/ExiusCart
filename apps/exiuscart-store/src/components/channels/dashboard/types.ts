@@ -19,6 +19,11 @@ export interface ChannelDashboardKPIs {
   revenue: number;
   products_listed: number;
   last_synced_at: string | null;
+  // Real success/fail ratio computed from this channel's own ChannelSyncLog
+  // rows — null when there's no logged activity yet to compute a ratio
+  // from, never a fabricated 100%.
+  health_pct: number | null;
+  health_failed_count: number;
 }
 
 export interface ChannelDailyPoint {

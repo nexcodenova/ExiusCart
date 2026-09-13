@@ -102,8 +102,47 @@ EBAY_MARKETPLACE_BY_COUNTRY = {
     "US": "EBAY_US",
     "GB": "EBAY_GB",
     "CA": "EBAY_CA",
+    # Every other real eBay site — same "real marketplace ID, not one we
+    # invented" bar as the three above (these are eBay's own documented
+    # marketplaceId enum values for the Sell APIs).
+    "AU": "EBAY_AU",
+    "AT": "EBAY_AT",
+    "BE": "EBAY_BE",
+    "FR": "EBAY_FR",
+    "DE": "EBAY_DE",
+    "IT": "EBAY_IT",
+    "NL": "EBAY_NL",
+    "ES": "EBAY_ES",
+    "CH": "EBAY_CH",
+    "IE": "EBAY_IE",
+    "PL": "EBAY_PL",
+    "SG": "EBAY_SG",
+    "MY": "EBAY_MY",
+    "PH": "EBAY_PH",
+    "IN": "EBAY_IN",
+    "HK": "EBAY_HK",
+    "TW": "EBAY_TW",
 }
 EBAY_DEFAULT_MARKETPLACE = "EBAY_US"
+
+# Human-readable label per marketplace ID, for the read-only "Marketplace"
+# display — driven by the seller's registered country (real, already
+# collected at connect time), not a separate selector that could disagree
+# with it. eBay's actual Sell APIs are scoped to one marketplace per
+# connection; a free-standing dropdown decoupled from seller_country would
+# just be a second field that could silently contradict the first.
+EBAY_MARKETPLACE_LABEL = {
+    "EBAY_US": "eBay United States (USD)", "EBAY_GB": "eBay United Kingdom (GBP)",
+    "EBAY_CA": "eBay Canada (CAD)", "EBAY_AU": "eBay Australia (AUD)",
+    "EBAY_AT": "eBay Austria (EUR)", "EBAY_BE": "eBay Belgium (EUR)",
+    "EBAY_FR": "eBay France (EUR)", "EBAY_DE": "eBay Germany (EUR)",
+    "EBAY_IT": "eBay Italy (EUR)", "EBAY_NL": "eBay Netherlands (EUR)",
+    "EBAY_ES": "eBay Spain (EUR)", "EBAY_CH": "eBay Switzerland (CHF)",
+    "EBAY_IE": "eBay Ireland (EUR)", "EBAY_PL": "eBay Poland (PLN)",
+    "EBAY_SG": "eBay Singapore (SGD)", "EBAY_MY": "eBay Malaysia (MYR)",
+    "EBAY_PH": "eBay Philippines (PHP)", "EBAY_IN": "eBay India (INR)",
+    "EBAY_HK": "eBay Hong Kong (HKD)", "EBAY_TW": "eBay Taiwan (TWD)",
+}
 
 
 def _ebay_marketplace_id(country_code: str) -> str:
@@ -455,7 +494,32 @@ def set_ebay_seller_country(
         raise HTTPException(status_code=400, detail="Enter the country your eBay seller account is registered under — this couldn't be recognized.")
     conn.seller_country = iso
     db.commit()
-    return {"seller_country": iso}
+    marketplace_id = _ebay_marketplace_id(iso)
+    return {
+        "seller_country": iso,
+        "marketplace_id": marketplace_id,
+        "marketplace_label": EBAY_MARKETPLACE_LABEL.get(marketplace_id, marketplace_id),
+    }
+
+
+@router.get("/shops/{shop_id}/channels/ebay/marketplace")
+def get_ebay_marketplace(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """The real marketplace your listings/orders actually go through —
+    derived from seller_country (eBay ties a Sell API connection to one
+    marketplace), not a separately-set field that could disagree with it."""
+    _shop_or_404(shop_id, current_user, db)
+    conn = _get_ebay_connection(shop_id, db)
+    marketplace_id = _ebay_marketplace_id(conn.seller_country)
+    return {
+        "marketplace_id": marketplace_id,
+        "marketplace_label": EBAY_MARKETPLACE_LABEL.get(marketplace_id, marketplace_id),
+        "seller_country": conn.seller_country,
+        "is_default_fallback": (conn.seller_country or "").strip().upper() not in EBAY_MARKETPLACE_BY_COUNTRY,
+    }
 
 
 # ── Business Policies — a real, mandatory, never-fabricated prerequisite ────

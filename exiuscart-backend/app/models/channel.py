@@ -75,3 +75,12 @@ class ChannelConnection(Base):
     # repeatedly doesn't hammer the channel's API.
     field_defs_cache = Column(JSON, nullable=True)
     field_defs_synced_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Generic per-connection automation settings — deliberately channel-
+    # agnostic (any channel's own background scheduler can read/write this
+    # same shape) rather than one column per toggle per channel. Real,
+    # persisted settings only — no field here exists unless a scheduler
+    # actually reads and acts on it (see main.py's per-channel sync threads).
+    # Shape so far: {"auto_sync_orders": bool, "sync_frequency_minutes": int}
+    sync_settings = Column(JSON, nullable=True)
+    last_auto_synced_at = Column(DateTime(timezone=True), nullable=True)
