@@ -107,6 +107,17 @@ jobs:
             # deploy on the same server — the two racing each other, both
             # writing into the same folder, is what was actually corrupting
             # builds. Only one pipeline should ever deploy this server now.
+            #
+            # `npm install`/`npm run build` inside deploy.sh can leave
+            # package-lock.json (or similar tracked files) locally modified
+            # on the server — e.g. a platform-specific optional-dependency
+            # resolution that differs from what was committed. That's build
+            # drift, never real work worth keeping (the server is a deploy
+            # target, not where anyone edits code), but left in place it
+            # blocks the next `git pull` outright ("local changes would be
+            # overwritten by merge"). Discard any such drift before every
+            # pull so this can't recur.
+            git checkout -- .
             export BEFORE_SHA=$(git rev-parse HEAD)
             git pull origin main
             bash deploy.sh
