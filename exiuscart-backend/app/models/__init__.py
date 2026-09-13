@@ -56,3 +56,5 @@ from app.models.prodora_digital import ProdoraDigitalBundle, ProdoraDigitalPurch
 from app.models.social_posting import SocialAccountConnection, SocialPost
 from app.models.whatsapp_marketing import WhatsAppConnection, WhatsAppTemplate, WhatsAppCampaign, WhatsAppMessageLog
 from app.models.activity_log import ActivityLog
+from app.models.discount import Discount
+from app.models.supplier_return import SupplierReturn

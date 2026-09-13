@@ -88,7 +88,7 @@ export const dashboardApi = {
 
 // ── Products ──────────────────────────────────────────
 export const productsApi = {
-  getAll: (shopId: string, params?: { search?: string; category?: string }) =>
+  getAll: (shopId: string, params?: { search?: string; category?: string; is_gift_card?: boolean }) =>
     api.get(`/shops/${shopId}/products`, { params }),
   create: (shopId: string, data: any) =>
     api.post(`/shops/${shopId}/products`, data),
@@ -196,6 +196,20 @@ export const customersApi = {
     api.put(`/shops/${shopId}/customers/${customerId}`, data),
   delete: (shopId: string, customerId: string | number) =>
     api.delete(`/shops/${shopId}/customers/${customerId}`),
+};
+
+// ── Discounts ─────────────────────────────────────────
+export const discountsApi = {
+  getAll: (shopId: string, search?: string) =>
+    api.get(`/shops/${shopId}/discounts`, { params: { search: search || undefined } }),
+  create: (shopId: string, data: any) =>
+    api.post(`/shops/${shopId}/discounts`, data),
+  update: (shopId: string, discountId: number, data: any) =>
+    api.put(`/shops/${shopId}/discounts/${discountId}`, data),
+  delete: (shopId: string, discountId: number) =>
+    api.delete(`/shops/${shopId}/discounts/${discountId}`),
+  validate: (shopId: string, code: string, subtotal: number) =>
+    api.post(`/shops/${shopId}/discounts/validate`, { code, subtotal }),
 };
 
 // ── Inventory ─────────────────────────────────────────
@@ -998,6 +1012,15 @@ export const dropshipApi = {
     api.post(`/shops/${shopId}/orders/${orderId}/dropship-fulfill`, { supplier_type: supplierType }),
   getDropshipOrders: (shopId: string, params?: { status?: string; supplier_type?: string }) =>
     api.get(`/shops/${shopId}/dropship/orders`, { params }),
+  getReturns: (shopId: string, status?: string) =>
+    api.get(`/shops/${shopId}/dropship/returns`, { params: { status: status || undefined } }),
+  createReturn: (shopId: string, data: {
+    order_id: number; dropship_order_id?: number | null; supplier_type: string; reason: string; refund_amount?: number; notes?: string;
+  }) => api.post(`/shops/${shopId}/dropship/returns`, data),
+  updateReturn: (shopId: string, returnId: number, data: { status?: string; refund_amount?: number; notes?: string }) =>
+    api.put(`/shops/${shopId}/dropship/returns/${returnId}`, data),
+  deleteReturn: (shopId: string, returnId: number) =>
+    api.delete(`/shops/${shopId}/dropship/returns/${returnId}`),
   cjSearch: (shopId: string, q: string, page = 1) =>
     api.get(`/shops/${shopId}/dropship/cj/search`, { params: { q, page } }),
   cjMyProducts: (shopId: string, page = 1) =>

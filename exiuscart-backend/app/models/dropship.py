@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, N
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
+from app.core.encryption import EncryptedText
 
 
 class DropshipConnection(Base):
@@ -15,8 +16,11 @@ class DropshipConnection(Base):
     # so any pre-existing connections don't lose their column on migration.
     supplier_email = Column(String(255), nullable=True)
     supplier_password_enc = Column(Text, nullable=True)
-    access_token = Column(Text, nullable=True)                  # CJ access token (all suppliers use api_key to get one)
+    access_token = Column(EncryptedText, nullable=True)         # CJ access token — encrypted at rest (see app/core/encryption.py)
     token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    # Note: still Text + the *manual* encrypt()/decrypt() calls already used
+    # at every call site in dropshipping.py — NOT EncryptedText, which would
+    # double-encrypt/decrypt on top of those existing calls.
     api_key = Column(Text, nullable=True)                       # CJ / HyperSKU — Fernet-encrypted (app/core/encryption.py)
     # AliExpress uses real OAuth2 (one shared ExiusCart app, each seller
     # authorizes their own AliExpress account against it) instead of a
@@ -24,7 +28,7 @@ class DropshipConnection(Base):
     # oauth_state, added here because AliExpress is a supplier (source
     # products FROM), not an outbound sales channel, so it belongs on this
     # table with CJ/Printful, not ChannelConnection with eBay/Daraz.
-    refresh_token = Column(Text, nullable=True)
+    refresh_token = Column(EncryptedText, nullable=True)        # encrypted at rest
     oauth_state = Column(String(100), nullable=True)            # CSRF token for the in-flight authorize request
     is_active = Column(Boolean, default=True)
     auto_fulfill_enabled = Column(Boolean, default=False)       # Premium: auto-send orders to supplier

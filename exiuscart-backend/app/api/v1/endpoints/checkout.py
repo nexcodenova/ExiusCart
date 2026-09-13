@@ -33,6 +33,7 @@ from app.models.user import User
 from app.api.v1.deps import get_current_user
 from app.core.rate_limit import limiter
 from app.core.activity import log_activity
+from app.core.discounts import validate_and_compute_discount, record_discount_usage
 
 SUPPORTED_GATEWAYS = ("payhere", "stripe", "paypal", "whop")
 
@@ -130,6 +131,7 @@ class CheckoutIn(BaseModel):
     phone: Optional[str] = None
     shipping_address: Optional[str] = None
     use_wallet_amount: Optional[float] = None
+    discount_code: Optional[str] = None
     # Required for Stripe/PayPal — those redirect the shopper to a hosted
     # payment page and need to know where to send them back afterward.
     # PayHere doesn't use these (it posts a form directly, no redirect URL
@@ -230,7 +232,15 @@ def public_store_checkout(
         from app.api.v1.endpoints.wallet import debit_wallet_for_redemption
         wallet_discount = debit_wallet_for_redemption(shop.id, auth_customer.id, Decimal(str(data.use_wallet_amount)), db)
 
-    total = subtotal - wallet_discount
+    # Coupon code — validated against the real subtotal (before the wallet
+    # credit), same order a shopper would expect a receipt to itemize them.
+    discount = None
+    coupon_discount = Decimal("0")
+    if data.discount_code:
+        discount, coupon_discount = validate_and_compute_discount(db, shop.id, data.discount_code, subtotal)
+
+    total_discount = wallet_discount + coupon_discount
+    total = subtotal - total_discount
     if total < 0:
         total = Decimal("0")
 
@@ -246,7 +256,8 @@ def public_store_checkout(
         # since Order has no dedicated channel-type column of its own.
         notes="Custom Website order",
         subtotal=subtotal,
-        discount_amount=wallet_discount,
+        discount_amount=total_discount,
+        discount_code=discount.code if discount else None,
         total=total,
         shipping_address=data.shipping_address,
         shop_id=shop.id,
@@ -265,6 +276,8 @@ def public_store_checkout(
             unit_price=li["unit_price"],
             total_price=li["total_price"],
         ))
+    if discount:
+        record_discount_usage(db, discount)
     db.commit()
     db.refresh(order)
 
@@ -272,6 +285,29 @@ def public_store_checkout(
 
     payment_params = _build_payment_params(conn, shop, order, total, data.return_url, data.cancel_url)
     return {"order_number": order.order_number, "total": float(total), "payment": payment_params}
+
+
+class DiscountPreviewIn(BaseModel):
+    code: str
+    subtotal: float
+
+
+@router.post("/public/store/{shop_slug}/discounts/preview")
+@limiter.limit("30/minute")
+def public_discount_preview(request: Request, shop_slug: str, data: DiscountPreviewIn, db: Session = Depends(get_db)):
+    """Lets the cart show 'code applied, -Rs X' before the shopper fills in
+    the rest of checkout — same validation checkout itself runs, just
+    without creating an order."""
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+    discount, amount = validate_and_compute_discount(db, shop.id, data.code, Decimal(str(data.subtotal)))
+    return {
+        "code": discount.code,
+        "discount_type": discount.discount_type,
+        "value": float(discount.value),
+        "discount_amount": float(amount),
+    }
 
 
 class CheckoutStartedIn(BaseModel):

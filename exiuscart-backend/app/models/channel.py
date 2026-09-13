@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.sql import func
 from app.core.database import Base
+from app.core.encryption import EncryptedText
 
 
 class ChannelConnection(Base):
@@ -9,7 +10,7 @@ class ChannelConnection(Base):
     id = Column(Integer, primary_key=True, index=True)
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
     channel_type = Column(String(50), nullable=False)       # "thedersi" | "shopify" | "woocommerce"
-    channel_api_key = Column(Text, nullable=True)            # API key to call channel's product API —
+    channel_api_key = Column(EncryptedText, nullable=True)   # API key to call channel's product API — encrypted at rest (see app/core/encryption.py)
                                                               # for Noon this holds a JSON blob (key_id,
                                                               # private_key, channel_identifier, project_code)
                                                               # since the RSA private key alone is ~1750 chars
@@ -50,8 +51,8 @@ class ChannelConnection(Base):
     # VARCHAR — eBay's real production tokens run several thousand
     # characters (much longer than sandbox tokens), so a fixed cap silently
     # truncates and fails the save. See migration a7c3e91f4d68.
-    access_token = Column(Text, nullable=True)
-    refresh_token = Column(Text, nullable=True)
+    access_token = Column(EncryptedText, nullable=True)   # encrypted at rest (see app/core/encryption.py)
+    refresh_token = Column(EncryptedText, nullable=True)  # encrypted at rest
     token_expires_at = Column(DateTime(timezone=True), nullable=True)
     oauth_state = Column(String(100), nullable=True)  # CSRF token for the in-flight authorize request
 
@@ -65,7 +66,7 @@ class ChannelConnection(Base):
     # the browser.
     payment_gateway = Column(String(30), nullable=True)
     gateway_merchant_id = Column(String(100), nullable=True)
-    gateway_merchant_secret = Column(String(255), nullable=True)
+    gateway_merchant_secret = Column(EncryptedText, nullable=True)  # encrypted at rest; widened from VARCHAR(255) — encryption expands length
 
     # Cached product-fields spec from the channel's own API (TheDersi's
     # /exiuscart/product-fields — Brand, Material, Metal Type, etc.), so we

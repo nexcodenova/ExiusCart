@@ -34,6 +34,7 @@ from app.models.user import User
 from app.models.order import Order
 from app.models.subscription import Subscription
 from app.models.dropship import DropshipConnection, DropshipProductLink, DropshipOrder
+from app.models.supplier_return import SupplierReturn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import EXIUSCART_BASE
 
@@ -3002,10 +3003,28 @@ def list_dropship_orders(
     if supplier_type:
         q = q.filter(DropshipOrder.supplier_type == supplier_type)
     orders = q.order_by(DropshipOrder.created_at.desc()).limit(200).all()
+
+    # Batch-fetch the real Order rows these link to, for a human-readable
+    # order number + customer name instead of just an internal order_id.
+    order_ids = [o.order_id for o in orders]
+    real_orders = {}
+    if order_ids:
+        for ro in db.query(Order).filter(Order.id.in_(order_ids)).all():
+            real_orders[ro.id] = ro
+        customer_ids = [ro.customer_id for ro in real_orders.values() if ro.customer_id]
+        customers = {}
+        if customer_ids:
+            from app.models.customer import Customer
+            customers = {c.id: c for c in db.query(Customer).filter(Customer.id.in_(customer_ids)).all()}
+
     return {"orders": [
         {
             "id": o.id,
             "order_id": o.order_id,
+            "order_number": real_orders[o.order_id].order_number if o.order_id in real_orders else None,
+            "customer_name": (customers.get(real_orders[o.order_id].customer_id).name
+                               if o.order_id in real_orders and real_orders[o.order_id].customer_id and real_orders[o.order_id].customer_id in customers
+                               else None),
             "supplier_type": o.supplier_type,
             "supplier_order_id": o.supplier_order_id,
             "status": o.status,
@@ -3015,10 +3034,140 @@ def list_dropship_orders(
             "cost_paid": float(o.cost_paid) if o.cost_paid else None,
             "error_message": o.error_message,
             "shipped_at": o.shipped_at.isoformat() if o.shipped_at else None,
+            "delivered_at": o.delivered_at.isoformat() if o.delivered_at else None,
             "created_at": o.created_at.isoformat() if o.created_at else None,
         }
         for o in orders
     ]}
+
+
+# ── Supplier Returns ──────────────────────────────────────────────────────────
+# Manual tracking log, not an automated RMA submission — none of the
+# connected suppliers expose a real returns API here (see model docstring).
+
+class SupplierReturnIn(BaseModel):
+    order_id: int
+    dropship_order_id: Optional[int] = None
+    supplier_type: str
+    reason: str
+    refund_amount: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class SupplierReturnUpdateIn(BaseModel):
+    status: Optional[str] = None
+    refund_amount: Optional[float] = None
+    notes: Optional[str] = None
+
+
+_RETURN_STATUSES = {"requested", "approved", "shipped_back", "refunded", "rejected"}
+
+
+def _supplier_return_out(r: SupplierReturn, order_number: Optional[str] = None) -> dict:
+    return {
+        "id": r.id,
+        "order_id": r.order_id,
+        "order_number": order_number,
+        "dropship_order_id": r.dropship_order_id,
+        "supplier_type": r.supplier_type,
+        "reason": r.reason,
+        "status": r.status,
+        "refund_amount": float(r.refund_amount) if r.refund_amount is not None else None,
+        "notes": r.notes,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+    }
+
+
+@router.post("/shops/{shop_id}/dropship/returns", status_code=201)
+def create_supplier_return(
+    shop_id: int,
+    data: SupplierReturnIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _shop_or_404(shop_id, current_user, db)
+    order = db.query(Order).filter(Order.id == data.order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if not data.reason.strip():
+        raise HTTPException(status_code=422, detail="A reason is required.")
+
+    ret = SupplierReturn(
+        shop_id=shop_id,
+        order_id=data.order_id,
+        dropship_order_id=data.dropship_order_id,
+        supplier_type=data.supplier_type,
+        reason=data.reason.strip(),
+        refund_amount=data.refund_amount,
+        notes=data.notes,
+    )
+    db.add(ret)
+    db.commit()
+    db.refresh(ret)
+    return _supplier_return_out(ret, order.order_number)
+
+
+@router.get("/shops/{shop_id}/dropship/returns")
+def list_supplier_returns(
+    shop_id: int,
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _shop_or_404(shop_id, current_user, db)
+    q = db.query(SupplierReturn).filter(SupplierReturn.shop_id == shop_id)
+    if status:
+        q = q.filter(SupplierReturn.status == status)
+    returns = q.order_by(SupplierReturn.created_at.desc()).limit(200).all()
+
+    order_ids = list({r.order_id for r in returns})
+    orders_by_id = {}
+    if order_ids:
+        orders_by_id = {o.id: o for o in db.query(Order).filter(Order.id.in_(order_ids)).all()}
+
+    return {"returns": [_supplier_return_out(r, orders_by_id[r.order_id].order_number if r.order_id in orders_by_id else None) for r in returns]}
+
+
+@router.put("/shops/{shop_id}/dropship/returns/{return_id}")
+def update_supplier_return(
+    shop_id: int,
+    return_id: int,
+    data: SupplierReturnUpdateIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _shop_or_404(shop_id, current_user, db)
+    ret = db.query(SupplierReturn).filter(SupplierReturn.id == return_id, SupplierReturn.shop_id == shop_id).first()
+    if not ret:
+        raise HTTPException(status_code=404, detail="Return not found")
+    if data.status is not None:
+        if data.status not in _RETURN_STATUSES:
+            raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_RETURN_STATUSES)}")
+        ret.status = data.status
+    if data.refund_amount is not None:
+        ret.refund_amount = data.refund_amount
+    if data.notes is not None:
+        ret.notes = data.notes
+    db.commit()
+    db.refresh(ret)
+    order = db.query(Order).filter(Order.id == ret.order_id).first()
+    return _supplier_return_out(ret, order.order_number if order else None)
+
+
+@router.delete("/shops/{shop_id}/dropship/returns/{return_id}", status_code=204)
+def delete_supplier_return(
+    shop_id: int,
+    return_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _shop_or_404(shop_id, current_user, db)
+    ret = db.query(SupplierReturn).filter(SupplierReturn.id == return_id, SupplierReturn.shop_id == shop_id).first()
+    if not ret:
+        raise HTTPException(status_code=404, detail="Return not found")
+    db.delete(ret)
+    db.commit()
 
 
 # ── Background: CJ tracking sync (called by scheduler in main.py) ────────────

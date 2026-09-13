@@ -204,6 +204,19 @@ _MIGRATIONS = [
     # seller from the Customers page — separate from the auto-computed
     # VIP/New/Returning segment, which stays derived rather than stored.
     "ALTER TABLE customers ADD COLUMN IF NOT EXISTS tags JSONB;",
+    # Discounts (direct store + POS only, see models/discount.py) — the
+    # `discounts` table itself is new and created by Base.metadata.create_all
+    # below; this only needs to add the coupon-code reference column onto
+    # the pre-existing orders table.
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_code VARCHAR(50);",
+    # Gift Cards phase 1 — just the flag on the product itself for now (see
+    # models/product.py); code issuance/redemption is a later phase.
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS is_gift_card BOOLEAN NOT NULL DEFAULT FALSE;",
+    # channel_api_key/access_token/refresh_token are already TEXT — no schema
+    # change needed for those to become encrypted (see app/core/encryption.py's
+    # EncryptedText). gateway_merchant_secret was VARCHAR(255); widened since
+    # an encrypted value is longer than the original secret.
+    "ALTER TABLE channel_connections ALTER COLUMN gateway_merchant_secret TYPE TEXT;",
 ]
 
 for _sql in _MIGRATIONS:

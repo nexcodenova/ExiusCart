@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery, bigcommerce, ad_intelligence, testimonials, whop, gumroad, video_gen, storefront_insights, prodora_digital, social_posting, whatsapp_marketing
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery, bigcommerce, ad_intelligence, testimonials, whop, gumroad, video_gen, storefront_insights, prodora_digital, social_posting, whatsapp_marketing, discounts
 
 api_router = APIRouter()
 
@@ -9,6 +9,7 @@ api_router.include_router(shops.router, prefix="/shops", tags=["Shops"])
 api_router.include_router(products.router, prefix="", tags=["Products"])
 api_router.include_router(orders.router, prefix="", tags=["Orders"])
 api_router.include_router(customers.router, prefix="", tags=["Customers"])
+api_router.include_router(discounts.router, prefix="", tags=["Discounts"])
 api_router.include_router(product_fields.router, prefix="", tags=["Product Fields & Images"])
 api_router.include_router(admin.router, prefix="", tags=["Admin"])
 api_router.include_router(shopping.router, prefix="", tags=["Shopping Storefront"])

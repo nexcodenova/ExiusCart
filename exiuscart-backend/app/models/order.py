@@ -42,6 +42,10 @@ class Order(Base):
     subtotal = Column(Numeric(10, 2), nullable=False)
     tax_amount = Column(Numeric(10, 2), default=0)
     discount_amount = Column(Numeric(10, 2), default=0)
+    # The coupon code actually applied, if any — separate from discount_amount
+    # (which also covers wallet-credit redemption with no code at all) so an
+    # order's history can show *why* it was discounted, not just by how much.
+    discount_code = Column(String(50), nullable=True)
     total = Column(Numeric(10, 2), nullable=False)
     notes = Column(Text, nullable=True)
     shipping_address = Column(Text, nullable=True)

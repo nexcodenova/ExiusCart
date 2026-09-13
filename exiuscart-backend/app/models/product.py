@@ -148,6 +148,11 @@ class Product(Base):
     is_gift = Column(Boolean, default=False, server_default="false", nullable=False)  # TheDersi-specific: offered as a free gift at TheDersi checkout
     pos_enabled = Column(Boolean, default=True, server_default="true", nullable=False)  # available for in-store POS sale
     pos_is_gift = Column(Boolean, default=False, server_default="false", nullable=False)  # marked as a gift item specifically for POS
+    # Distinct from is_gift/pos_is_gift above (those mark a product as a
+    # free promotional giveaway) — this flags the product itself as a
+    # prepaid Gift Card. Phase 1 is just the flag: no code issuance or
+    # redemption logic yet, built incrementally from here.
+    is_gift_card = Column(Boolean, default=False, server_default="false", nullable=False)
     # Values for whatever extra fields the seller defined for the Custom
     # Website channel (see CustomProductFieldSettings) — {field_id: value}.
     # A "quantity_tiers" field's value is itself a list of
