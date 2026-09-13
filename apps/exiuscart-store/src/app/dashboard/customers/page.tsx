@@ -135,9 +135,9 @@ function Sparkline({ data, colorClass }: { data: number[]; colorClass: string })
   if (!data || data.length === 0) return null;
   const max = Math.max(...data, 1);
   return (
-    <div className="flex items-end gap-0.5 h-8 w-16 shrink-0">
+    <div className="flex items-end gap-[2px] h-9 w-20 shrink-0">
       {data.map((v, i) => (
-        <div key={i} className={`flex-1 rounded-sm ${colorClass}`} style={{ height: `${Math.max(10, (v / max) * 100)}%` }} />
+        <div key={i} className={`flex-1 min-w-[2px] rounded-t-[1px] ${colorClass}`} style={{ height: `${Math.max(14, (v / max) * 100)}%` }} />
       ))}
     </div>
   );
@@ -254,7 +254,16 @@ function CustomerDetailPanel({ customer, onClose, onUpdated, onEdit, onDelete }:
   };
 
   return (
-    <div className="w-full lg:w-[360px] shrink-0 bg-card border border-border rounded-2xl overflow-hidden flex flex-col max-h-[calc(100vh-8rem)] sticky top-4">
+    <>
+      {/* Backdrop — click to close. A real fixed-position drawer (not a flex
+          sibling of the table) so it always renders fully inside the
+          viewport: the table's own natural width plus a 360px inline column
+          could exceed the viewport, and this app's global `overflow-x:
+          hidden` safeguard (globals.css) would then silently clip it with
+          no way to scroll to the rest — a fixed right-edge drawer can't run
+          into that regardless of how wide the table gets. */}
+      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[400px] bg-card border-l border-border shadow-2xl flex flex-col">
       <div className="flex items-start justify-between p-5 border-b border-border">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -408,7 +417,8 @@ function CustomerDetailPanel({ customer, onClose, onUpdated, onEdit, onDelete }:
           <Trash2 className="w-3.5 h-3.5" /> Delete Customer
         </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -663,8 +673,7 @@ export default function CustomersPage() {
           value={stats ? fmt(stats.now.avg_spent, 0) : '—'} changePct={stats?.changes.avg_spent ?? null} />
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        <div className="flex-1 min-w-0 space-y-4">
+      <div className="space-y-4">
           {/* Search + filter + sort */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -888,18 +897,17 @@ export default function CustomersPage() {
               </>
             )}
           </div>
-        </div>
-
-        {selectedCustomer && (
-          <CustomerDetailPanel
-            customer={selectedCustomer}
-            onClose={() => setSelectedCustomer(null)}
-            onUpdated={(patch) => applyUpdateToState(selectedCustomer.id, patch)}
-            onEdit={() => { setEditingCustomer(selectedCustomer); setShowAddModal(true); }}
-            onDelete={() => setShowDeleteConfirm(selectedCustomer)}
-          />
-        )}
       </div>
+
+      {selectedCustomer && (
+        <CustomerDetailPanel
+          customer={selectedCustomer}
+          onClose={() => setSelectedCustomer(null)}
+          onUpdated={(patch) => applyUpdateToState(selectedCustomer.id, patch)}
+          onEdit={() => { setEditingCustomer(selectedCustomer); setShowAddModal(true); }}
+          onDelete={() => setShowDeleteConfirm(selectedCustomer)}
+        />
+      )}
 
       {/* Add/Edit Modal */}
       {showAddModal && (
