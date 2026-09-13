@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -15,6 +15,10 @@ class Customer(Base):
     address = Column(Text, nullable=True)
     city = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
+    # Freeform labels the seller applies manually (e.g. "Wholesale") — distinct
+    # from the VIP/New/Returning segment, which is always computed from real
+    # order stats rather than stored, so it can never drift out of date.
+    tags = Column(JSON, nullable=True)
     is_active = Column(Boolean, default=True)
     # Nullable — most customers (POS, manual, synced from a channel) never
     # log in and have no password. Only set for storefront self-signup.

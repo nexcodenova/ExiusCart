@@ -147,7 +147,7 @@ export const storefrontInsightsApi = {
 
 // ── Orders ────────────────────────────────────────────
 export const ordersApi = {
-  getAll: (shopId: string, params?: { status?: string; payment_status?: string; search?: string; month?: string; date_from?: string; date_to?: string; source?: string; limit?: number }) =>
+  getAll: (shopId: string, params?: { status?: string; payment_status?: string; search?: string; month?: string; date_from?: string; date_to?: string; source?: string; customer_id?: number; limit?: number }) =>
     api.get(`/shops/${shopId}/orders`, { params }),
   getOne: (shopId: string, orderId: string) =>
     api.get(`/shops/${shopId}/orders/${orderId}`),
@@ -183,13 +183,18 @@ export const ordersApi = {
 
 // ── Customers ─────────────────────────────────────────
 export const customersApi = {
-  getAll: (shopId: string, params?: { search?: string; source?: string }) =>
-    api.get(`/shops/${shopId}/customers`, { params }),
+  getAll: (shopId: string, params?: {
+    search?: string; source?: string; status?: string; sort?: string; skip?: number; limit?: number;
+  }) => api.get(`/shops/${shopId}/customers`, { params }),
+  getStats: (shopId: string) =>
+    api.get(`/shops/${shopId}/customers/stats`),
+  getOne: (shopId: string, customerId: string | number) =>
+    api.get(`/shops/${shopId}/customers/${customerId}`),
   create: (shopId: string, data: any) =>
     api.post(`/shops/${shopId}/customers`, data),
-  update: (shopId: string, customerId: string, data: any) =>
+  update: (shopId: string, customerId: string | number, data: any) =>
     api.put(`/shops/${shopId}/customers/${customerId}`, data),
-  delete: (shopId: string, customerId: string) =>
+  delete: (shopId: string, customerId: string | number) =>
     api.delete(`/shops/${shopId}/customers/${customerId}`),
 };
 

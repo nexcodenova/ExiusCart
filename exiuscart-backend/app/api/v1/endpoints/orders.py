@@ -323,6 +323,7 @@ async def get_orders(
     payment_status: Optional[str] = None,
     source: Optional[str] = None,
     search: Optional[str] = None,
+    customer_id: Optional[int] = None,
     month: Optional[str] = None,  # format: "2025-01" — superseded by date_from/date_to below where both are given
     date_from: Optional[str] = None,  # "YYYY-MM-DD" — real arbitrary range, unlike month
     date_to: Optional[str] = None,
@@ -333,6 +334,8 @@ async def get_orders(
 ):
     query = db.query(Order).filter(Order.shop_id == shop_id)
 
+    if customer_id:
+        query = query.filter(Order.customer_id == customer_id)
     if status:
         query = query.filter(Order.status == status)
     if payment_status:

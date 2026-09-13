@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, Landmark, BarChart2, RefreshCw, Lock, ChevronRight, MessageCircle, Globe, Calendar as CalendarIcon, Sparkles, Filter } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ordersApi, subscriptionApi, dropshipApi, channelsApi, shopifyApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
@@ -615,6 +616,25 @@ export default function OrdersPage() {
   const [refundedCount, setRefundedCount] = useState(0);
   const { fmt } = useCurrency();
 
+  // Deep-linked from a customer's "View Orders" action on the Customers
+  // page (?customer_id=&name=) — a real filter on Order.customer_id, not
+  // a client-side name match.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [customerIdFilter, setCustomerIdFilter] = useState<number | null>(null);
+  const [customerNameFilter, setCustomerNameFilter] = useState<string | null>(null);
+  useEffect(() => {
+    const raw = searchParams.get('customer_id');
+    const id = raw ? parseInt(raw, 10) : NaN;
+    setCustomerIdFilter(Number.isFinite(id) ? id : null);
+    setCustomerNameFilter(searchParams.get('name'));
+  }, [searchParams]);
+  const clearCustomerFilter = () => {
+    setCustomerIdFilter(null);
+    setCustomerNameFilter(null);
+    router.replace('/dashboard/orders');
+  };
+
   // ── Analytics derived from the currently-filtered orders ──────────────────
   const salesOrders = useMemo(() => orders.filter(o => o.source !== 'pos_return'), [orders]);
   const totalRevenue = useMemo(() => salesOrders.reduce((s, o) => s + Number(o.total), 0), [salesOrders]);
@@ -687,6 +707,7 @@ export default function OrdersPage() {
     if (!shopId) return;
     ordersApi.getAll(shopId, {
       search: searchQuery || undefined,
+      customer_id: customerIdFilter ?? undefined,
       ...dateRangeToApiParams(dateRange),
     }).then((r) => {
       const list: Order[] = r.data ?? [];
@@ -704,7 +725,7 @@ export default function OrdersPage() {
       setStatusCounts(byStatus);
       setRefundedCount(refunded);
     }).catch(() => { setChannelCounts({}); setStatusCounts({}); setRefundedCount(0); });
-  }, [shopId, searchQuery, dateRange]);
+  }, [shopId, searchQuery, customerIdFilter, dateRange]);
 
   useEffect(() => { setShopId(localStorage.getItem('shop_id') ?? ''); }, []);
 
@@ -749,6 +770,7 @@ export default function OrdersPage() {
         payment_status: statusFilter === 'refunded' ? 'refunded' : undefined,
         source: channelFilter !== 'all' ? channelFilter : undefined,
         search: searchQuery || undefined,
+        customer_id: customerIdFilter ?? undefined,
         ...dateRangeToApiParams(dateRange),
       });
       setOrders(res.data ?? []);
@@ -760,7 +782,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [shopId, searchQuery, statusFilter, channelFilter, dateRange]);
+  }, [shopId, searchQuery, statusFilter, channelFilter, customerIdFilter, dateRange]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
@@ -839,6 +861,13 @@ export default function OrdersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Orders</h1>
           <p className="text-sm text-muted-foreground">Track and manage all your orders</p>
+          {customerIdFilter && (
+            <button type="button" onClick={clearCustomerFilter}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary rounded-full pl-3 pr-2 py-1 hover:bg-primary/15 transition">
+              Filtered by customer{customerNameFilter ? `: ${customerNameFilter}` : ` #${customerIdFilter}`}
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Link

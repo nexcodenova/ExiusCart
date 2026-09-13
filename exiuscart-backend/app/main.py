@@ -200,6 +200,10 @@ _MIGRATIONS = [
     # read/write the same shape instead of each getting bespoke columns.
     "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS sync_settings JSONB;",
     "ALTER TABLE channel_connections ADD COLUMN IF NOT EXISTS last_auto_synced_at TIMESTAMPTZ;",
+    # Freeform customer labels ("Wholesale", "Ambassador", etc.) set by the
+    # seller from the Customers page — separate from the auto-computed
+    # VIP/New/Returning segment, which stays derived rather than stored.
+    "ALTER TABLE customers ADD COLUMN IF NOT EXISTS tags JSONB;",
 ]
 
 for _sql in _MIGRATIONS:
