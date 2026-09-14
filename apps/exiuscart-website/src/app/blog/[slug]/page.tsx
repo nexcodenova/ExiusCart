@@ -1958,10 +1958,11 @@ async function getAdminPost(slug: string): Promise<AdminPost | null> {
   }
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const post = POSTS[params.slug];
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const post = POSTS[slug];
   if (!post) {
-    const adminPost = await getAdminPost(params.slug);
+    const adminPost = await getAdminPost(slug);
     if (!adminPost) return { title: 'Not Found | ExiusCart Blog' };
     return {
       title: `${adminPost.title} | ExiusCart Blog`,
@@ -1969,7 +1970,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       openGraph: {
         title: adminPost.title,
         description: adminPost.excerpt || adminPost.title,
-        url: `https://exiuscart.com/blog/${params.slug}`,
+        url: `https://exiuscart.com/blog/${slug}`,
         siteName: 'ExiusCart',
         type: 'article',
         images: adminPost.cover_image_url ? [{ url: adminPost.cover_image_url }] : undefined,
@@ -1987,7 +1988,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     openGraph: {
       title: post.seoTitle,
       description: post.seoDescription,
-      url: `https://exiuscart.com/blog/${params.slug}`,
+      url: `https://exiuscart.com/blog/${slug}`,
       siteName: 'ExiusCart',
       type: 'article',
     },
@@ -2100,11 +2101,12 @@ function AdminBlogPostView({ post }: { post: AdminPost }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = POSTS[params.slug];
+export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = POSTS[slug];
 
   if (!post) {
-    const adminPost = await getAdminPost(params.slug);
+    const adminPost = await getAdminPost(slug);
     if (!adminPost) notFound();
     return <AdminBlogPostView post={adminPost} />;
   }

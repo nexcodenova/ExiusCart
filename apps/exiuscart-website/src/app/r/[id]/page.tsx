@@ -39,8 +39,9 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export default async function ReservationInfoPage({ params }: { params: { id: string } }) {
-  const r = await getReservation(params.id);
+export default async function ReservationInfoPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const r = await getReservation(id);
   if (!r) notFound();
 
   const typeConfig = r.reservation_type === 'confirmed'
@@ -190,8 +191,9 @@ export default async function ReservationInfoPage({ params }: { params: { id: st
   );
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  const r = await getReservation(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const r = await getReservation(id);
   return {
     title: r ? `Reservation #${r.id} — ${r.product_name}` : 'Reservation Info',
   };

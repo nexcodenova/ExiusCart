@@ -42,8 +42,9 @@ async function getProduct(barcode: string): Promise<ProductInfo | null> {
   }
 }
 
-export default async function ProductPublicPage({ params }: { params: { barcode: string } }) {
-  const p = await getProduct(params.barcode);
+export default async function ProductPublicPage({ params }: { params: Promise<{ barcode: string }> }) {
+  const { barcode } = await params;
+  const p = await getProduct(barcode);
   if (!p) notFound();
 
   const stockPct = p.stock > 0 ? Math.round((p.available / p.stock) * 100) : 0;
@@ -238,8 +239,9 @@ export default async function ProductPublicPage({ params }: { params: { barcode:
   );
 }
 
-export async function generateMetadata({ params }: { params: { barcode: string } }) {
-  const p = await getProduct(params.barcode);
+export async function generateMetadata({ params }: { params: Promise<{ barcode: string }> }) {
+  const { barcode } = await params;
+  const p = await getProduct(barcode);
   return {
     title: p ? `${p.name} — ${p.shop_name}` : 'Product Info',
   };
