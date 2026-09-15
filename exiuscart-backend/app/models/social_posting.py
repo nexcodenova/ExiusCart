@@ -69,6 +69,13 @@ class SocialPost(Base):
     results_json = Column(Text, nullable=True)   # {"facebook": {"success": true, "post_id": "..."}, ...}
     error_message = Column(Text, nullable=True)  # top-level fallback, e.g. "no active connections"
 
+    # Per-platform options chosen at compose time — e.g. {"tiktok": {
+    # "privacy_level": "SELF_ONLY", "disable_comment": false, "disable_duet":
+    # false, "disable_stitch": false, "brand_content_toggle": false,
+    # "brand_organic_toggle": false}}. Stored (not applied immediately) since
+    # a scheduled post's options must survive until the scheduler publishes it.
+    platform_options_json = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     product = relationship("Product")

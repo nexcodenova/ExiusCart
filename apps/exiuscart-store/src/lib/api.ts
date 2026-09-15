@@ -1234,13 +1234,16 @@ export const socialPostingApi = {
   facebookConnectPage: (shopId: string, pageId: string) =>
     api.post(`/shops/${shopId}/social/facebook/connect-page`, { page_id: pageId }),
   tiktokAuthorize: (shopId: string) => api.get(`/shops/${shopId}/social/tiktok/authorize`),
-  createPost: (shopId: string, data: { file: File; caption: string; platforms: string[]; scheduledAt?: string; productId?: number }) => {
+  tiktokCreatorInfo: (shopId: string) => api.get(`/shops/${shopId}/social/tiktok/creator-info`),
+  tiktokPublishStatus: (shopId: string, postId: number) => api.get(`/shops/${shopId}/social/posts/${postId}/tiktok-status`),
+  createPost: (shopId: string, data: { file: File; caption: string; platforms: string[]; scheduledAt?: string; productId?: number; platformOptions?: Record<string, unknown> }) => {
     const form = new FormData();
     form.append('file', data.file);
     form.append('caption', data.caption);
     form.append('platforms', data.platforms.join(','));
     if (data.scheduledAt) form.append('scheduled_at', data.scheduledAt);
     if (data.productId) form.append('product_id', String(data.productId));
+    if (data.platformOptions) form.append('platform_options', JSON.stringify(data.platformOptions));
     return api.post(`/shops/${shopId}/social/posts`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   listPosts: (shopId: string) => api.get(`/shops/${shopId}/social/posts`),

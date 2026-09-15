@@ -39,6 +39,15 @@ function PlatformImg({ platform, className }: { platform: keyof typeof PLATFORM_
 }
 
 interface Connection { id: number; platform: 'facebook' | 'instagram' | 'tiktok'; account_id: string; account_name: string | null; connected_at: string | null; }
+interface TikTokCreatorInfo {
+  creator_nickname?: string; creator_username?: string; creator_avatar_url?: string;
+  privacy_level_options?: string[]; comment_disabled?: boolean; duet_disabled?: boolean;
+  stitch_disabled?: boolean; max_video_post_duration_sec?: number; audited?: boolean;
+}
+const PRIVACY_LABELS: Record<string, string> = {
+  PUBLIC_TO_EVERYONE: 'Public', MUTUAL_FOLLOW_FRIENDS: 'Friends',
+  FOLLOWER_OF_CREATOR: 'Followers', SELF_ONLY: 'Only me (Private)',
+};
 interface FbPage { id: string; name: string; has_instagram: boolean; }
 interface PostResult { success: boolean; post_id?: string; error?: string; }
 interface Post {
@@ -114,6 +123,21 @@ export default function SocialPostingPage() {
   const [postError, setPostError] = useState('');
   const [locked, setLocked] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // TikTok's Content Sharing Guidelines require these to be real, sourced
+  // choices (privacy dropdown with no default, interaction toggles off by
+  // default, a commercial disclosure flow) — not hardcoded on our end.
+  const [creatorInfo, setCreatorInfo] = useState<TikTokCreatorInfo | null>(null);
+  const [creatorInfoLoading, setCreatorInfoLoading] = useState(false);
+  const [creatorInfoError, setCreatorInfoError] = useState('');
+  const [tiktokPrivacy, setTiktokPrivacy] = useState('');
+  const [tiktokAllowComment, setTiktokAllowComment] = useState(false);
+  const [tiktokAllowDuet, setTiktokAllowDuet] = useState(false);
+  const [tiktokAllowStitch, setTiktokAllowStitch] = useState(false);
+  const [tiktokDisclose, setTiktokDisclose] = useState(false);
+  const [tiktokYourBrand, setTiktokYourBrand] = useState(false);
+  const [tiktokBrandedContent, setTiktokBrandedContent] = useState(false);
+  const [videoDurationSec, setVideoDurationSec] = useState<number | null>(null);
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
@@ -214,10 +238,38 @@ export default function SocialPostingPage() {
 
   const connectedPlatforms = new Set(connections.map((c) => c.platform));
 
+  // Fetched once TikTok is picked for this post — the privacy dropdown and
+  // comment/duet/stitch checkboxes must reflect THIS account's real options,
+  // not a hardcoded guess (see TikTok's Content Sharing Guidelines).
+  useEffect(() => {
+    if (!shopId || !selectedPlatforms.has('tiktok') || creatorInfo || creatorInfoLoading) return;
+    setCreatorInfoLoading(true);
+    setCreatorInfoError('');
+    socialPostingApi.tiktokCreatorInfo(shopId)
+      .then((r) => setCreatorInfo(r.data))
+      .catch((e) => setCreatorInfoError(e?.response?.data?.detail ?? 'Could not load your TikTok account info.'))
+      .finally(() => setCreatorInfoLoading(false));
+  }, [shopId, selectedPlatforms, creatorInfo, creatorInfoLoading]);
+
   const handleFilePick = (f: File | null) => {
     setFile(f);
     if (preview) URL.revokeObjectURL(preview);
     setPreview(f ? URL.createObjectURL(f) : '');
+    setVideoDurationSec(null);
+  };
+
+  const pollTiktokStatus = (postId: number) => {
+    let attempts = 0;
+    const tick = () => {
+      attempts += 1;
+      socialPostingApi.tiktokPublishStatus(shopId, postId).then((r) => {
+        const status = r.data?.status as string | undefined;
+        if (status) setBanner({ type: 'info', text: `TikTok: ${status.replaceAll('_', ' ').toLowerCase()}` });
+        if (status && !status.includes('PROCESSING') && status !== 'SEND_TO_USER_INBOX') { loadPosts(shopId); return; }
+        if (attempts < 10) setTimeout(tick, 3000);
+      }).catch(() => {});
+    };
+    setTimeout(tick, 2000);
   };
 
   const togglePlatform = (p: string) => {
@@ -228,25 +280,59 @@ export default function SocialPostingPage() {
     });
   };
 
+  const resetTiktokOptions = () => {
+    setTiktokPrivacy(''); setTiktokAllowComment(false); setTiktokAllowDuet(false); setTiktokAllowStitch(false);
+    setTiktokDisclose(false); setTiktokYourBrand(false); setTiktokBrandedContent(false);
+  };
+
   const submit = async (schedule: boolean) => {
     if (!file) { setPostError('Choose an image or video first.'); return; }
     if (selectedPlatforms.size === 0) { setPostError('Pick at least one connected platform.'); return; }
     if (schedule && !scheduledAt) { setPostError('Pick a date and time to schedule for.'); return; }
+
+    let platformOptions: Record<string, unknown> | undefined;
+    if (selectedPlatforms.has('tiktok')) {
+      if (!tiktokPrivacy) { setPostError('Choose who can view this video on TikTok before posting.'); setComposeTab('platforms'); return; }
+      if (videoDurationSec != null && creatorInfo?.max_video_post_duration_sec != null && videoDurationSec > creatorInfo.max_video_post_duration_sec) {
+        setPostError(`This video is too long for TikTok (max ${creatorInfo.max_video_post_duration_sec}s for this account).`);
+        setComposeTab('platforms');
+        return;
+      }
+      if (tiktokDisclose && !tiktokYourBrand && !tiktokBrandedContent) {
+        setPostError('Choose whether your TikTok video promotes yourself, a third party, or both.');
+        setComposeTab('platforms');
+        return;
+      }
+      platformOptions = {
+        tiktok: {
+          privacy_level: tiktokPrivacy,
+          allow_comment: tiktokAllowComment, allow_duet: tiktokAllowDuet, allow_stitch: tiktokAllowStitch,
+          brand_organic_toggle: tiktokDisclose && tiktokYourBrand,
+          brand_content_toggle: tiktokDisclose && tiktokBrandedContent,
+        },
+      };
+    }
+
     setPosting(true);
     setPostError('');
     try {
-      await socialPostingApi.createPost(shopId, {
+      const res = await socialPostingApi.createPost(shopId, {
         file, caption, platforms: Array.from(selectedPlatforms),
         scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+        platformOptions,
       });
+      const wasTiktok = selectedPlatforms.has('tiktok');
+      const createdPostId = res.data?.id as number | undefined;
       handleFilePick(null);
       setCaption('');
       setSelectedPlatforms(new Set());
       setScheduledAt('');
       setComposeTab('media');
+      resetTiktokOptions();
       if (fileInputRef.current) fileInputRef.current.value = '';
       loadPosts(shopId);
       setTab(schedule ? 'scheduled' : 'published');
+      if (!schedule && wasTiktok && createdPostId) pollTiktokStatus(createdPostId);
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
       if (detail?.error === 'upgrade_required') setLocked(true);
@@ -492,7 +578,8 @@ export default function SocialPostingPage() {
                     ) : (
                       <div className="relative w-full max-w-xs">
                         {file?.type.startsWith('video/') ? (
-                          <video src={preview} controls className="w-full rounded-xl bg-muted" />
+                          <video src={preview} controls className="w-full rounded-xl bg-muted"
+                            onLoadedMetadata={(e) => setVideoDurationSec(e.currentTarget.duration)} />
                         ) : (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={preview} alt="Preview" className="w-full rounded-xl bg-muted" />
@@ -535,6 +622,125 @@ export default function SocialPostingPage() {
                         </button>
                       );
                     })}
+
+                    {selectedPlatforms.has('tiktok') && (
+                      <div className="mt-2 rounded-xl border border-border p-4 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <PlatformImg platform="tiktok" className="h-4 w-4 rounded-sm" />
+                          <p className="text-sm font-semibold text-foreground">TikTok settings</p>
+                        </div>
+
+                        {creatorInfoLoading && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading your TikTok account…
+                          </div>
+                        )}
+                        {creatorInfoError && (
+                          <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {creatorInfoError}
+                          </div>
+                        )}
+
+                        {creatorInfo && (() => {
+                          const rawOptions = creatorInfo.privacy_level_options ?? [];
+                          const privacyOptions = creatorInfo.audited ? rawOptions : ['SELF_ONLY'];
+                          return (
+                            <>
+                              <div className="flex items-center gap-2.5 rounded-lg bg-muted/60 px-3 py-2.5">
+                                {creatorInfo.creator_avatar_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={creatorInfo.creator_avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                                ) : (
+                                  <div className="h-8 w-8 rounded-full bg-muted" />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-[10px] text-muted-foreground">Posting as</p>
+                                  <p className="text-sm font-medium text-foreground truncate">{creatorInfo.creator_nickname || creatorInfo.creator_username}</p>
+                                </div>
+                              </div>
+
+                              {videoDurationSec != null && creatorInfo.max_video_post_duration_sec != null && videoDurationSec > creatorInfo.max_video_post_duration_sec && (
+                                <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  This video is {Math.round(videoDurationSec)}s — TikTok allows up to {creatorInfo.max_video_post_duration_sec}s for this account.
+                                </div>
+                              )}
+
+                              <div>
+                                <label className="text-xs font-medium text-foreground mb-1.5 block">Who can view this video *</label>
+                                <select value={tiktokPrivacy} onChange={(e) => setTiktokPrivacy(e.target.value)}
+                                  className="w-full h-10 px-3 rounded-lg border border-border bg-muted text-sm text-foreground outline-none focus:ring-2 focus:ring-ring">
+                                  <option value="" disabled>Choose who can view this video</option>
+                                  {privacyOptions.map((opt) => (
+                                    <option key={opt} value={opt}>{PRIVACY_LABELS[opt] ?? opt}</option>
+                                  ))}
+                                </select>
+                                {!creatorInfo.audited && (
+                                  <p className="mt-1.5 text-[10px] text-muted-foreground">ExiusCart's TikTok app isn't approved yet, so posts can only be private (only you can see them) for now.</p>
+                                )}
+                              </div>
+
+                              <div>
+                                <label className="text-xs font-medium text-foreground mb-1.5 block">Allow users to</label>
+                                <div className="flex flex-wrap gap-4">
+                                  {([
+                                    { key: 'comment', label: 'Comment', checked: tiktokAllowComment, set: setTiktokAllowComment, disabled: !!creatorInfo.comment_disabled },
+                                    { key: 'duet', label: 'Duet', checked: tiktokAllowDuet, set: setTiktokAllowDuet, disabled: !!creatorInfo.duet_disabled },
+                                    { key: 'stitch', label: 'Stitch', checked: tiktokAllowStitch, set: setTiktokAllowStitch, disabled: !!creatorInfo.stitch_disabled },
+                                  ] as const).map((it) => (
+                                    <label key={it.key} className={`flex items-center gap-1.5 text-sm ${it.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                                      <input type="checkbox" checked={it.checked && !it.disabled} disabled={it.disabled}
+                                        onChange={(e) => it.set(e.target.checked)} className="h-4 w-4 rounded border-border accent-primary" />
+                                      {it.label}
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="rounded-lg border border-border p-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-medium text-foreground">Disclose video content</p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">Turn on if this video promotes goods or services in exchange for something of value.</p>
+                                  </div>
+                                  <Switch checked={tiktokDisclose} onCheckedChange={(v) => { setTiktokDisclose(v); if (!v) { setTiktokYourBrand(false); setTiktokBrandedContent(false); } }} />
+                                </div>
+                                {tiktokDisclose && (
+                                  <div className="mt-3 space-y-2.5 pt-3 border-t border-border">
+                                    <label className="flex items-start gap-2 cursor-pointer">
+                                      <input type="checkbox" checked={tiktokYourBrand} onChange={(e) => setTiktokYourBrand(e.target.checked)}
+                                        className="h-4 w-4 mt-0.5 rounded border-border accent-primary" />
+                                      <span className="text-xs text-foreground">
+                                        <span className="font-medium">Your brand</span> — You are promoting yourself or your own business. Your video will be labeled "Promotional content".
+                                      </span>
+                                    </label>
+                                    <label className={`flex items-start gap-2 ${tiktokPrivacy === 'SELF_ONLY' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                                      <input type="checkbox" checked={tiktokBrandedContent} disabled={tiktokPrivacy === 'SELF_ONLY'}
+                                        onChange={(e) => setTiktokBrandedContent(e.target.checked)} className="h-4 w-4 mt-0.5 rounded border-border accent-primary" />
+                                      <span className="text-xs text-foreground">
+                                        <span className="font-medium">Branded content</span> — You are promoting another brand or a third party. Your video will be labeled "Paid partnership".
+                                      </span>
+                                    </label>
+                                    {tiktokPrivacy === 'SELF_ONLY' && (
+                                      <p className="text-[10px] text-muted-foreground">Branded content visibility can't be private.</p>
+                                    )}
+                                    {!tiktokYourBrand && !tiktokBrandedContent && (
+                                      <p className="text-[10px] text-destructive">Choose whether this promotes yourself, a third party, or both.</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <p className="text-[11px] text-muted-foreground">
+                                By posting, you agree to TikTok's{' '}
+                                {tiktokBrandedContent && 'Branded Content Policy and '}
+                                Music Usage Confirmation.
+                              </p>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
 

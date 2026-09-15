@@ -217,6 +217,10 @@ _MIGRATIONS = [
     # EncryptedText). gateway_merchant_secret was VARCHAR(255); widened since
     # an encrypted value is longer than the original secret.
     "ALTER TABLE channel_connections ALTER COLUMN gateway_merchant_secret TYPE TEXT;",
+    # Per-platform posting options chosen at compose time (TikTok privacy
+    # level, comment/duet/stitch, commercial disclosure) — must persist since
+    # a post can be scheduled for later, not just published instantly.
+    "ALTER TABLE social_posts ADD COLUMN IF NOT EXISTS platform_options_json TEXT;",
 ]
 
 for _sql in _MIGRATIONS:

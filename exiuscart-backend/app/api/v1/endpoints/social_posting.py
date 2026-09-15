@@ -433,6 +433,87 @@ def tiktok_content_callback(code: str = None, state: str = None, error: str = No
     return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/social-posting?tiktok=connected")
 
 
+@router.get("/shops/{shop_id}/social/tiktok/creator-info")
+def tiktok_creator_info(shop_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """TikTok's own Content Sharing Guidelines require the composer to show
+    which account you're posting as (nickname/avatar), and to source the
+    privacy dropdown + comment/duet/stitch checkboxes from THIS call rather
+    than hardcoding them — an account's real options vary (e.g. a private
+    account can't offer PUBLIC_TO_EVERYONE)."""
+    _shop_or_404(shop_id, current_user, db)
+    conn = db.query(SocialAccountConnection).filter(
+        SocialAccountConnection.shop_id == shop_id, SocialAccountConnection.platform == "tiktok",
+        SocialAccountConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail="TikTok isn't connected.")
+
+    token = decrypt(conn.access_token)
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.post(
+                f"{TIKTOK_API_BASE}/post/publish/creator_info/query/",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=UTF-8"},
+            )
+        data = resp.json()
+        err = (data.get("error") or {})
+        if resp.status_code >= 300 or err.get("code") not in (None, "ok"):
+            raise HTTPException(status_code=502, detail=err.get("message") or "Could not load your TikTok account info.")
+        result = data.get("data") or {}
+        # Surface the same flag _publish_to_tiktok enforces, so the UI
+        # restricts the privacy dropdown to what will actually be accepted
+        # instead of offering options the publish call will reject.
+        result["audited"] = TIKTOK_CONTENT_AUDITED
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[TIKTOK CONTENT] creator_info failed for shop={shop_id}: {e}")
+        raise HTTPException(status_code=502, detail="Could not load your TikTok account info.")
+
+
+@router.get("/shops/{shop_id}/social/posts/{post_id}/tiktok-status")
+def tiktok_publish_status(shop_id: int, post_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Polled by the frontend after a TikTok post — publishing is
+    asynchronous on TikTok's side (per their guidelines, clients must show
+    processing state rather than assume success once init returns)."""
+    _shop_or_404(shop_id, current_user, db)
+    post = db.query(SocialPost).filter(SocialPost.id == post_id, SocialPost.shop_id == shop_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    results = json.loads(post.results_json) if post.results_json else {}
+    publish_id = (results.get("tiktok") or {}).get("post_id")
+    if not publish_id:
+        raise HTTPException(status_code=400, detail="No TikTok publish to check for this post.")
+
+    conn = db.query(SocialAccountConnection).filter(
+        SocialAccountConnection.shop_id == shop_id, SocialAccountConnection.platform == "tiktok",
+        SocialAccountConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail="TikTok isn't connected.")
+
+    token = decrypt(conn.access_token)
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.post(
+                f"{TIKTOK_API_BASE}/post/publish/status/fetch/",
+                json={"publish_id": publish_id},
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=UTF-8"},
+            )
+        data = resp.json()
+        err = (data.get("error") or {})
+        if resp.status_code >= 300 or err.get("code") not in (None, "ok"):
+            raise HTTPException(status_code=502, detail=err.get("message") or "Could not check TikTok's publish status.")
+        return data.get("data") or {}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[TIKTOK CONTENT] status fetch failed for shop={shop_id} post={post_id}: {e}")
+        raise HTTPException(status_code=502, detail="Could not check TikTok's publish status.")
+
+
 # ── Posts ────────────────────────────────────────────────────────────────────
 
 def _post_out(p: SocialPost) -> dict:
@@ -458,6 +539,7 @@ def create_social_post(
     platforms: str = Form(...),  # comma-separated, e.g. "facebook,instagram"
     scheduled_at: str = Form(None),  # ISO datetime, omitted/blank = post now
     product_id: int = Form(None),
+    platform_options: str = Form(None),  # JSON, e.g. {"tiktok": {"privacy_level": "SELF_ONLY", ...}}
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -476,6 +558,19 @@ def create_social_post(
     missing = set(platform_list) - connected
     if missing:
         raise HTTPException(status_code=400, detail=f"Not connected: {', '.join(sorted(missing))}. Connect them first.")
+
+    options: dict = {}
+    if platform_options:
+        try:
+            options = json.loads(platform_options)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid platform_options.")
+
+    # TikTok's Content Sharing Guidelines require the privacy level to be an
+    # explicit user choice with no default — enforce that server-side too,
+    # not just by leaving the dropdown unselected in the UI.
+    if "tiktok" in platform_list and not (options.get("tiktok") or {}).get("privacy_level"):
+        raise HTTPException(status_code=400, detail="Choose who can view this video on TikTok before posting.")
 
     contents = file.file.read()
     if len(contents) > 100 * 1024 * 1024:
@@ -499,6 +594,7 @@ def create_social_post(
         platforms=json.dumps(platform_list), caption=caption,
         media_url=media_url, media_type="video" if is_video else "image",
         status="scheduled", scheduled_at=when,
+        platform_options_json=json.dumps(options) if options else None,
     )
     db.add(post)
     db.commit()
@@ -597,12 +693,30 @@ def _publish_to_tiktok(conn: SocialAccountConnection, post: SocialPost) -> tuple
     if post.media_type != "video":
         return False, "TikTok only accepts video posts."
     token = decrypt(conn.access_token)
+    all_options = json.loads(post.platform_options_json) if post.platform_options_json else {}
+    opts = all_options.get("tiktok") or {}
+
+    # An unaudited app is hard-restricted to SELF_ONLY regardless of what was
+    # chosen in the UI — enforced here too so a stale/tampered request can't
+    # slip a public post through before the app is actually approved.
+    privacy_level = opts.get("privacy_level") or "SELF_ONLY"
+    if not TIKTOK_CONTENT_AUDITED:
+        privacy_level = "SELF_ONLY"
+
+    post_info = {
+        "title": (post.caption or "")[:2200],
+        "privacy_level": privacy_level,
+        "disable_duet": not opts.get("allow_duet", False),
+        "disable_comment": not opts.get("allow_comment", False),
+        "disable_stitch": not opts.get("allow_stitch", False),
+    }
+    if opts.get("brand_organic_toggle"):
+        post_info["brand_organic_toggle"] = True
+    if opts.get("brand_content_toggle"):
+        post_info["brand_content_toggle"] = True
+
     body = {
-        "post_info": {
-            "title": (post.caption or "")[:2200],
-            "privacy_level": "SELF_ONLY" if not TIKTOK_CONTENT_AUDITED else "PUBLIC_TO_EVERYONE",
-            "disable_duet": False, "disable_comment": False, "disable_stitch": False,
-        },
+        "post_info": post_info,
         "source_info": {"source": "PULL_FROM_URL", "video_url": post.media_url},
     }
     try:
