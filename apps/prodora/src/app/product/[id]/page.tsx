@@ -133,6 +133,11 @@ function ProductDetailContent() {
   const [activeImg, setActiveImg] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  // Facebook/Instagram ad URLs are real Meta Ad Library snapshot pages —
+  // embeddable in an iframe (that's how ad-research tools show them) — so
+  // these play inline instead of opening Meta's site in a new tab. TikTok/
+  // Pinterest links aren't Meta snapshot pages, so those stay external.
+  const [expandedAd, setExpandedAd] = useState<string | null>(null);
 
   // Live per-country shipping cost, via CJ's freight-calculate API — only
   // available for products with a captured CJ supplier link (see
@@ -698,15 +703,43 @@ function ProductDetailContent() {
               <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
                 <h2 className="text-xl font-semibold text-[#111827] mb-3">See it in real ads</h2>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {adPlatforms.map((p) => (
-                    <a key={p.key} href={p.url!} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 border border-[#E5E7EB] rounded-xl p-3 hover:border-[#2563EB]/40 transition">
-                      <div className="w-9 h-9 rounded-lg bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0"><p.icon className="w-4 h-4" /></div>
-                      <span className="text-sm font-medium text-[#111827] flex-1">{p.label}</span>
-                      <ExternalLink className="w-4 h-4 text-[#6B7280]" />
-                    </a>
-                  ))}
+                  {adPlatforms.map((p) => {
+                    const embeddable = p.key === 'facebook' || p.key === 'instagram';
+                    const isOpen = expandedAd === p.key;
+                    if (embeddable) {
+                      return (
+                        <button key={p.key} type="button" onClick={() => setExpandedAd(isOpen ? null : p.key)}
+                          className="flex items-center gap-3 border border-[#E5E7EB] rounded-xl p-3 hover:border-[#2563EB]/40 transition text-left">
+                          <div className="w-9 h-9 rounded-lg bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0"><p.icon className="w-4 h-4" /></div>
+                          <span className="text-sm font-medium text-[#111827] flex-1">{p.label}</span>
+                          <Play className="w-4 h-4 text-[#6B7280]" />
+                        </button>
+                      );
+                    }
+                    return (
+                      <a key={p.key} href={p.url!} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-3 border border-[#E5E7EB] rounded-xl p-3 hover:border-[#2563EB]/40 transition">
+                        <div className="w-9 h-9 rounded-lg bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0"><p.icon className="w-4 h-4" /></div>
+                        <span className="text-sm font-medium text-[#111827] flex-1">{p.label}</span>
+                        <ExternalLink className="w-4 h-4 text-[#6B7280]" />
+                      </a>
+                    );
+                  })}
                 </div>
+
+                {expandedAd && (() => {
+                  const active = adPlatforms.find((p) => p.key === expandedAd);
+                  if (!active) return null;
+                  return (
+                    <div className="mt-4 rounded-xl border border-[#E5E7EB] overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 bg-[#F8FAFC] border-b border-[#E5E7EB]">
+                        <p className="text-xs font-medium text-[#6B7280]">{active.label} — live from Meta</p>
+                        <button onClick={() => setExpandedAd(null)} className="text-[#6B7280] hover:text-[#111827]"><X className="w-4 h-4" /></button>
+                      </div>
+                      <iframe src={active.url!} className="w-full h-[600px]" title={`${active.label} preview`} />
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

@@ -158,6 +158,7 @@ function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, 
   loading: boolean; error: string; hasSearched: boolean;
   onSearch: () => void; onPick: (url: string) => void; onClose: () => void;
 }) {
+  const [previewId, setPreviewId] = useState<string | null>(null);
   return (
     <div className="mt-2 p-3 bg-[#0B1121] border border-gray-700 rounded-lg space-y-2">
       <div className="flex items-center justify-between">
@@ -180,13 +181,30 @@ function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, 
         </div>
       )}
       {ads.length > 0 && (
-        <div className="space-y-1.5 max-h-56 overflow-y-auto">
+        <div className="space-y-1.5 max-h-72 overflow-y-auto">
           {ads.map((ad) => (
-            <button key={ad.id} type="button" onClick={() => onPick(ad.snapshot_url)}
-              className="w-full text-left px-3 py-2 bg-[#151F32] hover:bg-[#1c2842] border border-gray-800 rounded-lg transition">
-              <p className="text-xs font-medium text-white truncate">{ad.page_name || 'Unknown advertiser'}</p>
-              {ad.body && <p className="text-xs text-gray-500 truncate mt-0.5">{ad.body}</p>}
-            </button>
+            <div key={ad.id} className="bg-[#151F32] border border-gray-800 rounded-lg overflow-hidden">
+              <div className="flex items-center">
+                <button type="button" onClick={() => onPick(ad.snapshot_url)}
+                  className="flex-1 text-left px-3 py-2 hover:bg-[#1c2842] transition min-w-0">
+                  <p className="text-xs font-medium text-white truncate">{ad.page_name || 'Unknown advertiser'}</p>
+                  {ad.body && <p className="text-xs text-gray-500 truncate mt-0.5">{ad.body}</p>}
+                </button>
+                <button type="button" onClick={() => setPreviewId(previewId === ad.id ? null : ad.id)}
+                  title="Preview this ad" className="px-3 py-2 text-gray-500 hover:text-white shrink-0">
+                  <Eye className="w-4 h-4" />
+                </button>
+              </div>
+              {previewId === ad.id && (
+                <div className="border-t border-gray-800">
+                  <iframe src={ad.snapshot_url} className="w-full h-72" title="Ad preview" />
+                  <button type="button" onClick={() => onPick(ad.snapshot_url)}
+                    className="w-full py-1.5 text-xs font-medium text-[#6B3FD9] hover:bg-[#1c2842] transition">
+                    Use this ad
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -924,6 +942,8 @@ export default function TrendingDropshippingPage() {
   const [showCjModal, setShowCjModal] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState('');
+  const [autoAttaching, setAutoAttaching] = useState(false);
+  const [autoAttachResult, setAutoAttachResult] = useState('');
 
   useEffect(() => {
     adminApi.cjStatus().then((r: any) => setCjConnected(!!r.data?.connected)).catch(() => {});
@@ -1244,6 +1264,22 @@ export default function TrendingDropshippingPage() {
     }
   };
 
+  const handleAutoAttachAds = async () => {
+    if (!confirm('Search Meta Ad Library for up to 100 products missing a Facebook ad link, and attach the best match to each? This runs in the background and can take a while.')) return;
+    setAutoAttaching(true);
+    setAutoAttachResult('');
+    try {
+      const res = await adminApi.metaAdsAutoAttach(100);
+      const queued = res.data?.queued ?? 0;
+      setAutoAttachResult(queued > 0 ? `Queued ${queued} products — check back in a bit and refresh to see attached ads.` : 'Every product already has a Facebook ad link.');
+    } catch {
+      setAutoAttachResult("Couldn't start the auto-attach job — try again.");
+    } finally {
+      setAutoAttaching(false);
+      setTimeout(() => setAutoAttachResult(''), 8000);
+    }
+  };
+
   // ── Stats ──────────────────────────────────────────────────────────────────
 
   const trending = products.filter((p) => p.is_trending).length;
@@ -1269,6 +1305,9 @@ export default function TrendingDropshippingPage() {
           {backfillResult && (
             <span className="text-xs text-gray-400 max-w-[180px]">{backfillResult}</span>
           )}
+          {autoAttachResult && (
+            <span className="text-xs text-gray-400 max-w-[180px]">{autoAttachResult}</span>
+          )}
           <button
             type="button"
             onClick={handleBackfillDescriptions}
@@ -1278,6 +1317,16 @@ export default function TrendingDropshippingPage() {
           >
             {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Clean up descriptions
+          </button>
+          <button
+            type="button"
+            onClick={handleAutoAttachAds}
+            disabled={autoAttaching}
+            title="Searches Meta Ad Library for products missing a Facebook ad link and attaches the best match — throttled, runs in the background"
+            className="inline-flex items-center gap-2 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-[#6B3FD9]/50 transition text-sm disabled:opacity-50"
+          >
+            {autoAttaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+            Auto-attach Meta Ads
           </button>
           <a
             href="https://prodora.exiuscart.com"

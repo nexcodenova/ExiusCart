@@ -6,7 +6,7 @@ import re
 import httpx
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from pydantic import BaseModel
@@ -2478,6 +2478,57 @@ async def admin_meta_ads_search(
 ):
     ads = await search_meta_ad_library(q, country)
     return {"ads": ads}
+
+
+async def _run_meta_ads_auto_attach(product_ids: list[int]):
+    """Runs after the request already returned — searches Meta Ad Library
+    once per product, throttled, and attaches the first match's snapshot
+    URL. Throttled (not fired all at once) since Meta's Ad Library API rate
+    limit isn't publicly documented (only that error code 613 exists) —
+    safer to go slow than to get the token flagged mid-batch on a large run.
+    A single product's failure (no match, a transient error) just gets
+    skipped and logged, never aborts the rest of the batch."""
+    import asyncio
+    db = SessionLocal()
+    attached = 0
+    try:
+        for product_id in product_ids:
+            product = db.query(Product).filter(Product.id == product_id).first()
+            if not product or product.ad_facebook_url:
+                continue
+            try:
+                ads = await search_meta_ad_library(product.name, "US", limit=1)
+                if ads:
+                    product.ad_facebook_url = ads[0]["snapshot_url"]
+                    db.commit()
+                    attached += 1
+            except Exception as e:
+                logger.warning(f"[Meta Ads auto-attach] product={product_id} failed: {e}")
+            await asyncio.sleep(2)  # throttle — see docstring
+    finally:
+        logger.info(f"[Meta Ads auto-attach] batch of {len(product_ids)} done, {attached} attached")
+        db.close()
+
+
+@router.post("/admin/shopping/meta-ads/auto-attach")
+def admin_meta_ads_auto_attach(
+    background_tasks: BackgroundTasks,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    """Queues a throttled background search for products missing a Facebook
+    ad link — returns immediately so the admin isn't stuck waiting (a run
+    of, say, 1000 products takes ~30+ minutes at the throttled rate)."""
+    shop = db.query(Shop).filter(Shop.slug == "exiuscart-dropshipping-system").first()
+    if not shop:
+        raise HTTPException(status_code=400, detail="System shop not found.")
+    products = db.query(Product).filter(
+        Product.shop_id == shop.id, Product.ad_facebook_url.is_(None),
+    ).order_by(Product.created_at.desc()).limit(limit).all()
+    product_ids = [p.id for p in products]
+    background_tasks.add_task(_run_meta_ads_auto_attach, product_ids)
+    return {"queued": len(product_ids)}
 
 
 # ── NexCode Nova — One-time Client Codes ─────────────────────────────────────

@@ -112,6 +112,8 @@ export const adminApi = {
     api.post('/admin/shopping/aliexpress/import', { product_url: productUrl, price, category_name: categoryName }),
   metaAdsSearch: (q: string, country = 'US') =>
     api.get('/admin/shopping/meta-ads/search', { params: { q, country } }),
+  metaAdsAutoAttach: (limit = 50) =>
+    api.post('/admin/shopping/meta-ads/auto-attach', null, { params: { limit } }),
 
   // Prodora Digital Bundles — ExiusCart's own design packs sold to sellers.
   listDigitalBundles: () => api.get('/admin/prodora-bundles'),
