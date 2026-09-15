@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -86,6 +87,7 @@ function ComingSoon({ label }: { label: string }) {
 export default function SocialPostingPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const confirm = useConfirm();
   const [shopId, setShopId] = useState('');
   const [tab, setTab] = useState('compose');
   const [composeTab, setComposeTab] = useState('media');
@@ -196,7 +198,16 @@ export default function SocialPostingPage() {
   };
 
   const disconnect = async (conn: Connection) => {
-    if (!confirm(`Disconnect ${PLATFORM_META[conn.platform].label}${conn.account_name ? ` (${conn.account_name})` : ''}?`)) return;
+    const label = PLATFORM_META[conn.platform].label;
+    const ok = await confirm({
+      title: `Disconnect ${label}?`,
+      description: conn.account_name
+        ? `${label} (${conn.account_name}) will stop receiving posts from ExiusCart until you reconnect it.`
+        : `${label} will stop receiving posts from ExiusCart until you reconnect it.`,
+      confirmText: 'Disconnect',
+      variant: 'destructive',
+    });
+    if (!ok) return;
     await socialPostingApi.disconnect(shopId, conn.id);
     loadConnections(shopId);
   };

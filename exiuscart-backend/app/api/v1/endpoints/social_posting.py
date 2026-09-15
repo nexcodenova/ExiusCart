@@ -147,6 +147,27 @@ def disconnect_social_account(shop_id: int, conn_id: int, db: Session = Depends(
     ).first()
     if not conn:
         raise HTTPException(status_code=404, detail="Connection not found")
+
+    # Revoke at the platform too, not just locally — otherwise TikTok/Meta
+    # still consider the app authorized and silently skip the consent
+    # screen on the next "Connect", making a disconnect look like it didn't
+    # do anything. Best-effort: a revoke failure shouldn't block the user
+    # from clearing the connection on our side.
+    if conn.platform == "tiktok" and TIKTOK_CONTENT_CLIENT_KEY and TIKTOK_CONTENT_CLIENT_SECRET:
+        try:
+            httpx.post(
+                f"{TIKTOK_API_BASE}/oauth/revoke/",
+                data={
+                    "client_key": TIKTOK_CONTENT_CLIENT_KEY,
+                    "client_secret": TIKTOK_CONTENT_CLIENT_SECRET,
+                    "token": decrypt(conn.access_token),
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=10,
+            )
+        except Exception as e:
+            logger.warning(f"[TIKTOK CONTENT OAUTH] revoke failed for shop={shop_id} conn={conn_id}: {e}")
+
     db.delete(conn)
     db.commit()
     return {"message": "Disconnected"}
