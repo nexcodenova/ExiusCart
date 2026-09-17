@@ -47,6 +47,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.thedersi import is_thedersi_restricted_shop
+from app.core.channel_limits import check_channel_slot
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -343,17 +344,11 @@ def ebay_authorize(
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
     # TheDersi sellers (any tier) never get eBay — they're restricted to
-    # TheDersi + Daraz only (enforced in channels.py's connect_channel), so
-    # there's no "thedersi_pro" carve-out here anymore.
-    if plan_type not in ("growth", "scale"):
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "ebay_requires_growth_or_scale",
-                "plan": plan_type,
-                "message": "eBay sync is available on Growth and Scale. Upgrade to connect your eBay seller account.",
-            },
-        )
+    # TheDersi + Daraz only (enforced above). Everyone else draws from the
+    # shared channel-slot pool: eBay is just a "marketplace" channel like any
+    # other now, subject to Launch's 1-per-category cap, not its own
+    # Growth-or-Scale-only gate.
+    check_channel_slot(shop_id, db, "ebay", plan_type)
 
     state = secrets.token_urlsafe(32)
 

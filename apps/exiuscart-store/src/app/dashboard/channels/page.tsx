@@ -54,7 +54,6 @@ export default function ChannelsPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<ChannelStatsResponse | null>(null);
   const [refreshingStats, setRefreshingStats] = useState(false);
-  const [ebayLocked, setEbayLocked] = useState(false);
   const [dersiBlockChannel, setDersiBlockChannel] = useState<string | null>(null);
   const [darazLocked, setDarazLocked] = useState(false);
   const [upgradeLimitModal, setUpgradeLimitModal] = useState(false);
@@ -109,21 +108,32 @@ export default function ChannelsPage() {
   const isScale = plan === 'scale';
   // Count Shopify separately since it's tracked via a different API
   const totalChannelCount = connections.length + (shopifyConnected ? 1 : 0);
-  // Free trial + Launch: max 1 channel; Growth: up to 3; Scale: unlimited
-  const CHANNEL_LIMIT_BY_PLAN: Record<string, number> = { free_trial: 1, launch: 1, growth: 3 };
+  // Free trial: 1 channel; Launch: 3, capped at 1 per category; Growth: up
+  // to 5, any mix; Scale: unlimited — mirrors app/core/channel_limits.py.
+  const CHANNEL_LIMIT_BY_PLAN: Record<string, number> = { free_trial: 1, launch: 3, growth: 5 };
   const channelLimit = CHANNEL_LIMIT_BY_PLAN[plan];
   const channelLimitReached = plan !== '' && channelLimit != null && !isTheDersiUser && totalChannelCount >= channelLimit;
-  // Daraz: TheDersi Lite/Pro, Growth, or Scale. "thedersi_lite" is a unique
-  // plan_type (no plan-string ambiguity), but TheDersi Pro shares plan=
-  // "launch" with real direct Launch customers (who don't get Daraz), so
-  // Pro needs the TheDersi flag too.
-  const canUseDaraz = plan === 'thedersi_lite' || (isTheDersiUser && plan === 'launch') || plan === 'growth' || plan === 'scale';
-  // Noon is direct-ExiusCart only — TheDersi sellers (Basic or Pro) get
-  // TheDersi + Daraz and nothing else, same rule as Shopify/Custom Website.
-  // eBay follows that same "ExiusCart direct only" rule (unlike Daraz) —
-  // its Business-Policies + multi-marketplace flow doesn't fit TheDersi's
-  // managed-seller model, so it's gated exactly like Shopify/Custom Website.
-  const canUseEbay = (plan === 'growth' || plan === 'scale') && !isTheDersiUser;
+  const CHANNEL_CATEGORY: Record<string, string> = {
+    shopify: 'store', woocommerce: 'store', bigcommerce: 'store', custom: 'store',
+    thedersi: 'marketplace', ebay: 'marketplace', etsy: 'marketplace', daraz: 'marketplace', noon: 'marketplace', tiktok: 'marketplace',
+    whop: 'digital', gumroad: 'digital',
+  };
+  // Launch's 3 slots are 1 store + 1 marketplace + 1 digital, not "any 3" —
+  // real (non-TheDersi) Launch shops only, since TheDersi's own channel
+  // whitelist already caps them at TheDersi + Daraz regardless of category.
+  const connectedTypes = [...connections.map((c) => c.channel_type), ...(shopifyConnected ? ['shopify'] : [])];
+  const categoryFull = (channelType: string) => {
+    if (plan !== 'launch' || isTheDersiUser) return false;
+    const category = CHANNEL_CATEGORY[channelType];
+    return !!category && connectedTypes.some((t) => CHANNEL_CATEGORY[t] === category);
+  };
+  const channelLocked = (channelType: string) => channelLimitReached || categoryFull(channelType);
+  // Daraz and eBay are regular marketplace channels in the shared slot pool
+  // now (no more standalone Growth/Scale-only gate) — TheDersi Lite/Pro
+  // still gets Daraz as one of its fixed 2 slots regardless of the general
+  // channel count/category rules above.
+  const canUseDaraz = plan === 'thedersi_lite' || (isTheDersiUser && plan === 'launch') || (!isTheDersiUser && !channelLocked('daraz'));
+  const canUseEbay = !isTheDersiUser && !channelLocked('ebay');
 
   const availableChannels: (ChannelDef & { channelType?: string })[] = [
     // ── Row 1: Shopify, Custom Website, WooCommerce ──
@@ -134,16 +144,16 @@ export default function ChannelsPage() {
       category: 'Your Own Store',
       description: 'Sync your Shopify store — products, orders, and inventory stay in sync automatically.',
       icon: <ShoppingBag className="w-5 h-5 text-[#96BF48]" />,
-      badge: shopifyConnected ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: shopifyConnected ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badge: shopifyConnected ? 'live' : (isTheDersiUser ? 'locked' : (channelLocked('shopify') ? 'locked' : 'connect')),
+      badgeLabel: shopifyConnected ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLocked('shopify') ? 'Upgrade to Premium' : 'Available')),
       onAction: shopifyConnected
         ? () => router.push('/dashboard/channels/integrations/shopify')
         : isTheDersiUser
           ? () => setDersiBlockChannel('shopify')
-          : channelLimitReached
+          : channelLocked('shopify')
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/shopify'),
-      actionLabel: shopifyConnected ? 'Manage Shopify' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Shopify')),
+      actionLabel: shopifyConnected ? 'Manage Shopify' : (isTheDersiUser ? 'Learn more' : (channelLocked('shopify') ? 'Upgrade to Premium' : 'Connect Shopify')),
     },
     {
       id: 'etsy',
@@ -152,16 +162,16 @@ export default function ChannelsPage() {
       category: 'Global Marketplaces',
       description: 'List products on Etsy and manage orders from ExiusCart — great for handmade and craft sellers.',
       icon: <ShoppingBag className="w-5 h-5 text-orange-600" />,
-      badge: hasEtsy ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: hasEtsy ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badge: hasEtsy ? 'live' : (isTheDersiUser ? 'locked' : (channelLocked('etsy') ? 'locked' : 'connect')),
+      badgeLabel: hasEtsy ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLocked('etsy') ? 'Upgrade to Premium' : 'Available')),
       onAction: hasEtsy
         ? () => router.push('/dashboard/channels/integrations/etsy')
         : isTheDersiUser
           ? () => setDersiBlockChannel('etsy')
-          : channelLimitReached
+          : channelLocked('etsy')
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/etsy'),
-      actionLabel: hasEtsy ? 'Manage Etsy' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Etsy')),
+      actionLabel: hasEtsy ? 'Manage Etsy' : (isTheDersiUser ? 'Learn more' : (channelLocked('etsy') ? 'Upgrade to Premium' : 'Connect Etsy')),
     },
     {
       id: 'custom_website',
@@ -170,16 +180,16 @@ export default function ChannelsPage() {
       category: 'Your Own Store',
       description: 'Connect any website using our API or webhook. Receive orders directly from your own storefront.',
       icon: <Globe className="w-5 h-5 text-sky-400" />,
-      badge: hasCustomWebsite ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: hasCustomWebsite ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badge: hasCustomWebsite ? 'live' : (isTheDersiUser ? 'locked' : (channelLocked('custom') ? 'locked' : 'connect')),
+      badgeLabel: hasCustomWebsite ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLocked('custom') ? 'Upgrade to Premium' : 'Available')),
       onAction: hasCustomWebsite
         ? () => router.push('/dashboard/channels/integrations/custom-website')
         : isTheDersiUser
           ? () => setDersiBlockChannel('custom')
-          : channelLimitReached
+          : channelLocked('custom')
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/custom-website'),
-      actionLabel: hasCustomWebsite ? 'Manage Website' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Website')),
+      actionLabel: hasCustomWebsite ? 'Manage Website' : (isTheDersiUser ? 'Learn more' : (channelLocked('custom') ? 'Upgrade to Premium' : 'Connect Website')),
     },
     {
       id: 'woocommerce',
@@ -188,16 +198,16 @@ export default function ChannelsPage() {
       category: 'Your Own Store',
       description: 'Connect your own WordPress store — paste your site\'s REST API keys, no plugin needed.',
       icon: <ShoppingCart className="w-5 h-5 text-[#7F54B3]" />,
-      badge: hasWooCommerce ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: hasWooCommerce ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badge: hasWooCommerce ? 'live' : (isTheDersiUser ? 'locked' : (channelLocked('woocommerce') ? 'locked' : 'connect')),
+      badgeLabel: hasWooCommerce ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLocked('woocommerce') ? 'Upgrade to Premium' : 'Available')),
       onAction: hasWooCommerce
         ? () => router.push('/dashboard/channels/integrations/woocommerce')
         : isTheDersiUser
           ? () => setDersiBlockChannel('woocommerce')
-          : channelLimitReached
+          : channelLocked('woocommerce')
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/woocommerce'),
-      actionLabel: hasWooCommerce ? 'Manage WooCommerce' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect WooCommerce')),
+      actionLabel: hasWooCommerce ? 'Manage WooCommerce' : (isTheDersiUser ? 'Learn more' : (channelLocked('woocommerce') ? 'Upgrade to Premium' : 'Connect WooCommerce')),
     },
     {
       id: 'bigcommerce',
@@ -206,16 +216,16 @@ export default function ChannelsPage() {
       category: 'Your Own Store',
       description: 'Sync your BigCommerce store — products, orders, and inventory stay in sync automatically.',
       icon: <Store className="w-5 h-5 text-[#00C9A7]" />,
-      badge: hasBigCommerce ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: hasBigCommerce ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badge: hasBigCommerce ? 'live' : (isTheDersiUser ? 'locked' : (channelLocked('bigcommerce') ? 'locked' : 'connect')),
+      badgeLabel: hasBigCommerce ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLocked('bigcommerce') ? 'Upgrade to Premium' : 'Available')),
       onAction: hasBigCommerce
         ? () => router.push('/dashboard/channels/integrations/bigcommerce')
         : isTheDersiUser
           ? () => setDersiBlockChannel('bigcommerce')
-          : channelLimitReached
+          : channelLocked('bigcommerce')
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/bigcommerce'),
-      actionLabel: hasBigCommerce ? 'Manage BigCommerce' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect BigCommerce')),
+      actionLabel: hasBigCommerce ? 'Manage BigCommerce' : (isTheDersiUser ? 'Learn more' : (channelLocked('bigcommerce') ? 'Upgrade to Premium' : 'Connect BigCommerce')),
     },
     {
       id: 'wix',
@@ -236,14 +246,14 @@ export default function ChannelsPage() {
       description: 'List products on eBay and manage all orders directly from ExiusCart.',
       icon: <Tag className="w-5 h-5 text-[#E53238]" />,
       badge: hasEbay ? 'live' : (isTheDersiUser ? 'locked' : (canUseEbay ? 'connect' : 'locked')),
-      badgeLabel: hasEbay ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (canUseEbay ? 'Available' : 'Premium only')),
+      badgeLabel: hasEbay ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (canUseEbay ? 'Available' : 'Upgrade to Premium')),
       onAction: hasEbay
         ? () => router.push('/dashboard/channels/integrations/ebay')
         : isTheDersiUser
           ? () => setDersiBlockChannel('ebay')
           : canUseEbay
             ? () => router.push('/dashboard/channels/integrations/ebay')
-            : () => setEbayLocked(true),
+            : () => setUpgradeLimitModal(true),
       actionLabel: hasEbay ? 'Manage eBay' : (isTheDersiUser ? 'Learn more' : (canUseEbay ? 'Connect eBay' : 'Upgrade to Premium')),
     },
     {
@@ -278,16 +288,16 @@ export default function ChannelsPage() {
       category: 'Social Commerce',
       description: 'Sell directly on TikTok. Orders sync to ExiusCart, stock stays in sync automatically.',
       icon: <Music2 className="w-5 h-5 text-[#010101] dark:text-white" />,
-      badge: hasTikTok ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: hasTikTok ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badge: hasTikTok ? 'live' : (isTheDersiUser ? 'locked' : (channelLocked('tiktok') ? 'locked' : 'connect')),
+      badgeLabel: hasTikTok ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLocked('tiktok') ? 'Upgrade to Premium' : 'Available')),
       onAction: hasTikTok
         ? () => router.push('/dashboard/channels/integrations/tiktok')
         : isTheDersiUser
           ? () => setDersiBlockChannel('tiktok')
-          : channelLimitReached
+          : channelLocked('tiktok')
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/tiktok'),
-      actionLabel: hasTikTok ? 'Manage TikTok Shop' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect TikTok Shop')),
+      actionLabel: hasTikTok ? 'Manage TikTok Shop' : (isTheDersiUser ? 'Learn more' : (channelLocked('tiktok') ? 'Upgrade to Premium' : 'Connect TikTok Shop')),
     },
     // ── Row 3: Noon, Trendyol ──
     {
@@ -297,16 +307,16 @@ export default function ChannelsPage() {
       category: 'Middle East',
       description: "UAE/KSA/GCC's biggest marketplace. Paste your own Noon service account key to connect — products, stock, and orders sync to ExiusCart.",
       icon: <ShoppingBag className="w-5 h-5 text-yellow-500" />,
-      badge: hasNoon ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: hasNoon ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badge: hasNoon ? 'live' : (isTheDersiUser ? 'locked' : (channelLocked('noon') ? 'locked' : 'connect')),
+      badgeLabel: hasNoon ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLocked('noon') ? 'Upgrade to Premium' : 'Available')),
       onAction: hasNoon
         ? () => router.push('/dashboard/channels/integrations/noon')
         : isTheDersiUser
           ? () => setDersiBlockChannel('noon')
-          : channelLimitReached
+          : channelLocked('noon')
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/noon'),
-      actionLabel: hasNoon ? 'Manage Noon' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Noon')),
+      actionLabel: hasNoon ? 'Manage Noon' : (isTheDersiUser ? 'Learn more' : (channelLocked('noon') ? 'Upgrade to Premium' : 'Connect Noon')),
     },
     {
       id: 'trendyol',
@@ -347,7 +357,7 @@ export default function ChannelsPage() {
       description: "South Asia's largest marketplace — Pakistan, Bangladesh, Sri Lanka, Nepal and Myanmar. Orders sync to ExiusCart automatically.",
       icon: <ShoppingBag className="w-5 h-5 text-orange-500" />,
       badge: hasDaraz ? 'live' : canUseDaraz ? 'connect' : 'locked',
-      badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : (isTheDersiUser ? 'TheDersi Pro only' : 'Premium only'),
+      badgeLabel: hasDaraz ? 'Connected' : canUseDaraz ? 'Available' : (isTheDersiUser ? 'TheDersi Lite or Pro only' : 'Upgrade to Premium'),
       onAction: hasDaraz || canUseDaraz
         ? () => router.push('/dashboard/channels/integrations/daraz')
         : () => setDarazLocked(true),
@@ -360,12 +370,12 @@ export default function ChannelsPage() {
       category: 'TheDersi',
       description: "List products on Sri Lanka's #1 fashion marketplace. Orders sync automatically to your dashboard.",
       icon: <Link2 className="w-5 h-5 text-primary" />,
-      badge: hasTheDersi ? 'live' : (channelLimitReached ? 'locked' : 'connect'),
-      badgeLabel: hasTheDersi ? 'Connected' : (channelLimitReached ? 'Upgrade to Premium' : 'Available'),
-      onAction: channelLimitReached && !hasTheDersi
+      badge: hasTheDersi ? 'live' : (channelLocked('thedersi') ? 'locked' : 'connect'),
+      badgeLabel: hasTheDersi ? 'Connected' : (channelLocked('thedersi') ? 'Upgrade to Premium' : 'Available'),
+      onAction: channelLocked('thedersi') && !hasTheDersi
         ? () => setUpgradeLimitModal(true)
         : () => router.push('/dashboard/channels/integrations/thedersi'),
-      actionLabel: hasTheDersi ? 'Manage TheDersi' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect TheDersi'),
+      actionLabel: hasTheDersi ? 'Manage TheDersi' : (channelLocked('thedersi') ? 'Upgrade to Premium' : 'Connect TheDersi'),
     },
     // ── Digital products: Whop, Gumroad ──
     {
@@ -375,16 +385,16 @@ export default function ChannelsPage() {
       category: 'Sell Digital Products',
       description: 'Sell digital products with no business registration needed — Whop is Merchant of Record, so it handles payment and tax compliance for you.',
       icon: <CreditCard className="w-5 h-5 text-[#FA4616]" />,
-      badge: hasWhop ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: hasWhop ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badge: hasWhop ? 'live' : (isTheDersiUser ? 'locked' : (channelLocked('whop') ? 'locked' : 'connect')),
+      badgeLabel: hasWhop ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLocked('whop') ? 'Upgrade to Premium' : 'Available')),
       onAction: hasWhop
         ? () => router.push('/dashboard/channels/integrations/whop')
         : isTheDersiUser
           ? () => setDersiBlockChannel('whop')
-          : channelLimitReached
+          : channelLocked('whop')
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/whop'),
-      actionLabel: hasWhop ? 'Manage Whop' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Whop')),
+      actionLabel: hasWhop ? 'Manage Whop' : (isTheDersiUser ? 'Learn more' : (channelLocked('whop') ? 'Upgrade to Premium' : 'Connect Whop')),
     },
     {
       id: 'gumroad',
@@ -393,16 +403,16 @@ export default function ChannelsPage() {
       category: 'Sell Digital Products',
       description: 'List your digital products on Gumroad and manage orders from ExiusCart.',
       icon: <Download className="w-5 h-5 text-[#FF90E8]" />,
-      badge: hasGumroad ? 'live' : (isTheDersiUser ? 'locked' : (channelLimitReached ? 'locked' : 'connect')),
-      badgeLabel: hasGumroad ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLimitReached ? 'Upgrade to Premium' : 'Available')),
+      badge: hasGumroad ? 'live' : (isTheDersiUser ? 'locked' : (channelLocked('gumroad') ? 'locked' : 'connect')),
+      badgeLabel: hasGumroad ? 'Connected' : (isTheDersiUser ? 'ExiusCart direct only' : (channelLocked('gumroad') ? 'Upgrade to Premium' : 'Available')),
       onAction: hasGumroad
         ? () => router.push('/dashboard/channels/integrations/gumroad')
         : isTheDersiUser
           ? () => setDersiBlockChannel('gumroad')
-          : channelLimitReached
+          : channelLocked('gumroad')
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/gumroad'),
-      actionLabel: hasGumroad ? 'Manage Gumroad' : (isTheDersiUser ? 'Learn more' : (channelLimitReached ? 'Upgrade to Premium' : 'Connect Gumroad')),
+      actionLabel: hasGumroad ? 'Manage Gumroad' : (isTheDersiUser ? 'Learn more' : (channelLocked('gumroad') ? 'Upgrade to Premium' : 'Connect Gumroad')),
     },
   ];
 
@@ -596,32 +606,6 @@ export default function ChannelsPage() {
 
       <ConnectChannelModal open={connectModalOpen} onClose={() => setConnectModalOpen(false)} channels={availableChannels} />
 
-      {ebayLocked && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#E53238]/10 flex items-center justify-center shrink-0">
-                <ChannelLogo channelType="ebay" size={22} />
-              </div>
-              <button type="button" onClick={() => setEbayLocked(false)}
-                className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">eBay Integration</p>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                eBay sync is available on Premium plans. Upgrade to ExiusCart Premium to connect your eBay seller account.
-              </p>
-            </div>
-            <Link href="/dashboard/billing" onClick={() => setEbayLocked(false)}
-              className="block w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition text-center">
-              Upgrade to Premium
-            </Link>
-          </div>
-        </div>
-      )}
-
       {darazLocked && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-card rounded-xl border border-border w-full max-w-sm p-6 space-y-4">
@@ -638,8 +622,8 @@ export default function ChannelsPage() {
               <p className="font-semibold text-foreground">Daraz Integration</p>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                 {isTheDersiUser
-                  ? 'Daraz sync is available on TheDersi Pro. Upgrade your TheDersi plan to connect your Daraz seller account.'
-                  : 'Daraz sync is available on Premium plans. Upgrade to ExiusCart Premium to connect your Daraz seller account.'}
+                  ? 'Daraz sync is available on TheDersi Lite and Pro. Upgrade your TheDersi plan to connect your Daraz seller account.'
+                  : 'You\'ve reached your plan\'s channel limit. Upgrade to connect your Daraz seller account.'}
               </p>
             </div>
             <button type="button" onClick={() => setDarazLocked(false)}

@@ -42,7 +42,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.thedersi import is_thedersi_shop, is_thedersi_daraz_eligible_shop
+from app.core.thedersi import is_thedersi_shop, is_thedersi_restricted_shop, is_thedersi_daraz_eligible_shop
+from app.core.channel_limits import check_channel_slot
 from app.core.country_utils import shop_country_iso
 from app.api.v1.deps import get_current_user
 from app.models.user import User
@@ -224,20 +225,23 @@ def daraz_authorize(
     # TheDersi Lite/Pro share plan_type with other tiers ("thedersi_lite" is
     # unique but Pro shares "launch" with real Launch customers), so this
     # needs its own check rather than a plan_type string match — see
-    # is_thedersi_daraz_eligible_shop in app/core/thedersi.py.
-    if plan_type not in ("growth", "scale") and not is_thedersi_daraz_eligible_shop(shop_id, db):
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "daraz_requires_pro",
-                "plan": plan_type,
-                "message": (
-                    "Daraz sync is available on TheDersi Lite and Pro. Upgrade your TheDersi plan to connect Daraz."
-                    if is_thedersi_shop(shop_id, db)
-                    else "Daraz sync is available on Premium. Upgrade to connect your Daraz seller account."
-                ),
-            },
-        )
+    # is_thedersi_daraz_eligible_shop in app/core/thedersi.py. Official is a
+    # real Scale customer under the hood and isn't restricted at all.
+    # Real (non-TheDersi) customers draw from the shared channel-slot pool —
+    # Daraz is just a "marketplace" channel now, subject to Launch's
+    # 1-per-category cap, not its own Growth-or-Scale-only gate.
+    if is_thedersi_restricted_shop(shop_id, db):
+        if not is_thedersi_daraz_eligible_shop(shop_id, db):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "daraz_requires_pro",
+                    "plan": plan_type,
+                    "message": "Daraz sync is available on TheDersi Lite and Pro. Upgrade your TheDersi plan to connect Daraz.",
+                },
+            )
+    elif not is_thedersi_shop(shop_id, db):
+        check_channel_slot(shop_id, db, "daraz", plan_type)
 
     state = secrets.token_urlsafe(32)
 

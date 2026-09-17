@@ -11,8 +11,10 @@ from app.models.product import Product
 from app.models.order import Order, OrderItem
 from app.models.customer import Customer
 from app.models.shopify_integration import ShopifyStore, ShopifySyncLog
+from app.models.subscription import Subscription
 from app.api.v1.deps import get_current_user
 from app.core.thedersi import is_thedersi_restricted_shop
+from app.core.channel_limits import check_channel_slot
 import os
 
 
@@ -124,6 +126,16 @@ async def connect_shopify(shop_id: int, body: dict, current_user: User = Depends
 
     # Upsert store record
     store = db.query(ShopifyStore).filter(ShopifyStore.shop_id == shop_id).first()
+    if not store or not store.is_connected:
+        # Only check when this would actually consume a new slot (a fresh
+        # connection, or reactivating a previously disconnected one) — not
+        # on every credentials update to an already-connected store. Shopify
+        # is a "store" channel like WooCommerce/BigCommerce/Custom Website —
+        # subject to Launch's 1-per-category cap and the plan's total, same
+        # as every other channel now (see app/core/channel_limits.py).
+        sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+        plan_type = sub.plan_type if sub else "free_trial"
+        check_channel_slot(shop_id, db, "shopify", plan_type)
     if not store:
         store = ShopifyStore(shop_id=shop_id)
         db.add(store)

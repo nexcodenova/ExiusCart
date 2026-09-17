@@ -105,12 +105,48 @@ def _get_plan(shop_id: int, db: Session) -> str:
     return sub.plan_type if sub else "free_trial"
 
 
+SOCIAL_POST_LIMITS = {
+    "launch": {"daily": 2, "monthly": 50},
+    "growth": {"daily": 4, "monthly": 150},
+    "scale": {"daily": 10, "monthly": None},
+}
+
+
 def _require_premium(shop_id: int, db: Session):
-    if _get_plan(shop_id, db) not in ("growth", "scale"):
+    if _get_plan(shop_id, db) not in SOCIAL_POST_LIMITS:
         raise HTTPException(status_code=403, detail={
             "error": "upgrade_required",
-            "message": "Social media post automation is available on Growth and Scale.",
+            "message": "Social media post automation is available on Launch, Growth, and Scale.",
         })
+
+
+def _check_post_limit(shop_id: int, db: Session):
+    limits = SOCIAL_POST_LIMITS.get(_get_plan(shop_id, db))
+    if not limits:
+        return
+    now = datetime.now(timezone.utc)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    base = db.query(SocialPost).filter(
+        SocialPost.shop_id == shop_id, SocialPost.status != "canceled",
+    )
+    daily_limit = limits.get("daily")
+    if daily_limit is not None:
+        today_count = base.filter(SocialPost.created_at >= day_start).count()
+        if today_count >= daily_limit:
+            raise HTTPException(status_code=403, detail={
+                "error": "daily_limit_reached",
+                "message": f"You've reached today's limit of {daily_limit} social posts on your plan. Try again tomorrow or upgrade for a higher limit.",
+            })
+    monthly_limit = limits.get("monthly")
+    if monthly_limit is not None:
+        month_count = base.filter(SocialPost.created_at >= month_start).count()
+        if month_count >= monthly_limit:
+            raise HTTPException(status_code=403, detail={
+                "error": "monthly_limit_reached",
+                "message": f"You've reached this month's limit of {monthly_limit} social posts on your plan. Upgrade for a higher limit.",
+            })
 
 
 def _conn_out(c: SocialAccountConnection) -> dict:
@@ -546,6 +582,7 @@ def create_social_post(
 ):
     shop = _shop_or_404(shop_id, current_user, db)
     _require_premium(shop_id, db)
+    _check_post_limit(shop_id, db)
 
     platform_list = [p.strip() for p in platforms.split(",") if p.strip()]
     if not platform_list:

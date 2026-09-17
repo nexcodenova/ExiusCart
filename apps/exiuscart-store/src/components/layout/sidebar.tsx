@@ -273,22 +273,24 @@ const GROUPS: MenuGroup[] = [
 // still reads these directly and keeps working exactly as before.
 export const menuItems = GROUPS.flatMap(g => g.items);
 
-// Premium-only hrefs — used by mobile nav to gate these items
-export const PREMIUM_HREFS = new Set(
-  GROUPS.filter(g => g.id === 'hr' || g.id === 'services').flatMap(g => g.items.map(i => i.href))
-);
-
-const PREMIUM_GROUPS = new Set(['hr', 'services']);
+// Growth/Scale only. ai-commerce/product-studio/mcp aren't built yet (all
+// "Coming Soon" stubs) but are locked here anyway, so the access rule is
+// already correct the day a real feature lands behind them — a TheDersi
+// shop on Free Forever/Lite/Pro is never "growth" or "scale" (Official is
+// the one TheDersi tier that shares plan_type="scale" with real Scale
+// customers, so it already passes this check with no special-casing
+// needed) so this same PREMIUM_GROUPS list also gets TheDersi's exclusion
+// right for free.
+const PREMIUM_GROUPS = new Set(['hr', 'services', 'ai-commerce', 'product-studio', 'mcp']);
 
 function isPremiumGroup(groupId: string): boolean {
   return PREMIUM_GROUPS.has(groupId);
 }
 
-// Locked for every TheDersi tier except Official — see isTheDersiRestricted
-// where this is used. Applied at the group level even though none of these
-// three are built yet (all "Coming Soon" stubs), so the access rule is
-// already correct the moment a real feature lands behind them.
-const THEDERSI_LOCKED_GROUPS = new Set(['ai-commerce', 'product-studio', 'mcp']);
+// Premium-only hrefs — used by mobile nav to gate these items
+export const PREMIUM_HREFS = new Set(
+  GROUPS.filter(g => isPremiumGroup(g.id)).flatMap(g => g.items.map(i => i.href))
+);
 
 // Rebuilt on shadcn/ui's real Sidebar primitive (components/ui/sidebar.tsx)
 // instead of a hand-rolled fixed-position <aside> — desktop collapse/expand
@@ -429,11 +431,7 @@ export function ShopSidebar() {
                 const isTheDersiRestricted = isTheDersiPlan && plan !== 'scale';
                 const canAccessPremium = plan === 'scale' || plan === 'growth';
                 const isTheDersiBasicPlan = isTheDersiRestricted;
-                // AI Commerce/Product Studio/MCP aren't built yet, but the
-                // access rule is locked in now so nothing slips through the
-                // day they ship: same TheDersi exclusion as everything else
-                // (Prodora, dropshipping, etc.) — every tier except Official.
-                const locked = (isPremiumGroup(group.id) && !canAccessPremium) || (THEDERSI_LOCKED_GROUPS.has(group.id) && isTheDersiRestricted);
+                const locked = isPremiumGroup(group.id) && !canAccessPremium;
                 const groupActive = isGroupActive(group);
                 const isOpen = openGroups.has(group.id) || collapsed;
 

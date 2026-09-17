@@ -29,6 +29,7 @@ from pydantic import BaseModel
 
 from app.core.database import get_db, SessionLocal
 from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature, is_thedersi_restricted_shop, is_thedersi_pro_shop, is_thedersi_daraz_eligible_shop
+from app.core.channel_limits import check_channel_slot
 from app.core.activity import log_activity
 from app.api.v1.deps import get_current_user
 from app.models.user import User
@@ -613,29 +614,30 @@ def connect_channel(
                 },
             )
 
-    # Free trial + Launch: max 1 active channel connection; Growth: up to 3
-    # (matches the "3 of 8+ sales channels" Growth advertises); Scale = unlimited.
-    # TheDersi Lite/Pro are explicitly allowed 2 (TheDersi + Daraz) — checked
-    # first since Lite isn't in this dict at all (falls through to no limit,
-    # which the earlier channel-type whitelist already caps at 2 anyway) and
-    # Pro would otherwise fall into launch's limit of 1.
-    CHANNEL_LIMIT_BY_PLAN = {"free_trial": 1, "launch": 1, "growth": 3}
-    limit = 2 if is_thedersi_daraz_eligible_shop(shop_id, db) else CHANNEL_LIMIT_BY_PLAN.get(plan_type)
-    if limit is not None:
+    # TheDersi Lite/Pro are explicitly allowed 2 slots (TheDersi + Daraz) —
+    # their channel-type whitelist above already caps them at those two, so
+    # only the count needs checking here. Every other plan (free_trial,
+    # launch, growth, scale — including TheDersi Official, which is a real
+    # Scale customer under the hood) goes through the shared channel-slot
+    # rules in app/core/channel_limits.py, which also enforce Launch's
+    # 1-per-category (store/marketplace/digital) composition.
+    if is_thedersi_daraz_eligible_shop(shop_id, db):
         active_count = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id,
             ChannelConnection.is_active == True,
         ).count()
-        if active_count >= limit:
+        if active_count >= 2:
             raise HTTPException(
                 status_code=429,
                 detail={
                     "error": "channel_limit_reached",
-                    "limit": limit,
+                    "limit": 2,
                     "plan": plan_type,
-                    "message": f"Your plan allows {limit} channel connection{'s' if limit != 1 else ''}. Upgrade to Scale for unlimited channels.",
+                    "message": "Your plan allows 2 channel connections (TheDersi + Daraz).",
                 },
             )
+    else:
+        check_channel_slot(shop_id, db, data.channel_type, plan_type)
 
     conn = ChannelConnection(
         shop_id=shop_id,
@@ -978,6 +980,7 @@ async def receive_cancel_webhook(
 async def receive_order_webhook(
     webhook_secret: str,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """
@@ -1039,7 +1042,8 @@ async def receive_order_webhook(
                 changed_pids: set = set()
 
                 # Stock follows payment: decrement when entering "paid", restore when leaving it.
-                if new_payment == "paid" and old_payment != "paid":
+                just_became_paid = new_payment == "paid" and old_payment != "paid"
+                if just_became_paid:
                     for it in existing_order.items:
                         prod = db.query(Product).filter(Product.id == it.product_id).first()
                         if prod:
@@ -1064,6 +1068,10 @@ async def receive_order_webhook(
 
                 for pid in changed_pids:
                     _bg_push_stock(pid, conn.shop_id)
+
+                if just_became_paid:
+                    from app.api.v1.endpoints.dropshipping import _bg_try_auto_fulfill
+                    background_tasks.add_task(_bg_try_auto_fulfill, conn.shop_id, existing_order.id)
 
                 logger.info(
                     f"[WEBHOOK] dedupe: {existing_order.order_number} → "
@@ -1257,6 +1265,10 @@ async def receive_order_webhook(
     # Push updated stock to TheDersi for all products whose stock changed
     for pid in stock_changed_product_ids:
         _bg_push_stock(pid, conn.shop_id)
+
+    if order_is_paid:
+        from app.api.v1.endpoints.dropshipping import _bg_try_auto_fulfill
+        background_tasks.add_task(_bg_try_auto_fulfill, conn.shop_id, order.id)
 
     return {
         "success": True,

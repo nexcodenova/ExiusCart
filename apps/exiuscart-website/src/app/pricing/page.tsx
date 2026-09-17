@@ -313,7 +313,8 @@ const compareGroups: { title: string; rows: CompareRow[] }[] = [
       { label: 'Reviews & testimonials', values: [true, true, true] },
       { label: 'Inventory + low-stock alerts', values: [true, true, true] },
       { label: 'Purchases & local suppliers', values: [true, true, true] },
-      barRow('Product photos per listing', ['6', '10', '10']),
+      barRow('Product photos per listing', ['6', '10', '15']),
+      barRow('Description length', ['350 words', '500 words', '1,000 words']),
       tierBar('Multiple barcode generation', [40, 70, 100]),
     ],
   },
@@ -321,7 +322,8 @@ const compareGroups: { title: string; rows: CompareRow[] }[] = [
     title: 'Sales Channels',
     rows: [
       { label: 'Shopify, WooCommerce, BigCommerce, Whop, Gumroad, Noon, TheDersi, Custom Website', values: [true, true, true] },
-      { label: 'eBay, Etsy, TikTok Shop, Daraz sync', values: [true, true, true] },
+      { label: 'eBay, Daraz sync', values: [false, true, true] },
+      { label: 'Etsy, TikTok Shop sync', values: [true, true, true] },
       barRow('Connected channels at once', ['3', '5', 'Unlimited']),
       { label: 'Channel listings, categories & order sync', values: [true, true, true] },
       { label: 'Integrations hub', values: [true, true, true] },
@@ -330,7 +332,7 @@ const compareGroups: { title: string; rows: CompareRow[] }[] = [
   {
     title: 'Dropshipping & Fulfillment',
     rows: [
-      barRow('Dropship suppliers (CJ, HyperSKU, Printful, AliExpress)', ['3', '5', 'Unlimited']),
+      barRow('Dropship suppliers (CJ, HyperSKU, Printful, AliExpress)', ['1', '3', 'All']),
       { label: 'Auto order fulfillment to supplier', values: [true, true, true] },
       { label: 'Live tracking sync', values: [true, true, true] },
       { label: 'Supplier returns log', values: [true, true, true] },

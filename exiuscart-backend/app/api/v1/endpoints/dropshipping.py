@@ -3,10 +3,17 @@ Dropshipping integration — CJ Dropshipping, HyperSKU.
 
 Plan limits:
   launch     → 1 of CJ/AliExpress/Printful
-  growth     → 2 of CJ/AliExpress/Printful
+  growth     → all 3 of CJ/AliExpress/Printful
   scale      → all suppliers
   free_trial → no dropshipping
   thedersi_* → no dropshipping (fulfilled by TheDersi)
+
+Auto-fulfillment (a per-connection opt-in — see toggle_auto_fulfill/
+_bg_try_auto_fulfill below) automatically sends a new order to its linked
+supplier the moment it's created, instead of the seller clicking the manual
+"Fulfill via ..." button (fulfill_order/_fulfill_order_core) — capped at
+AUTO_FULFILL_MONTHLY_LIMITS orders/month per plan, distinct from
+MONTHLY_ORDER_LIMITS (total orders a shop may take at all).
 """
 
 import os
@@ -28,7 +35,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.core.thedersi import is_thedersi_restricted_shop
 from app.core.encryption import encrypt, decrypt
 from app.models.user import User
@@ -414,10 +421,16 @@ POD_SUPPLIERS = {"printful", "printify", "gelato"}
 # is a plan-tier/pricing call, left as-is rather than changed unilaterally.
 LAUNCH_SUPPLIER_CHOICES = {"cj", "aliexpress", "printful"}
 
-# Launch: pick 1 of the 3 above at a time. Growth: pick 2 of the same 3
-# (matches the "2 of 3 dropship suppliers" Growth advertises on the pricing
-# page). Scale: all suppliers, unlimited.
-SUPPLIER_LIMIT_BY_PLAN = {"launch": 1, "growth": 2}
+# Launch: pick 1 of the 3 above at a time. Growth: all 3 of them at once
+# (matches the "1 supplier / 3 suppliers / all" Growth advertises on the
+# pricing page). Scale: every supplier, unlimited.
+SUPPLIER_LIMIT_BY_PLAN = {"launch": 1, "growth": 3}
+
+# How many orders per month auto-fulfillment will actually send to a
+# supplier on its own — separate from MONTHLY_ORDER_LIMITS (total orders
+# allowed) since a seller can take far more orders than they'd want
+# auto-sent to a supplier unattended. Scale: unlimited (absent).
+AUTO_FULFILL_MONTHLY_LIMITS = {"launch": 100, "growth": 300}
 
 PLAN_ALLOWED_SUPPLIERS = {
     # 1688/eprolo are Scale-only for now, like hypersku — the pricing page's
@@ -458,13 +471,13 @@ def _check_supplier_allowed(plan: str, supplier_type: str, shop_id: int, db: Ses
         if plan in ("free_trial",):
             raise HTTPException(status_code=403, detail={
                 "error": "plan_required",
-                "message": "Dropshipping is available on Launch (pick one supplier), Growth (pick two), and Scale (all suppliers) plans. Upgrade to get started.",
+                "message": "Dropshipping is available on Launch (pick one supplier), Growth (all three of CJ/AliExpress/Printful), and Scale (every supplier) plans. Upgrade to get started.",
             })
         if plan in ("launch", "growth"):
             raise HTTPException(status_code=403, detail={
                 "error": "upgrade_required",
                 "supplier": supplier_type,
-                "message": f"{supplier_type.title()} is available on Scale plans. {plan.title()} includes {'one' if plan == 'launch' else 'two'} dropshipping supplier{'s' if plan == 'growth' else ''} of your choice — CJ, AliExpress, or Printful.",
+                "message": f"{supplier_type.title()} is available on Scale plans. {plan.title()} includes {'one' if plan == 'launch' else 'three'} dropshipping supplier{'s' if plan == 'growth' else ''} of your choice — CJ, AliExpress, or Printful.",
                 "signup_url": SUPPLIER_SIGNUP_LINKS.get(supplier_type, ""),
             })
         raise HTTPException(status_code=403, detail={"error": "not_allowed", "message": "Supplier not available on your plan."})
@@ -2421,10 +2434,10 @@ def toggle_auto_fulfill(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if plan not in ("growth", "scale"):
+    if plan not in ("launch", "growth", "scale"):
         raise HTTPException(status_code=403, detail={
             "error": "upgrade_required",
-            "message": "Auto-fulfill is available on Growth and Scale. Upgrade to enable automatic order forwarding to your supplier.",
+            "message": "Auto-fulfill is available on Launch, Growth, and Scale. Upgrade to enable automatic order forwarding to your supplier.",
         })
     conns = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop_id,
@@ -2548,20 +2561,28 @@ async def fulfill_order(
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)
+    return await _fulfill_order_core(shop_id, order_id, data.supplier_type, db)
 
+
+async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, db: Session) -> dict:
+    """The actual supplier-order-creation call, shared by the seller's manual
+    "Fulfill via ..." button (fulfill_order above, which does the plan/
+    supplier-allowed checks first) and automatic fulfillment
+    (_bg_try_auto_fulfill, triggered right after a new order is created —
+    see channels.py's receive_order_webhook and pos.py's checkout)."""
     order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found.")
 
     existing_ds_order = db.query(DropshipOrder).filter(
         DropshipOrder.order_id == order_id,
-        DropshipOrder.supplier_type == data.supplier_type,
+        DropshipOrder.supplier_type == supplier_type,
         DropshipOrder.status.notin_(["failed"]),
     ).first()
     if existing_ds_order:
         raise HTTPException(status_code=400, detail="This order has already been sent to the supplier.")
 
-    if data.supplier_type == "cj":
+    if supplier_type == "cj":
         conn = db.query(DropshipConnection).filter(
             DropshipConnection.shop_id == shop_id,
             DropshipConnection.supplier_type == "cj",
@@ -2672,7 +2693,7 @@ async def fulfill_order(
             "message": "Order sent to CJ Dropshipping. Tracking will appear here once CJ ships it.",
         }
 
-    if data.supplier_type == "printful":
+    if supplier_type == "printful":
         conn = db.query(DropshipConnection).filter(
             DropshipConnection.shop_id == shop_id,
             DropshipConnection.supplier_type == "printful",
@@ -2784,7 +2805,7 @@ async def fulfill_order(
             "message": "Order sent to Printful. Tracking will appear here once it ships.",
         }
 
-    if data.supplier_type == "aliexpress":
+    if supplier_type == "aliexpress":
         conn = db.query(DropshipConnection).filter(
             DropshipConnection.shop_id == shop_id,
             DropshipConnection.supplier_type == "aliexpress",
@@ -2879,7 +2900,7 @@ async def fulfill_order(
             "message": "Order sent to AliExpress. Tracking will appear here once it ships.",
         }
 
-    if data.supplier_type == "hypersku":
+    if supplier_type == "hypersku":
         conn = await _get_hypersku_conn_or_400(shop_id, db)
         token = await _hypersku_ensure_token(conn, db)
 
@@ -2994,7 +3015,134 @@ async def fulfill_order(
         }
 
     # Other suppliers — placeholder for their APIs
-    raise HTTPException(status_code=501, detail=f"{data.supplier_type.title()} order forwarding coming soon.")
+    raise HTTPException(status_code=501, detail=f"{supplier_type.title()} order forwarding coming soon.")
+
+
+async def _bg_try_auto_fulfill(shop_id: int, order_id: int):
+    """Background task: right after a new order is created (or an existing
+    pending order turns paid — see both call sites in channels.py's
+    receive_order_webhook), automatically send it to any supplier connection
+    this shop has auto-fulfill turned on for. Uses its own DB session (the
+    request's session is already closed by the time a background task runs
+    — same reasoning as channels.py's own _bg_* functions).
+
+    Never raises — anything that would make the manual "Fulfill via ..."
+    button fail (no supplier link for these products, plan no longer allows
+    this supplier, monthly auto-fulfill cap reached) is just skipped, since a
+    seller with auto-fulfill on still has the manual button as a fallback."""
+    db = SessionLocal()
+    try:
+        order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+        if not order or order.fulfillment_status == "sent":
+            return
+
+        conns = db.query(DropshipConnection).filter(
+            DropshipConnection.shop_id == shop_id,
+            DropshipConnection.is_active == True,
+            DropshipConnection.auto_fulfill_enabled == True,
+        ).all()
+        if not conns:
+            return
+
+        plan = _get_plan(shop_id, db)
+
+        from app.models.order import OrderItem
+        item_product_ids = [
+            i.product_id for i in db.query(OrderItem).filter(OrderItem.order_id == order_id).all() if i.product_id
+        ]
+        if not item_product_ids:
+            return
+
+        for conn in conns:
+            supplier_type = conn.supplier_type
+            try:
+                _check_supplier_allowed(plan, supplier_type, shop_id, db)
+            except HTTPException:
+                continue  # plan no longer allows this supplier — leave it for the manual flow/upgrade prompt
+
+            already = db.query(DropshipOrder).filter(
+                DropshipOrder.order_id == order_id, DropshipOrder.supplier_type == supplier_type,
+            ).first()
+            if already:
+                continue  # already attempted (success or a recorded failure) — webhooks can retry, don't redo it
+
+            linked_ids = {
+                row.product_id for row in db.query(DropshipProductLink).filter(
+                    DropshipProductLink.supplier_type == supplier_type,
+                    DropshipProductLink.product_id.in_(item_product_ids),
+                ).all()
+            }
+            if not linked_ids:
+                continue  # nothing in this order is linked to this supplier at all — not this connection's order
+
+            # _fulfill_order_core requires EVERY item to carry a link for the
+            # chosen supplier, or it raises (see e.g. the CJ branch's
+            # "does not have a CJ supplier link" check) — checking that here
+            # instead of just "at least one" avoids a doomed attempt that
+            # would otherwise only ever show up as a caught exception in the
+            # server log, invisible to the seller.
+            unlinked_count = len(item_product_ids) - len(linked_ids & set(item_product_ids))
+            if unlinked_count:
+                db.add(DropshipOrder(
+                    shop_id=shop_id, order_id=order_id, supplier_type=supplier_type,
+                    status="failed",
+                    error_message=(
+                        f"Auto-fulfillment skipped — {unlinked_count} item(s) in this order have no "
+                        f"{supplier_type.title()} supplier link. Add a link for every product in the order "
+                        f"(Product → Suppliers tab), or fulfill this order manually."
+                    ),
+                ))
+                db.commit()
+                logger.info(f"[AUTO-FULFILL] shop={shop_id} order={order_id} supplier={supplier_type} skipped — {unlinked_count} unlinked item(s)")
+                continue
+
+            monthly_limit = AUTO_FULFILL_MONTHLY_LIMITS.get(plan)
+            if monthly_limit is not None:
+                month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                sent_this_month = db.query(DropshipOrder).filter(
+                    DropshipOrder.shop_id == shop_id,
+                    DropshipOrder.status != "failed",
+                    DropshipOrder.created_at >= month_start,
+                ).count()
+                if sent_this_month >= monthly_limit:
+                    db.add(DropshipOrder(
+                        shop_id=shop_id, order_id=order_id, supplier_type=supplier_type,
+                        status="failed",
+                        error_message=(
+                            f"Auto-fulfillment skipped — your {plan.title()} plan auto-sends up to {monthly_limit} "
+                            f"orders/month to {supplier_type.title()}, and that limit's been reached for this month. "
+                            f"Fulfill this order manually, or upgrade for a higher auto-fulfill limit."
+                        ),
+                    ))
+                    db.commit()
+                    logger.info(f"[AUTO-FULFILL] shop={shop_id} order={order_id} plan={plan} monthly cap ({monthly_limit}) reached — left for manual fulfillment")
+                    continue
+
+            try:
+                await _fulfill_order_core(shop_id, order_id, supplier_type, db)
+                logger.info(f"[AUTO-FULFILL] shop={shop_id} order={order_id} → sent to {supplier_type}")
+            except HTTPException as e:
+                db.rollback()
+                # Some failure paths inside _fulfill_order_core (a supplier
+                # rejecting the order) already record their own "failed"
+                # DropshipOrder row before raising — only add one here if
+                # that didn't happen (e.g. "not connected", a raw API/network
+                # error), so the seller doesn't see the same failure twice.
+                if not db.query(DropshipOrder).filter(
+                    DropshipOrder.order_id == order_id, DropshipOrder.supplier_type == supplier_type,
+                ).first():
+                    msg = e.detail if isinstance(e.detail, str) else e.detail.get("message", str(e.detail))
+                    db.add(DropshipOrder(
+                        shop_id=shop_id, order_id=order_id, supplier_type=supplier_type,
+                        status="failed", error_message=f"Auto-fulfillment failed: {msg}",
+                    ))
+                    db.commit()
+                logger.warning(f"[AUTO-FULFILL] shop={shop_id} order={order_id} supplier={supplier_type} skipped: {e.detail}")
+            except Exception as e:
+                db.rollback()
+                logger.error(f"[AUTO-FULFILL] shop={shop_id} order={order_id} supplier={supplier_type} FAILED: {e}")
+    finally:
+        db.close()
 
 
 # ── Endpoints: Supplier orders dashboard ─────────────────────────────────────

@@ -46,6 +46,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.thedersi import is_thedersi_restricted_shop
+from app.core.channel_limits import check_channel_slot
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.channel import ChannelConnection
@@ -108,25 +109,10 @@ def connect_gumroad(
     from app.models.subscription import Subscription
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
-    CHANNEL_LIMIT_BY_PLAN = {"launch": 1, "growth": 3}
-    if plan_type in CHANNEL_LIMIT_BY_PLAN:
-        limit = CHANNEL_LIMIT_BY_PLAN[plan_type]
-        active_count = db.query(ChannelConnection).filter(
-            ChannelConnection.shop_id == shop_id,
-            ChannelConnection.is_active == True,
-        ).count()
-        if active_count >= limit:
-            raise HTTPException(status_code=403, detail={
-                "error": "channel_limit_reached",
-                "limit": limit,
-                "message": f"Your plan allows {limit} channel connection{'s' if limit != 1 else ''} at a time. Disconnect one first, or upgrade to Scale to connect every channel at once.",
-            })
-    elif plan_type != "scale":
-        raise HTTPException(status_code=403, detail={
-            "error": "plan_required",
-            "plan": plan_type,
-            "message": "Gumroad is available on Launch, Growth, and Scale. Upgrade to connect Gumroad.",
-        })
+    # Gumroad is a "digital" channel in the shared channel-slot pool now —
+    # subject to Launch's 1-per-category cap like everything else, not its
+    # own Launch-or-better-only gate.
+    check_channel_slot(shop_id, db, "gumroad", plan_type)
 
     access_token = data.access_token.strip()
     resp = _gumroad_request(access_token, "GET", "/products")

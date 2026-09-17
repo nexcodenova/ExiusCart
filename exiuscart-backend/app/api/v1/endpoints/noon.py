@@ -50,6 +50,7 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.thedersi import is_thedersi_restricted_shop
+from app.core.channel_limits import check_channel_slot
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.channel import ChannelConnection
@@ -181,6 +182,15 @@ def connect_noon(
         ChannelConnection.shop_id == shop_id,
         ChannelConnection.channel_type == "noon",
     ).first()
+    if not conn or not conn.is_active:
+        # Noon is a "marketplace" channel in the shared channel-slot pool —
+        # only checked when this would actually consume a new slot (a fresh
+        # connection, or reactivating a previously disconnected one), not on
+        # every credentials update to an already-active connection.
+        from app.models.subscription import Subscription
+        sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+        plan_type = sub.plan_type if sub else "free_trial"
+        check_channel_slot(shop_id, db, "noon", plan_type)
     if not conn:
         import secrets
         conn = ChannelConnection(

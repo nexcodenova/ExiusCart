@@ -16,7 +16,6 @@ from app.models.marketing import (
 from app.models.subscription import Subscription
 from app.models.email_template import EmailTemplate
 from app.api.v1.deps import get_current_user
-from app.core.thedersi import is_thedersi_pro_shop
 
 SOCIAL_LEAD_PLANS = {"growth", "scale", "lifetime"}
 
@@ -769,15 +768,19 @@ def get_lead_integration(shop_id: int, current_user: User = Depends(get_current_
     """
     shop = _shop(shop_id, current_user, db)
     plan = _lead_plan(shop_id, db)
-    # TheDersi Pro shares plan_type="launch" with real Launch customers, who
-    # don't get this — Pro's own access has to be checked separately.
-    if plan not in SOCIAL_LEAD_PLANS and not is_thedersi_pro_shop(shop_id, db):
+    # TheDersi Official shares plan_type="scale" with real Scale customers,
+    # so it's already covered by SOCIAL_LEAD_PLANS with no extra check needed.
+    # TheDersi Free Forever/Lite/Pro do NOT get this — Pro used to get a
+    # carve-out here (it shares plan_type="launch", which isn't in
+    # SOCIAL_LEAD_PLANS on its own), removed since Pro's price point doesn't
+    # include social/meta lead capture.
+    if plan not in SOCIAL_LEAD_PLANS:
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "plan_required",
                 "plan": plan,
-                "message": "Social media lead capture is available on Premium and TheDersi Pro plans only.",
+                "message": "Social media lead capture is available on Growth, Scale, and TheDersi Official plans.",
             },
         )
     if not shop.lead_capture_token:

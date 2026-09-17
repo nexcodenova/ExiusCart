@@ -234,37 +234,52 @@ def get_attributes(
 
 # ── Product Images ────────────────────────────────────────────────────────────
 
-IMAGES_DEFAULT = 6    # free / launch / thedersi_free_forever / thedersi_lite
-IMAGES_PREMIUM = 10   # growth / scale / TheDersi Pro
-DESCRIPTION_WORDS_DEFAULT = 350   # free / launch / thedersi_free_forever / thedersi_lite
-DESCRIPTION_WORDS_PREMIUM = 500   # growth / scale / TheDersi Pro
 DESCRIPTION_IMAGES_LIMIT = 25      # same for every plan — inline description photos, not the main gallery
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-_PREMIUM_PLANS = ("growth", "scale")
+
+# Per-plan image/description limits. Growth and Scale used to share one
+# "premium" value — now a real 3-way split (Scale > Growth > everyone else).
+# TheDersi Pro shares plan_type="launch" with real Launch customers, so it's
+# looked up separately below rather than through this dict, and deliberately
+# uses Growth's numbers (not Launch's default, not Scale's) as its "kept"
+# premium perk from before this split existed.
+_IMAGE_LIMITS = {
+    "launch": 6, "growth": 10, "scale": 15,
+    "thedersi_free_forever": 6, "thedersi_lite": 6,
+}
+_DESCRIPTION_WORD_LIMITS = {
+    "launch": 350, "growth": 500, "scale": 1000,
+    "thedersi_free_forever": 350, "thedersi_lite": 350,
+}
+_DEFAULT_IMAGE_LIMIT = 6
+_DEFAULT_DESCRIPTION_WORD_LIMIT = 350
+# Public alias — admin.py imports this directly to cap a description length
+# when importing/seeding catalog products, independent of any one shop's
+# actual plan.
+DESCRIPTION_WORDS_DEFAULT = _DEFAULT_DESCRIPTION_WORD_LIMIT
 
 
-def _is_premium_shop(shop_id: int, db: Session) -> bool:
+def _image_limit(shop_id: int, db: Session) -> int:
     sub = db.query(Subscription).filter(
         Subscription.shop_id == shop_id,
         Subscription.status == "active",
     ).first()
-    if sub and sub.plan_type in _PREMIUM_PLANS:
-        return True
-    # TheDersi Pro shares plan_type="launch" with real Launch customers, who
-    # aren't premium here — Pro's own premium access needs its own check.
     from app.core.thedersi import is_thedersi_pro_shop
-    return is_thedersi_pro_shop(shop_id, db)
-
-
-def _image_limit(shop_id: int, db: Session) -> int:
-    """Return 10 for premium/TheDersi Pro shops, 6 for all others."""
-    return IMAGES_PREMIUM if _is_premium_shop(shop_id, db) else IMAGES_DEFAULT
+    if sub and is_thedersi_pro_shop(shop_id, db):
+        return _IMAGE_LIMITS["growth"]
+    return _IMAGE_LIMITS.get(sub.plan_type, _DEFAULT_IMAGE_LIMIT) if sub else _DEFAULT_IMAGE_LIMIT
 
 
 def _description_word_limit(shop_id: int, db: Session) -> int:
-    """Return 350 for premium/TheDersi Pro shops, 200 for all others."""
-    return DESCRIPTION_WORDS_PREMIUM if _is_premium_shop(shop_id, db) else DESCRIPTION_WORDS_DEFAULT
+    sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id,
+        Subscription.status == "active",
+    ).first()
+    from app.core.thedersi import is_thedersi_pro_shop
+    if sub and is_thedersi_pro_shop(shop_id, db):
+        return _DESCRIPTION_WORD_LIMITS["growth"]
+    return _DESCRIPTION_WORD_LIMITS.get(sub.plan_type, _DEFAULT_DESCRIPTION_WORD_LIMIT) if sub else _DEFAULT_DESCRIPTION_WORD_LIMIT
 
 
 def _combined_image_count(product_id: int, db: Session) -> int:

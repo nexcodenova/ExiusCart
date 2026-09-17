@@ -49,6 +49,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.thedersi import is_thedersi_restricted_shop
+from app.core.channel_limits import check_channel_slot
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.channel import ChannelConnection
@@ -147,31 +148,14 @@ def connect_woocommerce(
     if is_thedersi_restricted_shop(shop_id, db):
         raise HTTPException(status_code=403, detail="WooCommerce isn't available on TheDersi plans — TheDersi sellers can use TheDersi and Daraz.")
 
-    # Free Trial's own pricing copy names only Shopify/TheDersi/custom site
-    # as its included channel — WooCommerce isn't one of those three, so
-    # it's Launch+ only, same gate shape as TikTok's authorize endpoint.
+    # WooCommerce is a "store" channel in the shared channel-slot pool —
+    # Free Trial's own allowlist there still excludes it (Shopify/TheDersi/
+    # custom only), Launch gets it as 1 of its 3 category-capped slots,
+    # Growth/Scale as part of their general totals.
     from app.models.subscription import Subscription
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
-    CHANNEL_LIMIT_BY_PLAN = {"launch": 1, "growth": 3}
-    if plan_type in CHANNEL_LIMIT_BY_PLAN:
-        limit = CHANNEL_LIMIT_BY_PLAN[plan_type]
-        active_count = db.query(ChannelConnection).filter(
-            ChannelConnection.shop_id == shop_id,
-            ChannelConnection.is_active == True,
-        ).count()
-        if active_count >= limit:
-            raise HTTPException(status_code=403, detail={
-                "error": "channel_limit_reached",
-                "limit": limit,
-                "message": f"Your plan allows {limit} channel connection{'s' if limit != 1 else ''} at a time. Disconnect one first, or upgrade to Scale to connect every channel at once.",
-            })
-    elif plan_type != "scale":
-        raise HTTPException(status_code=403, detail={
-            "error": "plan_required",
-            "plan": plan_type,
-            "message": "WooCommerce is available on Launch, Growth, and Scale. Upgrade to connect your WooCommerce store.",
-        })
+    check_channel_slot(shop_id, db, "woocommerce", plan_type)
 
     site_url = data.site_url.strip().rstrip("/")
     if not site_url.startswith("https://"):

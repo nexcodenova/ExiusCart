@@ -34,7 +34,7 @@ PRODORA_ELIGIBLE_PLANS = ("launch", "growth", "scale")
 # Launch is capped monthly; Growth gets a higher cap; Scale stays unlimited
 # (None). 50/200 picked as generous enough for a real small store's normal
 # pace at each tier, with Scale as the real "no ceiling" option.
-PRODORA_MONTHLY_IMPORT_LIMIT = {"launch": 50, "growth": 200, "scale": None}
+PRODORA_MONTHLY_IMPORT_LIMIT = {"launch": 100, "growth": 500, "scale": None}
 
 _security = HTTPBearer()
 
