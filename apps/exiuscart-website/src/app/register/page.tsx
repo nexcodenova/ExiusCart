@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Loader2, ArrowLeft, Check, Tag, Globe, Mail, Lock } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
 
@@ -86,7 +86,7 @@ const COUNTRIES = [
 
 const registerSchema = z
   .object({
-    shopName: z.string().min(2, 'Shop name must be at least 2 characters'),
+    shopName: z.string().min(2, 'Store name must be at least 2 characters'),
     ownerName: z.string().min(2, 'Your name must be at least 2 characters'),
     email: z.string().email('Please enter a valid email'),
     phone: z.string().min(9, 'Please enter a valid phone number'),
@@ -117,9 +117,17 @@ function RegisterForm() {
   const [resendSent, setResendSent] = useState(false);
   const [phoneDialCode, setPhoneDialCode] = useState('+971');
   const searchParams = useSearchParams();
-  const router = useRouter();
   const refFromUrl = searchParams.get('ref') || '';
   const [isRefLocked, setIsRefLocked] = useState(false);
+  // Arriving from the pricing page's Launch "Try for free" CTA carries the
+  // plan — a real 7-day free trial (no card), not the generic 14-day trial.
+  // Growth/Scale never link here — they have no free week, only the $1
+  // checkout flow (see /checkout?trial=dollar). No plan param = organic
+  // signup, unchanged.
+  const planFromUrl = searchParams.get('plan');
+  const billingFromUrl = searchParams.get('billing') || 'monthly';
+  const chosenPlan = planFromUrl === 'launch' ? planFromUrl : null;
+  const chosenPlanLabel = chosenPlan ? 'Launch' : null;
 
   const {
     register,
@@ -184,6 +192,8 @@ function RegisterForm() {
           password: data.password,
           ref_code: data.refCode || undefined,
           country: data.country || undefined,
+          plan_type: chosenPlan || undefined,
+          billing_type: chosenPlan ? billingFromUrl : undefined,
         }),
       });
       if (!res.ok) {
@@ -198,7 +208,7 @@ function RegisterForm() {
         setPendingEmail(body.email);
       } else {
         setSuccess(true);
-        setTimeout(() => router.push('/login?registered=1'), 1500);
+        setTimeout(() => { window.location.href = 'https://store.exiuscart.com/login?registered=1'; }, 1500);
       }
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
@@ -217,12 +227,21 @@ function RegisterForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: pendingEmail, otp_code: otpCode }),
       });
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
         throw new Error(body.detail || 'Invalid code');
       }
-        setSuccess(true);
-      setTimeout(() => { window.location.href = 'https://store.exiuscart.com/login'; }, 2000);
+      setSuccess(true);
+      // Immediate access — verify-otp already returns a real access token (no
+      // more admin-approval wait), so hand it straight to the dashboard via
+      // hash fragment (never sent to a server) instead of making them log in
+      // again with a password they just typed seconds ago.
+      const token = body.access_token;
+      setTimeout(() => {
+        window.location.href = token
+          ? `https://store.exiuscart.com/login#token=${token}`
+          : 'https://store.exiuscart.com/login';
+      }, 1500);
     } catch (err: any) {
       setOtpError(err.message || 'Invalid or expired code');
     } finally {
@@ -304,10 +323,10 @@ function RegisterForm() {
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-3">Email Verified!</h2>
         <p className="text-gray-500 text-sm mb-4">
-          Your email has been verified successfully. Our team will review and approve your account shortly. You will receive an email once approved.
+          Your account is ready — taking you to your dashboard now.
         </p>
         <p className="text-gray-400 text-xs flex items-center justify-center gap-1.5">
-          <Loader2 className="w-3 h-3 animate-spin" /> Redirecting to login...
+          <Loader2 className="w-3 h-3 animate-spin" /> Redirecting to your dashboard...
         </p>
       </div>
     );
@@ -317,13 +336,17 @@ function RegisterForm() {
     <div className="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
       <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Create Your Account</h1>
       <p className="text-gray-500 mb-6 text-sm sm:text-base">
-        Start your 14-day free trial today
+        {chosenPlan
+          ? `Start your ${chosenPlanLabel} plan — free for 7 days`
+          : 'Start your 14-day free trial today'}
       </p>
 
       {/* Trial Badge */}
       <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-4 flex items-center gap-2">
         <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-        <p className="text-emerald-700 text-sm">No credit card required for trial</p>
+        <p className="text-emerald-700 text-sm">
+          {chosenPlan ? 'No credit card required for 7 days' : 'No credit card required for trial'}
+        </p>
       </div>
 
       {/* Referral Badge */}
@@ -346,7 +369,7 @@ function RegisterForm() {
       <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
         <div>
           <label htmlFor="shopName" className="text-xs font-medium text-gray-500 mb-1 block">
-            Shop Name
+            Store Name
           </label>
           <input
             id="shopName"
@@ -548,9 +571,9 @@ function RegisterForm() {
 
       <p className="text-center mt-6 text-gray-500 text-sm sm:text-base">
         Already have an account?{' '}
-        <Link href="/login" className="text-[#6B3FD9] font-semibold hover:text-[#5A2EC9] transition">
+        <a href="https://store.exiuscart.com/login" className="text-[#6B3FD9] font-semibold hover:text-[#5A2EC9] transition">
           Sign in
-        </Link>
+        </a>
       </p>
     </div>
   );

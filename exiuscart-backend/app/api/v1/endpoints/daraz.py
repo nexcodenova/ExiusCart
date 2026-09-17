@@ -42,7 +42,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.thedersi import is_thedersi_shop
+from app.core.thedersi import is_thedersi_shop, is_thedersi_pro_shop
 from app.core.country_utils import shop_country_iso
 from app.api.v1.deps import get_current_user
 from app.models.user import User
@@ -221,7 +221,10 @@ def daraz_authorize(
 
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
-    if plan_type not in ("thedersi_pro", "premium"):
+    # TheDersi Pro shares plan_type="launch" with real Launch customers, so
+    # it needs its own check rather than a plan_type string match — see
+    # is_thedersi_pro_shop in app/core/thedersi.py.
+    if plan_type not in ("growth", "scale") and not is_thedersi_pro_shop(shop_id, db):
         raise HTTPException(
             status_code=403,
             detail={

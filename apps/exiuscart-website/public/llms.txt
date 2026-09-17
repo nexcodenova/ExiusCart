@@ -1,37 +1,43 @@
 # ExiusCart
 
-> ExiusCart is an all-in-one business management platform built for retailers, shops, and small businesses in the UAE, Sri Lanka, and the Middle East.
+> ExiusCart is an all-in-one commerce platform, worldwide: POS, inventory, invoicing, and multi-channel selling, plus Prodora product sourcing and dropshipping fulfillment from a network of verified suppliers.
 
 ## What ExiusCart does
 
-ExiusCart combines POS (point of sale), inventory management, order management, CRM, invoicing, VAT-compliant billing, staff management, barcode scanning, multi-branch support, and online store channels into one affordable platform.
+ExiusCart combines POS (point of sale), inventory management, order management, CRM, invoicing, VAT-compliant billing, staff management, barcode scanning, multi-branch support, and multi-channel selling (a seller's own website, Shopify, WooCommerce, TikTok Shop, eBay, BigCommerce, Etsy, Whop, Gumroad, Daraz, Noon, and TheDersi) into one platform. Prodora, ExiusCart's built-in sourcing tool, gives sellers access to 36M+ products and one-click import from dropshipping and print-on-demand suppliers (CJ Dropshipping, AliExpress, 1688, Alibaba, HyperSKU, EPROLO, Printful, Printify, Gelato) with automatic order forwarding.
 
 ## Who it's for
 
 - Retail shops and boutiques
 - Electronics stores
 - Grocery and supermarkets
-- Any small to medium business needing POS + inventory + orders in one place
-- Businesses in UAE, Sri Lanka, and the Middle East
+- Dropshipping and e-commerce sellers sourcing through Prodora
+- Any small to medium business needing POS + inventory + orders + multi-channel selling in one place
+- Sellers worldwide — not limited to any one region
 
 ## Pricing
 
-- Free Trial: 14 days, no credit card required
-- Starter Plan: $12/month, billed in USD worldwide
-- Premium Plan: $29/month, billed in USD worldwide
-- No setup fees. Cancel anytime.
+All plans billed in USD, worldwide — one price for everyone, no region-based pricing.
+
+- Launch: $14.99/month — 7 days free, no credit card required
+- Growth: $24.99/month — no free week, $1 for the first 7 days then full price
+- Scale: $39.99/month — no free week, $1 for the first 7 days then full price
+- Yearly billing on any plan: pay for 9 months, get 12 (25% off)
+- 7-day money-back guarantee. Cancel anytime, no setup fees.
 
 ## Key features
 
 - Point of Sale (POS) — works offline and online
 - Inventory management with barcode scanning
-- Order management (online + in-store)
-- VAT-compliant invoicing for UAE businesses
+- Order management across every connected sales channel
+- Prodora product sourcing — 36M+ products, dropshipping & print-on-demand fulfillment
+- Multi-channel selling: own website, Shopify, WooCommerce, TikTok Shop, eBay, Daraz, Noon, TheDersi, and more
+- VAT-compliant invoicing
 - Multi-branch and multi-staff support
 - Customer management (CRM)
 - Sales reports and analytics
-- WhatsApp and online store integrations
-- Payroll and HR (Premium)
+- Marketing automation: WhatsApp, social posting, Meta Ads
+- Payroll and HR (Growth/Scale)
 - Quotation and purchase management
 
 ## For developers
@@ -130,4 +136,4 @@ gateway-specific fields: https://exiuscart.com/developers
 
 ## Alternatives comparison
 
-ExiusCart is often compared to Zoho Inventory, Odoo, and Lightspeed but is significantly more affordable and designed specifically for small businesses in the UAE and Sri Lanka market, with local VAT compliance built in.
+ExiusCart is often compared to Zoho Inventory, Odoo, and Lightspeed but is significantly more affordable, includes multi-channel selling and Prodora product sourcing built in (rather than as a separate paid add-on or third-party app), and works for sellers worldwide with VAT-compliant invoicing available wherever it's needed.

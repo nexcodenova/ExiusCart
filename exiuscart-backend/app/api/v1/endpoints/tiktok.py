@@ -240,29 +240,31 @@ def tiktok_authorize(
 
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
-    if plan_type == "starter":
-        # Starter: one channel of its choice, same generic cap already
-        # enforced for the API-key-style channels in channels.py's
-        # connect_channel(). TikTok is OAuth-based so it has its own
-        # authorize endpoint (like eBay/Daraz) and re-implements that same
-        # check inline rather than going through connect_channel().
-        other = db.query(ChannelConnection).filter(
+    # Launch: 1 channel of its choice, Growth: up to 3 — same generic cap
+    # already enforced for the API-key-style channels in channels.py's
+    # connect_channel(). TikTok is OAuth-based so it has its own authorize
+    # endpoint (like eBay/Daraz) and re-implements that same check inline
+    # rather than going through connect_channel().
+    CHANNEL_LIMIT_BY_PLAN = {"launch": 1, "growth": 3}
+    if plan_type in CHANNEL_LIMIT_BY_PLAN:
+        limit = CHANNEL_LIMIT_BY_PLAN[plan_type]
+        active_count = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id,
             ChannelConnection.is_active == True,
-        ).first()
-        if other:
+        ).count()
+        if active_count >= limit:
             raise HTTPException(status_code=403, detail={
                 "error": "channel_limit_reached",
-                "connected_channel": other.channel_type,
-                "message": f"Your Starter plan includes one channel at a time. You already have {other.channel_type.title()} connected — disconnect it first, or upgrade to Premium to connect every channel at once.",
+                "limit": limit,
+                "message": f"Your plan allows {limit} channel connection{'s' if limit != 1 else ''} at a time. Disconnect one first, or upgrade to Scale to connect every channel at once.",
             })
-    elif plan_type not in ("premium",):
+    elif plan_type != "scale":
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "plan_required",
                 "plan": plan_type,
-                "message": "TikTok Shop is available on Starter (as your one channel) and Premium (all channels). Upgrade to connect your TikTok Shop account.",
+                "message": "TikTok Shop is available on Launch, Growth, and Scale. Upgrade to connect your TikTok Shop account.",
             },
         )
 

@@ -109,7 +109,7 @@ export default function FeaturesPage() {
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link
-              href="/register"
+              href="/register?plan=launch&billing=monthly"
               className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-xl transition-all"
             >
               Start Free Trial <ArrowRight className="w-4 h-4" />
@@ -208,7 +208,7 @@ export default function FeaturesPage() {
 
                 <div>
                   <Link
-                    href="/register"
+                    href="/register?plan=launch&billing=monthly"
                     className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 font-semibold px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 transition-all text-xs lg:text-sm shadow-sm"
                   >
                     Discover {feat.label} <ArrowRight className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
@@ -273,7 +273,7 @@ export default function FeaturesPage() {
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
-                href="/register"
+                href="/register?plan=launch&billing=monthly"
                 className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-2xl transition-all text-base"
               >
                 Get started free <ArrowRight className="w-4 h-4" />

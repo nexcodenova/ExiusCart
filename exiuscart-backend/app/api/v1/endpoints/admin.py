@@ -224,7 +224,7 @@ def change_shop_plan(
             billing_type=data.billing_type,
             status="active",
             amount_paid=0,
-            currency="AED",
+            currency="USD",
             starts_at=now,
             expires_at=now + timedelta(days=30),
         )
@@ -247,7 +247,7 @@ def delete_shop(
     if sub:
         sub.status = "cancelled"
     db.commit()
-    return {"message": "Shop deactivated"}
+    return {"message": "Store deactivated"}
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
@@ -461,12 +461,28 @@ def approve_subscription(
     sub.starts_at = now
 
     if sub.plan_type == "free_trial":
-        # Free trial approval: start the 14-day countdown now
+        # Generic organic-signup free trial (no specific plan chosen): start
+        # the same 7-day countdown every other trial gets.
+        from app.core.lemonsqueezy import TRIAL_FREE_DAYS
         sub.status = "trial"
-        sub.trial_ends_at = now + timedelta(days=14)
-        sub.expires_at = now + timedelta(days=14)
+        sub.trial_ends_at = now + timedelta(days=TRIAL_FREE_DAYS)
+        sub.expires_at = now + timedelta(days=TRIAL_FREE_DAYS)
+    elif sub.trial_dollar_ends_at:
+        # A $1 trial checkout (Growth/Scale's "Try for $1") already paid at
+        # checkout time — trial_dollar_ends_at was already set then (always
+        # 7 days). Approval just unblocks login; it doesn't restart the
+        # countdown or charge again. The $1->full-price move at day 7 is
+        # handled separately by app/core/subscription_lifecycle.py, not here.
+        sub.status = "trial_dollar"
+        sub.expires_at = sub.trial_dollar_ends_at
+    elif sub.trial_ends_at:
+        # Pricing-page "Try for free" signup (Launch only — Growth/Scale
+        # have no free week) — no payment yet, trial_ends_at was set at
+        # signup. Approval starts the real 7-day countdown (unblocks it now).
+        sub.status = "trial"
+        sub.expires_at = sub.trial_ends_at
     else:
-        # Paid plan approval: activate immediately
+        # Paid plan approval (e.g. bank transfer, full price): activate immediately
         sub.status = "active"
         if sub.billing_type == "monthly":
             sub.expires_at = now + timedelta(days=30)
@@ -485,8 +501,10 @@ def approve_subscription(
     # _handle_new_signup_payment) already recorded the real payment before this
     # subscription ever reached pending_approval — reuse that row instead of
     # logging a second, duplicate "manual" payment for money that was already
-    # charged online.
-    if sub.shop and sub.plan_type != "free_trial":
+    # charged online. Also skip entirely for a free trial (status == "trial",
+    # whether the legacy generic free_trial or a real-plan 7-day trial) — no
+    # money changed hands yet, so there's nothing real to log or commission.
+    if sub.shop and sub.status not in ("trial",):
         existing_payment = db.query(SubscriptionPayment).filter(
             SubscriptionPayment.subscription_id == sub.id
         ).order_by(SubscriptionPayment.id.desc()).first()
@@ -586,7 +604,7 @@ class UpdateSubscriptionIn(BaseModel):
     billing_type: str
     status: str
     amount_paid: float = 0.0
-    currency: str = "AED"
+    currency: str = "USD"
     expires_at: Optional[str] = None  # ISO date string or null for lifetime
 
 
@@ -597,7 +615,13 @@ def update_subscription(
     db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
-    """Admin manually edits any subscription — plan, billing type, status, amount, expiry."""
+    """
+    Admin manually sets a subscription to any plan (launch/growth/scale/
+    thedersi_*/free_trial — any string), any status, any amount, any expiry
+    — a direct database write only. Never calls Lemon Squeezy, never charges
+    a card; safe to use for comps, manual grants, corrections, or overriding
+    a stuck trial regardless of what payment_source the row has.
+    """
     sub = db.query(Subscription).filter(Subscription.id == sub_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
@@ -625,9 +649,11 @@ def update_subscription(
                 sub.expires_at = now + timedelta(days=365)
             else:
                 sub.expires_at = None  # Lifetime
-        elif body.status == "trial":
-            sub.expires_at = now + timedelta(days=14)
-            sub.trial_ends_at = now + timedelta(days=14)
+        elif body.status in ("trial", "trial_dollar"):
+            from app.core.lemonsqueezy import TRIAL_FREE_DAYS, TRIAL_DOLLAR_DAYS
+            days = TRIAL_FREE_DAYS if body.status == "trial" else TRIAL_DOLLAR_DAYS
+            sub.expires_at = now + timedelta(days=days)
+            sub.trial_ends_at = now + timedelta(days=days)
         else:
             sub.expires_at = None
 
@@ -984,30 +1010,50 @@ def get_affiliate(
         for c in commissions
     ]
 
-    # ── Referral breakdown — per referred shop: what they're paying, how much this
-    # affiliate has earned from them so far, and (for recurring) how many months are left.
-    by_shop: dict = {}
+    # ── Referral breakdown — every signup this affiliate referred, not just the
+    # ones that have already earned a commission. A trial/$1-trial referral has
+    # zero Commission rows (by design — see affiliate_commissions.py), so building
+    # this list from `commissions` alone made every pending signup invisible here.
+    # Same shape as GET /affiliates/me/referrals, which gets this right already.
+    commissions_by_shop: dict = {}
     for c in commissions:
-        by_shop.setdefault(c.shop_id, []).append(c)
+        commissions_by_shop.setdefault(c.shop_id, []).append(c)
+
+    referred_users = db.query(User).filter(
+        User.referred_by_code == affiliate.referral_code
+    ).order_by(User.created_at.desc()).all()
 
     referral_breakdown = []
-    for shop_id, shop_commissions in by_shop.items():
-        shop = shop_commissions[0].shop
-        sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
-        commission_type = shop_commissions[0].commission_type or "one_time"
+    for user in referred_users:
+        shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+        sub = None
+        if shop:
+            sub = db.query(Subscription).filter(
+                Subscription.shop_id == shop.id
+            ).order_by(Subscription.id.desc()).first()
+
+        shop_commissions = commissions_by_shop.get(shop.id, []) if shop else []
+        commission_type = shop_commissions[0].commission_type if shop_commissions else (affiliate.commission_model or "one_time")
         months_paid = len([c for c in shop_commissions if c.commission_type == "recurring"])
+
         referral_breakdown.append({
-            "shop_id": shop_id,
-            "shop_name": shop.name if shop else "",
+            "shop_id": shop.id if shop else None,
+            "shop_name": shop.name if shop else user.full_name,
             "plan_type": sub.plan_type if sub else None,
             "billing_type": sub.billing_type if sub else None,
+            # Real subscription status — "trial" / "trial_dollar" / "active" / "expired" /
+            # "cancelled", or "registered" when they signed up but never created a shop/sub.
+            "status": sub.status if sub else "registered",
             "subscription_amount": float(sub.amount_paid) if sub and sub.amount_paid else None,
             "commission_type": commission_type,
             "months_paid": months_paid if commission_type == "recurring" else None,
             "months_remaining": max(0, 12 - months_paid) if commission_type == "recurring" else None,
             "total_earned_from_referral": sum(float(c.amount) for c in shop_commissions),
         })
-    result["referral_breakdown"] = sorted(referral_breakdown, key=lambda r: r["total_earned_from_referral"], reverse=True)
+    # Paying referrals first (highest earner first), then everyone still in trial/registered.
+    result["referral_breakdown"] = sorted(
+        referral_breakdown, key=lambda r: r["total_earned_from_referral"], reverse=True
+    )
 
     return result
 
@@ -2545,7 +2591,7 @@ def _generate_nexcode() -> str:
 
 class NexCodeCreate(BaseModel):
     client_email: Optional[str] = None
-    plan_type: str = "premium"
+    plan_type: str = "scale"
     duration_months: Optional[int] = None   # None = lifetime
     max_uses: int = 1
     max_shops: int = 1

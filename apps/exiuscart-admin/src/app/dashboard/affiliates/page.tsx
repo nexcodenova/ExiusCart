@@ -22,16 +22,37 @@ interface Commission {
 }
 
 interface ReferralBreakdown {
-  shop_id: number;
+  shop_id: number | null;
   shop_name: string;
   plan_type: string | null;
   billing_type: string | null;
+  status: string;
   subscription_amount: number | null;
   commission_type: 'one_time' | 'recurring';
   months_paid: number | null;
   months_remaining: number | null;
   total_earned_from_referral: number;
 }
+
+const REFERRAL_STATUS_STYLES: Record<string, string> = {
+  active:           'bg-green-500/10 text-green-400 border border-green-500/20',
+  trial:            'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+  trial_dollar:     'bg-purple-500/10 text-purple-400 border border-purple-500/20',
+  pending_approval: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
+  expired:          'bg-red-500/10 text-red-400 border border-red-500/20',
+  cancelled:        'bg-gray-500/10 text-gray-400 border border-gray-500/20',
+  registered:       'bg-gray-500/10 text-gray-400 border border-gray-500/20',
+};
+
+const REFERRAL_STATUS_LABELS: Record<string, string> = {
+  active:           'Converted',
+  trial:            'Free Trial',
+  trial_dollar:     '$1 Trial',
+  pending_approval: 'Pending Approval',
+  expired:          'Expired',
+  cancelled:        'Cancelled',
+  registered:       'Registered (no store)',
+};
 
 interface Affiliate {
   id: number;
@@ -209,8 +230,8 @@ export default function AffiliatesPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="Total Affiliates" value={String(affiliates.length)} icon={<Users className="w-5 h-5" />} />
         <StatCard label="Pending Approval" value={String(pending)} icon={<Clock className="w-5 h-5" />} highlight={pending > 0} />
-        <StatCard label="Total Paid Out" value={`${totalEarned.toFixed(0)} AED`} icon={<DollarSign className="w-5 h-5" />} />
-        <StatCard label="Pending Payout" value={`${totalPending.toFixed(0)} AED`} icon={<TrendingUp className="w-5 h-5" />} />
+        <StatCard label="Total Paid Out" value={`$${totalEarned.toFixed(0)}`} icon={<DollarSign className="w-5 h-5" />} />
+        <StatCard label="Pending Payout" value={`$${totalPending.toFixed(0)}`} icon={<TrendingUp className="w-5 h-5" />} />
       </div>
 
       {/* Filters */}
@@ -325,11 +346,11 @@ export default function AffiliatesPage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Earned</p>
-                        <p className="text-sm font-semibold text-white">{affiliate.total_earned.toFixed(0)} AED</p>
+                        <p className="text-sm font-semibold text-white">${affiliate.total_earned.toFixed(0)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Pending</p>
-                        <p className="text-sm font-semibold text-yellow-400">{affiliate.pending_amount.toFixed(0)} AED</p>
+                        <p className="text-sm font-semibold text-yellow-400">${affiliate.pending_amount.toFixed(0)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Payout</p>
@@ -497,6 +518,7 @@ export default function AffiliatesPage() {
                                     <tr>
                                       <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Shop</th>
                                       <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Plan</th>
+                                      <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Status</th>
                                       <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Seller Pays</th>
                                       <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Model</th>
                                       <th className="text-center px-4 py-2 text-xs font-medium text-gray-500">Months</th>
@@ -505,11 +527,16 @@ export default function AffiliatesPage() {
                                   </thead>
                                   <tbody className="divide-y divide-gray-800">
                                     {detail.referral_breakdown.map((r) => (
-                                      <tr key={r.shop_id} className="bg-[#0B1121]">
+                                      <tr key={r.shop_id ?? r.shop_name} className="bg-[#0B1121]">
                                         <td className="px-4 py-2.5 text-white font-medium">{r.shop_name}</td>
                                         <td className="px-4 py-2.5 text-gray-400 capitalize">{r.plan_type?.replace('_', ' ') ?? '—'}</td>
+                                        <td className="px-4 py-2.5 text-center">
+                                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${REFERRAL_STATUS_STYLES[r.status] ?? 'bg-gray-500/10 text-gray-400 border border-gray-500/20'}`}>
+                                            {REFERRAL_STATUS_LABELS[r.status] ?? r.status}
+                                          </span>
+                                        </td>
                                         <td className="px-4 py-2.5 text-right text-gray-300">
-                                          {r.subscription_amount != null ? `${r.subscription_amount.toFixed(2)} ${r.billing_type === 'yearly' ? '/yr' : '/mo'}` : '—'}
+                                          {r.subscription_amount != null ? `$${r.subscription_amount.toFixed(2)} ${r.billing_type === 'yearly' ? '/yr' : '/mo'}` : '—'}
                                         </td>
                                         <td className="px-4 py-2.5 text-center">
                                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -524,7 +551,13 @@ export default function AffiliatesPage() {
                                           {r.commission_type === 'recurring' ? `${r.months_paid}/12 paid` : '—'}
                                         </td>
                                         <td className="px-4 py-2.5 text-right font-semibold text-white">
-                                          ${r.total_earned_from_referral.toFixed(2)}
+                                          {r.total_earned_from_referral > 0 ? (
+                                            `$${r.total_earned_from_referral.toFixed(2)}`
+                                          ) : (
+                                            <span className="text-gray-500 font-normal">
+                                              {r.status === 'trial_dollar' ? '$1 trial — no commission yet' : r.status === 'trial' ? 'Free trial — no commission yet' : '—'}
+                                            </span>
+                                          )}
                                         </td>
                                       </tr>
                                     ))}

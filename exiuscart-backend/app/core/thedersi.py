@@ -23,26 +23,51 @@ THEDERSI_ORDER_STATUS_URL = os.getenv(
     "https://thedersi.lk/api/v1/exiuscart/order-status",
 )
 
-# Tier names TheDersi sends → ExiusCart plan_type
-# Accepts both new names (confirmed 2026-06) and old names (backward compat)
+# Tier names TheDersi sends (their own names, never touched — a separate
+# system from ExiusCart's own plans) → ExiusCart plan_type. Accepts both new
+# names and old names (backward compat).
+#
+# 2026-09-17 restructure: TheDersi's 4 tiers now map to real, named
+# ExiusCart plan_types instead of generic thedersi_basic/thedersi_pro:
+#   Free Forever → thedersi_free_forever (own plan_type, was thedersi_basic)
+#   Lite (renamed from "Growth")  → thedersi_lite (own plan_type — same
+#     limits as Free Forever except unlimited orders; deliberately NOT
+#     "launch", so a Lite seller is never confused with a real direct
+#     ExiusCart Launch customer anywhere in reporting/admin)
+#   Pro → "launch" (shares the real Launch plan_type/feature set), with
+#     Pro-specific restrictions (no Prodora, limited to 2 sales channels)
+#     layered on top via is_thedersi_pro_shop() below rather than a
+#     dedicated plan_type — see that function for why this is derivable
+#     without a new DB column.
+#   Official (their own internal @thedersi.lk staff) → "scale". This tier
+#     name is new and no such account exists yet — an @thedersi.lk email
+#     already gets bumped to Scale automatically elsewhere (see
+#     "domain_thedersi" in auth.py/partner.py), so this mapping mostly
+#     matters if that email check is ever bypassed or a non-@thedersi.lk
+#     account is ever tagged "official" by mistake — Scale is still the
+#     correct, safe outcome either way.
+# "growth"/"premium"/"starter"/"standard" are legacy wire values for what's
+# now "lite" — kept mapped to thedersi_lite so an in-flight seller synced on
+# an old value doesn't break.
 THEDERSI_TIER_MAP: dict = {
-    "free_forever": {"plan_type": "thedersi_basic"},
-    "free":         {"plan_type": "thedersi_basic"},
-    "growth":       {"plan_type": "starter"},      # TheDersi Growth plan
-    "premium":      {"plan_type": "starter"},      # TheDersi Premium plan
-    "starter":      {"plan_type": "starter"},      # backward compat
-    "pro":          {"plan_type": "thedersi_pro"}, # TheDersi Pro — starter features, unlimited orders
-    "standard":     {"plan_type": "starter"},      # backward compat
+    "free_forever": {"plan_type": "thedersi_free_forever"},
+    "free":         {"plan_type": "thedersi_free_forever"},
+    "official":     {"plan_type": "scale"},
+    "lite":         {"plan_type": "thedersi_lite"},
+    "growth":       {"plan_type": "thedersi_lite"},  # old wire value for the same tier
+    "premium":      {"plan_type": "thedersi_lite"},  # legacy wire value, same tier
+    "starter":      {"plan_type": "thedersi_lite"},  # legacy wire value, same tier
+    "pro":          {"plan_type": "launch"},
+    "standard":     {"plan_type": "thedersi_lite"},  # legacy wire value, same tier
 }
 
 def is_thedersi_shop(shop_id: int, db) -> bool:
     """True if this shop has an active TheDersi channel connection.
 
     This is the reliable way to detect a TheDersi-provisioned seller —
-    plan_type alone is NOT enough. TheDersi's Growth/Premium tier maps to
-    plan_type='starter' (see THEDERSI_TIER_MAP above), the exact same
-    plan_type a direct ExiusCart Starter customer gets, so any
-    `plan_type.startswith("thedersi")` check silently misses those sellers.
+    plan_type alone is NOT enough for the Pro tier, which shares plan_type
+    "launch" with real direct ExiusCart customers (see THEDERSI_TIER_MAP
+    above and is_thedersi_pro_shop below).
     """
     from app.models.channel import ChannelConnection
     return db.query(ChannelConnection).filter(
@@ -52,14 +77,35 @@ def is_thedersi_shop(shop_id: int, db) -> bool:
     ).first() is not None
 
 
+def is_thedersi_pro_shop(shop_id: int, db) -> bool:
+    """True if this is a TheDersi seller specifically on their Pro tier.
+
+    Pro shares plan_type="launch" with real direct ExiusCart Launch
+    customers (by design — Pro gets Launch's feature set) rather than
+    getting its own plan_type, so plan_type alone can't tell them apart.
+    Free Forever and Lite both get their own distinct plan_types
+    (thedersi_free_forever, thedersi_lite), so "a TheDersi shop whose
+    current subscription is plan_type=launch" can only mean Pro — no extra
+    DB column needed to track this.
+    """
+    from app.models.subscription import Subscription
+    if not is_thedersi_shop(shop_id, db):
+        return False
+    sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id
+    ).order_by(Subscription.id.desc()).first()
+    return bool(sub and sub.plan_type == "launch")
+
+
 # Monthly order limits per plan (None = unlimited)
 # Counts channel/online orders only — POS is always unlimited regardless of plan
 MONTHLY_ORDER_LIMITS: dict = {
-    "free_trial":     50,
-    "thedersi_basic": 100,
-    "starter":        1000,
-    "thedersi_pro":   None,  # unlimited
-    "premium":        None,  # unlimited
+    "free_trial":            50,
+    "thedersi_free_forever": 100,
+    "thedersi_lite":         None,  # unlimited — Lite = Free Forever's limits, minus the order cap
+    "launch":                1000,
+    "growth":                5000,
+    "scale":                 None,  # unlimited
 }
 
 TOTAL_ORDER_LIMITS = MONTHLY_ORDER_LIMITS

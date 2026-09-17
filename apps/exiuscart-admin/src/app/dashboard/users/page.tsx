@@ -20,17 +20,19 @@ interface AdminUser {
 }
 
 const PLAN_LABEL: Record<string, string> = {
-  thedersi_basic: 'Free Forever',
-  free_trial:     'Free Trial',
-  starter:        'Starter',
-  premium:        'Premium',
+  thedersi_free_forever: 'Free Forever',
+  thedersi_lite:         'TheDersi Lite',
+  free_trial:            'Free Trial',
+  starter:               'Starter',
+  premium:               'Premium',
 };
 
 const PLAN_COLOR: Record<string, string> = {
-  thedersi_basic: 'bg-gray-500/10 text-gray-400',
-  free_trial:     'bg-blue-500/10 text-blue-400',
-  starter:        'bg-indigo-500/10 text-indigo-400',
-  premium:        'bg-purple-500/10 text-purple-400',
+  thedersi_free_forever: 'bg-gray-500/10 text-gray-400',
+  thedersi_lite:         'bg-teal-500/10 text-teal-400',
+  free_trial:            'bg-blue-500/10 text-blue-400',
+  starter:               'bg-indigo-500/10 text-indigo-400',
+  premium:               'bg-purple-500/10 text-purple-400',
 };
 
 export default function UsersPage() {

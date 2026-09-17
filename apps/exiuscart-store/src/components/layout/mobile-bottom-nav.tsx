@@ -12,6 +12,7 @@ export function MobileBottomNav() {
   const [showMore, setShowMore] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [plan, setPlan] = useState('');
+  const [isTheDersi, setIsTheDersi] = useState(false);
 
   useEffect(() => {
     // ShopResponse (shopApi.getMyShop) has no subscription field at all —
@@ -24,11 +25,16 @@ export function MobileBottomNav() {
     subscriptionApi.getCurrent(shopId)
       .then((res) => {
         setPlan((res.data?.plan?.plan_type || '').toLowerCase());
+        setIsTheDersi(res.data?.plan?.source === 'thedersi');
       })
       .catch(() => {});
   }, []);
 
-  const canAccessPremium = plan === 'premium' || plan === 'thedersi_pro';
+  // TheDersi Pro shares plan_type="launch" with real direct Launch
+  // customers, who don't get premium access — Pro's own access needs the
+  // TheDersi flag (from GET /subscription's "source" field), not plan_type
+  // alone.
+  const canAccessPremium = plan === 'scale' || plan === 'growth' || (isTheDersi && plan === 'launch');
 
   const mainItems = menuItems.slice(0, 4);
   const moreItems = menuItems.slice(4);

@@ -165,8 +165,8 @@ def connect_noon(
     # and nothing else. Enforced here, not just hidden in the UI, since the
     # frontend gate alone can be bypassed by calling this endpoint directly.
     # Detected via an active TheDersi connection, not plan_type — TheDersi's
-    # Growth/Premium tier maps to plan_type='starter', same as a direct
-    # customer, so a plan_type check alone would miss those sellers.
+    # own Growth/Premium tier names map to plan_type='launch', same as a
+    # direct customer, so a plan_type check alone would miss those sellers.
     if is_thedersi_shop(shop_id, db):
         raise HTTPException(status_code=403, detail="Noon isn't available on TheDersi plans — TheDersi sellers can use TheDersi and Daraz.")
 

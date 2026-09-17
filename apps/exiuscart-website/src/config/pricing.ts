@@ -38,31 +38,38 @@ export const currencies: Record<CurrencyCode, CurrencyConfig> = {
   },
 };
 
+// id == name == backend plan_type, on purpose — "launch"/"growth"/"scale"
+// everywhere (frontend, backend, database), so there's never a second name
+// for the same plan to keep track of.
 export const plans: Plan[] = [
   {
-    id: 'free_trial',
-    name: 'Free Trial',
-    description: 'Test everything basic for 14 days',
-  },
-  {
-    id: 'starter',
-    name: 'Starter',
-    description: 'For small shops ready to grow',
+    id: 'launch',
+    name: 'Launch',
+    description: 'For small stores ready to grow',
     badge: 'Most Popular',
   },
   {
-    id: 'premium',
-    name: 'Premium',
+    id: 'growth',
+    name: 'Growth',
+    description: 'More channels, more suppliers, more room to grow',
+  },
+  {
+    id: 'scale',
+    name: 'Scale',
     description: 'For growing businesses, everything unlimited',
     highlighted: true,
   },
 ];
 
+// Yearly = 9x monthly (pay for 9 months, get 12 — 3 months free, 25% off)
+// everywhere prices are quoted. See pricing/page.tsx's yearlyPrice() for the
+// same multiplier applied consistently on the pricing page.
 export const pricing: Record<CurrencyCode, Record<string, PlanPricing>> = {
   USD: {
-    free_trial: { monthly: 0,  yearly: 0    },
-    starter:    { monthly: 12, yearly: 120,  originalMonthly: 24,  originalYearly: 240  },
-    premium:    { monthly: 29, yearly: 290,  originalMonthly: 58,  originalYearly: 580  },
+    free_trial: { monthly: 0,     yearly: 0      },
+    launch:     { monthly: 14.99, yearly: 134.91, originalMonthly: 30, originalYearly: 270 },
+    growth:     { monthly: 24.99, yearly: 224.91, originalMonthly: 50, originalYearly: 450 },
+    scale:      { monthly: 39.99, yearly: 359.91, originalMonthly: 80, originalYearly: 720 },
   },
 };
 

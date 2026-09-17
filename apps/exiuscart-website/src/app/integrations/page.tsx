@@ -437,7 +437,7 @@ export default function IntegrationsPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/register"
+              href="/register?plan=launch&billing=monthly"
               className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-10 py-4 rounded-xl transition-all"
             >
               Start Free Trial <ArrowRight className="w-5 h-5" />

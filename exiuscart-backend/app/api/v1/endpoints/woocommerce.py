@@ -149,26 +149,28 @@ def connect_woocommerce(
 
     # Free Trial's own pricing copy names only Shopify/TheDersi/custom site
     # as its included channel — WooCommerce isn't one of those three, so
-    # it's Starter+ only, same gate shape as TikTok's authorize endpoint.
+    # it's Launch+ only, same gate shape as TikTok's authorize endpoint.
     from app.models.subscription import Subscription
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
-    if plan_type == "starter":
-        other = db.query(ChannelConnection).filter(
+    CHANNEL_LIMIT_BY_PLAN = {"launch": 1, "growth": 3}
+    if plan_type in CHANNEL_LIMIT_BY_PLAN:
+        limit = CHANNEL_LIMIT_BY_PLAN[plan_type]
+        active_count = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id,
             ChannelConnection.is_active == True,
-        ).first()
-        if other:
+        ).count()
+        if active_count >= limit:
             raise HTTPException(status_code=403, detail={
                 "error": "channel_limit_reached",
-                "connected_channel": other.channel_type,
-                "message": f"Your Starter plan includes one channel at a time. You already have {other.channel_type.title()} connected — disconnect it first, or upgrade to Premium to connect every channel at once.",
+                "limit": limit,
+                "message": f"Your plan allows {limit} channel connection{'s' if limit != 1 else ''} at a time. Disconnect one first, or upgrade to Scale to connect every channel at once.",
             })
-    elif plan_type not in ("premium",):
+    elif plan_type != "scale":
         raise HTTPException(status_code=403, detail={
             "error": "plan_required",
             "plan": plan_type,
-            "message": "WooCommerce is available on Starter (as your one channel) and Premium (all channels). Upgrade to connect your WooCommerce store.",
+            "message": "WooCommerce is available on Launch, Growth, and Scale. Upgrade to connect your WooCommerce store.",
         })
 
     site_url = data.site_url.strip().rstrip("/")

@@ -6,7 +6,6 @@ from pydantic import BaseModel
 import re
 import uuid
 from app.core.database import get_db
-from app.core.trial import require_active_trial
 from app.core.thedersi import is_thedersi_shop
 from app.models.user import User
 from app.models.shop import Shop
@@ -25,11 +24,12 @@ from app.api.v1.endpoints.channels import trigger_product_sync, trigger_product_
 from app.api.v1.endpoints.product_fields import _description_word_limit, DESCRIPTION_IMAGES_LIMIT
 
 PLAN_PRODUCT_LIMITS = {
-    "free_trial":     25,
-    "thedersi_basic": 25,
-    "starter":        1000,
-    "thedersi_pro":   1000,
-    "premium":        -1,    # unlimited
+    "free_trial":            25,
+    "thedersi_free_forever": 25,
+    "thedersi_lite":         25,
+    "launch":                1000,
+    "growth":                10000,
+    "scale":                 -1,    # unlimited
 }
 
 _IMG_TAG_RE = re.compile(r"<img\b", re.IGNORECASE)
@@ -227,7 +227,6 @@ async def create_product(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
-    require_active_trial(shop_id, db)
     _validate_description(product_data.description, shop_id, db)
 
     subscription = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()

@@ -10,8 +10,8 @@ import { quotationsApi, productsApi, customersApi, subscriptionApi } from '@/lib
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
 
-// All plans can create basic quotations. Only ExiusCart Premium gets advanced features.
-const isAdvancedPlan = (p: string) => p === 'premium';
+// All plans can create basic quotations. Only Growth/Scale get advanced features.
+const isAdvancedPlan = (p: string) => p === 'growth' || p === 'scale';
 const canCreateQuote = (_p: string) => true;
 
 // ── Types ──────────────────────────────────────────────────────────────────────

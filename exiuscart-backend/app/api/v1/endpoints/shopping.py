@@ -28,14 +28,13 @@ from app.api.v1.endpoints.dropshipping import _cj_ensure_token, CJ_BASE
 router = APIRouter()
 
 # Plans that grant Prodora access. Free trial and TheDersi plans are
-# deliberately excluded — Prodora is a Starter/Premium perk only.
-PRODORA_ELIGIBLE_PLANS = ("starter", "premium")
+# deliberately excluded — Prodora is a real, paid-plan perk, all three tiers.
+PRODORA_ELIGIBLE_PLANS = ("launch", "growth", "scale")
 
-# Starter and Premium both had identical, unlimited Prodora access — no real
-# reason to upgrade for it. Starter is now capped monthly; Premium stays
-# unlimited (None). 50 was picked as generous enough for a real small
-# store's normal pace, but a real ceiling for someone bulk-importing.
-PRODORA_MONTHLY_IMPORT_LIMIT = {"starter": 50, "premium": None}
+# Launch is capped monthly; Growth gets a higher cap; Scale stays unlimited
+# (None). 50/200 picked as generous enough for a real small store's normal
+# pace at each tier, with Scale as the real "no ceiling" option.
+PRODORA_MONTHLY_IMPORT_LIMIT = {"launch": 50, "growth": 200, "scale": None}
 
 _security = HTTPBearer()
 
@@ -53,6 +52,16 @@ def _find_eligible_subscription(db: Session, user: User) -> Optional[Subscriptio
     )
     if not shop:
         return None
+
+    # TheDersi's Pro tier shares plan_type="launch" — the exact same value a
+    # real, paying ExiusCart Launch customer has — so checking plan_type
+    # alone would silently let TheDersi sellers into Prodora too, even
+    # though it's confirmed exclusive to direct ExiusCart customers
+    # (Growth/Scale... and Launch, all three, but never any TheDersi tier).
+    from app.core.thedersi import is_thedersi_shop
+    if is_thedersi_shop(shop.id, db):
+        return None
+
     return (
         db.query(Subscription)
         .filter(

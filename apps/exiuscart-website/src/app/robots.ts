@@ -8,7 +8,7 @@ const BASE = 'https://exiuscart.com';
 // (rather than left to the generic '*' rule) so a future tightening of the
 // generic rule doesn't accidentally block them too.
 export default function robots(): MetadataRoute.Robots {
-  const disallow = ['/checkout', '/login', '/download/', '/p/', '/r/'];
+  const disallow = ['/checkout', '/download/', '/p/', '/r/'];
 
   return {
     rules: [

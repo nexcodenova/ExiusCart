@@ -234,14 +234,14 @@ def get_attributes(
 
 # ── Product Images ────────────────────────────────────────────────────────────
 
-IMAGES_DEFAULT = 6    # free / starter / thedersi_basic
-IMAGES_PREMIUM = 10   # premium / thedersi_pro
-DESCRIPTION_WORDS_DEFAULT = 350   # free / starter / thedersi_basic
-DESCRIPTION_WORDS_PREMIUM = 500   # premium / thedersi_pro
+IMAGES_DEFAULT = 6    # free / launch / thedersi_free_forever / thedersi_lite
+IMAGES_PREMIUM = 10   # growth / scale / TheDersi Pro
+DESCRIPTION_WORDS_DEFAULT = 350   # free / launch / thedersi_free_forever / thedersi_lite
+DESCRIPTION_WORDS_PREMIUM = 500   # growth / scale / TheDersi Pro
 DESCRIPTION_IMAGES_LIMIT = 25      # same for every plan — inline description photos, not the main gallery
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-_PREMIUM_PLANS = ("premium", "thedersi_pro")
+_PREMIUM_PLANS = ("growth", "scale")
 
 
 def _is_premium_shop(shop_id: int, db: Session) -> bool:
@@ -249,16 +249,21 @@ def _is_premium_shop(shop_id: int, db: Session) -> bool:
         Subscription.shop_id == shop_id,
         Subscription.status == "active",
     ).first()
-    return bool(sub and sub.plan_type in _PREMIUM_PLANS)
+    if sub and sub.plan_type in _PREMIUM_PLANS:
+        return True
+    # TheDersi Pro shares plan_type="launch" with real Launch customers, who
+    # aren't premium here — Pro's own premium access needs its own check.
+    from app.core.thedersi import is_thedersi_pro_shop
+    return is_thedersi_pro_shop(shop_id, db)
 
 
 def _image_limit(shop_id: int, db: Session) -> int:
-    """Return 10 for premium/thedersi_pro shops, 6 for all others."""
+    """Return 10 for premium/TheDersi Pro shops, 6 for all others."""
     return IMAGES_PREMIUM if _is_premium_shop(shop_id, db) else IMAGES_DEFAULT
 
 
 def _description_word_limit(shop_id: int, db: Session) -> int:
-    """Return 350 for premium/thedersi_pro shops, 200 for all others."""
+    """Return 350 for premium/TheDersi Pro shops, 200 for all others."""
     return DESCRIPTION_WORDS_PREMIUM if _is_premium_shop(shop_id, db) else DESCRIPTION_WORDS_DEFAULT
 
 

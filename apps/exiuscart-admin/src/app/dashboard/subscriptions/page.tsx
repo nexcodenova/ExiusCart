@@ -21,27 +21,45 @@ interface Subscription {
   created_at: string | null;
 }
 
+// TheDersi Pro deliberately has no entry here — it's not a distinct
+// plan_type anymore, it shares "launch" with real direct ExiusCart
+// customers (see app/core/thedersi.py's is_thedersi_pro_shop on the
+// backend). Same for their "Official" tier, which shares "scale". Check
+// the shop's connected channels (Stores/Shops list) to tell them apart.
 const PLAN_LABELS: Record<string, string> = {
-  free_trial:      'Free Trial',
-  thedersi_basic:  'TheDersi Basic',
-  thedersi_pro:    'TheDersi Pro',
-  starter:         'Starter',
-  premium:         'Premium',
-  pro:             'Pro',
+  free_trial:            'Free Trial',
+  thedersi_free_forever: 'TheDersi Free Forever',
+  thedersi_lite:         'TheDersi Lite',
+  launch:                'Launch',
+  growth:                'Growth',
+  scale:                 'Scale',
+  pro:                   'Pro',
+};
+
+// Real prices — mirrors apps/exiuscart-website/src/config/pricing.ts and
+// exiuscart-backend/app/api/v1/endpoints/shops.py's PLAN_CATALOGUE exactly.
+// Shown as a reference in the edit modal so a manually-set Amount Paid
+// matches what the plan actually costs, rather than a guess.
+const PLAN_REFERENCE_PRICING: Record<string, { monthly: number; yearly: number }> = {
+  launch: { monthly: 14.99, yearly: 134.91 },
+  growth: { monthly: 24.99, yearly: 224.91 },
+  scale:  { monthly: 39.99, yearly: 359.91 },
 };
 
 const planStyles: Record<string, string> = {
-  free_trial:     'text-gray-400',
-  thedersi_basic: 'text-blue-400',
-  thedersi_pro:   'text-indigo-400',
-  starter:        'text-gray-300',
-  premium:        'text-[#6B3FD9]',
-  pro:            'text-[#6B3FD9]',
+  free_trial:            'text-gray-400',
+  thedersi_free_forever: 'text-blue-400',
+  thedersi_lite:         'text-teal-400',
+  launch:                'text-gray-300',
+  growth:                'text-[#0D70BB]',
+  scale:                 'text-[#6B3FD9]',
+  pro:                   'text-[#6B3FD9]',
 };
 
 const statusStyles: Record<string, string> = {
   active:           'bg-green-500/10 text-green-400',
   trial:            'bg-blue-500/10 text-blue-400',
+  trial_dollar:     'bg-purple-500/10 text-purple-400',
   pending_approval: 'bg-yellow-500/10 text-yellow-400',
   expiring:         'bg-orange-500/10 text-orange-400',
   expired:          'bg-red-500/10 text-red-400',
@@ -49,7 +67,7 @@ const statusStyles: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  active: 'Active', trial: 'Trial', pending_approval: 'Pending',
+  active: 'Active', trial: 'Trial', trial_dollar: '$1 Trial', pending_approval: 'Pending',
   expired: 'Expired', cancelled: 'Cancelled',
 };
 
@@ -122,7 +140,7 @@ function EditModal({ sub, onClose, onSaved }: {
     billing_type: sub.billing_type || 'monthly',
     status:       sub.status,
     amount_paid:  sub.amount_paid,
-    currency:     sub.currency || 'AED',
+    currency:     sub.currency || 'USD',
     expires_at:   sub.expires_at ? sub.expires_at.slice(0, 10) : '',
   });
   const [saving, setSaving] = useState(false);
@@ -174,10 +192,11 @@ function EditModal({ sub, onClose, onSaved }: {
               <div className="relative">
                 <select value={form.plan_type} onChange={(e) => set('plan_type', e.target.value)} className={SELECT_CLS}>
                   <option value="free_trial">Free Trial</option>
-                  <option value="starter">Starter</option>
-                  <option value="premium">Premium</option>
-                  <option value="thedersi_basic">TheDersi Basic</option>
-                  <option value="thedersi_pro">TheDersi Pro</option>
+                  <option value="launch">Launch</option>
+                  <option value="growth">Growth</option>
+                  <option value="scale">Scale</option>
+                  <option value="thedersi_free_forever">TheDersi Free Forever</option>
+                  <option value="thedersi_lite">TheDersi Lite</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
               </div>
@@ -200,11 +219,12 @@ function EditModal({ sub, onClose, onSaved }: {
           <div>
             <label className="text-xs text-gray-400 mb-1.5 block">Status</label>
             <div className="grid grid-cols-3 gap-2">
-              {(['active', 'trial', 'pending_approval', 'expired', 'cancelled'] as const).map((s) => (
+              {(['active', 'trial', 'trial_dollar', 'pending_approval', 'expired', 'cancelled'] as const).map((s) => (
                 <button type="button" key={s} onClick={() => set('status', s)}
                   className={`py-2 rounded-lg text-xs font-semibold border transition ${form.status === s
                     ? s === 'active' ? 'bg-green-500/20 border-green-500 text-green-400'
                       : s === 'trial' ? 'bg-blue-500/20 border-blue-500 text-blue-400'
+                      : s === 'trial_dollar' ? 'bg-purple-500/20 border-purple-500 text-purple-400'
                       : s === 'pending_approval' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
                       : s === 'expired' ? 'bg-red-500/20 border-red-500 text-red-400'
                       : 'bg-gray-500/20 border-gray-500 text-gray-400'
@@ -222,16 +242,23 @@ function EditModal({ sub, onClose, onSaved }: {
               <input type="number" min={0} step="0.01" value={form.amount_paid}
                 onChange={(e) => set('amount_paid', e.target.value)}
                 className={INPUT_CLS} />
+              {/* Real price reference — this form is a plain database write,
+                  never a Lemon Squeezy charge, so nothing here is enforced.
+                  This just helps fill in a number that matches what the
+                  plan actually costs, for comps/manual grants/corrections. */}
+              {PLAN_REFERENCE_PRICING[form.plan_type] && (form.billing_type === 'monthly' || form.billing_type === 'yearly') && (
+                <button type="button"
+                  onClick={() => set('amount_paid', PLAN_REFERENCE_PRICING[form.plan_type][form.billing_type as 'monthly' | 'yearly'])}
+                  className="mt-1.5 text-xs text-[#6B3FD9] hover:underline">
+                  Use real price: ${PLAN_REFERENCE_PRICING[form.plan_type][form.billing_type as 'monthly' | 'yearly'].toFixed(2)}
+                </button>
+              )}
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1.5 block">Currency</label>
               <div className="relative">
                 <select value={form.currency} onChange={(e) => set('currency', e.target.value)} className={SELECT_CLS}>
-                  <option value="AED">AED</option>
                   <option value="USD">USD</option>
-                  <option value="LKR">LKR</option>
-                  <option value="EUR">EUR</option>
-                  <option value="INR">INR</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
               </div>
@@ -250,7 +277,7 @@ function EditModal({ sub, onClose, onSaved }: {
           {/* Info box */}
           <div className="bg-[#0B1121] rounded-xl p-3 text-xs text-gray-400 space-y-1">
             <p>• Setting <span className="text-white">Active</span> with no expiry date → auto-calculates 30d (monthly) / 365d (yearly)</p>
-            <p>• Setting <span className="text-white">Trial</span> with no expiry → auto-sets 14 days</p>
+            <p>• Setting <span className="text-white">Trial</span> or <span className="text-white">$1 Trial</span> with no expiry → auto-sets 7 days</p>
             <p>• Setting <span className="text-white">Lifetime</span> → no expiry, never expires</p>
           </div>
 
@@ -375,6 +402,29 @@ export default function SubscriptionsPage() {
         <p className="text-gray-400 text-sm mt-1">Manage plans and active subscriptions</p>
       </div>
 
+      {/* Plan pricing reference — real prices, same names/numbers as the
+          live pricing page. Launch/Growth/Scale only: TheDersi plans are
+          billed by TheDersi, not ExiusCart, so they have no price here. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {(['launch', 'growth', 'scale'] as const).map((p) => (
+          <div key={p} className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className={`text-sm font-semibold ${planStyles[p]}`}>{PLAN_LABELS[p]}</span>
+              {p === 'growth' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#6B3FD9]/20 text-[#6B3FD9] font-semibold">Most Popular</span>}
+            </div>
+            <p className="text-xl font-bold text-white">
+              ${PLAN_REFERENCE_PRICING[p].monthly.toFixed(2)}<span className="text-sm font-normal text-gray-400">/mo</span>
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              or ${PLAN_REFERENCE_PRICING[p].yearly.toFixed(2)}/yr (25% off)
+            </p>
+            {p !== 'launch' && (
+              <p className="text-xs text-purple-400 mt-1.5">$1 trial for 7 days first</p>
+            )}
+          </div>
+        ))}
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button type="button" onClick={() => setActiveTab('subscriptions')}
@@ -424,10 +474,11 @@ export default function SubscriptionsPage() {
                 className="pl-3 pr-8 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer text-sm">
                 <option value="all">All Plans</option>
                 <option value="free_trial">Free Trial</option>
-                <option value="starter">Starter</option>
-                <option value="premium">Premium</option>
-                <option value="thedersi_basic">TheDersi Basic</option>
-                <option value="thedersi_pro">TheDersi Pro</option>
+                <option value="launch">Launch</option>
+                <option value="growth">Growth</option>
+                <option value="scale">Scale</option>
+                <option value="thedersi_free_forever">TheDersi Free Forever</option>
+                <option value="thedersi_lite">TheDersi Lite</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
             </div>
@@ -437,6 +488,7 @@ export default function SubscriptionsPage() {
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="trial">Trial</option>
+                <option value="trial_dollar">$1 Trial</option>
                 <option value="pending_approval">Pending</option>
                 <option value="expired">Expired</option>
                 <option value="cancelled">Cancelled</option>
@@ -484,7 +536,7 @@ export default function SubscriptionsPage() {
                     </td>
                     <td className="px-5 py-4">
                       <span className={`text-xs px-2.5 py-1 rounded-lg capitalize font-medium ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
-                        {sub.status === 'pending_approval' ? 'Pending' : sub.status}
+                        {STATUS_LABEL[sub.status] ?? sub.status}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-white text-sm font-medium">
@@ -526,7 +578,7 @@ export default function SubscriptionsPage() {
                 <div className="flex items-center justify-between mb-3">
                   <p className="font-semibold text-white">{sub.shop_name}</p>
                   <span className={`text-xs px-2.5 py-1 rounded-lg font-medium ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
-                    {sub.status === 'pending_approval' ? 'Pending' : sub.status}
+                    {STATUS_LABEL[sub.status] ?? sub.status}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mb-1">

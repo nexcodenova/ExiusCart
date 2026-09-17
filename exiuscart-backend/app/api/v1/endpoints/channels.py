@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db, SessionLocal
-from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature, is_thedersi_shop
+from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature, is_thedersi_shop, is_thedersi_pro_shop
 from app.core.activity import log_activity
 from app.api.v1.deps import get_current_user
 from app.models.user import User
@@ -591,8 +591,8 @@ def connect_channel(
     plan_type = sub.plan_type if sub else "free_trial"
 
     # TheDersi users: only TheDersi channel + Daraz (Pro only). Detected via
-    # an active TheDersi connection, not plan_type — TheDersi's Growth/
-    # Premium tier maps to plan_type='starter', same as a direct customer.
+    # an active TheDersi connection, not plan_type — TheDersi's own Growth/
+    # Premium tier names map to plan_type='launch', same as a direct customer.
     if is_thedersi_shop(shop_id, db):
         if data.channel_type not in ("thedersi", "daraz"):
             raise HTTPException(
@@ -603,7 +603,7 @@ def connect_channel(
                     "message": "Your plan is managed by TheDersi. Only TheDersi and Daraz channels are available on TheDersi plans.",
                 },
             )
-        if data.channel_type == "daraz" and plan_type != "thedersi_pro":
+        if data.channel_type == "daraz" and not is_thedersi_pro_shop(shop_id, db):
             raise HTTPException(
                 status_code=403,
                 detail={
@@ -613,20 +613,26 @@ def connect_channel(
                 },
             )
 
-    # Free trial + Starter: max 1 active channel connection; Premium = unlimited
-    if plan_type in ("free_trial", "starter"):
+    # Free trial + Launch: max 1 active channel connection; Growth: up to 3
+    # (matches the "3 of 8+ sales channels" Growth advertises); Scale = unlimited.
+    # TheDersi Pro shares plan_type="launch" with real Launch customers but is
+    # explicitly allowed 2 (TheDersi + Daraz) — checked first since it'd
+    # otherwise fall into launch's limit of 1 below.
+    CHANNEL_LIMIT_BY_PLAN = {"free_trial": 1, "launch": 1, "growth": 3}
+    limit = 2 if is_thedersi_pro_shop(shop_id, db) else CHANNEL_LIMIT_BY_PLAN.get(plan_type)
+    if limit is not None:
         active_count = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id,
             ChannelConnection.is_active == True,
         ).count()
-        if active_count >= 1:
+        if active_count >= limit:
             raise HTTPException(
                 status_code=429,
                 detail={
                     "error": "channel_limit_reached",
-                    "limit": 1,
+                    "limit": limit,
                     "plan": plan_type,
-                    "message": "Your plan allows 1 channel connection. Upgrade to Premium (99 AED/mo) to connect all channels.",
+                    "message": f"Your plan allows {limit} channel connection{'s' if limit != 1 else ''}. Upgrade to Scale for unlimited channels.",
                 },
             )
 
@@ -1073,7 +1079,11 @@ async def receive_order_webhook(
     # ── Monthly order limit check (all sources: POS + channel combined) ───────
     sub = db.query(Subscription).filter(Subscription.shop_id == conn.shop_id).first()
     plan_type = sub.plan_type if sub else None
-    monthly_limit = MONTHLY_ORDER_LIMITS.get(plan_type)  # None = unlimited
+    # TheDersi Pro's defining perk over a real Launch customer is unlimited
+    # orders, even though it now shares plan_type="launch" for everything
+    # else — checked explicitly since MONTHLY_ORDER_LIMITS can't tell them
+    # apart by plan_type alone.
+    monthly_limit = None if is_thedersi_pro_shop(conn.shop_id, db) else MONTHLY_ORDER_LIMITS.get(plan_type)  # None = unlimited
 
     if monthly_limit is not None:
         # Count channel/online orders only — POS is excluded (unlimited)
@@ -1097,7 +1107,7 @@ async def receive_order_webhook(
             if thedersi_link and conn.channel_type == "thedersi":
                 notify_thedersi(
                     thedersi_link.thedersi_seller_id,
-                    plan_type or "thedersi_basic",
+                    plan_type or "thedersi_free_forever",
                     event="order_limit_reached",
                 )
             raise HTTPException(

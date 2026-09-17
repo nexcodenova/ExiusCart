@@ -78,9 +78,9 @@ export default function DashboardLayout({
           <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
             <Lock className="w-7 h-7 text-red-600" />
           </div>
-          <h1 className="text-lg font-bold text-foreground mb-2">Your free trial has ended</h1>
+          <h1 className="text-lg font-bold text-foreground mb-2">Your trial has ended</h1>
           <p className="text-sm text-muted-foreground mb-6">
-            Upgrade to Starter or Premium to keep selling, adding products, and using ExiusCart.
+            Add a card to keep selling, adding products, and using ExiusCart — pick Launch, Growth, or Scale to continue.
           </p>
           <button
             type="button"

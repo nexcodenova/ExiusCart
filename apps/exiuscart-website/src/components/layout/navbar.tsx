@@ -97,7 +97,7 @@ export function Navbar() {
               Login
             </Link>
             <Link
-              href="/register"
+              href="/register?plan=launch&billing=monthly"
               className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-6 py-2.5 rounded-full transition-all text-sm"
             >
               Get Started
@@ -155,7 +155,7 @@ export function Navbar() {
               Login
             </Link>
             <Link
-              href="/register"
+              href="/register?plan=launch&billing=monthly"
               onClick={() => setIsOpen(false)}
               className="flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-5 py-3.5 rounded-full transition-all"
             >

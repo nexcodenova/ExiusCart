@@ -49,12 +49,12 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-full bg-[#0B1121] border-r border-gray-800 transition-all duration-300 z-50 ${
+      className={`fixed left-0 top-0 h-full bg-[#0B1121] border-r border-gray-800 transition-all duration-300 z-50 flex flex-col ${
         collapsed ? 'w-20' : 'w-64'
       }`}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
+      <div className="h-16 shrink-0 flex items-center justify-between px-4 border-b border-gray-800">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image src="/logo.svg" alt="ExiusCart" width={32} height={32} className="flex-shrink-0" />
           {!collapsed && (
@@ -76,15 +76,18 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
 
       {/* Admin Badge */}
       {!collapsed && (
-        <div className="px-4 py-3 border-b border-gray-800">
+        <div className="shrink-0 px-4 py-3 border-b border-gray-800">
           <span className="text-xs font-semibold text-[#6B3FD9] bg-[#6B3FD9]/10 px-2.5 py-1 rounded">
             ADMIN PANEL
           </span>
         </div>
       )}
 
-      {/* Navigation */}
-      <nav className="p-3 space-y-1">
+      {/* Navigation — scrolls on its own when the menu is taller than the
+          screen, instead of running underneath the Admin Info block below
+          (which used to sit on top via absolute positioning and covered
+          the last couple of items on any laptop-height screen). */}
+      <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -110,7 +113,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
       </nav>
 
       {/* Admin Info */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-800">
+      <div className="shrink-0 p-3 border-t border-gray-800">
         {!collapsed && (
           <div className="flex items-center gap-3 mb-3 px-2">
             <div className="w-10 h-10 bg-[#6B3FD9] rounded-full flex items-center justify-center">

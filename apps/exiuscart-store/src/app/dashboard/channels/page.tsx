@@ -103,22 +103,26 @@ export default function ChannelsPage() {
   const hasGumroad = connections.some((c) => c.channel_type === 'gumroad');
   const hasCustomWebsite = connections.some((c) => c.channel_type === 'custom');
   // Detected via an active TheDersi connection, not plan_type — TheDersi's
-  // Growth/Premium tier maps to plan='starter', same as a direct customer,
-  // so a plan-string check alone would miss those sellers.
+  // own Growth/Premium tier names map to plan='launch', same as a direct
+  // customer, so a plan-string check alone would miss those sellers.
   const isTheDersiUser = hasTheDersi;
-  const isPremium = plan === 'premium';
+  const isScale = plan === 'scale';
   // Count Shopify separately since it's tracked via a different API
   const totalChannelCount = connections.length + (shopifyConnected ? 1 : 0);
-  // Free trial + Starter = max 1 channel; Premium = unlimited
-  const channelLimitReached = plan !== '' && !isPremium && !isTheDersiUser && totalChannelCount >= 1;
-  // Daraz: TheDersi Pro or Premium only
-  const canUseDaraz = ['thedersi_pro', 'premium'].includes(plan);
+  // Free trial + Launch: max 1 channel; Growth: up to 3; Scale: unlimited
+  const CHANNEL_LIMIT_BY_PLAN: Record<string, number> = { free_trial: 1, launch: 1, growth: 3 };
+  const channelLimit = CHANNEL_LIMIT_BY_PLAN[plan];
+  const channelLimitReached = plan !== '' && channelLimit != null && !isTheDersiUser && totalChannelCount >= channelLimit;
+  // Daraz: TheDersi Pro, Growth, or Scale. TheDersi Pro shares plan="launch"
+  // with real direct Launch customers (who don't get Daraz), so it needs
+  // the TheDersi flag, not a plan-string check alone.
+  const canUseDaraz = (isTheDersiUser && plan === 'launch') || plan === 'growth' || plan === 'scale';
   // Noon is direct-ExiusCart only — TheDersi sellers (Basic or Pro) get
   // TheDersi + Daraz and nothing else, same rule as Shopify/Custom Website.
   // eBay follows that same "ExiusCart direct only" rule (unlike Daraz) —
   // its Business-Policies + multi-marketplace flow doesn't fit TheDersi's
   // managed-seller model, so it's gated exactly like Shopify/Custom Website.
-  const canUseEbay = plan === 'premium' && !isTheDersiUser;
+  const canUseEbay = (plan === 'growth' || plan === 'scale') && !isTheDersiUser;
 
   const availableChannels: (ChannelDef & { channelType?: string })[] = [
     // ── Row 1: Shopify, Custom Website, WooCommerce ──
@@ -454,22 +458,22 @@ export default function ChannelsPage() {
         </div>
       </div>
 
-      {/* Plan limit banner for free/starter users */}
-      {!loading && !isTheDersiUser && !isPremium && plan !== '' && (
+      {/* Plan limit banner for Free Trial/Launch/Growth users */}
+      {!loading && !isTheDersiUser && !isScale && plan !== '' && channelLimit != null && (
         <div className={`flex items-center justify-between gap-4 px-5 py-4 rounded-xl border ${channelLimitReached ? 'bg-amber-500/8 border-amber-500/30' : 'bg-muted/60 border-border'}`}>
           <div>
             <p className={`text-sm font-semibold ${channelLimitReached ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}`}>
-              {channelLimitReached ? '1 channel slot used — limit reached' : '1 channel slot available on your plan'}
+              {channelLimitReached ? `${channelLimit} channel slot${channelLimit !== 1 ? 's' : ''} used — limit reached` : `${channelLimit} channel slot${channelLimit !== 1 ? 's' : ''} available on your plan`}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {channelLimitReached
-                ? 'Upgrade to Premium to connect all channels — Shopify, Daraz, TheDersi, Noon & more.'
-                : 'Free Trial & Starter plans include 1 channel. Upgrade to Premium for all channels.'}
+                ? 'Upgrade to Scale to connect all channels — Shopify, Daraz, TheDersi, Noon & more.'
+                : 'Free Trial & Launch plans include 1 channel, Growth includes 3. Upgrade to Scale for all channels.'}
             </p>
           </div>
           <Link href="/dashboard/billing"
             className="shrink-0 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition whitespace-nowrap">
-            Upgrade to Premium
+            Upgrade Plan
           </Link>
         </div>
       )}

@@ -17,11 +17,12 @@ api.interceptors.request.use((config) => {
 });
 
 // Force logout on 401 (expired/invalid token) or 403 account deactivated.
-// Also: a trial_expired rejection (402, from require_active_trial in the
-// backend) means the dashboard layout's own expiry check is stale — e.g. a
-// tab left open from before the trial ran out — so reload to pick up the
-// full lock screen (dashboard/layout.tsx) instead of leaving a confusing
-// generic error on whatever action was attempted.
+// Also: a subscription_required rejection (402, from get_current_user in
+// app/api/v1/deps.py — real enforcement on every request, not just one or
+// two endpoints) means the dashboard layout's own expiry check is stale —
+// e.g. a tab left open from before the trial ran out — so reload to pick up
+// the full lock screen (dashboard/layout.tsx) instead of leaving a
+// confusing generic error on whatever action was attempted.
 api.interceptors.response.use(
   (res) => res,
   (error) => {
@@ -37,7 +38,7 @@ api.interceptors.response.use(
         localStorage.removeItem('shop_id');
         window.location.href = isRefunded ? '/login?reason=refunded' : isDeactivated ? '/login?reason=deactivated' : '/login';
       }
-      if (status === 402 && detail?.error === 'trial_expired') {
+      if (status === 402 && (detail?.error === 'subscription_required' || detail?.error === 'trial_expired')) {
         window.location.reload();
       }
     }
@@ -349,8 +350,8 @@ export const subscriptionApi = {
   getCurrent: (shopId: string) => api.get(`/shops/${shopId}/subscription`),
   requestUpgrade: (shopId: string, plan: string, billingType: 'monthly' | 'yearly' = 'monthly') =>
     api.post(`/shops/${shopId}/subscription/upgrade`, { plan, billing_type: billingType }),
-  createCheckout: (shopId: string, plan: string, billingType: 'monthly' | 'yearly') =>
-    api.post(`/shops/${shopId}/subscription/checkout`, { plan, billing_type: billingType }),
+  createCheckout: (shopId: string, plan: string, billingType: 'monthly' | 'yearly', trialDollar = false) =>
+    api.post(`/shops/${shopId}/subscription/checkout`, { plan, billing_type: billingType, trial_dollar: trialDollar }),
   getBillingPortal: (shopId: string) =>
     api.get(`/shops/${shopId}/subscription/portal`),
   getUsage: (shopId: string) =>

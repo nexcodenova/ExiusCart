@@ -414,12 +414,19 @@ export function ShopSidebar() {
             <SidebarGroupContent>
               {GROUPS.map(group => {
                 const plan = (shopData?.plan || '').toLowerCase();
-                const canAccessPremium = plan === 'premium' || plan === 'thedersi_pro';
-                const isTheDersiBasicPlan = plan === 'thedersi_basic';
+                const isTheDersiPlan = shopData?.isTheDersi ?? false;
+                // TheDersi Pro shares plan_type="launch" with real direct
+                // Launch customers, who don't get Team & Operations — Pro's
+                // own access needs the TheDersi flag, not plan_type alone.
+                const isTheDersiProPlan = isTheDersiPlan && plan === 'launch';
+                const canAccessPremium = plan === 'scale' || plan === 'growth' || isTheDersiProPlan;
+                // Any TheDersi tier that isn't Pro (Free Forever or Lite) —
+                // shown "Only for TheDersi Pro" instead of the generic
+                // "Only for Premium plan" message real customers see.
+                const isTheDersiBasicPlan = isTheDersiPlan && !isTheDersiProPlan;
                 const locked = isPremiumGroup(group.id) && !canAccessPremium;
                 const groupActive = isGroupActive(group);
                 const isOpen = openGroups.has(group.id) || collapsed;
-                const isTheDersiPlan = shopData?.isTheDersi ?? false;
 
                 if (group.label === null) {
                   return (
@@ -633,7 +640,7 @@ export function ShopSidebar() {
         </div>
       )}
 
-      {/* TheDersi upgrade modal — for thedersi_basic users */}
+      {/* TheDersi upgrade modal — for TheDersi sellers not on the Pro tier */}
       {showTheDersiModal && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowTheDersiModal(false)}>
           <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>

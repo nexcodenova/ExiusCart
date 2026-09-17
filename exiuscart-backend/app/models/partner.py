@@ -9,7 +9,7 @@ class PartnerLicense(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(100), unique=True, nullable=False, index=True)
     partner_name = Column(String(50), nullable=False)   # "nexcodenova" | "thedersi"
-    plan_type = Column(String(30), nullable=False)       # "premium" | "starter" | "thedersi_basic"
+    plan_type = Column(String(30), nullable=False)       # "scale" | "growth" | "launch" | "thedersi_free_forever" | "thedersi_lite"
     duration_months = Column(Integer, nullable=True)     # NULL = forever
     max_uses = Column(Integer, default=1)
     used_count = Column(Integer, default=0)

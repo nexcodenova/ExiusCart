@@ -484,8 +484,8 @@ export default function SupplierCard({ supplier, shopId, plan, onRefresh, stat }
             </div>
           )}
 
-          {/* Auto-fulfill toggle — Premium + connected only */}
-          {supplier.connected && plan === 'premium' && (
+          {/* Auto-fulfill toggle — Growth/Scale + connected only */}
+          {supplier.connected && (plan === 'growth' || plan === 'scale') && (
             <div className="flex items-center justify-between py-3 px-3 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-xs font-medium text-foreground">Auto-fulfill orders</p>

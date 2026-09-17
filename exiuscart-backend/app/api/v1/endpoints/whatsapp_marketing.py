@@ -73,10 +73,10 @@ def _get_plan(shop_id: int, db: Session) -> str:
 
 
 def _require_premium(shop_id: int, db: Session):
-    if _get_plan(shop_id, db) != "premium":
+    if _get_plan(shop_id, db) not in ("growth", "scale"):
         raise HTTPException(status_code=403, detail={
             "error": "upgrade_required",
-            "message": "WhatsApp marketing is a Premium feature.",
+            "message": "WhatsApp marketing is available on Growth and Scale.",
         })
 
 

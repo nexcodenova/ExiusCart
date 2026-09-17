@@ -11,7 +11,7 @@ import { pricing } from '@/config/pricing';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com';
 
 const PLAN_FEATURES: Record<string, string[]> = {
-  starter: [
+  launch: [
     '1,000 products',
     '1,000 orders / month',
     '5,000 customers',
@@ -26,7 +26,20 @@ const PLAN_FEATURES: Record<string, string[]> = {
     'Data export (Excel / CSV)',
     'Chat support',
   ],
-  premium: [
+  growth: [
+    '3 of 8+ sales channels',
+    '2 of 3 dropship suppliers',
+    '2,000 leads · Meta Ads capture',
+    '1,000 products',
+    '1,000 orders / month',
+    '5,000 customers',
+    '3 user accounts',
+    'Full POS & Invoicing',
+    'Advanced sales reports',
+    'Data export (Excel / CSV)',
+    'Chat support',
+  ],
+  scale: [
     'Unlimited products & orders',
     'Unlimited customers & users',
     'Unlimited leads',
@@ -41,29 +54,35 @@ const PLAN_FEATURES: Record<string, string[]> = {
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
-  const plan = (searchParams.get('plan') || 'starter') as 'starter' | 'premium';
+  const plan = (searchParams.get('plan') || 'launch') as 'launch' | 'growth' | 'scale';
   const billing = (searchParams.get('billing') || 'monthly') as 'monthly' | 'yearly';
+  // trial=dollar — the $1-for-14-days path (Scale's "Try for $1" CTA).
+  // Charges $1 today instead of the full plan price; full billing starts
+  // automatically after the 14-day window.
+  const trialDollar = searchParams.get('trial') === 'dollar';
   const paymentStatus = searchParams.get('status'); // 'success' after returning from Lemon Squeezy
   const { currency } = useCurrency();
 
   const [businessName, setBusinessName] = useState('');
   const [email, setEmail] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const prices = pricing[currency];
-  const price = billing === 'monthly' ? prices[plan]?.monthly : prices[plan]?.yearly;
-  const period = billing === 'monthly' ? '/month' : '/year';
-  const planName = plan === 'starter' ? 'Starter' : 'Premium';
+  const fullPrice = billing === 'monthly' ? prices[plan]?.monthly : prices[plan]?.yearly;
+  const price = trialDollar ? 1 : fullPrice;
+  const period = trialDollar ? ' today' : billing === 'monthly' ? '/month' : '/year';
+  const planName = plan === 'launch' ? 'Launch' : plan === 'growth' ? 'Growth' : 'Scale';
   const features = PLAN_FEATURES[plan] || [];
 
-  const yearlySavings = billing === 'yearly'
+  const yearlySavings = !trialDollar && billing === 'yearly'
     ? Math.round(prices[plan].monthly * 12 - prices[plan].yearly)
     : 0;
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!businessName.trim() || !email.trim()) return;
+    if (!businessName.trim() || !email.trim() || !agreedToTerms) return;
     setSubmitting(true);
     setError('');
     try {
@@ -75,6 +94,7 @@ function CheckoutContent() {
           email: email.trim(),
           plan_type: plan,
           billing_type: billing,
+          trial_dollar: trialDollar,
         }),
       });
       const data = await res.json();
@@ -113,7 +133,11 @@ function CheckoutContent() {
               <span className="text-gray-400 text-sm self-end mb-1">{period}</span>
             </div>
 
-            {billing === 'yearly' && yearlySavings > 0 && (
+            {trialDollar ? (
+              <p className="text-sm text-gray-500 mb-2">
+                $1 covers your first 7 days — after that, ${fullPrice}{billing === 'monthly' ? '/month' : '/year'}. Cancel anytime.
+              </p>
+            ) : billing === 'yearly' && yearlySavings > 0 && (
               <p className="text-sm text-emerald-600 font-medium mb-2">
                 You save ${yearlySavings}/year vs monthly billing
               </p>
@@ -121,17 +145,17 @@ function CheckoutContent() {
 
             <div className="flex gap-2 mt-4 mb-6">
               <Link
-                href={`/checkout?plan=${plan}&billing=monthly`}
+                href={`/checkout?plan=${plan}&billing=monthly${trialDollar ? '&trial=dollar' : ''}`}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition ${billing === 'monthly' ? 'bg-[#0B1121] text-white border-[#0B1121]' : 'text-gray-500 border-gray-200 hover:border-gray-400'}`}
               >
                 Monthly
               </Link>
               <Link
-                href={`/checkout?plan=${plan}&billing=yearly`}
+                href={`/checkout?plan=${plan}&billing=yearly${trialDollar ? '&trial=dollar' : ''}`}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition flex items-center gap-1.5 ${billing === 'yearly' ? 'bg-[#0B1121] text-white border-[#0B1121]' : 'text-gray-500 border-gray-200 hover:border-gray-400'}`}
               >
                 Yearly
-                <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">Save 17%</span>
+                <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-bold">Save 25%</span>
               </Link>
             </div>
 
@@ -164,22 +188,30 @@ function CheckoutContent() {
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Payment received!</h2>
                 <p className="text-sm text-gray-500 leading-relaxed">
-                  Check your email for a link to set your password. Your account is being reviewed and you&apos;ll get a second email as soon as it&apos;s approved and your dashboard is ready.
+                  Check your email for a link to set your password — your dashboard is ready as soon as you do.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleCheckoutSubmit} className="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm">
-                <h2 className="text-xl font-bold text-gray-900 mb-1">Complete your purchase</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  {trialDollar ? 'Start your $1 trial' : 'Complete your purchase'}
+                </h2>
                 <p className="text-sm text-gray-500 mb-6">You&apos;ll be redirected to our secure payment page.</p>
 
                 <div className="bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-100">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">{planName} — {billing}</span>
+                    <span className="text-gray-600">{planName}{trialDollar ? ' — $1 trial' : ` — ${billing}`}</span>
                     <span className="font-bold text-gray-900">
                       ${price}{period}
                     </span>
                   </div>
-                  {billing === 'yearly' && yearlySavings > 0 && (
+                  {trialDollar && (
+                    <div className="flex justify-between items-center text-xs text-gray-500 mt-1">
+                      <span>Then, from day 8</span>
+                      <span>${fullPrice}{billing === 'monthly' ? '/mo' : '/yr'}</span>
+                    </div>
+                  )}
+                  {!trialDollar && billing === 'yearly' && yearlySavings > 0 && (
                     <div className="flex justify-between items-center text-xs text-emerald-600 mt-1">
                       <span>Savings vs monthly</span>
                       <span>–${yearlySavings}/yr</span>
@@ -197,7 +229,7 @@ function CheckoutContent() {
                   <div>
                     <label className="text-xs font-medium text-gray-500 mb-1 block">Business name</label>
                     <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} required
-                      placeholder="Your shop name"
+                      placeholder="Your store name"
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition" />
                   </div>
                   <div>
@@ -208,13 +240,25 @@ function CheckoutContent() {
                   </div>
                 </div>
 
+                <div className="flex items-start gap-2.5 mb-4">
+                  <input type="checkbox" id="checkout-terms" checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)} required
+                    className="w-4 h-4 mt-0.5 rounded border-gray-300 bg-gray-50 text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0" />
+                  <label htmlFor="checkout-terms" className="text-sm text-gray-500">
+                    I agree to the{' '}
+                    <Link href="/terms" className="text-[#6B3FD9] hover:text-[#5A2EC9] transition">Terms of Service</Link>{' '}
+                    and{' '}
+                    <Link href="/privacy" className="text-[#6B3FD9] hover:text-[#5A2EC9] transition">Privacy Policy</Link>
+                  </label>
+                </div>
+
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !agreedToTerms}
                   className="flex items-center justify-center gap-2 w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-4 rounded-2xl transition-all text-base disabled:opacity-60"
                 >
                   {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
-                  {submitting ? 'Redirecting…' : 'Pay now'}
+                  {submitting ? 'Redirecting…' : trialDollar ? 'Start for $1' : 'Pay now'}
                   {!submitting && <ArrowRight className="w-4 h-4" />}
                 </button>
 
@@ -223,12 +267,16 @@ function CheckoutContent() {
                   Secured by Lemon Squeezy · SSL encrypted
                 </p>
 
-                <p className="text-center text-xs text-gray-400 mt-4">
-                  Prefer to try first?{' '}
-                  <Link href={`/register?plan=${plan}&billing=${billing}`} className="text-[#6B3FD9] font-semibold hover:underline">
-                    Start a free trial instead
-                  </Link>
-                </p>
+                {/* Only Launch has a free week — Growth/Scale always start
+                    at $1, so this offer never applies to them. */}
+                {!trialDollar && plan === 'launch' && (
+                  <p className="text-center text-xs text-gray-400 mt-4">
+                    Prefer to try first?{' '}
+                    <Link href={`/register?plan=${plan}&billing=${billing}`} className="text-[#6B3FD9] font-semibold hover:underline">
+                      Start a free trial instead
+                    </Link>
+                  </p>
+                )}
               </form>
             )}
 

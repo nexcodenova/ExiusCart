@@ -73,6 +73,7 @@ export default function WholesalePage() {
   const [shopId, setShopId] = useState('');
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [planType, setPlanType] = useState<string>('');
+  const [isTheDersi, setIsTheDersi] = useState(false);
   const [tab, setTab] = useState<'overview' | 'catalogue' | 'buyers' | 'orders'>('overview');
   const [products, setProducts] = useState<WProduct[]>([]);
   const [buyers, setBuyers] = useState<Buyer[]>([]);
@@ -105,7 +106,8 @@ export default function WholesalePage() {
     subscriptionApi.getCurrent(shopId).then(r => {
       const pt = r.data?.plan?.plan_type ?? '';
       setPlanType(pt);
-      setIsPremium(pt === 'premium');
+      setIsPremium(pt === 'scale');
+      setIsTheDersi(r.data?.plan?.source === 'thedersi');
     }).catch(() => { setPlanType(''); setIsPremium(false); });
   }, [shopId]);
 
@@ -228,7 +230,7 @@ export default function WholesalePage() {
   // ── Premium gate ──
 
   if (isPremium === false) {
-    const isTheDersiPlan = planType === 'thedersi_basic' || planType === 'thedersi_pro';
+    const isTheDersiPlan = isTheDersi;
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="bg-card border border-border rounded-2xl p-10 max-w-md text-center space-y-5">

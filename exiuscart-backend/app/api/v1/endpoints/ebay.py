@@ -342,13 +342,16 @@ def ebay_authorize(
 
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
-    if plan_type not in ("thedersi_pro", "premium"):
+    # TheDersi sellers (any tier) never get eBay — they're restricted to
+    # TheDersi + Daraz only (enforced in channels.py's connect_channel), so
+    # there's no "thedersi_pro" carve-out here anymore.
+    if plan_type not in ("growth", "scale"):
         raise HTTPException(
             status_code=403,
             detail={
-                "error": "ebay_requires_premium",
+                "error": "ebay_requires_growth_or_scale",
                 "plan": plan_type,
-                "message": "eBay sync is available on Premium. Upgrade to connect your eBay seller account.",
+                "message": "eBay sync is available on Growth and Scale. Upgrade to connect your eBay seller account.",
             },
         )
 
@@ -729,7 +732,7 @@ def _ebay_ensure_inventory_location(conn: ChannelConnection, db: Session, shop: 
     if not (country_iso and shop.address and shop.city):
         raise HTTPException(status_code=400, detail={
             "error": "shop_address_required",
-            "message": "eBay needs your shop's address to set the item location on your listings. "
+            "message": "eBay needs your store's address to set the item location on your listings. "
                        "Add your address and city under Settings, then try again.",
         })
 

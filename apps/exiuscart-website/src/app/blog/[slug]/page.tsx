@@ -231,7 +231,7 @@ function UAEVATGuide() {
       <H2 id="automate-vat-invoicing">How to Stop Doing This Manually</H2>
       <P>Generating VAT invoices in Word or Excel works — right up until it doesn't. TRNs get left off when you're busy. Invoice numbers get duplicated. VAT gets rounded incorrectly. And when the FTA asks for records from 3 years ago, you're hunting through email inboxes and old hard drives.</P>
       <P>ExiusCart generates FTA-compliant VAT invoices automatically on every sale. Every invoice includes your TRN, 5% VAT calculated correctly, sequential numbering, your logo, and a professional PDF — without you touching any of it. The invoices are stored and searchable forever.</P>
-      <P>Starter plan includes 500 invoices per month. Premium is unlimited. Both generate the same FTA-compliant format.</P>
+      <P>Launch plan includes 500 invoices per month. Scale is unlimited. Both generate the same FTA-compliant format.</P>
 
       <Divider />
 
@@ -249,8 +249,8 @@ function UAEVATGuide() {
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
         <p className="text-white font-black text-xl mb-2">Generate VAT-compliant invoices automatically</p>
         <p className="text-gray-400 text-sm mb-6">ExiusCart handles the invoice format, TRN, VAT calculation, and PDF — on every sale, automatically.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
-          Try free for 14 days <ArrowRight className="w-4 h-4" />
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+          Try free for 7 days <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     </article>
@@ -293,7 +293,7 @@ function SkipAdminPanel() {
 
       <div className="grid grid-cols-3 gap-4 my-8">
         <StatBox stat="4–6mo" label="Typical build time" sub="For a full admin panel" />
-        <StatBox stat="$12" label="ExiusCart Starter" sub="per month" />
+        <StatBox stat="$14.99" label="ExiusCart Launch" sub="per month" />
         <StatBox stat="1 day" label="To connect your site" sub="API setup, not a project" />
       </div>
 
@@ -335,7 +335,7 @@ function SkipAdminPanel() {
         'Low-stock alerts — get notified before you run out',
         'Email & SMS campaigns — market to your existing customer list directly from ExiusCart',
         'Returns and refunds — track and process returns without spreadsheets',
-        'Multi-branch support — manage more than one location from the same dashboard (Premium plan)',
+        'Multi-branch support — manage more than one location from the same dashboard (Scale plan)',
       ]} />
 
       <Divider />
@@ -365,13 +365,13 @@ function SkipAdminPanel() {
         'Works with any website that can make HTTP requests',
         'Setup typically takes 1–2 days for a developer',
         'All paid plans include the custom website integration',
-        '14-day free trial to test the full connection before committing',
+        '7-day free trial to test the full connection before committing',
       ]} />
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
         <p className="text-white font-black text-xl mb-2">Connect your custom website today</p>
         <p className="text-gray-400 text-sm mb-6">Start your free trial and give your developer the API docs. Most sites are live within a day.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -402,7 +402,7 @@ function TheDersiPost() {
       <P>The connection is built in — not a third-party workaround. ExiusCart and TheDersi are integrated at the platform level, which means setup takes minutes, not days.</P>
 
       <NumberedList items={[
-        { title: 'Create your ExiusCart account', desc: 'Start a free trial — no credit card needed. All features are unlocked during your 14-day trial.' },
+        { title: 'Create your ExiusCart account', desc: 'Start a free trial — no credit card needed. All features are unlocked during your 7-day trial.' },
         { title: 'Connect TheDersi in your settings', desc: 'Go to Integrations in your ExiusCart dashboard and link your TheDersi seller account. Takes about 2 minutes.' },
         { title: 'Orders start syncing immediately', desc: 'All new TheDersi orders appear in your ExiusCart dashboard automatically. No exports, no manual imports.' },
         { title: 'Set up your product catalog', desc: 'Map your TheDersi listings to ExiusCart products so inventory updates correctly with every order.' },
@@ -442,8 +442,8 @@ function TheDersiPost() {
       <P>Customers who request a VAT invoice for their records (B2B buyers especially) get a professional PDF that meets FTA requirements. That's something TheDersi's built-in receipt doesn't provide.</P>
 
       <div className="grid grid-cols-2 gap-4 my-8">
-        <StatBox stat="500" label="Invoices per month" sub="Starter plan" />
-        <StatBox stat="∞" label="Invoices per month" sub="Premium plan" />
+        <StatBox stat="500" label="Invoices per month" sub="Launch plan" />
+        <StatBox stat="∞" label="Invoices per month" sub="Scale plan" />
       </div>
 
       <H2 id="reports">Know Your TheDersi Numbers</H2>
@@ -471,8 +471,8 @@ function TheDersiPost() {
             <tr className="bg-gray-900 text-white">
               <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Feature</th>
               <th className="text-left px-4 py-3 font-semibold">Free Trial</th>
-              <th className="text-left px-4 py-3 font-semibold">Starter · $12</th>
-              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Premium · $29</th>
+              <th className="text-left px-4 py-3 font-semibold">Launch · $14.99</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Scale · $39.99</th>
             </tr>
           </thead>
           <tbody>
@@ -497,7 +497,7 @@ function TheDersiPost() {
       </div>
 
       <Callout type="example">
-        <strong>When to upgrade:</strong> If your TheDersi store does more than 50 orders a month — even occasionally — the Starter plan at $12/month is worth it. At 100 orders a month, you're spending more time on manual management than the subscription costs. At 500+, Premium pays for itself in staff time alone.
+        <strong>When to upgrade:</strong> If your TheDersi store does more than 50 orders a month — even occasionally — the Launch plan at $14.99/month is worth it. At 100 orders a month, you're spending more time on manual management than the subscription costs. At 500+, Scale pays for itself in staff time alone.
       </Callout>
 
       <H2 id="get-started">Get Connected in 10 Minutes</H2>
@@ -511,12 +511,12 @@ function TheDersiPost() {
         'Turn on low-stock alerts and invoice auto-generation',
       ]} />
 
-      <P>Most sellers are fully set up within the same day. The 14-day free trial gives you time to test everything properly before choosing a plan.</P>
+      <P>Most sellers are fully set up within the same day. The 7-day free trial gives you time to test everything properly before choosing a plan.</P>
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
         <p className="text-white font-black text-xl mb-2">Start managing TheDersi orders properly</p>
-        <p className="text-gray-400 text-sm mb-6">Connect your TheDersi store to ExiusCart — free for 14 days, all features included.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <p className="text-gray-400 text-sm mb-6">Connect your TheDersi store to ExiusCart — free for 7 days, all features included.</p>
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -575,7 +575,7 @@ function POSvsCashRegister() {
           <tbody>
             {[
               { f: 'Hardware',           cr: 'AED 200–800 (buy once)',     pos: 'Tablet you may already own' },
-              { f: 'Software',           cr: 'None',                        pos: '$12–29/month (ExiusCart)' },
+              { f: 'Software',           cr: 'None',                        pos: '$14.99–39.99/month (ExiusCart)' },
               { f: 'Daily stock count',  cr: 'Manual — 30–60 min/day',     pos: 'Automatic — 0 min' },
               { f: 'End-of-day reports', cr: 'Manual calculation',          pos: 'Instant, automatic' },
               { f: 'VAT invoicing',      cr: 'Not compliant',               pos: 'FTA-compliant, automatic' },
@@ -656,19 +656,19 @@ function POSvsCashRegister() {
       <P>Every sale generates an FTA-compliant VAT invoice automatically. Inventory updates in real time. Staff log in to their own accounts. End-of-day reports are instant. And because it's the same platform handling your online orders, TheDersi sync, invoicing, HR, and reports — everything is connected in one place.</P>
 
       <div className="grid grid-cols-3 gap-4 my-8">
-        <StatBox stat="$12" label="Starter plan" sub="per month" />
-        <StatBox stat="14 days" label="Free trial" sub="All features unlocked" />
+        <StatBox stat="$14.99" label="Launch plan" sub="per month" />
+        <StatBox stat="7 days" label="Free trial" sub="All features unlocked" />
         <StatBox stat="0" label="Hardware cost" sub="Works on any device" />
       </div>
 
       <Callout type="tip">
-        Start the free trial and run your POS on a tablet for 14 days. Compare what you know about your business at the end of that trial versus what you knew when you were using a cash register. The difference is usually the end of the conversation.
+        Start the free trial and run your POS on a tablet for 7 days. Compare what you know about your business at the end of that trial versus what you knew when you were using a cash register. The difference is usually the end of the conversation.
       </Callout>
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
-        <p className="text-white font-black text-xl mb-2">Try the ExiusCart POS free for 14 days</p>
+        <p className="text-white font-black text-xl mb-2">Try the ExiusCart POS free for 7 days</p>
         <p className="text-gray-400 text-sm mb-6">Works on any tablet or laptop. VAT invoicing, inventory, staff accounts — all included.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -770,7 +770,7 @@ function ScaleMultipleBranches() {
       ]} />
 
       <H2 id="setting-up-exiuscart">How ExiusCart Handles Multiple Branches</H2>
-      <P>ExiusCart Premium includes multi-branch management built in — not as an add-on, not an enterprise upsell. Every branch gets its own inventory, staff accounts, and POS. You see each branch separately and the whole business consolidated, from one dashboard.</P>
+      <P>ExiusCart Scale includes multi-branch management built in — not as an add-on, not an enterprise upsell. Every branch gets its own inventory, staff accounts, and POS. You see each branch separately and the whole business consolidated, from one dashboard.</P>
 
       <UL items={[
         'Add each branch as a separate location in your ExiusCart account',
@@ -791,8 +791,8 @@ function ScaleMultipleBranches() {
           <thead>
             <tr className="bg-gray-900 text-white">
               <th className="text-left px-4 py-3 rounded-tl-xl font-semibold">Feature</th>
-              <th className="text-left px-4 py-3 font-semibold">Starter · $12</th>
-              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Premium · $29</th>
+              <th className="text-left px-4 py-3 font-semibold">Launch · $14.99</th>
+              <th className="text-left px-4 py-3 rounded-tr-xl font-semibold">Scale · $39.99</th>
             </tr>
           </thead>
           <tbody>
@@ -830,8 +830,8 @@ function ScaleMultipleBranches() {
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
         <p className="text-white font-black text-xl mb-2">Ready to manage multiple branches?</p>
-        <p className="text-gray-400 text-sm mb-6">ExiusCart Premium includes unlimited branches, staff, and consolidated reporting from one dashboard.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <p className="text-gray-400 text-sm mb-6">ExiusCart Scale includes unlimited branches, staff, and consolidated reporting from one dashboard.</p>
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -863,11 +863,11 @@ function StopSpreadsheets() {
 
       <div className="grid grid-cols-3 gap-4 my-8">
         <StatBox stat="8–12hrs" label="Lost per week" sub="Typical spreadsheet overhead" />
-        <StatBox stat="$12" label="ExiusCart Starter" sub="per month" />
+        <StatBox stat="$14.99" label="ExiusCart Launch" sub="per month" />
         <StatBox stat="0 hrs" label="Manual data entry" sub="Everything updates automatically" />
       </div>
 
-      <P>At eight hours a week, that is over 400 hours a year. If your time is worth AED 50 an hour — a conservative estimate for a business owner — that is AED 20,000 a year in time spent maintaining a system that could be replaced for $12 a month.</P>
+      <P>At eight hours a week, that is over 400 hours a year. If your time is worth AED 50 an hour — a conservative estimate for a business owner — that is AED 20,000 a year in time spent maintaining a system that could be replaced for $14.99 a month.</P>
       <P>And that calculation does not include the cost of mistakes.</P>
 
       <H2 id="what-breaks-first">What Breaks First</H2>
@@ -926,7 +926,7 @@ function StopSpreadsheets() {
       ]} />
 
       <Callout type="tip">
-        Start the 14-day trial while your spreadsheets are still running. Enter your data into ExiusCart in parallel for the first week. By day seven, you will know whether you want to make the switch permanent — and your team will already know how to use it.
+        Start the 7-day trial while your spreadsheets are still running. Enter your data into ExiusCart in parallel for the first week. By day seven, you will know whether you want to make the switch permanent — and your team will already know how to use it.
       </Callout>
 
       <H2 id="after-the-switch">What Changes in the First Month</H2>
@@ -936,8 +936,8 @@ function StopSpreadsheets() {
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
         <p className="text-white font-black text-xl mb-2">Replace your spreadsheets in one afternoon</p>
-        <p className="text-gray-400 text-sm mb-6">Import your products, add your staff, and start your free 14-day trial — no credit card needed.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <p className="text-gray-400 text-sm mb-6">Import your products, add your staff, and start your free 7-day trial — no credit card needed.</p>
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -1079,8 +1079,8 @@ function HRPayrollPost() {
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
         <p className="text-white font-black text-xl mb-2">Sort your HR in one afternoon</p>
-        <p className="text-gray-400 text-sm mb-6">Attendance, leave, payroll, and payslips — all included in ExiusCart. Free for 14 days.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <p className="text-gray-400 text-sm mb-6">Attendance, leave, payroll, and payslips — all included in ExiusCart. Free for 7 days.</p>
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -1212,7 +1212,7 @@ function ShopifySyncPost() {
       <NumberedList items={[
         {
           title: 'Start your ExiusCart free trial',
-          desc: 'All integrations are available during the 14-day trial — no credit card needed.',
+          desc: 'All integrations are available during the 7-day trial — no credit card needed.',
         },
         {
           title: 'Set up your product catalog',
@@ -1239,7 +1239,7 @@ function ShopifySyncPost() {
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
         <p className="text-white font-black text-xl mb-2">Connect all your channels in one afternoon</p>
         <p className="text-gray-400 text-sm mb-6">Shopify, WooCommerce, TheDersi, custom website, and in-store — one dashboard, one inventory, one set of reports.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -1289,7 +1289,7 @@ function BestPOSUAE() {
           </thead>
           <tbody>
             {[
-              { s: 'ExiusCart',  p: '$12/month',      vat: 'Yes — built in',    uae: 'Yes',         b: 'SMBs wanting all-in-one at low cost' },
+              { s: 'ExiusCart',  p: '$14.99/month',      vat: 'Yes — built in',    uae: 'Yes',         b: 'SMBs wanting all-in-one at low cost' },
               { s: 'Zoho Books', p: 'AED 50+/month',     vat: 'Yes',                uae: 'Partly',      b: 'Accounting-focused businesses' },
               { s: 'Square',     p: 'Free + % per sale', vat: 'Basic',              uae: 'No',          b: 'Freelancers and pop-ups' },
               { s: 'Lightspeed', p: '$89 USD/month',     vat: 'Yes (addon)',         uae: 'Partly',      b: 'Larger retail chains' },
@@ -1316,14 +1316,14 @@ function BestPOSUAE() {
         'Runs on any tablet or laptop — no proprietary hardware to buy',
         'Inventory, staff accounts, HR, payroll, and reports all included',
         'TheDersi marketplace integration — direct connection to the UAE/Sri Lanka seller platform',
-        'Starter plan at $12/month — less than Zoho, Lightspeed, or Cin7',
-        '14-day free trial with all features unlocked — no credit card required',
+        'Launch plan at $14.99/month — less than Zoho, Lightspeed, or Cin7',
+        '7 days free with all features unlocked — no credit card required',
       ]} />
 
       <div className="grid grid-cols-3 gap-4 my-8">
-        <StatBox stat="$12" label="Starter plan" sub="per month" />
-        <StatBox stat="$29" label="Premium plan" sub="per month" />
-        <StatBox stat="14 days" label="Free trial" sub="All features included" />
+        <StatBox stat="$14.99" label="Launch plan" sub="per month" />
+        <StatBox stat="$39.99" label="Scale plan" sub="per month" />
+        <StatBox stat="7 days" label="Free trial" sub="All features included" />
       </div>
 
       <H2 id="zoho-comparison">ExiusCart vs Zoho — For UAE Small Businesses</H2>
@@ -1342,10 +1342,10 @@ function BestPOSUAE() {
       </Callout>
 
       <H2 id="what-to-try-first">What to Try First</H2>
-      <P>The fastest way to know if a POS is right for your business is to use it on your actual operations for a week. Start with ExiusCart — it has everything you need from day one, without configuration complexity, and the Starter plan at $12/month is the lowest-risk entry point in this category.</P>
+      <P>The fastest way to know if a POS is right for your business is to use it on your actual operations for a week. Start with ExiusCart — it has everything you need from day one, without configuration complexity, and the Launch plan at $14.99/month is the lowest-risk entry point in this category.</P>
 
       <NumberedList items={[
-        { title: 'Start the ExiusCart free trial', desc: '14 days, all features, no card. Set it up the same day you read this.' },
+        { title: 'Start the ExiusCart free trial', desc: '7 days, all features, no card. Set it up the same day you read this.' },
         { title: 'Import your product catalog', desc: 'Upload a CSV of your products or add them manually. Most catalogs take under an hour.' },
         { title: 'Add staff accounts', desc: 'One account per team member. Set roles so cashiers can sell, managers can see reports.' },
         { title: 'Run your first sale through the POS', desc: 'The interface is tablet-friendly. An FTA-compliant receipt generates automatically.' },
@@ -1353,9 +1353,9 @@ function BestPOSUAE() {
       ]} />
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
-        <p className="text-white font-black text-xl mb-2">Try the best UAE POS free for 14 days</p>
-        <p className="text-gray-400 text-sm mb-6">Built for UAE businesses. VAT-compliant invoices, $12/month, inventory included. No credit card required.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <p className="text-white font-black text-xl mb-2">Try the best UAE POS free for 7 days</p>
+        <p className="text-gray-400 text-sm mb-6">Built for UAE businesses. VAT-compliant invoices, from $14.99/month, inventory included. No credit card required.</p>
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -1406,12 +1406,12 @@ function InventorySriLanka() {
       </Callout>
 
       <H2 id="pricing-for-sri-lanka">Pricing That Makes Sense</H2>
-      <P>The international benchmark for inventory management is $12–30 USD per month for a basic plan. For a business turning over meaningful volume per month, that pays for itself quickly in time saved and errors avoided.</P>
+      <P>The international benchmark for inventory management is $14.99–39.99 USD per month for a basic plan. For a business turning over meaningful volume per month, that pays for itself quickly in time saved and errors avoided.</P>
 
       <div className="grid grid-cols-3 gap-4 my-8">
-        <StatBox stat="Free" label="14-day trial" sub="All features included" />
-        <StatBox stat="$12" label="Starter plan" sub="Per month · USD" />
-        <StatBox stat="$29" label="Premium plan" sub="Per month · unlimited" />
+        <StatBox stat="Free" label="7-day trial" sub="All features included" />
+        <StatBox stat="$14.99" label="Launch plan" sub="Per month · USD" />
+        <StatBox stat="$39.99" label="Scale plan" sub="Per month · unlimited" />
       </div>
 
       <H2 id="features-for-retailers">Key Features for Sri Lanka Retailers</H2>
@@ -1441,8 +1441,8 @@ function InventorySriLanka() {
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
         <p className="text-white font-black text-xl mb-2">Try ExiusCart free — built for TheDersi sellers</p>
-        <p className="text-gray-400 text-sm mb-6">Native TheDersi integration, multi-channel inventory, order management. 14-day free trial, no credit card.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <p className="text-gray-400 text-sm mb-6">Native TheDersi integration, multi-channel inventory, order management. 7-day free trial, no credit card.</p>
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -1472,15 +1472,15 @@ function ExiusCartVsZohoPost() {
           </thead>
           <tbody>
             {[
-              { f: 'Starting price',        e: '$12/mo',       z: '~AED 50+/mo per app' },
+              { f: 'Starting price',        e: '$14.99/mo',       z: '~AED 50+/mo per app' },
               { f: 'POS included',          e: 'Yes — built in',             z: 'Separate app (Zoho POS)' },
-              { f: 'HR & Payroll',          e: 'Premium plan',               z: 'Zoho People (separate)' },
+              { f: 'HR & Payroll',          e: 'Scale plan',               z: 'Zoho People (separate)' },
               { f: 'UAE VAT invoicing',     e: 'Built in, FTA-compliant',    z: 'Yes, with setup' },
               { f: 'TheDersi integration',  e: 'Native, built in',           z: 'Not available' },
               { f: 'Shopify sync',          e: 'Yes',                        z: 'Yes' },
               { f: 'WooCommerce sync',      e: 'Yes',                        z: 'Yes' },
-              { f: 'Multi-branch',          e: 'Premium plan',               z: 'Higher plans' },
-              { f: 'Free trial',            e: '14 days, all features',      z: '14 days' },
+              { f: 'Multi-branch',          e: 'Scale plan',               z: 'Higher plans' },
+              { f: 'Free trial',            e: '7 days, all features',      z: '14 days' },
               { f: 'Setup complexity',      e: 'Low — ready out of the box', z: 'Medium-High' },
               { f: 'Best for',             e: 'UAE/Sri Lanka SMBs, retail',  z: 'Businesses needing deep accounting' },
             ].map((row, i) => (
@@ -1497,12 +1497,12 @@ function ExiusCartVsZohoPost() {
       <H2 id="pricing-comparison">Pricing — The Real Number</H2>
       <P>The price you see on Zoho&apos;s website is per app. To match what ExiusCart provides in one subscription, most small businesses need:</P>
       <UL items={[
-        'Zoho Inventory — starts around $29/month for 1,500 orders',
+        'Zoho Inventory — starts around $39.99/month for 1,500 orders',
         'Zoho Books — starts around $15/month for accounts and VAT invoicing',
         'Zoho POS — additional subscription for in-store point of sale',
         'Total: $44–80+/month depending on order volume and features needed',
       ]} />
-      <P>ExiusCart covers POS + inventory + invoicing + HR + payroll in one subscription: $12/month (Starter) or $29/month (Premium).</P>
+      <P>ExiusCart covers POS + inventory + invoicing + HR + payroll in one subscription: $14.99/month (Launch), $24.99/month (Growth), or $39.99/month (Scale).</P>
 
       <Callout type="info">
         This does not mean Zoho is overpriced. The reason Zoho costs more is that each app is more fully featured. If you need deep double-entry accounting or complex multi-currency books, Zoho Books is the right tool. If you primarily need to sell, track stock, and issue UAE VAT invoices, ExiusCart covers it at lower cost.
@@ -1538,7 +1538,7 @@ function ExiusCartVsZohoPost() {
         'You sell on TheDersi and need native marketplace integration',
         'You want one subscription that covers POS, inventory, HR, and payroll without additional apps',
         'You want to set it up yourself in an afternoon, not configure it over several weeks',
-        'Budget matters — $12/month vs AED 100–200+/month for a full Zoho stack',
+        'Budget matters — $14.99/month vs AED 100–200+/month for a full Zoho stack',
         'You are starting a new business and want everything working from day one',
       ]} />
 
@@ -1546,9 +1546,9 @@ function ExiusCartVsZohoPost() {
       <P>Both ExiusCart and Zoho offer free trials. There is no better way to know which fits your business than to use both with your actual products and operations for a few days. Start with ExiusCart — the trial takes minutes to set up and you will know within an hour whether the interface matches how your business operates.</P>
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
-        <p className="text-white font-black text-xl mb-2">Try ExiusCart free for 14 days</p>
+        <p className="text-white font-black text-xl mb-2">Try ExiusCart free for 7 days</p>
         <p className="text-gray-400 text-sm mb-6">POS, inventory, VAT invoicing, TheDersi integration — all features included. No credit card required.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -1563,7 +1563,7 @@ function AllInOneUnder100() {
         A POS system. Inventory management. VAT-compliant invoicing. Order management. Staff accounts. HR and payroll. Customer records. Sales reports. Most businesses in the UAE pay for these as separate subscriptions — and end up spending AED 300–500 a month without realising it.
       </p>
 
-      <P>ExiusCart Premium puts all of that in one platform at $29 per month. The Starter plan gives you POS, inventory, invoicing, and order management for $12 per month. This article covers exactly what you get and what it replaces.</P>
+      <P>ExiusCart Scale puts all of that in one platform at $39.99 per month. The Launch plan gives you POS, inventory, invoicing, and order management for $14.99 per month. This article covers exactly what you get and what it replaces.</P>
 
       <H2 id="the-subscription-sprawl-problem">The Subscription Sprawl Problem</H2>
       <P>Most small businesses end up with too many subscriptions. It happens gradually: you add a POS, then you need inventory software, then invoicing, then HR. Each one feels like a good decision at the time. A year later you have five separate tools, five separate logins, five separate sets of data that do not talk to each other — and a combined bill that dwarfs what a single integrated platform would cost.</P>
@@ -1583,10 +1583,10 @@ function AllInOneUnder100() {
               { s: 'Inventory management',      c: '60–150',    e: 'Yes' },
               { s: 'VAT invoicing software',    c: '50–100',    e: 'Yes' },
               { s: 'Order management system',   c: '80–200',    e: 'Yes' },
-              { s: 'HR & payroll software',     c: '80–200',    e: 'Yes (Premium)' },
+              { s: 'HR & payroll software',     c: '80–200',    e: 'Yes (Scale)' },
               { s: 'CRM / customer management', c: '60–150',    e: 'Yes' },
               { s: 'Sales analytics',           c: '50–100',    e: 'Yes' },
-              { s: 'Total',                     c: '460–1,100', e: '$12–29/month' },
+              { s: 'Total',                     c: '460–1,100', e: '$14.99–39.99/month' },
             ].map((row, i) => (
               <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 <td className={`px-4 py-3 font-medium border-b border-gray-100 ${row.s === 'Total' ? 'font-bold text-gray-900' : 'text-gray-900'}`}>{row.s}</td>
@@ -1600,8 +1600,8 @@ function AllInOneUnder100() {
 
       <PullQuote>&quot;The cost of separate tools is not just the subscriptions — it is the time spent switching between them and the data that never quite lines up.&quot;</PullQuote>
 
-      <H2 id="what-you-get-starter">Starter Plan — $12/Month</H2>
-      <P>The ExiusCart Starter plan is designed for businesses with one location and a small team:</P>
+      <H2 id="what-you-get-starter">Launch Plan — $14.99/Month</H2>
+      <P>The ExiusCart Launch plan is designed for businesses with one location and a small team:</P>
 
       <UL items={[
         'POS — full point-of-sale system, runs on any tablet or laptop, works offline',
@@ -1615,11 +1615,11 @@ function AllInOneUnder100() {
         'Shopify and WooCommerce sync',
       ]} />
 
-      <H2 id="what-you-get-premium">Premium Plan — $29/Month</H2>
-      <P>The Premium plan removes all limits and adds HR, payroll, and multi-branch management:</P>
+      <H2 id="what-you-get-premium">Scale Plan — $39.99/Month</H2>
+      <P>The Scale plan removes all limits and adds HR, payroll, and multi-branch management:</P>
 
       <UL items={[
-        'Everything in Starter — unlimited',
+        'Everything in Launch — unlimited',
         'Unlimited products, staff, and invoices',
         'Multi-branch support — manage multiple locations from one dashboard',
         'HR and payroll — attendance tracking, leave management, payslip generation',
@@ -1629,13 +1629,13 @@ function AllInOneUnder100() {
       ]} />
 
       <div className="grid grid-cols-3 gap-4 my-8">
-        <StatBox stat="$12" label="Starter" sub="per month" />
-        <StatBox stat="$29" label="Premium" sub="per month" />
+        <StatBox stat="$14.99" label="Launch" sub="per month" />
+        <StatBox stat="$39.99" label="Scale" sub="per month" />
         <StatBox stat="0" label="Setup fee" sub="No hidden costs" />
       </div>
 
       <Callout type="tip">
-        The Starter plan handles most small retail businesses comfortably — one location, up to 3 staff, up to 1,000 products. Only upgrade to Premium when you open a second branch, need payroll processing, or run a larger team.
+        The Launch plan handles most small retail businesses comfortably — one location, up to 3 staff, up to 1,000 products. Only upgrade to Scale when you open a second branch, need payroll processing, or run a larger team.
       </Callout>
 
       <H2 id="uae-specific-features">UAE-Specific Features Included</H2>
@@ -1644,7 +1644,7 @@ function AllInOneUnder100() {
         'AED as primary currency — no conversion required, invoices in AED for UAE transactions',
         'Subscription billed in USD worldwide — one simple price, no region switching',
         'TheDersi marketplace integration — native, not a third-party workaround',
-        'WPS-ready payroll — salary records for UAE Wage Protection System compliance (Premium)',
+        'WPS-ready payroll — salary records for UAE Wage Protection System compliance (Scale)',
       ]} />
 
       <H2 id="who-its-for">Who This Is For</H2>
@@ -1656,8 +1656,8 @@ function AllInOneUnder100() {
         'Growing businesses adding staff, locations, or channels',
       ]} />
 
-      <H2 id="free-trial">14 Days Free — All Features</H2>
-      <P>The full platform is available during the 14-day free trial. No credit card required. You can set up your product catalog, run sales through the POS, connect TheDersi, and see exactly what you get before committing to any plan. Most businesses know within the first week whether it works for them.</P>
+      <H2 id="free-trial">7 Days Free — All Features</H2>
+      <P>The full platform is available during the 7-day free trial. No credit card required. You can set up your product catalog, run sales through the POS, connect TheDersi, and see exactly what you get before committing to any plan. Most businesses know within the first week whether it works for them.</P>
 
       <NumberedList items={[
         { title: 'Start the free trial', desc: 'Account created instantly. All features unlocked. No credit card.' },
@@ -1668,9 +1668,9 @@ function AllInOneUnder100() {
       ]} />
 
       <div className="mt-10 bg-gray-900 rounded-2xl p-8 text-center">
-        <p className="text-white font-black text-xl mb-2">All-in-one for $12/month. Try free for 14 days.</p>
+        <p className="text-white font-black text-xl mb-2">All-in-one from $14.99/month. Try free for 7 days.</p>
         <p className="text-gray-400 text-sm mb-6">POS, inventory, VAT invoicing, HR, multi-channel orders. Built for UAE businesses. No credit card required.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
+        <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm">
           Start free trial <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -1764,7 +1764,7 @@ const POSTS: Record<string, {
     categoryColor: 'text-cyan-600 bg-cyan-50 border-cyan-100',
     date: 'June 2026',
     readTime: '7 min',
-    lead: "A cash register costs AED 300 and does one thing. A POS costs $12/month and runs your entire business. Here is exactly when each makes sense.",
+    lead: "A cash register costs AED 300 and does one thing. A POS costs $14.99/month and runs your entire business. Here is exactly when each makes sense.",
     toc: [
       { id: 'what-a-cash-register-does', label: 'What a cash register does' },
       { id: 'what-a-pos-does',           label: 'What a POS does' },
@@ -1805,7 +1805,7 @@ const POSTS: Record<string, {
     categoryColor: 'text-rose-600 bg-rose-50 border-rose-100',
     date: 'June 2026',
     readTime: '6 min',
-    lead: "Eight hours a week on spreadsheet admin. That is AED 20,000 a year in your time — for a system you could replace for $12 a month.",
+    lead: "Eight hours a week on spreadsheet admin. That is AED 20,000 a year in your time — for a system you could replace for $14.99 a month.",
     toc: [
       { id: 'why-spreadsheets-feel-safe', label: 'Why spreadsheets feel safe' },
       { id: 'what-they-cost-you',         label: 'What they actually cost' },
@@ -1915,21 +1915,21 @@ const POSTS: Record<string, {
     Content: ExiusCartVsZohoPost,
   },
   'all-in-one-business-software-uae-under-aed-100': {
-    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing From $12/Month',
-    seoTitle: 'All-in-One Business Software UAE — POS, Inventory, VAT Invoicing From $12/Month | ExiusCart',
-    seoDescription: 'Replace 5 separate subscriptions with one platform. ExiusCart gives UAE businesses POS, inventory, VAT invoicing, HR, and order management from $12/month.',
+    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing From $14.99/Month',
+    seoTitle: 'All-in-One Business Software UAE — POS, Inventory, VAT Invoicing From $14.99/Month | ExiusCart',
+    seoDescription: 'Replace 5 separate subscriptions with one platform. ExiusCart gives UAE businesses POS, inventory, VAT invoicing, HR, and order management from $14.99/month.',
     category: 'Growth',
     categoryColor: 'text-orange-600 bg-orange-50 border-orange-100',
     date: 'June 2026',
     readTime: '6 min',
-    lead: "Most UAE businesses pay AED 300–500 a month for separate subscriptions that don't talk to each other. Here is what one platform at $12–29/month covers instead.",
+    lead: "Most UAE businesses pay AED 300–500 a month for separate subscriptions that don't talk to each other. Here is what one platform from $14.99/month covers instead.",
     toc: [
       { id: 'the-subscription-sprawl-problem', label: 'The subscription sprawl problem' },
-      { id: 'what-you-get-starter',            label: 'Starter plan — $12/month' },
-      { id: 'what-you-get-premium',            label: 'Premium plan — $29/month' },
+      { id: 'what-you-get-starter',            label: 'Launch plan — $14.99/month' },
+      { id: 'what-you-get-premium',            label: 'Scale plan — $39.99/month' },
       { id: 'uae-specific-features',           label: 'UAE-specific features' },
       { id: 'who-its-for',                     label: 'Who it is for' },
-      { id: 'free-trial',                      label: '14-day free trial' },
+      { id: 'free-trial',                      label: '7-day free trial' },
     ],
     Content: AllInOneUnder100,
   },
@@ -2074,11 +2074,11 @@ function AdminBlogPostView({ post }: { post: AdminPost }) {
               <h3 className="text-3xl font-black text-white mb-2 leading-tight">
                 Run your business<br />the smart way.
               </h3>
-              <p className="text-gray-400 text-sm">14-day free trial. No credit card required.</p>
+              <p className="text-gray-400 text-sm">7-day free trial. No credit card required.</p>
             </div>
             <div className="flex flex-col gap-3 shrink-0">
               <Link
-                href="/register"
+                href="/register?plan=launch&billing=monthly"
                 className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm whitespace-nowrap"
               >
                 Start free trial <ArrowRight className="w-4 h-4" />
@@ -2182,9 +2182,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
                 <div className="mt-10 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
                   <p className="text-xs font-bold text-gray-900 mb-2">Try ExiusCart free</p>
-                  <p className="text-xs text-gray-500 mb-4 leading-relaxed">14 days, all features, no credit card.</p>
+                  <p className="text-xs text-gray-500 mb-4 leading-relaxed">7 days, all features, no credit card.</p>
                   <Link
-                    href="/register"
+                    href="/register?plan=launch&billing=monthly"
                     className="flex items-center justify-between gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-4 py-2.5 rounded-xl transition-all text-xs"
                   >
                     Get started <ArrowRight className="w-3.5 h-3.5" />
@@ -2211,11 +2211,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               <h3 className="text-3xl font-black text-white mb-2 leading-tight">
                 Run your business<br />the smart way.
               </h3>
-              <p className="text-gray-400 text-sm">14-day free trial. No credit card required.</p>
+              <p className="text-gray-400 text-sm">7-day free trial. No credit card required.</p>
             </div>
             <div className="flex flex-col gap-3 shrink-0">
               <Link
-                href="/register"
+                href="/register?plan=launch&billing=monthly"
                 className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm whitespace-nowrap"
               >
                 Start free trial <ArrowRight className="w-4 h-4" />

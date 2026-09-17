@@ -23,7 +23,7 @@ interface NexCode {
   is_used_up: boolean;
 }
 
-const PLAN_OPTIONS = ['premium', 'starter', 'free_trial', 'thedersi_basic'];
+const PLAN_OPTIONS = ['scale', 'growth', 'launch', 'free_trial', 'thedersi_free_forever', 'thedersi_lite'];
 
 function StatusBadge({ code }: { code: NexCode }) {
   if (!code.is_active) return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400">Deactivated</span>;
@@ -56,7 +56,7 @@ export default function ClientCodesPage() {
   // Create form state
   const [form, setForm] = useState({
     client_email: '',
-    plan_type: 'premium',
+    plan_type: 'scale',
     duration_months: '',
     max_uses: '1',
     max_shops: '1',
@@ -97,7 +97,7 @@ export default function ClientCodesPage() {
       });
       setNewCode(res.data);
       setCodes(prev => [res.data, ...prev]);
-      setForm({ client_email: '', plan_type: 'premium', duration_months: '', max_uses: '1', max_shops: '1', notes: '', code_expires_days: '' });
+      setForm({ client_email: '', plan_type: 'scale', duration_months: '', max_uses: '1', max_shops: '1', notes: '', code_expires_days: '' });
     } catch (err: any) {
       setCreateError(err.response?.data?.detail || 'Failed to generate code');
     } finally {

@@ -31,13 +31,14 @@ router = APIRouter()
 # Embedded-image cap inside the rich editor's content — same reasoning as
 # every other plan-tiered limit in this codebase (PLAN_PRODUCT_LIMITS in
 # products.py): a real article needs room for more than the 3-image cap
-# product descriptions use, and premium sellers get more than starter.
+# product descriptions use, and higher plans get more than Launch.
 BLOG_IMAGE_LIMITS = {
     "free_trial": 3,
-    "thedersi_basic": 3,
-    "starter": 8,
-    "thedersi_pro": 8,
-    "premium": 15,
+    "thedersi_free_forever": 3,
+    "thedersi_lite": 3,
+    "launch": 8,
+    "growth": 12,
+    "scale": 15,
 }
 
 

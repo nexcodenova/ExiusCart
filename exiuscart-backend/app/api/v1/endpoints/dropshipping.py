@@ -2,8 +2,9 @@
 Dropshipping integration — CJ Dropshipping, HyperSKU.
 
 Plan limits:
-  starter    → CJ only (1 supplier)
-  premium    → all suppliers
+  launch     → 1 of CJ/AliExpress/Printful
+  growth     → 2 of CJ/AliExpress/Printful
+  scale      → all suppliers
   free_trial → no dropshipping
   thedersi_* → no dropshipping (fulfilled by TheDersi)
 """
@@ -409,20 +410,28 @@ POD_SUPPLIERS = {"printful", "printify", "gelato"}
 # fully; AliExpress pending their own API approval for order placement
 # (ALIEXPRESS_APP_KEY unset = disabled). Printify/Gelato only support
 # connecting an account, nothing places orders through them yet. HyperSKU
-# stays Premium-only here deliberately, not because it's incomplete — this
+# stays Scale-only here deliberately, not because it's incomplete — this
 # is a plan-tier/pricing call, left as-is rather than changed unilaterally.
-STARTER_SUPPLIER_CHOICES = {"cj", "aliexpress", "printful"}
+LAUNCH_SUPPLIER_CHOICES = {"cj", "aliexpress", "printful"}
+
+# Launch: pick 1 of the 3 above at a time. Growth: pick 2 of the same 3
+# (matches the "2 of 3 dropship suppliers" Growth advertises on the pricing
+# page). Scale: all suppliers, unlimited.
+SUPPLIER_LIMIT_BY_PLAN = {"launch": 1, "growth": 2}
 
 PLAN_ALLOWED_SUPPLIERS = {
-    # 1688/eprolo are Premium-only for now, like hypersku — the pricing
-    # page's Starter copy ("CJ, AliExpress, or Printful") doesn't mention
-    # them, so they aren't added to STARTER_SUPPLIER_CHOICES.
-    "premium":       {"cj", "hypersku", "aliexpress", "printful", "printify", "gelato", "1688", "eprolo"},
-    "starter":       STARTER_SUPPLIER_CHOICES,
+    # 1688/eprolo are Scale-only for now, like hypersku — the pricing page's
+    # Launch/Growth copy doesn't mention them, so they aren't added to
+    # LAUNCH_SUPPLIER_CHOICES.
+    #
+    # No thedersi_* entries here — every TheDersi tier (including Pro, which
+    # shares plan_type="launch" with real Launch customers) is blocked from
+    # dropshipping suppliers entirely by the is_thedersi_shop() check in
+    # _check_supplier_allowed below, before this dict is ever consulted.
+    "scale":         {"cj", "hypersku", "aliexpress", "printful", "printify", "gelato", "1688", "eprolo"},
+    "growth":        LAUNCH_SUPPLIER_CHOICES,
+    "launch":        LAUNCH_SUPPLIER_CHOICES,
     "free_trial":    set(),
-    "thedersi_basic":  set(),
-    "thedersi_growth": set(),
-    "thedersi_pro":    set(),
 }
 
 
@@ -435,10 +444,10 @@ def _get_plan(shop_id: int, db: Session) -> str:
 
 def _check_supplier_allowed(plan: str, supplier_type: str, shop_id: int, db: Session):
     # Checked via an active TheDersi connection, not plan_type — TheDersi's
-    # Growth/Premium tier maps to plan_type='starter', which PLAN_ALLOWED_
-    # SUPPLIERS would otherwise let through to CJ (starter customers' own
-    # CJ access), even though TheDersi sellers' fulfilment is always
-    # TheDersi's, never a dropship supplier.
+    # own Growth/Premium tier names map to plan_type='launch', which
+    # PLAN_ALLOWED_SUPPLIERS would otherwise let through to CJ (Launch
+    # customers' own CJ access), even though TheDersi sellers' fulfilment is
+    # always TheDersi's, never a dropship supplier.
     if is_thedersi_shop(shop_id, db):
         raise HTTPException(status_code=403, detail={
             "error": "not_available",
@@ -449,31 +458,33 @@ def _check_supplier_allowed(plan: str, supplier_type: str, shop_id: int, db: Ses
         if plan in ("free_trial",):
             raise HTTPException(status_code=403, detail={
                 "error": "plan_required",
-                "message": "Dropshipping is available on Starter (pick one supplier) and Premium (all suppliers) plans. Upgrade to get started.",
+                "message": "Dropshipping is available on Launch (pick one supplier), Growth (pick two), and Scale (all suppliers) plans. Upgrade to get started.",
             })
-        if plan == "starter":
+        if plan in ("launch", "growth"):
             raise HTTPException(status_code=403, detail={
                 "error": "upgrade_required",
                 "supplier": supplier_type,
-                "message": f"{supplier_type.title()} is available on Premium plans. Starter includes one dropshipping supplier of your choice — CJ, AliExpress, or Printful.",
+                "message": f"{supplier_type.title()} is available on Scale plans. {plan.title()} includes {'one' if plan == 'launch' else 'two'} dropshipping supplier{'s' if plan == 'growth' else ''} of your choice — CJ, AliExpress, or Printful.",
                 "signup_url": SUPPLIER_SIGNUP_LINKS.get(supplier_type, ""),
             })
         raise HTTPException(status_code=403, detail={"error": "not_allowed", "message": "Supplier not available on your plan."})
 
-    # Starter: one of CJ/AliExpress/Printful at a time, seller's choice —
-    # connecting a second one means disconnecting the first, or upgrading.
-    if plan == "starter" and supplier_type in STARTER_SUPPLIER_CHOICES:
-        other = db.query(DropshipConnection).filter(
+    # Launch: one of CJ/AliExpress/Printful at a time; Growth: two of the
+    # same three at once — seller's choice either way. Connecting past the
+    # limit means disconnecting one, or upgrading.
+    if plan in SUPPLIER_LIMIT_BY_PLAN and supplier_type in LAUNCH_SUPPLIER_CHOICES:
+        limit = SUPPLIER_LIMIT_BY_PLAN[plan]
+        active_count = db.query(DropshipConnection).filter(
             DropshipConnection.shop_id == shop_id,
-            DropshipConnection.supplier_type.in_(STARTER_SUPPLIER_CHOICES),
+            DropshipConnection.supplier_type.in_(LAUNCH_SUPPLIER_CHOICES),
             DropshipConnection.supplier_type != supplier_type,
             DropshipConnection.is_active == True,
-        ).first()
-        if other:
+        ).count()
+        if active_count >= limit:
             raise HTTPException(status_code=403, detail={
-                "error": "one_supplier_limit",
-                "connected_supplier": other.supplier_type,
-                "message": f"Your Starter plan includes one dropshipping supplier at a time. You already have {other.supplier_type.title()} connected — disconnect it first, or upgrade to Premium to use all suppliers together.",
+                "error": "supplier_limit_reached",
+                "limit": limit,
+                "message": f"Your {plan.title()} plan includes {limit} dropshipping supplier{'s' if limit != 1 else ''} at a time. Disconnect one first, or upgrade to Scale to use all suppliers together.",
             })
 
 
@@ -2065,7 +2076,7 @@ def list_connections(
             "name": "CJ Dropshipping",
             "description": "Free to use — pay per order only. No monthly fee.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["cj"],
-            "plan_required": "starter",
+            "plan_required": "launch",
             "connected": "cj" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "cj"), False),
             "locked": "cj" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
@@ -2076,7 +2087,7 @@ def list_connections(
             "name": "HyperSKU",
             "description": "Free to use — pay per order. Strong in Asia-Pacific & UAE.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["hypersku"],
-            "plan_required": "premium",
+            "plan_required": "scale",
             "connected": "hypersku" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "hypersku"), False),
             "locked": "hypersku" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
@@ -2087,7 +2098,7 @@ def list_connections(
             "name": "EPROLO",
             "description": "Free to use — pay per order only. Product import and order placement activate once ExiusCart's EPROLO API access is set up — connect now to be ready.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["eprolo"],
-            "plan_required": "premium",
+            "plan_required": "scale",
             "connected": "eprolo" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "eprolo"), False),
             "locked": "eprolo" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
@@ -2098,7 +2109,7 @@ def list_connections(
             "name": "AliExpress",
             "description": "The world's largest supplier catalog. Order placement is pending ExiusCart's AliExpress API approval — connect now, ordering activates once that's live.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["aliexpress"],
-            "plan_required": "starter",
+            "plan_required": "launch",
             "connected": "aliexpress" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "aliexpress"), False),
             "locked": "aliexpress" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
@@ -2109,7 +2120,7 @@ def list_connections(
             "name": "1688.com",
             "description": "Chinese wholesale marketplace — often 30-50% cheaper than AliExpress. Product import and order placement activate once ExiusCart finishes integrating a 1688 API provider — connect now to be ready.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["1688"],
-            "plan_required": "premium",
+            "plan_required": "scale",
             "connected": "1688" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "1688"), False),
             "locked": "1688" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
@@ -2120,7 +2131,7 @@ def list_connections(
             "name": "Printful",
             "description": "Custom hoodies, tees & more — design once, Printful prints and ships automatically. Design/mockup workflow activates soon.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["printful"],
-            "plan_required": "starter",
+            "plan_required": "launch",
             "connected": "printful" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "printful"), False),
             "locked": "printful" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
@@ -2131,7 +2142,7 @@ def list_connections(
             "name": "Printify",
             "description": "Large print-provider network with competitive per-unit pricing. Design/mockup workflow activates soon.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["printify"],
-            "plan_required": "premium",
+            "plan_required": "scale",
             "connected": "printify" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "printify"), False),
             "locked": "printify" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
@@ -2142,7 +2153,7 @@ def list_connections(
             "name": "Gelato",
             "description": "Local printing in 30+ countries — faster delivery, lower shipping cost. Design/mockup workflow activates soon.",
             "signup_url": SUPPLIER_SIGNUP_LINKS["gelato"],
-            "plan_required": "premium",
+            "plan_required": "scale",
             "connected": "gelato" in connected,
             "auto_fulfill_enabled": next((c.auto_fulfill_enabled for c in conns if c.supplier_type == "gelato"), False),
             "locked": "gelato" not in PLAN_ALLOWED_SUPPLIERS.get(plan, set()),
@@ -2410,10 +2421,10 @@ def toggle_auto_fulfill(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if plan not in ("premium",):
+    if plan not in ("growth", "scale"):
         raise HTTPException(status_code=403, detail={
             "error": "upgrade_required",
-            "message": "Auto-fulfill is a Premium feature. Upgrade to enable automatic order forwarding to your supplier.",
+            "message": "Auto-fulfill is available on Growth and Scale. Upgrade to enable automatic order forwarding to your supplier.",
         })
     conns = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop_id,

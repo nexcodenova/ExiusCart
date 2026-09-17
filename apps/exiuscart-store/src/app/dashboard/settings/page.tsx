@@ -98,8 +98,8 @@ export default function SettingsPage() {
 
     if (shopId) {
       // Detected via an active TheDersi connection, not plan_type —
-      // TheDersi's Growth/Premium tier maps to plan_type='starter', same
-      // as a direct customer, so a plan-string check alone misses them.
+      // TheDersi's own Growth/Premium tier names map to plan_type='launch',
+      // same as a direct customer, so a plan-string check alone misses them.
       channelsApi.getConnections(shopId)
         .then((r) => {
           const isDersi = (r.data ?? []).some((c: any) => c.channel_type === 'thedersi');

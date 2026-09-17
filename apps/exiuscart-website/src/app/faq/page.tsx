@@ -17,11 +17,11 @@ const CATEGORIES = [
       },
       {
         q: 'How do I get started?',
-        a: 'Click "Get Started" and create your account. No credit card needed. You get 14 days of full access instantly — all features unlocked from day one.',
+        a: 'Click "Get Started" and create your account. No credit card needed for Launch. You get immediate access — all features unlocked from day one.',
       },
       {
         q: 'Is there a free trial?',
-        a: 'Yes — 14 days, completely free. No credit card required. Every feature is unlocked during your trial so you can properly evaluate ExiusCart before committing.',
+        a: 'Launch is free for 7 days, no credit card required. Growth and Scale skip the free week and start at $1 for your first 7 days instead. Every plan unlocks full access immediately, no approval wait.',
       },
       {
         q: 'Do I need to install anything?',
@@ -35,15 +35,15 @@ const CATEGORIES = [
     faqs: [
       {
         q: 'How much does ExiusCart cost?',
-        a: 'Three plans, billed in USD: Free Trial (14 days, free), Starter ($12/month), and Premium ($29/month). One price worldwide.',
+        a: 'Three plans, billed in USD: Launch ($14.99/month, 7 days free), Growth ($24.99/month), and Scale ($39.99/month) — Growth and Scale start with 7 days at $1. One price worldwide.',
       },
       {
-        q: 'What is included in the Starter plan?',
-        a: 'Starter includes 3 staff accounts, up to 1,000 products, 20 GB storage, full POS, 500 invoices/month with logo, advanced analytics, TheDersi order sync up to 1,000 orders/month, and priority email support.',
+        q: 'What is included in the Launch plan?',
+        a: 'Launch includes 3 staff accounts, up to 1,000 products, 20 GB storage, full POS, 500 invoices/month with logo, advanced analytics, TheDersi order sync up to 1,000 orders/month, and priority email support.',
       },
       {
-        q: 'What does Premium include that Starter does not?',
-        a: 'Premium adds unlimited staff, unlimited products, 75 GB storage, custom invoice branding, multiple branches/locations, unlimited TheDersi order sync, unlimited invoices, and a dedicated account manager with 24/7 priority support.',
+        q: 'What does Growth or Scale include that Launch does not?',
+        a: 'Growth adds more sales channels and dropshipping suppliers, higher limits across the board, and unlocks AI Commerce & Product Studio features. Scale adds unlimited staff, unlimited products, 75 GB storage, custom invoice branding, multiple branches/locations, unlimited TheDersi order sync, unlimited invoices, and a dedicated account manager with 24/7 priority support.',
       },
       {
         q: 'Can I upgrade or downgrade anytime?',
@@ -55,7 +55,7 @@ const CATEGORIES = [
       },
       {
         q: 'What happens when my trial ends?',
-        a: 'Your data stays safe. You can choose a Starter or Premium plan to continue. If you don\'t upgrade, access is paused but nothing is deleted — you have 30 days to export your data.',
+        a: 'Your data stays safe. You can add a card to continue on your plan at any time. If you don\'t, access is paused but nothing is deleted — you have 30 days to export your data.',
       },
     ],
   },
@@ -69,7 +69,7 @@ const CATEGORIES = [
       },
       {
         q: 'Can I manage multiple branches or locations?',
-        a: 'Multiple branches are available on the Premium plan. Each branch has its own inventory, staff, and reporting. The Starter plan includes 1 branch.',
+        a: 'Multiple branches are available on the Scale plan. Each branch has its own inventory, staff, and reporting. The Launch plan includes 1 branch.',
       },
       {
         q: 'Does ExiusCart have a POS system?',
@@ -81,7 +81,7 @@ const CATEGORIES = [
       },
       {
         q: 'Can I run email marketing campaigns?',
-        a: 'Yes. ExiusCart has built-in email campaigns, SMS marketing, and Meta Ads lead capture. Starter plan includes up to 500 leads, Premium is unlimited.',
+        a: 'Yes. ExiusCart has built-in email campaigns, SMS marketing, and Meta Ads lead capture. Launch plan includes up to 500 leads, Growth up to 2,000, and Scale is unlimited.',
       },
     ],
   },
@@ -99,7 +99,7 @@ const CATEGORIES = [
       },
       {
         q: 'Does ExiusCart work with TheDersi marketplace?',
-        a: 'Yes. ExiusCart is the official management platform for TheDersi sellers. Orders from TheDersi sync into ExiusCart automatically. Free sellers get 50 orders/month; paid plans get up to 1,000 (Starter) or unlimited (Premium).',
+        a: 'Yes. ExiusCart is the official management platform for TheDersi sellers. Orders from TheDersi sync into ExiusCart automatically. Free sellers get 50 orders/month; paid plans get up to 1,000 (Launch), 5,000 (Growth), or unlimited (Scale).',
       },
       {
         q: 'Does ExiusCart work with WooCommerce?',
@@ -135,15 +135,15 @@ const CATEGORIES = [
     faqs: [
       {
         q: 'How do I get support?',
-        a: 'All plans include chat and email support. Premium plan includes priority support with a dedicated account manager and 24/7 availability.',
+        a: 'All plans include chat and email support. Scale plan includes priority support with a dedicated account manager and 24/7 availability.',
       },
       {
         q: 'Is there onboarding help?',
-        a: 'Yes. Every new account gets a free onboarding walkthrough. Premium users get a dedicated onboarding session with a real person from our team.',
+        a: 'Yes. Every new account gets a free onboarding walkthrough. Scale users get a dedicated onboarding session with a real person from our team.',
       },
       {
         q: 'What are your support hours?',
-        a: 'Standard support is available Sunday to Thursday, 9 AM – 6 PM UAE time. Premium plan includes 24/7 priority support.',
+        a: 'Standard support is available Sunday to Thursday, 9 AM – 6 PM UAE time. Scale plan includes 24/7 priority support.',
       },
     ],
   },
@@ -266,13 +266,13 @@ export default function FAQPage() {
                 <ArrowRight className="w-5 h-5 shrink-0" />
               </Link>
               <Link
-                href="/register"
+                href="/register?plan=launch&billing=monthly"
                 className="flex items-center justify-between gap-4 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-6 py-4 rounded-2xl transition-all"
               >
                 <span>Start free trial</span>
                 <ArrowRight className="w-5 h-5 shrink-0" />
               </Link>
-              <p className="text-center text-xs text-gray-600 mt-1">14 days free · No credit card required</p>
+              <p className="text-center text-xs text-gray-600 mt-1">7 days free · No credit card required</p>
             </div>
           </div>
         </div>

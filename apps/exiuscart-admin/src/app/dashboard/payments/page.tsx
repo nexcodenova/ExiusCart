@@ -150,7 +150,7 @@ export default function PaymentsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
           <div className="flex items-center justify-between">
-            <div><p className="text-gray-400 text-sm">Total Revenue</p><p className="text-xl font-bold text-white mt-1">{totalRevenue.toLocaleString()} AED</p></div>
+            <div><p className="text-gray-400 text-sm">Total Revenue</p><p className="text-xl font-bold text-white mt-1">${totalRevenue.toLocaleString()}</p></div>
             <div className="p-2.5 rounded-lg bg-[#6B3FD9]/10 text-[#6B3FD9]"><TrendingUp className="w-5 h-5" /></div>
           </div>
         </div>

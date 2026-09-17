@@ -75,8 +75,8 @@ export default function DropshippingPage() {
   const connectedCount = suppliers.filter((s) => s.connected).length;
   const availableCount = suppliers.filter((s) => !s.connected && !s.locked).length;
   // Detected via an active TheDersi connection, not plan_type — TheDersi's
-  // Growth/Premium tier maps to plan='starter', same as a direct customer,
-  // so a plan-string check alone would miss those sellers.
+  // own Growth/Premium tier names map to plan='launch', same as a direct
+  // customer, so a plan-string check alone would miss those sellers.
   const isTheDersiUser = hasTheDersi;
 
   const filteredSuppliers = useMemo(() => suppliers.filter((s) => {
@@ -133,7 +133,7 @@ export default function DropshippingPage() {
           </div>
           <h2 className="text-lg font-semibold text-foreground">Dropshipping is for direct ExiusCart sellers</h2>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Your store is managed by <strong className="text-foreground">TheDersi</strong>, and your orders are fulfilled through TheDersi&apos;s own logistics. Dropshipping and print-on-demand suppliers like CJ, HyperSKU, AliExpress, Printful &amp; Gelato are only available to sellers on a direct ExiusCart plan (Starter or Premium).
+            Your store is managed by <strong className="text-foreground">TheDersi</strong>, and your orders are fulfilled through TheDersi&apos;s own logistics. Dropshipping and print-on-demand suppliers like CJ, HyperSKU, AliExpress, Printful &amp; Gelato are only available to sellers on a direct ExiusCart plan (Launch, Growth, or Scale).
           </p>
           <Button asChild className="mt-6">
             <Link href="/dashboard/channels">Back to Channels</Link>
@@ -169,16 +169,18 @@ export default function DropshippingPage() {
         </div>
       </div>
 
-      {/* Starter banner */}
-      {!loading && plan === 'starter' && (
+      {/* Launch/Growth banner */}
+      {!loading && (plan === 'launch' || plan === 'growth') && (
         <Card className="bg-muted/60 rounded-xl">
           <CardContent className="flex items-center justify-between gap-4 px-5 py-4">
             <div>
-              <p className="text-sm font-semibold text-foreground">CJ Dropshipping is included in your Starter plan</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Upgrade to Premium to unlock HyperSKU, EPROLO, AliExpress, Printful, Printify, Gelato, and auto-fulfill.</p>
+              <p className="text-sm font-semibold text-foreground">
+                {plan === 'launch' ? '1 dropshipping supplier is included in your Launch plan' : '2 dropshipping suppliers are included in your Growth plan'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Upgrade to Scale to unlock HyperSKU, EPROLO, 1688, Printify, Gelato, and auto-fulfill.</p>
             </div>
             <Button asChild size="sm" className="shrink-0 whitespace-nowrap">
-              <Link href="/dashboard/billing">Upgrade to Premium</Link>
+              <Link href="/dashboard/billing">Upgrade to Scale</Link>
             </Button>
           </CardContent>
         </Card>

@@ -25,14 +25,16 @@ interface ShopRow {
 
 const PLAN_OPTIONS = [
   { value: 'free_trial', label: 'Free Trial' },
-  { value: 'starter', label: 'Starter' },
-  { value: 'premium', label: 'Premium' },
+  { value: 'launch', label: 'Launch' },
+  { value: 'growth', label: 'Growth' },
+  { value: 'scale', label: 'Scale' },
 ];
 
 const PLAN_COLORS: Record<string, string> = {
   free_trial: 'text-blue-400',
-  starter:    'text-gray-300',
-  premium:    'text-[#6B3FD9]',
+  launch:     'text-gray-300',
+  growth:     'text-[#0D70BB]',
+  scale:      'text-[#6B3FD9]',
   none:       'text-gray-500',
 };
 

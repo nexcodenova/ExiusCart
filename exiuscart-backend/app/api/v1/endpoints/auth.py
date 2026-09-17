@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
 import jwt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -56,7 +55,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
 
-    display_name = user_data.owner_name or user_data.full_name or "Shop Owner"
+    display_name = user_data.owner_name or user_data.full_name or "Store Owner"
     is_thedersi_staff = user_data.email.lower().endswith(THEDERSI_STAFF_DOMAIN)
 
     hashed_password = get_password_hash(user_data.password)
@@ -73,7 +72,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
     # Auto-create shop for every new user
     if True:
-        shop_name = user_data.shop_name or f"{display_name}'s Shop"
+        shop_name = user_data.shop_name or f"{display_name}'s Store"
         slug = f"{_slugify(shop_name)}-{uuid.uuid4().hex[:6]}"
         # Direct ExiusCart signups always default to USD, regardless of
         # country — sellers can change this anytime in Settings. Only
@@ -89,12 +88,12 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         db.add(shop)
         db.flush()  # get shop.id before creating subscription
 
-        # @thedersi.lk staff → premium, active immediately, never expires
+        # @thedersi.lk staff → scale, active immediately, never expires
         if is_thedersi_staff:
             now = datetime.now(timezone.utc)
             sub = Subscription(
                 shop_id=shop.id,
-                plan_type="premium",
+                plan_type="scale",
                 billing_type="yearly",
                 status="active",
                 amount_paid=0,
@@ -104,7 +103,30 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
                 expires_at=None,               # never expires
             )
             db.add(sub)
-            logger.info(f"[domain_thedersi] premium granted to {new_user.email}")
+            logger.info(f"[domain_thedersi] scale granted to {new_user.email}")
+        elif user_data.plan_type == "launch":
+            # Arrived from the pricing page's Launch "Try for free" CTA — a
+            # real 7-day free trial, no payment info at all, immediate
+            # access once the email is verified (no admin approval gate —
+            # making a signup wait on manual review kills conversion for
+            # something that costs nothing and requires no card). Growth/
+            # Scale never reach this branch: they have no free week, only
+            # the $1 checkout flow (see auth.py's checkout_signup).
+            from app.core.lemonsqueezy import TRIAL_FREE_DAYS
+            now = datetime.now(timezone.utc)
+            trial_ends = now + timedelta(days=TRIAL_FREE_DAYS)
+            trial_sub = Subscription(
+                shop_id=shop.id,
+                plan_type=user_data.plan_type,
+                billing_type=user_data.billing_type or "monthly",
+                status="trial",
+                amount_paid=0,
+                currency=currency,
+                starts_at=now,
+                trial_ends_at=trial_ends,
+                expires_at=trial_ends,
+            )
+            db.add(trial_sub)
 
     db.commit()
     db.refresh(new_user)
@@ -160,38 +182,42 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
     otp.is_used = True
     user.is_verified = True
 
-    # Create pending_approval subscription — trial countdown starts only after admin approves
-    is_pending = False
+    # Immediate access on email verification — no admin approval gate. A
+    # signup that costs nothing and needs no card should never sit waiting
+    # on manual review; that's pure lost conversion. register() already
+    # creates a real "trial" subscription for a specific plan (Launch); this
+    # fallback only fires for a plan-less organic signup that somehow has no
+    # subscription row yet, giving it the same 7-day trial everyone else gets.
     shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
     if shop:
         existing_sub = db.query(Subscription).filter(Subscription.shop_id == shop.id).first()
         if not existing_sub:
+            from app.core.lemonsqueezy import TRIAL_FREE_DAYS
+            now = datetime.now(timezone.utc)
             trial_sub = Subscription(
                 shop_id=shop.id,
                 plan_type="free_trial",
                 billing_type="monthly",
-                status="pending_approval",
+                status="trial",
                 amount_paid=0,
-                currency=shop.currency or "AED",
+                currency=shop.currency or "USD",
+                starts_at=now,
+                trial_ends_at=now + timedelta(days=TRIAL_FREE_DAYS),
+                expires_at=now + timedelta(days=TRIAL_FREE_DAYS),
             )
             db.add(trial_sub)
-            is_pending = True
 
     db.commit()
     db.refresh(user)
 
-    _email_pool.submit(send_welcome_email, user.email, user.full_name or "",
-                       "Free Trial (Pending Approval)")
-
-    if is_pending:
-        _email_pool.submit(
-            send_new_signup_notification,
-            user.full_name or "",
-            user.email,
-            shop.name if shop else "",
-            "Free Trial",
-        )
-        return JSONResponse(content={"status": "pending_approval", "email": user.email})
+    _email_pool.submit(send_welcome_email, user.email, user.full_name or "", "Free Trial")
+    _email_pool.submit(
+        send_new_signup_notification,
+        user.full_name or "",
+        user.email,
+        shop.name if shop else "",
+        "Free Trial",
+    )
 
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token, user=UserResponse.model_validate(user))
@@ -202,8 +228,12 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
 class CheckoutSignupIn(BaseModel):
     business_name: str
     email: str
-    plan_type: str    # starter | premium
-    billing_type: str  # monthly | yearly
+    plan_type: str          # launch | growth | scale
+    billing_type: str       # monthly | yearly — the REAL cadence once billed
+    # true = the $1-for-14-days trial checkout (e.g. Scale's "Try for $1"
+    # CTA) — charges $1 today via a dedicated Lemon Squeezy variant instead
+    # of the plan's full price; false = a normal full-price checkout.
+    trial_dollar: bool = False
 
 
 @router.post("/checkout-signup")
@@ -217,7 +247,7 @@ async def checkout_signup(data: CheckoutSignupIn, db: Session = Depends(get_db))
     """
     from app.core.lemonsqueezy import create_checkout
 
-    if data.plan_type not in ("starter", "premium"):
+    if data.plan_type not in ("launch", "growth", "scale"):
         raise HTTPException(status_code=422, detail="Invalid plan_type")
     if data.billing_type not in ("monthly", "yearly"):
         raise HTTPException(status_code=422, detail="Invalid billing_type")
@@ -236,6 +266,7 @@ async def checkout_signup(data: CheckoutSignupIn, db: Session = Depends(get_db))
             customer_email=data.email,
             customer_name=data.business_name,
             new_signup_business_name=data.business_name,
+            trial_dollar=data.trial_dollar,
         )
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
@@ -330,12 +361,10 @@ def setup_password(data: SetupPasswordIn, db: Session = Depends(get_db)):
     """
     Redeems a one-time setup link (issued during TheDersi provision, or after a
     pre-signup checkout payment). Token is a signed JWT (purpose=setup_password, exp=48h).
-
-    Setting the password does NOT by itself grant access — if the account's
-    subscription is still pending_approval (e.g. a paid pre-signup awaiting
-    admin review), this only sets the password and returns pending_approval;
-    it does not log them in or send the TheDersi-specific welcome email, which
-    only applies to actual TheDersi-provisioned accounts.
+    Sets the password and logs the user straight in — no approval gate. A
+    pre-signup payment already confirmed via the Lemon Squeezy webhook grants
+    real access immediately (see lemonsqueezy_webhook.py); this only sets the
+    password on top of that.
     """
     try:
         payload = jwt.decode(
@@ -358,24 +387,15 @@ def setup_password(data: SetupPasswordIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
 
     user.hashed_password = get_password_hash(data.password)
+    user.is_active = True
     db.commit()
     db.refresh(user)
 
     shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
-    sub = (
-        db.query(Subscription).filter(Subscription.shop_id == shop.id).order_by(Subscription.id.desc()).first()
-        if shop else None
-    )
-
-    if sub and sub.status == "pending_approval":
-        return JSONResponse(content={"status": "pending_approval", "email": user.email})
-
-    user.is_active = True
-    db.commit()
 
     # Detected via an active TheDersi connection, not plan_type — TheDersi's
-    # Growth/Premium tier maps to plan_type='starter', same as a direct
-    # customer, so a plan_type check alone would miss those sellers.
+    # own Growth/Premium tier names map to our plan_type='launch', same as a
+    # direct customer, so a plan_type check alone would miss those sellers.
     if shop and is_thedersi_shop(shop.id, db):
         _email_pool.submit(send_thedersi_welcome_email, user.email, user.full_name or "")
 

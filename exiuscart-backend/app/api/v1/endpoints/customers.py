@@ -15,12 +15,13 @@ from app.api.v1.deps import get_current_user
 router = APIRouter()
 
 CUSTOMER_LIMITS: dict = {
-    "free_trial":    100,
-    "thedersi_basic": 100,
-    "starter":       5_000,
-    "thedersi_pro":  5_000,
-    "premium":       None,   # unlimited
-    "lifetime":      None,
+    "free_trial":            100,
+    "thedersi_free_forever": 100,
+    "thedersi_lite":         100,
+    "launch":                5_000,
+    "growth":                25_000,
+    "scale":                 None,   # unlimited
+    "lifetime":              None,
 }
 
 # Spend above this (in the shop's own currency, unconverted) = VIP. Shared by

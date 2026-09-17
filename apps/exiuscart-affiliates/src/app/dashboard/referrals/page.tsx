@@ -28,16 +28,20 @@ const STATUS_COLORS: Record<string, string> = {
   active:           'bg-green-100 text-green-700',
   pending_approval: 'bg-yellow-100 text-yellow-700',
   trial:            'bg-blue-100 text-blue-700',
+  trial_dollar:     'bg-purple-100 text-purple-700',
   registered:       'bg-gray-100 text-gray-600',
   expired:          'bg-red-100 text-red-600',
+  cancelled:        'bg-gray-100 text-gray-500',
 };
 
 const STATUS_LABELS: Record<string, string> = {
   active:           'Converted',
   pending_approval: 'Pending Approval',
-  trial:            'Trial',
+  trial:            'Free Trial',
+  trial_dollar:     '$1 Trial',
   registered:       'Registered',
   expired:          'Expired',
+  cancelled:        'Cancelled',
 };
 
 export default function ReferralsPage() {
@@ -54,7 +58,7 @@ export default function ReferralsPage() {
 
   const totalSignups = referrals.length;
   const converted = referrals.filter((r) => r.status === 'active').length;
-  const pending = referrals.filter((r) => r.status === 'pending_approval' || r.status === 'trial' || r.status === 'registered').length;
+  const pending = referrals.filter((r) => r.status === 'pending_approval' || r.status === 'trial' || r.status === 'trial_dollar' || r.status === 'registered').length;
 
   return (
     <div>

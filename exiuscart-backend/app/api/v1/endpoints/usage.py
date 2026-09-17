@@ -22,42 +22,52 @@ router = APIRouter()
 
 EMAIL_LIMITS: dict[str, dict] = {
     "invoice": {
-        "free_trial":     50,
-        "thedersi_basic": 50,
-        "starter":        1000,
-        "thedersi_pro":   None,   # unlimited
-        "premium":        None,
+        "free_trial":            50,
+        "thedersi_free_forever": 50,
+        "thedersi_lite":         50,
+        "launch":                1000,
+        "growth":                5000,
+        "scale":                 None,
     },
     "quotation": {
-        "free_trial":     10,
-        "thedersi_basic": 10,
-        "starter":        100,
-        "thedersi_pro":   None,
-        "premium":        None,
+        "free_trial":            10,
+        "thedersi_free_forever": 10,
+        "thedersi_lite":         10,
+        "launch":                100,
+        "growth":                500,
+        "scale":                 None,
     },
     "marketing": {
-        "free_trial":     0,
-        "thedersi_basic": 0,
-        "starter":        200,
-        "thedersi_pro":   None,
-        "premium":        None,
+        "free_trial":            0,
+        "thedersi_free_forever": 0,
+        "thedersi_lite":         0,
+        "launch":                200,
+        "growth":                2000,
+        "scale":                 None,
     },
 }
 
+# Note: TheDersi Pro (plan_type="launch") shows Launch's own limits here —
+# this is a usage-dashboard *display* table, not an enforcement gate (that's
+# MONTHLY_ORDER_LIMITS in app/core/thedersi.py, which does special-case
+# Pro's unlimited orders via is_thedersi_pro_shop()). Not worth threading a
+# shop-aware override through every display table for a usage-page number.
 ORDER_LIMITS: dict = {
-    "free_trial":     50,
-    "thedersi_basic": 50,
-    "starter":        1000,
-    "thedersi_pro":   None,
-    "premium":        None,
+    "free_trial":            50,
+    "thedersi_free_forever": 50,
+    "thedersi_lite":         50,
+    "launch":                1000,
+    "growth":                5000,
+    "scale":                 None,
 }
 
 PRODUCT_LIMITS: dict = {
-    "free_trial":     25,
-    "thedersi_basic": 25,
-    "starter":        1000,
-    "thedersi_pro":   1000,
-    "premium":        None,
+    "free_trial":            25,
+    "thedersi_free_forever": 25,
+    "thedersi_lite":         25,
+    "launch":                1000,
+    "growth":                10000,
+    "scale":                 None,
 }
 
 

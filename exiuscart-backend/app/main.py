@@ -147,9 +147,13 @@ _MIGRATIONS = [
         requested_at TIMESTAMPTZ DEFAULT NOW(),
         paid_at TIMESTAMPTZ
     );""",
-    # Back-fill: free_trial subscription for verified shops that have none
-    """INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at)
-       SELECT s.id, 'free_trial', 'monthly', 'pending_approval', 0, COALESCE(s.currency, 'AED'), NOW()
+    # Back-fill: free_trial subscription for verified shops that have none.
+    # Status is 'trial' (immediate access, 7-day countdown) rather than
+    # 'pending_approval' — the approval gate was removed from every real
+    # signup path, so a backfilled orphaned shop must never be the one place
+    # that still locks someone behind manual review.
+    """INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at, trial_ends_at, expires_at)
+       SELECT s.id, 'free_trial', 'monthly', 'trial', 0, COALESCE(s.currency, 'USD'), NOW(), NOW() + INTERVAL '7 days', NOW() + INTERVAL '7 days'
        FROM shops s JOIN users u ON u.id = s.owner_id
        WHERE u.is_verified = TRUE
          AND NOT EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.shop_id = s.id);""",
@@ -221,6 +225,35 @@ _MIGRATIONS = [
     # level, comment/duet/stitch, commercial disclosure) — must persist since
     # a post can be scheduled for later, not just published instantly.
     "ALTER TABLE social_posts ADD COLUMN IF NOT EXISTS platform_options_json TEXT;",
+    # Real trial state machine: Launch = 7 days free (trial_ends_at), then
+    # full billing directly (no $1 stage). Growth/Scale (no free week) = $1
+    # for 7 days (trial_dollar_ends_at), then full billing. See
+    # app/core/lemonsqueezy.py and app/core/subscription_lifecycle.py.
+    "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS trial_dollar_ends_at TIMESTAMPTZ;",
+    # Plan rename: ExiusCart's own plans are "launch"/"growth"/"scale"
+    # everywhere in code now, never "starter"/"premium" — rename any
+    # existing rows so the database matches. TheDersi's own tier names were
+    # untouched at the time this ran — see the separate TheDersi migration
+    # a few lines below for their later restructure.
+    "UPDATE subscriptions SET plan_type = 'launch' WHERE plan_type = 'starter';",
+    "UPDATE subscriptions SET plan_type = 'scale' WHERE plan_type = 'premium';",
+    "UPDATE subscription_payments SET plan_type = 'launch' WHERE plan_type = 'starter';",
+    # 2026-09-17 TheDersi plan restructure: thedersi_basic → thedersi_free_forever
+    # (own name, same limits), thedersi_pro → launch (Pro now shares Launch's
+    # real plan_type/feature set, with Pro-specific restrictions layered on
+    # via is_thedersi_pro_shop() rather than a distinct plan_type — see
+    # app/core/thedersi.py). No existing row needs to become thedersi_lite;
+    # any live TheDersi seller synced under the old "growth" tier name is
+    # still recognized (THEDERSI_TIER_MAP keeps "growth" mapped to
+    # thedersi_lite going forward), this migration is only about existing
+    # subscription rows already stored under the two retired plan_type values.
+    "UPDATE subscriptions SET plan_type = 'thedersi_free_forever' WHERE plan_type = 'thedersi_basic';",
+    "UPDATE subscriptions SET plan_type = 'launch' WHERE plan_type = 'thedersi_pro';",
+    "UPDATE subscription_payments SET plan_type = 'thedersi_free_forever' WHERE plan_type = 'thedersi_basic';",
+    "UPDATE subscription_payments SET plan_type = 'launch' WHERE plan_type = 'thedersi_pro';",
+    "UPDATE subscription_payments SET plan_type = 'scale' WHERE plan_type = 'premium';",
+    "UPDATE partner_licenses SET plan_type = 'launch' WHERE plan_type = 'starter';",
+    "UPDATE partner_licenses SET plan_type = 'scale' WHERE plan_type = 'premium';",
 ]
 
 for _sql in _MIGRATIONS:

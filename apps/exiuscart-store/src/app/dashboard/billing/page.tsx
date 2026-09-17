@@ -11,21 +11,25 @@ import {
   ChevronRight, Calendar, DollarSign, Rocket, LifeBuoy,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useCurrency, symFor, type Currency } from '@/components/providers/currency-provider';
+import { symFor, type Currency } from '@/components/providers/currency-provider';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 // ── Pricing config ─────────────────────────────────────────────────────────────
-const CURRENCY_META: Record<Currency, { symbol: string; flag: string; country: string; paymentNote: string }> = {
-  AED: { symbol: 'AED', flag: '🇦🇪', country: 'United Arab Emirates', paymentNote: 'UAE bank cards only (Visa / Mastercard issued in UAE)' },
-  USD: { symbol: 'USD', flag: '🌍',   country: 'International',        paymentNote: 'International Visa / Mastercard accepted' },
-  LKR: { symbol: 'LKR', flag: '🇱🇰', country: 'Sri Lanka',            paymentNote: 'Sri Lanka bank cards accepted' },
-  EUR: { symbol: 'EUR', flag: '🇪🇺', country: 'Europe',               paymentNote: 'European Visa / Mastercard accepted' },
-  INR: { symbol: 'INR', flag: '🇮🇳', country: 'India',                paymentNote: 'Indian Visa / Mastercard / UPI accepted' },
-};
+// ExiusCart's own Launch/Growth/Scale subscription is billed by Lemon
+// Squeezy in USD ONLY, worldwide — one real price, no region-detected
+// conversion — same reason apps/exiuscart-website/src/config/pricing.ts is
+// USD-only. This used to vary by the shop's own operational currency (the
+// currency they invoice THEIR customers in, from useCurrency()), which was
+// a real bug: a UAE shop billed in AED would see a converted "AED 92/month"
+// price here that had nothing to do with what Lemon Squeezy actually
+// charges their card. Mirrors pricing.ts exactly.
+const PAYMENT_NOTE = 'Visa / Mastercard accepted worldwide';
 
-const PLAN_RANK: Record<string, number> = { free_trial: 0, starter: 1, premium: 2 };
+// ExiusCart's own plans are "launch"/"growth"/"scale" everywhere — in code,
+// in the database, and here — never "starter"/"premium" (retired names).
+const PLAN_RANK: Record<string, number> = { free_trial: 0, launch: 1, growth: 2, scale: 3 };
 const TD_RANK:   Record<string, number> = { free: 0, growth: 1, pro: 2 };
 
 // Advertised product ceiling per plan — real marketing copy already used in
@@ -33,48 +37,40 @@ const TD_RANK:   Record<string, number> = { free: 0, growth: 1, pro: 2 };
 // server-enforced cap (PLAN_CATALOGUE tracks staff limits but not products).
 // Paired with the real product count from /subscription/usage so the
 // sidebar's usage bar shows a genuine count against a genuine plan promise.
-const PRODUCT_CAP: Record<string, number | null> = { free_trial: 25, starter: 1000, premium: null };
+const PRODUCT_CAP: Record<string, number | null> = { free_trial: 25, launch: 1000, growth: 10000, scale: null };
 
-const PLAN_PRICING: Record<Currency, { starter: number; premium: number; extraStaff: number }> = {
-  AED: { starter: 45,   premium: 99,   extraStaff: 15  },
-  USD: { starter: 12,   premium: 29,   extraStaff: 5   },
-  LKR: { starter: 3800, premium: 8900, extraStaff: 1400 },
-  EUR: { starter: 11,   premium: 27,   extraStaff: 4   },
-  INR: { starter: 999,  premium: 2399, extraStaff: 399 },
-};
+// Mirrors apps/exiuscart-website/src/config/pricing.ts exactly — the one
+// real price Lemon Squeezy actually charges.
+const PLAN_PRICING = { launch: 14.99, growth: 24.99, scale: 39.99, extraStaff: 5 };
 
-// Yearly price — computed, not hand-picked per currency: 2 months free
-// (pay for 10, matching exiuscart.com/pricing's real "save 17% billing
-// yearly" — 2/12 ≈ 16.7%, the site rounds it to 17%), applied uniformly so
-// every currency gets a real yearly price instead of only AED/USD.
-// Checkout itself is billing_type-based, not currency-based (see
-// VARIANT_MAP in lemonsqueezy.py — one yearly variant for every currency),
-// so there was never a real reason to gate this to two of five currencies.
+// Yearly price: 3 months free (pay for 9), matching exiuscart.com/pricing's
+// real "save 25% billing yearly" — 1 - 9/12 = exactly 25%.
 function yearlyPrice(monthly: number): number {
-  return monthly * 10;
+  return monthly * 9;
 }
 
-// PLAN_PRICING (and yearlyPrice()'s output) are fixed, business-set price
-// points already denominated in the given currency (AED shops really pay
-// AED 45/month, not a live-converted amount) — never run them through
-// useCurrency()'s fmt(),
-// which assumes its input is in the shop's baseCurrency and would convert
-// it a second time (e.g. AED 999 ends up shown as "AED 3,668.83", the FX
-// rate applied on top of an amount that was never in the base currency to
-// begin with). This formats them with the right symbol, no conversion.
-function fmtPlanPrice(amount: number, currency: Currency): string {
+function fmtPlanPrice(amount: number): string {
+  return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// For displaying a REAL historical charge exactly as it was recorded
+// (currentPlan.currency / billingHistory item.currency) — some existing
+// subscriptions predate the USD-only pivot and were genuinely charged in
+// another currency. Never converted, just formatted with the right symbol.
+function fmtRecordedAmount(amount: number, currency: string): string {
   const formatted = amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const sym = symFor(currency);
+  const sym = symFor((currency as Currency) || 'USD');
   return sym.length <= 1 ? `${sym}${formatted}` : `${sym} ${formatted}`;
 }
 
 type BillingPeriod = 'monthly' | 'yearly';
 
-const makePlans = (currency: Currency, period: BillingPeriod) => {
-  const p = PLAN_PRICING[currency];
+const makePlans = (period: BillingPeriod) => {
+  const p = PLAN_PRICING;
   const useYearly = period === 'yearly';
-  const starterPrice = useYearly ? yearlyPrice(p.starter) : p.starter;
-  const premiumPrice = useYearly ? yearlyPrice(p.premium) : p.premium;
+  const launchPrice = useYearly ? yearlyPrice(p.launch) : p.launch;
+  const growthPrice = useYearly ? yearlyPrice(p.growth) : p.growth;
+  const scalePrice = useYearly ? yearlyPrice(p.scale) : p.scale;
   const periodLabel = useYearly ? 'year' : 'month';
   return [
     {
@@ -99,12 +95,12 @@ const makePlans = (currency: Currency, period: BillingPeriod) => {
       popular: false,
     },
     {
-      id: 'starter',
-      name: 'Starter',
-      price: starterPrice,
-      priceLabel: fmtPlanPrice(starterPrice, currency),
+      id: 'launch',
+      name: 'Launch',
+      price: launchPrice,
+      priceLabel: fmtPlanPrice(launchPrice),
       period: periodLabel,
-      description: 'For growing shops ready to scale',
+      description: 'For growing stores ready to scale',
       badge: 'Most Popular',
       features: [
         { text: '3 Staff accounts',                      included: true  },
@@ -121,10 +117,33 @@ const makePlans = (currency: Currency, period: BillingPeriod) => {
       popular: true,
     },
     {
-      id: 'premium',
-      name: 'Premium',
-      price: premiumPrice,
-      priceLabel: fmtPlanPrice(premiumPrice, currency),
+      id: 'growth',
+      name: 'Growth',
+      price: growthPrice,
+      priceLabel: fmtPlanPrice(growthPrice),
+      period: periodLabel,
+      description: 'More channels, more suppliers, more room to grow',
+      badge: null,
+      features: [
+        { text: '6 Staff accounts',                      included: true  },
+        { text: 'Up to 10,000 products',                 included: true  },
+        { text: '40 GB storage',                         included: true  },
+        { text: 'Full POS',                              included: true  },
+        { text: '3 of 8+ sales channels',                included: true  },
+        { text: '2 of 3 dropship suppliers',             included: true  },
+        { text: 'Advanced analytics',                    included: true  },
+        { text: '1 branch / location',                   included: true  },
+        { text: 'TheDersi order sync (5,000 orders/mo)', included: true  },
+        { text: 'Custom invoice branding',               included: false },
+        { text: 'Priority email support',                included: true  },
+      ],
+      popular: false,
+    },
+    {
+      id: 'scale',
+      name: 'Scale',
+      price: scalePrice,
+      priceLabel: fmtPlanPrice(scalePrice),
       period: periodLabel,
       description: 'Full power for serious operations',
       badge: null,
@@ -133,6 +152,7 @@ const makePlans = (currency: Currency, period: BillingPeriod) => {
         { text: 'Unlimited products',              included: true  },
         { text: '75 GB storage',                   included: true  },
         { text: 'Full POS + inventory mgmt',       included: true  },
+        { text: 'All sales channels & suppliers',  included: true  },
         { text: 'Custom invoice branding',         included: true  },
         { text: 'Full analytics suite',            included: true  },
         { text: 'Multiple branches',               included: true  },
@@ -170,8 +190,8 @@ const THEDERSI_PLANS = [
     ],
   },
   {
-    id: 'growth',
-    name: 'Growth',
+    id: 'growth', // internal id unchanged — TheDersi renamed the tier's display name from "Growth" to "Lite", not its identity
+    name: 'Lite',
     price: 'LKR 799',
     priceSub: '8% commission + LKR 799/mo',
     badge: 'Popular',
@@ -215,7 +235,6 @@ const THEDERSI_PLANS = [
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function BillingPage() {
-  const { currency, convertBetween } = useCurrency();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'card' | 'dkc'>('card');
@@ -257,13 +276,16 @@ export default function BillingPage() {
     });
   }, [shopId]);
 
-  const plans = makePlans(currency, billingPeriod);
-  const meta = CURRENCY_META[currency];
+  const plans = makePlans(billingPeriod);
 
-  const theDersiPlanType = currentPlan?.plan_type ?? 'thedersi_basic';
+  // TheDersi Pro shares plan_type="launch" (and their internal "Official"
+  // tier shares "scale") with real direct ExiusCart customers — safe here
+  // since this whole block only ever runs for a confirmed TheDersi shop
+  // (isTheDersiShop, set from real channel connections above).
+  const theDersiPlanType = currentPlan?.plan_type ?? 'thedersi_free_forever';
   const theDersiCurrentId =
-    theDersiPlanType === 'thedersi_pro' || theDersiPlanType === 'pro' ? 'pro' :
-    theDersiPlanType === 'thedersi_growth' || theDersiPlanType === 'starter' || theDersiPlanType === 'growth' ? 'growth' :
+    theDersiPlanType === 'launch' || theDersiPlanType === 'scale' ? 'pro' :
+    theDersiPlanType === 'thedersi_lite' ? 'growth' :
     'free';
 
 
@@ -286,9 +308,21 @@ export default function BillingPage() {
 
       // Real paid upgrades (not downgrades, not free trial) go through Lemon
       // Squeezy checkout — the plan only activates once payment is confirmed.
-      if (!isDowngradeFlow && (selectedPlan === 'starter' || selectedPlan === 'premium')) {
-        const res = await subscriptionApi.createCheckout(shopId, selectedPlan, billingPeriod);
-        window.location.href = res.data.checkout_url;
+      if (!isDowngradeFlow && (selectedPlan === 'launch' || selectedPlan === 'growth' || selectedPlan === 'scale')) {
+        // Growth/Scale always start with a $1, 7-day stage (no free week,
+        // whether this is a fresh checkout or an existing Launch trial
+        // shop switching up) — only Launch is ever a full-price checkout.
+        const trialDollar = selectedPlan === 'growth' || selectedPlan === 'scale';
+        const res = await subscriptionApi.createCheckout(shopId, selectedPlan, billingPeriod, trialDollar);
+        if (res.data?.checkout_url) {
+          window.location.href = res.data.checkout_url;
+          return;
+        }
+        // Already had a live Lemon Squeezy subscription — the backend
+        // switched it in place instead of opening a new checkout (opening
+        // one anyway would have started a second, separately-billed
+        // subscription). Reload to pick up the new plan everywhere.
+        window.location.reload();
         return;
       }
 
@@ -517,14 +551,14 @@ export default function BillingPage() {
   // ── Standard ExiusCart billing experience ──────────────────────────────────
   const staffUnlimited = (currentPlan?.staffIncluded ?? 1) === 0;
   const productCap = PRODUCT_CAP[currentPlan?.plan_type ?? 'free_trial'];
-  const isPremium = currentPlan?.plan_type === 'premium';
-  // What was actually charged (currentPlan.currency, real — a subscription
-  // bought in AED stays an AED amount forever) converted into whatever
-  // currency the display toggle is on right now — real FX conversion via
-  // useCurrency(), never a same-number-different-label mislabel.
-  const planPriceDisplay = currentPlan
-    ? convertBetween(currentPlan.price, (currentPlan.currency as Currency) || currency, currency)
-    : 0;
+  const isScale = currentPlan?.plan_type === 'scale';
+  // What was actually charged, shown exactly as recorded (currentPlan.currency)
+  // — some existing subscriptions predate the USD-only pivot and were really
+  // charged in another currency. Never converted to a "display currency";
+  // that's exactly the same-number-different-label bug pricing.ts was
+  // written to avoid.
+  const planPriceDisplay = currentPlan?.price ?? 0;
+  const planPriceCurrency = currentPlan?.currency || 'USD';
 
   return (
     <div className="space-y-6">
@@ -542,7 +576,7 @@ export default function BillingPage() {
           <p className="text-muted-foreground text-sm mt-1">Manage your plan, payment methods, and billing history.</p>
         </div>
 
-        {!isPremium && (
+        {!isScale && (
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/10 via-purple-500/10 to-pink-500/10 border border-primary/20 px-5 py-4 flex items-center gap-4 shrink-0">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
               <Rocket className="w-5 h-5 text-primary" />
@@ -551,7 +585,7 @@ export default function BillingPage() {
               <p className="font-semibold text-foreground text-sm">Grow bigger with ExiusCart</p>
               <p className="text-xs text-muted-foreground">Unlock more features and scale your business.</p>
             </div>
-            <Button onClick={() => handleUpgrade('premium')} className="shrink-0">Upgrade Plan</Button>
+            <Button onClick={() => handleUpgrade('scale')} className="shrink-0">Upgrade Plan</Button>
           </div>
         )}
       </div>
@@ -560,8 +594,8 @@ export default function BillingPage() {
       <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
         <Lock className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
         <div>
-          <p className="text-sm font-medium text-foreground">Payment Method for {meta.country}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{meta.paymentNote}</p>
+          <p className="text-sm font-medium text-foreground">Payment Method</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{PAYMENT_NOTE}</p>
         </div>
       </div>
 
@@ -636,9 +670,9 @@ export default function BillingPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-3">{currentPlan.billing_type === 'yearly' ? 'Yearly Amount' : 'Monthly Amount'}</p>
-            <p className="text-lg font-bold text-foreground">{currentPlan.price === 0 ? 'Free' : fmtPlanPrice(planPriceDisplay, currency)}</p>
+            <p className="text-lg font-bold text-foreground">{currentPlan.price === 0 ? 'Free' : fmtRecordedAmount(planPriceDisplay, planPriceCurrency)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {currentPlan.billing_type === 'yearly' ? `That's ${fmtPlanPrice(planPriceDisplay / 12, currency)}/month` : ' '}
+              {currentPlan.billing_type === 'yearly' ? `That's ${fmtRecordedAmount(planPriceDisplay / 12, planPriceCurrency)}/month` : ' '}
             </p>
           </Card>
 
@@ -668,13 +702,13 @@ export default function BillingPage() {
               Manage Billing
             </Button>
           )}
-          {isPremium ? (
-            <Button variant="outline" onClick={() => handleUpgrade('starter', true)}
+          {isScale ? (
+            <Button variant="outline" onClick={() => handleUpgrade('launch', true)}
               className="border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10">
-              Downgrade to Starter
+              Downgrade to Launch
             </Button>
           ) : (
-            <Button onClick={() => handleUpgrade('premium')}>
+            <Button onClick={() => handleUpgrade('scale')}>
               <Zap className="w-4 h-4" /> Upgrade
             </Button>
           )}
@@ -697,11 +731,11 @@ export default function BillingPage() {
               <button type="button" onClick={() => setBillingPeriod('yearly')}
                 className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${billingPeriod === 'yearly' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
                 Yearly
-                <span className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">Save 17%</span>
+                <span className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded-full">Save 25%</span>
               </button>
             </div>
             <span className="text-sm text-muted-foreground flex items-center gap-1.5 shrink-0">
-              <span className="text-lg">{meta.flag}</span> {currency}
+              <span className="text-lg">🌍</span> USD
             </span>
           </div>
         </div>
@@ -715,7 +749,7 @@ export default function BillingPage() {
             const currentRank = PLAN_RANK[currentPlan?.plan_type ?? 'free_trial'] ?? 0;
             const thisRank = PLAN_RANK[plan.id] ?? 0;
             const isDowngrade = !isCurrent && thisRank < currentRank;
-            const PlanIcon = plan.id === 'premium' ? Crown : plan.id === 'starter' ? Zap : Package;
+            const PlanIcon = plan.id === 'scale' ? Crown : plan.id === 'launch' ? Zap : plan.id === 'growth' ? TrendingUp : Package;
             return (
               <Card key={plan.id}
                 className={`p-5 relative flex flex-col ${plan.popular ? 'border-primary shadow-sm' : ''}`}>
@@ -795,7 +829,7 @@ export default function BillingPage() {
                 <p className="text-sm font-medium text-foreground">
                   {currentPlan?.is_trial ? 'No card on file yet' : 'Managed securely via Lemon Squeezy'}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">{meta.paymentNote}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{PAYMENT_NOTE}</p>
               </div>
             </div>
           </Card>
@@ -834,7 +868,7 @@ export default function BillingPage() {
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border">
-              Extra staff accounts: {fmtPlanPrice(PLAN_PRICING[currency].extraStaff, currency)}/month each.
+              Extra staff accounts: {fmtPlanPrice(PLAN_PRICING.extraStaff)}/month each.
             </p>
           </Card>
 
@@ -883,7 +917,7 @@ export default function BillingPage() {
                   <td className="p-4 text-sm text-muted-foreground">{formatDate(item.date)}</td>
                   <td className="p-4 text-sm text-foreground">{item.description}</td>
                   <td className="p-4 text-sm text-foreground text-right font-medium">
-                    {fmtPlanPrice(convertBetween(item.amount, item.currency || currency, currency), currency)}
+                    {fmtRecordedAmount(item.amount, item.currency || 'USD')}
                   </td>
                   <td className="p-4 text-center">
                     <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 capitalize">{item.status}</span>
@@ -911,7 +945,7 @@ export default function BillingPage() {
               <div className="bg-muted/50 rounded-lg p-4 text-center">
                 <p className="text-sm text-muted-foreground mb-1">Cost per extra staff</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {fmtPlanPrice(PLAN_PRICING[currency].extraStaff, currency)}
+                  {fmtPlanPrice(PLAN_PRICING.extraStaff)}
                   <span className="text-sm font-normal text-muted-foreground">/month</span>
                 </p>
               </div>
@@ -928,7 +962,7 @@ export default function BillingPage() {
               <div className="bg-primary/5 rounded-lg p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Monthly cost</span>
-                  <span className="text-xl font-bold text-primary">{fmtPlanPrice(extraStaffCount * PLAN_PRICING[currency].extraStaff, currency)}</span>
+                  <span className="text-xl font-bold text-primary">{fmtPlanPrice(extraStaffCount * PLAN_PRICING.extraStaff)}</span>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -975,7 +1009,7 @@ export default function BillingPage() {
                       ) : (
                         <>
                           <p className="text-2xl font-bold text-primary">{plan.priceLabel}</p>
-                          <p className="text-xs text-muted-foreground">{currency}/{plan.period}</p>
+                          <p className="text-xs text-muted-foreground">USD/{plan.period}</p>
                         </>
                       )}
                     </div>
@@ -989,7 +1023,7 @@ export default function BillingPage() {
                         <CreditCard className="w-5 h-5 text-muted-foreground" />
                         <div>
                           <p className="text-sm font-medium text-foreground">Bank Card</p>
-                          <p className="text-xs text-muted-foreground">{meta.paymentNote}</p>
+                          <p className="text-xs text-muted-foreground">{PAYMENT_NOTE}</p>
                         </div>
                       </label>
 
@@ -1010,7 +1044,7 @@ export default function BillingPage() {
                   <p className="text-sm text-muted-foreground">
                     {isDowngradeFlow
                       ? "Your downgrade request will be sent to our team. We'll process it and adjust your plan within 24 hours."
-                      : (selectedPlan === 'starter' || selectedPlan === 'premium')
+                      : (selectedPlan === 'launch' || selectedPlan === 'growth' || selectedPlan === 'scale')
                         ? "You'll be redirected to a secure checkout page to complete payment. Your plan activates automatically the moment payment is confirmed."
                         : "Your request will be sent to our team. We'll activate your new plan within 24 hours."}
                   </p>
@@ -1027,7 +1061,7 @@ export default function BillingPage() {
                       {upgradeLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                       {isDowngradeFlow
                         ? 'Request Downgrade'
-                        : (selectedPlan === 'starter' || selectedPlan === 'premium')
+                        : (selectedPlan === 'launch' || selectedPlan === 'growth' || selectedPlan === 'scale')
                           ? 'Continue to Checkout'
                           : 'Request Upgrade'}
                     </button>

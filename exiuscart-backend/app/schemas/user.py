@@ -18,6 +18,12 @@ class UserCreate(BaseModel):
     ref_code: Optional[str] = None
     country: Optional[str] = None
     shop_name: Optional[str] = None  # creates a shop on registration
+    # Set when arriving from the pricing page's "Try for free" CTA — starts
+    # a real 7-day free trial for that exact plan (launch/growth/scale)
+    # instead of the generic 14-day free_trial. None = organic signup,
+    # unchanged behavior.
+    plan_type: Optional[str] = None
+    billing_type: Optional[str] = None
 
 
 class UserLogin(BaseModel):

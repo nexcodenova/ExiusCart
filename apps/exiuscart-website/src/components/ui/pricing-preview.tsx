@@ -13,10 +13,10 @@ export function PricingPreview() {
   const [tapped, setTapped] = useState(false);
   const flipped = hovering || tapped;
 
-  const starterMonthly = prices.starter.monthly;
-  const premiumMonthly = prices.premium.monthly;
-  const priceDisplay = `$${starterMonthly}`;
-  const premiumDisplay = `$${premiumMonthly}`;
+  const launchMonthly = prices.launch.monthly;
+  const scaleMonthly = prices.scale.monthly;
+  const priceDisplay = `$${launchMonthly}`;
+  const scaleDisplay = `$${scaleMonthly}`;
   const frontImage = '/integration/pricing-usd.jpg';
 
   return (
@@ -43,16 +43,16 @@ export function PricingPreview() {
         <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[#151F32] rounded-2xl border border-gray-800 p-8 overflow-y-auto">
           {/* Trial badge */}
           <div className="inline-flex items-center gap-2 bg-[#7B4FE9]/10 border border-[#7B4FE9]/30 text-[#7B4FE9] text-xs font-bold px-3 py-1 rounded-full mb-4">
-            14-day free trial
+            7 days free on Launch
           </div>
 
-          <p className="text-gray-400 text-sm mb-1">Starter plan from</p>
+          <p className="text-gray-400 text-sm mb-1">Launch plan from</p>
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-5xl font-bold text-white">{priceDisplay}</span>
             <span className="text-gray-400 text-sm">/month</span>
           </div>
           <p className="text-gray-500 text-xs mb-6">
-            Premium from {premiumDisplay}/month &nbsp;·&nbsp; Yearly saves ~15%
+            Scale from {scaleDisplay}/month &nbsp;·&nbsp; Yearly saves 25%
           </p>
 
           <div className="space-y-3 mb-8">

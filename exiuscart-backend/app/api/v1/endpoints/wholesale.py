@@ -66,8 +66,8 @@ def _require_premium(shop_id: int, db: Session):
         Subscription.shop_id == shop_id,
         Subscription.status == "active"
     ).order_by(Subscription.id.desc()).first()
-    if not sub or sub.plan_type != "premium":
-        raise HTTPException(status_code=403, detail="Wholesale requires a Premium plan.")
+    if not sub or sub.plan_type != "scale":
+        raise HTTPException(status_code=403, detail="Wholesale requires the Scale plan.")
 
 def _get_shop(current_user: User, db: Session) -> Shop:
     shop = db.query(Shop).filter(Shop.owner_id == current_user.id).first()

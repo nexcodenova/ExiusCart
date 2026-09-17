@@ -241,10 +241,10 @@ async def generate_product_video(
     key_id, key_secret = _get_higgsfield_creds(shop_id, db)
 
     plan = _get_plan(shop_id, db)
-    if plan != "premium":
+    if plan != "scale":
         raise HTTPException(status_code=403, detail={
             "error": "upgrade_required",
-            "message": "AI product video generation is a Premium feature.",
+            "message": "AI product video generation is a Scale feature.",
         })
 
     if body.model not in ALLOWED_MODELS:

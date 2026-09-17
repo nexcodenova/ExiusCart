@@ -119,7 +119,7 @@ export default function ReportsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <StatCard
           label="Total Revenue"
-          value={qs ? `${qs.total_revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} AED` : '—'}
+          value={qs ? `$${qs.total_revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
           icon={<TrendingUp className="w-5 h-5" />}
         />
         <StatCard
@@ -171,7 +171,7 @@ export default function ReportsPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-400">Total this period</span>
               <span className="text-lg font-semibold text-white">
-                {monthly.reduce((sum, m) => sum + m.value, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} AED
+                ${monthly.reduce((sum, m) => sum + m.value, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
             </div>
           </div>
@@ -274,7 +274,7 @@ export default function ReportsPage() {
                         </div>
                       </td>
                       <td className="py-4 text-right font-semibold text-white">
-                        {shop.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} AED
+                        ${shop.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </td>
                     </tr>
                   ))}
@@ -304,9 +304,9 @@ export default function ReportsPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-white">
-                      {shop.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      ${shop.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </p>
-                    <p className="text-xs text-gray-500">AED</p>
+                    <p className="text-xs text-gray-500">USD</p>
                   </div>
                 </div>
               ))}
@@ -334,7 +334,7 @@ export default function ReportsPage() {
         />
         <QuickStatCard
           label="Avg. Revenue/Store"
-          value={qs ? `${qs.avg_revenue_per_shop.toLocaleString(undefined, { maximumFractionDigits: 0 })} AED` : '—'}
+          value={qs ? `$${qs.avg_revenue_per_shop.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
           icon={<TrendingUp className="w-5 h-5" />}
         />
       </div>

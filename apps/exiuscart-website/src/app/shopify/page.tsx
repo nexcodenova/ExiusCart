@@ -84,7 +84,7 @@ export default function ShopifyPage() {
           </p>
 
           <div className="flex flex-wrap gap-4 mb-16">
-            <Link href="/register"
+            <Link href="/register?plan=launch&billing=monthly"
               className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-7 py-3.5 rounded-2xl transition-all text-sm">
               Start free — connect Shopify in 60 seconds <ArrowRight className="w-4 h-4" />
             </Link>
@@ -128,8 +128,8 @@ export default function ShopifyPage() {
                     <span className="font-semibold text-gray-900">$39/mo</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">ExiusCart Starter (replaces all apps)</span>
-                    <span className="font-semibold text-[#6B3FD9]">$12/mo</span>
+                    <span className="text-gray-600">ExiusCart Launch (replaces all apps)</span>
+                    <span className="font-semibold text-[#6B3FD9]">$14.99/mo</span>
                   </div>
                   {SAVINGS.map((s) => (
                     <div key={s.tool} className="flex justify-between text-sm">
@@ -243,9 +243,9 @@ export default function ShopifyPage() {
             Ready to stop overpaying<br />for Shopify apps?
           </h2>
           <p className="text-gray-500 mb-10 text-lg">
-            14-day free trial. Connect your Shopify store in 60 seconds. No credit card required.
+            7 days free, no credit card. Connect your Shopify store in 60 seconds.
           </p>
-          <Link href="/register"
+          <Link href="/register?plan=launch&billing=monthly"
             className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-2xl transition-all text-base">
             Start free trial <ArrowRight className="w-4 h-4" />
           </Link>

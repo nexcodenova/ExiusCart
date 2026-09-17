@@ -1,4 +1,5 @@
-from fastapi import Depends, HTTPException, status
+from datetime import datetime, timezone
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -7,8 +8,44 @@ from app.models.user import User
 
 security = HTTPBearer()
 
+# A request to any of these is always allowed, even with an expired/no
+# subscription — otherwise a shop that gets locked out could never reach the
+# one flow (checking their plan, starting a real checkout, requesting a
+# manual upgrade) that would let them fix it, and the dashboard shell/lock
+# screen itself (which always calls GET /shops/me first, on every page load)
+# would fail to even render. Matched as a substring against the request
+# path, so /subscription/ covers every /shops/{id}/subscription/... route
+# without hardcoding shop ids.
+_SUBSCRIPTION_GATE_EXEMPT_SUBSTRINGS = ("/subscription/", "/shops/me")
+
+
+def _is_subscription_expired(shop_id: int, db: Session) -> bool:
+    from app.models.subscription import Subscription
+    # A live row (active/trial/trial_dollar) always wins over a newer row in
+    # any other status, even if that other row was created more recently.
+    # Requesting a downgrade (POST /subscription/upgrade) inserts a fresh
+    # pending_approval row while the real paid subscription is still live —
+    # picking strictly "most recently created" would treat that pending
+    # request as the shop's current status and lock out an already-paying
+    # customer the instant they ask for a downgrade, before any admin has
+    # even seen the request.
+    sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id,
+        Subscription.status.in_(("active", "trial", "trial_dollar")),
+    ).order_by(Subscription.id.desc()).first()
+    if not sub:
+        sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    if not sub:
+        return False  # no subscription row at all — nothing to enforce yet (e.g. mid-signup)
+    if sub.status not in ("active", "trial", "trial_dollar"):
+        return True
+    if sub.expires_at is not None and sub.expires_at < datetime.now(timezone.utc):
+        return True
+    return False
+
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
@@ -62,6 +99,24 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User is deactivated"
         )
+
+    # Real enforcement: a trial that ran out with no card, a $1 trial whose
+    # card failed to renew, or any subscription past its expiry with no new
+    # payment extending it, blocks every dashboard action from here — not
+    # just a frontend hint, since that's trivially bypassed by calling the
+    # API directly. Superusers (admin/support accounts) are never shop
+    # owners with a subscription to enforce, so they're exempt outright.
+    # Subscription/billing routes stay reachable no matter what, so a locked
+    # shop can still see its status and pay to unlock — otherwise this would
+    # lock them out of the one flow that fixes it.
+    if not user.is_superuser and not any(s in request.url.path for s in _SUBSCRIPTION_GATE_EXEMPT_SUBSTRINGS):
+        from app.models.shop import Shop
+        shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
+        if shop and _is_subscription_expired(shop.id, db):
+            raise HTTPException(status_code=402, detail={
+                "error": "subscription_required",
+                "message": "Your trial has ended. Upgrade your plan to keep using ExiusCart.",
+            })
 
     return user
 

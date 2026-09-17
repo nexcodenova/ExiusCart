@@ -103,7 +103,7 @@ const METRICS = [
 
 // ── Calculator constants ──
 const ONE_TIME_AMOUNT = 75;
-const AVG_SUBSCRIPTION_VALUE = 20.5; // USD/mo — simple average of Starter ($12) and Premium ($29), the only two paid plans
+const AVG_SUBSCRIPTION_VALUE = 26.66; // USD/mo — simple average of Launch ($14.99), Growth ($24.99), and Scale ($39.99)
 const RECURRING_RATE = 0.5;
 const RECURRING_MONTHS_CAP = 12;
 const RECURRING_MONTHLY_PER_SELLER = AVG_SUBSCRIPTION_VALUE * RECURRING_RATE;
@@ -248,10 +248,11 @@ export default function AffiliatePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email) return;
+    if (!formData.name || !formData.email || !agreedToTerms) return;
     setIsLoading(true);
     setError('');
     try {
@@ -603,16 +604,23 @@ export default function AffiliatePage() {
                   </Field>
                 </div>
 
-                <button type="submit" disabled={isLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B3FD9] py-3.5 text-base font-bold text-white transition hover:bg-[#5A2EC9] disabled:opacity-60">
+                <div className="flex items-start gap-2.5">
+                  <input type="checkbox" id="affiliate-terms" checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)} required
+                    className="h-4 w-4 mt-0.5 rounded border-gray-300 bg-gray-50 text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0" />
+                  <label htmlFor="affiliate-terms" className="text-sm text-slate-500">
+                    I agree to the{' '}
+                    <Link href="/affiliate/terms" className="text-[#6B3FD9] hover:underline">Affiliate Terms</Link>{' '}
+                    and{' '}
+                    <Link href="/privacy" className="text-[#6B3FD9] hover:underline">Privacy Policy</Link>
+                  </label>
+                </div>
+
+                <button type="submit" disabled={isLoading || !agreedToTerms} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B3FD9] py-3.5 text-base font-bold text-white transition hover:bg-[#5A2EC9] disabled:opacity-60">
                   {isLoading
                     ? <><Loader2 className="h-5 w-5 animate-spin" /> Submitting...</>
                     : <>Apply now <ArrowRight className="h-4 w-4" /></>}
                 </button>
-                <p className="text-center text-xs text-slate-500">
-                  By applying you agree to our{' '}
-                  <Link href="/affiliate/terms" className="text-[#6B3FD9] hover:underline">Affiliate Terms</Link> and{' '}
-                  <Link href="/privacy" className="text-[#6B3FD9] hover:underline">Privacy Policy</Link>.
-                </p>
               </form>
             </>
           )}

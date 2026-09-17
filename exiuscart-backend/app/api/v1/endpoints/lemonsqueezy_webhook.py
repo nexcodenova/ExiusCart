@@ -1,7 +1,7 @@
 """
 Inbound Lemon Squeezy webhook receiver — confirms real payments for direct
-ExiusCart Starter/Premium subscriptions. This is the only event that ever
-activates a Lemon Squeezy-billed subscription or generates a recurring
+ExiusCart Launch/Growth/Scale subscriptions. This is the only event that
+ever activates a Lemon Squeezy-billed subscription or generates a recurring
 affiliate commission; nothing here is guessed on a timer.
 """
 import re
@@ -103,10 +103,24 @@ def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attr
         db.add(sub)
         db.flush()  # assign sub.id before using it below
 
+    # A $1-trial checkout (Growth/Scale's "Try for $1") only applies to the
+    # very FIRST charge on a subscription — any renewal (is_new_subscription
+    # False here) is real recurring billing regardless of what the original
+    # checkout's custom_data says, so it's never re-applied on renewals.
+    from app.core.lemonsqueezy import TRIAL_DOLLAR_DAYS
+    trial_dollar = is_new_subscription and custom_data.get("trial_dollar") == "true"
+
     now = datetime.now(timezone.utc)
-    sub.status = "active"
     sub.starts_at = sub.starts_at or now
-    sub.expires_at = now + timedelta(days=365 if sub.billing_type == "yearly" else 30)
+    if trial_dollar:
+        # $1 covers 7 days, then subscription_lifecycle.py's daily cron
+        # switches it to full price — see app/core/subscription_lifecycle.py.
+        sub.status = "trial_dollar"
+        sub.trial_dollar_ends_at = now + timedelta(days=TRIAL_DOLLAR_DAYS)
+        sub.expires_at = sub.trial_dollar_ends_at
+    else:
+        sub.status = "active"
+        sub.expires_at = now + timedelta(days=365 if sub.billing_type == "yearly" else 30)
     sub.amount_paid = amount
     sub.currency = currency
     sub.payment_source = "lemon_squeezy"
@@ -128,8 +142,16 @@ def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attr
     db.add(payment)
     db.flush()  # assign payment.id before linking a commission to it
 
-    monthly_equivalent = amount / 12 if sub.billing_type == "yearly" else amount
-    generate_commission_for_payment(db, sub, monthly_equivalent, payment.id)
+    # No commission on the $1 trial charge itself — a $75 flat (one_time) or
+    # 50%-of-$1 (recurring) commission on a $1 payment is real money owed on
+    # no real revenue. The real commission fires later, when
+    # subscription_lifecycle.py's cron switches this subscription to full
+    # price at day 7 — that triggers its own real charge, which lands back
+    # here as a normal renewal (is_new_subscription False by then) and
+    # generates the commission on the real amount.
+    if not trial_dollar:
+        monthly_equivalent = amount / 12 if sub.billing_type == "yearly" else amount
+        generate_commission_for_payment(db, sub, monthly_equivalent, payment.id)
 
     db.commit()
     logger.info(f"[LemonSqueezy] payment confirmed shop={sub.shop_id} plan={sub.plan_type} amount={amount} {currency}")
@@ -156,19 +178,21 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
     """
     Pre-signup checkout — no ExiusCart account existed at checkout time (marketing
     site "pay first" flow). The completed payment is treated as proof of a real,
-    deliverable email; auto-create User+Shop+Subscription here. Mirrors the
-    free-trial signup flow exactly: status=pending_approval, blocked from login
-    until an admin reviews it — commission generation happens at approval time
-    (app/api/v1/endpoints/admin.py::approve_subscription), not here, so it's never
-    duplicated if this webhook were to retry.
+    deliverable email; auto-creates User+Shop+Subscription here with REAL,
+    immediate access — no admin approval gate. A customer who already paid
+    should never be stuck waiting on manual review before they can use what
+    they bought; that's pure lost trust. Mirrors _handle_payment_success's
+    real-status logic exactly, and generates the affiliate commission here
+    too (same as that function), rather than deferring it to an approval
+    step that no longer exists.
     """
     ls_order_id = str(resource.get("id", ""))
     ls_subscription_id = str(attrs.get("subscription_id", ""))
     amount = float(attrs.get("total", 0)) / 100
     currency = attrs.get("currency", "USD")
     email = attrs.get("user_email", "")
-    buyer_name = attrs.get("user_name") or custom_data.get("business_name") or "Shop Owner"
-    business_name = custom_data.get("business_name") or f"{buyer_name}'s Shop"
+    buyer_name = attrs.get("user_name") or custom_data.get("business_name") or "Store Owner"
+    business_name = custom_data.get("business_name") or f"{buyer_name}'s Store"
     plan_type = custom_data.get("plan_type")
     billing_type = custom_data.get("billing_type", "monthly")
 
@@ -185,6 +209,9 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
     if existing_user:
         logger.error(f"[LemonSqueezy] new_signup payment for email={email} but a User already exists (id={existing_user.id}) — needs manual reconciliation, refusing to auto-link to avoid hijacking an unrelated account")
         return
+
+    from app.core.lemonsqueezy import TRIAL_DOLLAR_DAYS
+    trial_dollar = custom_data.get("trial_dollar") == "true"
 
     now = datetime.now(timezone.utc)
     user = User(
@@ -205,16 +232,29 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
     db.add(shop)
     db.flush()
 
+    # Real status immediately — trial_dollar covers the $1 week (Growth/Scale),
+    # otherwise this was a full-price checkout and the account is active now.
+    if trial_dollar:
+        sub_status = "trial_dollar"
+        trial_dollar_ends_at = now + timedelta(days=TRIAL_DOLLAR_DAYS)
+        expires_at = trial_dollar_ends_at
+    else:
+        sub_status = "active"
+        trial_dollar_ends_at = None
+        expires_at = now + timedelta(days=365 if billing_type == "yearly" else 30)
+
     sub = Subscription(
         shop_id=shop.id,
         plan_type=plan_type,
         billing_type=billing_type,
-        status="pending_approval",
+        status=sub_status,
         amount_paid=amount,
         currency=currency,
         payment_source="lemon_squeezy",
         lemon_squeezy_subscription_id=ls_subscription_id,
         starts_at=now,
+        expires_at=expires_at,
+        trial_dollar_ends_at=trial_dollar_ends_at,
     )
     if attrs.get("customer_id"):
         sub.lemon_squeezy_customer_id = str(attrs["customer_id"])
@@ -233,9 +273,20 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
         lemon_squeezy_subscription_id=ls_subscription_id,
     )
     db.add(payment)
+    db.flush()  # assign payment.id before linking a commission to it
+
+    # No commission on the $1 trial charge itself — see the matching comment
+    # in _handle_payment_success for why. The real commission fires when
+    # subscription_lifecycle.py's cron moves this subscription to full price
+    # at day 7, which lands back in _handle_payment_success as a normal
+    # renewal (is_new_subscription False by then) and generates it there.
+    if not trial_dollar:
+        monthly_equivalent = amount / 12 if billing_type == "yearly" else amount
+        generate_commission_for_payment(db, sub, monthly_equivalent, payment.id)
+
     db.commit()
 
-    logger.info(f"[LemonSqueezy] new signup shop={shop.id} user={user.id} plan={plan_type} amount={amount} {currency} — pending admin approval")
+    logger.info(f"[LemonSqueezy] new signup shop={shop.id} user={user.id} plan={plan_type} amount={amount} {currency} — active immediately")
 
     from app.api.v1.endpoints.partner import _make_setup_link
     setup_url = _make_setup_link(user.id, user.email)
@@ -243,7 +294,7 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
 
     try:
         send_password_setup_email(user.email, user.full_name or "", setup_url)
-        send_welcome_email(user.email, user.full_name or "", f"{plan_label} (Payment Received — Pending Approval)")
+        send_welcome_email(user.email, user.full_name or "", f"{plan_label} ($1 Trial)" if trial_dollar else plan_label)
         send_new_signup_notification(user.full_name or "", user.email, shop.name, f"{plan_label} (Paid)")
     except Exception as e:
         logger.error(f"[LemonSqueezy] new_signup confirmation emails failed for shop={shop.id}: {e}")

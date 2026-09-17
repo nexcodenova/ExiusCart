@@ -108,7 +108,7 @@ export default function IndustriesPage() {
           One platform. Any niche. ExiusCart adapts to how your business actually works.
         </p>
         <Link
-          href="/register"
+          href="/register?plan=launch&billing=monthly"
           className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-xl transition-all"
         >
           Start Free Trial <ArrowRight className="w-4 h-4" />
@@ -148,7 +148,7 @@ export default function IndustriesPage() {
                 ))}
               </ul>
               <Link
-                href="/register"
+                href="/register?plan=launch&billing=monthly"
                 className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 font-semibold px-5 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 transition-all text-sm shadow-sm self-start"
               >
                 Get Started <ArrowRight className="w-3.5 h-3.5" />
@@ -215,7 +215,7 @@ export default function IndustriesPage() {
                 ))}
               </ul>
               <Link
-                href="/register"
+                href="/register?plan=launch&billing=monthly"
                 className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 font-semibold px-5 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 transition-all text-sm shadow-sm self-start"
               >
                 Get Started <ArrowRight className="w-3.5 h-3.5" />
@@ -302,7 +302,7 @@ export default function IndustriesPage() {
 
                   <div>
                     <Link
-                      href="/register"
+                      href="/register?plan=launch&billing=monthly"
                       className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 font-semibold px-5 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 transition-all text-sm shadow-sm"
                     >
                       Get Started <ArrowRight className="w-3.5 h-3.5" />
@@ -335,7 +335,7 @@ export default function IndustriesPage() {
           </h2>
           <p className="text-gray-400 mb-10">Start your free 14-day trial. No credit card required.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register" className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-xl transition-all">
+            <Link href="/register?plan=launch&billing=monthly" className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-8 py-4 rounded-xl transition-all">
               Start Free Trial <ArrowRight className="w-5 h-5" />
             </Link>
             <Link href="/contact" className="inline-flex items-center justify-center gap-2 bg-transparent hover:bg-white/5 text-white font-semibold px-8 py-4 rounded-xl transition-all border border-gray-700">

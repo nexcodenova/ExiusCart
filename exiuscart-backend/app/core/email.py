@@ -297,9 +297,11 @@ def send_dashboard_live_email(to: str, full_name: str, shop_name: str,
 
 
 def send_new_signup_notification(full_name: str, email: str, shop_name: str, plan: str) -> bool:
-    admin_url = "https://admin.exiuscart.com/dashboard/users"
+    """FYI-only — the signup already has real, immediate access (no approval
+    gate); this just lets the team know a new account exists."""
+    admin_url = "https://admin.exiuscart.com/dashboard/subscriptions"
     content = f"""
-      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">New signup waiting for approval</h2>
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">New signup</h2>
       <div style="background:#1a2540;border:1px solid #2a3a5c;border-radius:12px;padding:20px;margin:0 0 20px;">
         <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;">Name: <strong style="color:#fff;">{full_name}</strong></p>
         <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;">Email: <strong style="color:#fff;">{email}</strong></p>
@@ -307,16 +309,16 @@ def send_new_signup_notification(full_name: str, email: str, shop_name: str, pla
         <p style="margin:0;font-size:13px;color:#94a3b8;">Plan: <strong style="color:#6B3FD9;">{plan}</strong></p>
       </div>
       <a href="{admin_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:15px;">
-        Review &amp; Approve &rarr;
+        View in Dashboard &rarr;
       </a>"""
     return send_email(
         to="support@exiuscart.com",
-        subject=f"New signup: {full_name} ({shop_name}) — pending approval",
+        subject=f"New signup: {full_name} ({shop_name})",
         html_body=_welcome_base(content),
         text_body=(
-            f"New signup waiting for approval.\n\n"
+            f"New signup.\n\n"
             f"Name: {full_name}\nEmail: {email}\nShop: {shop_name}\nPlan: {plan}\n\n"
-            f"Approve at: {admin_url}"
+            f"View at: {admin_url}"
         ),
     )
 

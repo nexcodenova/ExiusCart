@@ -422,13 +422,11 @@ interface FulfillModalProps {
 }
 
 function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulfilled }: FulfillModalProps) {
-  const isPremium = plan === 'premium';
-  const isStarter = plan === 'starter';
-  const availableSuppliers = isPremium
+  const isGrowthOrScale = plan === 'growth' || plan === 'scale';
+  const isLaunch = !isGrowthOrScale;
+  const availableSuppliers = isGrowthOrScale
     ? connectedSuppliers
-    : isStarter
-      ? connectedSuppliers.filter((s) => s === 'cj')
-      : [];
+    : connectedSuppliers.filter((s) => s === 'cj');
   const [selected, setSelected] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -512,8 +510,8 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
           ) : availableSuppliers.length === 0 ? (
             <div className="text-center py-6 space-y-3">
               <div className="p-3 bg-muted rounded-full w-fit mx-auto"><Package className="w-6 h-6 text-muted-foreground" /></div>
-              {isStarter && connectedSuppliers.length > 0 && !connectedSuppliers.includes('cj') ? (
-                <p className="text-sm text-muted-foreground">Your Starter plan only supports CJ Dropshipping. Connect CJ in the Dropshipping section to fulfil orders automatically.</p>
+              {isLaunch && connectedSuppliers.length > 0 && !connectedSuppliers.includes('cj') ? (
+                <p className="text-sm text-muted-foreground">Your Launch plan only supports CJ Dropshipping. Connect CJ in the Dropshipping section to fulfil orders automatically.</p>
               ) : (
                 <p className="text-sm text-muted-foreground">No suppliers connected yet. Connect CJ Dropshipping or another supplier first.</p>
               )}
@@ -532,10 +530,10 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
                     {selected === s && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
                   </button>
                 ))}
-                {isStarter && (
+                {isLaunch && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 pt-1">
                     <Lock className="w-3 h-3 shrink-0" />
-                    <span>Upgrade to Premium to use HyperSKU</span>
+                    <span>Upgrade to Growth or Scale to use HyperSKU</span>
                   </div>
                 )}
               </div>
@@ -734,9 +732,9 @@ export default function OrdersPage() {
     subscriptionApi.getCurrent(shopId)
       .then((r) => setPlan(r.data?.plan?.plan_type || ''))
       .catch(() => {});
-    // Detected via an active TheDersi connection, not plan_type —
-    // TheDersi's Growth/Premium tier maps to plan_type='starter', same as
-    // a direct customer, so a plan-string check alone misses them.
+    // Detected via an active TheDersi connection, not plan_type — TheDersi's
+    // own Growth/Premium tier names map to plan_type='launch', same as a
+    // direct customer, so a plan-string check alone misses them.
     channelsApi.getConnections(shopId)
       .then((r) => {
         const connections = r.data ?? [];

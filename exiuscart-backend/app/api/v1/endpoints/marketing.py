@@ -16,16 +16,18 @@ from app.models.marketing import (
 from app.models.subscription import Subscription
 from app.models.email_template import EmailTemplate
 from app.api.v1.deps import get_current_user
+from app.core.thedersi import is_thedersi_pro_shop
 
-SOCIAL_LEAD_PLANS = {"premium", "lifetime", "thedersi_pro"}
+SOCIAL_LEAD_PLANS = {"growth", "scale", "lifetime"}
 
 LEAD_LIMITS: dict = {
-    "free_trial":    0,
-    "thedersi_basic": 0,
-    "starter":       500,
-    "thedersi_pro":  500,
-    "premium":       None,
-    "lifetime":      None,
+    "free_trial":            0,
+    "thedersi_free_forever": 0,
+    "thedersi_lite":         0,
+    "launch":                500,
+    "growth":                2000,
+    "scale":                 None,
+    "lifetime":              None,
 }
 
 router = APIRouter()
@@ -767,7 +769,9 @@ def get_lead_integration(shop_id: int, current_user: User = Depends(get_current_
     """
     shop = _shop(shop_id, current_user, db)
     plan = _lead_plan(shop_id, db)
-    if plan not in SOCIAL_LEAD_PLANS:
+    # TheDersi Pro shares plan_type="launch" with real Launch customers, who
+    # don't get this — Pro's own access has to be checked separately.
+    if plan not in SOCIAL_LEAD_PLANS and not is_thedersi_pro_shop(shop_id, db):
         raise HTTPException(
             status_code=403,
             detail={

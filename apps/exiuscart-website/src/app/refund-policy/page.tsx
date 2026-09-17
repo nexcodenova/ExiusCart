@@ -9,10 +9,10 @@ import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
   title: 'Refund Policy | ExiusCart',
-  description: 'ExiusCart refund and cancellation policy. 14-day free trial with no credit card required. Learn about our money-back guarantee and subscription cancellation terms.',
+  description: 'ExiusCart refund and cancellation policy. Launch is free for 7 days, no credit card required. Learn about our money-back guarantee and subscription cancellation terms.',
   openGraph: {
     title: 'Refund Policy | ExiusCart',
-    description: 'ExiusCart refund policy — 14-day free trial, 7-day money-back guarantee, and transparent subscription terms.',
+    description: 'ExiusCart refund policy — 7-day free trial, 7-day money-back guarantee, and transparent subscription terms.',
     url: 'https://exiuscart.com/refund-policy',
     siteName: 'ExiusCart',
     type: 'website',
@@ -77,16 +77,17 @@ export default function RefundPolicyPage() {
               <div className="w-8 h-8 rounded-lg bg-[#6B3FD9]/10 flex items-center justify-center shrink-0">
                 <BadgeCheck className="w-4 h-4 text-[#6B3FD9]" />
               </div>
-              <h2 className="text-white font-bold text-lg">1. 14-Day Free Trial</h2>
+              <h2 className="text-white font-bold text-lg">1. Free Trial &amp; $1 Trial</h2>
             </div>
             <div className="px-6 py-5 space-y-4">
               <p className="text-gray-400 leading-relaxed">
-                Every new ExiusCart account includes a <span className="text-white font-medium">14-day free trial</span> with full access to all features.
-                No credit card is required to start. If you decide not to continue after the trial:
+                Launch includes a <span className="text-white font-medium">7-day free trial</span> with full access to all features —
+                no credit card required to start. Growth and Scale skip the free week and start at <span className="text-white font-medium">$1 for your first 7 days</span> instead,
+                then move to full price. If you decide not to continue after the trial:
               </p>
               <ul className="space-y-2">
                 {[
-                  'Your account simply expires — no charges are made.',
+                  'Your account simply expires — no further charges are made.',
                   'No cancellation steps needed.',
                   'Your data is retained for 30 days after trial expiry in case you change your mind.',
                 ].map((item) => (
@@ -97,7 +98,7 @@ export default function RefundPolicyPage() {
                 ))}
               </ul>
               <div className="rounded-xl bg-[#6B3FD9]/5 border border-[#6B3FD9]/20 px-4 py-3 text-sm text-[#9B6FFF]">
-                The 14-day trial countdown starts only after your account is reviewed and approved by our team.
+                Access is immediate — your trial starts the moment you verify your email, with no manual approval wait.
               </div>
             </div>
           </div>
@@ -112,7 +113,7 @@ export default function RefundPolicyPage() {
             </div>
             <div className="px-6 py-5 space-y-5">
               <p className="text-gray-400 leading-relaxed">
-                For paid subscription plans (Starter, Premium, Enterprise), the following refund terms apply:
+                For paid subscription plans (Launch, Growth, Scale, Enterprise), the following refund terms apply:
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

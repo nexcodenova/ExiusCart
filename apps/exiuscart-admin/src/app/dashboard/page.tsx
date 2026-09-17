@@ -75,8 +75,8 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           title="Total Revenue"
-          value={`${Number(stats?.monthly_revenue ?? 0).toLocaleString()}`}
-          subtitle="AED collected"
+          value={`$${Number(stats?.monthly_revenue ?? 0).toLocaleString()}`}
+          subtitle="USD collected"
           icon={<DollarSign className="w-5 h-5" />}
           color="green"
         />

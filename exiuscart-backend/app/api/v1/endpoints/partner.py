@@ -8,10 +8,12 @@ Security model:
   - thedersi_seller_id is the primary key — email is secondary/mutable
   - Provision is idempotent: duplicate calls return the existing account
 
-TheDersi tier → ExiusCart plan:
-  free_forever → thedersi_basic  (25 products, 50 orders/mo)
-  growth       → starter         (1,000 products, 1,000 orders/mo)
-  pro          → starter         (1,000 products, 1,000 orders/mo)
+TheDersi's own tier name → ExiusCart plan_type (see app/core/thedersi.py's
+THEDERSI_TIER_MAP for the full, current mapping):
+  free_forever → thedersi_free_forever  (25 products, 100 orders/mo)
+  lite         → thedersi_lite          (same limits as free_forever, unlimited orders)
+  pro          → launch                 (Launch's feature set, minus Prodora; 2 channels max)
+  official     → scale                  (their own internal @thedersi.lk staff)
 """
 import re
 import secrets
@@ -63,7 +65,16 @@ def _make_slug(name: str) -> str:
     return f"{_slugify(name)}-{uuid.uuid4().hex[:6]}"
 
 def _plan_label(plan_type: str) -> str:
-    return {"thedersi_basic": "Free Forever", "starter": "Starter", "premium": "Premium"}.get(plan_type, plan_type)
+    # Every caller in this file operates on a TheDersi-provisioned shop, so
+    # plan_type="launch" here always means TheDersi Pro (never a real direct
+    # ExiusCart Launch customer) and "scale" always means their "Official"
+    # internal-staff tier.
+    return {
+        "thedersi_free_forever": "Free Forever",
+        "thedersi_lite": "Lite",
+        "launch": "Pro",
+        "scale": "Official",
+    }.get(plan_type, plan_type)
 
 def _webhook_url(webhook_secret: str) -> str:
     return f"{EXIUSCART_API_BASE}/channels/webhook/{webhook_secret}"
@@ -166,18 +177,24 @@ def _do_provision(
 ) -> dict:
     tier = tier.lower().strip()
     if tier not in THEDERSI_TIER_MAP:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unknown tier '{tier}'. Valid: free_forever, growth, pro",
-        )
+        # TheDersi explicitly asked that a tier name they haven't told us
+        # about yet never break their sync — default to free_forever (the
+        # safest, most conservative plan) and log it, instead of failing the
+        # whole provision call. A hard 400 here means a seller's account
+        # never gets created on a naming mismatch, which is worse than
+        # temporarily under-provisioning them.
+        logger.warning(f"[thedersi_provision] unrecognized tier '{tier}' for {seller_email} — defaulting to thedersi_free_forever")
+        tier = "free_forever"
 
     seller_email = seller_email.lower().strip()
 
-    # @thedersi.lk sellers always get Premium regardless of their TheDersi plan
+    # @thedersi.lk sellers always get Scale regardless of their TheDersi plan
+    # — this is exactly their own "Official" tier (internal staff accounts),
+    # so notify them back with that real tier name now that it exists.
     if seller_email.endswith("@thedersi.lk"):
-        plan_type = "premium"
-        tier = "pro"  # notify TheDersi back as "pro" so they know this seller is top-tier
-        logger.info(f"[domain_thedersi] premium override for {seller_email}")
+        plan_type = "scale"
+        tier = "official"
+        logger.info(f"[domain_thedersi] scale override for {seller_email}")
     else:
         plan_type = THEDERSI_TIER_MAP[tier]["plan_type"]
 
@@ -242,7 +259,7 @@ def _do_provision(
         # TheDersi itself is fashion-only, but TheDersi sellers also get a
         # Daraz connection (a general marketplace) — so a TheDersi seller can
         # easily sell electronics or perfume there too, not just clothing.
-        # Same starter categories + category-scoped fashion fields as direct
+        # Same default categories + category-scoped fashion fields as direct
         # ExiusCart shops (see shops.py create_shop) — Material/Pattern/etc.
         # only show up when a product is actually tagged Fashion & Apparel.
         from app.models.product import Category as ProductCategory
@@ -363,10 +380,10 @@ def thedersi_upgrade(data: UpgradeIn, db: Session = Depends(get_db)):
     """
     new_tier = data.new_tier.lower().strip()
     if new_tier not in THEDERSI_TIER_MAP:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unknown tier '{new_tier}'. Valid: free_forever, growth, pro",
-        )
+        # Same reasoning as _do_provision above — never hard-fail a real
+        # seller's plan-change sync over an unrecognized tier name.
+        logger.warning(f"[thedersi_upgrade] unrecognized tier '{new_tier}' for seller_id={data.thedersi_seller_id} — defaulting to thedersi_free_forever")
+        new_tier = "free_forever"
 
     # Look up by immutable seller ID first
     shop = _find_shop_by_seller_id(data.thedersi_seller_id, db)

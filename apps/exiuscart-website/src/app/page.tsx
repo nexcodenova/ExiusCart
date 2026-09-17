@@ -13,10 +13,10 @@ import { Marquee } from '@/components/ui/marquee';
 
 export const metadata: Metadata = {
   title: 'ExiusCart - All-in-One POS, Inventory & Multichannel Selling Platform',
-  description: 'ExiusCart is an all-in-one business platform for sellers worldwide: POS, inventory, VAT-compliant invoicing, HR, and marketing, connecting every sales channel — your own website, Daraz, eBay, Shopify, and TheDersi. Includes Prodora product sourcing from verified suppliers like CJ Dropshipping, Alibaba, and AliExpress. Plans start from $12/month.',
+  description: 'ExiusCart is an all-in-one business platform for sellers worldwide: POS, inventory, VAT-compliant invoicing, HR, and marketing, connecting every sales channel — your own website, Daraz, eBay, Shopify, and TheDersi. Includes Prodora product sourcing from verified suppliers like CJ Dropshipping, Alibaba, and AliExpress. Plans start from $14.99/month.',
   openGraph: {
     title: 'ExiusCart - All-in-One POS, Inventory & Multichannel Selling Platform',
-    description: 'POS, inventory, invoicing, HR, marketing, and every sales channel — plus Prodora product sourcing — in one platform, worldwide. From $12/month.',
+    description: 'POS, inventory, invoicing, HR, marketing, and every sales channel — plus Prodora product sourcing — in one platform, worldwide. From $14.99/month.',
     url: 'https://exiuscart.com',
     siteName: 'ExiusCart',
     type: 'website',
@@ -95,16 +95,16 @@ export default function HomePage() {
 
         {/* Desktop text */}
         <div className="relative z-10 hidden lg:flex flex-col justify-center px-16 max-w-lg" style={{ paddingTop: '96px' }}>
-          <p className="text-white/50 text-sm font-medium tracking-widest uppercase mb-3">All-in-One</p>
+          <p className="text-white/50 text-sm font-medium tracking-widest uppercase mb-3">One Platform, Every Channel</p>
           <h1 className="text-5xl xl:text-[3.25rem] font-bold leading-[1.1] mb-5">
-            <span className="text-[#7B4FE9]">Business<br />Management</span>
-            <br /><span className="text-white">Platform</span>
+            <span className="text-[#7B4FE9]">Sell Everywhere.</span>
+            <br /><span className="text-white">Run Everything.</span>
           </h1>
           <p className="text-gray-400 text-base leading-relaxed mb-8 max-w-sm">
-            Invoicing, inventory, orders, marketing &amp; more — all in one place. Built for UAE &amp; worldwide small and medium businesses.
+            POS, invoicing, and multi-channel selling — plus Prodora product sourcing from 36M+ suppliers. One platform, worldwide.
           </p>
           <Link
-            href="/register"
+            href="/register?plan=launch&billing=monthly"
             className="inline-flex items-center justify-between gap-4 text-white font-bold px-6 py-4 rounded-xl transition-all hover:scale-105 hover:shadow-xl hover:shadow-purple-900/40 mb-4 self-start"
             style={{
               minWidth: '230px',
@@ -127,23 +127,19 @@ export default function HomePage() {
         <div className="relative z-10 lg:hidden flex flex-col w-full px-5" style={{ paddingTop: '96px' }}>
           <div className="inline-flex items-center gap-2 self-start mb-6 px-4 py-2 rounded-full border border-[#7B4FE9]/50 bg-[#7B4FE9]/10">
             <span className="text-yellow-400 text-sm">★</span>
-            <span className="text-white/80 text-sm font-medium">All-in-One Business Management</span>
+            <span className="text-white/80 text-sm font-medium">One Platform, Every Channel</span>
           </div>
           <h1 className="text-[2.6rem] font-extrabold leading-[1.05] mb-4">
-            <span className="text-white">Everything</span>
+            <span style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Sell Everywhere.</span>
             <br />
-            <span style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Your Business</span>
-            <br />
-            <span className="text-white">Needs,</span>
-            <br />
-            <span style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>In One Place.</span>
+            <span className="text-white">Run Everything.</span>
           </h1>
           <div className="h-[3px] w-48 rounded-full mb-5" style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)' }} />
           <p className="text-gray-400 text-base leading-relaxed mb-7">
-            Manage invoicing, inventory, orders,<br />marketing &amp; more — all in one platform.
+            POS, invoicing & multi-channel selling —<br />plus Prodora product sourcing. Worldwide.
           </p>
           <Link
-            href="/register"
+            href="/register?plan=launch&billing=monthly"
             className="flex items-center justify-between w-full text-white font-bold px-4 py-3.5 rounded-2xl mb-4 transition-all active:scale-95"
             style={{
               background: 'linear-gradient(135deg, #6B3FD9 0%, #5A2EC9 100%)',
@@ -409,7 +405,7 @@ export default function HomePage() {
           {/* CTA row */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/register"
+              href="/register?plan=launch&billing=monthly"
               className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-7 py-3.5 rounded-xl transition-all text-sm"
             >
               Start free trial <ArrowRight className="w-4 h-4" />
@@ -519,7 +515,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
-                href="/register"
+                href="/register?plan=launch&billing=monthly"
                 className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-xl transition-all text-base"
               >
                 Get started free <ArrowRight className="w-5 h-5" />

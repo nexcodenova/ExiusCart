@@ -109,8 +109,8 @@ const POSTS = [
     category: 'Growth',
     date: 'Jun 2026',
     readTime: '6 min',
-    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing From $12/Month',
-    excerpt: 'Most UAE businesses pay AED 300–500/month for separate tools. ExiusCart replaces all of them — POS, inventory, VAT invoicing, HR — from $12/month.',
+    title: 'All-in-One Business Software UAE: POS, Inventory, Invoicing From $14.99/Month',
+    excerpt: 'Most UAE businesses pay AED 300–500/month for separate tools. ExiusCart replaces all of them — POS, inventory, VAT invoicing, HR — from $14.99/month.',
   },
 ];
 
@@ -280,7 +280,7 @@ export default async function BlogPage() {
             </div>
             <div className="flex flex-col gap-3 shrink-0">
               <Link
-                href="/register"
+                href="/register?plan=launch&billing=monthly"
                 className="inline-flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 font-semibold px-7 py-3.5 rounded-xl transition-all text-sm whitespace-nowrap"
               >
                 Start free trial <ArrowRight className="w-4 h-4" />

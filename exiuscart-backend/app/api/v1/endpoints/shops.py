@@ -24,39 +24,63 @@ from app.api.v1.deps import get_current_user
 import math
 
 # Plan catalogue (source of truth) — prices must mirror
-# apps/exiuscart-website/src/config/pricing.ts exactly.
+# apps/exiuscart-website/src/config/pricing.ts exactly. USD only, on
+# purpose: Lemon Squeezy only ever charges USD, worldwide, so quoting a
+# converted price in a shop's own operational currency (their invoicing/POS
+# currency, unrelated to this) was misleading — it implied a real payment
+# option that doesn't exist. A subscription genuinely billed in another
+# currency in the past (pre-dating this) keeps that real historical
+# amount/currency on its own Subscription/SubscriptionPayment row — this
+# catalogue is only ever used for NEW price quotes, always in USD.
 PLAN_CATALOGUE = {
     # ExiusCart direct plans
     "free_trial": {
         "name": "Free Trial", "staff": 1,
-        "price": {"monthly": {"AED": 0, "USD": 0}, "yearly": {"AED": 0, "USD": 0}},
+        "price": {"monthly": {"USD": 0}, "yearly": {"USD": 0}},
     },
-    "starter": {
-        "name": "Starter", "staff": 3,
-        "price": {"monthly": {"AED": 45, "USD": 12}, "yearly": {"AED": 459, "USD": 120}},
+    "launch": {
+        "name": "Launch", "staff": 3,
+        # Yearly = 9x monthly (pay for 9 months, 3 free — 25% off).
+        "price": {"monthly": {"USD": 14.99}, "yearly": {"USD": 134.91}},
     },
-    "premium": {
-        "name": "Premium", "staff": 0,  # unlimited staff
-        "price": {"monthly": {"AED": 99, "USD": 29}, "yearly": {"AED": 999, "USD": 290}},
+    "growth": {
+        "name": "Growth", "staff": 6,
+        "price": {"monthly": {"USD": 24.99}, "yearly": {"USD": 224.91}},
     },
-    # TheDersi partner plans (billed through TheDersi, not ExiusCart)
-    "thedersi_basic": {
+    "scale": {
+        "name": "Scale", "staff": 0,  # unlimited staff
+        "price": {"monthly": {"USD": 39.99}, "yearly": {"USD": 359.91}},
+    },
+    # TheDersi partner plans (billed through TheDersi, not ExiusCart).
+    # TheDersi Pro deliberately has no entry here — it uses the real "launch"
+    # entry above (same feature set, minus Prodora/channel restrictions
+    # layered on elsewhere via is_thedersi_pro_shop()), and TheDersi's
+    # "Official" tier uses the real "scale" entry above.
+    "thedersi_free_forever": {
         "name": "Free Forever (TheDersi)", "staff": 1,
-        "price": {"monthly": {"AED": 0, "USD": 0}, "yearly": {"AED": 0, "USD": 0}},
+        "price": {"monthly": {"USD": 0}, "yearly": {"USD": 0}},
     },
-    "thedersi_pro": {  # starter features + unlimited orders
-        "name": "Pro (TheDersi)", "staff": 3,
-        "price": {"monthly": {"AED": 0, "USD": 0}, "yearly": {"AED": 0, "USD": 0}},
+    "thedersi_lite": {  # same limits as Free Forever, unlimited orders
+        "name": "Lite (TheDersi)", "staff": 1,
+        "price": {"monthly": {"USD": 0}, "yearly": {"USD": 0}},
     },
 }
 
+# TheDersi Pro shares plan_type="launch" (and Official shares "scale") with
+# real direct ExiusCart customers by design, so PLAN_CATALOGUE's name alone
+# would show a TheDersi Pro seller "Launch" in their own dashboard — this
+# overrides the display name whenever a subscription is confirmed TheDersi's
+# (via promo_code, checked at each call site).
+THEDERSI_PLAN_DISPLAY_NAMES = {"launch": "Pro", "scale": "Official"}
 
-def plan_price(plan_id: str, billing_type: str, currency: str) -> float:
-    """Catalogue price lookup with sane fallbacks for unknown billing_type/currency."""
+
+def plan_price(plan_id: str, billing_type: str) -> float:
+    """Catalogue price lookup (USD, the only real currency Lemon Squeezy
+    charges) with a sane fallback for an unknown billing_type."""
     cat = PLAN_CATALOGUE.get(plan_id, {})
     prices = cat.get("price", {})
     period = prices.get(billing_type) or prices.get("monthly") or {}
-    return float(period.get(currency, period.get("AED", 0)))
+    return float(period.get("USD", 0))
 
 router = APIRouter()
 
@@ -397,10 +421,10 @@ def get_shop_subscription(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
-    # Priority: active > trial > pending_approval > any other
+    # Priority: active/trial/trial_dollar > pending_approval > any other
     sub = db.query(Subscription).filter(
         Subscription.shop_id == shop_id,
-        Subscription.status.in_(["active", "trial", "pending_approval"]),
+        Subscription.status.in_(["active", "trial", "trial_dollar", "pending_approval"]),
     ).order_by(Subscription.created_at.desc()).first()
     if not sub:
         sub = db.query(Subscription).filter(
@@ -417,15 +441,22 @@ def get_shop_subscription(
             exp_utc = expires if expires.tzinfo else expires.replace(tzinfo=timezone.utc)
             days_left = (exp_utc - now).days
 
-        # Auto-expire trial subscriptions when their time is up
-        if sub.status == "trial" and days_left is not None and days_left < 0:
+        # Auto-expire whenever time is up — ANY of these statuses, not just
+        # "trial": a $1 trial whose card failed to renew (trial_dollar) or a
+        # real subscription whose recurring payment failed (active) both
+        # need to flip to "expired" too, or is_expired below stays False
+        # forever and the dashboard's lock screen never shows even though
+        # access should already be blocked.
+        if sub.status in ("trial", "trial_dollar", "active") and days_left is not None and days_left < 0:
             sub.status = "expired"
             db.commit()
 
         source = "thedersi" if sub.promo_code in ("partner_thedersi", "domain_thedersi") else "exiuscart"
 
-        # Channel/online orders this month (POS excluded — always unlimited)
-        order_limit = MONTHLY_ORDER_LIMITS.get(sub.plan_type)
+        # Channel/online orders this month (POS excluded — always unlimited).
+        # TheDersi Pro's unlimited-orders perk needs its own check since it
+        # shares plan_type="launch" with real Launch customers.
+        order_limit = None if (source == "thedersi" and sub.plan_type == "launch") else MONTHLY_ORDER_LIMITS.get(sub.plan_type)
         orders_used = None
         if order_limit is not None:
             now_utc = datetime.now(timezone.utc)
@@ -436,27 +467,36 @@ def get_shop_subscription(
                 Order.source != "pos",
             ).count()
 
-        # Prefer the real amount actually charged (handles USD/AED and
-        # monthly/yearly correctly); only fall back to the catalogue list
-        # price for subs that haven't been charged yet (e.g. pending_approval).
-        # Both branches are priced in sub.currency (what this subscription was
-        # actually quoted/charged in at the time) — NOT necessarily shop.currency,
-        # which is just the shop's current display preference and can be
-        # changed anytime after the fact without touching what was charged.
-        sub_currency = sub.currency or shop.currency or "AED"
-        real_price = float(sub.amount_paid) if sub.amount_paid else plan_price(
-            sub.plan_type, sub.billing_type or "monthly", sub_currency
-        )
+        # Prefer the real amount actually charged (handles legacy non-USD
+        # subscriptions and monthly/yearly correctly) — priced in sub.currency,
+        # what this subscription was actually quoted/charged in at the time,
+        # NOT necessarily shop.currency (just the shop's current display
+        # preference, changeable anytime without touching what was charged).
+        # Only fall back to the catalogue list price for subs that haven't
+        # been charged yet (e.g. pending_approval) — always USD, since
+        # that's genuinely the only currency a new quote is ever priced in.
+        if sub.amount_paid:
+            real_price = float(sub.amount_paid)
+            sub_currency = sub.currency or shop.currency or "USD"
+        else:
+            real_price = plan_price(sub.plan_type, sub.billing_type or "monthly")
+            sub_currency = "USD"
 
         plan_info = {
             "plan_type": sub.plan_type,
             "source": source,
-            "name": cat.get("name", sub.plan_type.replace("_", " ").title()),
+            "name": (
+                THEDERSI_PLAN_DISPLAY_NAMES[sub.plan_type] if source == "thedersi" and sub.plan_type in THEDERSI_PLAN_DISPLAY_NAMES
+                else cat.get("name", sub.plan_type.replace("_", " ").title())
+            ),
             "price": real_price,
             "currency": sub_currency,
             "billing_type": sub.billing_type or "monthly",
             "status": sub.status,
-            "is_trial": sub.plan_type == "free_trial" and sub.status == "trial",
+            # True for BOTH the legacy generic free_trial and Launch's real
+            # 7-day free week — either way, no card on file yet.
+            "is_trial": sub.status == "trial",
+            "is_dollar_trial": sub.status == "trial_dollar",
             "is_pending_approval": sub.status == "pending_approval",
             "is_expired": sub.status == "expired",
             "nextBilling": expires.isoformat() if expires else None,
@@ -477,14 +517,21 @@ def get_shop_subscription(
     history = []
     for s in all_subs:
         cat = PLAN_CATALOGUE.get(s.plan_type, {})
-        s_currency = s.currency or shop.currency or "AED"
-        history_amount = float(s.amount_paid) if s.amount_paid else plan_price(
-            s.plan_type, s.billing_type or "monthly", s_currency
+        s_is_thedersi = s.promo_code in ("partner_thedersi", "domain_thedersi")
+        if s.amount_paid:
+            history_amount = float(s.amount_paid)
+            s_currency = s.currency or shop.currency or "USD"
+        else:
+            history_amount = plan_price(s.plan_type, s.billing_type or "monthly")
+            s_currency = "USD"
+        s_name = (
+            THEDERSI_PLAN_DISPLAY_NAMES[s.plan_type] if s_is_thedersi and s.plan_type in THEDERSI_PLAN_DISPLAY_NAMES
+            else cat.get('name', s.plan_type.capitalize())
         )
         history.append({
             "id": s.id,
             "date": s.created_at.isoformat(),
-            "description": f"{cat.get('name', s.plan_type.capitalize())} Plan — {s.billing_type}",
+            "description": f"{s_name} Plan — {s.billing_type}",
             "amount": history_amount,
             "currency": s_currency,
             "status": s.status,
@@ -541,14 +588,13 @@ def request_plan_upgrade(
     if billing_type not in ("monthly", "yearly"):
         raise HTTPException(status_code=400, detail="Invalid billing_type")
 
-    shop_currency = shop.currency or "AED"
     new_sub = Subscription(
         shop_id=shop_id,
         plan_type=plan_id,
         billing_type=billing_type,
         status="pending_approval",
-        amount_paid=plan_price(plan_id, billing_type, shop_currency),
-        currency=shop_currency,
+        amount_paid=plan_price(plan_id, billing_type),
+        currency="USD",
     )
     db.add(new_sub)
     db.commit()
@@ -564,11 +610,15 @@ async def create_subscription_checkout(
     db: Session = Depends(get_db),
 ):
     """
-    Creates a Lemon Squeezy checkout session for a paid plan and returns the
-    checkout URL. The seller pays on Lemon Squeezy's hosted page; a webhook then
-    confirms the payment and activates the plan automatically.
+    Upgrades a shop to a paid plan. If the shop already has a LIVE Lemon
+    Squeezy subscription (currently active, or mid-$1-trial), that existing
+    subscription is switched to the new plan's variant directly — a brand
+    new checkout here would create a SECOND, independent Lemon Squeezy
+    subscription without cancelling the first, double-billing the seller
+    every cycle. Only a shop with no live subscription to switch (a genuine
+    first payment) goes through a real Lemon Squeezy checkout page.
     """
-    from app.core.lemonsqueezy import create_checkout, is_configured
+    from app.core.lemonsqueezy import create_checkout, is_configured, get_variant_id, update_subscription_variant
 
     shop = db.query(Shop).filter(
         Shop.id == shop_id, Shop.owner_id == current_user.id
@@ -578,12 +628,41 @@ async def create_subscription_checkout(
 
     plan_id = body.get("plan")
     billing_type = body.get("billing_type", "monthly")
-    if plan_id not in ("starter", "premium"):
-        raise HTTPException(status_code=400, detail="Lemon Squeezy checkout is only available for Starter and Premium plans.")
+    # True whenever the target plan is Growth or Scale — both always start
+    # with a $1, 7-day stage (no free week), whether this is a fresh
+    # checkout or a Launch trial shop switching up. Launch never sets this:
+    # it's the only plan with a free week, and goes straight to full price
+    # once that ends.
+    trial_dollar = bool(body.get("trial_dollar"))
+    if plan_id not in ("launch", "growth", "scale"):
+        raise HTTPException(status_code=400, detail="Lemon Squeezy checkout is only available for the Launch, Growth, and Scale plans.")
     if billing_type not in ("monthly", "yearly"):
         raise HTTPException(status_code=400, detail="billing_type must be 'monthly' or 'yearly'.")
     if not is_configured():
         raise HTTPException(status_code=503, detail="Online payment is not configured yet. Please contact support.")
+
+    current_sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id
+    ).order_by(Subscription.id.desc()).first()
+
+    if current_sub and current_sub.lemon_squeezy_subscription_id and current_sub.status in ("active", "trial_dollar"):
+        # Already paying (or mid-$1-trial) — switch the existing Lemon
+        # Squeezy subscription in place. Never re-grant the $1 trial
+        # discount here: someone already paying full price (or already in
+        # their one $1 window) could otherwise cycle plans to stay at $1
+        # forever, which is exactly the discount abuse trial_dollar exists
+        # to prevent, not enable.
+        variant_id = get_variant_id(plan_id, billing_type)
+        if not variant_id:
+            raise HTTPException(status_code=503, detail=f"No Lemon Squeezy variant configured for {plan_id}/{billing_type} yet.")
+        try:
+            await update_subscription_variant(current_sub.lemon_squeezy_subscription_id, variant_id)
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        current_sub.plan_type = plan_id
+        current_sub.billing_type = billing_type
+        db.commit()
+        return {"switched": True, "plan": plan_id}
 
     try:
         checkout_url = await create_checkout(
@@ -592,6 +671,7 @@ async def create_subscription_checkout(
             billing_type=billing_type,
             customer_email=current_user.email,
             customer_name=current_user.full_name or shop.name,
+            trial_dollar=trial_dollar,
         )
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))

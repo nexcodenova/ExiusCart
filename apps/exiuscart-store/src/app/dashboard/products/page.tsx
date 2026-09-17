@@ -380,6 +380,7 @@ export default function ProductsPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'physical' | 'digital' | 'affiliate'>('all');
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [planType, setPlanType] = useState<string>('');
+  const [isTheDersi, setIsTheDersi] = useState(false);
   const [perfData, setPerfData] = useState<Record<string, { revenue: number; revenue_30d: number; units_sold: number; heat: string; margin_pct: number; days_since_sale: number }>>({});
   const [sortBy, setSortBy] = useState<'default' | 'revenue' | 'margin' | 'stock'>('default');
 
@@ -392,21 +393,27 @@ export default function ProductsPage() {
     if (!shopId) return;
     import('@/lib/api').then(({ subscriptionApi }) => {
       subscriptionApi.getCurrent(shopId)
-        .then((res) => setPlanType(res.data?.plan?.plan_type ?? ''))
+        .then((res) => {
+          setPlanType(res.data?.plan?.plan_type ?? '');
+          setIsTheDersi(res.data?.plan?.source === 'thedersi');
+        })
         .catch(() => {});
     });
   }, [shopId]);
 
-  const isTheDersiBasic = planType === 'thedersi_basic';
-  const canBulkUpload = planType === 'premium' || planType === 'thedersi_pro';
-  const isTheDersiBasicUser = planType === 'thedersi_basic';
+  // TheDersi Pro shares plan_type="launch" with real direct Launch
+  // customers, so distinguishing "TheDersi, not on Pro" (Free Forever/Lite)
+  // from "TheDersi Pro" needs the real TheDersi flag, not plan_type alone.
+  const isTheDersiBasic = isTheDersi && planType !== 'launch';
+  const canBulkUpload = planType === 'growth' || planType === 'scale' || (isTheDersi && planType === 'launch');
+  const isTheDersiBasicUser = isTheDersiBasic;
   // Digital products are ExiusCart-only — TheDersi is a physical-goods
   // marketplace, and TheDersi orders arrive via a channel webhook, never
   // through checkout.py/POS, so the digital-delivery email would never
   // even fire for a TheDersi order regardless of gating. Blocking this in
   // the UI (and again server-side, see products.py) rather than shipping
   // a button that silently can't work.
-  const isTheDersiShop = planType === 'thedersi_basic' || planType === 'thedersi_pro';
+  const isTheDersiShop = isTheDersi;
 
   const togglePrintSelect = (id: string) => {
     setSelectedForPrint(prev => {
