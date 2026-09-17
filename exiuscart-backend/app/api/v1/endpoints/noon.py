@@ -49,7 +49,7 @@ import jwt
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.core.thedersi import is_thedersi_shop
+from app.core.thedersi import is_thedersi_restricted_shop
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.channel import ChannelConnection
@@ -167,7 +167,7 @@ def connect_noon(
     # Detected via an active TheDersi connection, not plan_type — TheDersi's
     # own Growth/Premium tier names map to plan_type='launch', same as a
     # direct customer, so a plan_type check alone would miss those sellers.
-    if is_thedersi_shop(shop_id, db):
+    if is_thedersi_restricted_shop(shop_id, db):
         raise HTTPException(status_code=403, detail="Noon isn't available on TheDersi plans — TheDersi sellers can use TheDersi and Daraz.")
 
     creds = data.model_dump()

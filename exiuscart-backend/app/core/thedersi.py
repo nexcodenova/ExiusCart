@@ -97,6 +97,50 @@ def is_thedersi_pro_shop(shop_id: int, db) -> bool:
     return bool(sub and sub.plan_type == "launch")
 
 
+def is_thedersi_official_shop(shop_id: int, db) -> bool:
+    """True for TheDersi's own internal @thedersi.lk staff accounts.
+
+    Official shares plan_type="scale" with real direct ExiusCart Scale
+    customers — same reasoning as is_thedersi_pro_shop above.
+    """
+    from app.models.subscription import Subscription
+    if not is_thedersi_shop(shop_id, db):
+        return False
+    sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id
+    ).order_by(Subscription.id.desc()).first()
+    return bool(sub and sub.plan_type == "scale")
+
+
+def is_thedersi_daraz_eligible_shop(shop_id: int, db) -> bool:
+    """True for a TheDersi shop allowed to connect Daraz — Lite and Pro
+    (Free Forever is TheDersi-only, no Daraz). Lite has its own distinct
+    plan_type (thedersi_lite, never shared with anything else) so it needs
+    no is_thedersi_shop() check; Pro shares "launch" and needs
+    is_thedersi_pro_shop() to tell it apart from a real Launch customer.
+    Official is exempt from this check entirely (see
+    is_thedersi_restricted_shop) since it already gets every channel.
+    """
+    from app.models.subscription import Subscription
+    sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id
+    ).order_by(Subscription.id.desc()).first()
+    if sub and sub.plan_type == "thedersi_lite":
+        return True
+    return is_thedersi_pro_shop(shop_id, db)
+
+
+def is_thedersi_restricted_shop(shop_id: int, db) -> bool:
+    """True for a TheDersi shop that should have TheDersi's usual
+    restrictions applied (no Prodora, no dropshipping suppliers, no digital
+    product delivery, channels limited to TheDersi+Daraz, etc.) — every
+    TheDersi tier EXCEPT Official, which gets full, unrestricted Scale
+    access with no TheDersi-specific carve-outs at all. Use this instead of
+    is_thedersi_shop() for any blanket "TheDersi shops can't do X" check.
+    """
+    return is_thedersi_shop(shop_id, db) and not is_thedersi_official_shop(shop_id, db)
+
+
 # Monthly order limits per plan (None = unlimited)
 # Counts channel/online orders only — POS is always unlimited regardless of plan
 MONTHLY_ORDER_LIMITS: dict = {

@@ -284,6 +284,12 @@ function isPremiumGroup(groupId: string): boolean {
   return PREMIUM_GROUPS.has(groupId);
 }
 
+// Locked for every TheDersi tier except Official — see isTheDersiRestricted
+// where this is used. Applied at the group level even though none of these
+// three are built yet (all "Coming Soon" stubs), so the access rule is
+// already correct the moment a real feature lands behind them.
+const THEDERSI_LOCKED_GROUPS = new Set(['ai-commerce', 'product-studio', 'mcp']);
+
 // Rebuilt on shadcn/ui's real Sidebar primitive (components/ui/sidebar.tsx)
 // instead of a hand-rolled fixed-position <aside> — desktop collapse/expand
 // and all its own state (now cookie-persisted, a free upgrade the old
@@ -415,16 +421,19 @@ export function ShopSidebar() {
               {GROUPS.map(group => {
                 const plan = (shopData?.plan || '').toLowerCase();
                 const isTheDersiPlan = shopData?.isTheDersi ?? false;
-                // TheDersi Pro shares plan_type="launch" with real direct
-                // Launch customers, who don't get Team & Operations — Pro's
-                // own access needs the TheDersi flag, not plan_type alone.
-                const isTheDersiProPlan = isTheDersiPlan && plan === 'launch';
-                const canAccessPremium = plan === 'scale' || plan === 'growth' || isTheDersiProPlan;
-                // Any TheDersi tier that isn't Pro (Free Forever or Lite) —
-                // shown "Only for TheDersi Pro" instead of the generic
-                // "Only for Premium plan" message real customers see.
-                const isTheDersiBasicPlan = isTheDersiPlan && !isTheDersiProPlan;
-                const locked = isPremiumGroup(group.id) && !canAccessPremium;
+                // Off for every TheDersi tier except Official (which shares
+                // plan_type="scale" with real Scale customers and so already
+                // satisfies canAccessPremium on its own) — Free Forever,
+                // Lite, and Pro all get the TheDersi-specific locked message
+                // instead of the generic one.
+                const isTheDersiRestricted = isTheDersiPlan && plan !== 'scale';
+                const canAccessPremium = plan === 'scale' || plan === 'growth';
+                const isTheDersiBasicPlan = isTheDersiRestricted;
+                // AI Commerce/Product Studio/MCP aren't built yet, but the
+                // access rule is locked in now so nothing slips through the
+                // day they ship: same TheDersi exclusion as everything else
+                // (Prodora, dropshipping, etc.) — every tier except Official.
+                const locked = (isPremiumGroup(group.id) && !canAccessPremium) || (THEDERSI_LOCKED_GROUPS.has(group.id) && isTheDersiRestricted);
                 const groupActive = isGroupActive(group);
                 const isOpen = openGroups.has(group.id) || collapsed;
 
@@ -461,7 +470,11 @@ export function ShopSidebar() {
                         }`}>
                         {group.icon && <group.icon className={`w-4 h-4 shrink-0 ${group.accent ?? ''}`} />}
                         <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
-                        {locked && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">PRO</span>}
+                        {locked && (
+                          <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">
+                            {isPremiumGroup(group.id) ? 'PRO' : 'LOCKED'}
+                          </span>
+                        )}
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
                       </button>
                     )}
@@ -492,7 +505,7 @@ export function ShopSidebar() {
                                 {!collapsed && (
                                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-[60] hidden group-hover/lock:block pointer-events-none">
                                     <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
-                                      {isTheDersiBasicPlan ? 'Only for TheDersi Pro' : 'Only for Premium plan'}
+                                      {isTheDersiBasicPlan ? 'Not available on TheDersi plans' : 'Only for Growth & Scale'}
                                     </div>
                                   </div>
                                 )}
@@ -622,9 +635,9 @@ export function ShopSidebar() {
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-500/15 mb-4 mx-auto">
               <Shield className="w-6 h-6 text-amber-400" />
             </div>
-            <h3 className="text-lg font-bold text-foreground text-center mb-2">Premium Feature</h3>
+            <h3 className="text-lg font-bold text-foreground text-center mb-2">Growth &amp; Scale Feature</h3>
             <p className="text-sm text-muted-foreground text-center mb-6">
-              HR, Payroll, Fleet, Projects, Helpdesk and Appointments are available on the <span className="text-amber-400 font-semibold">Premium</span> plan.
+              HR, Payroll, Fleet, Projects, Helpdesk and Appointments are available on <span className="text-amber-400 font-semibold">Growth and Scale</span> plans.
             </p>
             <div className="flex gap-3">
               <button type="button" onClick={() => setShowUpgradeModal(false)}
@@ -647,20 +660,14 @@ export function ShopSidebar() {
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/15 mb-4 mx-auto">
               <Shield className="w-6 h-6 text-indigo-400" />
             </div>
-            <h3 className="text-lg font-bold text-foreground text-center mb-2">TheDersi Pro Feature</h3>
+            <h3 className="text-lg font-bold text-foreground text-center mb-2">Not Available on TheDersi Plans</h3>
             <p className="text-sm text-muted-foreground text-center mb-6">
-              HR, Payroll, Fleet, Projects, Helpdesk and Appointments are only available on <span className="text-indigo-400 font-semibold">TheDersi Pro</span>.
+              This isn't included on any TheDersi-managed plan. Contact TheDersi if you have questions about your plan.
             </p>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => setShowTheDersiModal(false)}
-                className="flex-1 py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
-                Cancel
-              </button>
-              <Link href="/dashboard/billing" onClick={() => setShowTheDersiModal(false)}
-                className="flex-1 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-semibold text-center transition">
-                Upgrade to Pro
-              </Link>
-            </div>
+            <button type="button" onClick={() => setShowTheDersiModal(false)}
+              className="w-full py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
+              Got it
+            </button>
           </div>
         </div>
       )}

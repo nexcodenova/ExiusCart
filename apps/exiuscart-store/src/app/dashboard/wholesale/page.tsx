@@ -238,21 +238,21 @@ export default function WholesalePage() {
             <Lock className="w-8 h-8 text-amber-500" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Wholesale — Premium Feature</h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">Wholesale — Scale Feature</h2>
             {isTheDersiPlan ? (
               <p className="text-sm text-muted-foreground">
-                Wholesale B2B is available for <span className="font-semibold text-foreground">ExiusCart Premium subscribers</span> only.
+                Wholesale B2B is available for <span className="font-semibold text-foreground">direct ExiusCart Scale subscribers</span> only.
                 Your plan is managed by TheDersi — contact TheDersi for plan information.
               </p>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Build a wholesale catalogue, manage B2B buyers, auto-generate quotations, and track wholesale revenue — all on Premium.
+                Build a wholesale catalogue, manage B2B buyers, auto-generate quotations, and track wholesale revenue — all on Scale.
               </p>
             )}
           </div>
           {!isTheDersiPlan && (
             <a href="/dashboard/billing" className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-semibold text-sm transition">
-              <Crown className="w-4 h-4" /> Upgrade to Premium
+              <Crown className="w-4 h-4" /> Upgrade to Scale
             </a>
           )}
         </div>

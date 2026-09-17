@@ -113,10 +113,11 @@ export default function ChannelsPage() {
   const CHANNEL_LIMIT_BY_PLAN: Record<string, number> = { free_trial: 1, launch: 1, growth: 3 };
   const channelLimit = CHANNEL_LIMIT_BY_PLAN[plan];
   const channelLimitReached = plan !== '' && channelLimit != null && !isTheDersiUser && totalChannelCount >= channelLimit;
-  // Daraz: TheDersi Pro, Growth, or Scale. TheDersi Pro shares plan="launch"
-  // with real direct Launch customers (who don't get Daraz), so it needs
-  // the TheDersi flag, not a plan-string check alone.
-  const canUseDaraz = (isTheDersiUser && plan === 'launch') || plan === 'growth' || plan === 'scale';
+  // Daraz: TheDersi Lite/Pro, Growth, or Scale. "thedersi_lite" is a unique
+  // plan_type (no plan-string ambiguity), but TheDersi Pro shares plan=
+  // "launch" with real direct Launch customers (who don't get Daraz), so
+  // Pro needs the TheDersi flag too.
+  const canUseDaraz = plan === 'thedersi_lite' || (isTheDersiUser && plan === 'launch') || plan === 'growth' || plan === 'scale';
   // Noon is direct-ExiusCart only — TheDersi sellers (Basic or Pro) get
   // TheDersi + Daraz and nothing else, same rule as Shopify/Custom Website.
   // eBay follows that same "ExiusCart direct only" rule (unlike Daraz) —

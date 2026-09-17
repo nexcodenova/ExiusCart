@@ -42,7 +42,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.thedersi import is_thedersi_shop, is_thedersi_pro_shop
+from app.core.thedersi import is_thedersi_shop, is_thedersi_daraz_eligible_shop
 from app.core.country_utils import shop_country_iso
 from app.api.v1.deps import get_current_user
 from app.models.user import User
@@ -221,17 +221,18 @@ def daraz_authorize(
 
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
-    # TheDersi Pro shares plan_type="launch" with real Launch customers, so
-    # it needs its own check rather than a plan_type string match — see
-    # is_thedersi_pro_shop in app/core/thedersi.py.
-    if plan_type not in ("growth", "scale") and not is_thedersi_pro_shop(shop_id, db):
+    # TheDersi Lite/Pro share plan_type with other tiers ("thedersi_lite" is
+    # unique but Pro shares "launch" with real Launch customers), so this
+    # needs its own check rather than a plan_type string match — see
+    # is_thedersi_daraz_eligible_shop in app/core/thedersi.py.
+    if plan_type not in ("growth", "scale") and not is_thedersi_daraz_eligible_shop(shop_id, db):
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "daraz_requires_pro",
                 "plan": plan_type,
                 "message": (
-                    "Daraz sync is available on TheDersi Pro. Upgrade your TheDersi plan to connect Daraz."
+                    "Daraz sync is available on TheDersi Lite and Pro. Upgrade your TheDersi plan to connect Daraz."
                     if is_thedersi_shop(shop_id, db)
                     else "Daraz sync is available on Premium. Upgrade to connect your Daraz seller account."
                 ),

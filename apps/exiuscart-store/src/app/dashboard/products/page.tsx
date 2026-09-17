@@ -404,8 +404,11 @@ export default function ProductsPage() {
   // TheDersi Pro shares plan_type="launch" with real direct Launch
   // customers, so distinguishing "TheDersi, not on Pro" (Free Forever/Lite)
   // from "TheDersi Pro" needs the real TheDersi flag, not plan_type alone.
+  // (Bulk print stays Pro-only — only Bulk Upload is off for every TheDersi
+  // tier except Official, which shares plan_type="scale" and is already
+  // covered below with no extra check needed.)
   const isTheDersiBasic = isTheDersi && planType !== 'launch';
-  const canBulkUpload = planType === 'growth' || planType === 'scale' || (isTheDersi && planType === 'launch');
+  const canBulkUpload = planType === 'growth' || planType === 'scale';
   const isTheDersiBasicUser = isTheDersiBasic;
   // Digital products are ExiusCart-only — TheDersi is a physical-goods
   // marketplace, and TheDersi orders arrive via a channel webhook, never
@@ -520,7 +523,7 @@ export default function ProductsPage() {
               </button>
               <div className="absolute right-0 top-full mt-1.5 z-20 hidden group-hover/bulk:block pointer-events-none">
                 <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
-                  {isTheDersiBasicUser ? 'Only for TheDersi Pro' : 'Only for Premium plan'}
+                  {isTheDersi ? 'Not available on TheDersi plans' : 'Only for Growth & Scale'}
                 </div>
               </div>
             </div>

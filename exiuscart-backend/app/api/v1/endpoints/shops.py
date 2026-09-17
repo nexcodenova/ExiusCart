@@ -501,7 +501,10 @@ def get_shop_subscription(
             "is_expired": sub.status == "expired",
             "nextBilling": expires.isoformat() if expires else None,
             "trialEndsAt": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
-            "staffIncluded": cat.get("staff", 1),
+            # TheDersi Pro shares plan_type="launch" (staff=3) with real
+            # Launch customers, but TheDersi caps every one of their own
+            # tiers — Free Forever, Lite, and Pro alike — at 1 staff account.
+            "staffIncluded": 1 if (source == "thedersi" and sub.plan_type == "launch") else cat.get("staff", 1),
             "extraStaff": 0,
             "extraStaffCost": 0,
             "staffUsed": 1,

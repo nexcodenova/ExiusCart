@@ -48,7 +48,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.thedersi import is_thedersi_shop
+from app.core.thedersi import is_thedersi_restricted_shop
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.channel import ChannelConnection
@@ -144,7 +144,7 @@ def connect_woocommerce(
     stored as if it worked."""
     _shop_or_404(shop_id, current_user, db)
 
-    if is_thedersi_shop(shop_id, db):
+    if is_thedersi_restricted_shop(shop_id, db):
         raise HTTPException(status_code=403, detail="WooCommerce isn't available on TheDersi plans — TheDersi sellers can use TheDersi and Daraz.")
 
     # Free Trial's own pricing copy names only Shopify/TheDersi/custom site

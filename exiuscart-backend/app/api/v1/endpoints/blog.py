@@ -17,7 +17,7 @@ import uuid
 
 from app.core.database import get_db
 from sqlalchemy.orm import Session
-from app.core.thedersi import is_thedersi_shop
+from app.core.thedersi import is_thedersi_restricted_shop
 from app.core.rate_limit import limiter
 from app.models.user import User
 from app.models.shop import Shop
@@ -53,7 +53,7 @@ def _block_thedersi(shop_id: int, db: Session) -> None:
     """TheDersi sellers are fulfilled through TheDersi's own marketplace,
     which has no seller-facing blog concept — same reasoning that already
     blocks TheDersi shops from Dropshipping elsewhere in this codebase."""
-    if is_thedersi_shop(shop_id, db):
+    if is_thedersi_restricted_shop(shop_id, db):
         raise HTTPException(status_code=403, detail={
             "error": "not_available",
             "message": "Blog isn't available for TheDersi sellers — your storefront is managed by TheDersi, which has no blog feature to publish into.",

@@ -12,7 +12,7 @@ from app.models.order import Order, OrderItem
 from app.models.customer import Customer
 from app.models.shopify_integration import ShopifyStore, ShopifySyncLog
 from app.api.v1.deps import get_current_user
-from app.core.thedersi import is_thedersi_shop
+from app.core.thedersi import is_thedersi_restricted_shop
 import os
 
 
@@ -91,7 +91,7 @@ async def connect_shopify(shop_id: int, body: dict, current_user: User = Depends
     # ChannelConnection row) and was never wired into that check, so a
     # TheDersi-managed shop could connect Shopify with nothing stopping it
     # server-side. Closing that here, not just in the UI.
-    if is_thedersi_shop(shop_id, db):
+    if is_thedersi_restricted_shop(shop_id, db):
         raise HTTPException(
             status_code=403,
             detail={

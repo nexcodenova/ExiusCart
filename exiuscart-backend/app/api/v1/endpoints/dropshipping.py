@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.thedersi import is_thedersi_shop
+from app.core.thedersi import is_thedersi_restricted_shop
 from app.core.encryption import encrypt, decrypt
 from app.models.user import User
 from app.models.order import Order
@@ -252,7 +252,7 @@ async def hypersku_search_products(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="HyperSKU product browse is not available on your plan.")
 
     conn = await _get_hypersku_conn_or_400(shop_id, db)
@@ -279,7 +279,7 @@ async def hypersku_my_products(
     CJ's 'My Product' tab."""
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="HyperSKU product browse is not available on your plan.")
 
     conn = await _get_hypersku_conn_or_400(shop_id, db)
@@ -336,7 +336,7 @@ async def hypersku_import_product(
 
     shop = _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
 
     limit = PLAN_PRODUCT_LIMITS.get(plan, 25)
@@ -426,7 +426,7 @@ PLAN_ALLOWED_SUPPLIERS = {
     #
     # No thedersi_* entries here — every TheDersi tier (including Pro, which
     # shares plan_type="launch" with real Launch customers) is blocked from
-    # dropshipping suppliers entirely by the is_thedersi_shop() check in
+    # dropshipping suppliers entirely by the is_thedersi_restricted_shop() check in
     # _check_supplier_allowed below, before this dict is ever consulted.
     "scale":         {"cj", "hypersku", "aliexpress", "printful", "printify", "gelato", "1688", "eprolo"},
     "growth":        LAUNCH_SUPPLIER_CHOICES,
@@ -448,7 +448,7 @@ def _check_supplier_allowed(plan: str, supplier_type: str, shop_id: int, db: Ses
     # PLAN_ALLOWED_SUPPLIERS would otherwise let through to CJ (Launch
     # customers' own CJ access), even though TheDersi sellers' fulfilment is
     # always TheDersi's, never a dropship supplier.
-    if is_thedersi_shop(shop_id, db):
+    if is_thedersi_restricted_shop(shop_id, db):
         raise HTTPException(status_code=403, detail={
             "error": "not_available",
             "message": "Dropshipping suppliers are not available on TheDersi plans. Your fulfilment is managed by TheDersi.",
@@ -654,7 +654,7 @@ async def cj_search_products(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="CJ product browse is not available on your plan.")
 
     conn = await _get_cj_conn_or_400(shop_id, db)
@@ -695,7 +695,7 @@ async def cj_my_products(
     My Product) — already vetted by them, so no search-relevance issues."""
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="CJ product browse is not available on your plan.")
 
     conn = await _get_cj_conn_or_400(shop_id, db)
@@ -735,7 +735,7 @@ async def cj_get_product_detail(
 ):
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Not available on your plan.")
 
     conn = await _get_cj_conn_or_400(shop_id, db)
@@ -961,7 +961,7 @@ async def cj_import_product(
 
     shop = _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
 
     # Check product limit
@@ -1091,7 +1091,7 @@ async def printful_catalog(
     """
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Print-on-demand catalog browse is not available on your plan.")
 
     conn = await _get_printful_conn_or_400(shop_id, db)
@@ -1192,7 +1192,7 @@ async def printful_my_products(
     above, blanks with nothing designed on them yet)."""
     _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Print-on-demand product browse is not available on your plan.")
 
     conn = await _get_printful_conn_or_400(shop_id, db)
@@ -1252,7 +1252,7 @@ async def printful_import(
 
     shop = _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
 
     limit = PLAN_PRODUCT_LIMITS.get(plan, 25)
@@ -1892,7 +1892,7 @@ async def aliexpress_import(
 
     shop = _shop_or_404(shop_id, current_user, db)
     plan = _get_plan(shop_id, db)
-    if is_thedersi_shop(shop_id, db) or plan == "free_trial":
+    if is_thedersi_restricted_shop(shop_id, db) or plan == "free_trial":
         raise HTTPException(status_code=403, detail="Product import is not available on your plan.")
 
     limit = PLAN_PRODUCT_LIMITS.get(plan, 25)

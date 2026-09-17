@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import re
 import uuid
 from app.core.database import get_db
-from app.core.thedersi import is_thedersi_shop
+from app.core.thedersi import is_thedersi_restricted_shop
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product, Category
@@ -247,7 +247,7 @@ async def create_product(
         # never through checkout.py/POS, so the digital-delivery email
         # would never fire for one regardless; blocked outright rather
         # than accepting a product that silently can't be fulfilled.
-        if is_thedersi_shop(shop_id, db):
+        if is_thedersi_restricted_shop(shop_id, db):
             raise HTTPException(status_code=403, detail={
                 "error": "not_available",
                 "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
@@ -265,7 +265,7 @@ async def create_product(
         # the customer straight to affiliate_url, so a TheDersi catalog
         # sync (a real physical-goods marketplace) has nothing real to
         # list here either. Same block, same reasoning as digital above.
-        if is_thedersi_shop(shop_id, db):
+        if is_thedersi_restricted_shop(shop_id, db):
             raise HTTPException(status_code=403, detail={
                 "error": "not_available",
                 "message": "Affiliate products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
@@ -283,7 +283,7 @@ async def create_product(
     # them. The dashboard UI (products page) already disables these
     # fields for TheDersi shops; this is the server-side half of that,
     # for anyone calling the API directly.
-    if is_thedersi_shop(shop_id, db):
+    if is_thedersi_restricted_shop(shop_id, db):
         product_fields["faq"] = None
         product_fields["shipping_steps"] = None
         product_fields["seo_keywords"] = None
@@ -478,7 +478,7 @@ async def update_product(
     if "description" in update_data:
         _validate_description(update_data["description"], shop_id, db)
     if update_data.get("product_type") == "digital":
-        if is_thedersi_shop(shop_id, db):
+        if is_thedersi_restricted_shop(shop_id, db):
             raise HTTPException(status_code=403, detail={
                 "error": "not_available",
                 "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
@@ -487,7 +487,7 @@ async def update_product(
             update_data["quantity"] = 999999
             update_data["low_stock_threshold"] = 0
     elif update_data.get("product_type") == "affiliate":
-        if is_thedersi_shop(shop_id, db):
+        if is_thedersi_restricted_shop(shop_id, db):
             raise HTTPException(status_code=403, detail={
                 "error": "not_available",
                 "message": "Affiliate products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
@@ -497,7 +497,7 @@ async def update_product(
         if "quantity" not in update_data:
             update_data["quantity"] = 999999
             update_data["low_stock_threshold"] = 0
-    if is_thedersi_shop(shop_id, db):
+    if is_thedersi_restricted_shop(shop_id, db):
         if "faq" in update_data:
             update_data["faq"] = None
         if "shipping_steps" in update_data:

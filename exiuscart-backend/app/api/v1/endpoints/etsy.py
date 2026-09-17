@@ -53,7 +53,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.thedersi import is_thedersi_shop
+from app.core.thedersi import is_thedersi_restricted_shop
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.channel import ChannelConnection
@@ -230,7 +230,7 @@ def etsy_authorize(
             detail="Etsy integration isn't configured yet — ExiusCart's app registration with Etsy is still pending.",
         )
 
-    if is_thedersi_shop(shop_id, db):
+    if is_thedersi_restricted_shop(shop_id, db):
         raise HTTPException(
             status_code=403,
             detail={

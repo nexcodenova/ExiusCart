@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db, SessionLocal
-from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature, is_thedersi_shop, is_thedersi_pro_shop
+from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature, is_thedersi_restricted_shop, is_thedersi_pro_shop, is_thedersi_daraz_eligible_shop
 from app.core.activity import log_activity
 from app.api.v1.deps import get_current_user
 from app.models.user import User
@@ -590,10 +590,10 @@ def connect_channel(
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     plan_type = sub.plan_type if sub else "free_trial"
 
-    # TheDersi users: only TheDersi channel + Daraz (Pro only). Detected via
-    # an active TheDersi connection, not plan_type — TheDersi's own Growth/
-    # Premium tier names map to plan_type='launch', same as a direct customer.
-    if is_thedersi_shop(shop_id, db):
+    # TheDersi users: only TheDersi channel + Daraz (Pro only) — except
+    # Official, which gets full unrestricted channel access like a real
+    # Scale customer, so it's excluded from this whole block.
+    if is_thedersi_restricted_shop(shop_id, db):
         if data.channel_type not in ("thedersi", "daraz"):
             raise HTTPException(
                 status_code=403,
@@ -603,23 +603,24 @@ def connect_channel(
                     "message": "Your plan is managed by TheDersi. Only TheDersi and Daraz channels are available on TheDersi plans.",
                 },
             )
-        if data.channel_type == "daraz" and not is_thedersi_pro_shop(shop_id, db):
+        if data.channel_type == "daraz" and not is_thedersi_daraz_eligible_shop(shop_id, db):
             raise HTTPException(
                 status_code=403,
                 detail={
                     "error": "daraz_requires_pro",
                     "plan": plan_type,
-                    "message": "Daraz sync is available on TheDersi Pro. Upgrade your TheDersi plan to connect Daraz.",
+                    "message": "Daraz sync is available on TheDersi Lite and Pro. Upgrade your TheDersi plan to connect Daraz.",
                 },
             )
 
     # Free trial + Launch: max 1 active channel connection; Growth: up to 3
     # (matches the "3 of 8+ sales channels" Growth advertises); Scale = unlimited.
-    # TheDersi Pro shares plan_type="launch" with real Launch customers but is
-    # explicitly allowed 2 (TheDersi + Daraz) — checked first since it'd
-    # otherwise fall into launch's limit of 1 below.
+    # TheDersi Lite/Pro are explicitly allowed 2 (TheDersi + Daraz) — checked
+    # first since Lite isn't in this dict at all (falls through to no limit,
+    # which the earlier channel-type whitelist already caps at 2 anyway) and
+    # Pro would otherwise fall into launch's limit of 1.
     CHANNEL_LIMIT_BY_PLAN = {"free_trial": 1, "launch": 1, "growth": 3}
-    limit = 2 if is_thedersi_pro_shop(shop_id, db) else CHANNEL_LIMIT_BY_PLAN.get(plan_type)
+    limit = 2 if is_thedersi_daraz_eligible_shop(shop_id, db) else CHANNEL_LIMIT_BY_PLAN.get(plan_type)
     if limit is not None:
         active_count = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id,
