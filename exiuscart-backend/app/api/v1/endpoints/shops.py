@@ -60,7 +60,7 @@ PLAN_CATALOGUE = {
         "name": "Free Forever (TheDersi)", "staff": 1,
         "price": {"monthly": {"USD": 0}, "yearly": {"USD": 0}},
     },
-    "thedersi_lite": {  # same limits as Free Forever, unlimited orders
+    "thedersi_lite": {  # own limits — 500 products/orders, see PLAN_PRODUCT_LIMITS / MONTHLY_ORDER_LIMITS
         "name": "Lite (TheDersi)", "staff": 1,
         "price": {"monthly": {"USD": 0}, "yearly": {"USD": 0}},
     },

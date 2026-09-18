@@ -10,8 +10,8 @@ Security model:
 
 TheDersi's own tier name → ExiusCart plan_type (see app/core/thedersi.py's
 THEDERSI_TIER_MAP for the full, current mapping):
-  free_forever → thedersi_free_forever  (25 products, 100 orders/mo)
-  lite         → thedersi_lite          (same limits as free_forever, unlimited orders)
+  free_forever → thedersi_free_forever  (25 products, 25 orders/mo)
+  lite         → thedersi_lite          (500 products, 500 orders/mo)
   pro          → launch                 (Launch's feature set, minus Prodora; 2 channels max)
   official     → scale                  (their own internal @thedersi.lk staff)
 """

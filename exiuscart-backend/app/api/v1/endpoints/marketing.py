@@ -405,7 +405,7 @@ def send_email_campaign(shop_id: int, cid: int, current_user: User = Depends(get
     # set by TheDersi, not ExiusCart, so its numbers are a deliberate,
     # separate choice, same as SMS/social posting's own Pro overrides.
     from app.core.thedersi import is_thedersi_pro_shop
-    limit = 250 if is_thedersi_pro_shop(shop_id, db) else _get_limit(EMAIL_LIMITS["marketing"], plan)
+    limit = 300 if is_thedersi_pro_shop(shop_id, db) else _get_limit(EMAIL_LIMITS["marketing"], plan)
     if limit == 0:
         raise HTTPException(status_code=403, detail="Marketing emails are not available on your plan. Upgrade to Launch or above.")
 

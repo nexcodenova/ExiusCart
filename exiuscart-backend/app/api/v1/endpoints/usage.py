@@ -24,7 +24,7 @@ EMAIL_LIMITS: dict[str, dict] = {
     "invoice": {
         "free_trial":            50,
         "thedersi_free_forever": 50,
-        "thedersi_lite":         50,
+        "thedersi_lite":         250,
         "launch":                1000,
         "growth":                5000,
         "scale":                 None,
@@ -32,10 +32,10 @@ EMAIL_LIMITS: dict[str, dict] = {
     "quotation": {
         "free_trial":            10,
         "thedersi_free_forever": 10,
-        "thedersi_lite":         10,
-        "launch":                100,
-        "growth":                500,
-        "scale":                 None,
+        "thedersi_lite":         50,
+        "launch":                100,   # TheDersi Pro shares this plan_type but gets its
+        "growth":                500,   # own 500/mo override — see is_thedersi_pro_shop
+        "scale":                 None,  # check in quotations.py's send endpoint.
     },
     "marketing": {
         "free_trial":            0,
@@ -55,7 +55,7 @@ EMAIL_LIMITS: dict[str, dict] = {
 ORDER_LIMITS: dict = {
     "free_trial":            50,
     "thedersi_free_forever": 25,
-    "thedersi_lite":         100,
+    "thedersi_lite":         500,
     "launch":                1000,
     "growth":                5000,
     "scale":                 None,
@@ -64,7 +64,7 @@ ORDER_LIMITS: dict = {
 PRODUCT_LIMITS: dict = {
     "free_trial":            25,
     "thedersi_free_forever": 25,
-    "thedersi_lite":         100,
+    "thedersi_lite":         500,
     "launch":                1000,
     "growth":                10000,
     "scale":                 None,
@@ -97,9 +97,15 @@ def check_and_log_email(
     recipient: str,
     reference_id: int | None,
     db: Session,
+    limit_override: int | None = None,
 ) -> None:
-    """Raise 429 if monthly limit reached; otherwise log the send."""
-    limit = _get_limit(EMAIL_LIMITS[email_type], plan)
+    """Raise 429 if monthly limit reached; otherwise log the send.
+
+    limit_override lets a caller give a shop its own number instead of the
+    plan's shared default — e.g. TheDersi Pro shares plan_type="launch" with
+    real Launch customers but gets its own quotation-email allowance.
+    """
+    limit = limit_override if limit_override is not None else _get_limit(EMAIL_LIMITS[email_type], plan)
 
     if limit == 0:
         raise HTTPException(

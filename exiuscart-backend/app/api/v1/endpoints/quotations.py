@@ -7,6 +7,7 @@ import secrets
 from app.core.database import get_db
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.usage import check_and_log_email
+from app.core.thedersi import is_thedersi_pro_shop
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.quotation import Quotation
@@ -243,7 +244,11 @@ def send_quotation(
     if not q.customer_email:
         raise HTTPException(status_code=400, detail="This quotation has no customer email address")
 
-    check_and_log_email(shop_id, "quotation", plan, q.customer_email, q.id, db)
+    # TheDersi Pro shares plan_type="launch" with real Launch customers but
+    # gets its own, higher quotation-email allowance — same pattern as its
+    # SMS/social-posting/email-marketing overrides elsewhere.
+    quote_limit_override = 500 if is_thedersi_pro_shop(shop_id, db) else None
+    check_and_log_email(shop_id, "quotation", plan, q.customer_email, q.id, db, limit_override=quote_limit_override)
 
     client_link = f"https://store.exiuscart.com/q/{q.client_token}" if q.client_token else None
 

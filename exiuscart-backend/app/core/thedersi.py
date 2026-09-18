@@ -162,7 +162,7 @@ def is_thedersi_restricted_shop(shop_id: int, db) -> bool:
 MONTHLY_ORDER_LIMITS: dict = {
     "free_trial":            50,
     "thedersi_free_forever": 25,
-    "thedersi_lite":         100,
+    "thedersi_lite":         500,
     "launch":                1000,
     "growth":                5000,
     "scale":                 None,  # unlimited
