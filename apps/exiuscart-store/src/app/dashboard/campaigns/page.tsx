@@ -35,13 +35,13 @@ export default function CampaignsPage() {
         marketingApi.getEmailCampaigns(shopId).catch(() => ({ data: [] })),
         marketingApi.getSmsCampaigns(shopId).catch(() => ({ data: [] })),
         whatsappApi.listCampaigns(shopId).catch(() => ({ data: { campaigns: [] } })),
-        socialPostingApi.listPosts(shopId).catch(() => ({ data: [] })),
+        socialPostingApi.listPosts(shopId).catch(() => ({ data: { posts: [] } })),
       ]).then(([emailRes, smsRes, waRes, socialRes]) => {
         const all = [
           ...normalizeEmail(emailRes.data ?? []),
           ...normalizeSms(smsRes.data ?? []),
           ...normalizeWhatsApp(waRes.data?.campaigns ?? []),
-          ...normalizeSocial(socialRes.data ?? []),
+          ...normalizeSocial(socialRes.data?.posts ?? []),
         ].sort((a, b) => {
           if (!a.date && !b.date) return 0;
           if (!a.date) return 1;
