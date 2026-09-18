@@ -1,7 +1,7 @@
 import { Layers, ImageOff } from 'lucide-react';
 import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
-export function TopProductsPanel({ stats, fmt }: { stats: DashboardStats | null; fmt: (n: number, d?: number) => string }) {
+export function TopProductsPanel({ stats, fmt, periodLabel }: { stats: DashboardStats | null; fmt: (n: number, d?: number) => string; periodLabel: string }) {
   if (!stats?.topProducts || stats.topProducts.length === 0) return null;
   const maxRev = stats.topProducts[0].revenue;
 
@@ -12,7 +12,7 @@ export function TopProductsPanel({ stats, fmt }: { stats: DashboardStats | null;
           <Layers className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">Top products</h2>
         </div>
-        <span className="text-xs text-muted-foreground">Last 30 days</span>
+        <span className="text-xs text-muted-foreground">{periodLabel}</span>
       </div>
       <div className="space-y-3">
         {stats.topProducts.map((p) => {

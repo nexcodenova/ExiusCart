@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { dashboardApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
-import type { DateRangeValue } from '@/components/channels/listings/DateRangePicker';
+import { dateRangeLabel, type DateRangeValue } from '@/components/channels/listings/DateRangePicker';
 import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 import { dateRangeToStatsParams } from '@/lib/dashboard/dashboard-types';
 
@@ -30,7 +30,7 @@ function shopIdFromStorage() {
 export default function DashboardPage() {
   const [shopId, setShopId] = useState('');
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [dateRange, setDateRange] = useState<DateRangeValue>({ preset: '30' });
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ preset: 'all' });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { fmt } = useCurrency();
@@ -72,12 +72,12 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-5">
         <RevenueTrend stats={stats} loading={loading} fmt={fmt} />
-        <RevenueByChannel stats={stats} fmt={fmt} />
+        <RevenueByChannel stats={stats} fmt={fmt} periodLabel={dateRangeLabel(dateRange)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <OrdersByStatus stats={stats} />
-        <TopProductsPanel stats={stats} fmt={fmt} />
+        <TopProductsPanel stats={stats} fmt={fmt} periodLabel={dateRangeLabel(dateRange)} />
         <CustomersByCountry stats={stats} />
       </div>
 

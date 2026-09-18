@@ -15,7 +15,7 @@ const SOURCE_LABEL_OVERRIDES: Record<string, string> = {
 };
 const DONUT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6'];
 
-export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null; fmt: (n: number, d?: number) => string }) {
+export function RevenueByChannel({ stats, fmt, periodLabel }: { stats: DashboardStats | null; fmt: (n: number, d?: number) => string; periodLabel: string }) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const { sym, convert } = useCurrency();
   const compactFmt = (n: number) => `${sym}${new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(convert(n))}`;
@@ -37,10 +37,10 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
       <div className="mb-3 flex items-center gap-2">
         <TrendingUp className="h-4 w-4 text-muted-foreground" />
         <h2 className="font-semibold text-foreground">Revenue by channel</h2>
-        <span className="ml-auto text-xs text-muted-foreground">30 days</span>
+        <span className="ml-auto text-xs text-muted-foreground">{periodLabel}</span>
       </div>
       {channelTotal === 0 ? (
-        <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">No sales in last 30 days</div>
+        <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">No sales in this period</div>
       ) : (
         <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
           <div className="relative h-32 w-32 shrink-0">
