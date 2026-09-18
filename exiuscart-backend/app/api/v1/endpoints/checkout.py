@@ -223,9 +223,17 @@ def public_store_checkout(
         ).first()
         if not customer:
             from app.core.country_utils import shop_country_iso
+            from app.core.rate_limit import _client_ip
+            from app.core.geo_ip import resolve_country_from_ip
+            # Country from the form wins if it's ever sent; otherwise, resolve
+            # it from the shopper's real IP (nginx-set X-Real-IP, same trusted
+            # source rate-limiting already relies on) rather than leaving it
+            # unset — far more reliable than hoping a shopper fills in a
+            # country field, and needs no UI change to start working.
+            country = shop_country_iso(data.country) or resolve_country_from_ip(_client_ip(request))
             customer = Customer(
                 shop_id=shop.id, name=data.name.strip() or "Guest", email=email, phone=data.phone,
-                country=shop_country_iso(data.country), source="custom",
+                country=country, source="custom",
             )
             db.add(customer)
             db.flush()

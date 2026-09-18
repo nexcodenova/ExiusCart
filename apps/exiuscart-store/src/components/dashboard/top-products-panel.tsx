@@ -1,4 +1,4 @@
-import { Layers } from 'lucide-react';
+import { Layers, ImageOff } from 'lucide-react';
 import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
 export function TopProductsPanel({ stats, fmt }: { stats: DashboardStats | null; fmt: (n: number, d?: number) => string }) {
@@ -6,7 +6,7 @@ export function TopProductsPanel({ stats, fmt }: { stats: DashboardStats | null;
   const maxRev = stats.topProducts[0].revenue;
 
   return (
-    <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
+    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-muted-foreground" />
@@ -15,22 +15,31 @@ export function TopProductsPanel({ stats, fmt }: { stats: DashboardStats | null;
         <span className="text-xs text-muted-foreground">Last 30 days</span>
       </div>
       <div className="space-y-3">
-        {stats.topProducts.map((p, i) => {
+        {stats.topProducts.map((p) => {
           const pct = maxRev > 0 ? Math.round((p.revenue / maxRev) * 100) : 0;
           return (
-            <div key={p.name}>
-              <div className="mb-1 flex items-baseline justify-between text-sm">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs font-bold text-muted-foreground w-4">#{i + 1}</span>
-                  <span className="truncate font-medium text-foreground">{p.name}</span>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                  <span className="text-xs text-muted-foreground">{p.qty} sold</span>
-                  <span className="font-semibold tabular-nums text-foreground">{fmt(p.revenue, 0)}</span>
-                </div>
+            <div key={p.name} className="flex items-center gap-2.5">
+              <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                {p.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <ImageOff className="h-3.5 w-3.5" />
+                  </div>
+                )}
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-xs font-medium text-foreground">{p.name}</span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{fmt(p.revenue, 0)}</span>
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{p.qty} sold</span>
+                </div>
               </div>
             </div>
           );

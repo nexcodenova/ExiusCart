@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { RefreshCw, ShoppingCart, Radio } from 'lucide-react';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { PERIOD_LABELS, type DashboardPeriod } from '@/lib/dashboard/dashboard-types';
 
 function greeting() {
   const h = new Date().getHours();
@@ -17,13 +19,16 @@ function timeAgo(iso: string | null): string | null {
 }
 
 export function DashboardHeader({
-  memberSince, channelsConnected, lastSyncedAt, refreshing, onRefresh,
+  storeName, memberSince, channelsConnected, lastSyncedAt, refreshing, onRefresh, period, onPeriodChange,
 }: {
+  storeName?: string;
   memberSince?: string;
   channelsConnected?: number;
   lastSyncedAt?: string | null;
   refreshing: boolean;
   onRefresh: () => void;
+  period: DashboardPeriod;
+  onPeriodChange: (p: DashboardPeriod) => void;
 }) {
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const lastSync = timeAgo(lastSyncedAt ?? null);
@@ -31,7 +36,9 @@ export function DashboardHeader({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{greeting()}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {greeting()}{storeName ? `, ${storeName}` : ''}
+        </h1>
         <p className="mt-0.5 text-sm text-muted-foreground">{today}</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {memberSince && <span>Member since {memberSince}</span>}
@@ -45,6 +52,14 @@ export function DashboardHeader({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        <Select value={period} onValueChange={(v) => onPeriodChange(v as DashboardPeriod)}>
+          <SelectTrigger className="h-9 w-[150px] text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(Object.keys(PERIOD_LABELS) as DashboardPeriod[]).map((p) => (
+              <SelectItem key={p} value={p}>{PERIOD_LABELS[p]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <button onClick={onRefresh} disabled={refreshing}
           className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted disabled:opacity-60">
           <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh

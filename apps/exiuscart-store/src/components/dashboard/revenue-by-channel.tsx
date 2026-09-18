@@ -70,12 +70,13 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
           {channelPie.map(c => {
             const pct = channelTotal > 0 ? (c.value / channelTotal) * 100 : 0;
             return (
-              <div key={c.name} className="flex items-center justify-between text-xs">
+              <div key={c.name} className="flex items-center justify-between gap-2 text-xs">
                 <span className="flex items-center gap-1.5 font-medium text-foreground truncate">
                   <span className="h-2 w-2 rounded-full shrink-0" style={{ background: c.color }} />
                   <span className="truncate">{c.name}</span>
                 </span>
-                <span className="shrink-0 tabular-nums text-muted-foreground">{Math.round(pct)}%</span>
+                <span className="ml-auto shrink-0 font-semibold tabular-nums text-foreground">{fmt(c.value, 0)}</span>
+                <span className="w-10 shrink-0 text-right tabular-nums text-muted-foreground">{pct.toFixed(1)}%</span>
               </div>
             );
           })}

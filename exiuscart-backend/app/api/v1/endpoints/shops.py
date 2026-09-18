@@ -1049,15 +1049,32 @@ def adjust_inventory(
 
 # ── Dashboard stats endpoint ───────────────────────────────────────────────────
 
+_PERIOD_DAYS = {"7d": 7, "30d": 30, "90d": 90, "12m": 365, "all": None}
+
+
+def _resolve_period_start(period: str, shop_created_at) -> "datetime":
+    """None days ('all') means since the shop itself was created, not a
+    fixed lookback window — so a brand-new shop's "all time" isn't
+    artificially capped at some default number of days."""
+    days = _PERIOD_DAYS.get(period, 30)
+    now = datetime.now(timezone.utc)
+    if days is None:
+        return shop_created_at or (now - timedelta(days=365))
+    return now - timedelta(days=days)
+
+
 @router.get("/{shop_id}/stats")
 def get_dashboard_stats(
     shop_id: int,
+    period: str = Query("30d"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
+    if period not in _PERIOD_DAYS:
+        period = "30d"
 
     from app.models.customer import Customer
     from app.models.order import Order as Ord, OrderItem as OrdItem
@@ -1116,8 +1133,9 @@ def get_dashboard_stats(
     ).group_by(Ord.status).all()
     order_status_breakdown = {r[0]: r[1] for r in status_rows}
 
-    # Sales by channel (last 30 days)
-    thirty_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    # Sales by channel — filtered to the selected period, not a fixed 30 days
+    period_start = _resolve_period_start(period, shop.created_at)
+    thirty_ago = period_start  # kept as an alias below where "30 days" was the literal filter
     channel_rows = db.query(
         Ord.source,
         func.sum(Ord.total).label("sales"),
@@ -1125,7 +1143,7 @@ def get_dashboard_stats(
     ).filter(
         Ord.shop_id == shop_id,
         Ord.status != "cancelled",
-        Ord.created_at >= thirty_ago,
+        Ord.created_at >= period_start,
     ).group_by(Ord.source).all()
     channel_breakdown = [
         {"source": r[0] or "pos", "sales": float(r[1] or 0), "orders": int(r[2])}
@@ -1147,9 +1165,13 @@ def get_dashboard_stats(
         for r in hourly_rows
     ]
 
-    # Top 5 products by revenue (last 30 days)
+    # Top 5 products by revenue (last 30 days) — grouped by product_id (not
+    # just the name snapshot) so the real current image can be joined back
+    # in; falls back to grouping by name alone for line items whose product
+    # was since deleted (product_id NULL), which just get no image.
     from app.models.order import OrderItem as OrdItemModel
     top_products_rows = db.query(
+        OrdItemModel.product_id,
         OrdItemModel.product_name,
         func.sum(OrdItemModel.total_price).label("revenue"),
         func.sum(OrdItemModel.quantity).label("qty"),
@@ -1157,11 +1179,18 @@ def get_dashboard_stats(
         Ord.shop_id == shop_id,
         Ord.status != "cancelled",
         Ord.created_at >= thirty_ago,
-    ).group_by(OrdItemModel.product_name).order_by(
+    ).group_by(OrdItemModel.product_id, OrdItemModel.product_name).order_by(
         func.sum(OrdItemModel.total_price).desc()
     ).limit(5).all()
+    top_product_ids = [r[0] for r in top_products_rows if r[0]]
+    top_product_images = {
+        p.id: p.image_url for p in db.query(Product.id, Product.image_url).filter(Product.id.in_(top_product_ids)).all()
+    } if top_product_ids else {}
     top_products = [
-        {"name": r[0] or "Unknown", "revenue": float(r[1] or 0), "qty": int(r[2] or 0)}
+        {
+            "name": r[1] or "Unknown", "revenue": float(r[2] or 0), "qty": int(r[3] or 0),
+            "image_url": top_product_images.get(r[0]),
+        }
         for r in top_products_rows
     ]
 
@@ -1237,6 +1266,9 @@ def get_dashboard_stats(
         "outOfStockCount": 0, "topCustomers": [],
         "customersByCountry": [], "recentCustomers": [],
         "storeHealth": {"channelsConnected": 0, "lastSyncedAt": None},
+        "periodRevenue": 0.0, "periodOrders": 0,
+        "periodRevenueChange": None, "periodOrdersChange": None,
+        "periodTrend": [],
     }
     try:
         adv["allTimeRevenue"] = float(db.query(func.sum(Ord.total)).filter(
@@ -1280,6 +1312,61 @@ def get_dashboard_stats(
             cur = monthly_revenue_12m[idx]["revenue"]
             monthly_revenue_12m[idx]["growth"] = round(((cur - prev) / prev * 100), 1) if prev > 0 else 0
         adv["monthlyRevenue12m"] = monthly_revenue_12m
+
+        # ── Date-range filter (7d/30d/90d/12m/all) — drives the Overview
+        # KPI cards' Revenue/Orders numbers and the Revenue Trend chart when
+        # a period other than the page's default is selected. 12m/all reuse
+        # the monthly series just built above; 7d/30d/90d get real daily
+        # buckets instead, since a 12-month monthly view would show a single
+        # flat bar for a 7-day selection.
+        now = datetime.now(timezone.utc)
+        period_days = _PERIOD_DAYS.get(period)
+        period_length = (now - period_start) if period_days is None else timedelta(days=period_days)
+        prior_start = period_start - period_length
+
+        period_revenue = float(db.query(func.coalesce(func.sum(Ord.total), 0)).filter(
+            Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= period_start,
+        ).scalar() or 0)
+        period_orders = db.query(func.count(Ord.id)).filter(
+            Ord.shop_id == shop_id, Ord.created_at >= period_start,
+        ).scalar() or 0
+        prior_revenue = float(db.query(func.coalesce(func.sum(Ord.total), 0)).filter(
+            Ord.shop_id == shop_id, Ord.status != "cancelled",
+            Ord.created_at >= prior_start, Ord.created_at < period_start,
+        ).scalar() or 0)
+        prior_orders = db.query(func.count(Ord.id)).filter(
+            Ord.shop_id == shop_id, Ord.created_at >= prior_start, Ord.created_at < period_start,
+        ).scalar() or 0
+
+        adv["periodRevenue"] = period_revenue
+        adv["periodOrders"] = period_orders
+        adv["periodRevenueChange"] = round((period_revenue - prior_revenue) / prior_revenue * 100, 1) if prior_revenue > 0 else None
+        adv["periodOrdersChange"] = round((period_orders - prior_orders) / prior_orders * 100, 1) if prior_orders > 0 else None
+
+        if period in ("12m", "all"):
+            period_trend = [{"label": m["month"], "revenue": m["revenue"], "orders": m["orders"]} for m in monthly_revenue_12m]
+        else:
+            daily_rows = db.query(
+                func.date(Ord.created_at).label("d"),
+                func.coalesce(func.sum(Ord.total), 0).label("rev"),
+                func.count(Ord.id).label("cnt"),
+            ).filter(
+                Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= period_start,
+            ).group_by(func.date(Ord.created_at)).all()
+            daily_map = {r.d.isoformat(): {"revenue": float(r.rev or 0), "orders": int(r.cnt)} for r in daily_rows}
+            num_days = (now.date() - period_start.date()).days + 1
+            period_trend = []
+            for i in range(num_days):
+                d = (period_start.date() + timedelta(days=i))
+                entry = daily_map.get(d.isoformat(), {"revenue": 0.0, "orders": 0})
+                period_trend.append({"label": d.strftime("%b %d"), "revenue": round(entry["revenue"], 2), "orders": entry["orders"]})
+        for idx in range(len(period_trend)):
+            if idx == 0:
+                period_trend[idx]["growth"] = 0
+                continue
+            prev_rev = period_trend[idx - 1]["revenue"]
+            period_trend[idx]["growth"] = round((period_trend[idx]["revenue"] - prev_rev) / prev_rev * 100, 1) if prev_rev > 0 else 0
+        adv["periodTrend"] = period_trend
 
         # Repeat customer rate
         repeat_sub = (
@@ -1372,6 +1459,8 @@ def get_dashboard_stats(
         logger.error(f"[dashboard advanced stats] {_adv_err}")
 
     return {
+        "shopName": shop.name,
+        "period": period,
         "sales": float(today_sales),
         "salesChange": sales_change,
         "orders": today_orders,

@@ -1,31 +1,39 @@
 import { Wallet, ShoppingBag, Users, Boxes } from 'lucide-react';
 import { KpiCard } from './kpi-card';
-import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
+import type { DashboardStats, DashboardPeriod } from '@/lib/dashboard/dashboard-types';
+
+const PERIOD_COMPARISON: Record<DashboardPeriod, string> = {
+  '7d': 'vs. previous 7 days',
+  '30d': 'vs. previous 30 days',
+  '90d': 'vs. previous 90 days',
+  '12m': 'vs. previous 12 months',
+  all: 'vs. previous equivalent period',
+};
 
 export function OverviewCards({
-  stats, loading, fmt, monthlyTrendDelta, monthlyOrdersTrendDelta,
+  stats, loading, fmt, period,
 }: {
   stats: DashboardStats | null;
   loading: boolean;
   fmt: (n: number, d?: number) => string;
-  monthlyTrendDelta: number | null;
-  monthlyOrdersTrendDelta: number | null;
+  period: DashboardPeriod;
 }) {
-  const monthly = stats?.monthlyRevenue12m ?? [];
-  const revenueTrend = monthly.map((m) => m.revenue);
-  const ordersTrend = monthly.map((m) => m.orders);
+  const trendPoints = stats?.periodTrend ?? [];
+  const revenueTrend = trendPoints.map((p) => p.revenue);
+  const ordersTrend = trendPoints.map((p) => p.orders);
+  const comparison = PERIOD_COMPARISON[period];
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <KpiCard
         icon={Wallet} label="Total Revenue" color="indigo" href="/dashboard/reports"
-        value={loading ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)}
-        change={monthlyTrendDelta} comparison="vs. first half of period" trend={revenueTrend}
+        value={loading ? '—' : fmt(stats?.periodRevenue ?? 0, 0)}
+        change={stats?.periodRevenueChange ?? null} comparison={comparison} trend={revenueTrend}
       />
       <KpiCard
         icon={ShoppingBag} label="Total Orders" color="violet" href="/dashboard/orders"
-        value={loading ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()}
-        change={monthlyOrdersTrendDelta} comparison="vs. first half of period" trend={ordersTrend}
+        value={loading ? '—' : (stats?.periodOrders ?? 0).toLocaleString()}
+        change={stats?.periodOrdersChange ?? null} comparison={comparison} trend={ordersTrend}
       />
       <KpiCard
         icon={Users} label="Total Customers" color="emerald" href="/dashboard/customers"

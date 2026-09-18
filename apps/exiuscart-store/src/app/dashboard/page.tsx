@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { dashboardApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
-import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
+import type { DashboardStats, DashboardPeriod } from '@/lib/dashboard/dashboard-types';
 
 import { DashboardHeader } from '@/components/dashboard/dashboard-header';
 import { OverviewCards } from '@/components/dashboard/overview-cards';
-import { RevenueTrend, useMonthlyTrendDeltas } from '@/components/dashboard/revenue-trend';
+import { RevenueTrend } from '@/components/dashboard/revenue-trend';
 import { RevenueByChannel } from '@/components/dashboard/revenue-by-channel';
 import { OrdersByStatus } from '@/components/dashboard/orders-by-status';
 import { PerformanceRow } from '@/components/dashboard/performance-row';
@@ -28,6 +28,7 @@ function shopIdFromStorage() {
 export default function DashboardPage() {
   const [shopId, setShopId] = useState('');
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [period, setPeriod] = useState<DashboardPeriod>('30d');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { fmt } = useCurrency();
@@ -36,39 +37,46 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!shopId) { setLoading(false); return; }
-    dashboardApi.getStats(shopId)
+    setLoading(true);
+    dashboardApi.getStats(shopId, period)
       .then((r) => setStats(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [shopId]);
+  }, [shopId, period]);
 
   const refresh = () => {
     if (!shopId) return;
     setRefreshing(true);
-    dashboardApi.getStats(shopId)
+    dashboardApi.getStats(shopId, period)
       .then((r) => setStats(r.data))
       .catch(() => {})
       .finally(() => setRefreshing(false));
   };
 
-  const { monthlyTrendDelta, monthlyOrdersTrendDelta } = useMonthlyTrendDeltas(stats);
-
   return (
     <div className="space-y-6">
       <DashboardHeader
+        storeName={stats?.shopName}
         memberSince={stats?.memberSince}
         channelsConnected={stats?.storeHealth?.channelsConnected}
         lastSyncedAt={stats?.storeHealth?.lastSyncedAt}
         refreshing={refreshing}
         onRefresh={refresh}
+        period={period}
+        onPeriodChange={setPeriod}
       />
 
-      <OverviewCards stats={stats} loading={loading} fmt={fmt} monthlyTrendDelta={monthlyTrendDelta} monthlyOrdersTrendDelta={monthlyOrdersTrendDelta} />
+      <OverviewCards stats={stats} loading={loading} fmt={fmt} period={period} />
 
-      <div className="grid gap-5 lg:grid-cols-4">
+      <div className="grid gap-5 lg:grid-cols-3">
         <RevenueTrend stats={stats} loading={loading} fmt={fmt} />
         <RevenueByChannel stats={stats} fmt={fmt} />
-        <OrdersByStatus stats={stats} fmt={fmt} />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <OrdersByStatus stats={stats} />
+        <TopProductsPanel stats={stats} fmt={fmt} />
+        <CustomersByCountry stats={stats} />
       </div>
 
       <PerformanceRow stats={stats} loading={loading} fmt={fmt} />
@@ -81,13 +89,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <TopProductsPanel stats={stats} fmt={fmt} />
-        <StockAlertsPanel stats={stats} loading={loading} />
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-3">
-        <CustomersByCountry stats={stats} />
         <RecentCustomersPanel stats={stats} fmt={fmt} />
+        <StockAlertsPanel stats={stats} loading={loading} />
         {shopId && <SystemNotifications shopId={shopId} />}
       </div>
     </div>
