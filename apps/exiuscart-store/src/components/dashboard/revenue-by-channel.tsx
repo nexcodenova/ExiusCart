@@ -33,7 +33,7 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
   const channelTotal = channelPie.reduce((s, d) => s + d.value, 0);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+    <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-3 flex items-center gap-2">
         <TrendingUp className="h-4 w-4 text-muted-foreground" />
         <h2 className="font-semibold text-foreground">Revenue by channel</h2>
@@ -76,12 +76,12 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
             </div>
           </div>
 
-          <div className="w-full min-w-0 flex-1 space-y-2.5">
+          <div className="w-full min-w-0 flex-1 space-y-2">
             {channelPie.map((c) => {
               const pct = channelTotal > 0 ? (c.value / channelTotal) * 100 : 0;
               const Icon = c.icon;
               return (
-                <div key={c.source} className="flex items-center gap-2 text-xs">
+                <div key={c.source} className="flex items-center gap-2">
                   <div className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md ${c.iconBg}`}>
                     {c.logo ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -90,19 +90,24 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
                       <Icon className={`h-3.5 w-3.5 ${c.iconColor}`} />
                     )}
                   </div>
-                  <span className="min-w-0 flex-1 truncate font-medium text-foreground">{c.name}</span>
-                  <span className="shrink-0 font-semibold tabular-nums text-foreground">{fmt(c.value, 0)}</span>
-                  <span className="w-10 shrink-0 text-right tabular-nums text-muted-foreground">{pct.toFixed(1)}%</span>
+                  {/* Two lines, not one row of 4 pieces — a single line
+                      (icon+name+amount+%) doesn't leave the name enough
+                      width once this column gets narrow, and truncate
+                      silently crushes it to nothing instead of wrapping. */}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-foreground">{c.name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      <span className="font-semibold tabular-nums text-foreground">{fmt(c.value, 0)}</span> · {pct.toFixed(1)}%
+                    </p>
+                  </div>
                 </div>
               );
             })}
             {stats?.topProducts?.[0] && (
               <div className="mt-1 border-t border-border pt-2.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Top product</p>
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <span className="truncate text-xs font-medium text-foreground">{stats.topProducts[0].name}</span>
-                  <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{fmt(stats.topProducts[0].revenue, 0)}</span>
-                </div>
+                <p className="mt-1 truncate text-xs font-medium text-foreground">{stats.topProducts[0].name}</p>
+                <p className="text-[11px] font-semibold tabular-nums text-foreground">{fmt(stats.topProducts[0].revenue, 0)}</p>
               </div>
             )}
           </div>
