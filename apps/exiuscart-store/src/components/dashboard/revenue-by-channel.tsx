@@ -33,17 +33,17 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
   const channelTotal = channelPie.reduce((s, d) => s + d.value, 0);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <div className="mb-4 flex items-center gap-2">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 flex items-center gap-2">
         <TrendingUp className="h-4 w-4 text-muted-foreground" />
         <h2 className="font-semibold text-foreground">Revenue by channel</h2>
         <span className="ml-auto text-xs text-muted-foreground">30 days</span>
       </div>
       {channelTotal === 0 ? (
-        <div className="flex h-44 items-center justify-center text-sm text-muted-foreground">No sales in last 30 days</div>
+        <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">No sales in last 30 days</div>
       ) : (
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-          <div className="relative h-36 w-36 shrink-0">
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
+          <div className="relative h-28 w-28 shrink-0">
             {activeIdx !== null && channelPie[activeIdx] && (
               <div className="pointer-events-none absolute -top-2 left-1/2 z-10 w-max max-w-[10rem] -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                 <p className="flex items-center gap-1.5 font-semibold text-foreground">
@@ -59,7 +59,7 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={channelPie} dataKey="value" innerRadius={48} outerRadius={68} paddingAngle={2} stroke="none"
+                  data={channelPie} dataKey="value" innerRadius={38} outerRadius={54} paddingAngle={2} stroke="none"
                   isAnimationActive animationDuration={700} animationEasing="ease-out"
                   onMouseEnter={(_, i) => setActiveIdx(i)}
                   onMouseLeave={() => setActiveIdx(null)}
