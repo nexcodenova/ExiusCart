@@ -89,34 +89,6 @@ export function StockRow({ name, stock, min }: { name: string; stock: number; mi
   );
 }
 
-export function OrderRow({ id, customer, amount, status, time, fmt }: {
-  id: string; customer: string; amount: string; status: string; time: string; fmt: (n: number, d?: number) => string;
-}) {
-  const badge: Record<string, string> = {
-    pending: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',
-    confirmed: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400',
-    processing: 'bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400',
-    shipped: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400',
-    delivered: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400',
-    paid: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400',
-    cancelled: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400',
-  };
-  const initials = (customer || 'C').trim().split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
-  const timeStr = (() => { try { return new Date(time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); } catch { return time; } })();
-  const amtNum = parseFloat(amount);
-  return (
-    <div className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-muted/30 sm:px-6">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">{initials}</div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">#{id} · {customer}</p>
-        <p className="truncate text-xs text-muted-foreground">{timeStr}</p>
-      </div>
-      <span className="tabular-nums text-sm font-semibold text-foreground">{isNaN(amtNum) ? amount : fmt(amtNum, 0)}</span>
-      <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${badge[status] ?? 'bg-muted text-muted-foreground'}`}>{status}</span>
-    </div>
-  );
-}
-
 export function Shortcut({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) {
   return (
     <Link href={href} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted/40">

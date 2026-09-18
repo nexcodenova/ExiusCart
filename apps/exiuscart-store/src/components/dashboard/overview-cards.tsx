@@ -1,5 +1,5 @@
 import { Wallet, ShoppingBag, Users, Boxes } from 'lucide-react';
-import { PeriodCard } from './shared';
+import { KpiCard } from './kpi-card';
 import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
 export function OverviewCards({
@@ -11,12 +11,32 @@ export function OverviewCards({
   monthlyTrendDelta: number | null;
   monthlyOrdersTrendDelta: number | null;
 }) {
+  const monthly = stats?.monthlyRevenue12m ?? [];
+  const revenueTrend = monthly.map((m) => m.revenue);
+  const ordersTrend = monthly.map((m) => m.orders);
+
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <PeriodCard label="Total Revenue" value={loading ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)} delta={monthlyTrendDelta ?? undefined} icon={Wallet} color="indigo" sparkData={stats?.monthlyRevenue12m} sparkKey="revenue" />
-      <PeriodCard label="Total Orders" value={loading ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()} delta={monthlyOrdersTrendDelta ?? undefined} icon={ShoppingBag} color="violet" plain sparkData={stats?.monthlyRevenue12m} sparkKey="orders" />
-      <PeriodCard label="Total Customers" value={loading ? '—' : (stats?.customers ?? 0).toLocaleString()} icon={Users} color="emerald" plain />
-      <PeriodCard label="Active Products" value={loading ? '—' : (stats?.products ?? 0).toLocaleString()} icon={Boxes} color="amber" plain />
+      <KpiCard
+        icon={Wallet} label="Total Revenue" color="indigo" href="/dashboard/reports"
+        value={loading ? '—' : fmt(stats?.allTimeRevenue ?? 0, 0)}
+        change={monthlyTrendDelta} comparison="vs. first half of period" trend={revenueTrend}
+      />
+      <KpiCard
+        icon={ShoppingBag} label="Total Orders" color="violet" href="/dashboard/orders"
+        value={loading ? '—' : (stats?.allTimeOrders ?? 0).toLocaleString()}
+        change={monthlyOrdersTrendDelta} comparison="vs. first half of period" trend={ordersTrend}
+      />
+      <KpiCard
+        icon={Users} label="Total Customers" color="emerald" href="/dashboard/customers"
+        value={loading ? '—' : (stats?.customers ?? 0).toLocaleString()}
+        change={null} comparison={`${stats?.newCustomersMonth ?? 0} new this month`} trend={[]}
+      />
+      <KpiCard
+        icon={Boxes} label="Active Products" color="amber" href="/dashboard/products"
+        value={loading ? '—' : (stats?.products ?? 0).toLocaleString()}
+        change={null} comparison={stats?.outOfStockCount ? `${stats.outOfStockCount} out of stock` : 'All stocked'} trend={[]}
+      />
     </div>
   );
 }
