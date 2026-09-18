@@ -73,18 +73,58 @@ def _get_plan(shop_id: int, db: Session) -> str:
     return sub.plan_type if sub else "free_trial"
 
 
+# Send-count ceilings per plan (None = unlimited). Unlike SMS, WhatsApp is
+# BYOK — the seller's own connected WhatsApp Business Account foots Meta's
+# per-message bill, not ExiusCart — so this isn't a cost-control cap the way
+# SMS's is. It's a plan-tier differentiator layered on top of whatever real
+# per-24h tier Meta has already granted that seller's own phone number
+# (see this file's module docstring); Meta enforces its own ceiling
+# regardless of what's set here.
+WHATSAPP_LIMITS: dict[str, dict[str, int | None]] = {
+    "launch": {"daily": 25, "monthly": 500},
+    "growth": {"daily": 100, "monthly": 1000},
+    "scale": {"daily": None, "monthly": None},
+}
+
+
 def _require_premium(shop_id: int, db: Session):
-    # TheDersi Pro shares plan_type="launch" with real Launch customers (who
-    # don't get WhatsApp marketing) — allowed in explicitly. Costs ExiusCart
-    # nothing either way since this is BYOK (the seller's own WhatsApp
-    # Business Account foots the bill), unlike SMS's centralized model.
+    # TheDersi Pro shares plan_type="launch" with real Launch customers —
+    # allowed in explicitly (both now get WhatsApp marketing, Launch via its
+    # own entry in WHATSAPP_LIMITS above).
     if is_thedersi_pro_shop(shop_id, db):
         return
-    if _get_plan(shop_id, db) not in ("growth", "scale"):
+    if _get_plan(shop_id, db) not in WHATSAPP_LIMITS:
         raise HTTPException(status_code=403, detail={
             "error": "upgrade_required",
-            "message": "WhatsApp marketing is available on Growth and Scale.",
+            "message": "WhatsApp marketing is available on Launch, Growth, and Scale.",
         })
+
+
+def _whatsapp_usage(shop_id: int, plan: str, db: Session) -> dict:
+    limits = WHATSAPP_LIMITS.get(plan, {}) if not is_thedersi_pro_shop(shop_id, db) else WHATSAPP_LIMITS["launch"]
+    now = datetime.now(timezone.utc)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    base = db.query(WhatsAppMessageLog).join(
+        WhatsAppCampaign, WhatsAppCampaign.id == WhatsAppMessageLog.campaign_id,
+    ).filter(WhatsAppCampaign.shop_id == shop_id, WhatsAppMessageLog.status == "sent")
+    daily_used = base.filter(WhatsAppMessageLog.sent_at >= day_start).count()
+    monthly_used = base.filter(WhatsAppMessageLog.sent_at >= month_start).count()
+    return {
+        "plan": plan,
+        "daily_used": daily_used, "daily_limit": limits.get("daily"),
+        "monthly_used": monthly_used, "monthly_limit": limits.get("monthly"),
+    }
+
+
+@router.get("/shops/{shop_id}/whatsapp/usage")
+def get_whatsapp_usage(shop_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    if plan not in WHATSAPP_LIMITS and not is_thedersi_pro_shop(shop_id, db):
+        return {"plan": plan, "daily_used": 0, "daily_limit": 0, "monthly_used": 0, "monthly_limit": 0}
+    return _whatsapp_usage(shop_id, plan, db)
 
 
 def _get_connection(shop_id: int, db: Session) -> WhatsAppConnection:
@@ -320,12 +360,34 @@ def send_campaign(shop_id: int, campaign_id: int, db: Session = Depends(get_db),
     if not customers:
         raise HTTPException(status_code=400, detail="No customers with phone numbers found.")
 
+    plan = _get_plan(shop_id, db)
+    usage = _whatsapp_usage(shop_id, plan, db)
+    recipients = customers
+    if usage["monthly_limit"] is not None:
+        remaining_quota = max(0, usage["monthly_limit"] - usage["monthly_used"])
+        if usage["daily_limit"] is not None:
+            remaining_quota = min(remaining_quota, max(0, usage["daily_limit"] - usage["daily_used"]))
+        if remaining_quota == 0:
+            raise HTTPException(status_code=403, detail={
+                "error": "whatsapp_limit_reached",
+                "message": f"Your {plan.title()} plan's WhatsApp quota is used up for now (daily: {usage['daily_limit']}, monthly: {usage['monthly_limit']}). Try again tomorrow, or upgrade for a higher limit.",
+            })
+        recipients = customers[:remaining_quota]
+    elif usage["daily_limit"] is not None:
+        remaining_quota = max(0, usage["daily_limit"] - usage["daily_used"])
+        if remaining_quota == 0:
+            raise HTTPException(status_code=403, detail={
+                "error": "whatsapp_limit_reached",
+                "message": f"Your {plan.title()} plan's daily WhatsApp quota ({usage['daily_limit']}) is used up. Try again tomorrow.",
+            })
+        recipients = customers[:remaining_quota]
+
     campaign.status = "sending"
-    campaign.total_recipients = len(customers)
+    campaign.total_recipients = len(recipients)
     db.commit()
 
     sent, failed = 0, 0
-    for customer in customers:
+    for customer in recipients:
         success, msg_id, error = _send_template_message(conn, campaign.template, customer.phone, customer.name)
         db.add(WhatsAppMessageLog(
             campaign_id=campaign.id, customer_id=customer.id, phone=customer.phone,

@@ -58,6 +58,13 @@ class ProdoraDigitalPurchase(Base):
     shop_id = Column(Integer, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False, index=True)
     whop_payment_id = Column(String(100), nullable=True, unique=True)  # idempotency — Whop can retry a webhook delivery
     purchased_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Set the first time this purchase is turned into a real product via
+    # import_digital_bundle — separate from purchased_at since a seller can
+    # buy now, import later. Drives PRODORA_DIGITAL_IMPORT_LIMIT's monthly
+    # count (a re-import just updates this timestamp, doesn't create a
+    # second countable row, so repeat imports of the same bundle can't
+    # inflate the count).
+    imported_at = Column(DateTime(timezone=True), nullable=True)
 
     bundle = relationship("ProdoraDigitalBundle", back_populates="purchases")
     shop = relationship("Shop")

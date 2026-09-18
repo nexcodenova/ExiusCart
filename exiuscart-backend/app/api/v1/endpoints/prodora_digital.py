@@ -28,7 +28,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -43,6 +43,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 PRODORA_WHOP_WEBHOOK_SECRET = os.getenv("PRODORA_WHOP_WEBHOOK_SECRET", "")
+
+# Digital sourcing gets its own, separate monthly cap from Prodora's regular
+# (physical) PRODORA_MONTHLY_IMPORT_LIMIT in shopping.py — a seller can buy
+# as many bundles as they like, but only import this many into real products
+# per month. free_trial/TheDersi never reach this at all (get_prodora_user
+# already excludes them router-wide).
+PRODORA_DIGITAL_IMPORT_LIMIT: dict[str, int | None] = {"launch": 25, "growth": 100, "scale": None}
 
 
 def _seller_shop(user: User, db: Session) -> Shop:
@@ -83,6 +90,17 @@ class BundleIn(BaseModel):
     whop_checkout_url: Optional[str] = None
     whop_product_id: Optional[str] = None
     is_active: bool = True
+
+    # Whop (and card networks generally) enforce a real minimum charge
+    # around $0.50 — a bundle priced below that would fail at checkout on
+    # Whop's side, not ours, so catch it here instead of letting an admin
+    # publish a bundle nobody can actually buy.
+    @field_validator("price")
+    @classmethod
+    def _price_above_processor_minimum(cls, v: float) -> float:
+        if v < 0.50:
+            raise ValueError("Price must be at least $0.50 — Whop can't process anything lower.")
+        return v
 
 
 @router.post("/admin/prodora-bundles/upload-file")
@@ -191,6 +209,7 @@ def import_digital_bundle(bundle_id: int, db: Session = Depends(get_db), current
     digital product a seller creates themselves, so it automatically gets
     unlimited stock (quantity=999999, see products.py) and works with
     their store's existing DigitalDelivery flow when THEIR customers buy it."""
+    from datetime import datetime, timezone
     from app.models.product import Product
     from app.api.v1.endpoints.products import generate_slug, PLAN_PRODUCT_LIMITS
     from app.api.v1.endpoints.dropshipping import _get_plan
@@ -212,6 +231,24 @@ def import_digital_bundle(bundle_id: int, db: Session = Depends(get_db), current
         if count >= limit:
             raise HTTPException(status_code=403, detail=f"Product limit reached ({limit} on your plan). Upgrade to add more.")
 
+    # Digital sourcing has its own, separate monthly cap from the regular
+    # product-count check above — only counts bundles actually imported this
+    # month (not just purchased), and a re-import of the same bundle doesn't
+    # count twice (see ProdoraDigitalPurchase.imported_at's docstring).
+    now = datetime.now(timezone.utc)
+    digital_limit = PRODORA_DIGITAL_IMPORT_LIMIT.get(plan)
+    if digital_limit is not None:
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        imported_this_month = db.query(ProdoraDigitalPurchase).filter(
+            ProdoraDigitalPurchase.shop_id == shop.id,
+            ProdoraDigitalPurchase.imported_at >= month_start,
+        ).count()
+        if imported_this_month >= digital_limit:
+            raise HTTPException(
+                status_code=403,
+                detail=f"You've imported {digital_limit} Prodora digital bundles this month, the limit on your {plan.title()} plan. Upgrade for a higher limit.",
+            )
+
     price = float(bundle.suggested_resale_price) if bundle.suggested_resale_price else float(bundle.price) * 3
     product = Product(
         shop_id=shop.id,
@@ -225,6 +262,7 @@ def import_digital_bundle(bundle_id: int, db: Session = Depends(get_db), current
         slug=generate_slug(bundle.name),
     )
     db.add(product)
+    purchase.imported_at = now
     db.commit()
     db.refresh(product)
     return {"product_id": product.id, "name": product.name}

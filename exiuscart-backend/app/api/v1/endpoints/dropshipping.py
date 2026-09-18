@@ -430,7 +430,7 @@ SUPPLIER_LIMIT_BY_PLAN = {"launch": 1, "growth": 3}
 # supplier on its own — separate from MONTHLY_ORDER_LIMITS (total orders
 # allowed) since a seller can take far more orders than they'd want
 # auto-sent to a supplier unattended. Scale: unlimited (absent).
-AUTO_FULFILL_MONTHLY_LIMITS = {"launch": 100, "growth": 300}
+AUTO_FULFILL_MONTHLY_LIMITS = {"launch": 100, "growth": 500}
 
 PLAN_ALLOWED_SUPPLIERS = {
     # 1688/eprolo are Scale-only for now, like hypersku — the pricing page's

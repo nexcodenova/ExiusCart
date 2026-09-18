@@ -106,8 +106,8 @@ def _get_plan(shop_id: int, db: Session) -> str:
 
 
 SOCIAL_POST_LIMITS = {
-    "launch": {"daily": 2, "monthly": 50},
-    "growth": {"daily": 4, "monthly": 150},
+    "launch": {"daily": 2, "monthly": 100},
+    "growth": {"daily": 5, "monthly": 500},
     "scale": {"daily": 10, "monthly": None},
 }
 

@@ -33,16 +33,16 @@ EMAIL_LIMITS: dict[str, dict] = {
         "free_trial":            10,
         "thedersi_free_forever": 10,
         "thedersi_lite":         50,
-        "launch":                100,   # TheDersi Pro shares this plan_type but gets its
-        "growth":                500,   # own 500/mo override — see is_thedersi_pro_shop
-        "scale":                 None,  # check in quotations.py's send endpoint.
+        "launch":                100,    # TheDersi Pro shares this plan_type but gets its
+        "growth":                1000,   # own 500/mo override — see is_thedersi_pro_shop
+        "scale":                 None,   # check in quotations.py's send endpoint.
     },
     "marketing": {
         "free_trial":            0,
         "thedersi_free_forever": 10,
         "thedersi_lite":         100,
-        "launch":                200,
-        "growth":                2000,
+        "launch":                250,
+        "growth":                1000,
         "scale":                 None,
     },
 }

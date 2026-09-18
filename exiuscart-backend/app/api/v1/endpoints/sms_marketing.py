@@ -40,8 +40,8 @@ router = APIRouter()
 # ExiusCart's own SMS bill now that this is centralized, not the per-shop
 # connection gate a BYOK feature would need.
 SMS_LIMITS: dict[str, dict[str, int | None]] = {
-    "launch": {"daily": 50, "monthly": 500},
-    "growth": {"daily": 150, "monthly": 3000},
+    "launch": {"daily": 20, "monthly": 250},
+    "growth": {"daily": 50, "monthly": 1000},
     "scale": {"daily": None, "monthly": None},
 }
 
