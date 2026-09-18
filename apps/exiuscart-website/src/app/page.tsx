@@ -101,7 +101,7 @@ export default function HomePage() {
             <br /><span className="text-white">Run Everything.</span>
           </h1>
           <p className="text-gray-400 text-base leading-relaxed mb-8 max-w-sm">
-            POS, invoicing, and multi-channel selling — plus Prodora product sourcing from 36M+ suppliers. One platform, worldwide.
+            The AI operating system for merchants who want to discover, launch, operate, and grow ecommerce products — with Prodora product sourcing from 36M+ suppliers. One platform, worldwide.
           </p>
           <Link
             href="/register?plan=launch&billing=monthly"
@@ -136,7 +136,7 @@ export default function HomePage() {
           </h1>
           <div className="h-[3px] w-48 rounded-full mb-5" style={{ background: 'linear-gradient(90deg, #7B4FE9, #60A5FA)' }} />
           <p className="text-gray-400 text-base leading-relaxed mb-7">
-            POS, invoicing & multi-channel selling —<br />plus Prodora product sourcing. Worldwide.
+            The AI operating system to discover, launch, operate &amp; grow ecommerce products —<br />with Prodora product sourcing. Worldwide.
           </p>
           <Link
             href="/register?plan=launch&billing=monthly"

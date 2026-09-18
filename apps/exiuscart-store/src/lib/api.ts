@@ -87,6 +87,15 @@ export const dashboardApi = {
   getStats: (shopId: string) => api.get(`/shops/${shopId}/stats`),
 };
 
+export const analyticsApi = {
+  overview: (shopId: string) => api.get(`/shops/${shopId}/analytics/overview`),
+  products: (shopId: string) => api.get(`/shops/${shopId}/analytics/products`),
+  channels: (shopId: string) => api.get(`/shops/${shopId}/analytics/channels`),
+  customers: (shopId: string) => api.get(`/shops/${shopId}/analytics/customers`),
+  marketing: (shopId: string) => api.get(`/shops/${shopId}/analytics/marketing`),
+  fulfillment: (shopId: string) => api.get(`/shops/${shopId}/analytics/fulfillment`),
+};
+
 // ── Products ──────────────────────────────────────────
 export const productsApi = {
   getAll: (shopId: string, params?: { search?: string; category?: string; is_gift_card?: boolean; is_gift?: boolean }) =>
@@ -425,6 +434,7 @@ export const marketingApi = {
   createSmsCampaign: (shopId: string, data: any) => api.post(`/shops/${shopId}/marketing/sms`, data),
   updateSmsCampaign: (shopId: string, cid: number, data: any) => api.put(`/shops/${shopId}/marketing/sms/${cid}`, data),
   deleteSmsCampaign: (shopId: string, cid: number) => api.delete(`/shops/${shopId}/marketing/sms/${cid}`),
+  sendSmsCampaign: (shopId: string, cid: number) => api.post(`/shops/${shopId}/marketing/sms/${cid}/send`),
   // Events
   getEvents: (shopId: string) => api.get(`/shops/${shopId}/events`),
   createEvent: (shopId: string, data: any) => api.post(`/shops/${shopId}/events`, data),
@@ -1252,6 +1262,13 @@ export const socialPostingApi = {
 };
 
 // ── WhatsApp Marketing (BYOK — seller's own WhatsApp Business Account) ────
+export const smsApi = {
+  connect: (shopId: string, data: { account_sid: string; auth_token: string; from_number: string }) =>
+    api.post(`/shops/${shopId}/sms/connect`, data),
+  status: (shopId: string) => api.get(`/shops/${shopId}/sms/status`),
+  disconnect: (shopId: string) => api.delete(`/shops/${shopId}/sms/connect`),
+};
+
 export const whatsappApi = {
   connect: (shopId: string, data: { waba_id: string; phone_number_id: string; access_token: string }) =>
     api.post(`/shops/${shopId}/whatsapp/connect`, data),

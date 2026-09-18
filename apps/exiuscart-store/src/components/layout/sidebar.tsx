@@ -287,10 +287,30 @@ function isPremiumGroup(groupId: string): boolean {
   return PREMIUM_GROUPS.has(groupId);
 }
 
-// Premium-only hrefs — used by mobile nav to gate these items
-export const PREMIUM_HREFS = new Set(
-  GROUPS.filter(g => isPremiumGroup(g.id)).flatMap(g => g.items.map(i => i.href))
-);
+// The Analytics group is NOT a premium group as a whole — Sales/Profit/
+// Reports (which route into the real Reports page) stay open to every
+// plan. Only these 6 real dashboards are Growth/Scale (+ TheDersi Pro/
+// Official) — locked per-item below, not via isPremiumGroup, since that
+// would also lock the Reports-backed items this group already gives
+// Launch today.
+const ANALYTICS_ADVANCED_HREFS = new Set([
+  '/dashboard/analytics',
+  '/dashboard/analytics/products',
+  '/dashboard/analytics/channels',
+  '/dashboard/analytics/customers',
+  '/dashboard/analytics/marketing',
+  '/dashboard/analytics/fulfillment',
+]);
+
+// Premium-only hrefs — used by mobile nav to gate these items. Includes
+// the 6 advanced Analytics hrefs even though "analytics" isn't a premium
+// GROUP (Sales/Profit/Reports in the same group stay open to everyone) —
+// mobile nav's badge is a flat href set, so it can't distinguish "some
+// items in this group" the way the desktop sidebar's per-item check does.
+export const PREMIUM_HREFS = new Set([
+  ...GROUPS.filter(g => isPremiumGroup(g.id)).flatMap(g => g.items.map(i => i.href)),
+  ...ANALYTICS_ADVANCED_HREFS,
+]);
 
 // Rebuilt on shadcn/ui's real Sidebar primitive (components/ui/sidebar.tsx)
 // instead of a hand-rolled fixed-position <aside> — desktop collapse/expand
@@ -432,6 +452,14 @@ export function ShopSidebar() {
                 const canAccessPremium = plan === 'scale' || plan === 'growth';
                 const isTheDersiBasicPlan = isTheDersiRestricted;
                 const locked = isPremiumGroup(group.id) && !canAccessPremium;
+                // TheDersi Pro shares plan_type="launch" with real Launch
+                // customers (who don't get advanced Analytics on their
+                // own), so it needs its own bump here — same reasoning as
+                // is_thedersi_pro_shop() giving Pro Growth-level limits
+                // elsewhere. Official already resolves to plan="scale" and
+                // needs no special case.
+                const isTheDersiPro = isTheDersiPlan && plan === 'launch';
+                const canAccessAdvancedAnalytics = canAccessPremium || isTheDersiPro;
                 const groupActive = isGroupActive(group);
                 const isOpen = openGroups.has(group.id) || collapsed;
 
@@ -487,8 +515,13 @@ export function ShopSidebar() {
                         {group.items.map(item => {
                           const Icon = item.icon;
                           const active = isItemActive(item);
+                          const isAdvancedAnalyticsItem = ANALYTICS_ADVANCED_HREFS.has(item.href);
+                          const itemLocked = locked || (isAdvancedAnalyticsItem && !canAccessAdvancedAnalytics);
 
-                          if (locked) {
+                          if (itemLocked) {
+                            const lockMessage = isTheDersiPlan
+                              ? (isAdvancedAnalyticsItem ? 'Only for TheDersi Pro & Official' : 'Not available on TheDersi plans')
+                              : 'Only for Growth & Scale';
                             return (
                               <SidebarMenuItem key={item.href} className="relative group/lock">
                                 <SidebarMenuButton
@@ -503,7 +536,7 @@ export function ShopSidebar() {
                                 {!collapsed && (
                                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-[60] hidden group-hover/lock:block pointer-events-none">
                                     <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
-                                      {isTheDersiBasicPlan ? 'Not available on TheDersi plans' : 'Only for Growth & Scale'}
+                                      {lockMessage}
                                     </div>
                                   </div>
                                 )}
