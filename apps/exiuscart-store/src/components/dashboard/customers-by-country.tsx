@@ -22,12 +22,14 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
         <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">No customer data yet</div>
       ) : (
         <div className="space-y-3">
-          {mappable.length > 0 && (
-            <div className="h-32 w-full overflow-hidden rounded-lg bg-muted/30">
-              <WorldMap data={mappable} />
-            </div>
-          )}
-          <div className="space-y-2.5">
+          {/* Always shown, even with zero known countries yet — a map with
+              nothing highlighted still confirms the widget works, instead
+              of silently disappearing whenever every customer is still
+              "Unknown" (see the note below for what that means). */}
+          <div className="h-36 w-full overflow-hidden rounded-lg bg-muted/30">
+            <WorldMap data={mappable} />
+          </div>
+          <div className="space-y-2">
             {rows.map((r) => (
               <div key={r.code} className="flex items-center gap-2">
                 <span className="shrink-0 text-base leading-none" aria-hidden="true">
