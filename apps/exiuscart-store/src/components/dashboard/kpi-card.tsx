@@ -8,12 +8,14 @@ const ICON_BG: Record<string, string> = {
   violet: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
   emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
 };
 const BAR_BG: Record<string, string> = {
   indigo: 'bg-indigo-300 dark:bg-indigo-500/50',
   violet: 'bg-violet-300 dark:bg-violet-500/50',
   emerald: 'bg-emerald-300 dark:bg-emerald-500/50',
   amber: 'bg-amber-300 dark:bg-amber-500/50',
+  rose: 'bg-rose-300 dark:bg-rose-500/50',
 };
 
 export function KpiCard({
@@ -26,7 +28,7 @@ export function KpiCard({
   comparison: string;
   href: string;
   trend: number[];
-  color: 'indigo' | 'violet' | 'emerald' | 'amber';
+  color: 'indigo' | 'violet' | 'emerald' | 'amber' | 'rose';
 }) {
   const isPositive = (change ?? 0) > 0;
   const max = Math.max(...trend, 1);

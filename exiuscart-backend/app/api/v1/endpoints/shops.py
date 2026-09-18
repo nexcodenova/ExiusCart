@@ -1289,6 +1289,7 @@ def get_dashboard_stats(
         "periodRevenue": 0.0, "periodOrders": 0,
         "periodRevenueChange": None, "periodOrdersChange": None,
         "periodTrend": [],
+        "storefrontConversion": None, "storefrontConversionChange": None, "storefrontViews": 0,
     }
     try:
         adv["allTimeRevenue"] = float(db.query(func.sum(Ord.total)).filter(
@@ -1364,6 +1365,40 @@ def get_dashboard_stats(
         adv["periodOrders"] = period_orders
         adv["periodRevenueChange"] = round((period_revenue - prior_revenue) / prior_revenue * 100, 1) if prior_revenue > 0 else None
         adv["periodOrdersChange"] = round((period_orders - prior_orders) / prior_orders * 100, 1) if prior_orders > 0 else None
+
+        # Storefront conversion — real product-view events (ExiusCart's own
+        # Custom Website tracking, see StorefrontEvent's docstring: it can
+        # only ever see the Custom Website channel, not Shopify/eBay/etc.,
+        # since those render their own frontend) against real orders tagged
+        # as coming from that same channel (Order.notes == "Custom Website
+        # order" — the established marker every other Custom-Website-scoped
+        # query in this codebase already keys on, since Order has no
+        # dedicated channel-type column of its own).
+        from app.models.storefront_event import StorefrontEvent
+        storefront_views = db.query(func.count(StorefrontEvent.id)).filter(
+            StorefrontEvent.shop_id == shop_id, StorefrontEvent.event_type == "view",
+            StorefrontEvent.created_at >= period_start, StorefrontEvent.created_at <= period_end,
+        ).scalar() or 0
+        storefront_orders = db.query(func.count(Ord.id)).filter(
+            Ord.shop_id == shop_id, Ord.notes == "Custom Website order",
+            Ord.created_at >= period_start, Ord.created_at <= period_end,
+        ).scalar() or 0
+        prior_storefront_views = db.query(func.count(StorefrontEvent.id)).filter(
+            StorefrontEvent.shop_id == shop_id, StorefrontEvent.event_type == "view",
+            StorefrontEvent.created_at >= prior_start, StorefrontEvent.created_at < prior_end,
+        ).scalar() or 0
+        prior_storefront_orders = db.query(func.count(Ord.id)).filter(
+            Ord.shop_id == shop_id, Ord.notes == "Custom Website order",
+            Ord.created_at >= prior_start, Ord.created_at < prior_end,
+        ).scalar() or 0
+        conversion_rate = round(storefront_orders / storefront_views * 100, 1) if storefront_views > 0 else None
+        prior_conversion_rate = round(prior_storefront_orders / prior_storefront_views * 100, 1) if prior_storefront_views > 0 else None
+        adv["storefrontConversion"] = conversion_rate
+        adv["storefrontConversionChange"] = (
+            round(conversion_rate - prior_conversion_rate, 1)
+            if conversion_rate is not None and prior_conversion_rate is not None else None
+        )
+        adv["storefrontViews"] = storefront_views
 
         span_days = (period_end.date() - period_start.date()).days + 1
         use_monthly_view = (period in ("12m", "all") and not date_from) or span_days > 120

@@ -34,6 +34,12 @@ export interface DashboardStats {
   periodRevenueChange?: number | null;
   periodOrdersChange?: number | null;
   periodTrend?: { label: string; revenue: number; orders: number; growth: number }[];
+  // Real conversion rate — Custom Website channel only (StorefrontEvent
+  // tracking can't see Shopify/eBay/etc.'s own frontend). null when there
+  // simply aren't any tracked views yet, not a fabricated 0%.
+  storefrontConversion?: number | null;
+  storefrontConversionChange?: number | null;
+  storefrontViews?: number;
 }
 
 // Converts the shared DateRangePicker's value (same one Orders/Channel
