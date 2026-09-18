@@ -32,7 +32,7 @@ from app.models.product_variant import ProductVariant
 from app.models.user import User
 from app.api.v1.deps import get_current_user
 from app.core.rate_limit import limiter
-from app.core.activity import log_activity
+from app.core.activity import log_activity, log_low_stock_for_products
 from app.core.discounts import validate_and_compute_discount, record_discount_usage
 
 SUPPORTED_GATEWAYS = ("payhere", "stripe", "paypal", "whop")
@@ -130,6 +130,10 @@ class CheckoutIn(BaseModel):
     email: str
     phone: Optional[str] = None
     shipping_address: Optional[str] = None
+    # Not yet sent by the storefront checkout UI — accepted here so that
+    # work is forward-compatible the moment a country field is added there;
+    # until then this is always None and the customer's country stays unset.
+    country: Optional[str] = None
     use_wallet_amount: Optional[float] = None
     discount_code: Optional[str] = None
     # Required for Stripe/PayPal — those redirect the shopper to a hosted
@@ -218,7 +222,11 @@ def public_store_checkout(
             Customer.shop_id == shop.id, func.lower(Customer.email) == email,
         ).first()
         if not customer:
-            customer = Customer(shop_id=shop.id, name=data.name.strip() or "Guest", email=email, phone=data.phone, source="custom")
+            from app.core.country_utils import shop_country_iso
+            customer = Customer(
+                shop_id=shop.id, name=data.name.strip() or "Guest", email=email, phone=data.phone,
+                country=shop_country_iso(data.country), source="custom",
+            )
             db.add(customer)
             db.flush()
 
@@ -479,6 +487,7 @@ def _mark_order_paid_or_failed(order: Order, is_paid: bool, db: Session):
         # to format against; the frontend already knows the shop's currency
         # and formats order.total itself wherever it needs to.
         log_activity(db, order.shop_id, "payment_received", "Payment received", f"Order #{order.order_number}", order_id=order.id)
+        log_low_stock_for_products(db, order.shop_id, [item.product_id for item in order.items if item.product_id])
 
         from app.api.v1.endpoints.wallet import credit_wallet_for_order
         credit_wallet_for_order(order, db)

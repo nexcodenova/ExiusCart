@@ -13,6 +13,23 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+
+// Matches app/core/country_utils.py's COUNTRY_NAME_TO_ISO on the backend —
+// the small set of countries ExiusCart's channel/country-gated features
+// already recognize by code, not an exhaustive world list.
+const COUNTRIES: { code: string; name: string }[] = [
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'LK', name: 'Sri Lanka' },
+  { code: 'US', name: 'United States' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'IN', name: 'India' },
+  { code: 'PK', name: 'Pakistan' },
+  { code: 'BD', name: 'Bangladesh' },
+  { code: 'NP', name: 'Nepal' },
+  { code: 'MM', name: 'Myanmar' },
+];
 
 type CustomerStatus = 'vip' | 'new' | 'returning' | 'inactive';
 
@@ -23,6 +40,7 @@ interface Customer {
   email?: string | null;
   address?: string | null;
   city?: string | null;
+  country?: string | null;
   notes?: string | null;
   tags: string[];
   source?: string | null;
@@ -949,6 +967,7 @@ function CustomerModal({ customer, onClose, onSave }: {
     email: customer?.email ?? '',
     address: customer?.address ?? '',
     city: customer?.city ?? '',
+    country: customer?.country ?? '',
   });
 
   return (
@@ -978,6 +997,15 @@ function CustomerModal({ customer, onClose, onSave }: {
           <div>
             <label className="text-sm text-muted-foreground mb-1.5 block">City</label>
             <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} placeholder="e.g. Colombo" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/15 outline-none text-foreground" />
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1.5 block">Country</label>
+            <Select value={formData.country || undefined} onValueChange={(v) => setFormData({ ...formData, country: v })}>
+              <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map((c) => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>

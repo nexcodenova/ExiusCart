@@ -30,7 +30,7 @@ from pydantic import BaseModel
 from app.core.database import get_db, SessionLocal
 from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature, is_thedersi_restricted_shop, is_thedersi_pro_shop, is_thedersi_daraz_eligible_shop
 from app.core.channel_limits import check_channel_slot
-from app.core.activity import log_activity
+from app.core.activity import log_activity, log_low_stock_for_products
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -1070,6 +1070,8 @@ async def receive_order_webhook(
                     _bg_push_stock(pid, conn.shop_id)
 
                 if just_became_paid:
+                    log_activity(db, conn.shop_id, "payment_received", "Payment received", f"#{existing_order.order_number}", order_id=existing_order.id)
+                    log_low_stock_for_products(db, conn.shop_id, list(changed_pids))
                     from app.api.v1.endpoints.dropshipping import _bg_try_auto_fulfill
                     background_tasks.add_task(_bg_try_auto_fulfill, conn.shop_id, existing_order.id)
                     from app.api.v1.endpoints.digital_delivery import bg_create_digital_deliveries
@@ -1141,12 +1143,20 @@ async def receive_order_webhook(
             Customer.shop_id == conn.shop_id,
         ).first()
     if not customer and payload.buyer_name:
+        # TheDersi is Sri-Lanka-only end to end; every other marketplace
+        # channel (Daraz/Noon/eBay) is per-market, so its own connection
+        # already carries the seller's listed market as seller_country —
+        # the buyer is almost always shopping that same local marketplace.
+        # Not a guarantee (cross-border buyers exist), but real signal
+        # instead of leaving every channel-sourced customer's country blank.
+        buyer_country = "LK" if conn.channel_type == "thedersi" else conn.seller_country
         customer = Customer(
             shop_id=conn.shop_id,
             name=payload.buyer_name,
             email=payload.buyer_email,
             phone=payload.buyer_phone,
             address=payload.shipping_address,
+            country=buyer_country,
             # This one handler receives orders from every marketplace channel
             # (TheDersi/Daraz/eBay/Noon), differentiated by conn.channel_type
             # — tagging the customer with it here covers all of them at once.
@@ -1263,6 +1273,7 @@ async def receive_order_webhook(
     db.commit()
 
     log_activity(db, conn.shop_id, "order_created", "New order received", f"#{order_number}", order_id=order.id)
+    log_low_stock_for_products(db, conn.shop_id, stock_changed_product_ids)
 
     # Push updated stock to TheDersi for all products whose stock changed
     for pid in stock_changed_product_ids:

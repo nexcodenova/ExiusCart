@@ -6,9 +6,39 @@ import Image from 'next/image';
 import {
   Bell, Search, User, Sun, Moon, ChevronDown, Crown,
   Settings, CreditCard, LogOut, UserCircle,
+  PackagePlus, CreditCard as CreditCardIcon, PackageX, Truck, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { useTheme } from '@/components/providers/theme-provider';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
+import { ordersApi } from '@/lib/api';
+
+interface HeaderActivityEvent {
+  id: number;
+  event_type: string;
+  title: string;
+  description: string | null;
+  created_at: string | null;
+  is_read: boolean;
+}
+
+const HEADER_EVENT_META: Record<string, { icon: React.ElementType; className: string }> = {
+  order_created: { icon: PackagePlus, className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  payment_received: { icon: CreditCardIcon, className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  stock_low: { icon: PackageX, className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  order_shipped: { icon: Truck, className: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400' },
+  order_delivered: { icon: CheckCircle2, className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  order_cancelled: { icon: XCircle, className: 'bg-red-500/10 text-red-500' },
+};
+
+function headerTimeAgo(iso: string | null): string {
+  if (!iso) return '';
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
 // Same full list Settings → Regional Settings offers, so switching currency
 // from the header never gives a narrower choice than Settings does.
@@ -30,6 +60,9 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [showCurrencyDrop, setShowCurrencyDrop] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
+  const [notifEvents, setNotifEvents] = useState<HeaderActivityEvent[]>([]);
+  const [notifLoaded, setNotifLoaded] = useState(false);
+  const unreadNotifCount = notifEvents.filter((e) => !e.is_read).length;
   const [showProfile, setShowProfile] = useState(false);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
@@ -73,6 +106,31 @@ export function Header({ onMenuClick }: HeaderProps) {
       }
     });
   }, []);
+
+  const loadNotifications = () => {
+    const shopId = localStorage.getItem('shop_id');
+    if (!shopId) { setNotifLoaded(true); return; }
+    ordersApi.getActivityLog(shopId, 8)
+      .then((res) => setNotifEvents(res.data?.events ?? []))
+      .catch(() => {})
+      .finally(() => setNotifLoaded(true));
+  };
+
+  useEffect(() => { loadNotifications(); }, []);
+
+  const markNotifRead = (id: number) => {
+    const shopId = localStorage.getItem('shop_id');
+    if (!shopId) return;
+    setNotifEvents((prev) => prev.map((e) => (e.id === id ? { ...e, is_read: true } : e)));
+    ordersApi.markActivityRead(shopId, id).catch(() => loadNotifications());
+  };
+
+  const markAllNotifRead = () => {
+    const shopId = localStorage.getItem('shop_id');
+    if (!shopId) return;
+    setNotifEvents((prev) => prev.map((e) => ({ ...e, is_read: true })));
+    ordersApi.markAllActivityRead(shopId).catch(() => loadNotifications());
+  };
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -206,20 +264,59 @@ export function Header({ onMenuClick }: HeaderProps) {
           <button type="button" onClick={() => setShowNotif(v => !v)} aria-label="Notifications"
             className="relative p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition">
             <Bell className="w-5 h-5" />
+            {unreadNotifCount > 0 && (
+              <span className="absolute top-1 right-1 flex h-2 w-2 rounded-full bg-indigo-500" />
+            )}
           </button>
           {showNotif && (
             <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card shadow-xl z-50 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <p className="font-semibold text-foreground">Notifications</p>
+                {unreadNotifCount > 0 && (
+                  <button type="button" onClick={markAllNotifRead} className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+                    Mark all read
+                  </button>
+                )}
               </div>
               <div className="max-h-80 overflow-y-auto">
-                <div className="px-4 py-12 text-center">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                    <Bell className="h-5 w-5 text-muted-foreground" />
+                {!notifLoaded ? (
+                  <div className="px-4 py-12 text-center text-sm text-muted-foreground">Loading…</div>
+                ) : notifEvents.length === 0 ? (
+                  <div className="px-4 py-12 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                      <Bell className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">You&apos;re all caught up</p>
+                    <p className="text-xs text-muted-foreground">No new notifications</p>
                   </div>
-                  <p className="text-sm font-medium text-foreground">You&apos;re all caught up</p>
-                  <p className="text-xs text-muted-foreground">No new notifications</p>
-                </div>
+                ) : (
+                  <div className="py-1">
+                    {notifEvents.map((e) => {
+                      const meta = HEADER_EVENT_META[e.event_type] ?? { icon: Bell, className: 'bg-muted text-muted-foreground' };
+                      const Icon = meta.icon;
+                      return (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={() => !e.is_read && markNotifRead(e.id)}
+                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-muted/50 ${e.is_read ? 'opacity-60' : ''}`}
+                        >
+                          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${meta.className}`}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-xs font-medium text-foreground">{e.title}</span>
+                            {e.description && <span className="block truncate text-[10px] text-muted-foreground">{e.description}</span>}
+                          </span>
+                          <span className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground">
+                            {!e.is_read && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />}
+                            {headerTimeAgo(e.created_at)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}

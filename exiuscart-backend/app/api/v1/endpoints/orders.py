@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks, UploadFile, File
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
@@ -28,7 +29,7 @@ from app.models.product_variant import ProductVariant
 from app.models.channel import ChannelConnection
 from app.models.dropship import DropshipOrder
 from app.models.activity_log import ActivityLog
-from app.core.activity import log_activity
+from app.core.activity import log_activity, log_low_stock_for_products
 
 router = APIRouter()
 
@@ -263,6 +264,7 @@ async def create_order(
     # out the handful of channel/website events sellers actually watch for.
     if not is_pos:
         log_activity(db, shop_id, "order_created", "New order received", f"#{new_order.order_number}", order_id=new_order.id)
+    log_low_stock_for_products(db, shop_id, [i["product_id"] for i in order_items if i.get("product_id")])
 
     if is_pos:
         from app.api.v1.endpoints.digital_delivery import create_digital_deliveries_for_order
@@ -409,7 +411,10 @@ async def get_activity_log(
     db: Session = Depends(get_db),
 ):
     """Real order/payment lifecycle events for the Orders page's Recent
-    Activity panel — see app/models/activity_log.py for exact coverage."""
+    Activity panel — see app/models/activity_log.py for exact coverage.
+    Also powers the header/dashboard notification bell, which is why this
+    now carries read state and an unread_count instead of being a plain,
+    stateless list."""
     rows = (
         db.query(ActivityLog)
         .filter(ActivityLog.shop_id == shop_id)
@@ -417,14 +422,50 @@ async def get_activity_log(
         .limit(limit)
         .all()
     )
-    return {"events": [
-        {
-            "id": r.id, "event_type": r.event_type, "title": r.title,
-            "description": r.description, "order_id": r.order_id,
-            "created_at": r.created_at.isoformat() if r.created_at else None,
-        }
-        for r in rows
-    ]}
+    unread_count = db.query(func.count(ActivityLog.id)).filter(
+        ActivityLog.shop_id == shop_id, ActivityLog.read_at.is_(None),
+    ).scalar() or 0
+    return {
+        "unread_count": unread_count,
+        "events": [
+            {
+                "id": r.id, "event_type": r.event_type, "title": r.title,
+                "description": r.description, "order_id": r.order_id,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "is_read": r.read_at is not None,
+            }
+            for r in rows
+        ],
+    }
+
+
+@router.post("/shops/{shop_id}/activity-log/{event_id}/read")
+async def mark_activity_read(
+    shop_id: int,
+    event_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(ActivityLog).filter(ActivityLog.id == event_id, ActivityLog.shop_id == shop_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if not event.read_at:
+        event.read_at = datetime.now(timezone.utc)
+        db.commit()
+    return {"ok": True}
+
+
+@router.post("/shops/{shop_id}/activity-log/read-all")
+async def mark_all_activity_read(
+    shop_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db.query(ActivityLog).filter(
+        ActivityLog.shop_id == shop_id, ActivityLog.read_at.is_(None),
+    ).update({"read_at": datetime.now(timezone.utc)}, synchronize_session=False)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/shops/{shop_id}/orders/{order_id}", response_model=OrderResponse)

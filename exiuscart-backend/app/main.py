@@ -116,6 +116,8 @@ _MIGRATIONS = [
     "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ;",
     "ALTER TABLE quotations ADD COLUMN IF NOT EXISTS customer_company VARCHAR(200);",
     "ALTER TABLE prodora_digital_purchases ADD COLUMN IF NOT EXISTS imported_at TIMESTAMPTZ;",
+    "ALTER TABLE customers ADD COLUMN IF NOT EXISTS country VARCHAR(2);",
+    "ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;",
     # Unique constraint on client_token (safe to re-run — DO NOTHING on conflict)
     "ALTER TABLE quotations ADD CONSTRAINT uq_quotations_client_token UNIQUE (client_token);",
     "CREATE INDEX IF NOT EXISTS ix_quotations_client_token ON quotations(client_token) WHERE client_token IS NOT NULL;",

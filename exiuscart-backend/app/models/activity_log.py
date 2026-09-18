@@ -23,9 +23,10 @@ class ActivityLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False, index=True)
-    # order_created | payment_received | order_shipped | order_delivered | order_cancelled
+    # order_created | payment_received | order_shipped | order_delivered | order_cancelled | stock_low
     event_type = Column(String(30), nullable=False)
     title = Column(String(200), nullable=False)
     description = Column(String(300), nullable=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    read_at = Column(DateTime(timezone=True), nullable=True)

@@ -10,6 +10,7 @@ class CustomerBase(BaseModel):
     whatsapp: Optional[str] = None
     address: Optional[str] = None
     city: Optional[str] = None
+    country: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -24,6 +25,7 @@ class CustomerUpdate(BaseModel):
     whatsapp: Optional[str] = None
     address: Optional[str] = None
     city: Optional[str] = None
+    country: Optional[str] = None
     notes: Optional[str] = None
     tags: Optional[List[str]] = None
     is_active: Optional[bool] = None

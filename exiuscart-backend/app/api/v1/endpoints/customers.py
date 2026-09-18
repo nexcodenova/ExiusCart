@@ -48,6 +48,7 @@ def _customer_dict(c: Customer, total_orders: int, total_spent: float, last_orde
         "email": c.email,
         "address": c.address,
         "city": c.city,
+        "country": c.country,
         "notes": c.notes,
         "tags": c.tags or [],
         "source": c.source,

@@ -1235,6 +1235,8 @@ def get_dashboard_stats(
         "todayAvgOrder": 0.0, "monthlyRevenue12m": [],
         "repeatCustomerRate": 0.0, "inventoryValue": 0.0,
         "outOfStockCount": 0, "topCustomers": [],
+        "customersByCountry": [], "recentCustomers": [],
+        "storeHealth": {"channelsConnected": 0, "lastSyncedAt": None},
     }
     try:
         adv["allTimeRevenue"] = float(db.query(func.sum(Ord.total)).filter(
@@ -1305,6 +1307,67 @@ def get_dashboard_stats(
             .group_by(Cust.id, Cust.name).order_by(func.sum(Ord.total).desc()).limit(5).all()
         )
         adv["topCustomers"] = [{"id": r[0], "name": r[1] or "Unknown", "orders": int(r[2]), "revenue": float(r[3] or 0)} for r in top_cust_rows]
+
+        # By-country breakdown — country is nullable (see Customer.country's
+        # docstring: no reliable backfill for existing rows), so NULL groups
+        # into a real, honest "Unknown" bucket rather than being dropped.
+        # Deliberately explicit, not derived from COUNTRY_NAME_TO_ISO's
+        # reverse mapping — that dict has multiple names per code ("UAE" and
+        # "UNITED ARAB EMIRATES" both -> "AE"), and picking one via reversed()
+        # iteration surfaced the abbreviation ("Uae") instead of the full name.
+        iso_to_name = {
+            "AE": "United Arab Emirates", "LK": "Sri Lanka", "US": "United States",
+            "GB": "United Kingdom", "CA": "Canada", "IN": "India", "PK": "Pakistan",
+            "BD": "Bangladesh", "NP": "Nepal", "MM": "Myanmar",
+        }
+        country_rows = (
+            db.query(Cust.country, func.count(Cust.id).label("cnt"))
+            .filter(Cust.shop_id == shop_id)
+            .group_by(Cust.country).order_by(func.count(Cust.id).desc()).limit(8).all()
+        )
+        total_customers_for_pct = sum(int(r[1]) for r in country_rows) or 1
+        adv["customersByCountry"] = [
+            {
+                "code": r[0] or "Unknown",
+                "country": iso_to_name.get(r[0], "Unknown") if r[0] else "Unknown",
+                "customers": int(r[1]),
+                "percentage": round(int(r[1]) / total_customers_for_pct * 100, 1),
+            }
+            for r in country_rows
+        ]
+
+        # Recent customers — most recently added, regardless of whether
+        # they've ordered yet (distinct from topCustomers, which is by
+        # this-month revenue and excludes anyone with zero orders).
+        recent_cust_rows = db.query(Cust).filter(Cust.shop_id == shop_id).order_by(Cust.created_at.desc()).limit(5).all()
+        recent_cust_ids = [c.id for c in recent_cust_rows]
+        recent_cust_stats = {
+            row[0]: (int(row[1]), float(row[2]))
+            for row in (
+                db.query(Ord.customer_id, func.count(Ord.id), func.coalesce(func.sum(Ord.total), 0))
+                .filter(Ord.customer_id.in_(recent_cust_ids), Ord.status != "cancelled")
+                .group_by(Ord.customer_id).all()
+            )
+        } if recent_cust_ids else {}
+        adv["recentCustomers"] = [
+            {
+                "id": c.id, "name": c.name,
+                "orders": recent_cust_stats.get(c.id, (0, 0.0))[0],
+                "total": recent_cust_stats.get(c.id, (0, 0.0))[1],
+                "date": c.created_at.isoformat() if c.created_at else None,
+            }
+            for c in recent_cust_rows
+        ]
+
+        from app.models.channel import ChannelConnection
+        active_conns = db.query(ChannelConnection).filter(
+            ChannelConnection.shop_id == shop_id, ChannelConnection.is_active == True,
+        ).all()
+        last_sync = max((c.last_synced_at for c in active_conns if c.last_synced_at), default=None)
+        adv["storeHealth"] = {
+            "channelsConnected": len(active_conns),
+            "lastSyncedAt": last_sync.isoformat() if last_sync else None,
+        }
     except Exception as _adv_err:
         logger.error(f"[dashboard advanced stats] {_adv_err}")
 

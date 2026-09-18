@@ -198,6 +198,10 @@ export const ordersApi = {
     api.post(`/shops/${shopId}/orders/${orderId}/delivery-cost`, { delivery_cost: deliveryCost }),
   getActivityLog: (shopId: string, limit = 10) =>
     api.get(`/shops/${shopId}/activity-log`, { params: { limit } }),
+  markActivityRead: (shopId: string, eventId: number) =>
+    api.post(`/shops/${shopId}/activity-log/${eventId}/read`),
+  markAllActivityRead: (shopId: string) =>
+    api.post(`/shops/${shopId}/activity-log/read-all`),
 };
 
 // ── Customers ─────────────────────────────────────────

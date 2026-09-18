@@ -14,6 +14,12 @@ class Customer(Base):
     whatsapp = Column(String(20), nullable=True)
     address = Column(Text, nullable=True)
     city = Column(String(100), nullable=True)
+    # 2-letter ISO code. Nullable — existing customers predate this field
+    # entirely (no reliable way to backfill from free-text address/city), so
+    # "Unknown" is a real, honest bucket in any by-country breakdown rather
+    # than a guess. Set going forward at manual-add, checkout, and
+    # channel-webhook customer creation (see app/core/country_utils.py).
+    country = Column(String(2), nullable=True)
     notes = Column(Text, nullable=True)
     # Freeform labels the seller applies manually (e.g. "Wholesale") — distinct
     # from the VIP/New/Returning segment, which is always computed from real
