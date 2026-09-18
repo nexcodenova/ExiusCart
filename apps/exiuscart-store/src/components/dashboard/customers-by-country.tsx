@@ -1,4 +1,5 @@
 import { Globe2 } from 'lucide-react';
+import { flagEmoji } from '@/lib/country-flag';
 import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
 export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) {
@@ -17,8 +18,8 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
         <div className="space-y-2.5">
           {rows.map((r) => (
             <div key={r.code} className="flex items-center gap-2">
-              <span className="flex h-5 w-8 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold text-muted-foreground">
-                {r.code === 'Unknown' ? '—' : r.code}
+              <span className="shrink-0 text-base leading-none" aria-hidden="true">
+                {r.code === 'Unknown' ? '🌐' : flagEmoji(r.code)}
               </span>
               <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.country}</span>
               <span className="text-xs font-semibold tabular-nums text-foreground">{r.customers}</span>

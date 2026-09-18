@@ -14,6 +14,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { flagEmoji } from '@/lib/country-flag';
 
 // Matches app/core/country_utils.py's COUNTRY_NAME_TO_ISO on the backend —
 // the small set of countries ExiusCart's channel/country-gated features
@@ -1003,7 +1004,7 @@ function CustomerModal({ customer, onClose, onSave }: {
             <Select value={formData.country || undefined} onValueChange={(v) => setFormData({ ...formData, country: v })}>
               <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
               <SelectContent>
-                {COUNTRIES.map((c) => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}
+                {COUNTRIES.map((c) => <SelectItem key={c.code} value={c.code}>{flagEmoji(c.code)} {c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
