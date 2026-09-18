@@ -26,9 +26,13 @@ export function WorldMap({ data }: { data: { code: string; customers: number }[]
         {({ geographies }) =>
           geographies.map((geo) => {
             const count = byNumericId[geo.id as string];
-            const intensity = count ? 0.25 + (count / maxCustomers) * 0.6 : 0;
-            const baseFill = count ? `rgba(99, 102, 241, ${intensity})` : 'var(--muted)';
-            const hoverFill = count ? `rgba(99, 102, 241, ${Math.min(intensity + 0.15, 0.9)})` : 'var(--muted)';
+            const intensity = count ? 0.3 + (count / maxCustomers) * 0.6 : 0;
+            // react-simple-maps applies these fills outside the normal React
+            // style cascade, so CSS custom properties (var(--muted)) never
+            // resolved here — they rendered as literal black, not the
+            // intended theme color. Explicit, theme-agnostic grays instead.
+            const baseFill = count ? `rgba(99, 102, 241, ${intensity})` : 'rgba(148, 163, 184, 0.3)';
+            const hoverFill = count ? `rgba(99, 102, 241, ${Math.min(intensity + 0.15, 0.9)})` : 'rgba(148, 163, 184, 0.45)';
             return (
               <Geography
                 key={geo.rsmKey}
@@ -39,9 +43,9 @@ export function WorldMap({ data }: { data: { code: string; customers: number }[]
                 // {default,hover,pressed} per-state shape at runtime —
                 // the community types package just hasn't caught up.
                 style={{
-                  default: { outline: 'none', fill: baseFill, stroke: 'var(--border)', strokeWidth: 0.4 },
-                  hover: { outline: 'none', fill: hoverFill, stroke: 'var(--border)', strokeWidth: 0.4 },
-                  pressed: { outline: 'none', fill: hoverFill, stroke: 'var(--border)', strokeWidth: 0.4 },
+                  default: { outline: 'none', fill: baseFill, stroke: 'rgba(148, 163, 184, 0.5)', strokeWidth: 0.4 },
+                  hover: { outline: 'none', fill: hoverFill, stroke: 'rgba(148, 163, 184, 0.5)', strokeWidth: 0.4 },
+                  pressed: { outline: 'none', fill: hoverFill, stroke: 'rgba(148, 163, 184, 0.5)', strokeWidth: 0.4 },
                 } as React.CSSProperties}
               />
             );

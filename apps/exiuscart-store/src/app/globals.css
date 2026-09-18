@@ -37,13 +37,14 @@
     /* Sidebar — deliberately dark in BOTH themes (not tied to --card/
        --background), so the nav rail reads as a distinct, richer surface
        against the light theme's white page instead of blending into it.
-       Not as deep as the dark theme's own background — a lighter navy,
-       "dark accent" rather than "pitch black". */
-    --sidebar-bg: 222 38% 20%;
-    --sidebar-border: 222 30% 28%;
+       True near-black (zero hue saturation), not navy — a lighter charcoal
+       than the dark theme's own sidebar below, "dark accent" rather than
+       "pitch black". */
+    --sidebar-bg: 0 0% 10%;
+    --sidebar-border: 0 0% 18%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-muted-foreground: 215 20% 71%;
-    --sidebar-accent: 222 30% 28%;
+    --sidebar-accent: 0 0% 18%;
     --sidebar-accent-foreground: 210 40% 98%;
   }
 
@@ -77,15 +78,15 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    /* Sidebar — same dark surface as light mode (see :root) so it looks
-       identical regardless of app theme; only slightly deeper here so it
-       still reads as a distinct layer against the dark theme's own
+    /* Sidebar — same near-black surface as light mode (see :root) so it
+       looks identical regardless of app theme; only slightly deeper here
+       so it still reads as a distinct layer against the dark theme's own
        (also-dark) page background. */
-    --sidebar-bg: 222 47% 12%;
-    --sidebar-border: 217 33% 20%;
+    --sidebar-bg: 0 0% 6%;
+    --sidebar-border: 0 0% 15%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-muted-foreground: 215 20% 65%;
-    --sidebar-accent: 217 33% 20%;
+    --sidebar-accent: 0 0% 15%;
     --sidebar-accent-foreground: 210 40% 98%;
   }
 }
