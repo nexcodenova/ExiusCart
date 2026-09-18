@@ -4,24 +4,32 @@ import { useState } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/components/providers/currency-provider';
+import { channelMeta } from '@/components/channels/channelMeta';
 import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
-const CHANNEL_LABELS: Record<string, string> = {
-  pos: 'Point of Sale', thedersi: 'TheDersi', whatsapp: 'WhatsApp',
-  online: 'Online Store', shopify: 'Shopify', channel: 'Marketplace', manual: 'Manual',
+// channelMeta() covers real sales channels (Shopify/eBay/Daraz/...) with
+// their real logos — these aren't channels, they're order-source tags this
+// same field also carries, so they get a friendlier label only.
+const SOURCE_LABEL_OVERRIDES: Record<string, string> = {
+  pos: 'Point of Sale', online: 'Online Store', channel: 'Marketplace', manual: 'Manual',
 };
-const CHANNEL_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6'];
+const DONUT_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#8b5cf6'];
 
 export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null; fmt: (n: number, d?: number) => string }) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const { sym, convert } = useCurrency();
   const compactFmt = (n: number) => `${sym}${new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(convert(n))}`;
 
-  const channelPie = (stats?.channelBreakdown ?? []).map((c, i) => ({
-    name: CHANNEL_LABELS[c.source] ?? c.source,
-    value: Math.round(c.sales), orders: c.orders,
-    color: CHANNEL_COLORS[i % CHANNEL_COLORS.length],
-  })).sort((a, b) => b.value - a.value);
+  const channelPie = (stats?.channelBreakdown ?? []).map((c, i) => {
+    const meta = channelMeta(c.source);
+    return {
+      source: c.source,
+      name: SOURCE_LABEL_OVERRIDES[c.source] ?? meta.label,
+      value: Math.round(c.sales), orders: c.orders,
+      color: DONUT_COLORS[i % DONUT_COLORS.length],
+      icon: meta.icon, iconColor: meta.color, iconBg: meta.bg, logo: meta.logo,
+    };
+  }).sort((a, b) => b.value - a.value);
   const channelTotal = channelPie.reduce((s, d) => s + d.value, 0);
 
   return (
@@ -67,15 +75,21 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
               <span className="text-sm font-bold tabular-nums text-foreground">{compactFmt(channelTotal)}</span>
             </div>
           </div>
-          {channelPie.map(c => {
+          {channelPie.map((c) => {
             const pct = channelTotal > 0 ? (c.value / channelTotal) * 100 : 0;
+            const Icon = c.icon;
             return (
-              <div key={c.name} className="flex items-center justify-between gap-2 text-xs">
-                <span className="flex items-center gap-1.5 font-medium text-foreground truncate">
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: c.color }} />
-                  <span className="truncate">{c.name}</span>
-                </span>
-                <span className="ml-auto shrink-0 font-semibold tabular-nums text-foreground">{fmt(c.value, 0)}</span>
+              <div key={c.source} className="flex items-center gap-2 text-xs">
+                <div className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md ${c.iconBg}`}>
+                  {c.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.logo} alt={c.name} className="h-full w-full object-contain p-0.5" />
+                  ) : (
+                    <Icon className={`h-3.5 w-3.5 ${c.iconColor}`} />
+                  )}
+                </div>
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">{c.name}</span>
+                <span className="shrink-0 font-semibold tabular-nums text-foreground">{fmt(c.value, 0)}</span>
                 <span className="w-10 shrink-0 text-right tabular-nums text-muted-foreground">{pct.toFixed(1)}%</span>
               </div>
             );

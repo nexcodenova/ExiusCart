@@ -1067,6 +1067,8 @@ def _resolve_period_start(period: str, shop_created_at) -> "datetime":
 def get_dashboard_stats(
     shop_id: int,
     period: str = Query("30d"),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1133,8 +1135,24 @@ def get_dashboard_stats(
     ).group_by(Ord.status).all()
     order_status_breakdown = {r[0]: r[1] for r in status_rows}
 
-    # Sales by channel — filtered to the selected period, not a fixed 30 days
-    period_start = _resolve_period_start(period, shop.created_at)
+    # Sales by channel — filtered to the selected period (preset or an
+    # explicit custom date_from/date_to, same "advanced" picker pattern the
+    # Orders page already uses), not a fixed 30 days.
+    _now_for_range = datetime.now(timezone.utc)
+    if date_from:
+        period_start = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+        if period_start.tzinfo is None:
+            period_start = period_start.replace(tzinfo=timezone.utc)
+        if date_to:
+            period_end = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+            if period_end.tzinfo is None:
+                period_end = period_end.replace(tzinfo=timezone.utc)
+            period_end = period_end.replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            period_end = _now_for_range
+    else:
+        period_start = _resolve_period_start(period, shop.created_at)
+        period_end = _now_for_range
     thirty_ago = period_start  # kept as an alias below where "30 days" was the literal filter
     channel_rows = db.query(
         Ord.source,
@@ -1144,6 +1162,7 @@ def get_dashboard_stats(
         Ord.shop_id == shop_id,
         Ord.status != "cancelled",
         Ord.created_at >= period_start,
+        Ord.created_at <= period_end,
     ).group_by(Ord.source).all()
     channel_breakdown = [
         {"source": r[0] or "pos", "sales": float(r[1] or 0), "orders": int(r[2])}
@@ -1179,6 +1198,7 @@ def get_dashboard_stats(
         Ord.shop_id == shop_id,
         Ord.status != "cancelled",
         Ord.created_at >= thirty_ago,
+        Ord.created_at <= period_end,
     ).group_by(OrdItemModel.product_id, OrdItemModel.product_name).order_by(
         func.sum(OrdItemModel.total_price).desc()
     ).limit(5).all()
@@ -1313,29 +1333,31 @@ def get_dashboard_stats(
             monthly_revenue_12m[idx]["growth"] = round(((cur - prev) / prev * 100), 1) if prev > 0 else 0
         adv["monthlyRevenue12m"] = monthly_revenue_12m
 
-        # ── Date-range filter (7d/30d/90d/12m/all) — drives the Overview
-        # KPI cards' Revenue/Orders numbers and the Revenue Trend chart when
-        # a period other than the page's default is selected. 12m/all reuse
-        # the monthly series just built above; 7d/30d/90d get real daily
-        # buckets instead, since a 12-month monthly view would show a single
-        # flat bar for a 7-day selection.
-        now = datetime.now(timezone.utc)
-        period_days = _PERIOD_DAYS.get(period)
-        period_length = (now - period_start) if period_days is None else timedelta(days=period_days)
+        # ── Date-range filter — drives the Overview KPI cards' Revenue/Orders
+        # numbers and the Revenue Trend chart. Supports both the quick presets
+        # (7d/30d/90d/12m/all) and an explicit custom date_from/date_to (the
+        # same "advanced" picker pattern the Orders page already uses).
+        # 12m/all (no custom dates) reuse the monthly series just built above;
+        # everything else gets real daily buckets, except a custom range
+        # spanning over 120 days, which would otherwise draw hundreds of
+        # daily points — that falls back to monthly buckets of its own.
+        period_length = period_end - period_start
         prior_start = period_start - period_length
+        prior_end = period_start
 
         period_revenue = float(db.query(func.coalesce(func.sum(Ord.total), 0)).filter(
-            Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= period_start,
+            Ord.shop_id == shop_id, Ord.status != "cancelled",
+            Ord.created_at >= period_start, Ord.created_at <= period_end,
         ).scalar() or 0)
         period_orders = db.query(func.count(Ord.id)).filter(
-            Ord.shop_id == shop_id, Ord.created_at >= period_start,
+            Ord.shop_id == shop_id, Ord.created_at >= period_start, Ord.created_at <= period_end,
         ).scalar() or 0
         prior_revenue = float(db.query(func.coalesce(func.sum(Ord.total), 0)).filter(
             Ord.shop_id == shop_id, Ord.status != "cancelled",
-            Ord.created_at >= prior_start, Ord.created_at < period_start,
+            Ord.created_at >= prior_start, Ord.created_at < prior_end,
         ).scalar() or 0)
         prior_orders = db.query(func.count(Ord.id)).filter(
-            Ord.shop_id == shop_id, Ord.created_at >= prior_start, Ord.created_at < period_start,
+            Ord.shop_id == shop_id, Ord.created_at >= prior_start, Ord.created_at < prior_end,
         ).scalar() or 0
 
         adv["periodRevenue"] = period_revenue
@@ -1343,20 +1365,39 @@ def get_dashboard_stats(
         adv["periodRevenueChange"] = round((period_revenue - prior_revenue) / prior_revenue * 100, 1) if prior_revenue > 0 else None
         adv["periodOrdersChange"] = round((period_orders - prior_orders) / prior_orders * 100, 1) if prior_orders > 0 else None
 
-        if period in ("12m", "all"):
+        span_days = (period_end.date() - period_start.date()).days + 1
+        use_monthly_view = (period in ("12m", "all") and not date_from) or span_days > 120
+        if use_monthly_view and period in ("12m", "all") and not date_from:
             period_trend = [{"label": m["month"], "revenue": m["revenue"], "orders": m["orders"]} for m in monthly_revenue_12m]
+        elif use_monthly_view:
+            # Custom range over 120 days — bucket by real calendar month
+            # within [period_start, period_end], not the fixed 12-month window.
+            month_rows = db.query(
+                extract("year", Ord.created_at).label("y"), extract("month", Ord.created_at).label("mo"),
+                func.coalesce(func.sum(Ord.total), 0).label("rev"), func.count(Ord.id).label("cnt"),
+            ).filter(
+                Ord.shop_id == shop_id, Ord.status != "cancelled",
+                Ord.created_at >= period_start, Ord.created_at <= period_end,
+            ).group_by(extract("year", Ord.created_at), extract("month", Ord.created_at)).all()
+            month_map = {(int(r.y), int(r.mo)): {"revenue": float(r.rev or 0), "orders": int(r.cnt)} for r in month_rows}
+            period_trend = []
+            cursor = period_start.replace(day=1)
+            while cursor <= period_end:
+                entry = month_map.get((cursor.year, cursor.month), {"revenue": 0.0, "orders": 0})
+                period_trend.append({"label": cursor.strftime("%b '%y"), "revenue": round(entry["revenue"], 2), "orders": entry["orders"]})
+                cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
         else:
             daily_rows = db.query(
                 func.date(Ord.created_at).label("d"),
                 func.coalesce(func.sum(Ord.total), 0).label("rev"),
                 func.count(Ord.id).label("cnt"),
             ).filter(
-                Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= period_start,
+                Ord.shop_id == shop_id, Ord.status != "cancelled",
+                Ord.created_at >= period_start, Ord.created_at <= period_end,
             ).group_by(func.date(Ord.created_at)).all()
             daily_map = {r.d.isoformat(): {"revenue": float(r.rev or 0), "orders": int(r.cnt)} for r in daily_rows}
-            num_days = (now.date() - period_start.date()).days + 1
             period_trend = []
-            for i in range(num_days):
+            for i in range(span_days):
                 d = (period_start.date() + timedelta(days=i))
                 entry = daily_map.get(d.isoformat(), {"revenue": 0.0, "orders": 0})
                 period_trend.append({"label": d.strftime("%b %d"), "revenue": round(entry["revenue"], 2), "orders": entry["orders"]})

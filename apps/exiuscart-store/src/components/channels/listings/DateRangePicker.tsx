@@ -8,7 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
 
 export interface DateRangeValue {
-  preset: 'all' | 'today' | '7' | '30' | '90' | 'custom';
+  preset: 'all' | 'today' | '7' | '30' | '90' | '365' | 'custom';
   from?: string; // ISO date — only meaningful when preset === 'custom'
   to?: string;
 }
@@ -19,6 +19,7 @@ const PRESETS: { value: DateRangeValue['preset']; label: string }[] = [
   { value: '7', label: 'Last 7 days' },
   { value: '30', label: 'Last 30 days' },
   { value: '90', label: 'Last 90 days' },
+  { value: '365', label: 'Last 12 months' },
 ];
 
 export function dateRangeLabel(v: DateRangeValue): string {

@@ -1,3 +1,5 @@
+import type { DateRangeValue } from '@/components/channels/listings/DateRangePicker';
+
 export interface DashboardStats {
   shopName?: string; period?: string;
   sales: number; salesChange: number; orders: number;
@@ -34,15 +36,20 @@ export interface DashboardStats {
   periodTrend?: { label: string; revenue: number; orders: number; growth: number }[];
 }
 
-export type DashboardPeriod = '7d' | '30d' | '90d' | '12m' | 'all';
-
-export const PERIOD_LABELS: Record<DashboardPeriod, string> = {
-  '7d': 'Last 7 days',
-  '30d': 'Last 30 days',
-  '90d': 'Last 90 days',
-  '12m': 'Last 12 months',
-  all: 'All time',
-};
+// Converts the shared DateRangePicker's value (same one Orders/Channel
+// Orders already use) into this endpoint's query params — a preset maps to
+// the fast `period` keyword path server-side, 'custom' sends explicit
+// date_from/date_to instead.
+export function dateRangeToStatsParams(range: DateRangeValue): { period?: string; date_from?: string; date_to?: string } {
+  if (range.preset === 'custom') return { date_from: range.from, date_to: range.to };
+  const map: Record<Exclude<DateRangeValue['preset'], 'custom'>, string> = {
+    all: 'all', today: '7d', '7': '7d', '30': '30d', '90': '90d', '365': '12m',
+  };
+  if (range.preset === 'today') {
+    return { date_from: new Date().toISOString().slice(0, 10), date_to: new Date().toISOString().slice(0, 10) };
+  }
+  return { period: map[range.preset] };
+}
 
 export interface ActivityEvent {
   id: number;

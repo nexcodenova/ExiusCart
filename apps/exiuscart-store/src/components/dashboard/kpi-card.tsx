@@ -36,16 +36,18 @@ export function KpiCard({
       href={href}
       className="group rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
     >
-      <div className="flex items-start justify-between">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${ICON_BG[color]}`}>
-          <Icon className="h-5 w-5" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${ICON_BG[color]}`}>
+            <Icon className="h-4.5 w-4.5" />
+          </div>
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
         </div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground/30 transition-transform group-hover:translate-x-1 group-hover:text-muted-foreground" />
+        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-1 group-hover:text-muted-foreground" />
       </div>
 
       <div className="mt-3">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <div className="mt-1 flex items-end gap-2">
+        <div className="flex items-end gap-2">
           <p className="text-2xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
           {change !== undefined && change !== null && change !== 0 && (
             <span className={`mb-1 flex items-center text-xs font-semibold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>

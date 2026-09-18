@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { RefreshCw, ShoppingCart, Radio } from 'lucide-react';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { PERIOD_LABELS, type DashboardPeriod } from '@/lib/dashboard/dashboard-types';
+import DateRangePicker, { type DateRangeValue } from '@/components/channels/listings/DateRangePicker';
 
 function greeting() {
   const h = new Date().getHours();
@@ -19,7 +18,7 @@ function timeAgo(iso: string | null): string | null {
 }
 
 export function DashboardHeader({
-  storeName, memberSince, channelsConnected, lastSyncedAt, refreshing, onRefresh, period, onPeriodChange,
+  storeName, memberSince, channelsConnected, lastSyncedAt, refreshing, onRefresh, dateRange, onDateRangeChange,
 }: {
   storeName?: string;
   memberSince?: string;
@@ -27,8 +26,8 @@ export function DashboardHeader({
   lastSyncedAt?: string | null;
   refreshing: boolean;
   onRefresh: () => void;
-  period: DashboardPeriod;
-  onPeriodChange: (p: DashboardPeriod) => void;
+  dateRange: DateRangeValue;
+  onDateRangeChange: (v: DateRangeValue) => void;
 }) {
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const lastSync = timeAgo(lastSyncedAt ?? null);
@@ -52,14 +51,9 @@ export function DashboardHeader({
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Select value={period} onValueChange={(v) => onPeriodChange(v as DashboardPeriod)}>
-          <SelectTrigger className="h-9 w-[150px] text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {(Object.keys(PERIOD_LABELS) as DashboardPeriod[]).map((p) => (
-              <SelectItem key={p} value={p}>{PERIOD_LABELS[p]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="w-[170px]">
+          <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
+        </div>
         <button onClick={onRefresh} disabled={refreshing}
           className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted disabled:opacity-60">
           <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh

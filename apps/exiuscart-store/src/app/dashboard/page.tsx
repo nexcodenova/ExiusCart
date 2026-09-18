@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { dashboardApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
-import type { DashboardStats, DashboardPeriod } from '@/lib/dashboard/dashboard-types';
+import type { DateRangeValue } from '@/components/channels/listings/DateRangePicker';
+import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
+import { dateRangeToStatsParams } from '@/lib/dashboard/dashboard-types';
 
 import { DashboardHeader } from '@/components/dashboard/dashboard-header';
 import { OverviewCards } from '@/components/dashboard/overview-cards';
@@ -28,7 +30,7 @@ function shopIdFromStorage() {
 export default function DashboardPage() {
   const [shopId, setShopId] = useState('');
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [period, setPeriod] = useState<DashboardPeriod>('30d');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ preset: '30' });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { fmt } = useCurrency();
@@ -38,16 +40,16 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!shopId) { setLoading(false); return; }
     setLoading(true);
-    dashboardApi.getStats(shopId, period)
+    dashboardApi.getStats(shopId, dateRangeToStatsParams(dateRange))
       .then((r) => setStats(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [shopId, period]);
+  }, [shopId, dateRange]);
 
   const refresh = () => {
     if (!shopId) return;
     setRefreshing(true);
-    dashboardApi.getStats(shopId, period)
+    dashboardApi.getStats(shopId, dateRangeToStatsParams(dateRange))
       .then((r) => setStats(r.data))
       .catch(() => {})
       .finally(() => setRefreshing(false));
@@ -62,13 +64,13 @@ export default function DashboardPage() {
         lastSyncedAt={stats?.storeHealth?.lastSyncedAt}
         refreshing={refreshing}
         onRefresh={refresh}
-        period={period}
-        onPeriodChange={setPeriod}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
       />
 
-      <OverviewCards stats={stats} loading={loading} fmt={fmt} period={period} />
+      <OverviewCards stats={stats} loading={loading} fmt={fmt} />
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-5 lg:grid-cols-5">
         <RevenueTrend stats={stats} loading={loading} fmt={fmt} />
         <RevenueByChannel stats={stats} fmt={fmt} />
       </div>

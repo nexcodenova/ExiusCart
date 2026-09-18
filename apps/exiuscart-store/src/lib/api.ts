@@ -84,7 +84,8 @@ export const shopApi = {
 
 // ── Dashboard ─────────────────────────────────────────
 export const dashboardApi = {
-  getStats: (shopId: string, period?: string) => api.get(`/shops/${shopId}/stats`, { params: period ? { period } : undefined }),
+  getStats: (shopId: string, params?: { period?: string; date_from?: string; date_to?: string }) =>
+    api.get(`/shops/${shopId}/stats`, { params }),
 };
 
 export const customerSegmentsApi = {
