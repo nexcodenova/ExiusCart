@@ -111,6 +111,12 @@ SOCIAL_POST_LIMITS = {
     "scale": {"daily": 10, "monthly": None},
 }
 
+# TheDersi Pro shares plan_type="launch" with real Launch customers, but
+# gets its own monthly allowance (same 2/day, higher monthly) rather than
+# just inheriting Launch's — Pro's price point is set by TheDersi, not
+# ExiusCart, so its numbers are a deliberate, separate choice.
+THEDERSI_PRO_SOCIAL_POST_LIMITS = {"daily": 2, "monthly": 100}
+
 
 def _require_premium(shop_id: int, db: Session):
     if _get_plan(shop_id, db) not in SOCIAL_POST_LIMITS:
@@ -121,7 +127,8 @@ def _require_premium(shop_id: int, db: Session):
 
 
 def _check_post_limit(shop_id: int, db: Session):
-    limits = SOCIAL_POST_LIMITS.get(_get_plan(shop_id, db))
+    from app.core.thedersi import is_thedersi_pro_shop
+    limits = THEDERSI_PRO_SOCIAL_POST_LIMITS if is_thedersi_pro_shop(shop_id, db) else SOCIAL_POST_LIMITS.get(_get_plan(shop_id, db))
     if not limits:
         return
     now = datetime.now(timezone.utc)

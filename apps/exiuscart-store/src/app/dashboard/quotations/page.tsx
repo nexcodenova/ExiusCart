@@ -6,12 +6,21 @@ import {
   Search, Plus, ClipboardList, Clock, CheckCircle2, FileText,
   X, Trash2, Package, GripVertical, Info, Lock,
 } from 'lucide-react';
-import { quotationsApi, productsApi, customersApi, subscriptionApi } from '@/lib/api';
+import { quotationsApi, productsApi, customersApi, subscriptionApi, channelsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
 
-// All plans can create basic quotations. Only Growth/Scale get advanced features.
-const isAdvancedPlan = (p: string) => p === 'growth' || p === 'scale';
+// All plans can create basic quotations. Only Growth/Scale get advanced
+// features (sections, PDF terms/company details). TheDersi Official
+// shares plan_type="scale" with real Scale customers so it already passes
+// this check with no special-casing needed. TheDersi Pro shares
+// plan_type="launch" with real Launch customers (who don't get advanced
+// quoting) — so Pro needs its own bump, same reasoning as every other
+// "Pro gets treated like Growth for this one feature" case elsewhere in
+// this app (e.g. product_fields.py's image/description limits). Free
+// Forever and Lite get nothing extra here, matching that same pattern.
+const isAdvancedPlan = (plan: string, isTheDersiUser: boolean) =>
+  plan === 'growth' || plan === 'scale' || (isTheDersiUser && plan === 'launch');
 const canCreateQuote = (_p: string) => true;
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -87,6 +96,7 @@ export default function QuotationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [plan, setPlan] = useState('');
+  const [isTheDersiUser, setIsTheDersiUser] = useState(false);
   // A quotation is a formal offer — base currency, so what's quoted never
   // drifts from what actually gets invoiced later.
   const { baseSym: sym } = useCurrency();
@@ -107,8 +117,14 @@ export default function QuotationsPage() {
   useEffect(() => {
     if (!shopId) return;
     subscriptionApi.getCurrent(shopId)
-      .then(r => setPlan(r.data?.plan_type ?? 'free_trial'))
+      .then(r => setPlan(r.data?.plan?.plan_type ?? 'free_trial'))
       .catch(() => setPlan('free_trial'));
+    // Detected via an active TheDersi connection, not plan_type — TheDersi's
+    // own tier names map to real plan_type values (Pro→launch, Official→
+    // scale), same as everywhere else this is checked in the app.
+    channelsApi.getConnections(shopId)
+      .then(r => setIsTheDersiUser((r.data ?? []).some((c: { channel_type: string }) => c.channel_type === 'thedersi')))
+      .catch(() => setIsTheDersiUser(false));
   }, [shopId]);
 
   const filtered = quotations.filter((q) =>
@@ -232,6 +248,7 @@ export default function QuotationsPage() {
         <CreateQuotationModal
           shopId={shopId}
           plan={plan}
+          isTheDersiUser={isTheDersiUser}
           onClose={() => setShowModal(false)}
           onCreated={(id) => { setShowModal(false); router.push(`/dashboard/quotations/${id}`); }}
         />
@@ -246,21 +263,22 @@ function UpgradeLock({ message }: { message: string }) {
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/60 border border-border rounded-lg px-3 py-2.5">
       <Lock className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
-      <span>{message} — <span className="font-semibold text-indigo-500">Upgrade to ExiusCart Premium</span></span>
+      <span>{message} — <span className="font-semibold text-indigo-500">Upgrade to Growth or Scale</span></span>
     </div>
   );
 }
 
-function CreateQuotationModal({ shopId, plan, onClose, onCreated }: {
+function CreateQuotationModal({ shopId, plan, isTheDersiUser, onClose, onCreated }: {
   shopId: string;
   plan: string;
+  isTheDersiUser: boolean;
   onClose: () => void;
   onCreated: (id: number) => void;
 }) {
   // A quotation is a formal offer — base currency, so what's quoted never
   // drifts from what actually gets invoiced later.
   const { baseSym: sym } = useCurrency();
-  const advanced = isAdvancedPlan(plan);
+  const advanced = isAdvancedPlan(plan, isTheDersiUser);
 
   // Client
   const [customerName, setCustomerName] = useState('');
@@ -299,10 +317,30 @@ function CreateQuotationModal({ shopId, plan, onClose, onCreated }: {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Debounced, server-side search — this is a picker into the seller's
+  // FULL product/customer list, not a one-time snapshot, so it has to keep
+  // querying the real endpoints as the seller types rather than fetching
+  // once and filtering client-side (which silently only ever searched
+  // whatever fit in the first page, and crashed outright for customers —
+  // that endpoint returns {items, total, counts, sources}, not a bare
+  // array, unlike products' response_model=List[...]).
   useEffect(() => {
-    productsApi.getAll(shopId).then(r => setProducts(r.data?.products ?? r.data ?? [])).catch(() => {});
-    customersApi.getAll(shopId).then(r => setCustomers(r.data ?? [])).catch(() => {});
-  }, [shopId]);
+    const handle = setTimeout(() => {
+      productsApi.getAll(shopId, { search: productSearch || undefined })
+        .then(r => setProducts(r.data ?? []))
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [shopId, productSearch]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      customersApi.getAll(shopId, { search: customerSearch || undefined, limit: 50 })
+        .then(r => setCustomers(r.data?.items ?? []))
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [shopId, customerSearch]);
 
   // Computed totals
   const subtotal = rows.reduce((s, r) => r.type === 'item' && !r.is_optional ? s + r.total : s, 0);
@@ -372,15 +410,8 @@ function CreateQuotationModal({ shopId, plan, onClose, onCreated }: {
     }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    (p.sku ?? '').toLowerCase().includes(productSearch.toLowerCase())
-  );
-  const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    (c.phone ?? '').includes(customerSearch) ||
-    (c.email ?? '').toLowerCase().includes(customerSearch.toLowerCase())
-  );
+  // products/customers already reflect the current search — see the
+  // debounced server-side fetch effects above.
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto py-4 px-4">
@@ -405,9 +436,9 @@ function CreateQuotationModal({ shopId, plan, onClose, onCreated }: {
                 onFocus={() => setShowCustPicker(true)}
                 onChange={(e) => { setCustomerSearch(e.target.value); setShowCustPicker(true); }}
                 className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm outline-none text-foreground placeholder:text-muted-foreground" />
-              {showCustPicker && filteredCustomers.length > 0 && (
+              {showCustPicker && customers.length > 0 && (
                 <div className="absolute top-full mt-1 left-0 right-0 bg-card border border-border rounded-xl shadow-lg z-20 max-h-40 overflow-y-auto">
-                  {filteredCustomers.slice(0, 6).map(c => (
+                  {customers.slice(0, 6).map(c => (
                     <button key={c.id} type="button"
                       onClick={() => {
                         setCustomerName(c.name); setCustomerPhone(c.phone ?? '');
@@ -452,7 +483,7 @@ function CreateQuotationModal({ shopId, plan, onClose, onCreated }: {
                     + Section
                   </button>
                 ) : (
-                  <span title="Upgrade to ExiusCart Premium"
+                  <span title="Upgrade to Growth or Scale"
                     className="inline-flex items-center gap-1.5 text-xs border border-border/50 text-muted-foreground/40 px-3 py-1.5 rounded-lg cursor-not-allowed select-none">
                     <Lock className="w-3 h-3" /> Section
                   </span>
@@ -473,9 +504,9 @@ function CreateQuotationModal({ shopId, plan, onClose, onCreated }: {
                     className="w-full px-3 py-2 bg-muted rounded-lg text-sm outline-none text-foreground placeholder:text-muted-foreground" />
                 </div>
                 <div className="max-h-44 overflow-y-auto">
-                  {filteredProducts.length === 0 ? (
+                  {products.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-6">No products found</p>
-                  ) : filteredProducts.slice(0, 10).map(p => (
+                  ) : products.slice(0, 10).map(p => (
                     <button key={p.id} type="button" onClick={() => addFromInventory(p)}
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted transition border-b border-border/50 last:border-0">
                       <div className="text-left">

@@ -87,6 +87,15 @@ export const dashboardApi = {
   getStats: (shopId: string) => api.get(`/shops/${shopId}/stats`),
 };
 
+export const customerSegmentsApi = {
+  list: (shopId: string) => api.get(`/shops/${shopId}/customer-segments`),
+  get: (shopId: string, id: number) => api.get(`/shops/${shopId}/customer-segments/${id}`),
+  create: (shopId: string, data: any) => api.post(`/shops/${shopId}/customer-segments`, data),
+  update: (shopId: string, id: number, data: any) => api.put(`/shops/${shopId}/customer-segments/${id}`, data),
+  delete: (shopId: string, id: number) => api.delete(`/shops/${shopId}/customer-segments/${id}`),
+  filterOptions: (shopId: string) => api.get(`/shops/${shopId}/customer-segments/_meta/filter-options`),
+};
+
 export const analyticsApi = {
   overview: (shopId: string) => api.get(`/shops/${shopId}/analytics/overview`),
   products: (shopId: string) => api.get(`/shops/${shopId}/analytics/products`),
@@ -1262,11 +1271,10 @@ export const socialPostingApi = {
 };
 
 // ── WhatsApp Marketing (BYOK — seller's own WhatsApp Business Account) ────
+// SMS is sent via ExiusCart's own centralized Twilio account (wholesale,
+// not BYOK — see app/core/sms.py) — there's no per-shop connect flow.
 export const smsApi = {
-  connect: (shopId: string, data: { account_sid: string; auth_token: string; from_number: string }) =>
-    api.post(`/shops/${shopId}/sms/connect`, data),
-  status: (shopId: string) => api.get(`/shops/${shopId}/sms/status`),
-  disconnect: (shopId: string) => api.delete(`/shops/${shopId}/sms/connect`),
+  getUsage: (shopId: string) => api.get(`/shops/${shopId}/sms/usage`),
 };
 
 export const whatsappApi = {

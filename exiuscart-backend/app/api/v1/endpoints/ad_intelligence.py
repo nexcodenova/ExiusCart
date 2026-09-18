@@ -6,11 +6,12 @@ they're considering is already being advertised for real, before they
 commit to listing it — a lightweight validation signal, same spirit as
 the admin side's ad-proof-gathering for winning-products.
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.meta_ad_library import search_meta_ad_library
+from app.core.thedersi import is_thedersi_free_forever_shop
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.api.v1.endpoints.channels import _shop_or_404
@@ -27,5 +28,12 @@ async def shop_meta_ads_search(
     db: Session = Depends(get_db),
 ):
     _shop_or_404(shop_id, current_user, db)
+    # Everyone gets this (it costs ExiusCart nothing to run) except TheDersi
+    # Free Forever specifically — Lite/Pro/Official all still get it.
+    if is_thedersi_free_forever_shop(shop_id, db):
+        raise HTTPException(status_code=403, detail={
+            "error": "not_available",
+            "message": "Ad research is available on TheDersi Lite, Pro, and Official.",
+        })
     ads = await search_meta_ad_library(q, country)
     return {"ads": ads}

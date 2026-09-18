@@ -17,7 +17,7 @@ router = APIRouter()
 CUSTOMER_LIMITS: dict = {
     "free_trial":            100,
     "thedersi_free_forever": 100,
-    "thedersi_lite":         100,
+    "thedersi_lite":         500,
     "launch":                5_000,
     "growth":                25_000,
     "scale":                 None,   # unlimited

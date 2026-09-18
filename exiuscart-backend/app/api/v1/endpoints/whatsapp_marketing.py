@@ -46,6 +46,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.encryption import encrypt, decrypt
+from app.core.thedersi import is_thedersi_pro_shop
 from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.shop import Shop
@@ -73,6 +74,12 @@ def _get_plan(shop_id: int, db: Session) -> str:
 
 
 def _require_premium(shop_id: int, db: Session):
+    # TheDersi Pro shares plan_type="launch" with real Launch customers (who
+    # don't get WhatsApp marketing) — allowed in explicitly. Costs ExiusCart
+    # nothing either way since this is BYOK (the seller's own WhatsApp
+    # Business Account foots the bill), unlike SMS's centralized model.
+    if is_thedersi_pro_shop(shop_id, db):
+        return
     if _get_plan(shop_id, db) not in ("growth", "scale"):
         raise HTTPException(status_code=403, detail={
             "error": "upgrade_required",

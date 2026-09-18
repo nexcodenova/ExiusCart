@@ -39,8 +39,8 @@ EMAIL_LIMITS: dict[str, dict] = {
     },
     "marketing": {
         "free_trial":            0,
-        "thedersi_free_forever": 0,
-        "thedersi_lite":         0,
+        "thedersi_free_forever": 10,
+        "thedersi_lite":         100,
         "launch":                200,
         "growth":                2000,
         "scale":                 None,
@@ -54,8 +54,8 @@ EMAIL_LIMITS: dict[str, dict] = {
 # shop-aware override through every display table for a usage-page number.
 ORDER_LIMITS: dict = {
     "free_trial":            50,
-    "thedersi_free_forever": 50,
-    "thedersi_lite":         50,
+    "thedersi_free_forever": 25,
+    "thedersi_lite":         100,
     "launch":                1000,
     "growth":                5000,
     "scale":                 None,
@@ -64,7 +64,7 @@ ORDER_LIMITS: dict = {
 PRODUCT_LIMITS: dict = {
     "free_trial":            25,
     "thedersi_free_forever": 25,
-    "thedersi_lite":         25,
+    "thedersi_lite":         100,
     "launch":                1000,
     "growth":                10000,
     "scale":                 None,

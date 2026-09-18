@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import re
 import uuid
 from app.core.database import get_db
-from app.core.thedersi import is_thedersi_restricted_shop
+from app.core.thedersi import is_thedersi_restricted_shop, is_thedersi_pro_shop
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.product import Product, Category
@@ -26,11 +26,16 @@ from app.api.v1.endpoints.product_fields import _description_word_limit, DESCRIP
 PLAN_PRODUCT_LIMITS = {
     "free_trial":            25,
     "thedersi_free_forever": 25,
-    "thedersi_lite":         25,
+    "thedersi_lite":         100,
     "launch":                1000,
     "growth":                10000,
     "scale":                 -1,    # unlimited
 }
+
+# TheDersi Pro's own digital-product allowance — deliberately small (see
+# the gate below for why), separate from PLAN_PRODUCT_LIMITS' overall
+# per-shop product cap.
+THEDERSI_PRO_DIGITAL_PRODUCT_LIMIT = 3
 
 _IMG_TAG_RE = re.compile(r"<img\b", re.IGNORECASE)
 
@@ -163,6 +168,17 @@ async def bulk_import_products(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
+    # TheDersi Free Forever/Lite don't get bulk upload; Pro does (its own
+    # carve-out, same mechanism as Wholesale) and Official already passes
+    # since is_thedersi_restricted_shop excludes it. This endpoint had no
+    # plan check at all before — open to every tier, including Free
+    # Forever/Lite, until now.
+    if is_thedersi_restricted_shop(shop_id, db) and not is_thedersi_pro_shop(shop_id, db):
+        raise HTTPException(status_code=403, detail={
+            "error": "not_available",
+            "message": "Bulk upload is available on TheDersi Pro and Official.",
+        })
+
     created = 0
     skipped = 0
     errors: list[str] = []
@@ -232,7 +248,10 @@ async def create_product(
     subscription = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
     if subscription:
         plan_key = subscription.plan_type.lower()
-        limit = PLAN_PRODUCT_LIMITS.get(plan_key, 50)
+        # TheDersi Pro shares plan_type="launch" (1,000-product cap) with
+        # real Launch customers — Pro itself gets unlimited products,
+        # unlike real Launch, so it needs its own override here.
+        limit = -1 if is_thedersi_pro_shop(shop_id, db) else PLAN_PRODUCT_LIMITS.get(plan_key, 50)
         if limit != -1:
             current_count = db.query(Product).filter(Product.shop_id == shop_id).count()
             if current_count >= limit:
@@ -243,15 +262,31 @@ async def create_product(
 
     product_fields = product_data.model_dump()
     if product_fields.get("product_type") == "digital":
-        # ExiusCart-only — TheDersi orders arrive via a channel webhook,
-        # never through checkout.py/POS, so the digital-delivery email
-        # would never fire for one regardless; blocked outright rather
-        # than accepting a product that silently can't be fulfilled.
+        # Free Forever/Lite: blocked outright, same reasoning as before —
+        # TheDersi orders arrive via a channel webhook, never through
+        # checkout.py/POS, so nothing would ever trigger the digital-
+        # delivery email for one. Pro gets a real, deliberately small
+        # allowance instead (now that channels.py's webhook handler also
+        # triggers digital delivery — see digital_delivery.py's
+        # bg_create_digital_deliveries) — TheDersi's own catalog format may
+        # still present a digital listing awkwardly on their storefront
+        # (it's built for physical goods), so keeping this to a handful of
+        # products limits how much that TheDersi-side unknown can go wrong.
         if is_thedersi_restricted_shop(shop_id, db):
-            raise HTTPException(status_code=403, detail={
-                "error": "not_available",
-                "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
-            })
+            if not is_thedersi_pro_shop(shop_id, db):
+                raise HTTPException(status_code=403, detail={
+                    "error": "not_available",
+                    "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
+                })
+            existing_digital = db.query(Product).filter(
+                Product.shop_id == shop_id, Product.product_type == "digital",
+            ).count()
+            if existing_digital >= THEDERSI_PRO_DIGITAL_PRODUCT_LIMIT:
+                raise HTTPException(status_code=403, detail={
+                    "error": "digital_product_limit_reached",
+                    "limit": THEDERSI_PRO_DIGITAL_PRODUCT_LIMIT,
+                    "message": f"TheDersi Pro allows up to {THEDERSI_PRO_DIGITAL_PRODUCT_LIMIT} digital products.",
+                })
         # Stock is now seller-controlled for digital, same as physical —
         # a course with limited seats or software with a finite number of
         # license keys has real stock to track. The dashboard form
@@ -479,10 +514,20 @@ async def update_product(
         _validate_description(update_data["description"], shop_id, db)
     if update_data.get("product_type") == "digital":
         if is_thedersi_restricted_shop(shop_id, db):
-            raise HTTPException(status_code=403, detail={
-                "error": "not_available",
-                "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
-            })
+            if not is_thedersi_pro_shop(shop_id, db):
+                raise HTTPException(status_code=403, detail={
+                    "error": "not_available",
+                    "message": "Digital products aren't available for TheDersi sellers — TheDersi is a physical-goods marketplace.",
+                })
+            existing_digital = db.query(Product).filter(
+                Product.shop_id == shop_id, Product.product_type == "digital", Product.id != product.id,
+            ).count()
+            if existing_digital >= THEDERSI_PRO_DIGITAL_PRODUCT_LIMIT:
+                raise HTTPException(status_code=403, detail={
+                    "error": "digital_product_limit_reached",
+                    "limit": THEDERSI_PRO_DIGITAL_PRODUCT_LIMIT,
+                    "message": f"TheDersi Pro allows up to {THEDERSI_PRO_DIGITAL_PRODUCT_LIMIT} digital products.",
+                })
         if "quantity" not in update_data:
             update_data["quantity"] = 999999
             update_data["low_stock_threshold"] = 0

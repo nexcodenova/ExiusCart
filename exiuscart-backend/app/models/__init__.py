@@ -55,7 +55,8 @@ from app.models.storefront_event import StorefrontEvent
 from app.models.prodora_digital import ProdoraDigitalBundle, ProdoraDigitalPurchase
 from app.models.social_posting import SocialAccountConnection, SocialPost
 from app.models.whatsapp_marketing import WhatsAppConnection, WhatsAppTemplate, WhatsAppCampaign, WhatsAppMessageLog
-from app.models.sms_marketing import SMSConnection, SMSMessageLog
+from app.models.sms_marketing import SMSMessageLog
+from app.models.customer_segment import CustomerSegment
 from app.models.activity_log import ActivityLog
 from app.models.discount import Discount
 from app.models.supplier_return import SupplierReturn

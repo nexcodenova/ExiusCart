@@ -1072,6 +1072,8 @@ async def receive_order_webhook(
                 if just_became_paid:
                     from app.api.v1.endpoints.dropshipping import _bg_try_auto_fulfill
                     background_tasks.add_task(_bg_try_auto_fulfill, conn.shop_id, existing_order.id)
+                    from app.api.v1.endpoints.digital_delivery import bg_create_digital_deliveries
+                    background_tasks.add_task(bg_create_digital_deliveries, existing_order.id)
 
                 logger.info(
                     f"[WEBHOOK] dedupe: {existing_order.order_number} → "
@@ -1269,6 +1271,8 @@ async def receive_order_webhook(
     if order_is_paid:
         from app.api.v1.endpoints.dropshipping import _bg_try_auto_fulfill
         background_tasks.add_task(_bg_try_auto_fulfill, conn.shop_id, order.id)
+        from app.api.v1.endpoints.digital_delivery import bg_create_digital_deliveries
+        background_tasks.add_task(bg_create_digital_deliveries, order.id)
 
     return {
         "success": True,

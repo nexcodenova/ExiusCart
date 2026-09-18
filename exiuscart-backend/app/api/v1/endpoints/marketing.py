@@ -400,9 +400,14 @@ def send_email_campaign(shop_id: int, cid: int, current_user: User = Depends(get
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
     plan = sub.plan_type if sub else None
 
-    limit = _get_limit(EMAIL_LIMITS["marketing"], plan)
+    # TheDersi Pro shares plan_type="launch" (200/mo) with real Launch
+    # customers, but gets its own (higher) allowance — Pro's price point is
+    # set by TheDersi, not ExiusCart, so its numbers are a deliberate,
+    # separate choice, same as SMS/social posting's own Pro overrides.
+    from app.core.thedersi import is_thedersi_pro_shop
+    limit = 250 if is_thedersi_pro_shop(shop_id, db) else _get_limit(EMAIL_LIMITS["marketing"], plan)
     if limit == 0:
-        raise HTTPException(status_code=403, detail="Marketing emails are not available on your plan. Upgrade to Starter or above.")
+        raise HTTPException(status_code=403, detail="Marketing emails are not available on your plan. Upgrade to Launch or above.")
 
     used = db.query(sql_func.count(EmailUsageLog.id)).filter(
         EmailUsageLog.shop_id == shop_id,

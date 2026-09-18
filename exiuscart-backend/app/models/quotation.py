@@ -26,6 +26,7 @@ class Quotation(Base):
     customer_name = Column(String(200), nullable=False)
     customer_email = Column(String(200), nullable=True)
     customer_phone = Column(String(50), nullable=True)
+    customer_company = Column(String(200), nullable=True)
 
     # [{product_id, name, sku, quantity_available, qty, unit_price, total}]
     items = Column(JSONB, nullable=False, default=list)

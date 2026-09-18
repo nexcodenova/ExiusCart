@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
 from app.models.wholesale import WholesaleProduct, WholesaleBuyer, WholesaleOrder
+from app.core.thedersi import is_thedersi_pro_shop
 from app.models.quotation import Quotation
 from pydantic import BaseModel
 
@@ -66,6 +67,11 @@ def _require_premium(shop_id: int, db: Session):
         Subscription.shop_id == shop_id,
         Subscription.status == "active"
     ).order_by(Subscription.id.desc()).first()
+    # TheDersi Pro shares plan_type="launch" with real Launch customers (who
+    # don't get Wholesale either) — allowed in explicitly, same mechanism as
+    # every other "Pro gets this one feature anyway" case in this app.
+    if is_thedersi_pro_shop(shop_id, db):
+        return
     if not sub or sub.plan_type != "scale":
         raise HTTPException(status_code=403, detail="Wholesale requires the Scale plan.")
 

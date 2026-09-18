@@ -246,11 +246,11 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 # premium perk from before this split existed.
 _IMAGE_LIMITS = {
     "launch": 6, "growth": 10, "scale": 15,
-    "thedersi_free_forever": 6, "thedersi_lite": 6,
+    "thedersi_free_forever": 4, "thedersi_lite": 10,
 }
 _DESCRIPTION_WORD_LIMITS = {
     "launch": 350, "growth": 500, "scale": 1000,
-    "thedersi_free_forever": 350, "thedersi_lite": 350,
+    "thedersi_free_forever": 250, "thedersi_lite": 350,
 }
 _DEFAULT_IMAGE_LIMIT = 6
 _DEFAULT_DESCRIPTION_WORD_LIMIT = 350
@@ -267,7 +267,7 @@ def _image_limit(shop_id: int, db: Session) -> int:
     ).first()
     from app.core.thedersi import is_thedersi_pro_shop
     if sub and is_thedersi_pro_shop(shop_id, db):
-        return _IMAGE_LIMITS["growth"]
+        return _IMAGE_LIMITS["scale"]
     return _IMAGE_LIMITS.get(sub.plan_type, _DEFAULT_IMAGE_LIMIT) if sub else _DEFAULT_IMAGE_LIMIT
 
 

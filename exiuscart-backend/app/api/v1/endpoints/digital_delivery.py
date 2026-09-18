@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.core.email import send_digital_product_email
 from app.core.rate_limit import limiter
 from app.models.order import Order, OrderItem
@@ -79,6 +79,29 @@ def create_digital_deliveries_for_order(order: Order, db: Session) -> None:
             logger.error(f"[Digital Delivery] order={order.id} item={item.id} email send failed: {exc}")
 
     db.commit()
+
+
+def bg_create_digital_deliveries(order_id: int) -> None:
+    """Background-task wrapper for channels.py's receive_order_webhook —
+    that handler only has request-scoped access to the order, and its own
+    DB session closes before a background task actually runs (same
+    reasoning as channels.py's own _bg_push_stock/_bg_full_sync and
+    dropshipping.py's _bg_try_auto_fulfill), so this opens a fresh session
+    and re-fetches the order rather than reusing the caller's.
+
+    This is what makes TheDersi-channel digital product orders deliverable
+    at all — create_digital_deliveries_for_order was previously only ever
+    called from checkout.py (ExiusCart's own storefront checkout), so an
+    order arriving via a channel webhook (TheDersi, Daraz, etc.) never
+    triggered a digital delivery email even if the product itself was
+    digital."""
+    db = SessionLocal()
+    try:
+        order = db.query(Order).filter(Order.id == order_id).first()
+        if order:
+            create_digital_deliveries_for_order(order, db)
+    finally:
+        db.close()
 
 
 # ── Public — download gate ────────────────────────────────────────────────────

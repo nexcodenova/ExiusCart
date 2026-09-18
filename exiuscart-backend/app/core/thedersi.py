@@ -130,6 +130,22 @@ def is_thedersi_daraz_eligible_shop(shop_id: int, db) -> bool:
     return is_thedersi_pro_shop(shop_id, db)
 
 
+def is_thedersi_free_forever_shop(shop_id: int, db) -> bool:
+    """True only for TheDersi's Free Forever tier specifically — used for
+    the small number of things (Ad research, Customer Segments, Marketing
+    hub/Campaigns) that Free Forever alone doesn't get, while Lite/Pro/
+    Official all do. Free Forever has its own distinct plan_type
+    (thedersi_free_forever, never shared with a real direct plan), so this
+    needs no is_thedersi_shop() check first — the plan_type string alone is
+    unambiguous, same shape as is_thedersi_daraz_eligible_shop's
+    thedersi_lite check."""
+    from app.models.subscription import Subscription
+    sub = db.query(Subscription).filter(
+        Subscription.shop_id == shop_id
+    ).order_by(Subscription.id.desc()).first()
+    return bool(sub and sub.plan_type == "thedersi_free_forever")
+
+
 def is_thedersi_restricted_shop(shop_id: int, db) -> bool:
     """True for a TheDersi shop that should have TheDersi's usual
     restrictions applied (no Prodora, no dropshipping suppliers, no digital
@@ -145,8 +161,8 @@ def is_thedersi_restricted_shop(shop_id: int, db) -> bool:
 # Counts channel/online orders only — POS is always unlimited regardless of plan
 MONTHLY_ORDER_LIMITS: dict = {
     "free_trial":            50,
-    "thedersi_free_forever": 100,
-    "thedersi_lite":         None,  # unlimited — Lite = Free Forever's limits, minus the order cap
+    "thedersi_free_forever": 25,
+    "thedersi_lite":         100,
     "launch":                1000,
     "growth":                5000,
     "scale":                 None,  # unlimited
