@@ -6,8 +6,8 @@ export function TopProductsPanel({ stats, fmt }: { stats: DashboardStats | null;
   const maxRev = stats.topProducts[0].revenue;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">Top products</h2>

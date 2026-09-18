@@ -18,9 +18,9 @@ export function OrderActivityCharts({ stats }: { stats: DashboardStats | null })
   const hourly = buildHourly(stats?.hourlyOrders ?? []);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-        <div className="mb-4 flex items-center gap-2">
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <div className="mb-3 flex items-center gap-2">
           <Activity className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">Order activity</h2>
           <span className="ml-auto text-xs text-muted-foreground">Last 24 hours</span>
@@ -53,8 +53,8 @@ export function OrderActivityCharts({ stats }: { stats: DashboardStats | null })
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-        <div className="mb-4 flex items-center gap-2">
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <div className="mb-3 flex items-center gap-2">
           <CalendarDays className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold text-foreground">Orders by day of week</h2>
           <span className="ml-auto text-xs text-muted-foreground">Last 30 days</span>

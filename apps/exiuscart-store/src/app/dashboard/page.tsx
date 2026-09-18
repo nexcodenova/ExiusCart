@@ -56,7 +56,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <DashboardHeader
         storeName={stats?.shopName}
         memberSince={stats?.memberSince}
@@ -70,12 +70,12 @@ export default function DashboardPage() {
 
       <OverviewCards stats={stats} loading={loading} fmt={fmt} />
 
-      <div className="grid gap-5 lg:grid-cols-5">
+      <div className="grid gap-4 lg:grid-cols-5">
         <RevenueTrend stats={stats} loading={loading} fmt={fmt} />
         <RevenueByChannel stats={stats} fmt={fmt} />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <OrdersByStatus stats={stats} />
         <TopProductsPanel stats={stats} fmt={fmt} />
         <CustomersByCountry stats={stats} />
@@ -85,12 +85,12 @@ export default function DashboardPage() {
       <BusinessHealth stats={stats} loading={loading} fmt={fmt} />
       <OrderActivityCharts stats={stats} />
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <TopCustomers stats={stats} fmt={fmt} />
         <RecentOrdersPanel stats={stats} loading={loading} fmt={fmt} />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <RecentCustomersPanel stats={stats} fmt={fmt} />
         <StockAlertsPanel stats={stats} loading={loading} />
         {shopId && <SystemNotifications shopId={shopId} />}

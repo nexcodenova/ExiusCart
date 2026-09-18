@@ -5,8 +5,8 @@ export function RecentCustomersPanel({ stats, fmt }: { stats: DashboardStats | n
   const customers = stats?.recentCustomers ?? [];
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between">
         <h2 className="font-semibold text-foreground">Recent customers</h2>
         <Link href="/dashboard/customers" className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">View all</Link>
       </div>

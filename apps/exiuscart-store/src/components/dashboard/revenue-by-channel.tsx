@@ -33,8 +33,8 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
   const channelTotal = channelPie.reduce((s, d) => s + d.value, 0);
 
   return (
-    <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <div className="mb-4 flex items-center gap-2">
+    <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 flex items-center gap-2">
         <TrendingUp className="h-4 w-4 text-muted-foreground" />
         <h2 className="font-semibold text-foreground">Revenue by channel</h2>
         <span className="ml-auto text-xs text-muted-foreground">30 days</span>
@@ -96,15 +96,6 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
                 </div>
               );
             })}
-            {stats?.topProducts?.[0] && (
-              <div className="mt-2 border-t border-border pt-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Top product</p>
-                <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{stats.topProducts[0].name}</span>
-                  <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{fmt(stats.topProducts[0].revenue, 0)}</span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

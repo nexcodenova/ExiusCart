@@ -4,8 +4,8 @@ import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
 export function StockAlertsPanel({ stats, loading }: { stats: DashboardStats | null; loading: boolean }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <h2 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
         <AlertTriangle className="h-4 w-4 text-amber-500" /> Stock alerts
       </h2>
       {stats?.outOfStockCount ? (

@@ -3,8 +3,8 @@ import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
 export function TopCustomers({ stats, fmt }: { stats: DashboardStats | null; fmt: (n: number, d?: number) => string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <div className="mb-4 flex items-center gap-2">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 flex items-center gap-2">
         <Star className="h-4 w-4 text-amber-500" />
         <h2 className="font-semibold text-foreground">Top customers</h2>
         <span className="ml-auto text-xs text-muted-foreground">This month</span>

@@ -51,8 +51,8 @@ export function SystemNotifications({ shopId }: { shopId: string }) {
   const unreadCount = events.filter((e) => !e.is_read).length;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between">
         <h2 className="font-semibold text-foreground">System notifications</h2>
         {unreadCount > 0 && (
           <button onClick={markAllRead} className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">

@@ -18,8 +18,8 @@ export function RevenueTrend({
   const change = stats?.periodRevenueChange ?? null;
 
   return (
-    <div className="lg:col-span-3 rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+    <div className="lg:col-span-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold text-foreground">Revenue trend</h2>
           <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums text-foreground">{loading ? '—' : fmt(totalRev, 0)}</p>

@@ -19,8 +19,8 @@ export function OrdersByStatus({ stats }: { stats: DashboardStats | null; fmt?: 
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between">
         <h2 className="font-semibold text-foreground">Orders by status</h2>
         <span className="text-xs text-muted-foreground">All time</span>
       </div>
