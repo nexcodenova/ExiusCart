@@ -1974,7 +1974,8 @@ function ProductModal({
       });
       setDarazListingStatus({ item_id: res.data?.item_id, status: res.data?.status ?? 'pending_review' });
     } catch (err: any) {
-      setDarazListingError(err?.response?.data?.detail ?? 'Could not create the Daraz listing. Try again.');
+      const detail = err?.response?.data?.detail;
+      setDarazListingError((typeof detail === 'string' ? detail : detail?.message) ?? 'Could not create the Daraz listing. Try again.');
     } finally {
       setListingDaraz(false);
     }

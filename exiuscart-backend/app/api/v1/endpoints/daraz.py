@@ -370,6 +370,32 @@ def fetch_daraz_categories(access_token: str, country_code: str) -> list | None:
     return _flatten_daraz_categories(data["data"])
 
 
+def daraz_account_can_sell_digital_goods(access_token: str, country_code: str) -> bool | None:
+    """Daraz treats "Digital Goods" (subscriptions, gift cards, top-ups,
+    ebooks/software) as a separate seller program that Daraz approves
+    per-account, outside anything ExiusCart controls — a seller's own
+    /category/tree/get simply won't contain that category at all until
+    Daraz has approved them for it. Reuses the same, already-proven
+    category-tree call rather than a second unverified endpoint.
+
+    Checks the ROOT segment of each leaf's breadcrumb specifically (not a
+    substring match anywhere in the name) — a normal seller's "Electronics >
+    Cameras > Digital Cameras" must not false-positive this check just
+    because it contains the word "digital".
+
+    UNVERIFIED: "Digital Goods" is Daraz's own name for this program on
+    every help page we found, but we've never seen the literal category-tree
+    node from an account actually approved for it — confirm this string
+    against a real approved account before relying on it.
+
+    Returns None if the category tree couldn't be fetched at all (caller
+    should treat that as "couldn't verify right now", not "not approved")."""
+    categories = fetch_daraz_categories(access_token, country_code)
+    if categories is None:
+        return None
+    return any(c["name"].split(" > ", 1)[0].strip().lower() == "digital goods" for c in categories)
+
+
 # ── Product creation — category attributes + brands are simple read calls,
 # same proven shape as /category/tree/get (flat GET params, JSON response),
 # so built with the same confidence. CreateProduct itself is NOT built yet —
@@ -488,14 +514,36 @@ def create_daraz_listing(
     product = db.query(Product).filter(Product.id == product_id, Product.shop_id == shop_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    # Daraz is a physical-goods marketplace — digital/affiliate products
-    # don't belong here (see the same guard on eBay). Sell those through the
-    # Custom Website, Whop, or Gumroad.
-    if (product.product_type or "physical") != "physical":
+    # Digital products need Daraz's own separate "Digital Goods" seller
+    # approval (Daraz-controlled, not something ExiusCart can grant) — check
+    # the seller's real category tree rather than blocking every digital
+    # product outright. A plain affiliate product still never belongs on
+    # Daraz at all (see the same guard on eBay).
+    if product.product_type == "affiliate":
         raise HTTPException(
             status_code=400,
-            detail=f"“{product.name}” is a {product.product_type} product. Daraz only lists physical products — sell digital items through your Custom Website, Whop, or Gumroad.",
+            detail=f"“{product.name}” is an affiliate product — Daraz can't list these. Sell it through your Custom Website, Whop, or Gumroad.",
         )
+    if (product.product_type or "physical") != "physical":
+        approved = daraz_account_can_sell_digital_goods(conn.access_token, shop.country)
+        if approved is None:
+            raise HTTPException(
+                status_code=502,
+                detail="Couldn't check your Daraz account's Digital Goods access right now — try again shortly.",
+            )
+        if not approved:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "daraz_digital_goods_not_approved",
+                    "message": (
+                        f"“{product.name}” is a {product.product_type} product. Daraz sells digital goods "
+                        "(subscriptions, gift cards, ebooks, top-ups) through its own separate Digital Goods "
+                        "seller program — apply for it in your Daraz Seller Center. Once Daraz approves your "
+                        "account, come back here and try again; we check automatically, no reconnect needed."
+                    ),
+                },
+            )
 
     # 1. Migrate images to Daraz's own repository first — CreateProduct
     # needs Daraz-hosted URLs, not arbitrary external ones.
