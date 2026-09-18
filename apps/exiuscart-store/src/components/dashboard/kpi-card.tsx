@@ -47,16 +47,16 @@ export function KpiCard({
       </div>
 
       <div className="mt-3">
-        <div className="flex items-end gap-2">
-          <p className="text-2xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
+        <p className="text-2xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
+        <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
           {change !== undefined && change !== null && change !== 0 && (
-            <span className={`mb-1 flex items-center text-xs font-semibold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+            <span className={`flex items-center font-semibold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
               {isPositive ? <ArrowUpRight className="mr-0.5 h-3.5 w-3.5" /> : <ArrowDownRight className="mr-0.5 h-3.5 w-3.5" />}
               {Math.abs(change)}%
             </span>
           )}
-        </div>
-        <p className="mt-0.5 text-[10px] text-muted-foreground">{comparison}</p>
+          {comparison}
+        </p>
       </div>
 
       {trend.length > 1 && (

@@ -42,8 +42,8 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
       {channelTotal === 0 ? (
         <div className="flex h-44 items-center justify-center text-sm text-muted-foreground">No sales in last 30 days</div>
       ) : (
-        <div className="space-y-2">
-          <div className="relative mx-auto h-40 w-40 mb-4">
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+          <div className="relative h-36 w-36 shrink-0">
             {activeIdx !== null && channelPie[activeIdx] && (
               <div className="pointer-events-none absolute -top-2 left-1/2 z-10 w-max max-w-[10rem] -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                 <p className="flex items-center gap-1.5 font-semibold text-foreground">
@@ -59,7 +59,7 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={channelPie} dataKey="value" innerRadius={52} outerRadius={76} paddingAngle={2} stroke="none"
+                  data={channelPie} dataKey="value" innerRadius={48} outerRadius={68} paddingAngle={2} stroke="none"
                   isAnimationActive animationDuration={700} animationEasing="ease-out"
                   onMouseEnter={(_, i) => setActiveIdx(i)}
                   onMouseLeave={() => setActiveIdx(null)}
@@ -75,34 +75,37 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
               <span className="text-sm font-bold tabular-nums text-foreground">{compactFmt(channelTotal)}</span>
             </div>
           </div>
-          {channelPie.map((c) => {
-            const pct = channelTotal > 0 ? (c.value / channelTotal) * 100 : 0;
-            const Icon = c.icon;
-            return (
-              <div key={c.source} className="flex items-center gap-2 text-xs">
-                <div className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md ${c.iconBg}`}>
-                  {c.logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={c.logo} alt={c.name} className="h-full w-full object-contain p-0.5" />
-                  ) : (
-                    <Icon className={`h-3.5 w-3.5 ${c.iconColor}`} />
-                  )}
+
+          <div className="w-full min-w-0 flex-1 space-y-2.5">
+            {channelPie.map((c) => {
+              const pct = channelTotal > 0 ? (c.value / channelTotal) * 100 : 0;
+              const Icon = c.icon;
+              return (
+                <div key={c.source} className="flex items-center gap-2 text-xs">
+                  <div className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md ${c.iconBg}`}>
+                    {c.logo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.logo} alt={c.name} className="h-full w-full object-contain p-0.5" />
+                    ) : (
+                      <Icon className={`h-3.5 w-3.5 ${c.iconColor}`} />
+                    )}
+                  </div>
+                  <span className="min-w-0 flex-1 truncate font-medium text-foreground">{c.name}</span>
+                  <span className="shrink-0 font-semibold tabular-nums text-foreground">{fmt(c.value, 0)}</span>
+                  <span className="w-10 shrink-0 text-right tabular-nums text-muted-foreground">{pct.toFixed(1)}%</span>
                 </div>
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground">{c.name}</span>
-                <span className="shrink-0 font-semibold tabular-nums text-foreground">{fmt(c.value, 0)}</span>
-                <span className="w-10 shrink-0 text-right tabular-nums text-muted-foreground">{pct.toFixed(1)}%</span>
+              );
+            })}
+            {stats?.topProducts?.[0] && (
+              <div className="mt-1 border-t border-border pt-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Top product</p>
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className="truncate text-xs font-medium text-foreground">{stats.topProducts[0].name}</span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{fmt(stats.topProducts[0].revenue, 0)}</span>
+                </div>
               </div>
-            );
-          })}
-          {stats?.topProducts?.[0] && (
-            <div className="mt-3 border-t border-border pt-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Top product</p>
-              <div className="mt-1.5 flex items-center justify-between gap-2">
-                <span className="truncate text-xs font-medium text-foreground">{stats.topProducts[0].name}</span>
-                <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{fmt(stats.topProducts[0].revenue, 0)}</span>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>
