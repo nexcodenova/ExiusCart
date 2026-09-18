@@ -33,8 +33,8 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
   const channelTotal = channelPie.reduce((s, d) => s + d.value, 0);
 
   return (
-    <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-5">
-      <div className="mb-3 flex items-center gap-2">
+    <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 sm:p-6">
+      <div className="mb-4 flex items-center gap-2">
         <TrendingUp className="h-4 w-4 text-muted-foreground" />
         <h2 className="font-semibold text-foreground">Revenue by channel</h2>
         <span className="ml-auto text-xs text-muted-foreground">30 days</span>
@@ -42,8 +42,8 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
       {channelTotal === 0 ? (
         <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">No sales in last 30 days</div>
       ) : (
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
-          <div className="relative h-28 w-28 shrink-0">
+        <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+          <div className="relative h-32 w-32 shrink-0">
             {activeIdx !== null && channelPie[activeIdx] && (
               <div className="pointer-events-none absolute -top-2 left-1/2 z-10 w-max max-w-[10rem] -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                 <p className="flex items-center gap-1.5 font-semibold text-foreground">
@@ -59,7 +59,7 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={channelPie} dataKey="value" innerRadius={38} outerRadius={54} paddingAngle={2} stroke="none"
+                  data={channelPie} dataKey="value" innerRadius={44} outerRadius={62} paddingAngle={2} stroke="none"
                   isAnimationActive animationDuration={700} animationEasing="ease-out"
                   onMouseEnter={(_, i) => setActiveIdx(i)}
                   onMouseLeave={() => setActiveIdx(null)}
@@ -76,13 +76,13 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
             </div>
           </div>
 
-          <div className="w-full min-w-0 flex-1 space-y-2">
+          <div className="w-full min-w-0 flex-1 space-y-3">
             {channelPie.map((c) => {
               const pct = channelTotal > 0 ? (c.value / channelTotal) * 100 : 0;
               const Icon = c.icon;
               return (
-                <div key={c.source} className="flex items-center gap-2">
-                  <div className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md ${c.iconBg}`}>
+                <div key={c.source} className="flex items-center gap-2.5">
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md ${c.iconBg}`}>
                     {c.logo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.logo} alt={c.name} className="h-full w-full object-contain p-0.5" />
@@ -90,24 +90,19 @@ export function RevenueByChannel({ stats, fmt }: { stats: DashboardStats | null;
                       <Icon className={`h-3.5 w-3.5 ${c.iconColor}`} />
                     )}
                   </div>
-                  {/* Two lines, not one row of 4 pieces — a single line
-                      (icon+name+amount+%) doesn't leave the name enough
-                      width once this column gets narrow, and truncate
-                      silently crushes it to nothing instead of wrapping. */}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-foreground">{c.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      <span className="font-semibold tabular-nums text-foreground">{fmt(c.value, 0)}</span> · {pct.toFixed(1)}%
-                    </p>
-                  </div>
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{c.name}</span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{fmt(c.value, 0)}</span>
+                  <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{pct.toFixed(1)}%</span>
                 </div>
               );
             })}
             {stats?.topProducts?.[0] && (
-              <div className="mt-1 border-t border-border pt-2.5">
+              <div className="mt-2 border-t border-border pt-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Top product</p>
-                <p className="mt-1 truncate text-xs font-medium text-foreground">{stats.topProducts[0].name}</p>
-                <p className="text-[11px] font-semibold tabular-nums text-foreground">{fmt(stats.topProducts[0].revenue, 0)}</p>
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{stats.topProducts[0].name}</span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-foreground">{fmt(stats.topProducts[0].revenue, 0)}</span>
+                </div>
               </div>
             )}
           </div>
