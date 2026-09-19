@@ -57,3 +57,13 @@ a {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* App chrome offsets: the sidebar sets data-sidebar="collapsed"|"open" on
+   <html> (components/Sidebar.tsx) and the page body + top bar follow it. */
+:root { --sidebar-w: 16rem; }
+html[data-sidebar='collapsed'] { --sidebar-w: 4.5rem; }
+.app-main, .app-topbar { transition: padding-left 0.2s, left 0.2s; }
+@media (min-width: 1024px) {
+  .app-main { padding-left: var(--sidebar-w); }
+  .app-topbar { left: var(--sidebar-w); }
+}

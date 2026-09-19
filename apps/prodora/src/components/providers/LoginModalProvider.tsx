@@ -74,9 +74,7 @@ export default function LoginModalProvider({ children }: { children: React.React
                 className="w-full h-12 px-4 rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <p className="text-xs text-muted-foreground">
-                Prodora is available exclusively to ExiusCart{' '}
-                <span className="font-semibold text-foreground">Starter</span> and{' '}
-                <span className="font-semibold text-foreground">Premium</span> users.
+                Prodora is included with every ExiusCart plan (Launch, Growth and Scale), including the free trial.
               </p>
               {error && (
                 <p className="text-xs text-red-500 bg-red-500/10 rounded-lg p-2.5">{error}</p>

@@ -32,6 +32,7 @@ export const prodoraAuth = {
   requestAccess: async (email: string): Promise<{ name: string }> => {
     const response = await apiClient.post('/shopping/request-access', { email });
     localStorage.setItem(TOKEN_KEY, response.data.access_token);
+    try { localStorage.setItem('prodora_name', response.data.name || ''); } catch {}
     return { name: response.data.name };
   },
   hasAccess: (): boolean => typeof window !== 'undefined' && !!localStorage.getItem(TOKEN_KEY),

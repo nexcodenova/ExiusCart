@@ -4,10 +4,11 @@ import { Suspense, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X, Download, CheckCircle2, ExternalLink, Loader2 } from 'lucide-react';
+import { Search, X, Download, CheckCircle2, ExternalLink, Loader2, SlidersHorizontal, ArrowUpDown, LayoutGrid } from 'lucide-react';
 import { shoppingApi, prodoraAuth, Product, Category, digitalBundlesApi, DigitalBundle } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import Sidebar from '@/components/Sidebar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function DigitalBundleCard({ bundle }: { bundle: DigitalBundle }) {
   const [importing, setImporting] = useState(false);
@@ -137,6 +138,44 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   );
 }
 
+type SortKey = 'default' | 'profit' | 'price_asc' | 'price_desc' | 'winning' | 'orders' | 'trend';
+
+const SORT_LABEL: Record<SortKey, string> = {
+  default: 'Newest',
+  profit: 'Highest profit',
+  price_asc: 'Price: low to high',
+  price_desc: 'Price: high to low',
+  winning: 'Winning score',
+  orders: 'Most orders',
+  trend: 'Fastest growing',
+};
+
+const profitOf = (p: Product) => (p.cost_price != null ? p.price - p.cost_price : -Infinity);
+
+function applyFiltersAndSort(
+  products: Product[],
+  f: { minPrice: string; maxPrice: string; trendingOnly: boolean; withVideoOnly: boolean },
+  sort: SortKey,
+): Product[] {
+  const min = f.minPrice === '' ? null : Number(f.minPrice);
+  const max = f.maxPrice === '' ? null : Number(f.maxPrice);
+  const out = products.filter((p) => {
+    if (min != null && !Number.isNaN(min) && p.price < min) return false;
+    if (max != null && !Number.isNaN(max) && p.price > max) return false;
+    if (f.trendingOnly && !p.is_trending) return false;
+    if (f.withVideoOnly && !(p.video_url || (p.videos && p.videos.length))) return false;
+    return true;
+  });
+  const sorted = [...out];
+  if (sort === 'profit') sorted.sort((a, b) => profitOf(b) - profitOf(a));
+  else if (sort === 'price_asc') sorted.sort((a, b) => a.price - b.price);
+  else if (sort === 'price_desc') sorted.sort((a, b) => b.price - a.price);
+  else if (sort === 'winning') sorted.sort((a, b) => (b.winning_score ?? -1) - (a.winning_score ?? -1));
+  else if (sort === 'orders') sorted.sort((a, b) => (b.orders_count ?? -1) - (a.orders_count ?? -1));
+  else if (sort === 'trend') sorted.sort((a, b) => (b.trend_percent ?? -Infinity) - (a.trend_percent ?? -Infinity));
+  return sorted;
+}
+
 function BrowseContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -149,6 +188,12 @@ function BrowseContent() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortKey>('default');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [trendingOnly, setTrendingOnly] = useState(false);
+  const [withVideoOnly, setWithVideoOnly] = useState(false);
 
   const [bundles, setBundles] = useState<DigitalBundle[]>([]);
   const [loadingBundles, setLoadingBundles] = useState(true);
@@ -161,6 +206,12 @@ function BrowseContent() {
     }
     setAuthorized(true);
   }, [router]);
+
+  // Bestsellers and Trends are just the catalogue ranked by real order counts
+  // / real trend growth; every other view starts in the API's own order.
+  useEffect(() => {
+    setSort(view === 'bestsellers' ? 'orders' : view === 'trending' ? 'trend' : 'default');
+  }, [view]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
@@ -179,6 +230,7 @@ function BrowseContent() {
     const params: Parameters<typeof shoppingApi.getProducts>[0] = {};
     if (debouncedSearch) params.search = debouncedSearch;
     if (view === 'trending') params.trending = true;
+    else if (view === 'featured') params.featured = true;
     else if (view !== 'all') params.category = view;
     shoppingApi
       .getProducts(params)
@@ -208,50 +260,134 @@ function BrowseContent() {
 
   const isDigital = view === 'digital';
   const activeCategoryName = categories.find(c => c.slug === view)?.name;
-  const heading = isDigital ? '📦 Digital Products' : view === 'trending' ? '🔥 Trending' : activeCategoryName || 'All Products';
+  const heading = isDigital ? 'Digital Products'
+    : view === 'trending' ? 'Current Trends'
+    : view === 'bestsellers' ? 'Global Bestsellers'
+    : view === 'featured' ? 'Hand-Picked Products'
+    : activeCategoryName || 'Marketplace';
+  const subtitle = isDigital ? 'Ready-made design bundles you can resell on your store.'
+    : view === 'trending' ? 'Products with the fastest-growing demand right now.'
+    : view === 'bestsellers' ? 'The products with the most orders.'
+    : view === 'featured' ? 'Explore winning products, verified by real sales data.'
+    : 'Browse the full catalogue. Import what you like and sell it on your store.';
+  const visible = applyFiltersAndSort(products, { minPrice, maxPrice, trendingOnly, withVideoOnly }, sort);
+  const activeFilters = [minPrice, maxPrice].filter(Boolean).length + (trendingOnly ? 1 : 0) + (withVideoOnly ? 1 : 0);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F3F5F9]">
       <Sidebar />
 
-      <main className="lg:pl-60">
-        <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+      <main className="app-main pt-16">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-5">
 
           {/* Mobile category/trending tabs — sidebar is desktop-only */}
           <div className="lg:hidden -mx-4 px-4 flex gap-0 overflow-x-auto scrollbar-none border-b border-gray-200 pb-px">
             <MobileTab href="/browse" label="All" active={view === 'all'} />
-            <MobileTab href="/browse?view=trending" label="🔥 Trending" active={view === 'trending'} />
-            <MobileTab href="/browse?view=digital" label="📦 Digital" active={isDigital} />
+            <MobileTab href="/browse?view=trending" label="Trending" active={view === 'trending'} />
+            <MobileTab href="/browse?view=featured" label="Featured" active={view === 'featured'} />
+            <MobileTab href="/browse?view=digital" label="Digital" active={isDigital} />
             {categories.map(cat => (
               <MobileTab key={cat.id} href={`/browse?view=${cat.slug}`} label={cat.name} active={view === cat.slug} />
             ))}
           </div>
 
-          {/* Search — not applicable to digital bundles (small, fixed catalog) */}
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{heading}</h1>
+            <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+          </div>
+
+          {/* Search / category / filters / sort — not applicable to digital
+              bundles (small, fixed catalog) */}
           {!isDigital && (
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search for products..."
-                className="w-full bg-white border border-[#E5E7EB] rounded-lg pl-9 pr-9 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X className="w-4 h-4" />
-                </button>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 lg:flex-row">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search products"
+                    className="h-12 w-full rounded-lg border border-gray-200 bg-white pl-11 pr-10 text-[15px] text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                  {search && (
+                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <Select value={categories.some((c) => c.slug === view) ? view : 'all'} onValueChange={(v) => router.push(v === 'all' ? '/browse' : `/browse?view=${v}`)}>
+                    <SelectTrigger className="h-12 w-full min-w-[9rem] gap-2 bg-white lg:w-auto">
+                      <LayoutGrid className="h-4 w-4 shrink-0 text-gray-500" />
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All categories</SelectItem>
+                      {categories.map((c) => <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+
+                  <button
+                    type="button"
+                    onClick={() => setFiltersOpen((v) => !v)}
+                    className={`inline-flex h-12 shrink-0 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition ${
+                      filtersOpen || activeFilters ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <SlidersHorizontal className="h-4 w-4" /> Filters{activeFilters ? ` (${activeFilters})` : ''}
+                  </button>
+
+                  <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+                    <SelectTrigger className="h-12 w-full min-w-[11rem] gap-2 bg-white lg:w-auto">
+                      <ArrowUpDown className="h-4 w-4 shrink-0 text-gray-500" />
+                      <span className="text-gray-500">Sort:</span>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => <SelectItem key={k} value={k}>{SORT_LABEL[k]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {filtersOpen && (
+                <div className="flex flex-wrap items-end gap-4 rounded-lg border border-gray-200 bg-white p-4">
+                  <label className="text-xs font-medium text-gray-500">
+                    Min price
+                    <input type="number" min="0" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder="0"
+                      className="mt-1 block h-10 w-28 rounded-lg border border-gray-200 px-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                  </label>
+                  <label className="text-xs font-medium text-gray-500">
+                    Max price
+                    <input type="number" min="0" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="Any"
+                      className="mt-1 block h-10 w-28 rounded-lg border border-gray-200 px-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                  </label>
+                  <label className="flex h-10 items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" checked={trendingOnly} onChange={(e) => setTrendingOnly(e.target.checked)} className="h-4 w-4 accent-[#2563EB]" />
+                    Trending only
+                  </label>
+                  <label className="flex h-10 items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" checked={withVideoOnly} onChange={(e) => setWithVideoOnly(e.target.checked)} className="h-4 w-4 accent-[#2563EB]" />
+                    Has video
+                  </label>
+                  {activeFilters > 0 && (
+                    <button type="button" className="h-10 text-sm font-medium text-blue-600 hover:underline"
+                      onClick={() => { setMinPrice(''); setMaxPrice(''); setTrendingOnly(false); setWithVideoOnly(false); }}>
+                      Clear filters
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
 
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-bold text-gray-800">{heading}</h1>
+          <div className="flex items-center justify-end">
             <span className="text-sm text-gray-400">
               {isDigital
                 ? !loadingBundles && `${bundles.length} bundle${bundles.length !== 1 ? 's' : ''}`
-                : !loading && `${products.length} product${products.length !== 1 ? 's' : ''}`}
+                : !loading && `${visible.length} product${visible.length !== 1 ? 's' : ''}`}
             </span>
           </div>
 
@@ -292,13 +428,13 @@ function BrowseContent() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
                 </div>
-              ) : products.length === 0 ? (
+              ) : visible.length === 0 ? (
                 <div className="grid grid-cols-1">
-                  <EmptyState hasSearch={!!debouncedSearch} />
+                  <EmptyState hasSearch={!!debouncedSearch || activeFilters > 0} />
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                  {products.map(p => <ProductCard key={p.id} product={p} />)}
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-5">
+                  {visible.map(p => <ProductCard key={p.id} product={p} />)}
                 </div>
               )}
             </>
@@ -306,7 +442,7 @@ function BrowseContent() {
         </div>
 
         <footer className="border-t border-gray-200 mt-12">
-          <div className="max-w-6xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <Image src="/prodora-logo.png" alt="Prodora" width={22} height={22} />
               <span className="font-semibold text-gray-600">Prodora by ExiusCart</span>

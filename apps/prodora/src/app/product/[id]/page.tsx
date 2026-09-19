@@ -207,7 +207,7 @@ function ProductDetailContent() {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
         <Sidebar />
-        <main className="lg:pl-60">
+        <main className="app-main pt-16">
           <div className="bg-white border-b border-[#E5E7EB] px-4 py-3">
             <div className="max-w-6xl mx-auto h-5 w-24 bg-gray-100 rounded animate-pulse" />
           </div>
@@ -227,7 +227,7 @@ function ProductDetailContent() {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
         <Sidebar />
-        <main className="lg:pl-60 flex flex-col items-center justify-center gap-5 px-4 text-center min-h-screen">
+        <main className="app-main pt-16 flex flex-col items-center justify-center gap-5 px-4 text-center min-h-screen">
           <Package className="w-16 h-16 text-gray-300" />
           <h1 className="text-2xl font-bold text-[#111827]">Product not found</h1>
           <p className="text-[#6B7280]">This product may have been removed or doesn&apos;t exist.</p>
@@ -277,7 +277,7 @@ function ProductDetailContent() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <Sidebar />
-      <main className="lg:pl-60">
+      <main className="app-main pt-16">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-2 text-sm text-[#6B7280]">
