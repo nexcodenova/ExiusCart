@@ -1302,7 +1302,7 @@ def get_dashboard_stats(
         "todayAvgOrder": 0.0, "monthlyRevenue12m": [],
         "repeatCustomerRate": 0.0, "inventoryValue": 0.0,
         "outOfStockCount": 0, "topCustomers": [],
-        "customersByCountry": [], "ordersByCountry": [], "recentCustomers": [],
+        "customersByCountry": [], "ordersByCountry": [], "viewsByCountry": [], "recentCustomers": [],
         "storeHealth": {"channelsConnected": 0, "lastSyncedAt": None},
         "periodRevenue": 0.0, "periodOrders": 0,
         "periodRevenueChange": None, "periodOrdersChange": None,
@@ -1545,6 +1545,29 @@ def get_dashboard_stats(
                 "percentage": round(int(r[1]) / total_orders_for_pct * 100, 1),
             }
             for r in order_country_rows
+        ]
+
+        # Views-by-country — real product-view events on the Custom Website
+        # storefront (the only channel ExiusCart itself renders, see
+        # StorefrontEvent), grouped by the visitor country recorded at the
+        # tracking endpoint. Events with no recorded country (older events,
+        # failed lookups) fall into "Unknown".
+        from app.models.storefront_event import StorefrontEvent
+        view_country_rows = (
+            db.query(StorefrontEvent.country, func.count(StorefrontEvent.id).label("cnt"))
+            .filter(StorefrontEvent.shop_id == shop_id, StorefrontEvent.event_type == "view",
+                    StorefrontEvent.created_at >= period_start, StorefrontEvent.created_at <= period_end)
+            .group_by(StorefrontEvent.country).order_by(func.count(StorefrontEvent.id).desc()).limit(8).all()
+        )
+        total_views_for_pct = sum(int(r[1]) for r in view_country_rows) or 1
+        adv["viewsByCountry"] = [
+            {
+                "code": r[0] or "Unknown",
+                "country": iso_to_name.get(r[0], r[0]) if r[0] else "Unknown",
+                "customers": int(r[1]),
+                "percentage": round(int(r[1]) / total_views_for_pct * 100, 1),
+            }
+            for r in view_country_rows
         ]
 
         # Recent customers — most recently added, regardless of whether

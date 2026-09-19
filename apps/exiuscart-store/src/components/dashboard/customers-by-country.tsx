@@ -5,14 +5,26 @@ import { CountryFlag } from '@/components/country-flag';
 import { WorldMap } from './world-map';
 import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
-type Metric = 'customers' | 'orders';
+type Metric = 'customers' | 'orders' | 'views';
 
-const METRIC_LABEL: Record<Metric, string> = { customers: 'Customers', orders: 'Orders' };
+const METRIC_LABEL: Record<Metric, string> = { customers: 'Customers', orders: 'Orders', views: 'Views' };
+
+const regionNames = typeof Intl !== 'undefined' && 'DisplayNames' in Intl
+  ? new Intl.DisplayNames(['en'], { type: 'region' })
+  : null;
+
+// The backend only names a handful of countries; visitors can come from
+// anywhere, so resolve any ISO code to its English name here.
+function countryName(code: string, fallback: string): string {
+  if (code === 'Unknown') return 'Unknown';
+  try { return regionNames?.of(code) ?? fallback; } catch { return fallback; }
+}
 
 export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) {
   const [metric, setMetric] = useState<Metric>('customers');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const allRows = (metric === 'orders' ? stats?.ordersByCountry : stats?.customersByCountry) ?? [];
+  const source = metric === 'orders' ? stats?.ordersByCountry : metric === 'views' ? stats?.viewsByCountry : stats?.customersByCountry;
+  const allRows = (source ?? []).map((r) => ({ ...r, country: countryName(r.code, r.country) }));
   const rows = selectedCode ? allRows.filter((r) => r.code === selectedCode) : allRows;
   const total = allRows.reduce((s, r) => s + r.customers, 0);
   const mappable = allRows.filter((r) => r.code !== 'Unknown');
@@ -28,7 +40,7 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
         <Link href="/dashboard/customers" className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">View all →</Link>
       </div>
       <div className="mb-3 inline-flex rounded-lg bg-muted/50 p-0.5 text-xs font-medium">
-        {(['customers', 'orders'] as Metric[]).map((m) => (
+        {(['customers', 'orders', 'views'] as Metric[]).map((m) => (
           <button
             key={m}
             type="button"
@@ -40,13 +52,6 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
             {METRIC_LABEL[m]}
           </button>
         ))}
-        <span
-          title="Needs view-tracking to record a visitor's country — not built yet, so there's nothing real to show here. Not a bug — just not implemented."
-          className="relative cursor-not-allowed rounded-md px-2.5 py-1 text-muted-foreground/50"
-        >
-          Views
-          <span className="ml-1 rounded bg-muted px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide">Soon</span>
-        </span>
       </div>
       <div className="space-y-3">
         {/* Map always renders, even with zero rows — an empty map still
@@ -92,7 +97,9 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
           <p className="pt-2 text-[10px] text-muted-foreground border-t border-border">
             {metric === 'orders'
               ? '"Unknown" = orders from a customer added before country tracking, or from a source that doesn\'t report it yet.'
-              : '"Unknown" = customers added before country tracking, or from a source that doesn\'t report it yet.'}
+              : metric === 'views'
+                ? '"Unknown" = views recorded before visitor countries were tracked, or where the lookup failed. Views cover your Custom Website storefront only.'
+                : '"Unknown" = customers added before country tracking, or from a source that doesn\'t report it yet.'}
           </p>
         )}
       </div>

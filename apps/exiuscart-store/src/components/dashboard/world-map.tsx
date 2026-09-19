@@ -1,17 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import enLocale from 'i18n-iso-countries/langs/en.json';
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
+import isoCountries from 'i18n-iso-countries';
 import { CountryFlag } from '@/components/country-flag';
 
 // world-atlas's TopoJSON keys each country by its numeric ISO 3166-1 code,
-// not the 2-letter code the rest of this app uses — this is the mapping for
-// the handful of countries app/core/country_utils.py already recognizes.
-const ISO2_TO_NUMERIC: Record<string, string> = {
-  AE: '784', LK: '144', US: '840', GB: '826', CA: '124',
-  IN: '356', PK: '586', BD: '050', NP: '524', MM: '104',
-};
-
+// not the 2-letter code the rest of this app uses — i18n-iso-countries maps
+// between the two for every country, so any visitor/customer country lights
+// up, not just a hand-picked handful.
 // Served from this app's own /public (copied from the world-atlas npm
 // package, which stays in package.json purely to document provenance) —
 // not fetched from a CDN. The flag icons in this same widget used to hit
@@ -20,9 +18,9 @@ const ISO2_TO_NUMERIC: Record<string, string> = {
 // same CDN for its TopoJSON and would have failed the exact same way.
 const GEO_URL = '/maps/world-110m.json';
 
-const NUMERIC_TO_ISO2: Record<string, string> = Object.fromEntries(
-  Object.entries(ISO2_TO_NUMERIC).map(([iso2, numeric]) => [numeric, iso2]),
-);
+const numericToIso2 = (id: string): string | undefined => isoCountries.numericToAlpha2(id);
+
+isoCountries.registerLocale(enLocale);
 
 interface CountryRow { code: string; country: string; customers: number; percentage: number }
 
@@ -37,12 +35,9 @@ export function WorldMap({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const maxCustomers = Math.max(...data.map((d) => d.customers), 1);
-  const byNumericId: Record<string, CountryRow> = {};
-  for (const d of data) {
-    const numericId = ISO2_TO_NUMERIC[d.code];
-    if (numericId) byNumericId[numericId] = d;
-  }
-  const hovered = hoveredId ? byNumericId[hoveredId] : undefined;
+  const byIso2: Record<string, CountryRow> = {};
+  for (const d of data) byIso2[d.code] = d;
+  const hovered = hoveredId ? byIso2[numericToIso2(hoveredId) ?? ''] : undefined;
 
   return (
     <div
@@ -57,10 +52,11 @@ export function WorldMap({
           {({ geographies }) =>
             geographies.map((geo) => {
               const id = geo.id as string;
-              const row = byNumericId[id];
+              const iso2 = numericToIso2(id);
+              const row = iso2 ? byIso2[iso2] : undefined;
               const count = row?.customers;
               const isHovered = hoveredId === id;
-              const isSelected = !!selectedCode && NUMERIC_TO_ISO2[id] === selectedCode;
+              const isSelected = !!selectedCode && iso2 === selectedCode;
               const intensity = count ? 0.3 + (count / maxCustomers) * 0.6 + (isHovered || isSelected ? 0.15 : 0) : isHovered ? 0.2 : 0;
               // react-simple-maps v5's Geography is a plain <path> that
               // spreads props straight onto the element (confirmed by reading
@@ -83,8 +79,7 @@ export function WorldMap({
                   onMouseEnter={() => setHoveredId(id)}
                   onMouseLeave={() => setHoveredId(null)}
                   onClick={() => {
-                    if (!count || !onSelectCountry) return;
-                    const iso2 = NUMERIC_TO_ISO2[id];
+                    if (!count || !onSelectCountry || !iso2) return;
                     onSelectCountry(selectedCode === iso2 ? null : iso2);
                   }}
                   style={{ outline: 'none', cursor: count ? 'pointer' : 'default' }}

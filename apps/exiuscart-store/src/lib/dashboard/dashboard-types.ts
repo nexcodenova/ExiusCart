@@ -29,6 +29,8 @@ export interface DashboardStats {
   // the same period filter as periodRevenue/periodOrders. "customers" here
   // is reused as the generic count field so both metrics share one row shape.
   ordersByCountry?: { code: string; country: string; customers: number; percentage: number }[];
+  // Real storefront product views by visitor country (Custom Website channel only).
+  viewsByCountry?: { code: string; country: string; customers: number; percentage: number }[];
   recentCustomers?: { id: number; name: string; orders: number; total: number; date: string | null }[];
   storeHealth?: { channelsConnected: number; lastSyncedAt: string | null };
   // Real, period-filtered numbers driven by the date-range selector —

@@ -68,11 +68,17 @@ def track_storefront_event(request: Request, shop_slug: str, data: TrackEventIn,
     if data.event == "search" and not (data.query or "").strip():
         raise HTTPException(status_code=422, detail="query is required for search events")
 
+    # Coarse visitor country only (see StorefrontEvent.country) — the IP
+    # itself is looked up and discarded, never stored. A failed lookup just
+    # leaves it NULL; tracking must never fail a page view over this.
+    from app.core.geo_ip import resolve_country_from_ip
+    from app.core.rate_limit import _client_ip
     db.add(StorefrontEvent(
         shop_id=shop.id,
         event_type=data.event,
         product_id=data.product_id,
         query=(data.query or "").strip()[:500] or None,
+        country=resolve_country_from_ip(_client_ip(request)),
     ))
     db.commit()
     return {"ok": True}

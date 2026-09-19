@@ -256,6 +256,9 @@ _MIGRATIONS = [
     "UPDATE subscription_payments SET plan_type = 'thedersi_free_forever' WHERE plan_type = 'thedersi_basic';",
     "UPDATE subscription_payments SET plan_type = 'launch' WHERE plan_type = 'thedersi_pro';",
     "UPDATE subscription_payments SET plan_type = 'scale' WHERE plan_type = 'premium';",
+    # Visitor country on storefront view events (Customers/Orders/Views by country).
+    "ALTER TABLE storefront_events ADD COLUMN IF NOT EXISTS country VARCHAR(2);",
+    "CREATE INDEX IF NOT EXISTS ix_storefront_events_country ON storefront_events (country);",
     "UPDATE partner_licenses SET plan_type = 'launch' WHERE plan_type = 'starter';",
     "UPDATE partner_licenses SET plan_type = 'scale' WHERE plan_type = 'premium';",
 ]

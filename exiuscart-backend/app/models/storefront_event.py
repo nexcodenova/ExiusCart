@@ -21,6 +21,11 @@ class StorefrontEvent(Base):
     event_type = Column(String(20), nullable=False, index=True)  # view | search | add_to_cart
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)  # set for view/add_to_cart
     query = Column(Text, nullable=True)  # set for search
+    # Visitor's country (ISO 3166-1 alpha-2) from an IP lookup at the tracking
+    # endpoint — the IP itself is never stored, only this coarse country code,
+    # so the "no PII" property in the class docstring still holds. NULL for
+    # events recorded before this existed or when the lookup failed.
+    country = Column(String(2), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     shop = relationship("Shop")
