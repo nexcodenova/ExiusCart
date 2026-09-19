@@ -25,12 +25,12 @@ interface IntegrationCard {
 const CARDS: IntegrationCard[] = [
   {
     id: 'exiuscart', name: 'ExiusCart', status: 'live', core: true,
-    image: '/integration/ExiusCart.png', imageSize: '480×600',
+    image: '/integration/ExiusCart.webp', imageSize: '480×600',
     desc: 'One platform for your entire business — POS, inventory, invoicing, HR and every sales channel, together.',
   },
   {
     id: 'prodora', name: 'Prodora', status: 'live', core: true,
-    image: '/integration/Prodora.png', imageSize: '480×600',
+    image: '/integration/Prodora.webp', imageSize: '480×600',
     desc: 'Thousands of winning products to sell, complete with ready-made marketing videos, images and real reviews.',
   },
   {
@@ -78,7 +78,7 @@ const CARDS: IntegrationCard[] = [
   },
   {
     id: 'daraz', name: 'Daraz', status: 'live',
-    image: '/integration/Daraz-card.png', imageSize: '480×600',
+    image: '/integration/Daraz-card.webp', imageSize: '480×600',
     desc: "South Asia's largest marketplace — Pakistan, Bangladesh, Sri Lanka, Nepal and Myanmar. List products and manage Daraz orders directly from ExiusCart.",
   },
   {

@@ -75,14 +75,14 @@ export default function HomePage() {
       >
         {/* Desktop background (lg+) */}
         <div className="absolute inset-0 hidden lg:block" style={{
-          backgroundImage: 'url(/hero-blank.png)',
+          backgroundImage: 'url(/hero-blank.webp)',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center center',
           backgroundSize: 'cover',
         }} />
         {/* Mobile background */}
         <div className="absolute inset-0 lg:hidden" style={{
-          backgroundImage: 'url(/hero-mobile.png)',
+          backgroundImage: 'url(/hero-mobile.webp)',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',
           backgroundSize: 'cover',

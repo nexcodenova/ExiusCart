@@ -32,7 +32,7 @@ const OTHER_INDUSTRIES = [
     headline: 'The POS built for\nwalk-in stores',
     desc: 'Fast checkout, inventory management, and VAT-compliant invoicing for any physical retail store — from a single counter to multiple branches.',
     features: ['POS & fast checkout', 'Real-time inventory', 'VAT invoicing', 'Multiple payment methods', 'Multi-branch support'],
-    image: '/Industry/Physical Retail Shop.png',
+    image: '/Industry/Physical Retail Shop.webp',
   },
   {
     id: 'fashion',
@@ -40,7 +40,7 @@ const OTHER_INDUSTRIES = [
     headline: 'Variants, loyalty, and\nstyle — all managed',
     desc: 'Handle size and color variants, track customer preferences, run loyalty programs, and manage returns for boutiques and clothing stores.',
     features: ['Size & color variants', 'Customer loyalty programs', 'Style catalog management', 'Return & exchange tracking', 'Sales per product/variant'],
-    image: '/Industry/Fashion & Clothing.png',
+    image: '/Industry/Fashion & Clothing.webp',
   },
   {
     id: 'electronics',
@@ -48,7 +48,7 @@ const OTHER_INDUSTRIES = [
     headline: 'Serial tracking,\nwarranties, repairs',
     desc: 'Track IMEI and serial numbers, manage warranties, log repair jobs, and handle accessories inventory for mobile and electronics shops.',
     features: ['Serial/IMEI tracking', 'Warranty management', 'Repair job tracking', 'Accessories inventory', 'Supplier purchase orders'],
-    image: '/Industry/Electronics & Mobile.png',
+    image: '/Industry/Electronics & Mobile.webp',
   },
   {
     id: 'grocery',
@@ -56,7 +56,7 @@ const OTHER_INDUSTRIES = [
     headline: 'Fast checkout and\nsmart stock alerts',
     desc: 'Barcode scanning, expiry date tracking, and automated stock alerts designed for grocery stores, mini marts, and supermarkets.',
     features: ['Barcode scanning', 'Expiry date tracking', 'Low stock alerts', 'Supplier management', 'Weight-based pricing'],
-    image: '/Industry/Grocery Supermarket.png',
+    image: '/Industry/Grocery Supermarket.webp',
   },
   {
     id: 'pharmacy',
@@ -64,7 +64,7 @@ const OTHER_INDUSTRIES = [
     headline: 'Expiry dates and\nbatch tracking handled',
     desc: 'Manage batch numbers, track expiry dates, get low-stock alerts, and handle controlled items for pharmacies and medical stores.',
     features: ['Batch number tracking', 'Expiry date management', 'Low stock alerts', 'Controlled item handling', 'Supplier purchase orders'],
-    image: '/Industry/Pharmacy.png',
+    image: '/Industry/Pharmacy.webp',
   },
   {
     id: 'hardware',
@@ -72,7 +72,7 @@ const OTHER_INDUSTRIES = [
     headline: 'Bulk pricing and\ncontractor accounts',
     desc: 'Bulk pricing tiers, contractor account management, large-SKU inventory, and purchase orders for hardware and building material stores.',
     features: ['Bulk pricing tiers', 'Contractor accounts', 'Large SKU inventory', 'Purchase orders', 'Supplier management'],
-    image: '/Industry/Hardware.png',
+    image: '/Industry/Hardware.webp',
   },
 ];
 
@@ -156,7 +156,7 @@ export default function IndustriesPage() {
             </div>
             <div className="relative min-h-[280px] lg:min-h-0">
               <Image
-                src="/Industry/Online Market place.png"
+                src="/Industry/Online Market place.webp"
                 alt="Online Marketplace"
                 fill
                 className="object-cover object-center"
@@ -223,7 +223,7 @@ export default function IndustriesPage() {
             </div>
             <div className="relative min-h-[280px] lg:min-h-0">
               <Image
-                src="/Industry/Shopify and Custom Website.png"
+                src="/Industry/Shopify and Custom Website.webp"
                 alt="Shopify & Custom Website"
                 fill
                 className="object-cover object-center"
