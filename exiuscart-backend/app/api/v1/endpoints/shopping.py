@@ -1,7 +1,7 @@
 """
 Prodora storefront endpoints. Product browsing requires a Prodora access
-token — issued only to ExiusCart accounts on an active Starter or Premium
-subscription (see POST /shopping/request-access).
+token — issued only to ExiusCart accounts on an active (or trialling)
+Launch, Growth or Scale subscription (see POST /shopping/request-access).
 """
 from typing import Optional
 from datetime import timedelta, datetime, timezone
@@ -63,16 +63,27 @@ def _find_eligible_subscription(db: Session, user: User) -> Optional[Subscriptio
     if is_thedersi_restricted_shop(shop.id, db):
         return None
 
-    return (
+    # A trial is a real plan with everything included (Launch 7 days free,
+    # Growth/Scale $1 for 7 days), so trial subscriptions get Prodora too —
+    # as long as the trial hasn't run out.
+    now = datetime.now(timezone.utc)
+    candidates = (
         db.query(Subscription)
         .filter(
             Subscription.shop_id == shop.id,
-            Subscription.status == "active",
+            Subscription.status.in_(("active", "trial", "trial_dollar")),
             Subscription.plan_type.in_(PRODORA_ELIGIBLE_PLANS),
         )
         .order_by(Subscription.created_at.desc())
-        .first()
+        .all()
     )
+    for sub in candidates:
+        if sub.status == "active":
+            return sub
+        end = sub.trial_dollar_ends_at if sub.status == "trial_dollar" else sub.trial_ends_at
+        if end is None or end > now:
+            return sub
+    return None
 
 
 async def get_prodora_user(
@@ -93,7 +104,7 @@ async def get_prodora_user(
     if not _find_eligible_subscription(db, user):
         raise HTTPException(
             status_code=403,
-            detail="Prodora is available exclusively to direct ExiusCart Launch, Growth, and Scale users.",
+            detail="Prodora is available to direct ExiusCart Launch, Growth, and Scale users (including during your trial).",
         )
     return user
 
@@ -101,8 +112,8 @@ async def get_prodora_user(
 @router.post("/shopping/request-access")
 def request_prodora_access(body: ProdoraAccessRequest, db: Session = Depends(get_db)):
     """
-    Email-only access gate. Only ExiusCart accounts with an active Launch,
-    Growth, or Scale subscription receive a token — free trial and TheDersi
+    Email-only access gate. Only ExiusCart accounts with an active or trialling Launch,
+    Growth, or Scale subscription receive a token — TheDersi
     accounts (except TheDersi's own Official tier) are rejected with a
     clear reason.
     """
@@ -116,7 +127,7 @@ def request_prodora_access(body: ProdoraAccessRequest, db: Session = Depends(get
     if not _find_eligible_subscription(db, user):
         raise HTTPException(
             status_code=403,
-            detail="Prodora is available exclusively to direct ExiusCart Launch, Growth, and Scale users.",
+            detail="Prodora is available to direct ExiusCart Launch, Growth, and Scale users (including during your trial).",
         )
 
     token = create_access_token(data={"sub": str(user.id)}, expires_delta=timedelta(hours=24))
