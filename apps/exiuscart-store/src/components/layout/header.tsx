@@ -135,6 +135,16 @@ export function Header({ onMenuClick }: HeaderProps) {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
+  // The sidebar's Prodora card asks the header to open Prodora, so both entry
+  // points share one set of access rules (TheDersi / free-trial popups).
+  const openProdoraRef = useRef(openProdora);
+  openProdoraRef.current = openProdora;
+  useEffect(() => {
+    const handler = () => openProdoraRef.current();
+    window.addEventListener('open-prodora', handler);
+    return () => window.removeEventListener('open-prodora', handler);
+  }, []);
+
   function logout() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
@@ -181,8 +191,11 @@ export function Header({ onMenuClick }: HeaderProps) {
         </button>
         <button type="button" onClick={openProdora}
           className="hidden lg:flex h-11 items-center gap-1.5 px-3.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition">
-          <img src="/prodora-logo.png" alt="" className="w-4 h-4 shrink-0 rounded-md" />
-          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Prodora</span>
+          <img src="/prodora-logo.png" alt="" className="w-5 h-5 shrink-0 rounded-md" />
+          <span className="text-left leading-tight">
+            <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400">Prodora</span>
+            <span className="hidden xl:block text-[10px] text-emerald-600/80 dark:text-emerald-400/70">AI Product Sourcing</span>
+          </span>
         </button>
 
         {/* Active branch — also carries the shop's plan + days left, moved

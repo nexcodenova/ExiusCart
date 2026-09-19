@@ -16,7 +16,7 @@ import {
   Percent, Gift, MapPinned, Undo2, Search, Palette, Layers, Image as ImageIcon, ImagePlus,
   LayoutTemplate, FolderOpen, Shapes, Bot, Wand2, FileEdit, LineChart, Workflow,
   History, Rocket, Users2, Network, Cable, Wrench, KeyRound, FileClock,
-  TrendingUp, Bell, Lock,
+  TrendingUp, Bell, Lock, ArrowRight,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi, dropshipApi } from '@/lib/api';
 import {
@@ -416,13 +416,10 @@ export function ShopSidebar() {
     });
   }
 
+  // One group open at a time: with every group collapsed the whole menu fits
+  // the screen without scrolling, and opening one keeps the list short.
   function toggleGroup(id: string) {
-    setOpenGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setOpenGroups(prev => (prev.has(id) ? new Set<string>() : new Set<string>([id])));
   }
 
   // A few items now share a base path with a more specific sibling (e.g.
@@ -466,7 +463,7 @@ export function ShopSidebar() {
         {/* Logo — collapsed is icon-width only, so logo + toggle stack
             vertically instead of fighting for horizontal space, same
             layout the old fixed <aside> version used. */}
-        <SidebarHeader className={`border-b border-sidebar-border ${collapsed ? 'flex flex-col items-center justify-center gap-1.5 py-3' : 'h-16 flex-row flex items-center justify-between px-4'}`}>
+        <SidebarHeader className={`border-b border-sidebar-border ${collapsed ? 'flex flex-col items-center justify-center gap-1.5 py-3' : 'h-14 flex-row flex items-center justify-between px-4'}`}>
           <Link href="/dashboard" className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center' : ''}`}>
             <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} className="flex-shrink-0" />
             {!collapsed && (
@@ -535,10 +532,10 @@ export function ShopSidebar() {
                 }
 
                 return (
-                  <div key={group.id} className="pt-4 first:pt-1">
+                  <div key={group.id} className="pt-0.5">
                     {!collapsed && (
                       <button type="button" onClick={() => toggleGroup(group.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-1 rounded-lg transition-all text-left ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-left hover:bg-sidebar-accent/40 ${
                           groupActive ? 'text-sidebar-foreground' : 'text-sidebar-muted-foreground hover:text-sidebar-foreground'
                         }`}>
                         {group.icon && <group.icon className={`w-4 h-4 shrink-0 ${group.accent ?? ''}`} />}
@@ -705,6 +702,25 @@ export function ShopSidebar() {
         </SidebarContent>
 
         <SidebarFooter className="border-t border-sidebar-border">
+          {!collapsed && (
+            // Hidden on short screens so it never pushes the menu into a scroll.
+            <div className="overflow-hidden rounded-xl bg-gradient-to-br from-[#1B1146] to-[#3B23A8] p-3 ring-1 ring-white/10 [@media(max-height:760px)]:hidden">
+              <div className="flex items-center gap-2.5">
+                <img src="/prodora-logo.png" alt="" className="h-8 w-8 shrink-0 rounded-lg" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold leading-tight text-white">Prodora</p>
+                  <p className="text-[11px] leading-tight text-indigo-200">AI Product Sourcing</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-prodora'))}
+                className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-indigo-500 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-400"
+              >
+                Explore Prodora <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
