@@ -187,7 +187,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#F5F3EF] flex flex-col">
       <AuthHeader />
 
-      <div className="flex-1 mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-4 lg:grid-cols-[minmax(0,28rem)_1fr]">
+      <div className="flex-1 mx-auto grid w-full max-w-6xl content-center items-center gap-10 px-4 py-6 lg:grid-cols-[minmax(0,28rem)_1fr]">
         <div className="flex flex-col items-center gap-3">
           {loginFormCard}
           <p className="text-xs text-gray-500 text-center">

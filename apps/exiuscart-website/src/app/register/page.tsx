@@ -380,9 +380,9 @@ function Showcase() {
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen bg-[#F5F3EF]">
+    <div className="min-h-screen bg-[#F5F3EF] flex flex-col">
       <AuthHeader />
-      <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-4 lg:grid-cols-[minmax(0,28rem)_1fr]">
+      <div className="mx-auto grid w-full max-w-6xl flex-1 content-center items-center gap-10 px-4 py-6 lg:grid-cols-[minmax(0,28rem)_1fr]">
         <Suspense fallback={null}>
           <RegisterForm />
         </Suspense>
