@@ -8,7 +8,8 @@ export interface DashboardStats {
   recentOrders: { id: string; customer: string; amount: string; status: string; time: string }[];
   orderStatusBreakdown?: Record<string, number>;
   channelBreakdown?: { source: string; sales: number; orders: number }[];
-  hourlyOrders?: { hour: number; orders: number; sales: number }[];
+  activityWindow?: string;
+  activityBuckets?: { label: string; orders: number; sales: number }[];
   topProducts?: { name: string; revenue: number; qty: number; image_url?: string | null }[];
   avgOrderValue?: number; fulfillmentRate?: number; cancellationRate?: number;
   thisMonthRevenue?: number; lastMonthRevenue?: number; revenueMoM?: number;

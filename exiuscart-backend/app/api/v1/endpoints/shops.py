@@ -1069,6 +1069,7 @@ def get_dashboard_stats(
     period: str = Query("30d"),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
+    activity_window: str = Query("24h"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1169,20 +1170,37 @@ def get_dashboard_stats(
         for r in channel_rows
     ]
 
-    # Hourly order activity (last 24 hours)
-    day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
-    hourly_rows = db.query(
-        extract("hour", Ord.created_at).label("hour"),
-        func.count(Ord.id).label("cnt"),
-        func.sum(Ord.total).label("sales"),
-    ).filter(
-        Ord.shop_id == shop_id,
-        Ord.created_at >= day_ago,
-    ).group_by(extract("hour", Ord.created_at)).order_by(extract("hour", Ord.created_at)).all()
-    hourly_orders = [
-        {"hour": int(r.hour), "orders": int(r.cnt), "sales": float(r.sales or 0)}
-        for r in hourly_rows
-    ]
+    # Order activity — its own independent window, separate from the page's
+    # main date-range filter (this is a "what's happening right now" pulse
+    # check, not a historical view). Bucketed in Python rather than SQL's
+    # extract("hour", ...): that only groups by hour-of-day (0-23), which
+    # is safe for exactly a 24h rolling window (each hour value occurs once)
+    # but silently merges distinct days together for any longer window.
+    _ACTIVITY_WINDOWS = {"24h": (1, 24), "3d": (3, 24), "7d": (24, 7)}
+    bucket_hours, num_buckets = _ACTIVITY_WINDOWS.get(activity_window, _ACTIVITY_WINDOWS["24h"])
+    if activity_window not in _ACTIVITY_WINDOWS:
+        activity_window = "24h"
+    activity_now = datetime.now(timezone.utc)
+    activity_start = activity_now - timedelta(hours=bucket_hours * num_buckets)
+    activity_rows = db.query(Ord.created_at, Ord.total).filter(
+        Ord.shop_id == shop_id, Ord.created_at >= activity_start,
+    ).all()
+    activity_buckets = []
+    for i in range(num_buckets):
+        b_start = activity_start + timedelta(hours=i * bucket_hours)
+        b_end = b_start + timedelta(hours=bucket_hours)
+        in_bucket = [r for r in activity_rows if b_start <= r.created_at < b_end]
+        if activity_window == "24h":
+            label = b_start.strftime("%H:00")
+        elif activity_window == "3d":
+            label = b_start.strftime("%a %H:00")
+        else:
+            label = b_start.strftime("%b %d")
+        activity_buckets.append({
+            "label": label,
+            "orders": len(in_bucket),
+            "sales": round(sum(float(r.total or 0) for r in in_bucket), 2),
+        })
 
     # Top 5 products by revenue (last 30 days) — grouped by product_id (not
     # just the name snapshot) so the real current image can be joined back
@@ -1562,7 +1580,8 @@ def get_dashboard_stats(
         ],
         "orderStatusBreakdown": order_status_breakdown,
         "channelBreakdown": channel_breakdown,
-        "hourlyOrders": hourly_orders,
+        "activityWindow": activity_window,
+        "activityBuckets": activity_buckets,
         "topProducts": top_products,
         "avgOrderValue": avg_order_value,
         "fulfillmentRate": fulfillment_rate,

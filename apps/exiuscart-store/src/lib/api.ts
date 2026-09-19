@@ -84,7 +84,7 @@ export const shopApi = {
 
 // ── Dashboard ─────────────────────────────────────────
 export const dashboardApi = {
-  getStats: (shopId: string, params?: { period?: string; date_from?: string; date_to?: string }) =>
+  getStats: (shopId: string, params?: { period?: string; date_from?: string; date_to?: string; activity_window?: string }) =>
     api.get(`/shops/${shopId}/stats`, { params }),
 };
 

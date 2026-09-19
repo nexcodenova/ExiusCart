@@ -83,7 +83,7 @@ export default function DashboardPage() {
 
       <PerformanceRow stats={stats} loading={loading} fmt={fmt} />
       <BusinessHealth stats={stats} loading={loading} fmt={fmt} />
-      <OrderActivityCharts stats={stats} />
+      <OrderActivityCharts stats={stats} shopId={shopId} />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <TopCustomers stats={stats} fmt={fmt} />
