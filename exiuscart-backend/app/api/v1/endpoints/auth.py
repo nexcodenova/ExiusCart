@@ -104,7 +104,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             )
             db.add(sub)
             logger.info(f"[domain_thedersi] scale granted to {new_user.email}")
-        elif user_data.plan_type == "launch":
+        else:
             # Arrived from the pricing page's Launch "Try for free" CTA — a
             # real 7-day free trial, no payment info at all, immediate
             # access once the email is verified (no admin approval gate —
@@ -117,7 +117,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             trial_ends = now + timedelta(days=TRIAL_FREE_DAYS)
             trial_sub = Subscription(
                 shop_id=shop.id,
-                plan_type=user_data.plan_type,
+                plan_type="launch",
                 billing_type=user_data.billing_type or "monthly",
                 status="trial",
                 amount_paid=0,
@@ -196,7 +196,7 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
             now = datetime.now(timezone.utc)
             trial_sub = Subscription(
                 shop_id=shop.id,
-                plan_type="free_trial",
+                plan_type="launch",
                 billing_type="monthly",
                 status="trial",
                 amount_paid=0,
@@ -210,13 +210,13 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    _email_pool.submit(send_welcome_email, user.email, user.full_name or "", "Free Trial")
+    _email_pool.submit(send_welcome_email, user.email, user.full_name or "", "Launch (7-day trial)")
     _email_pool.submit(
         send_new_signup_notification,
         user.full_name or "",
         user.email,
         shop.name if shop else "",
-        "Free Trial",
+        "Launch (7-day trial)",
     )
 
     access_token = create_access_token(data={"sub": str(user.id)})

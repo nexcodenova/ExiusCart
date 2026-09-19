@@ -479,7 +479,7 @@ export default function ChannelsPage() {
             <p className="text-xs text-muted-foreground mt-0.5">
               {channelLimitReached
                 ? 'Upgrade to Scale to connect all channels — Shopify, Daraz, TheDersi, Noon & more.'
-                : 'Free Trial & Launch plans include 1 channel, Growth includes 3. Upgrade to Scale for all channels.'}
+                : 'Launch includes 3 channels (1 store, 1 marketplace, 1 digital), Growth includes 5 of any kind. Upgrade to Scale for unlimited channels.'}
             </p>
           </div>
           <Link href="/dashboard/billing"
@@ -675,10 +675,10 @@ export default function ChannelsPage() {
             <div>
               <p className="font-semibold text-foreground">Channel limit reached</p>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                Free Trial and Starter plans include <strong className="text-foreground">1 channel connection</strong>. You've already used your slot.
+                Launch includes <strong className="text-foreground">3 channel connections</strong> and Growth includes <strong className="text-foreground">5</strong>. You've used all of yours.
               </p>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                Upgrade to <strong className="text-foreground">Premium (99 AED/mo)</strong> to connect all channels — Shopify, Daraz, TheDersi, Noon & more.
+                Upgrade to <strong className="text-foreground">Scale ($39.99/mo)</strong> to connect unlimited channels — Shopify, Daraz, TheDersi, Noon & more.
               </p>
             </div>
             <Link href="/dashboard/billing" onClick={() => setUpgradeLimitModal(false)}

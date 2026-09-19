@@ -157,7 +157,7 @@ _MIGRATIONS = [
     # signup path, so a backfilled orphaned shop must never be the one place
     # that still locks someone behind manual review.
     """INSERT INTO subscriptions (shop_id, plan_type, billing_type, status, amount_paid, currency, created_at, trial_ends_at, expires_at)
-       SELECT s.id, 'free_trial', 'monthly', 'trial', 0, COALESCE(s.currency, 'USD'), NOW(), NOW() + INTERVAL '7 days', NOW() + INTERVAL '7 days'
+       SELECT s.id, 'launch', 'monthly', 'trial', 0, COALESCE(s.currency, 'USD'), NOW(), NOW() + INTERVAL '7 days', NOW() + INTERVAL '7 days'
        FROM shops s JOIN users u ON u.id = s.owner_id
        WHERE u.is_verified = TRUE
          AND NOT EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.shop_id = s.id);""",
@@ -259,6 +259,11 @@ _MIGRATIONS = [
     # Visitor country on storefront view events (Customers/Orders/Views by country).
     "ALTER TABLE storefront_events ADD COLUMN IF NOT EXISTS country VARCHAR(2);",
     "CREATE INDEX IF NOT EXISTS ix_storefront_events_country ON storefront_events (country);",
+    # There is no separate "Free Trial" plan any more: every account trials a
+    # real plan with all of its features (Launch = 7 days free). Move accounts
+    # still trialling on the old restricted free_trial plan onto Launch.
+    # TheDersi shops are excluded, since Launch means "Pro" for them.
+    "UPDATE subscriptions SET plan_type = 'launch' WHERE plan_type = 'free_trial' AND status = 'trial' AND shop_id NOT IN (SELECT shop_id FROM channel_connections WHERE channel_type = 'thedersi' AND shop_id IS NOT NULL);",
     "UPDATE partner_licenses SET plan_type = 'launch' WHERE plan_type = 'starter';",
     "UPDATE partner_licenses SET plan_type = 'scale' WHERE plan_type = 'premium';",
 ]

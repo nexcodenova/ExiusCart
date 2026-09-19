@@ -198,7 +198,7 @@ def _create_account(db: Session, identity: _Identity, ref_code: Optional[str], c
         from app.core.lemonsqueezy import TRIAL_FREE_DAYS
         ends = now + timedelta(days=TRIAL_FREE_DAYS)
         db.add(Subscription(
-            shop_id=shop.id, plan_type="free_trial", billing_type="monthly", status="trial",
+            shop_id=shop.id, plan_type="launch", billing_type="monthly", status="trial",
             amount_paid=0, currency=currency, starts_at=now, trial_ends_at=ends, expires_at=ends,
         ))
     db.commit()
@@ -207,8 +207,8 @@ def _create_account(db: Session, identity: _Identity, ref_code: Optional[str], c
     if is_thedersi_staff:
         _email_pool.submit(send_thedersi_welcome_email, user.email, user.full_name or "")
     else:
-        _email_pool.submit(send_welcome_email, user.email, user.full_name or "", "Free Trial")
-    _email_pool.submit(send_new_signup_notification, user.full_name or "", user.email, shop.name, "Free Trial")
+        _email_pool.submit(send_welcome_email, user.email, user.full_name or "", "Launch (7-day trial)")
+    _email_pool.submit(send_new_signup_notification, user.full_name or "", user.email, shop.name, "Launch (7-day trial)")
     return user
 
 

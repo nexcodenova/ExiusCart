@@ -65,6 +65,18 @@ function fmtRecordedAmount(amount: number, currency: string): string {
 
 type BillingPeriod = 'monthly' | 'yearly';
 
+// Feature lists mirror what the backend actually enforces (products.py
+// PLAN_PRODUCT_LIMITS, customers.py CUSTOMER_LIMITS, thedersi.py
+// MONTHLY_ORDER_LIMITS, usage.py EMAIL_LIMITS, sms_marketing.py SMS_LIMITS,
+// channel_limits.py, dropshipping.py SUPPLIER_LIMIT_BY_PLAN, and the plan
+// catalogue's staff counts) — update both together. Storage is deliberately
+// not listed: there is no storage quota in the app, so any GB figure was an
+// unenforced promise.
+//
+// Trial model: there is no separate "Free Trial" plan. Every account starts
+// on a real plan with everything that plan includes, no restrictions:
+//   Launch          - 7 days free, no card, then the monthly fee
+//   Growth / Scale  - $1 for the first 7 days, then the monthly fee
 const makePlans = (period: BillingPeriod) => {
   const p = PLAN_PRICING;
   const useYearly = period === 'yearly';
@@ -74,45 +86,26 @@ const makePlans = (period: BillingPeriod) => {
   const periodLabel = useYearly ? 'year' : 'month';
   return [
     {
-      id: 'free_trial',
-      name: 'Free Trial',
-      price: 0,
-      priceLabel: 'Free',
-      period: '14 days',
-      description: 'Explore ExiusCart risk-free',
-      badge: null,
-      features: [
-        { text: '1 Staff account',                    included: true  },
-        { text: 'Up to 25 products',                  included: true  },
-        { text: '2 GB storage',                       included: true  },
-        { text: 'Basic POS',                          included: true  },
-        { text: '50 email invoices/month',            included: true  },
-        { text: 'TheDersi order sync (50 orders/mo)', included: true  },
-        { text: '1 branch / location',                included: true  },
-        { text: 'Custom invoice branding',            included: false },
-        { text: 'Priority support',                   included: false },
-      ],
-      popular: false,
-    },
-    {
       id: 'launch',
       name: 'Launch',
       price: launchPrice,
       priceLabel: fmtPlanPrice(launchPrice),
       period: periodLabel,
+      trialNote: '7 days free, no card needed',
       description: 'For growing stores ready to scale',
       badge: 'Most Popular',
       features: [
-        { text: '3 Staff accounts',                      included: true  },
-        { text: 'Up to 1,000 products',                  included: true  },
-        { text: '20 GB storage',                         included: true  },
-        { text: 'Full POS',                              included: true  },
-        { text: '500 email invoices/month + logo',       included: true  },
-        { text: 'Advanced analytics',                    included: true  },
-        { text: '1 branch / location',                   included: true  },
-        { text: 'TheDersi order sync (1,000 orders/mo)', included: true  },
-        { text: 'Custom invoice branding',               included: false },
-        { text: 'Priority email support',                included: true  },
+        { text: '3 staff accounts',                            included: true  },
+        { text: 'Up to 1,000 products',                        included: true  },
+        { text: 'Up to 5,000 customers',                       included: true  },
+        { text: '1,000 channel orders / month',                included: true  },
+        { text: '3 sales channels (1 store, 1 marketplace, 1 digital)', included: true },
+        { text: '1 dropship supplier (CJ, AliExpress or Printful)',     included: true },
+        { text: 'Full POS, inventory & invoicing',             included: true  },
+        { text: '1,000 invoice emails / month',                included: true  },
+        { text: '250 marketing emails + 250 SMS / month',      included: true  },
+        { text: 'Advanced analytics dashboards',               included: false },
+        { text: 'HR, Projects, Helpdesk & AI tools',           included: false },
       ],
       popular: true,
     },
@@ -122,20 +115,21 @@ const makePlans = (period: BillingPeriod) => {
       price: growthPrice,
       priceLabel: fmtPlanPrice(growthPrice),
       period: periodLabel,
+      trialNote: '$1 for your first 7 days',
       description: 'More channels, more suppliers, more room to grow',
       badge: null,
       features: [
-        { text: '6 Staff accounts',                      included: true  },
-        { text: 'Up to 10,000 products',                 included: true  },
-        { text: '40 GB storage',                         included: true  },
-        { text: 'Full POS',                              included: true  },
-        { text: '3 of 8+ sales channels',                included: true  },
-        { text: '2 of 3 dropship suppliers',             included: true  },
-        { text: 'Advanced analytics',                    included: true  },
-        { text: '1 branch / location',                   included: true  },
-        { text: 'TheDersi order sync (5,000 orders/mo)', included: true  },
-        { text: 'Custom invoice branding',               included: false },
-        { text: 'Priority email support',                included: true  },
+        { text: '6 staff accounts',                            included: true  },
+        { text: 'Up to 10,000 products',                       included: true  },
+        { text: 'Up to 25,000 customers',                      included: true  },
+        { text: '5,000 channel orders / month',                included: true  },
+        { text: '5 sales channels, any mix',                   included: true  },
+        { text: '3 dropship suppliers at once',                included: true  },
+        { text: 'Full POS, inventory & invoicing',             included: true  },
+        { text: '5,000 invoice emails / month',                included: true  },
+        { text: '1,000 marketing emails + 1,000 SMS / month',  included: true  },
+        { text: 'Advanced analytics dashboards',               included: true  },
+        { text: 'HR, Projects, Helpdesk & AI tools',           included: true  },
       ],
       popular: false,
     },
@@ -145,21 +139,21 @@ const makePlans = (period: BillingPeriod) => {
       price: scalePrice,
       priceLabel: fmtPlanPrice(scalePrice),
       period: periodLabel,
+      trialNote: '$1 for your first 7 days',
       description: 'Full power for serious operations',
       badge: null,
       features: [
-        { text: 'Unlimited staff accounts',        included: true  },
-        { text: 'Unlimited products',              included: true  },
-        { text: '75 GB storage',                   included: true  },
-        { text: 'Full POS + inventory mgmt',       included: true  },
-        { text: 'All sales channels & suppliers',  included: true  },
-        { text: 'Custom invoice branding',         included: true  },
-        { text: 'Full analytics suite',            included: true  },
-        { text: 'Multiple branches',               included: true  },
-        { text: 'TheDersi order sync (unlimited)', included: true  },
-        { text: 'Unlimited email invoices',        included: true  },
-        { text: 'Dedicated account manager',       included: true  },
-        { text: '24/7 priority support',           included: true  },
+        { text: 'Unlimited staff accounts',                    included: true  },
+        { text: 'Unlimited products & customers',              included: true  },
+        { text: 'Unlimited channel orders',                    included: true  },
+        { text: 'Unlimited sales channels',                    included: true  },
+        { text: 'All dropship suppliers',                      included: true  },
+        { text: 'Full POS, inventory & invoicing',             included: true  },
+        { text: 'Unlimited invoice emails, marketing emails & SMS', included: true },
+        { text: 'Advanced analytics dashboards',               included: true  },
+        { text: 'HR, Projects, Helpdesk & AI tools',           included: true  },
+        { text: 'Wholesale B2B portal',                        included: true  },
+        { text: 'Priority support',                            included: true  },
       ],
       popular: false,
     },
@@ -753,7 +747,7 @@ export default function BillingPage() {
             const currentRank = PLAN_RANK[currentPlan?.plan_type ?? 'free_trial'] ?? 0;
             const thisRank = PLAN_RANK[plan.id] ?? 0;
             const isDowngrade = !isCurrent && thisRank < currentRank;
-            const PlanIcon = plan.id === 'scale' ? Crown : plan.id === 'launch' ? Zap : plan.id === 'growth' ? TrendingUp : Package;
+            const PlanIcon = plan.id === 'scale' ? Crown : plan.id === 'launch' ? Zap : TrendingUp;
             return (
               <Card key={plan.id}
                 className={`p-5 relative flex flex-col ${plan.popular ? 'border-primary shadow-sm' : ''}`}>
@@ -779,26 +773,26 @@ export default function BillingPage() {
                       </>
                     )}
                   </div>
-                  {plan.id === 'free_trial' && (
-                    <p className="text-xs text-orange-500 font-medium mt-1">14-day trial</p>
-                  )}
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1">{plan.trialNote}, then {plan.priceLabel}/{plan.period}</p>
                   <p className="text-sm text-muted-foreground mt-1.5">{plan.description}</p>
                 </div>
                 <ul className="space-y-2.5 my-5 flex-1">
                   {plan.features.map((f, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm">
-                      {f.text.includes('storage')
-                        ? <HardDrive className="w-4 h-4 text-blue-500 shrink-0" />
-                        : f.included
+                      {f.included
                         ? <Check className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
                         : <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />}
                       <span className={f.included ? 'text-foreground' : 'text-muted-foreground'}>{f.text}</span>
                     </li>
                   ))}
                 </ul>
-                {isCurrent ? (
+                {isCurrent && currentPlan?.is_trial ? (
+                  <Button onClick={() => handleUpgrade(plan.id)} className="w-full">
+                    Subscribe to {plan.name}
+                  </Button>
+                ) : isCurrent ? (
                   <Button disabled variant="secondary" className="w-full">Current Plan</Button>
-                ) : plan.id === 'free_trial' ? null : isDowngrade ? (
+                ) : isDowngrade ? (
                   <Button variant="outline" onClick={() => handleUpgrade(plan.id, true)}
                     className="w-full border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10">
                     Downgrade to {plan.name}
