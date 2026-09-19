@@ -6,39 +6,17 @@ import Image from 'next/image';
 import {
   Bell, Search, User, Sun, Moon, ChevronDown, Crown,
   Settings, CreditCard, LogOut, UserCircle,
-  PackagePlus, CreditCard as CreditCardIcon, PackageX, Truck, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { useTheme } from '@/components/providers/theme-provider';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
 import { ordersApi } from '@/lib/api';
+import {
+  type ActivityEvent, ACTIVITY_EVENT_META, DEFAULT_ACTIVITY_EVENT_META, activityTimeAgo,
+} from '@/lib/activity-event-meta';
 
-interface HeaderActivityEvent {
-  id: number;
-  event_type: string;
-  title: string;
-  description: string | null;
-  created_at: string | null;
-  is_read: boolean;
-}
-
-const HEADER_EVENT_META: Record<string, { icon: React.ElementType; className: string }> = {
-  order_created: { icon: PackagePlus, className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  payment_received: { icon: CreditCardIcon, className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  stock_low: { icon: PackageX, className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
-  order_shipped: { icon: Truck, className: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400' },
-  order_delivered: { icon: CheckCircle2, className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  order_cancelled: { icon: XCircle, className: 'bg-red-500/10 text-red-500' },
-};
-
-function headerTimeAgo(iso: string | null): string {
-  if (!iso) return '';
-  const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
+// Dropdown shows a short, glanceable preview only — the full history lives
+// on its own page (see the "View all" footer link below).
+const HEADER_NOTIF_PREVIEW_COUNT = 4;
 
 // Same full list Settings → Regional Settings offers, so switching currency
 // from the header never gives a narrower choice than Settings does.
@@ -60,7 +38,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [showCurrencyDrop, setShowCurrencyDrop] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
-  const [notifEvents, setNotifEvents] = useState<HeaderActivityEvent[]>([]);
+  const [notifEvents, setNotifEvents] = useState<ActivityEvent[]>([]);
   const [notifLoaded, setNotifLoaded] = useState(false);
   const unreadNotifCount = notifEvents.filter((e) => !e.is_read).length;
   const [showProfile, setShowProfile] = useState(false);
@@ -110,7 +88,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const loadNotifications = () => {
     const shopId = localStorage.getItem('shop_id');
     if (!shopId) { setNotifLoaded(true); return; }
-    ordersApi.getActivityLog(shopId, 8)
+    ordersApi.getActivityLog(shopId, HEADER_NOTIF_PREVIEW_COUNT)
       .then((res) => setNotifEvents(res.data?.events ?? []))
       .catch(() => {})
       .finally(() => setNotifLoaded(true));
@@ -292,7 +270,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                 ) : (
                   <div className="py-1">
                     {notifEvents.map((e) => {
-                      const meta = HEADER_EVENT_META[e.event_type] ?? { icon: Bell, className: 'bg-muted text-muted-foreground' };
+                      const meta = ACTIVITY_EVENT_META[e.event_type] ?? DEFAULT_ACTIVITY_EVENT_META;
                       const Icon = meta.icon;
                       return (
                         <button
@@ -310,7 +288,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                           </span>
                           <span className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground">
                             {!e.is_read && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />}
-                            {headerTimeAgo(e.created_at)}
+                            {activityTimeAgo(e.created_at)}
                           </span>
                         </button>
                       );
@@ -318,6 +296,10 @@ export function Header({ onMenuClick }: HeaderProps) {
                   </div>
                 )}
               </div>
+              <Link href="/dashboard/notifications" onClick={() => setShowNotif(false)}
+                className="block border-t border-border px-4 py-2.5 text-center text-xs font-medium text-indigo-600 transition hover:bg-muted/50 dark:text-indigo-400">
+                View all notifications →
+              </Link>
             </div>
           )}
         </div>
@@ -325,12 +307,10 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Profile */}
         <div ref={profileRef} className="relative">
           <button type="button" onClick={() => setShowProfile(v => !v)} aria-label="Account menu"
-            className="flex items-center gap-2 p-1 pr-2 hover:bg-muted rounded-xl transition">
-            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-xs font-semibold text-white">
+            className="flex items-center rounded-full p-0.5 transition hover:ring-2 hover:ring-indigo-500/30">
+            <div className="w-9 h-9 bg-indigo-600 rounded-full flex items-center justify-center text-xs font-semibold text-white">
               {initials || <User className="w-4 h-4" />}
             </div>
-            {userName && <span className="hidden md:block max-w-[140px] truncate text-sm font-medium text-foreground">{userName}</span>}
-            <ChevronDown className={`hidden md:block w-4 h-4 text-muted-foreground transition-transform ${showProfile ? 'rotate-180' : ''}`} />
           </button>
           {showProfile && (
             <div className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-card shadow-xl z-50 overflow-hidden">

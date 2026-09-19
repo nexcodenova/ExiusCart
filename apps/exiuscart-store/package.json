@@ -33,6 +33,7 @@
     "clsx": "^2.1.0",
     "date-fns": "^3.2.0",
     "dompurify": "^2.5.8",
+    "flag-icons": "^7.5.0",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.309.0",
@@ -46,6 +47,7 @@
     "react-simple-maps": "^5.0.5",
     "recharts": "^2.10.0",
     "tailwind-merge": "^2.2.0",
+    "world-atlas": "^2.0.2",
     "xlsx": "^0.18.5",
     "zod": "^3.22.4",
     "zustand": "^4.5.0"

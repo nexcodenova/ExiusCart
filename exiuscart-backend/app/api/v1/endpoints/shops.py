@@ -1302,7 +1302,7 @@ def get_dashboard_stats(
         "todayAvgOrder": 0.0, "monthlyRevenue12m": [],
         "repeatCustomerRate": 0.0, "inventoryValue": 0.0,
         "outOfStockCount": 0, "topCustomers": [],
-        "customersByCountry": [], "recentCustomers": [],
+        "customersByCountry": [], "ordersByCountry": [], "recentCustomers": [],
         "storeHealth": {"channelsConnected": 0, "lastSyncedAt": None},
         "periodRevenue": 0.0, "periodOrders": 0,
         "periodRevenueChange": None, "periodOrdersChange": None,
@@ -1515,6 +1515,36 @@ def get_dashboard_stats(
                 "percentage": round(int(r[1]) / total_customers_for_pct * 100, 1),
             }
             for r in country_rows
+        ]
+
+        # Orders-by-country — same Customer.country grouping, but counting
+        # real orders in the selected period rather than all-time customer
+        # counts. Queried FROM Order with an OUTER join to Customer (not the
+        # other way around, and not an inner join) — POS walk-ins and
+        # channel-webhook orders routinely have customer_id NULL (no
+        # name/phone/email on the sale/payload, see orders.py's
+        # find-or-create-customer condition and channels.py's webhook
+        # handler), and an inner join silently dropped every one of them
+        # instead of bucketing them into "Unknown" like customersByCountry
+        # already does. Same outer-join pattern already used for this exact
+        # reason in the admin order search (channels.py's dropship search).
+        order_country_rows = (
+            db.query(Cust.country, func.count(Ord.id).label("cnt"))
+            .select_from(Ord)
+            .outerjoin(Cust, Ord.customer_id == Cust.id)
+            .filter(Ord.shop_id == shop_id, Ord.status != "cancelled",
+                    Ord.created_at >= period_start, Ord.created_at <= period_end)
+            .group_by(Cust.country).order_by(func.count(Ord.id).desc()).limit(8).all()
+        )
+        total_orders_for_pct = sum(int(r[1]) for r in order_country_rows) or 1
+        adv["ordersByCountry"] = [
+            {
+                "code": r[0] or "Unknown",
+                "country": iso_to_name.get(r[0], "Unknown") if r[0] else "Unknown",
+                "customers": int(r[1]),
+                "percentage": round(int(r[1]) / total_orders_for_pct * 100, 1),
+            }
+            for r in order_country_rows
         ]
 
         # Recent customers — most recently added, regardless of whether

@@ -32,7 +32,6 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [dateRange, setDateRange] = useState<DateRangeValue>({ preset: 'all' });
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const { fmt } = useCurrency();
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
@@ -46,15 +45,6 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }, [shopId, dateRange]);
 
-  const refresh = () => {
-    if (!shopId) return;
-    setRefreshing(true);
-    dashboardApi.getStats(shopId, dateRangeToStatsParams(dateRange))
-      .then((r) => setStats(r.data))
-      .catch(() => {})
-      .finally(() => setRefreshing(false));
-  };
-
   return (
     <div className="space-y-4">
       <DashboardHeader
@@ -62,8 +52,6 @@ export default function DashboardPage() {
         memberSince={stats?.memberSince}
         channelsConnected={stats?.storeHealth?.channelsConnected}
         lastSyncedAt={stats?.storeHealth?.lastSyncedAt}
-        refreshing={refreshing}
-        onRefresh={refresh}
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
       />

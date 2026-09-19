@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Truck, Loader2, Trash2, CheckCircle2, ExternalLink, Calculator, ChevronDown } from 'lucide-react';
 import { dropshipApi } from '@/lib/api';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { CountryFlag } from '@/components/country-flag';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 
 interface SupplierLink {
@@ -88,13 +90,21 @@ function ShippingEstimator({ shopId, productId, supplierType }: { shopId: string
             For your own reference while pricing — not saved anywhere.
           </p>
           <div className="flex items-center gap-2">
-            <select
+            <Select
               value={country}
-              onChange={(e) => { setCountry(e.target.value); setOptions(null); setError(''); }}
-              className="px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs text-foreground outline-none"
+              onValueChange={(v) => { setCountry(v); setOptions(null); setError(''); }}
             >
-              {ESTIMATE_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-            </select>
+              <SelectTrigger className="h-auto w-auto gap-1.5 px-2.5 py-1.5 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ESTIMATE_COUNTRIES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    <span className="flex items-center gap-2"><CountryFlag code={c.code} /> {c.label}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <button
               type="button"
               onClick={check}

@@ -10,7 +10,10 @@ export function TopCustomers({ stats, fmt }: { stats: DashboardStats | null; fmt
         <span className="ml-auto text-xs text-muted-foreground">This month</span>
       </div>
       {!stats?.topCustomers?.length ? (
-        <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">No customer data yet</div>
+        <div className="flex h-32 flex-col items-center justify-center gap-1 text-center text-sm text-muted-foreground">
+          <span>No customer-linked orders this month yet</span>
+          <span className="text-xs text-muted-foreground/70">Walk-in POS sales with no name/phone/email attached don't count toward this.</span>
+        </div>
       ) : (
         <div className="space-y-3">
           {stats.topCustomers.map((c, i) => (

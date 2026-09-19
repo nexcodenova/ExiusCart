@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { RefreshCw, ShoppingCart, Radio } from 'lucide-react';
+import { ShoppingCart, Radio } from 'lucide-react';
 import DateRangePicker, { type DateRangeValue } from '@/components/channels/listings/DateRangePicker';
 
 function greeting() {
@@ -18,14 +18,12 @@ function timeAgo(iso: string | null): string | null {
 }
 
 export function DashboardHeader({
-  storeName, memberSince, channelsConnected, lastSyncedAt, refreshing, onRefresh, dateRange, onDateRangeChange,
+  storeName, memberSince, channelsConnected, lastSyncedAt, dateRange, onDateRangeChange,
 }: {
   storeName?: string;
   memberSince?: string;
   channelsConnected?: number;
   lastSyncedAt?: string | null;
-  refreshing: boolean;
-  onRefresh: () => void;
   dateRange: DateRangeValue;
   onDateRangeChange: (v: DateRangeValue) => void;
 }) {
@@ -54,10 +52,6 @@ export function DashboardHeader({
         <div className="w-[170px]">
           <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
         </div>
-        <button onClick={onRefresh} disabled={refreshing}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted disabled:opacity-60">
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
-        </button>
         <Link href="/dashboard/pos"
           className="inline-flex items-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90">
           <ShoppingCart className="h-4 w-4" /> New sale

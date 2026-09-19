@@ -25,6 +25,10 @@ export interface DashboardStats {
   topCustomers?: { id: number; name: string; orders: number; revenue: number }[];
   // Real, added for the country/notifications/store-health rebuild
   customersByCountry?: { code: string; country: string; customers: number; percentage: number }[];
+  // Real orders-by-country, joined through Customer.country and respecting
+  // the same period filter as periodRevenue/periodOrders. "customers" here
+  // is reused as the generic count field so both metrics share one row shape.
+  ordersByCountry?: { code: string; country: string; customers: number; percentage: number }[];
   recentCustomers?: { id: number; name: string; orders: number; total: number; date: string | null }[];
   storeHealth?: { channelsConnected: number; lastSyncedAt: string | null };
   // Real, period-filtered numbers driven by the date-range selector —
