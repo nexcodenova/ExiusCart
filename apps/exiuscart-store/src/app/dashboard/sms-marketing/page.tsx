@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MessageSquare, Loader2, Lock, Plus, X } from 'lucide-react';
-import { smsApi, marketingApi } from '@/lib/api';
+import { smsApi, marketingApi, subscriptionApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -22,6 +22,9 @@ export default function SmsMarketingPage() {
   const [loading, setLoading] = useState(true);
   const [usage, setUsage] = useState<SmsUsage | null>(null);
   const [locked, setLocked] = useState(false);
+  // TheDersi plans are set by TheDersi, never bought through ExiusCart
+  // billing, so the lock screen can't offer an Upgrade button for them.
+  const [isTheDersiPlan, setIsTheDersiPlan] = useState(false);
   const [campaigns, setCampaigns] = useState<SmsCampaign[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState<SmsCampaign | null>(null);
@@ -32,8 +35,12 @@ export default function SmsMarketingPage() {
 
   const load = (sid: string) => {
     setLoading(true);
-    Promise.all([smsApi.getUsage(sid), marketingApi.getSmsCampaigns(sid)])
-      .then(([usageRes, campaignsRes]) => {
+    Promise.all([
+      smsApi.getUsage(sid), marketingApi.getSmsCampaigns(sid),
+      subscriptionApi.getCurrent(sid).catch(() => null),
+    ])
+      .then(([usageRes, campaignsRes, subRes]) => {
+        setIsTheDersiPlan(String(subRes?.data?.plan?.plan_type ?? '').startsWith('thedersi'));
         setUsage(usageRes.data);
         setLocked(usageRes.data.daily_limit === 0 && usageRes.data.monthly_limit === 0);
         setCampaigns(campaignsRes.data ?? []);
@@ -94,11 +101,22 @@ export default function SmsMarketingPage() {
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
               <Lock className="w-7 h-7 text-primary" />
             </div>
-            <h2 className="text-lg font-semibold text-foreground">Upgrade to send SMS</h2>
-            <p className="text-sm text-muted-foreground mt-2 max-w-md leading-relaxed">
-              SMS marketing is available on Launch, Growth, and Scale — sent through ExiusCart's own account, no setup required on your end.
-            </p>
-            <Button asChild className="mt-6"><Link href="/dashboard/billing">Upgrade to unlock</Link></Button>
+            {isTheDersiPlan ? (
+              <>
+                <h2 className="text-lg font-semibold text-foreground">Not available on your TheDersi plan</h2>
+                <p className="text-sm text-muted-foreground mt-2 max-w-md leading-relaxed">
+                  SMS marketing is available on TheDersi Pro and Official. Contact TheDersi if you have questions about your plan.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-semibold text-foreground">Upgrade to send SMS</h2>
+                <p className="text-sm text-muted-foreground mt-2 max-w-md leading-relaxed">
+                  SMS marketing is available on Launch, Growth, and Scale — sent through ExiusCart's own account, no setup required on your end.
+                </p>
+                <Button asChild className="mt-6"><Link href="/dashboard/billing">Upgrade to unlock</Link></Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

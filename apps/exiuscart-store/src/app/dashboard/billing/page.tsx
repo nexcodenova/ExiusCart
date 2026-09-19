@@ -167,6 +167,10 @@ const makePlans = (period: BillingPeriod) => {
 };
 
 // ── TheDersi plans ─────────────────────────────────────────────────────────────
+// Listings/orders/marketing-email numbers mirror the backend's enforced limits
+// (products.py PLAN_PRODUCT_LIMITS, thedersi.py MONTHLY_ORDER_LIMITS,
+// usage.py EMAIL_LIMITS + the Pro overrides) — update both together.
+// Commission, approval and payout terms are TheDersi's own, not enforced here.
 const THEDERSI_PLANS = [
   {
     id: 'free',
@@ -179,8 +183,8 @@ const THEDERSI_PLANS = [
     upgradeSlug: null,
     features: [
       { text: 'Up to 25 product listings',        ok: true  },
-      { text: '50 orders / month',                ok: true  },
-      { text: '50 marketing emails / month',      ok: true  },
+      { text: '25 orders / month',                ok: true  },
+      { text: '10 marketing emails / month',      ok: true  },
       { text: 'Your own storefront page',         ok: true  },
       { text: 'Sales dashboard',                  ok: true  },
       { text: '24hr approval',                    ok: true  },
@@ -199,9 +203,9 @@ const THEDERSI_PLANS = [
     btnColor: 'bg-indigo-600 text-white hover:bg-indigo-700',
     upgradeSlug: 'growth',
     features: [
-      { text: 'Up to 1,000 product listings',     ok: true  },
-      { text: '1,000 orders / month',             ok: true  },
-      { text: '500 marketing emails / month',     ok: true  },
+      { text: 'Up to 500 product listings',     ok: true  },
+      { text: '500 orders / month',             ok: true  },
+      { text: '100 marketing emails / month',     ok: true  },
       { text: 'Your own storefront page',         ok: true  },
       { text: 'Sales dashboard',                  ok: true  },
       { text: 'Priority approval',                ok: true  },
@@ -220,9 +224,9 @@ const THEDERSI_PLANS = [
     btnColor: 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:opacity-90',
     upgradeSlug: 'pro',
     features: [
-      { text: 'Up to 1,000 product listings',     ok: true  },
+      { text: 'Unlimited product listings',     ok: true  },
       { text: 'Unlimited orders / month',         ok: true  },
-      { text: '500 marketing emails / month',     ok: true  },
+      { text: '300 marketing emails / month',     ok: true  },
       { text: 'Your own storefront page',         ok: true  },
       { text: 'Sales dashboard',                  ok: true  },
       { text: 'Priority approval',                ok: true  },

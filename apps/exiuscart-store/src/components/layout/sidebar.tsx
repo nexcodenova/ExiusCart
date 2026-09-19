@@ -16,7 +16,7 @@ import {
   Percent, Gift, MapPinned, Undo2, Search, Palette, Layers, Image as ImageIcon, ImagePlus,
   LayoutTemplate, FolderOpen, Shapes, Bot, Wand2, FileEdit, LineChart, Workflow,
   History, Rocket, Users2, Network, Cable, Wrench, KeyRound, FileClock,
-  TrendingUp, Bell,
+  TrendingUp, Bell, Lock,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi, dropshipApi } from '@/lib/api';
 import {
@@ -75,7 +75,7 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/dashboard/customers',   label: 'Customers',   icon: Users   },
       { href: '/dashboard/discounts',   label: 'Discounts',   icon: Percent },
-      { href: '/dashboard/gift-cards',  label: 'Gift Cards',  icon: Gift    },
+      { href: '/dashboard/gift-cards',  label: 'Gift Cards & Items',  icon: Gift    },
       { href: '/dashboard/reviews',     label: 'Reviews',     icon: Star    },
     ],
   },
@@ -287,6 +287,51 @@ function isPremiumGroup(groupId: string): boolean {
   return PREMIUM_GROUPS.has(groupId);
 }
 
+// Features no TheDersi-managed plan gets (Official excepted — it resolves to
+// plan "scale" and is never treated as restricted). Mirrors the backend's
+// is_thedersi_restricted_shop() gates: every dropshipping/supplier/import
+// route (blanket 403), the Blog (blog.py), and Wholesale (Scale only).
+// Locking them in the sidebar shows the "Not available on TheDersi Plans"
+// popup on click instead of navigating to a page that only then says no.
+function isTheDersiBlockedHref(href: string): boolean {
+  return href.startsWith('/dashboard/dropshipping')
+    || href === '/dashboard/wholesale'
+    || href === '/dashboard/blog';
+}
+
+// Marketing Hub pages that only TheDersi Free Forever lacks (Lite/Pro/
+// Official all have them) — same list the pages' own MarketingHubLockScreen
+// checks use.
+const THEDERSI_FREE_FOREVER_BLOCKED_HREFS = new Set([
+  '/dashboard/marketing',
+  '/dashboard/campaigns',
+  '/dashboard/ads',
+  '/dashboard/customer-segments',
+]);
+
+// SMS Marketing: backend's SMS_LIMITS only covers launch/growth/scale, so
+// TheDersi Free Forever and Lite have none (Pro shares "launch"; Official
+// shares "scale").
+const THEDERSI_NO_SMS_PLANS = new Set(['thedersi_free_forever', 'thedersi_lite']);
+
+interface TheDersiModalCopy { title: string; body: string }
+const THEDERSI_NOT_AVAILABLE: TheDersiModalCopy = {
+  title: 'Not Available on TheDersi Plans',
+  body: "This isn't included on any TheDersi-managed plan. Contact TheDersi if you have questions about your plan.",
+};
+const THEDERSI_NOT_ON_FREE_FOREVER: TheDersiModalCopy = {
+  title: 'Not Available on Free Forever',
+  body: 'This is available on TheDersi Lite, Pro, and Official. Contact TheDersi to change your plan.',
+};
+const THEDERSI_SMS_PRO_ONLY: TheDersiModalCopy = {
+  title: 'Not Available on Your TheDersi Plan',
+  body: 'SMS Marketing is available on TheDersi Pro and Official. Contact TheDersi to change your plan.',
+};
+const THEDERSI_PRO_ONLY: TheDersiModalCopy = {
+  title: 'Not Available on Your TheDersi Plan',
+  body: 'Advanced analytics is available on TheDersi Pro and Official. Contact TheDersi to change your plan.',
+};
+
 // The Analytics group is NOT a premium group as a whole — Sales/Profit/
 // Reports (which route into the real Reports page) stay open to every
 // plan. Only these 6 real dashboards are Growth/Scale (+ TheDersi Pro/
@@ -327,7 +372,7 @@ export function ShopSidebar() {
   const collapsed = state === 'collapsed';
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showTheDersiModal, setShowTheDersiModal] = useState(false);
+  const [theDersiModal, setTheDersiModal] = useState<TheDersiModalCopy | null>(null);
   const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null; isTheDersi: boolean } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<{ channel_type: string }[]>([]);
   const [connectedSuppliers, setConnectedSuppliers] = useState<{ supplier_type: string; name: string }[]>([]);
@@ -451,7 +496,9 @@ export function ShopSidebar() {
                 const isTheDersiRestricted = isTheDersiPlan && plan !== 'scale';
                 const canAccessPremium = plan === 'scale' || plan === 'growth';
                 const isTheDersiBasicPlan = isTheDersiRestricted;
-                const locked = isPremiumGroup(group.id) && !canAccessPremium;
+                const isFreeForever = plan === 'thedersi_free_forever';
+                const locked = (isPremiumGroup(group.id) && !canAccessPremium)
+                  || (isTheDersiRestricted && group.id === 'fulfillment');
                 // TheDersi Pro shares plan_type="launch" with real Launch
                 // customers (who don't get advanced Analytics on their
                 // own), so it needs its own bump here — same reasoning as
@@ -496,11 +543,18 @@ export function ShopSidebar() {
                         }`}>
                         {group.icon && <group.icon className={`w-4 h-4 shrink-0 ${group.accent ?? ''}`} />}
                         <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
-                        {locked && (
+                        {locked && (isTheDersiRestricted ? (
+                          // "PRO" would read as TheDersi's own Pro tier, which
+                          // doesn't get these either — say what it actually is.
+                          <span title="Not available on TheDersi plans" aria-label="Not available on TheDersi plans"
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-amber-400">
+                            <Lock className="h-3.5 w-3.5" />
+                          </span>
+                        ) : (
                           <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-semibold">
                             {isPremiumGroup(group.id) ? 'PRO' : 'LOCKED'}
                           </span>
-                        )}
+                        ))}
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
                       </button>
                     )}
@@ -516,16 +570,27 @@ export function ShopSidebar() {
                           const Icon = item.icon;
                           const active = isItemActive(item);
                           const isAdvancedAnalyticsItem = ANALYTICS_ADVANCED_HREFS.has(item.href);
-                          const itemLocked = locked || (isAdvancedAnalyticsItem && !canAccessAdvancedAnalytics);
+                          const blockedForFreeForever = isFreeForever && THEDERSI_FREE_FOREVER_BLOCKED_HREFS.has(item.href);
+                          const blockedForTheDersi = isTheDersiRestricted && isTheDersiBlockedHref(item.href);
+                          const blockedSms = item.href === '/dashboard/sms-marketing' && THEDERSI_NO_SMS_PLANS.has(plan);
+                          const itemLocked = locked || (isAdvancedAnalyticsItem && !canAccessAdvancedAnalytics)
+                            || blockedForTheDersi || blockedForFreeForever || blockedSms;
 
                           if (itemLocked) {
+                            const modalCopy = blockedSms ? THEDERSI_SMS_PRO_ONLY
+                              : blockedForFreeForever ? THEDERSI_NOT_ON_FREE_FOREVER
+                              : (isAdvancedAnalyticsItem && !canAccessAdvancedAnalytics) ? THEDERSI_PRO_ONLY
+                              : THEDERSI_NOT_AVAILABLE;
                             const lockMessage = isTheDersiPlan
-                              ? (isAdvancedAnalyticsItem ? 'Only for TheDersi Pro & Official' : 'Not available on TheDersi plans')
+                              ? (blockedSms ? 'Only for TheDersi Pro & Official'
+                                : blockedForFreeForever ? 'Not available on Free Forever'
+                                : (isAdvancedAnalyticsItem && !canAccessAdvancedAnalytics) ? 'Only for TheDersi Pro & Official'
+                                : 'Not available on TheDersi plans')
                               : 'Only for Growth & Scale';
                             return (
                               <SidebarMenuItem key={item.href} className="relative group/lock">
                                 <SidebarMenuButton
-                                  onClick={() => isTheDersiBasicPlan ? setShowTheDersiModal(true) : setShowUpgradeModal(true)}
+                                  onClick={() => isTheDersiBasicPlan ? setTheDersiModal(modalCopy) : setShowUpgradeModal(true)}
                                   tooltip={collapsed ? item.label : undefined}
                                   className="text-sidebar-muted-foreground/50 hover:bg-sidebar-accent/50"
                                 >
@@ -685,17 +750,15 @@ export function ShopSidebar() {
       )}
 
       {/* TheDersi upgrade modal — for TheDersi sellers not on the Pro tier */}
-      {showTheDersiModal && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setShowTheDersiModal(false)}>
+      {theDersiModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={() => setTheDersiModal(null)}>
           <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/15 mb-4 mx-auto">
               <Shield className="w-6 h-6 text-indigo-400" />
             </div>
-            <h3 className="text-lg font-bold text-foreground text-center mb-2">Not Available on TheDersi Plans</h3>
-            <p className="text-sm text-muted-foreground text-center mb-6">
-              This isn't included on any TheDersi-managed plan. Contact TheDersi if you have questions about your plan.
-            </p>
-            <button type="button" onClick={() => setShowTheDersiModal(false)}
+            <h3 className="text-lg font-bold text-foreground text-center mb-2">{theDersiModal.title}</h3>
+            <p className="text-sm text-muted-foreground text-center mb-6">{theDersiModal.body}</p>
+            <button type="button" onClick={() => setTheDersiModal(null)}
               className="w-full py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition">
               Got it
             </button>
