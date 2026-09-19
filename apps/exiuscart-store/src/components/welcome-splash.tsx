@@ -8,6 +8,9 @@ import Image from 'next/image';
 // plain page refresh or navigation never replays the splash.
 export const WELCOME_FLAG = 'show_welcome';
 
+// How long after signup an account still counts as "new" for the greeting.
+const NEW_ACCOUNT_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 const SPARKLES = [
   { top: '18%', left: '22%', delay: '0s', size: 10 },
   { top: '26%', left: '76%', delay: '0.4s', size: 14 },
@@ -24,33 +27,64 @@ export function WelcomeSplash() {
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
+    // Preview without logging in again: /dashboard?welcome=new or ?welcome=back
+    // forces that variant (and doesn't touch the real "welcomed" record).
+    const previewParam = new URLSearchParams(window.location.search).get('welcome');
+    const preview = previewParam === 'new' || previewParam === 'back' ? previewParam : null;
+
     let flagged = false;
     try { flagged = sessionStorage.getItem(WELCOME_FLAG) === '1'; } catch {}
-    if (!flagged) return;
+    if (!flagged && !preview) return;
     try { sessionStorage.removeItem(WELCOME_FLAG); } catch {}
 
-    // "New" = this browser has never welcomed this shop before, i.e. the
-    // first login after signup. Keyed by shop id (always known by the time
-    // we get here, unlike the user record on the setup-link login path).
-    let isNew = true;
-    try {
-      const key = `welcomed_shop_${localStorage.getItem('shop_id') ?? 'unknown'}`;
-      isNew = !localStorage.getItem(key);
-      localStorage.setItem(key, '1');
-    } catch {}
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
-    let name = '';
-    try {
-      const u = JSON.parse(localStorage.getItem('user') || '{}');
-      name = String(u.full_name || '').trim().split(/\s+/)[0] || '';
-    } catch {}
+    (async () => {
+      let user: any = null;
+      try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch {}
+      // The emailed setup-link login lands here without a stored user record;
+      // fetch it (short timeout — never hold the splash hostage to the API)
+      // so we know the account's age and can greet by name.
+      if (!user?.created_at) {
+        try {
+          const { usersApi } = await import('@/lib/api');
+          const res = await Promise.race([
+            usersApi.getMe(),
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 1500)),
+          ]);
+          user = res.data;
+          localStorage.setItem('user', JSON.stringify(user));
+        } catch {}
+      }
+      if (cancelled) return;
 
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const duration = reduced ? 700 : isNew ? 3400 : 2200;
-    setSplash({ name, isNew });
-    const t1 = setTimeout(() => setLeaving(true), duration);
-    const t2 = setTimeout(() => setSplash(null), duration + 500);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+      // "New" = the account was created recently AND this browser hasn't
+      // welcomed this shop before. Account age comes from the server, so an
+      // old account on a fresh browser (cleared storage) gets "Welcome back"
+      // instead of being mistaken for a new signup. If the age is unknown,
+      // fall back to the per-browser check alone.
+      let seenBefore = false;
+      if (!preview) {
+        try {
+          const key = `welcomed_shop_${localStorage.getItem('shop_id') ?? 'unknown'}`;
+          seenBefore = !!localStorage.getItem(key);
+          localStorage.setItem(key, '1');
+        } catch {}
+      }
+      const createdAt = user?.created_at ? new Date(user.created_at).getTime() : null;
+      const isRecent = createdAt === null ? true : Date.now() - createdAt < NEW_ACCOUNT_WINDOW_MS;
+      const isNew = preview ? preview === 'new' : isRecent && !seenBefore;
+
+      const name = String(user?.full_name || '').trim().split(/\s+/)[0] || '';
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const duration = reduced ? 700 : isNew ? 3400 : 2200;
+      setSplash({ name, isNew });
+      timers.push(setTimeout(() => setLeaving(true), duration));
+      timers.push(setTimeout(() => setSplash(null), duration + 500));
+    })();
+
+    return () => { cancelled = true; timers.forEach(clearTimeout); };
   }, []);
 
   if (!splash) return null;

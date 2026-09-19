@@ -1,9 +1,10 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery, bigcommerce, ad_intelligence, testimonials, whop, gumroad, video_gen, storefront_insights, prodora_digital, social_posting, whatsapp_marketing, sms_marketing, discounts, cron, analytics, customer_segments
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery, bigcommerce, ad_intelligence, testimonials, whop, gumroad, video_gen, storefront_insights, prodora_digital, social_posting, whatsapp_marketing, sms_marketing, discounts, cron, analytics, customer_segments, auth_account
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(auth_account.router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
 api_router.include_router(shops.router, prefix="/shops", tags=["Shops"])
 api_router.include_router(products.router, prefix="", tags=["Products"])

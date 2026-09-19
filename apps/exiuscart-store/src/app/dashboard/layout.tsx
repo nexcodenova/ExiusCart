@@ -12,6 +12,7 @@ import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { applyBrandColor } from '@/lib/brand-color';
 import { WelcomeSplash } from '@/components/welcome-splash';
+import { ProfileCompletionDialog } from '@/components/profile-completion-dialog';
 
 // Only page an expired trial can still reach — everywhere else (Quotations,
 // POS, Add Product, every sidebar link) shows the lock screen below instead
@@ -136,6 +137,7 @@ function DashboardShell({
                 dead space between the header and each page's own heading,
                 per feedback to reduce gaps across the app generally. */}
             <main className="p-4 lg:p-5">{children}</main>
+            <ProfileCompletionDialog />
           </SidebarInset>
         </SidebarProvider>
         <MobileBottomNav />

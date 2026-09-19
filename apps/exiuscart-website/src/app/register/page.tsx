@@ -1,106 +1,26 @@
 ﻿'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSearchParams } from 'next/navigation';
-import { Eye, EyeOff, Loader2, ArrowLeft, Check, Tag, Globe, Mail, Lock } from 'lucide-react';
-import { Navbar } from '@/components/layout/navbar';
-import { CountryFlag } from '@/components/country-flag';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Eye, EyeOff, Loader2, Check, Tag, Mail, Zap, ShieldCheck, Globe2 } from 'lucide-react';
+import { AuthHeader } from '@/components/auth/auth-header';
+import { SocialAuthButtons, type SocialProvider } from '@/components/auth/social-auth-buttons';
 
-const COUNTRIES = [
-  // Middle East (top — primary market)
-  { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', dialCode: '+971' },
-  { code: 'SA', name: 'Saudi Arabia',         flag: '🇸🇦', dialCode: '+966' },
-  { code: 'KW', name: 'Kuwait',               flag: '🇰🇼', dialCode: '+965' },
-  { code: 'QA', name: 'Qatar',                flag: '🇶🇦', dialCode: '+974' },
-  { code: 'BH', name: 'Bahrain',              flag: '🇧🇭', dialCode: '+973' },
-  { code: 'OM', name: 'Oman',                 flag: '🇴🇲', dialCode: '+968' },
-  { code: 'JO', name: 'Jordan',               flag: '🇯🇴', dialCode: '+962' },
-  { code: 'LB', name: 'Lebanon',              flag: '🇱🇧', dialCode: '+961' },
-  { code: 'IQ', name: 'Iraq',                 flag: '🇮🇶', dialCode: '+964' },
-  { code: 'EG', name: 'Egypt',                flag: '🇪🇬', dialCode: '+20'  },
-  { code: 'YE', name: 'Yemen',                flag: '🇾🇪', dialCode: '+967' },
-  // South Asia
-  { code: 'IN', name: 'India',                flag: '🇮🇳', dialCode: '+91'  },
-  { code: 'PK', name: 'Pakistan',             flag: '🇵🇰', dialCode: '+92'  },
-  { code: 'BD', name: 'Bangladesh',           flag: '🇧🇩', dialCode: '+880' },
-  { code: 'LK', name: 'Sri Lanka',            flag: '🇱🇰', dialCode: '+94'  },
-  { code: 'NP', name: 'Nepal',                flag: '🇳🇵', dialCode: '+977' },
-  { code: 'AF', name: 'Afghanistan',          flag: '🇦🇫', dialCode: '+93'  },
-  // Southeast Asia
-  { code: 'MY', name: 'Malaysia',             flag: '🇲🇾', dialCode: '+60'  },
-  { code: 'SG', name: 'Singapore',            flag: '🇸🇬', dialCode: '+65'  },
-  { code: 'PH', name: 'Philippines',          flag: '🇵🇭', dialCode: '+63'  },
-  { code: 'ID', name: 'Indonesia',            flag: '🇮🇩', dialCode: '+62'  },
-  { code: 'TH', name: 'Thailand',             flag: '🇹🇭', dialCode: '+66'  },
-  { code: 'VN', name: 'Vietnam',              flag: '🇻🇳', dialCode: '+84'  },
-  // East Asia
-  { code: 'CN', name: 'China',                flag: '🇨🇳', dialCode: '+86'  },
-  { code: 'JP', name: 'Japan',                flag: '🇯🇵', dialCode: '+81'  },
-  { code: 'KR', name: 'South Korea',          flag: '🇰🇷', dialCode: '+82'  },
-  // Oceania
-  { code: 'AU', name: 'Australia',            flag: '🇦🇺', dialCode: '+61'  },
-  { code: 'NZ', name: 'New Zealand',          flag: '🇳🇿', dialCode: '+64'  },
-  // Europe
-  { code: 'GB', name: 'United Kingdom',       flag: '🇬🇧', dialCode: '+44'  },
-  { code: 'DE', name: 'Germany',              flag: '🇩🇪', dialCode: '+49'  },
-  { code: 'FR', name: 'France',               flag: '🇫🇷', dialCode: '+33'  },
-  { code: 'IT', name: 'Italy',                flag: '🇮🇹', dialCode: '+39'  },
-  { code: 'ES', name: 'Spain',                flag: '🇪🇸', dialCode: '+34'  },
-  { code: 'NL', name: 'Netherlands',          flag: '🇳🇱', dialCode: '+31'  },
-  { code: 'SE', name: 'Sweden',               flag: '🇸🇪', dialCode: '+46'  },
-  { code: 'NO', name: 'Norway',               flag: '🇳🇴', dialCode: '+47'  },
-  { code: 'DK', name: 'Denmark',              flag: '🇩🇰', dialCode: '+45'  },
-  { code: 'CH', name: 'Switzerland',          flag: '🇨🇭', dialCode: '+41'  },
-  { code: 'AT', name: 'Austria',              flag: '🇦🇹', dialCode: '+43'  },
-  { code: 'PL', name: 'Poland',               flag: '🇵🇱', dialCode: '+48'  },
-  { code: 'PT', name: 'Portugal',             flag: '🇵🇹', dialCode: '+351' },
-  { code: 'BE', name: 'Belgium',              flag: '🇧🇪', dialCode: '+32'  },
-  { code: 'GR', name: 'Greece',               flag: '🇬🇷', dialCode: '+30'  },
-  { code: 'CZ', name: 'Czech Republic',       flag: '🇨🇿', dialCode: '+420' },
-  { code: 'HU', name: 'Hungary',              flag: '🇭🇺', dialCode: '+36'  },
-  { code: 'RO', name: 'Romania',              flag: '🇷🇴', dialCode: '+40'  },
-  { code: 'RU', name: 'Russia',               flag: '🇷🇺', dialCode: '+7'   },
-  { code: 'TR', name: 'Turkey',               flag: '🇹🇷', dialCode: '+90'  },
-  // Americas
-  { code: 'US', name: 'United States',        flag: '🇺🇸', dialCode: '+1'   },
-  { code: 'CA', name: 'Canada',               flag: '🇨🇦', dialCode: '+1'   },
-  { code: 'BR', name: 'Brazil',               flag: '🇧🇷', dialCode: '+55'  },
-  { code: 'MX', name: 'Mexico',               flag: '🇲🇽', dialCode: '+52'  },
-  { code: 'AR', name: 'Argentina',            flag: '🇦🇷', dialCode: '+54'  },
-  { code: 'CL', name: 'Chile',                flag: '🇨🇱', dialCode: '+56'  },
-  { code: 'CO', name: 'Colombia',             flag: '🇨🇴', dialCode: '+57'  },
-  // Africa
-  { code: 'NG', name: 'Nigeria',              flag: '🇳🇬', dialCode: '+234' },
-  { code: 'ZA', name: 'South Africa',         flag: '🇿🇦', dialCode: '+27'  },
-  { code: 'GH', name: 'Ghana',                flag: '🇬🇭', dialCode: '+233' },
-  { code: 'KE', name: 'Kenya',                flag: '🇰🇪', dialCode: '+254' },
-  { code: 'ET', name: 'Ethiopia',             flag: '🇪🇹', dialCode: '+251' },
-  { code: 'TZ', name: 'Tanzania',             flag: '🇹🇿', dialCode: '+255' },
-  { code: 'UG', name: 'Uganda',               flag: '🇺🇬', dialCode: '+256' },
-  { code: 'MA', name: 'Morocco',              flag: '🇲🇦', dialCode: '+212' },
-  { code: 'TN', name: 'Tunisia',              flag: '🇹🇳', dialCode: '+216' },
-];
-
-const registerSchema = z
-  .object({
-    shopName: z.string().min(2, 'Store name must be at least 2 characters'),
-    ownerName: z.string().min(2, 'Your name must be at least 2 characters'),
-    email: z.string().email('Please enter a valid email'),
-    phone: z.string().min(9, 'Please enter a valid phone number'),
-    country: z.string().min(1, 'Please select your country'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    confirmPassword: z.string(),
-    refCode: z.string().optional(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  });
+// Deliberately short: name, email, password. Store name, phone, country and
+// referral code are collected once inside the dashboard right after first
+// login (the "Finish setting up" step) - the same step social sign-ins use,
+// since Google/Apple/Facebook can't supply them either.
+const registerSchema = z.object({
+  ownerName: z.string().min(2, 'Your name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  refCode: z.string().optional(),
+});
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
@@ -117,7 +37,9 @@ function RegisterForm() {
   const [otpError, setOtpError] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
-  const [phoneDialCode, setPhoneDialCode] = useState('+971');
+  // Controlled so the social buttons can require it too — a first-time
+  // Google/Apple/Facebook sign-in creates an account, same as this form.
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const searchParams = useSearchParams();
   const refFromUrl = searchParams.get('ref') || '';
   const [isRefLocked, setIsRefLocked] = useState(false);
@@ -140,7 +62,7 @@ function RegisterForm() {
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { refCode: '', country: '' },
+    defaultValues: { refCode: '' },
   });
 
   useEffect(() => {
@@ -173,12 +95,31 @@ function RegisterForm() {
   }, [refFromUrl, setValue]);
 
   const refCode = watch('refCode');
-  const selectedCountry = watch('country');
-  const countryObj = COUNTRIES.find(c => c.code === selectedCountry);
 
-  useEffect(() => {
-    if (countryObj?.dialCode) setPhoneDialCode(countryObj.dialCode);
-  }, [countryObj]);
+  const requireTerms = () => {
+    if (termsAccepted) return true;
+    setError('Please tick the Terms of Service and Privacy Policy box below to continue.');
+    document.getElementById('terms')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  };
+
+  const handleSocial = async (provider: SocialProvider, token: string, extra?: { name?: string }) => {
+    setError('');
+    const res = await fetch(`${API_BASE}/api/v1/auth/social`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider, token, name: extra?.name,
+        ref_code: refCode || undefined,
+      }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof body.detail === 'string' ? body.detail : 'Sign-in failed. Please try again.');
+    setSuccess(true);
+    // Same hand-off as email signup: the token rides in the hash fragment
+    // (never sent to a server) so the dashboard opens already signed in.
+    window.location.href = `https://store.exiuscart.com/login#token=${body.access_token}`;
+  };
 
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
@@ -188,13 +129,10 @@ function RegisterForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          shop_name: data.shopName,
           owner_name: data.ownerName,
           email: data.email,
-          phone: `${phoneDialCode}${data.phone}`,
           password: data.password,
           ref_code: data.refCode || undefined,
-          country: data.country || undefined,
           plan_type: chosenPlan || undefined,
           billing_type: chosenPlan ? billingFromUrl : undefined,
         }),
@@ -204,9 +142,6 @@ function RegisterForm() {
         throw new Error(body.detail || 'Registration failed');
       }
       const body = await res.json();
-      if (data.country) {
-        localStorage.setItem('user_country', data.country);
-      }
       if (body.status === 'otp_sent') {
         setPendingEmail(body.email);
       } else {
@@ -335,255 +270,110 @@ function RegisterForm() {
     );
   }
 
+  const input = 'w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:border-transparent focus:outline-none transition text-sm [@media(max-height:760px)]:py-1.5';
   return (
-    <div className="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Create Your Account</h1>
-      <p className="text-gray-500 mb-6 text-sm sm:text-base">
-        {chosenPlan
-          ? `Start your ${chosenPlanLabel} plan — free for 7 days`
-          : 'Start your 7-day free trial today'}
+    <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm w-full max-w-md mx-auto [@media(max-height:760px)]:p-4">
+      <h1 className="text-xl font-bold text-gray-900 text-center">Sign up for ExiusCart</h1>
+      <p className="text-gray-500 mb-3 mt-0.5 text-sm text-center [@media(max-height:700px)]:hidden">
+        {chosenPlan ? `Start your ${chosenPlanLabel} plan — free for 7 days` : 'Start your 7-day free trial — no credit card'}
       </p>
 
-      {/* Trial Badge */}
-      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-4 flex items-center gap-2">
-        <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-        <p className="text-emerald-700 text-sm">
-          {chosenPlan ? 'No credit card required for 7 days' : 'No credit card required for trial'}
-        </p>
-      </div>
-
-      {/* Referral Badge */}
       {refCode && (
-        <div className="bg-[#6B3FD9]/5 border border-[#6B3FD9]/20 rounded-xl p-3 mb-4 flex items-center gap-2">
+        <div className="bg-[#6B3FD9]/5 border border-[#6B3FD9]/20 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
           <Tag className="w-4 h-4 text-[#6B3FD9] flex-shrink-0" />
-          <p className="text-[#6B3FD9] text-sm">
+          <p className="text-[#6B3FD9] text-xs">
             Referred by <span className="font-semibold">{refCode}</span>
           </p>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
+        <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-3">
           <p className="text-red-600 text-sm">{error}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
+      <div className="mb-2.5">
+        <SocialAuthButtons apiBase={API_BASE} beforeStart={requireTerms} onToken={handleSocial} onError={setError} />
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-2.5">
         <div>
-          <label htmlFor="shopName" className="text-xs font-medium text-gray-500 mb-1 block">
-            Store Name
-          </label>
-          <input
-            id="shopName"
-            type="text"
-            {...register('shopName')}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
-            placeholder="Your store name"
-          />
-          {errors.shopName && (
-            <p className="text-red-600 text-sm mt-1">{errors.shopName.message}</p>
-          )}
+          <label htmlFor="ownerName" className="text-xs font-medium text-gray-800 mb-0.5 block">Name</label>
+          <input id="ownerName" type="text" {...register('ownerName')} className={input} placeholder="Enter your name" />
+          {errors.ownerName && <p className="text-red-600 text-xs mt-1">{errors.ownerName.message}</p>}
         </div>
 
         <div>
-          <label htmlFor="ownerName" className="text-xs font-medium text-gray-500 mb-1 block">
-            Your Name
-          </label>
-          <input
-            id="ownerName"
-            type="text"
-            {...register('ownerName')}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
-            placeholder="Your full name"
-          />
-          {errors.ownerName && (
-            <p className="text-red-600 text-sm mt-1">{errors.ownerName.message}</p>
-          )}
+          <label htmlFor="email" className="text-xs font-medium text-gray-800 mb-0.5 block">Email</label>
+          <input id="email" type="email" {...register('email')} className={input} placeholder="Enter your email address" />
+          {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email.message}</p>}
         </div>
 
         <div>
-          <label htmlFor="email" className="text-xs font-medium text-gray-500 mb-1 block">
-            Email Address
-          </label>
-          <input
-            id="email"
-            type="email"
-            {...register('email')}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
-            placeholder="you@example.com"
-          />
-          {errors.email && (
-            <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="phone" className="text-xs font-medium text-gray-500 mb-1 block">
-            Phone Number
-          </label>
-          <div className="flex">
-            <Select value={phoneDialCode} onValueChange={setPhoneDialCode}>
-              <SelectTrigger className="w-28 shrink-0 rounded-l-xl rounded-r-none border-r-0 px-3 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COUNTRIES.map(c => (
-                  <SelectItem key={c.code} value={c.dialCode}>
-                    <span className="flex items-center gap-2"><CountryFlag code={c.code} /> {c.dialCode}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input
-              id="phone"
-              type="tel"
-              {...register('phone')}
-              className="flex-1 min-w-0 px-4 py-3 bg-gray-50 border border-gray-200 rounded-r-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
-              placeholder="50 123 4567"
-            />
-          </div>
-          {errors.phone && (
-            <p className="text-red-600 text-sm mt-1">{errors.phone.message}</p>
-          )}
-        </div>
-
-        {/* Country */}
-        <div>
-          <label htmlFor="country" className="text-xs font-medium text-gray-500 mb-1 flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5" /> Country <span className="text-red-500">*</span>
-          </label>
+          <label htmlFor="password" className="text-xs font-medium text-gray-800 mb-0.5 block">Password</label>
           <div className="relative">
-            <Select
-              value={selectedCountry || undefined}
-              onValueChange={(v) => setValue('country', v, { shouldValidate: true })}
-            >
-              <SelectTrigger id="country" className="text-sm sm:text-base">
-                <SelectValue placeholder="Select your country..." />
-              </SelectTrigger>
-              <SelectContent>
-                {COUNTRIES.map(c => (
-                  <SelectItem key={c.code} value={c.code}>
-                    <span className="flex items-center gap-2"><CountryFlag code={c.code} /> {c.name}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {errors.country && (
-            <p className="text-red-600 text-sm mt-1">{errors.country.message}</p>
-          )}
-          {countryObj && (
-            <p className="text-gray-400 text-xs mt-1">Billed in USD • International cards accepted</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="password" className="text-xs font-medium text-gray-500 mb-1 block">
-            Password
-          </label>
-          <div className="relative">
-            <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              {...register('password')}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition pr-12 text-sm sm:text-base"
-              placeholder="Min 8 characters"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
+            <input id="password" type={showPassword ? 'text' : 'password'} {...register('password')}
+              className={`${input} pr-11`} placeholder="Create a password (min 8 characters)" />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
-          {errors.password && (
-            <p className="text-red-600 text-sm mt-1">{errors.password.message}</p>
-          )}
+          {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password.message}</p>}
         </div>
 
-        <div>
-          <label htmlFor="confirmPassword" className="text-xs font-medium text-gray-500 mb-1 block">
-            Confirm Password
-          </label>
+        <div className="flex items-start gap-2.5">
           <input
-            id="confirmPassword"
-            type="password"
-            {...register('confirmPassword')}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base"
-            placeholder="Confirm your password"
-          />
-          {errors.confirmPassword && (
-            <p className="text-red-600 text-sm mt-1">{errors.confirmPassword.message}</p>
-          )}
-        </div>
-
-        {/* Referral Code Field */}
-        <div>
-          <label htmlFor="refCode" className="text-xs font-medium text-gray-500 mb-1 flex items-center gap-1.5">
-            Referral Code
-            {isRefLocked
-              ? <span className="text-[#6B3FD9] text-xs font-medium">(applied)</span>
-              : <span className="text-gray-400">(optional)</span>
-            }
-          </label>
-          <div className="relative">
-            <input
-              id="refCode"
-              type="text"
-              {...register('refCode')}
-              readOnly={isRefLocked}
-              className={`w-full px-4 py-3 pr-10 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none transition text-sm sm:text-base uppercase ${
-                isRefLocked
-                  ? 'bg-[#6B3FD9]/5 border border-[#6B3FD9]/30 cursor-not-allowed text-[#6B3FD9]'
-                  : 'bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-[#6B3FD9]'
-              }`}
-              placeholder="e.g., JOHN8F2A"
-            />
-            {isRefLocked && (
-              <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B3FD9]" />
-            )}
-          </div>
-        </div>
-      </div>
-
-        <div className="flex items-start gap-3 pt-4 max-w-md mx-auto">
-          <input
-            type="checkbox"
-            id="terms"
-            required
+            type="checkbox" id="terms" required
+            checked={termsAccepted}
+            onChange={(e) => { setTermsAccepted(e.target.checked); if (e.target.checked) setError(''); }}
             className="w-4 h-4 mt-0.5 rounded border-gray-300 bg-gray-50 text-[#6B3FD9] focus:ring-[#6B3FD9] focus:ring-offset-0"
           />
-          <label htmlFor="terms" className="text-sm text-gray-500">
-            I agree to the{' '}
-            <Link href="/terms" className="text-[#6B3FD9] hover:text-[#5A2EC9] transition">
-              Terms of Service
-            </Link>{' '}
+          <label htmlFor="terms" className="text-xs text-gray-600 leading-snug">
+            I agree to ExiusCart&apos;s{' '}
+            <Link href="/terms" className="text-[#6B3FD9] hover:text-[#5A2EC9] transition">terms of use</Link>{' '}
             and{' '}
-            <Link href="/privacy" className="text-[#6B3FD9] hover:text-[#5A2EC9] transition">
-              Privacy Policy
-            </Link>
+            <Link href="/privacy" className="text-[#6B3FD9] hover:text-[#5A2EC9] transition">privacy policy</Link>.
           </label>
         </div>
 
         <button
-          type="submit"
-          disabled={isLoading}
-          className="block mx-auto max-w-md w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-3 sm:py-4 rounded-2xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+          type="submit" disabled={isLoading}
+          className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
-          Create Account
+          Create account
         </button>
       </form>
 
-      <p className="text-center mt-6 text-gray-500 text-sm sm:text-base">
+      <p className="text-center mt-3 text-gray-600 text-sm">
         Already have an account?{' '}
         <a href="https://store.exiuscart.com/login" className="text-[#6B3FD9] font-semibold hover:text-[#5A2EC9] transition">
-          Sign in
+          Log in
         </a>
       </p>
+    </div>
+  );
+}
+
+function Showcase() {
+  return (
+    <div className="hidden lg:flex flex-col justify-center">
+      <div className="rounded-3xl bg-gradient-to-br from-[#1B1146] via-[#2B1A6E] to-[#4A2EC9] p-8 shadow-xl">
+        <h2 className="text-3xl font-bold text-white leading-tight">
+          Run your whole business<br />from one dashboard.
+        </h2>
+        <p className="mt-2 text-sm text-indigo-200">POS, inventory, invoicing and every sales channel — free for 7 days.</p>
+        <div className="mt-6 overflow-hidden rounded-xl border border-white/15 shadow-2xl">
+          <Image src="/auth-preview.webp" alt="ExiusCart dashboard" width={1400} height={933} priority className="h-auto w-full" />
+        </div>
+        <div className="mt-6 grid grid-cols-3 gap-3 text-xs text-indigo-100">
+          <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-amber-300" /> Set up in minutes</div>
+          <div className="flex items-center gap-2"><Globe2 className="h-4 w-4 text-sky-300" /> Sell on every channel</div>
+          <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-300" /> No card needed</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -591,18 +381,13 @@ function RegisterForm() {
 export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-[#F5F3EF]">
-      <Navbar />
-      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
-        <Link href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-800 text-sm mb-6 transition">
-          <ArrowLeft className="w-4 h-4" />
-          Back to home
-        </Link>
-
+      <AuthHeader />
+      <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-4 lg:grid-cols-[minmax(0,28rem)_1fr]">
         <Suspense fallback={null}>
           <RegisterForm />
         </Suspense>
+        <Showcase />
       </div>
     </div>
   );
 }
-

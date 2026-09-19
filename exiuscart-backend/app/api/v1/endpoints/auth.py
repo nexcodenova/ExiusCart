@@ -230,7 +230,7 @@ class CheckoutSignupIn(BaseModel):
     email: str
     plan_type: str          # launch | growth | scale
     billing_type: str       # monthly | yearly — the REAL cadence once billed
-    # true = the $1-for-14-days trial checkout (e.g. Scale's "Try for $1"
+    # true = the $1-for-7-days trial checkout (e.g. Scale's "Try for $1"
     # CTA) — charges $1 today via a dedicated Lemon Squeezy variant instead
     # of the plan's full price; false = a normal full-price checkout.
     trial_dollar: bool = False

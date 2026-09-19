@@ -33,7 +33,11 @@ api.interceptors.response.use(
       const isDeactivated =
         status === 403 &&
         (detail === 'User is deactivated' || detail === 'Account is deactivated');
-      if (status === 401 || isDeactivated || isRefunded) {
+      // A 401 from the sign-in endpoints themselves (wrong password, a social
+      // token that failed verification) is a form error to show in place, not
+      // an expired session — redirecting would reload the page and lose it.
+      const isAuthCall = String(error.config?.url ?? '').startsWith('/auth/');
+      if ((status === 401 && !isAuthCall) || isDeactivated || isRefunded) {
         localStorage.removeItem('access_token');
         localStorage.removeItem('shop_id');
         window.location.href = isRefunded ? '/login?reason=refunded' : isDeactivated ? '/login?reason=deactivated' : '/login';
@@ -54,6 +58,14 @@ export const authApi = {
     api.post('/auth/register', data),
   setupPassword: (token: string, password: string) =>
     api.post('/auth/setup-password', { token, password }),
+  social: (provider: string, token: string, name?: string, allowSignup = true) =>
+    api.post('/auth/social', { provider, token, name, allow_signup: allowSignup }),
+  forgotPassword: (email: string) =>
+    api.post('/auth/forgot-password', { email }),
+  resetPassword: (token: string, password: string) =>
+    api.post('/auth/reset-password', { token, password }),
+  completeProfile: (data: { phone?: string; country?: string; shop_name?: string; ref_code?: string }) =>
+    api.post('/auth/complete-profile', data),
 };
 
 // ── Users ─────────────────────────────────────────────

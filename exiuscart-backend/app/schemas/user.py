@@ -36,6 +36,9 @@ class UserResponse(UserBase):
     is_active: bool
     is_superuser: bool = False
     created_at: datetime
+    # Read by the dashboard's "finish setting up" step to know what's still missing.
+    country: Optional[str] = None
+    referred_by_code: Optional[str] = None
 
     class Config:
         from_attributes = True

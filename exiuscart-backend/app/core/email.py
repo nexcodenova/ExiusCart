@@ -345,6 +345,28 @@ def send_password_setup_email(to: str, full_name: str, setup_url: str) -> bool:
     )
 
 
+def send_password_reset_email(to: str, full_name: str, reset_url: str) -> bool:
+    first = (full_name or "there").split()[0]
+    content = f"""
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Reset your password, {first}</h2>
+      <p style="margin:0 0 20px;color:#94a3b8;line-height:1.7;">
+        We got a request to reset your ExiusCart password. Click the button below to choose a new one.
+        This link expires in <strong style="color:#fff;">1 hour</strong> and works once.
+      </p>
+      <a href="{reset_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:600;font-size:14px;margin-bottom:20px;">
+        Reset Password →
+      </a>
+      <p style="margin:0;color:#64748b;font-size:12px;">
+        If you didn't ask for this, you can ignore this email — your password won't change.
+      </p>"""
+    return send_email(
+        to=to,
+        subject="Reset your ExiusCart password",
+        html_body=_welcome_base(content),
+        text_body=f"Hi {first}, reset your ExiusCart password here: {reset_url} (expires in 1 hour, works once). If you didn't ask for this, ignore this email.",
+    )
+
+
 # ── Affiliate email templates ─────────────────────────────────────────────────
 
 def send_affiliate_pending_email(to: str, full_name: str) -> bool:
