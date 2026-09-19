@@ -11,6 +11,7 @@ import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { applyBrandColor } from '@/lib/brand-color';
+import { WelcomeSplash } from '@/components/welcome-splash';
 
 // Only page an expired trial can still reach — everywhere else (Quotations,
 // POS, Add Product, every sidebar link) shows the lock screen below instead
@@ -27,7 +28,18 @@ const ALLOWED_WHEN_EXPIRED = ['/dashboard/billing'];
 // page and the PDF export, which is what this checks skip.
 const PRINT_ONLY_PATTERN = /\/(invoice|print|payment-receipt|packing-slip|barcode)(\/|$)/;
 
-export default function DashboardLayout({
+// Splash sits outside the auth gate so it mounts on the very first render —
+// otherwise the dashboard shell would flash for a frame before it appeared.
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <WelcomeSplash />
+      <DashboardShell>{children}</DashboardShell>
+    </>
+  );
+}
+
+function DashboardShell({
   children,
 }: {
   children: React.ReactNode;

@@ -8,6 +8,7 @@ import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 import { dateRangeToStatsParams } from '@/lib/dashboard/dashboard-types';
 
 import { DashboardHeader } from '@/components/dashboard/dashboard-header';
+import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { OverviewCards } from '@/components/dashboard/overview-cards';
 import { RevenueTrend } from '@/components/dashboard/revenue-trend';
 import { RevenueByChannel } from '@/components/dashboard/revenue-by-channel';
@@ -44,6 +45,10 @@ export default function DashboardPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [shopId, dateRange]);
+
+  // First load only — later date-range changes keep the existing content
+  // on screen while the components' own loading states update in place.
+  if (loading && !stats) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-4">

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { BorderBeam } from '@/components/ui/border-beam';
+import { WELCOME_FLAG } from '@/components/welcome-splash';
 
 interface FeatureCard {
   label: string;
@@ -188,6 +189,7 @@ export default function LoginPage() {
             const shopRes = await shopApi.getMyShop();
             if (shopRes.data?.id) localStorage.setItem('shop_id', String(shopRes.data.id));
           } catch {}
+          try { sessionStorage.setItem(WELCOME_FLAG, '1'); } catch {}
           window.location.href = '/dashboard';
         })();
       }
@@ -213,6 +215,7 @@ export default function LoginPage() {
           localStorage.setItem('shop_id', String(shopRes.data.id));
         }
       } catch {}
+      try { sessionStorage.setItem(WELCOME_FLAG, '1'); } catch {}
       window.location.href = '/dashboard';
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
