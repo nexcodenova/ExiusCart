@@ -47,7 +47,7 @@ export default function RefundPolicyPage() {
             <div className="w-11 h-11 rounded-xl bg-[#6B3FD9]/10 flex items-center justify-center mx-auto mb-3">
               <BadgeCheck className="w-5 h-5 text-[#6B3FD9]" />
             </div>
-            <p className="text-white font-semibold text-sm">14-Day Free Trial</p>
+            <p className="text-white font-semibold text-sm">7-Day Free Trial</p>
             <p className="text-gray-500 text-xs mt-1">No credit card required. Just try it.</p>
           </div>
           <div className="bg-[#151F32] border border-green-500/20 rounded-2xl p-5 text-center">

@@ -33,7 +33,7 @@ export function LiveStats() {
         <StatItem value={fmt(stats?.emails_generated ?? null)} label="Invoices & Marketing Mail" live />
         <StatItem value={fmt(stats?.products_added ?? null)} label="Products Added" live />
         <StatItem value="99.9%" label="Uptime" />
-        <StatItem value="14-day" label="Free Trial" />
+        <StatItem value="7-day" label="Free Trial" />
       </div>
     </div>
   );

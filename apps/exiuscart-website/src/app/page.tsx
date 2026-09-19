@@ -511,7 +511,7 @@ export default function HomePage() {
             </h2>
             <p className="text-gray-500 text-lg leading-relaxed mb-10">
               ExiusCart handles your POS, inventory, invoicing, HR, and more — so you
-              can focus on selling. 14 days free, no credit card.
+              can focus on selling. 7 days free, no credit card.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
@@ -528,7 +528,7 @@ export default function HomePage() {
               </Link>
             </div>
             <p className="text-gray-400 text-sm mt-6">
-              14-day free trial · No credit card required · Cancel anytime
+              7-day free trial · No credit card required · Cancel anytime
             </p>
           </div>
         </div>

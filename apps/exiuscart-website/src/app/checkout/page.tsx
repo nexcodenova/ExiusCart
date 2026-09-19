@@ -56,9 +56,9 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const plan = (searchParams.get('plan') || 'launch') as 'launch' | 'growth' | 'scale';
   const billing = (searchParams.get('billing') || 'monthly') as 'monthly' | 'yearly';
-  // trial=dollar — the $1-for-14-days path (Scale's "Try for $1" CTA).
+  // trial=dollar — the $1-for-7-days path (Growth/Scale's "Try for $1" CTA).
   // Charges $1 today instead of the full plan price; full billing starts
-  // automatically after the 14-day window.
+  // automatically after the 7-day window.
   const trialDollar = searchParams.get('trial') === 'dollar';
   const paymentStatus = searchParams.get('status'); // 'success' after returning from Lemon Squeezy
   const { currency } = useCurrency();

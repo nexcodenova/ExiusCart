@@ -129,7 +129,7 @@ export default function FeaturesPage() {
         <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
             { n: '10+', label: 'Built-in modules' },
-            { n: '14 days', label: 'Free trial, no card' },
+            { n: '7 days', label: 'Free trial, no card' },
             { n: 'AED & USD', label: 'Multi-currency' },
             { n: '5% / 0%', label: 'Auto VAT' },
           ].map((s) => (
@@ -269,7 +269,7 @@ export default function FeaturesPage() {
             </h2>
             <p className="text-lg md:text-xl text-gray-500 leading-relaxed mb-10 max-w-xl">
               ExiusCart handles your POS, inventory, invoicing, HR, and more —
-              so you can focus on selling. 14 days free, no credit card.
+              so you can focus on selling. 7 days free, no credit card.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link

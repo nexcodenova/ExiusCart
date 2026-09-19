@@ -232,7 +232,7 @@ export default function AboutPage() {
             Ready to run your business smarter?
           </h2>
           <p className="text-gray-400 mb-10 text-[15px]">
-            Start your free 14-day trial — no credit card required.
+            Start your free 7-day trial — no credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link

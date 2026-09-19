@@ -275,7 +275,7 @@ export default async function BlogPage() {
                 Ready to run your business<br className="hidden md:block" /> the smart way?
               </h2>
               <p className="text-gray-400 text-sm max-w-md">
-                14-day free trial. All features included. No credit card required.
+                7-day free trial. All features included. No credit card required.
               </p>
             </div>
             <div className="flex flex-col gap-3 shrink-0">

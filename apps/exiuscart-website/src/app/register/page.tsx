@@ -8,6 +8,8 @@ import { z } from 'zod';
 import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Loader2, ArrowLeft, Check, Tag, Globe, Mail, Lock } from 'lucide-react';
 import { Navbar } from '@/components/layout/navbar';
+import { CountryFlag } from '@/components/country-flag';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const COUNTRIES = [
   // Middle East (top — primary market)
@@ -120,8 +122,9 @@ function RegisterForm() {
   const refFromUrl = searchParams.get('ref') || '';
   const [isRefLocked, setIsRefLocked] = useState(false);
   // Arriving from the pricing page's Launch "Try for free" CTA carries the
-  // plan — a real 7-day free trial (no card), not the generic 14-day trial.
-  // Growth/Scale never link here — they have no free week, only the $1
+  // plan — a real 7-day free trial (no card), same length as the generic
+  // fallback copy below. Growth/Scale never link here — they have no free
+  // week, only the $1
   // checkout flow (see /checkout?trial=dollar). No plan param = organic
   // signup, unchanged.
   const planFromUrl = searchParams.get('plan');
@@ -338,7 +341,7 @@ function RegisterForm() {
       <p className="text-gray-500 mb-6 text-sm sm:text-base">
         {chosenPlan
           ? `Start your ${chosenPlanLabel} plan — free for 7 days`
-          : 'Start your 14-day free trial today'}
+          : 'Start your 7-day free trial today'}
       </p>
 
       {/* Trial Badge */}
@@ -420,17 +423,18 @@ function RegisterForm() {
             Phone Number
           </label>
           <div className="flex">
-            <select
-              value={phoneDialCode}
-              onChange={(e) => setPhoneDialCode(e.target.value)}
-              className="bg-gray-50 border border-gray-200 border-r-0 rounded-l-xl pl-3 pr-1 py-3 text-gray-900 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm appearance-none cursor-pointer w-28 shrink-0"
-            >
-              {COUNTRIES.map(c => (
-                <option key={c.code} value={c.dialCode}>
-                  {c.flag} {c.dialCode}
-                </option>
-              ))}
-            </select>
+            <Select value={phoneDialCode} onValueChange={setPhoneDialCode}>
+              <SelectTrigger className="w-28 shrink-0 rounded-l-xl rounded-r-none border-r-0 px-3 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map(c => (
+                  <SelectItem key={c.code} value={c.dialCode}>
+                    <span className="flex items-center gap-2"><CountryFlag code={c.code} /> {c.dialCode}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <input
               id="phone"
               type="tel"
@@ -450,16 +454,21 @@ function RegisterForm() {
             <Globe className="w-3.5 h-3.5" /> Country <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <select
-              id="country"
-              {...register('country')}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#6B3FD9] focus:outline-none transition text-sm sm:text-base appearance-none"
+            <Select
+              value={selectedCountry || undefined}
+              onValueChange={(v) => setValue('country', v, { shouldValidate: true })}
             >
-              <option value="">Select your country...</option>
-              {COUNTRIES.map(c => (
-                <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
-              ))}
-            </select>
+              <SelectTrigger id="country" className="text-sm sm:text-base">
+                <SelectValue placeholder="Select your country..." />
+              </SelectTrigger>
+              <SelectContent>
+                {COUNTRIES.map(c => (
+                  <SelectItem key={c.code} value={c.code}>
+                    <span className="flex items-center gap-2"><CountryFlag code={c.code} /> {c.name}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {errors.country && (
             <p className="text-red-600 text-sm mt-1">{errors.country.message}</p>

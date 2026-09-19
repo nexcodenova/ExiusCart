@@ -433,7 +433,7 @@ export default function IntegrationsPage() {
             Everything connected.<br />Ready on day one.
           </h2>
           <p className="text-gray-400 mb-10 text-[15px]">
-            Start your free 14-day trial and experience all integrations first-hand.
+            Start your free 7-day trial and experience all integrations first-hand.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link

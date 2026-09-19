@@ -854,7 +854,7 @@ export default function PricingPage() {
               Ready to run your<br />business smarter?
             </h2>
             <p className="text-lg text-gray-500 leading-relaxed mb-10 max-w-lg">
-              14 days free. No credit card. Every feature unlocked from day one —
+              7 days free. No credit card. Every feature unlocked from day one —
               POS, invoicing, inventory, HR, appointments and more.
             </p>
             <div className="flex flex-wrap gap-4">

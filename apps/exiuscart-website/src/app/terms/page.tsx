@@ -84,7 +84,8 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-semibold text-white mb-4">4. Free Trial</h2>
                 <p className="text-gray-400 leading-relaxed">
-                  ExiusCart offers a 14-day free trial for new users. During the trial period, you will have
+                  ExiusCart offers a 7-day free trial for new users on the Launch plan (Growth and Scale
+                  start at $1 for the first 7 days instead). During the trial period, you will have
                   access to all features of your selected plan. No credit card is required to start the trial.
                   At the end of the trial, you may choose to subscribe to a paid plan or your account will
                   be limited to basic features.

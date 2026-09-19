@@ -1,6 +1,14 @@
 import type { Metadata } from 'next';
 import { Inter, Cairo } from 'next/font/google';
 import Script from 'next/script';
+// Imported before globals.css so Tailwind's own width/height utilities
+// (used to size every <CountryFlag>) win the cascade over flag-icons' own
+// em-based sizing, which has equal selector specificity. Bundled locally,
+// not fetched from a CDN — an earlier version used react-country-flag's
+// `svg` mode, which pulls each flag from cdn.jsdelivr.net/gh/lipis/... at
+// runtime, a GitHub-raw-proxy path some ad-blockers/DNS filters block,
+// silently leaving a broken image with no visible flag at all.
+import 'flag-icons/css/flag-icons.min.css';
 import './globals.css';
 import { Providers } from '@/components/providers';
 import { WhatsAppButton } from '@/components/ui/whatsapp-button';
