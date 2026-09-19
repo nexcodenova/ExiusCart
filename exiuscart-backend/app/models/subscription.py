@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Numeric, Index, text
+from sqlalchemy.types import TypeDecorator
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -47,6 +48,32 @@ class Plan(Base):
     is_active = Column(Boolean, default=True)
 
 
+# Plan names retired in the 2026-09 renames. main.py's startup migration
+# rewrites stored rows, but until the backend has restarted against a given
+# database a stale row is still there, and every lookup keyed by plan_type
+# (display name, order/product/email limits, TheDersi checks) silently missed
+# it: the badge showed the title-cased raw string and limits fell back to
+# free_trial's. Translating on read/bind makes an un-migrated row behave
+# exactly like a migrated one.
+LEGACY_PLAN_ALIASES = {
+    "thedersi_basic": "thedersi_free_forever",
+    "thedersi_pro": "launch",
+    "starter": "launch",
+    "premium": "scale",
+}
+
+
+class NormalizedPlanType(TypeDecorator):
+    impl = String(20)
+    cache_ok = True
+
+    def process_result_value(self, value, dialect):
+        return LEGACY_PLAN_ALIASES.get(value, value)
+
+    def process_bind_param(self, value, dialect):
+        return LEGACY_PLAN_ALIASES.get(value, value)
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
     __table_args__ = (
@@ -61,7 +88,7 @@ class Subscription(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    plan_type = Column(String(20), nullable=False)
+    plan_type = Column(NormalizedPlanType, nullable=False)
     billing_type = Column(String(20), nullable=False)  # one_time or monthly
     status = Column(String(20), default=SubscriptionStatus.TRIAL.value)
     amount_paid = Column(Numeric(10, 2), nullable=True)

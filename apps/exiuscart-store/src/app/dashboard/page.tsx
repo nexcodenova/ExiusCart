@@ -9,6 +9,7 @@ import { dateRangeToStatsParams } from '@/lib/dashboard/dashboard-types';
 
 import { DashboardHeader } from '@/components/dashboard/dashboard-header';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
+import { UsageBanner } from '@/components/usage-banner';
 import { OverviewCards } from '@/components/dashboard/overview-cards';
 import { RevenueTrend } from '@/components/dashboard/revenue-trend';
 import { RevenueByChannel } from '@/components/dashboard/revenue-by-channel';
@@ -60,6 +61,8 @@ export default function DashboardPage() {
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
       />
+
+      {shopId && <UsageBanner shopId={shopId} show={['orders', 'products']} warnOnly />}
 
       <OverviewCards stats={stats} loading={loading} fmt={fmt} />
 

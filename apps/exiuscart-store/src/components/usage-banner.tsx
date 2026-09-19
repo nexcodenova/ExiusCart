@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { AlertTriangle } from 'lucide-react';
 import { usageApi } from '@/lib/api';
 
 interface UsageItem {
@@ -23,7 +25,13 @@ interface UsageData {
 interface UsageBannerProps {
   shopId: string;
   show: ('invoice_emails' | 'quotation_emails' | 'orders' | 'products')[];
+  // Render nothing unless something is at/near its limit — for placing the
+  // warning on pages (e.g. the dashboard home) that shouldn't carry the
+  // full usage bars all the time.
+  warnOnly?: boolean;
 }
+
+const NEAR_LIMIT_PCT = 80;
 
 function Bar({ item, label }: { item: UsageItem; label: string }) {
   if (!item || item.limit === null) return null; // unlimited — don't show
@@ -51,7 +59,7 @@ function Bar({ item, label }: { item: UsageItem; label: string }) {
   );
 }
 
-export function UsageBanner({ shopId, show }: UsageBannerProps) {
+export function UsageBanner({ shopId, show, warnOnly = false }: UsageBannerProps) {
   const [data, setData] = useState<UsageData | null>(null);
 
   useEffect(() => {
@@ -72,14 +80,59 @@ export function UsageBanner({ shopId, show }: UsageBannerProps) {
 
   if (items.length === 0) return null;
 
+  // Only the two limits that actually reject real work when hit: channel
+  // orders (the backend answers the marketplace's order webhook with a 429,
+  // so the buyer's order is refused) and products (creating one fails).
+  const warnings = items
+    .filter(({ key, item }) => (key === 'orders' || key === 'products') && item.limit! > 0
+      && (item.used / item.limit!) * 100 >= NEAR_LIMIT_PCT)
+    .map(({ key, label, item }) => ({ key, label, item, full: item.used >= item.limit! }));
+
+  if (warnOnly && warnings.length === 0) return null;
+
+  // Plans set by TheDersi can't be upgraded from ExiusCart billing.
+  const isTheDersi = (data.plan ?? '').startsWith('thedersi');
+
   return (
-    <div className="bg-card border border-border rounded-xl px-3.5 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-2">
-      {items.map(({ key, label, item }) => (
-        <Bar key={key} item={item} label={label} />
+    <div className="space-y-2">
+      {!warnOnly && (
+        <div className="bg-card border border-border rounded-xl px-3.5 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-2">
+          {items.map(({ key, label, item }) => (
+            <Bar key={key} item={item} label={label} />
+          ))}
+          <span className="text-xs text-muted-foreground ml-auto whitespace-nowrap">
+            Resets {data.reset_label}
+          </span>
+        </div>
+      )}
+      {warnings.map(({ key, label, item, full }) => (
+        <div key={key} role="alert"
+          className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-3.5 py-2.5 text-sm ${
+            full
+              ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300'
+              : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300'
+          }`}>
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 flex-1">
+            {full
+              ? key === 'orders'
+                ? `Monthly order limit reached (${item.used}/${item.limit}). New orders from your sales channels are being rejected until ${data.reset_label}.`
+                : `Product limit reached (${item.used}/${item.limit}). You can't add more products on this plan.`
+              : key === 'orders'
+                ? `You've used ${item.used} of ${item.limit} channel orders this month. Once you reach ${item.limit}, new channel orders are rejected until ${data.reset_label}.`
+                : `You're using ${item.used} of ${item.limit} ${label.toLowerCase()}. You won't be able to add more once you reach ${item.limit}.`}
+          </span>
+          {isTheDersi ? (
+            <Link href="/dashboard/billing" className="whitespace-nowrap text-xs font-semibold underline">
+              See TheDersi plans
+            </Link>
+          ) : (
+            <Link href="/dashboard/billing" className="whitespace-nowrap text-xs font-semibold underline">
+              Upgrade plan
+            </Link>
+          )}
+        </div>
       ))}
-      <span className="text-xs text-muted-foreground ml-auto whitespace-nowrap">
-        Resets {data.reset_label}
-      </span>
     </div>
   );
 }
