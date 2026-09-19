@@ -16,7 +16,7 @@ const regionNames = typeof Intl !== 'undefined' && 'DisplayNames' in Intl
 // The backend only names a handful of countries; visitors can come from
 // anywhere, so resolve any ISO code to its English name here.
 function countryName(code: string, fallback: string): string {
-  if (code === 'Unknown') return 'Unknown';
+  if (code === 'Unknown') return 'Other';
   try { return regionNames?.of(code) ?? fallback; } catch { return fallback; }
 }
 
@@ -96,10 +96,10 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
         {!selectedCode && allRows.some((r) => r.code === 'Unknown') && (
           <p className="pt-2 text-[10px] text-muted-foreground border-t border-border">
             {metric === 'orders'
-              ? '"Unknown" = orders from a customer added before country tracking, or from a source that doesn\'t report it yet.'
+              ? '"Other" = orders from a customer added before country tracking, or from a source that doesn\'t report it yet.'
               : metric === 'views'
-                ? '"Unknown" = views recorded before visitor countries were tracked, or where the lookup failed. Views cover your Custom Website storefront only.'
-                : '"Unknown" = customers added before country tracking, or from a source that doesn\'t report it yet.'}
+                ? '"Other" = views recorded before visitor countries were tracked, or where the lookup failed. Views cover your Custom Website storefront only.'
+                : '"Other" = customers added before country tracking, or from a source that doesn\'t report it yet.'}
           </p>
         )}
       </div>
