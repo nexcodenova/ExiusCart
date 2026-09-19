@@ -46,12 +46,12 @@ export const plans: Plan[] = [
     id: 'launch',
     name: 'Launch',
     description: 'For small stores ready to grow',
-    badge: 'Most Popular',
   },
   {
     id: 'growth',
     name: 'Growth',
     description: 'More channels, more suppliers, more room to grow',
+    badge: 'Most Popular',
   },
   {
     id: 'scale',

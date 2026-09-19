@@ -93,7 +93,7 @@ const makePlans = (period: BillingPeriod) => {
       period: periodLabel,
       trialNote: '7 days free, no card needed',
       description: 'For growing stores ready to scale',
-      badge: 'Most Popular',
+      badge: null,
       features: [
         { text: '3 staff accounts',                            included: true  },
         { text: 'Up to 1,000 products',                        included: true  },
@@ -107,7 +107,7 @@ const makePlans = (period: BillingPeriod) => {
         { text: 'Advanced analytics dashboards',               included: false },
         { text: 'HR, Projects, Helpdesk & AI tools',           included: false },
       ],
-      popular: true,
+      popular: false,
     },
     {
       id: 'growth',
@@ -117,7 +117,7 @@ const makePlans = (period: BillingPeriod) => {
       period: periodLabel,
       trialNote: '$1 for your first 7 days',
       description: 'More channels, more suppliers, more room to grow',
-      badge: null,
+      badge: 'Most Popular',
       features: [
         { text: '6 staff accounts',                            included: true  },
         { text: 'Up to 10,000 products',                       included: true  },
@@ -131,7 +131,7 @@ const makePlans = (period: BillingPeriod) => {
         { text: 'Advanced analytics dashboards',               included: true  },
         { text: 'HR, Projects, Helpdesk & AI tools',           included: true  },
       ],
-      popular: false,
+      popular: true,
     },
     {
       id: 'scale',
