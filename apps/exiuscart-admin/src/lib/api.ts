@@ -87,6 +87,11 @@ export const adminApi = {
   createShoppingProduct: (data: any) => api.post('/admin/shopping/products', data),
   updateShoppingProduct: (id: number, data: any) => api.put(`/admin/shopping/products/${id}`, data),
   deleteShoppingProduct: (id: number) => api.delete(`/admin/shopping/products/${id}`),
+  // Prodora Marketplace categories (tile image required to show up there)
+  getProdoraCategories: () => api.get('/admin/shopping/categories', { params: { prodora: true } }),
+  createProdoraCategory: (data: { name: string; image_url?: string | null }) => api.post('/admin/shopping/categories', data),
+  updateProdoraCategory: (id: number, data: { name: string; image_url?: string | null }) => api.put(`/admin/shopping/categories/${id}`, data),
+  deleteProdoraCategory: (id: number) => api.delete(`/admin/shopping/categories/${id}`),
   uploadShoppingImage: (file: File) => {
     const fd = new FormData();
     fd.append('file', file);

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -20,6 +21,7 @@ import {
   Newspaper,
   Star,
   Download,
+  ChevronDown,
 } from 'lucide-react';
 
 export const menuItems = [
@@ -39,6 +41,13 @@ export const menuItems = [
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
+// Sub-pages under Prodora — shown as a dropdown in this sidebar. menuItems
+// (above) stays flat because the mobile bottom nav reads it directly.
+const PRODORA_CHILDREN = [
+  { href: '/dashboard/shopping', label: 'Products', exact: true },
+  { href: '/dashboard/shopping/categories', label: 'Categories', exact: false },
+];
+
 interface AdminSidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
@@ -46,6 +55,8 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps) {
   const pathname = usePathname();
+  const onProdora = pathname.startsWith('/dashboard/shopping');
+  const [prodoraOpen, setProdoraOpen] = useState(onProdora);
 
   return (
     <aside
@@ -90,6 +101,49 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
       <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
+          if (item.href === '/dashboard/shopping') {
+            return (
+              <div key={item.href}>
+                <div className={`flex items-stretch rounded-lg transition-all ${onProdora ? 'bg-[#151F32] text-white' : 'text-gray-400 hover:bg-[#151F32] hover:text-white'}`}>
+                  <Link
+                    href={item.href}
+                    title={collapsed ? item.label : undefined}
+                    onClick={() => setProdoraOpen(true)}
+                    className="flex flex-1 items-center gap-3 px-3 py-2.5"
+                  >
+                    <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
+                    {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
+                  </Link>
+                  {!collapsed && (
+                    <button
+                      type="button" aria-label={prodoraOpen ? 'Collapse Prodora' : 'Expand Prodora'}
+                      onClick={() => setProdoraOpen((v) => !v)}
+                      className="flex w-10 items-center justify-center"
+                    >
+                      <ChevronDown className={`w-4 h-4 transition-transform ${prodoraOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+                {prodoraOpen && !collapsed && (
+                  <div className="mt-1 space-y-1 pl-4">
+                    {PRODORA_CHILDREN.map((child) => {
+                      const active = child.exact ? pathname === child.href : pathname.startsWith(child.href);
+                      return (
+                        <Link
+                          key={child.href} href={child.href}
+                          className={`block rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                            active ? 'bg-[#6B3FD9] text-black' : 'text-gray-400 hover:bg-[#151F32] hover:text-white'
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
           const isActive =
             pathname === item.href ||
             (item.href !== '/dashboard' && pathname.startsWith(item.href));
