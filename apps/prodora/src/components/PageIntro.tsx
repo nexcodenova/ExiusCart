@@ -35,7 +35,7 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <h1 className="text-[22px] font-bold leading-tight text-gray-900">{title}</h1>
+            <h1 className="text-xl font-bold leading-tight text-gray-900 sm:text-[22px]">{title}</h1>
             <button
               type="button"
               onClick={() => setShowHow(true)}
@@ -44,15 +44,15 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
               <Info className="h-4 w-4" /> How it works
             </button>
           </div>
-          <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>
+          <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-gray-500 sm:mt-0.5 sm:line-clamp-none sm:text-sm">{subtitle}</p>
         </div>
 
         <a
           href={RESEARCHER_WHATSAPP}
           target="_blank" rel="noopener noreferrer"
-          className="flex shrink-0 items-center gap-3 rounded-lg bg-white px-4 py-2.5 shadow-sm ring-1 ring-gray-200/70 transition hover:shadow-md"
+          className="flex shrink-0 items-center gap-3 rounded-lg bg-white px-3 py-2 shadow-sm ring-1 ring-gray-200/70 transition hover:shadow-md sm:px-4 sm:py-2.5"
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-blue-600">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-blue-600 sm:h-10 sm:w-10">
             {photoFailed ? (
               <UserRound className="h-5 w-5" />
             ) : (
@@ -60,7 +60,7 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
               <img src="/support/support_2.jpg" alt="" className="h-full w-full object-cover" onError={() => setPhotoFailed(true)} />
             )}
           </span>
-          <span className="text-sm leading-tight">
+          <span className="min-w-0 text-[13px] leading-tight sm:text-sm">
             <span className="block font-semibold text-gray-900">Need help choosing products?</span>
             <span className="inline-flex items-center gap-1 text-blue-600">
               <MessageCircle className="h-3.5 w-3.5" /> Contact our ecommerce researcher
@@ -71,7 +71,7 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
 
       {showHow && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowHow(false)}>
-          <div className="relative w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => setShowHow(false)} aria-label="Close" className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-500 shadow hover:text-gray-800">
               <X className="h-5 w-5" />
             </button>
@@ -89,7 +89,7 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
               </div>
             ) : null}
 
-            <div className="p-6">
+            <div className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900">Prodora</h2>
               <ul className="mt-4 space-y-4">
                 <li className="flex gap-3">

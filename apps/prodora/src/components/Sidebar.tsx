@@ -26,6 +26,7 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [promoDismissed, setPromoDismissed] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     shoppingApi.getCategories().then(setCategories).catch(() => {});
@@ -40,6 +41,18 @@ export default function Sidebar() {
   useEffect(() => {
     document.documentElement.dataset.sidebar = collapsed ? 'collapsed' : 'open';
   }, [collapsed]);
+
+  // The drawer closes on any navigation and on Esc, and the page behind it
+  // does not scroll while it is open.
+  useEffect(() => { setMobileOpen(false); }, [pathname, searchParams]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [mobileOpen]);
 
   const toggleCollapsed = () => {
     setCollapsed((c) => {
@@ -63,6 +76,47 @@ export default function Sidebar() {
 
   const researchActive = view === 'all' || isCategory || view === 'bestsellers' || view === 'trending' || onProduct || pathname === '/digital';
 
+  // The same navigation is used by the desktop rail and the mobile / tablet drawer.
+  const renderNav = (rail: boolean) => (
+    <nav className="flex-1 overflow-y-auto overflow-x-hidden pb-4">
+      <Group id="research" label="Research Hub" href="/browse" icon={WinningIcon} collapsed={rail} open={open.research} onToggle={toggle} onOpen={openGroup} highlight={researchActive}>
+        <NavItem href="/browse" label="Picked Products" active={view === 'all' || isCategory || onProduct} />
+        <NavItem href="/browse?view=bestsellers" label="Global Bestsellers" active={view === 'bestsellers'} />
+        <NavItem href="/browse?view=trending" label="Current Trends" active={view === 'trending'} />
+        <NavItem href="/digital" label="Digital Products" active={pathname === '/digital'} />
+      </Group>
+
+      <SingleItem href="/marketplace" label="Marketplace" icon={MarketplaceIcon} active={onMarketplace} collapsed={rail} />
+
+      <Group id="store" label="My Store" icon={StoreIcon} collapsed={rail} open={open.store} onToggle={toggle}>
+        <NavItem href="https://store.exiuscart.com/dashboard/products" label="Products" external />
+        <NavItem href="https://store.exiuscart.com/dashboard/orders" label="Orders" external />
+        <NavItem href="https://store.exiuscart.com/dashboard" label="Dashboard" external />
+      </Group>
+
+      <SingleItem href="/instructions" label="Instructions" icon={InstructionsIcon} active={pathname === '/instructions'} collapsed={rail} />
+
+      <SingleItem href="/academy" label="Academy" icon={AcademyIcon} active={soon === 'academy'} collapsed={rail} soon />
+    </nav>
+  );
+
+  const promo = !promoDismissed && (
+    <div className="relative mx-4 mb-3 rounded-xl bg-white/5 p-3.5 ring-1 ring-white/10">
+      <button type="button" onClick={() => setConfirmClose(true)} aria-label="Dismiss" className="absolute right-2 top-2 text-white/40 hover:text-white">
+        <X className="h-4 w-4" />
+      </button>
+      <p className="pr-5 text-sm font-bold">Ready to sell?</p>
+      <p className="mt-0.5 text-xs text-white/60">Import a product and it is live on your ExiusCart store.</p>
+      <a
+        href="https://store.exiuscart.com/dashboard"
+        target="_blank" rel="noopener noreferrer"
+        className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] py-2 text-xs font-semibold transition hover:bg-[#1E4FC2]"
+      >
+        Open my store <ArrowRight className="h-3.5 w-3.5" />
+      </a>
+    </div>
+  );
+
   return (
     <>
       <aside className={`hidden lg:flex flex-col fixed inset-y-0 left-0 bg-[#0E2647] text-white z-30 transition-[width] duration-200 ${collapsed ? 'w-[4.5rem]' : 'w-[14.5rem]'}`}>
@@ -71,44 +125,10 @@ export default function Sidebar() {
           {!collapsed && <span className="font-extrabold text-xl tracking-tight">Prodora</span>}
         </Link>
 
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden pb-4">
-          <Group id="research" label="Research Hub" href="/browse" icon={WinningIcon} collapsed={collapsed} open={open.research} onToggle={toggle} onOpen={openGroup} highlight={researchActive}>
-            <NavItem href="/browse" label="Picked Products" active={view === 'all' || isCategory || onProduct} />
-            <NavItem href="/browse?view=bestsellers" label="Global Bestsellers" active={view === 'bestsellers'} />
-            <NavItem href="/browse?view=trending" label="Current Trends" active={view === 'trending'} />
-            <NavItem href="/digital" label="Digital Products" active={pathname === '/digital'} />
-          </Group>
-
-          <SingleItem href="/marketplace" label="Marketplace" icon={MarketplaceIcon} active={onMarketplace} collapsed={collapsed} />
-
-          <Group id="store" label="My Store" icon={StoreIcon} collapsed={collapsed} open={open.store} onToggle={toggle}>
-            <NavItem href="https://store.exiuscart.com/dashboard/products" label="Products" external />
-            <NavItem href="https://store.exiuscart.com/dashboard/orders" label="Orders" external />
-            <NavItem href="https://store.exiuscart.com/dashboard" label="Dashboard" external />
-          </Group>
-
-          <SingleItem href="/instructions" label="Instructions" icon={InstructionsIcon} active={pathname === '/instructions'} collapsed={collapsed} />
-
-          <SingleItem href="/academy" label="Academy" icon={AcademyIcon} active={soon === 'academy'} collapsed={collapsed} soon />
-        </nav>
+        {renderNav(collapsed)}
 
         <div className="shrink-0 bg-[#06122A] pt-3">
-          {!collapsed && !promoDismissed && (
-            <div className="relative mx-4 mb-3 rounded-xl bg-white/5 p-3.5 ring-1 ring-white/10">
-              <button type="button" onClick={() => setConfirmClose(true)} aria-label="Dismiss" className="absolute right-2 top-2 text-white/40 hover:text-white">
-                <X className="h-4 w-4" />
-              </button>
-              <p className="pr-5 text-sm font-bold">Ready to sell?</p>
-              <p className="mt-0.5 text-xs text-white/60">Import a product and it is live on your ExiusCart store.</p>
-              <a
-                href="https://store.exiuscart.com/dashboard"
-                target="_blank" rel="noopener noreferrer"
-                className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] py-2 text-xs font-semibold transition hover:bg-[#1E4FC2]"
-              >
-                Open my store <ArrowRight className="h-3.5 w-3.5" />
-              </a>
-            </div>
-          )}
+          {!collapsed && promo}
           <button
             type="button"
             onClick={toggleCollapsed}
@@ -119,10 +139,36 @@ export default function Sidebar() {
           </button>
         </div>
       </aside>
-      <TopBar />
+
+      {/* Phones and tablets: the same menu slides in from the left. */}
+      <div className={`lg:hidden fixed inset-0 z-[110] ${mobileOpen ? '' : 'pointer-events-none'}`} aria-hidden={!mobileOpen}>
+        <div
+          onClick={() => setMobileOpen(false)}
+          className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${mobileOpen ? 'opacity-100' : 'opacity-0'}`}
+        />
+        <aside
+          role="dialog" aria-modal="true" aria-label="Menu"
+          onClick={(e) => { if ((e.target as HTMLElement).closest('a')) setMobileOpen(false); }}
+          className={`absolute inset-y-0 left-0 flex w-[17.5rem] max-w-[85vw] flex-col bg-[#0E2647] text-white shadow-2xl transition-transform duration-300 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        >
+          <div className="flex h-12 shrink-0 items-center justify-between bg-[#06122A] pl-5 pr-3">
+            <Link href="/browse" className="flex items-center gap-2.5">
+              <Image src="/prodora-logo.png" alt="" width={32} height={32} className="h-8 w-8 rounded-lg" />
+              <span className="text-[26px] font-extrabold leading-none tracking-tight">Prodora</span>
+            </Link>
+            <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close menu" className="flex h-9 w-9 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          {renderNav(false)}
+          <div className="shrink-0 bg-[#06122A] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">{promo}</div>
+        </aside>
+      </div>
+
+      <TopBar onMenu={() => setMobileOpen(true)} />
 
       {confirmClose && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={() => setConfirmClose(false)}>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4" onClick={() => setConfirmClose(false)}>
           <div role="dialog" aria-modal="true" aria-labelledby="close-promo-title" className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 id="close-promo-title" className="text-lg font-bold text-gray-900">Close this reminder?</h3>
             <p className="mt-2 text-sm leading-relaxed text-gray-500">

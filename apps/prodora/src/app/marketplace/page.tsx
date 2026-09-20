@@ -73,7 +73,7 @@ function MarketplaceContent() {
     <div className="min-h-screen bg-[#F3F5F9]">
       <Sidebar />
       <main className="app-main pt-12">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 pb-8 pt-2 sm:px-6">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-3 px-4 pb-8 pt-3 sm:gap-4 sm:px-6">
           <PageIntro title="Marketplace" subtitle="Browse the full catalogue. Import what you like and sell it on your store." />
 
           <div className="flex gap-2">
@@ -92,7 +92,7 @@ function MarketplaceContent() {
               <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
                 <SelectTrigger className="h-10 w-auto shrink-0 gap-2 bg-white px-3">
                   <ArrowUpDown className="h-4 w-4 shrink-0 text-gray-500" />
-                  <span className="text-gray-500">Sort:</span>
+                  <span className="hidden text-gray-500 sm:inline">Sort:</span>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

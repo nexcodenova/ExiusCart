@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X, SlidersHorizontal, ArrowUpDown, LayoutGrid } from 'lucide-react';
 import { shoppingApi, digitalBundlesApi, prodoraAuth, Product, Category, DigitalBundle } from '@/lib/api';
@@ -161,18 +160,7 @@ function BrowseContent() {
       <Sidebar />
 
       <main className="app-main pt-12">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6 flex flex-col gap-4">
-
-          {/* Mobile category/trending tabs — sidebar is desktop-only */}
-          <div className="lg:hidden -mx-4 px-4 flex gap-0 overflow-x-auto scrollbar-none border-b border-gray-200 pb-px">
-            <MobileTab href="/browse" label="All" active={view === 'all'} />
-            <MobileTab href="/browse?view=trending" label="Trending" active={view === 'trending'} />
-            <MobileTab href="/browse?view=bestsellers" label="Bestsellers" active={view === 'bestsellers'} />
-            <MobileTab href="/marketplace" label="Marketplace" active={false} />
-            {categories.map(cat => (
-              <MobileTab key={cat.id} href={`/browse?view=${cat.slug}`} label={cat.name} active={view === cat.slug} />
-            ))}
-          </div>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-3 pb-6 flex flex-col gap-3 sm:gap-4">
 
           <PageIntro title={heading} subtitle={subtitle} />
 
@@ -194,11 +182,11 @@ function BrowseContent() {
                   )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1.15fr)] gap-2 sm:grid-cols-3 lg:flex">
                   <Select value={categories.some((c) => c.slug === view) ? view : undefined} onValueChange={(v) => router.push(v === 'all' ? '/browse' : `/browse?view=${v}`)}>
-                    <SelectTrigger className="h-10 w-full gap-2 bg-white px-3 lg:w-auto">
-                      <LayoutGrid className="h-4 w-4 shrink-0 text-gray-500" />
-                      <SelectValue placeholder="Category" />
+                    <SelectTrigger className="h-10 w-full min-w-0 gap-1.5 bg-white px-2.5 text-[13px] sm:gap-2 sm:px-3 sm:text-sm lg:w-auto">
+                      <LayoutGrid className="hidden h-4 w-4 shrink-0 text-gray-500 sm:block" />
+                      <span className="min-w-0 flex-1 truncate text-left"><SelectValue placeholder="Category" /></span>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All categories</SelectItem>
@@ -209,18 +197,18 @@ function BrowseContent() {
                   <button
                     type="button"
                     onClick={() => setFiltersOpen((v) => !v)}
-                    className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition ${
+                    className={`inline-flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-[13px] font-medium transition sm:gap-2 sm:px-3 sm:text-sm ${
                       filtersOpen || activeFilters ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <SlidersHorizontal className="h-4 w-4" /> Filters{activeFilters ? ` (${activeFilters})` : ''}
+                    <SlidersHorizontal className="h-4 w-4 shrink-0" /> <span className="truncate">Filters{activeFilters ? ` (${activeFilters})` : ''}</span>
                   </button>
 
                   <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-                    <SelectTrigger className="h-10 w-full gap-2 bg-white px-3 lg:w-auto">
+                    <SelectTrigger className="h-10 w-full min-w-0 gap-1.5 bg-white px-2.5 text-[13px] sm:gap-2 sm:px-3 sm:text-sm lg:w-auto">
                       <ArrowUpDown className="h-4 w-4 shrink-0 text-gray-500" />
-                      <span className="text-gray-500">Sort:</span>
-                      <SelectValue />
+                      <span className="hidden text-gray-500 sm:inline">Sort:</span>
+                      <span className="min-w-0 flex-1 truncate text-left"><SelectValue /></span>
                     </SelectTrigger>
                     <SelectContent>
                       {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => <SelectItem key={k} value={k}>{SORT_LABEL[k]}</SelectItem>)}
@@ -238,7 +226,7 @@ function BrowseContent() {
               )}
 
               {loading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
                   {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
                 </div>
               ) : visible.length === 0 && flaggedBundles.length === 0 ? (
@@ -246,7 +234,7 @@ function BrowseContent() {
                   <EmptyState hasSearch={!!debouncedSearch || activeFilters > 0} />
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4 2xl:grid-cols-5">
                   {visible.map(p => <ProductCard key={p.id} product={p} />)}
                   {flaggedBundles.map(b => <DigitalBundleCard key={`digital-${b.id}`} bundle={b} />)}
                 </div>
@@ -261,19 +249,6 @@ function BrowseContent() {
         />
       </main>
     </div>
-  );
-}
-
-function MobileTab({ href, label, active }: { href: string; label: string; active: boolean }) {
-  return (
-    <Link
-      href={href}
-      className={`flex-shrink-0 text-sm font-medium px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
-        active ? 'border-[#2563EB] text-[#2563EB]' : 'border-transparent text-gray-600 hover:text-[#2563EB] hover:border-[#2563EB]/40'
-      }`}
-    >
-      {label}
-    </Link>
   );
 }
 

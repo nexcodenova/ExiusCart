@@ -26,13 +26,13 @@ export default function ProductCard({ product, showDetailsBar = true }: { produc
       <div className="flex h-full flex-col rounded-lg bg-white shadow-sm ring-1 ring-gray-200/70 transition hover:shadow-md">
         <div className="relative overflow-hidden rounded-t-lg bg-white" style={{ paddingTop: '100%' }}>
           {discount_pct && discount_pct > 0 ? (
-            <span className="absolute left-2 top-2 z-10 rounded bg-[#2563EB] px-2 py-1 text-xs font-bold text-white shadow-sm">{discount_pct}% OFF</span>
+            <span className="absolute left-1.5 top-1.5 z-10 rounded bg-[#2563EB] px-1.5 py-0.5 text-[11px] font-bold text-white shadow-sm sm:left-2 sm:top-2 sm:px-2 sm:py-1 sm:text-xs">{discount_pct}% OFF</span>
           ) : is_trending ? (
-            <span className="absolute left-2 top-2 z-10 rounded bg-orange-500 px-2 py-1 text-xs font-bold text-white shadow-sm">Trending</span>
+            <span className="absolute left-1.5 top-1.5 z-10 rounded bg-orange-500 px-1.5 py-0.5 text-[11px] font-bold text-white shadow-sm sm:left-2 sm:top-2 sm:px-2 sm:py-1 sm:text-xs">Trending</span>
           ) : is_bestseller ? (
-            <span className="absolute left-2 top-2 z-10 rounded bg-emerald-500 px-2 py-1 text-xs font-bold text-white shadow-sm">Bestseller</span>
+            <span className="absolute left-1.5 top-1.5 z-10 rounded bg-emerald-500 px-1.5 py-0.5 text-[11px] font-bold text-white shadow-sm sm:left-2 sm:top-2 sm:px-2 sm:py-1 sm:text-xs">Bestseller</span>
           ) : is_featured ? (
-            <span className="absolute left-2 top-2 z-10 rounded bg-amber-400 px-2 py-1 text-xs font-bold text-white shadow-sm">Featured</span>
+            <span className="absolute left-1.5 top-1.5 z-10 rounded bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-white shadow-sm sm:left-2 sm:top-2 sm:px-2 sm:py-1 sm:text-xs">Featured</span>
           ) : null}
           <div className="absolute inset-0">
             {image_url ? (
@@ -47,17 +47,17 @@ export default function ProductCard({ product, showDetailsBar = true }: { produc
           </div>
         </div>
 
-        <div className={`flex flex-1 flex-col gap-1 px-3.5 pt-3 pb-3.5 ${showDetailsBar ? '' : 'pb-4'}`}>
-          <h3 className="truncate text-sm font-semibold text-gray-900" title={name}>{name}</h3>
+        <div className={`flex flex-1 flex-col gap-0.5 px-3 pt-2.5 pb-3 sm:gap-1 sm:px-3.5 sm:pt-3 sm:pb-3.5 ${showDetailsBar ? '' : 'pb-4'}`}>
+          <h3 className="truncate text-[13px] font-semibold text-gray-900 sm:text-sm" title={name}>{name}</h3>
           {profit != null && profit > 0 ? (
-            <p className="relative flex items-center gap-1 text-xl font-bold tracking-tight text-emerald-600">
+            <p className="relative flex items-center gap-1 text-lg font-bold tracking-tight text-emerald-600 sm:text-xl">
               +{fmt(profit)} <span className="text-xs font-medium text-gray-400">Profit</span>
               <ProfitTip />
             </p>
           ) : (
-            <p className="text-xl font-bold tracking-tight text-gray-900">{fmt(price)}</p>
+            <p className="text-lg font-bold tracking-tight text-gray-900 sm:text-xl">{fmt(price)}</p>
           )}
-          <p className="text-sm text-gray-500">
+          <p className="whitespace-nowrap text-[11px] text-gray-500 min-[400px]:text-xs sm:text-sm">
             {cost_price != null ? (
               <>Pay <span className="font-semibold text-gray-700">{fmt(cost_price)}</span> → Sell <span className="font-semibold text-gray-900">{fmt(price)}</span></>
             ) : (
@@ -70,7 +70,7 @@ export default function ProductCard({ product, showDetailsBar = true }: { produc
         </div>
 
         {showDetailsBar && (
-        <div className="flex items-center justify-between rounded-b-lg bg-[#0B1D3A] px-3.5 py-2 text-sm font-semibold text-white transition group-hover:bg-[#122C55]">
+        <div className="flex items-center justify-between rounded-b-lg bg-[#0B1D3A] px-3 py-2.5 text-[13px] font-semibold text-white transition group-hover:bg-[#122C55] sm:px-3.5 sm:py-2 sm:text-sm">
           Show details <ChevronRight className="h-4 w-4" />
         </div>
         )}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { LogOut, LayoutDashboard, Settings, ClipboardList, BookOpen } from 'lucide-react';
+import { LogOut, LayoutDashboard, Settings, ClipboardList, BookOpen, Menu } from 'lucide-react';
 import { prodoraAuth, accountApi, ProdoraAccount } from '@/lib/api';
 import FeedbackButton from '@/components/FeedbackButton';
 
@@ -12,7 +12,7 @@ const STORE = 'https://store.exiuscart.com/dashboard';
 
 // Top bar for the authenticated app. On desktop it sits to the right of the
 // sidebar; on mobile (no sidebar) it carries the logo instead.
-export default function TopBar() {
+export default function TopBar({ onMenu }: { onMenu?: () => void }) {
   const router = useRouter();
   const [name, setName] = useState('');
   const [account, setAccount] = useState<ProdoraAccount | null>(null);
@@ -44,10 +44,20 @@ export default function TopBar() {
   return (
     <header className="app-topbar right-scroll-bar-position fixed top-0 right-0 left-0 z-20 h-12 border-b border-gray-200 bg-white/95 backdrop-blur">
       <div className="flex h-full items-center justify-between px-4 sm:px-6">
-        <Link href="/browse" className="flex items-center gap-2 lg:hidden">
-          <Image src="/prodora-logo.png" alt="" width={26} height={26} />
-          <span className="text-lg font-extrabold tracking-tight text-gray-900">Prodora</span>
-        </Link>
+        <div className="flex items-center gap-1 lg:hidden">
+          {onMenu && (
+            <button
+              type="button" onClick={onMenu} aria-label="Open menu"
+              className="-ml-2 flex h-10 w-10 items-center justify-center rounded-md text-gray-700 transition hover:bg-gray-100"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+          )}
+          <Link href="/browse" className="flex items-center gap-2">
+            <Image src="/prodora-logo.png" alt="" width={32} height={32} className="h-8 w-8" />
+            <span className="text-[26px] font-extrabold leading-none tracking-tight text-gray-900">Prodora</span>
+          </Link>
+        </div>
         <p className="hidden lg:block text-sm text-gray-500">Winning products, ready to list on your store.</p>
 
         <div className="flex items-center gap-2">
@@ -69,7 +79,7 @@ export default function TopBar() {
               {initials}
             </button>
             {open && (
-              <div className="absolute right-0 top-full mt-2 w-72 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
+              <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
                 <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3.5">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#E6F0FB] text-sm font-bold text-[#1E4E8C]">{initials}</span>
                   <div className="min-w-0">

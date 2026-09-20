@@ -121,7 +121,7 @@ export default function FilterDrawer({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3 border-t border-gray-200 px-5 py-3">
+        <div className="flex shrink-0 items-center gap-3 border-t border-gray-200 px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
           <button
             type="button"
             disabled={active === 0}

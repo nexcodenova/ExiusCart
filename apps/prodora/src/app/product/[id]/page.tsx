@@ -281,15 +281,15 @@ function ProductDetailContent() {
       <main className="app-main pt-12">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10 shadow-sm">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3 flex items-center gap-2 text-sm text-[#6B7280]">
-          <button onClick={() => router.back()} className="flex items-center gap-1.5 hover:text-[#2563EB] transition-colors">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3 flex items-center gap-2 whitespace-nowrap text-sm text-[#6B7280]">
+          <button onClick={() => router.back()} className="flex shrink-0 items-center gap-1.5 hover:text-[#2563EB] transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
+          <span className="hidden sm:inline">/</span>
+          <Link href="/browse" className="hidden sm:inline hover:text-[#2563EB] transition-colors">Winning Products</Link>
+          {category_name && <><span className="hidden md:inline">/</span><span className="hidden md:inline text-gray-400">{category_name}</span></>}
           <span>/</span>
-          <Link href="/browse" className="hover:text-[#2563EB] transition-colors">Winning Products</Link>
-          {category_name && <><span>/</span><span className="text-gray-400">{category_name}</span></>}
-          <span>/</span>
-          <span className="text-[#111827] truncate max-w-[200px]">{name}</span>
+          <span className="min-w-0 flex-1 truncate text-[#111827] sm:max-w-[200px] sm:flex-none">{name}</span>
         </div>
       </div>
 

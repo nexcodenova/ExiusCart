@@ -63,14 +63,15 @@ export default function FeedbackButton() {
     <div ref={ref} className="relative">
       <button
         type="button" onClick={() => (open ? close() : setOpen(true))} aria-expanded={open}
-        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        aria-label="Send feedback"
+        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 sm:px-3"
       >
-        <Lightbulb className="h-4 w-4" /> Feedback
+        <Lightbulb className="h-4 w-4" /> <span className="hidden sm:inline">Feedback</span>
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-3 w-[34rem] max-w-[calc(100vw-2rem)] rounded-xl bg-white p-4 shadow-xl ring-1 ring-gray-200">
-          <span className="absolute -top-1.5 right-10 h-3 w-3 rotate-45 bg-white ring-1 ring-gray-200 [clip-path:polygon(0_0,100%_0,0_100%)]" />
+        <div className="fixed inset-x-3 top-14 z-50 max-h-[calc(100dvh-4.5rem)] overflow-y-auto rounded-xl bg-white p-4 shadow-xl ring-1 ring-gray-200 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-3 sm:w-[34rem] sm:max-w-[calc(100vw-2rem)]">
+          <span className="absolute -top-1.5 right-10 hidden h-3 w-3 rotate-45 bg-white ring-1 ring-gray-200 [clip-path:polygon(0_0,100%_0,0_100%)] sm:block" />
           {sent ? (
             <div className="py-6 text-center">
               <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
@@ -92,14 +93,14 @@ export default function FeedbackButton() {
                 className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
               {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-              <div className="mt-3 flex items-end justify-between gap-4">
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
                 <p className="text-sm leading-snug text-gray-500">
                   Tell us what is working, what is missing, or what you would like to see next. A real person on our team reads every message and it shapes what we build. Need a reply?{' '}
                   <a href="https://exiuscart.com/contact" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Contact support</a>.
                 </p>
                 <button
                   type="submit" disabled={sending}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#2563EB] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1E4FC2] disabled:opacity-60"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1E4FC2] disabled:opacity-60"
                 >
                   {sending && <Loader2 className="h-4 w-4 animate-spin" />} Submit
                 </button>
