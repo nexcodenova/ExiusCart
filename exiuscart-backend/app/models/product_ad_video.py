@@ -16,7 +16,8 @@ class ProductAdVideo(Base):
     __tablename__ = "product_ad_videos"
 
     id = Column(Integer, primary_key=True, index=True)
-    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
+    # NULL = a video on a Prodora catalogue product (the catalogue belongs to no shop).
+    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
 
     status = Column(String(20), nullable=False, default="queued")  # queued / processing / ready / failed

@@ -308,6 +308,9 @@ _MIGRATIONS = [
     "UPDATE categories SET shop_id = NULL WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
     "UPDATE dropship_product_links SET shop_id = NULL WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
     "UPDATE dropship_connections SET shop_id = NULL WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
+    # Ad videos on catalogue products were the row that blocked deleting the shop.
+    "ALTER TABLE product_ad_videos ALTER COLUMN shop_id DROP NOT NULL;",
+    "UPDATE product_ad_videos SET shop_id = NULL WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
     "DELETE FROM subscriptions WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
     "DELETE FROM shops WHERE slug = 'exiuscart-dropshipping-system';",
 ]
@@ -319,6 +322,10 @@ for _sql in _MIGRATIONS:
             _conn.commit()
     except Exception as _e:
         logger.warning(f"[migration] skipped (already applied or harmless): {_e!r:.120}")
+
+
+from app.core.system_shops import purge_hidden_system_shops
+purge_hidden_system_shops(engine, Base)
 
 
 
