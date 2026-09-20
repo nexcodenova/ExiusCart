@@ -9,7 +9,7 @@ export default function AcademyPage() {
       icon={GraduationCap}
       title="Academy"
       description="Short guides on finding, testing and selling winning products."
-      points={['Product research basics', 'Listing and pricing', 'Running your first ads']}
+      points={['How to spot a winning product', 'How to price and list it', 'How to run your first ads']}
     />
   );
 }

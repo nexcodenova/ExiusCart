@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import SharedComingSoon from '@/components/layout/ComingSoon';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -81,15 +82,7 @@ function StepBadge({ n }: { n: number }) {
 
 function ComingSoon({ label }: { label: string }) {
   return (
-    <Card>
-      <CardContent className="py-14 text-center">
-        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-muted">
-          <Rocket className="h-5 w-5 text-muted-foreground" />
-        </div>
-        <p className="text-sm font-medium text-foreground">{label} is coming soon</p>
-        <p className="mt-1 text-xs text-muted-foreground">We're still building this — check back shortly.</p>
-      </CardContent>
-    </Card>
+    <SharedComingSoon embedded icon={Rocket} group="Social Posting" title={label} description="We are still building this part of Social Posting." />
   );
 }
 

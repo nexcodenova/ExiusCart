@@ -22,6 +22,18 @@ export default function FeedbackButton() {
     setTimeout(() => { setSent(false); setMessage(''); setRating(5); setError(''); }, 200);
   };
 
+  // Other pages (e.g. "Coming soon") can ask for this popover to open, with a
+  // starter sentence.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const prefill = (e as CustomEvent<{ prefill?: string }>).detail?.prefill;
+      setOpen(true);
+      if (prefill) setMessage((m) => m || prefill);
+    };
+    window.addEventListener('open-feedback', onOpen);
+    return () => window.removeEventListener('open-feedback', onOpen);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) close(); };
@@ -75,7 +87,7 @@ export default function FeedbackButton() {
                 ))}
               </div>
               <textarea
-                value={message} onChange={(e) => setMessage(e.target.value)} rows={4} maxLength={1500} autoFocus
+                value={message} onChange={(e) => setMessage(e.target.value)} rows={4} maxLength={1500} autoFocus onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
                 placeholder="Type your feedback here..."
                 className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
