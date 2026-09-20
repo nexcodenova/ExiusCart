@@ -29,7 +29,7 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   );
 }
 
-const ATTRIBUTE_CHIPS = ['Trending', 'Featured', 'Has video'];
+const ATTRIBUTE_CHIPS = ['Has video', 'Has Meta ad'];
 
 const tagsOf = (p: Product): string[] =>
   (p.tags ?? '').split(',').map((t) => t.trim()).filter(Boolean);
@@ -45,9 +45,8 @@ function buildChips(products: Product[]): string[] {
 }
 
 function matchesChip(p: Product, chip: string): boolean {
-  if (chip === 'Trending') return !!p.is_trending;
-  if (chip === 'Featured') return !!p.is_featured;
   if (chip === 'Has video') return !!(p.video_url || (p.videos && p.videos.length));
+  if (chip === 'Has Meta ad') return !!(p.ad_facebook_url || p.ad_instagram_url);
   return tagsOf(p).some((t) => t.toLowerCase() === chip.toLowerCase());
 }
 
@@ -152,6 +151,10 @@ function BrowseContent() {
   });
   const activeFilters = filters.chips.length + (filters.minPrice ? 1 : 0) + (filters.maxPrice ? 1 : 0);
   const chipOptions = buildChips(products);
+  // "Top selling categories": the 5 categories with the most products.
+  const topCategories = [...categories]
+    .sort((a, b) => (b.product_count ?? 0) - (a.product_count ?? 0) || a.name.localeCompare(b.name))
+    .slice(0, 5);
 
   return (
     <div className="min-h-screen bg-[#F3F5F9]">
@@ -253,6 +256,8 @@ function BrowseContent() {
         <FilterDrawer
           open={filtersOpen} onClose={() => setFiltersOpen(false)}
           chips={chipOptions} value={filters} onChange={setFilters}
+          topCategories={topCategories} activeCategory={view}
+          onPickCategory={(slug) => { setFiltersOpen(false); router.push(slug === view ? '/browse' : `/browse?view=${slug}`); }}
         />
       </main>
     </div>

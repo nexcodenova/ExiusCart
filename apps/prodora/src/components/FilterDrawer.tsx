@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
-import { X } from 'lucide-react';
+import Image from 'next/image';
+import { X, LayoutGrid } from 'lucide-react';
+import type { Category } from '@/lib/api';
 
 export interface FilterState {
   chips: string[];
@@ -11,17 +13,20 @@ export interface FilterState {
 
 export const EMPTY_FILTERS: FilterState = { chips: [], minPrice: '', maxPrice: '' };
 
-// Right-hand slide-over: chips to filter by (the product attributes and the
-// real tags found on the loaded products) plus a price range. Applies live —
-// the list behind it updates as you pick.
+// Right-hand slide-over: the top selling categories, chips to filter by (has
+// video, has a Meta ad, and the real tags found on the loaded products) plus a
+// price range. Chips and price apply live; picking a category opens it.
 export default function FilterDrawer({
-  open, onClose, chips, value, onChange,
+  open, onClose, chips, value, onChange, topCategories, activeCategory, onPickCategory,
 }: {
   open: boolean;
   onClose: () => void;
   chips: string[];
   value: FilterState;
   onChange: (v: FilterState) => void;
+  topCategories: Category[];
+  activeCategory: string;
+  onPickCategory: (slug: string) => void;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -52,6 +57,28 @@ export default function FilterDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
+          {topCategories.length > 0 && (
+            <section className="mb-7">
+              <h3 className="text-base font-semibold text-gray-900">Top selling categories</h3>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {topCategories.map((c) => {
+                  const on = c.slug === activeCategory;
+                  return (
+                    <button
+                      key={c.id} type="button" onClick={() => onPickCategory(c.slug)} aria-pressed={on}
+                      className={`flex items-center gap-2.5 rounded-lg border p-2 text-left transition ${on ? 'border-[#2563EB] bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'}`}
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-100 text-gray-400">
+                        {c.image_url ? <Image src={c.image_url} alt="" width={44} height={44} className="h-full w-full object-cover" /> : <LayoutGrid className="h-5 w-5" />}
+                      </span>
+                      <span className={`line-clamp-2 min-w-0 text-sm leading-tight ${on ? 'font-semibold text-[#2563EB]' : 'text-gray-800'}`}>{c.name.split('>').pop()!.trim()}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           <h3 className="text-base font-semibold text-gray-900">Filter by</h3>
           <div className="mt-3 flex flex-wrap gap-2">
             {chips.map((chip) => {

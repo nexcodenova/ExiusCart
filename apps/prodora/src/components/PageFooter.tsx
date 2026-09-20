@@ -11,7 +11,7 @@ export default function PageFooter() {
   const [photoFailed, setPhotoFailed] = useState(false);
 
   return (
-    <footer className="app-footer fixed bottom-0 left-0 right-0 z-20 border-t border-gray-200 bg-white/95 backdrop-blur">
+    <footer className="app-footer right-scroll-bar-position fixed bottom-0 left-0 right-0 z-20 border-t border-gray-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
         <p className="hidden text-sm text-gray-500 sm:block">
           Developed by{' '}

@@ -104,6 +104,7 @@ export interface Category {
   name: string;
   slug: string;
   image_url?: string | null;
+  product_count?: number;
 }
 
 export interface ProductsParams {

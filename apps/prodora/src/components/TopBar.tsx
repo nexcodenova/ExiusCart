@@ -42,7 +42,7 @@ export default function TopBar() {
   };
 
   return (
-    <header className="app-topbar fixed top-0 right-0 left-0 z-20 h-12 border-b border-gray-200 bg-white/95 backdrop-blur">
+    <header className="app-topbar right-scroll-bar-position fixed top-0 right-0 left-0 z-20 h-12 border-b border-gray-200 bg-white/95 backdrop-blur">
       <div className="flex h-full items-center justify-between px-4 sm:px-6">
         <Link href="/browse" className="flex items-center gap-2 lg:hidden">
           <Image src="/prodora-logo.png" alt="" width={26} height={26} />
