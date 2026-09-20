@@ -257,7 +257,6 @@ def list_shopping_products(
     """
     query = (
         db.query(Product)
-        .join(Shop, Product.shop_id == Shop.id)
         .outerjoin(Category, Product.category_id == Category.id)
         .options(
             joinedload(Product.shop),
@@ -265,8 +264,7 @@ def list_shopping_products(
         )
         .filter(
             Product.is_active == True,
-            Shop.is_active == True,
-            Shop.slug == "exiuscart-dropshipping-system",
+            Product.shop_id.is_(None),  # the Prodora catalogue belongs to no shop
         )
     )
 
@@ -317,7 +315,6 @@ def get_shopping_product(
 ):
     product = (
         db.query(Product)
-        .join(Shop, Product.shop_id == Shop.id)
         .options(
             joinedload(Product.shop),
             joinedload(Product.category),
@@ -325,8 +322,7 @@ def get_shopping_product(
         .filter(
             Product.id == product_id,
             Product.is_active == True,
-            Shop.is_active == True,
-            Shop.slug == "exiuscart-dropshipping-system",
+            Product.shop_id.is_(None),  # the Prodora catalogue belongs to no shop
         )
         .first()
     )
@@ -353,14 +349,12 @@ def get_related_shopping_products(
 
     rows = (
         db.query(Product)
-        .join(Shop, Product.shop_id == Shop.id)
         .options(joinedload(Product.shop), joinedload(Product.category))
         .filter(
             Product.category_id == product.category_id,
             Product.id != product_id,
             Product.is_active == True,
-            Shop.is_active == True,
-            Shop.slug == "exiuscart-dropshipping-system",
+            Product.shop_id.is_(None),  # the Prodora catalogue belongs to no shop
         )
         .order_by(Product.is_trending.desc(), Product.created_at.desc())
         .limit(8)
@@ -384,13 +378,11 @@ def import_shopping_product(
     """
     source = (
         db.query(Product)
-        .join(Shop, Product.shop_id == Shop.id)
         .options(joinedload(Product.category))
         .filter(
             Product.id == product_id,
             Product.is_active == True,
-            Shop.is_active == True,
-            Shop.slug == "exiuscart-dropshipping-system",
+            Product.shop_id.is_(None),  # the Prodora catalogue belongs to no shop
         )
         .first()
     )
@@ -549,11 +541,10 @@ async def shopping_shipping_estimate(
     """
     link = (
         db.query(DropshipProductLink)
-        .join(Shop, DropshipProductLink.shop_id == Shop.id)
         .filter(
             DropshipProductLink.product_id == product_id,
             DropshipProductLink.supplier_type == "cj",
-            Shop.slug == "exiuscart-dropshipping-system",
+            DropshipProductLink.shop_id.is_(None),  # a catalogue product's link
         )
         .first()
     )
@@ -602,11 +593,9 @@ def list_shopping_categories(db: Session = Depends(get_db), _: User = Depends(ge
     rows = (
         db.query(Category, func.count(Product.id))
         .join(Product, Product.category_id == Category.id)
-        .join(Shop, Product.shop_id == Shop.id)
         .filter(
             Product.is_active == True,
-            Shop.is_active == True,
-            Shop.slug == "exiuscart-dropshipping-system",
+            Product.shop_id.is_(None),  # the Prodora catalogue belongs to no shop
             Category.prodora_managed == True,  # only categories an admin added
         )
         .group_by(Category.id)

@@ -72,6 +72,7 @@ export const adminApi = {
   updateSubscription: (subId: number, data: {
     plan_type: string; billing_type: string; status: string;
     amount_paid: number; currency: string; expires_at?: string | null;
+    cancel_card_billing?: boolean;
   }) => api.patch(`/admin/subscriptions/${subId}`, data),
 
   // Leads
@@ -115,7 +116,7 @@ export const adminApi = {
   cjImport: (cjPid: string, price?: number, categoryName?: string) =>
     api.post('/admin/shopping/cj/import', { cj_pid: cjPid, price, category_name: categoryName }),
   aliexpressStatus: () => api.get('/admin/shopping/aliexpress/status'),
-  aliexpressAuthorize: (systemShopId: number) => api.get(`/shops/${systemShopId}/dropship/aliexpress/authorize`),
+  aliexpressAuthorize: () => api.get('/admin/shopping/aliexpress/authorize'),
   aliexpressSearch: (q: string, page = 1) => api.get('/admin/shopping/aliexpress/search', { params: { q, page } }),
   aliexpressImport: (productUrl: string, price?: number, categoryName?: string) =>
     api.post('/admin/shopping/aliexpress/import', { product_url: productUrl, price, category_name: categoryName }),
@@ -137,22 +138,24 @@ export const adminApi = {
   grantBundlePurchase: (bundleId: number, shopId: number) =>
     api.post(`/admin/prodora-bundles/${bundleId}/grant`, { shop_id: shopId }),
 
-  // Website blog (exiuscart.com/blog) — written here, read live by the
-  // marketing site via /public/store/exiuscart-website/blog.
-  listWebsiteBlogPosts: (statusFilter?: string) =>
-    api.get('/admin/website-blog', { params: statusFilter ? { status_filter: statusFilter } : {} }),
-  getWebsiteBlogPost: (postId: number) => api.get(`/admin/website-blog/${postId}`),
+  // Site blogs (exiuscart, prodora, affiliate) — written here, read live by each
+  // site via /public/store/<site>-website/blog.
+  listWebsiteBlogPosts: (statusFilter?: string, site = 'exiuscart') =>
+    api.get('/admin/website-blog', { params: { site, ...(statusFilter ? { status_filter: statusFilter } : {}) } }),
+  getWebsiteBlogPost: (postId: number, site = 'exiuscart') =>
+    api.get(`/admin/website-blog/${postId}`, { params: { site } }),
   createWebsiteBlogPost: (data: {
     title: string; excerpt?: string; content?: string; cover_image_url?: string;
     author_name?: string; tags?: string; cta_text?: string; cta_url?: string;
-  }) => api.post('/admin/website-blog', data),
+  }, site = 'exiuscart') => api.post('/admin/website-blog', data, { params: { site } }),
   updateWebsiteBlogPost: (postId: number, data: {
     title: string; excerpt?: string; content?: string; cover_image_url?: string;
     author_name?: string; tags?: string; cta_text?: string; cta_url?: string;
-  }) => api.put(`/admin/website-blog/${postId}`, data),
-  deleteWebsiteBlogPost: (postId: number) => api.delete(`/admin/website-blog/${postId}`),
-  publishWebsiteBlogPost: (postId: number, published: boolean) =>
-    api.post(`/admin/website-blog/${postId}/publish`, { published }),
+  }, site = 'exiuscart') => api.put(`/admin/website-blog/${postId}`, data, { params: { site } }),
+  deleteWebsiteBlogPost: (postId: number, site = 'exiuscart') =>
+    api.delete(`/admin/website-blog/${postId}`, { params: { site } }),
+  publishWebsiteBlogPost: (postId: number, published: boolean, site = 'exiuscart') =>
+    api.post(`/admin/website-blog/${postId}/publish`, { published }, { params: { site } }),
   uploadWebsiteBlogImage: (file: File) => {
     const fd = new FormData();
     fd.append('file', file);

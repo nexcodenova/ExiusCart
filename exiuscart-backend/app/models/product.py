@@ -21,7 +21,8 @@ class Category(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Foreign Keys
-    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
+    # Prodora catalogue categories belong to no shop (shop_id NULL).
+    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=True)
     parent_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
 
     # Relationships
@@ -173,7 +174,9 @@ class Product(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Foreign Keys
-    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
+    # Prodora catalogue products belong to no shop (shop_id NULL); a seller
+    # product always has one.
+    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
 

@@ -9,7 +9,8 @@ class DropshipConnection(Base):
     __tablename__ = "dropship_connections"
 
     id = Column(Integer, primary_key=True, index=True)
-    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
+    # NULL = the platform's own connection used for the Prodora catalogue.
+    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=True)
     supplier_type = Column(String(20), nullable=False)  # cj / hypersku
     # Legacy — CJ's email+password login API was deprecated in favor of
     # apiKey mode (confirmed live, 2026-07-23); no longer written, kept only
@@ -41,7 +42,8 @@ class DropshipProductLink(Base):
     __tablename__ = "dropship_product_links"
 
     id = Column(Integer, primary_key=True, index=True)
-    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
+    # NULL = a link on a Prodora catalogue product.
+    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     supplier_type = Column(String(20), nullable=False)
     supplier_product_id = Column(String(255), nullable=True)    # CJ product ID

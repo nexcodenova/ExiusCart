@@ -1572,14 +1572,11 @@ def aliexpress_callback(
         logger.error(f"[ALIEXPRESS OAUTH] callback with unknown/expired state={state[:8]}...")
         return RedirectResponse(f"{STOREFRONT_BASE}/dashboard/dropshipping?aliexpress=invalid_state")
 
-    # The admin/Prodora catalog connects through this exact same seller-
-    # facing flow (see admin.py's comment above admin_aliexpress_import) —
-    # its DropshipConnection lives on the dedicated system shop, not a real
-    # seller's. Route the browser back to whichever dashboard actually
-    # started the connect, instead of always landing on the seller one.
-    from app.models.shop import Shop
-    shop = db.query(Shop).filter(Shop.id == conn.shop_id).first()
-    is_admin_system_shop = bool(shop and shop.slug == "exiuscart-dropshipping-system")
+    # The admin/Prodora catalogue connects through this same flow (see
+    # admin.py: /admin/shopping/aliexpress/authorize). Its connection has no
+    # shop at all (shop_id NULL): it belongs to the platform. Route the browser
+    # back to whichever dashboard actually started the connect.
+    is_admin_system_shop = conn.shop_id is None
     return_base = "https://admin.exiuscart.com/dashboard/shopping" if is_admin_system_shop else f"{STOREFRONT_BASE}/dashboard/dropshipping"
 
     token_result = _exchange_aliexpress_code(code)

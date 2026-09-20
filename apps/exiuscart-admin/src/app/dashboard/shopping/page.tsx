@@ -767,9 +767,8 @@ interface AliexpressSearchResult {
 // (confirmed 2026-08-27), unlike CJ's curated-feed system which needs
 // business-team-granted feed names. Paste-a-link stays available as a
 // fallback tab for a specific product found outside the search.
-function AliexpressImportModal({ connected, systemShopId, onClose, onImported }: {
+function AliexpressImportModal({ connected, onClose, onImported }: {
   connected: boolean;
-  systemShopId: number | null;
   onClose: () => void;
   onImported: () => void;
 }) {
@@ -798,10 +797,9 @@ function AliexpressImportModal({ connected, systemShopId, onClose, onImported }:
   const [importedCount, setImportedCount] = useState(0);
 
   const connect = async () => {
-    if (!systemShopId) return;
     setConnecting(true); setConnectError('');
     try {
-      const res = await adminApi.aliexpressAuthorize(systemShopId);
+      const res = await adminApi.aliexpressAuthorize();
       window.location.href = res.data.authorize_url;
     } catch (err: any) {
       setConnectError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Could not start AliExpress connection. Try again.');
@@ -879,7 +877,7 @@ function AliexpressImportModal({ connected, systemShopId, onClose, onImported }:
             <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2.5 leading-relaxed">
               Connects to a real AliExpress account via their own login page (same OAuth flow sellers use to connect their own AliExpress). This connects it to the Prodora catalog only, separate from any individual seller&apos;s own connection.
             </p>
-            <button type="button" onClick={connect} disabled={connecting || !systemShopId}
+            <button type="button" onClick={connect} disabled={connecting}
               className="w-full py-2.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium transition disabled:opacity-60 flex items-center justify-center gap-2">
               {connecting && <Loader2 className="w-4 h-4 animate-spin" />}
               {connecting ? 'Redirecting to AliExpress…' : 'Connect AliExpress'}
@@ -1035,13 +1033,11 @@ export default function TrendingDropshippingPage() {
 
   // AliExpress import
   const [aliexpressConnected, setAliexpressConnected] = useState(false);
-  const [aliexpressShopId, setAliexpressShopId] = useState<number | null>(null);
   const [showAliexpressModal, setShowAliexpressModal] = useState(false);
 
   useEffect(() => {
     adminApi.aliexpressStatus().then((r: any) => {
       setAliexpressConnected(!!r.data?.connected);
-      setAliexpressShopId(r.data?.system_shop_id ?? null);
     }).catch(() => {});
   }, []);
 
@@ -1491,7 +1487,6 @@ export default function TrendingDropshippingPage() {
       {showAliexpressModal && (
         <AliexpressImportModal
           connected={aliexpressConnected}
-          systemShopId={aliexpressShopId}
           onClose={() => setShowAliexpressModal(false)}
           onImported={fetchProducts}
         />
