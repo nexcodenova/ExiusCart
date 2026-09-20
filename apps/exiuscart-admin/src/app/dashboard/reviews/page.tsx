@@ -27,6 +27,7 @@ export default function ReviewsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Testimonial | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [rejectConfirm, setRejectConfirm] = useState<number | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
   const fetchTestimonials = useCallback(async () => {
@@ -47,8 +48,10 @@ export default function ReviewsPage() {
     fetchTestimonials();
   };
 
+  // Declining removes the review for good: it never goes live and cannot be brought back.
   const handleReject = async (id: number) => {
     await adminApi.deleteTestimonial(id);
+    setRejectConfirm(null);
     fetchTestimonials();
   };
 
@@ -129,7 +132,7 @@ export default function ReviewsPage() {
                     key={t.id}
                     t={t}
                     onApprove={() => handleApprove(t.id)}
-                    onReject={() => handleReject(t.id)}
+                    onReject={() => setRejectConfirm(t.id)}
                     onEdit={() => { setEditing(t); setShowModal(true); }}
                     onDelete={() => setDeleteConfirm(t.id)}
                   />
@@ -160,6 +163,19 @@ export default function ReviewsPage() {
           onClose={() => { setShowModal(false); setEditing(null); }}
           onSaved={() => { setShowModal(false); setEditing(null); fetchTestimonials(); }}
         />
+      )}
+
+      {rejectConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Decline this review?</h3>
+            <p className="text-sm text-gray-600 mb-6">It will not go live on exiuscart.com or Prodora, and it is deleted for good. This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setRejectConfirm(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 hover:bg-gray-100 transition">Keep it</button>
+              <button type="button" onClick={() => handleReject(rejectConfirm)} className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">Decline</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deleteConfirm && (

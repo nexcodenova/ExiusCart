@@ -10,6 +10,7 @@ interface ProdoraCategory {
   slug: string;
   image_url: string | null;
   product_count: number;
+  managed: boolean;
 }
 
 // The Prodora Marketplace shows a category tile only when the category has an
@@ -66,6 +67,15 @@ export default function ProdoraCategoriesPage() {
     } finally { setSaving(false); }
   };
 
+  const listInProdora = async (c: ProdoraCategory) => {
+    try {
+      await adminApi.updateProdoraCategory(c.id, { name: c.name, image_url: c.image_url });
+      load();
+    } catch {
+      setError('Could not list the category.');
+    }
+  };
+
   const remove = async (c: ProdoraCategory) => {
     if (!window.confirm(`Delete the category "${c.name}"?`)) return;
     try {
@@ -83,7 +93,7 @@ export default function ProdoraCategoriesPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Only categories with an image appear as tiles in the Prodora Marketplace.
+            Only categories added here appear in Prodora. Categories that arrive with a supplier's products stay hidden until you list them. Only ones with an image get a Marketplace tile.
           </p>
         </div>
         <button onClick={openNew} className="inline-flex items-center gap-2 rounded-lg bg-[#6B3FD9] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A2EC9]">
@@ -102,10 +112,10 @@ export default function ProdoraCategoriesPage() {
           <p className="mt-1 text-sm text-gray-500">Add one, upload its image, then assign products to it.</p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
           {categories.map((c) => (
             <div key={c.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-              <div className="relative flex aspect-[4/3] items-center justify-center bg-gray-50">
+              <div className="relative flex aspect-square items-center justify-center bg-gray-50">
                 {c.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={c.image_url} alt={c.name} className="h-full w-full object-cover" />
@@ -116,13 +126,16 @@ export default function ProdoraCategoriesPage() {
                   </div>
                 )}
                 {!c.image_url && (
-                  <span className="absolute left-2 top-2 rounded bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600">Hidden from Marketplace</span>
+                  <span className="absolute left-1.5 top-1.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">Hidden from Marketplace</span>
                 )}
               </div>
-              <div className="flex items-center justify-between gap-2 p-4">
+              <div className="flex items-center justify-between gap-1 p-2.5">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-gray-900" title={c.name}>{c.name}</p>
+                  <p className="truncate text-sm font-semibold text-gray-900" title={c.name}>{c.name}</p>
                   <p className="text-xs text-gray-500">{c.product_count} product{c.product_count !== 1 ? 's' : ''}</p>
+                  {!c.managed && (
+                    <button type="button" onClick={() => listInProdora(c)} className="mt-1 text-[11px] font-medium text-[#6B3FD9] hover:underline">Not in Prodora · List it</button>
+                  )}
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <button onClick={() => openEdit(c)} aria-label={`Edit ${c.name}`} className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900"><Edit2 className="h-4 w-4" /></button>

@@ -46,9 +46,10 @@ export const menuItems = [
 // (above) stays flat because the mobile bottom nav reads it directly, so the
 // Digital Bundles entry there is skipped when the sidebar draws its own list.
 const PRODORA_CHILDREN = [
-  { href: '/dashboard/shopping', label: 'Products', exact: true },
-  { href: '/dashboard/shopping/categories', label: 'Categories', exact: false },
-  { href: '/dashboard/digital-bundles', label: 'Digital Bundles', exact: false },
+  { href: '/dashboard/shopping/add', match: '/dashboard/shopping/add', label: 'Add Products', exact: true },
+  { href: '/dashboard/digital-bundles', match: '/dashboard/digital-bundles', label: 'Digital Products', exact: false },
+  { href: '/dashboard/shopping', match: '/dashboard/shopping', label: 'All Products', exact: true },
+  { href: '/dashboard/shopping/categories', match: '/dashboard/shopping/categories', label: 'Categories', exact: false },
 ];
 const IN_PRODORA_GROUP = ['/dashboard/digital-bundles'];
 
@@ -59,7 +60,7 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps) {
   const pathname = usePathname();
-  const onProdora = pathname.startsWith('/dashboard/shopping') || PRODORA_CHILDREN.some((c) => pathname.startsWith(c.href));
+  const onProdora = pathname.startsWith('/dashboard/shopping') || PRODORA_CHILDREN.some((c) => pathname.startsWith(c.match));
   const [prodoraOpen, setProdoraOpen] = useState(onProdora);
 
   return (
@@ -89,15 +90,20 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
             return (
               <div key={item.href}>
                 <div className={`flex items-stretch rounded-lg transition-all ${onProdora ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
-                  <Link
-                    href={item.href}
-                    title={collapsed ? item.label : undefined}
-                    onClick={() => setProdoraOpen(true)}
-                    className="flex flex-1 items-center gap-3 px-3 py-2.5"
-                  >
-                    <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
-                    {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
-                  </Link>
+                  {collapsed ? (
+                    <Link href="/dashboard/shopping" title={item.label} className="flex flex-1 items-center gap-3 px-3 py-2.5">
+                      <Icon className="w-5 h-5 flex-shrink-0 mx-auto" />
+                    </Link>
+                  ) : (
+                    // Expanded: only opens or closes the dropdown, it does not change the page.
+                    <button
+                      type="button" onClick={() => setProdoraOpen((v) => !v)} aria-expanded={prodoraOpen}
+                      className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="font-medium text-sm">{item.label}</span>
+                    </button>
+                  )}
                   {!collapsed && (
                     <button
                       type="button" aria-label={prodoraOpen ? 'Collapse Prodora' : 'Expand Prodora'}
@@ -113,7 +119,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                   // + 20px icon + 12px gap = 44px.
                   <div className="mt-0.5 space-y-0.5">
                     {PRODORA_CHILDREN.map((child) => {
-                      const active = child.exact ? pathname === child.href : pathname.startsWith(child.href);
+                      const active = child.exact ? pathname === child.match : pathname.startsWith(child.match);
                       return (
                         <Link
                           key={child.href} href={child.href}

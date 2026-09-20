@@ -21,6 +21,8 @@ interface Bundle {
   whop_checkout_url: string | null;
   whop_product_id: string | null;
   is_active: boolean;
+  is_trending?: boolean;
+  is_bestseller?: boolean;
   purchase_count: number;
 }
 
@@ -28,7 +30,7 @@ const emptyForm = {
   name: '', description: '', cover_image_url: '', editable_file_url: '', pdf_file_url: '',
   price: '', suggested_resale_price: '', resale_notes: '',
   ad_facebook_url: '', ad_tiktok_url: '', ad_instagram_url: '', ad_pinterest_url: '',
-  whop_checkout_url: '', whop_product_id: '', is_active: true,
+  whop_checkout_url: '', whop_product_id: '', is_active: true, is_trending: false, is_bestseller: false,
 };
 
 // ── Meta Ad Library search — same shared backend as the Prodora winning-
@@ -93,6 +95,17 @@ function MetaAdSearchPanel({ query, setQuery, onPick, onClose }: {
   );
 }
 
+function FlagRow({ label, on, color, onChange }: { label: string; on: boolean; color: string; onChange: () => void }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between">
+      <span className="text-sm text-gray-700">{label}</span>
+      <button type="button" onClick={onChange} aria-pressed={on} className={`flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${on ? color : 'bg-gray-200'}`}>
+        <span className={`mx-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-4' : 'translate-x-0'}`} />
+      </button>
+    </label>
+  );
+}
+
 export default function DigitalBundlesPage() {
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +127,21 @@ export default function DigitalBundlesPage() {
     adminApi.listDigitalBundles().then((r) => setBundles(r.data?.bundles ?? [])).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+
+  const [deepLinkDone, setDeepLinkDone] = useState(false);
+  useEffect(() => {
+    if (deepLinkDone || loading) return;
+    const params = new URLSearchParams(window.location.search);
+    const edit = params.get('edit');
+    if (params.get('add') === '1') {
+      openCreate();
+    } else if (edit) {
+      const target = bundles.find((b) => String(b.id) === edit);
+      if (target) openEdit(target);
+    }
+    setDeepLinkDone(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, bundles, deepLinkDone]);
 
   const openCreate = () => { setEditingId(null); setForm(emptyForm); setShowForm(true); setError(''); };
   const openEdit = (b: Bundle) => {
@@ -177,14 +205,14 @@ export default function DigitalBundlesPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Digital Bundles</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Design packs ExiusCart sells to sellers through Prodora — coloring books, POD design sets.</p>
+          <h1 className="text-2xl font-bold text-gray-900">Digital Products</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Design packs ExiusCart sells to sellers through Prodora, such as coloring books and POD design sets. Each one is also listed in All Products with a DG ID.</p>
         </div>
         <button onClick={openCreate} className="flex items-center gap-1.5 px-4 py-2.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium">
-          <Plus className="w-4 h-4" /> New Bundle
+          <Plus className="w-4 h-4" /> Add Digital Product
         </button>
       </div>
 
@@ -230,14 +258,14 @@ export default function DigitalBundlesPage() {
 
       {/* Create/Edit form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-gray-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl w-full max-w-[1400px] max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 sticky top-0 bg-gray-50 z-10">
               <p className="font-semibold text-gray-900">{editingId ? 'Edit Bundle' : 'New Digital Bundle'}</p>
               <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-900"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-5 space-y-4">
-              {error && <div className="bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
+            <div className="p-6 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-4 xl:p-8">
+              {error && <div className="lg:col-span-2 bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
 
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Name *</label>
@@ -362,13 +390,18 @@ export default function DigitalBundlesPage() {
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f: any) => ({ ...f, is_active: e.target.checked }))} />
-                Visible to sellers in Prodora
-              </label>
+              <div className="lg:col-span-2 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Visibility & Flags</p>
+                  <p className="mt-1 text-xs text-gray-500">Choose where this product appears in Prodora.</p>
+                </div>
+                <FlagRow label="Show in Current Trends" on={!!form.is_trending} color="bg-orange-500" onChange={() => setForm((f: any) => ({ ...f, is_trending: !f.is_trending }))} />
+                <FlagRow label="Show in Global Bestsellers" on={!!form.is_bestseller} color="bg-yellow-500" onChange={() => setForm((f: any) => ({ ...f, is_bestseller: !f.is_bestseller }))} />
+                <FlagRow label="Active (visible to sellers)" on={!!form.is_active} color="bg-green-500" onChange={() => setForm((f: any) => ({ ...f, is_active: !f.is_active }))} />
+              </div>
 
               <button onClick={handleSave} disabled={saving}
-                className="w-full py-2.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2">
+                className="lg:col-span-2 w-full py-2.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Create Bundle'}
               </button>

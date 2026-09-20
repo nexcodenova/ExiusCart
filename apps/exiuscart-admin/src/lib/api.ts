@@ -84,6 +84,9 @@ export const adminApi = {
   // Shopping / dropshipping products
   getShoppingProducts: (params?: { search?: string }) =>
     api.get('/admin/shopping/products', { params }),
+  // Every Prodora item (supplier products + digital bundles) with its catalogue ID
+  getProdoraCatalog: (params?: { search?: string }) =>
+    api.get('/admin/prodora/catalog', { params }),
   createShoppingProduct: (data: any) => api.post('/admin/shopping/products', data),
   updateShoppingProduct: (id: number, data: any) => api.put(`/admin/shopping/products/${id}`, data),
   deleteShoppingProduct: (id: number) => api.delete(`/admin/shopping/products/${id}`),
@@ -107,7 +110,8 @@ export const adminApi = {
   cjTrending: (page = 1) => api.get('/admin/shopping/cj/trending', { params: { page } }),
   cjCategories: () => api.get('/admin/shopping/cj/categories'),
   cjByCategory: (categoryId: string, page = 1) => api.get('/admin/shopping/cj/by-category', { params: { category_id: categoryId, page } }),
-  cjImportBulk: (cjPids: string[]) => api.post('/admin/shopping/cj/import-bulk', { cj_pids: cjPids }),
+  cjImportBulk: (cjPids: string[], categoryName?: string) =>
+    api.post('/admin/shopping/cj/import-bulk', { cj_pids: cjPids, category_name: categoryName }),
   cjImport: (cjPid: string, price?: number, categoryName?: string) =>
     api.post('/admin/shopping/cj/import', { cj_pid: cjPid, price, category_name: categoryName }),
   aliexpressStatus: () => api.get('/admin/shopping/aliexpress/status'),
@@ -117,8 +121,8 @@ export const adminApi = {
     api.post('/admin/shopping/aliexpress/import', { product_url: productUrl, price, category_name: categoryName }),
   metaAdsSearch: (q: string, country = 'US') =>
     api.get('/admin/shopping/meta-ads/search', { params: { q, country } }),
-  metaAdsAutoAttach: (limit = 50) =>
-    api.post('/admin/shopping/meta-ads/auto-attach', null, { params: { limit } }),
+  metaAdsAutoAttach: (limit = 50, productId?: number) =>
+    api.post('/admin/shopping/meta-ads/auto-attach', null, { params: { limit, product_id: productId } }),
 
   // Prodora Digital Bundles — ExiusCart's own design packs sold to sellers.
   listDigitalBundles: () => api.get('/admin/prodora-bundles'),

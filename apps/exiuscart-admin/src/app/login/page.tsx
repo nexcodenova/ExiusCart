@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Login Form */}
-        <Card className="relative overflow-hidden p-6 sm:p-8">
+        <Card className="relative overflow-hidden border-gray-800 bg-[#151F32] p-6 text-white sm:p-8">
           <BorderBeam />
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>

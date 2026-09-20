@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminSidebar } from '@/components/layout/sidebar';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
+import { SupportButton } from '@/components/layout/support-button';
 
 export default function AdminDashboardLayout({
   children,
@@ -50,6 +51,9 @@ export default function AdminDashboardLayout({
           sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
         }`}
       >
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-end border-b border-gray-200 bg-white/95 px-4 backdrop-blur lg:px-6">
+          <SupportButton />
+        </header>
         <main className="p-4 lg:p-6">{children}</main>
       </div>
 

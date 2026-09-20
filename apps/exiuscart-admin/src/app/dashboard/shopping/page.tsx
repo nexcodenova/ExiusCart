@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   TrendingUp, Plus, Search, Pencil, Trash2, Loader2,
   Flame, Star, Eye, EyeOff, X, Check, Package, Upload, ImageIcon,
-  ExternalLink, Tag, AlertCircle, ShoppingBag, RefreshCw,
+  ExternalLink, Tag, AlertCircle, ShoppingBag, RefreshCw, ChevronDown, Download, Trophy, Megaphone,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { RichTextEditor } from '@/components/rich-text-editor';
+import { SupplierLogo } from '@/components/supplier-logo';
+import { CountrySelect } from '@/components/country-select';
 
 // Prodora catalog products aren't shop-scoped to any one seller, so there's
 // no real sequential counter to draw from (unlike a seller's own products —
@@ -29,6 +32,13 @@ interface ShoppingProductVariant {
 
 interface ShoppingProduct {
   id: number;
+  // Catalogue fields from /admin/prodora/catalog: ID like CJ001 / AL001 / DG001
+  code?: string | null;
+  kind?: 'product' | 'digital';
+  supplier_key?: string;
+  supplier_label?: string;
+  views?: number | null;    // every open of the Prodora product page
+  imports?: number | null;  // times sellers imported it into their store
   name: string;
   description: string | null;
   price: number;
@@ -41,6 +51,7 @@ interface ShoppingProduct {
   source_url: string | null;
   is_active: boolean;
   is_featured: boolean;
+  is_bestseller?: boolean;
   is_trending: boolean;
   sku: string | null;
   category_name: string | null;
@@ -79,6 +90,7 @@ const emptyForm = {
   source_url: '',
   category_name: '',
   is_featured: false,
+  is_bestseller: false,
   is_trending: false,
   is_active: true,
   winning_score: '',
@@ -218,6 +230,36 @@ function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, 
   );
 }
 
+// Prodora's own categories, for choosing where an import goes. The supplier's
+// category is only the default; picking one here overrides it.
+function useProdoraCategoryNames(): string[] {
+  const [names, setNames] = useState<string[]>([]);
+  useEffect(() => {
+    adminApi.getProdoraCategories()
+      .then((r: any) => setNames((r.data ?? []).filter((c: any) => c.managed).map((c: any) => c.name)))
+      .catch(() => {});
+  }, []);
+  return names;
+}
+
+function ImportCategoryPicker({ value, onChange, emptyLabel }: { value: string; onChange: (v: string) => void; emptyLabel: string }) {
+  const names = useProdoraCategoryNames();
+  return (
+    <select
+      value={value} onChange={(e) => onChange(e.target.value)}
+      className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-[#6B3FD9] focus:outline-none"
+    >
+      <option value="">{emptyLabel}</option>
+      {names.map((n) => <option key={n} value={n}>{n}</option>)}
+    </select>
+  );
+}
+
+function CategoryDatalist({ id }: { id: string }) {
+  const names = useProdoraCategoryNames();
+  return <datalist id={id}>{names.map((n) => <option key={n} value={n} />)}</datalist>;
+}
+
 // ── CJ Import Modal ──────────────────────────────────────────────────────────
 
 interface CJProduct {
@@ -238,6 +280,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   const [showApiKey, setShowApiKey] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState('');
+  const [importCategory, setImportCategory] = useState('');
 
   const [activeTab, setActiveTab] = useState<'search' | 'my' | 'trending' | 'category'>('trending');
   const [inputVal, setInputVal] = useState('');
@@ -366,7 +409,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
   const handleImport = async (p: CJProduct) => {
     setImportingPid(p.pid);
     try {
-      await adminApi.cjImport(p.pid, undefined, p.category || undefined);
+      await adminApi.cjImport(p.pid, undefined, importCategory || p.category || undefined);
       setImportedCount((c) => c + 1);
       onImported();
     } catch {
@@ -386,7 +429,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
     if (selected.size === 0) return;
     setBulkImporting(true);
     try {
-      const res = await adminApi.cjImportBulk(Array.from(selected));
+      const res = await adminApi.cjImportBulk(Array.from(selected), importCategory || undefined);
       const importedIds: number[] = res.data?.imported ?? [];
       setImportedCount((c) => c + importedIds.length);
       setSelected(new Set());
@@ -413,6 +456,13 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600"><X className="w-4 h-4" /></button>
         </div>
+
+        {connected && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-5 py-3">
+            <p className="text-sm text-gray-600">Category for imported products</p>
+            <ImportCategoryPicker value={importCategory} onChange={setImportCategory} emptyLabel="Use CJ's own category" />
+          </div>
+        )}
 
         {!connected ? (
           <form onSubmit={connect} className="p-5 space-y-4">
@@ -911,9 +961,7 @@ function AliexpressImportModal({ connected, systemShopId, onClose, onImported }:
                   </div>
                   <div>
                     <label className="text-sm text-gray-600 mb-1.5 block">Category <span className="text-gray-400">(optional)</span></label>
-                    <input type="text" value={categoryName} onChange={(e) => setCategoryName(e.target.value)}
-                      placeholder="e.g. Electronics"
-                      className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-gray-900 text-sm" />
+                    <ImportCategoryPicker value={categoryName} onChange={setCategoryName} emptyLabel="No category" />
                   </div>
                 </div>
                 <button type="submit" disabled={importing || !productUrl.trim()}
@@ -936,6 +984,8 @@ export default function TrendingDropshippingPage() {
   const [products, setProducts] = useState<ShoppingProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [supplierFilter, setSupplierFilter] = useState('all');
 
   // CJ import
   const [cjConnected, setCjConnected] = useState(false);
@@ -1008,7 +1058,7 @@ export default function TrendingDropshippingPage() {
     try {
       const params: any = {};
       if (search) params.search = search;
-      const res = await adminApi.getShoppingProducts(params);
+      const res = await adminApi.getProdoraCatalog(params);
       setProducts(res.data);
     } catch {
       // handled by empty state
@@ -1018,6 +1068,18 @@ export default function TrendingDropshippingPage() {
   };
 
   useEffect(() => { fetchProducts(); }, [search]);
+
+  // "Add Products" sends people here with ?add=cj | aliexpress | manual to
+  // open that supplier's window straight away.
+  useEffect(() => {
+    const add = new URLSearchParams(window.location.search).get('add');
+    if (!add) return;
+    window.history.replaceState(null, '', window.location.pathname);
+    if (add === 'cj') setShowCjModal(true);
+    else if (add === 'aliexpress') setShowAliexpressModal(true);
+    else if (add === 'manual') openAdd();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
 
@@ -1051,6 +1113,7 @@ export default function TrendingDropshippingPage() {
       source_url: p.source_url || '',
       category_name: p.category_name || '',
       is_featured: p.is_featured,
+      is_bestseller: !!p.is_bestseller,
       is_trending: p.is_trending,
       is_active: p.is_active,
       winning_score: p.winning_score != null ? String(p.winning_score) : '',
@@ -1146,6 +1209,7 @@ export default function TrendingDropshippingPage() {
         source_url: form.source_url.trim() || null,
         category_name: form.category_name.trim() || null,
         is_featured: form.is_featured,
+        is_bestseller: form.is_bestseller,
         is_trending: form.is_trending,
         is_active: form.is_active,
         images: [imageUrl, ...extraImages].filter((u): u is string => !!u),
@@ -1219,7 +1283,7 @@ export default function TrendingDropshippingPage() {
 
   // ── Quick toggles ──────────────────────────────────────────────────────────
 
-  const toggle = async (product: ShoppingProduct, field: 'is_trending' | 'is_featured' | 'is_active') => {
+  const toggle = async (product: ShoppingProduct, field: 'is_trending' | 'is_bestseller' | 'is_active') => {
     setTogglingId(product.id);
     try {
       await adminApi.updateShoppingProduct(product.id, { [field]: !product[field] });
@@ -1272,15 +1336,37 @@ export default function TrendingDropshippingPage() {
       const res = await adminApi.metaAdsAutoAttach(100);
       const queued = res.data?.queued ?? 0;
       setAutoAttachResult(queued > 0 ? `Queued ${queued} products — check back in a bit and refresh to see attached ads.` : 'Every product already has a Facebook ad link.');
-    } catch {
-      setAutoAttachResult("Couldn't start the auto-attach job — try again.");
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setAutoAttachResult(typeof detail === 'object' && detail?.message ? detail.message : "Couldn't start the auto-attach job — try again.");
     } finally {
       setAutoAttaching(false);
       setTimeout(() => setAutoAttachResult(''), 8000);
     }
   };
 
+  // Looks for a real Meta ad for one product and attaches it (the same job the
+  // bulk button runs, for a single row).
+  const handleFindAd = async (p: ShoppingProduct) => {
+    setAutoAttachResult('');
+    try {
+      const res = await adminApi.metaAdsAutoAttach(1, p.id);
+      setAutoAttachResult(res.data?.queued > 0 ? `Searching Meta ads for "${p.name.slice(0, 30)}". Refresh in a minute to see it.` : 'This product already has a Facebook ad link.');
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setAutoAttachResult(typeof detail === 'object' && detail?.message ? detail.message : "Couldn't search Meta ads — try again.");
+    } finally {
+      setTimeout(() => setAutoAttachResult(''), 9000);
+    }
+  };
+
   // ── Stats ──────────────────────────────────────────────────────────────────
+
+  // Suppliers present in the list, for the filter chips.
+  const supplierOptions = Array.from(
+    new Map(products.map((p) => [p.supplier_key ?? 'manual', p.supplier_label ?? 'Manual'])).entries(),
+  ).map(([key, label]) => ({ key, label }));
+  const shown = supplierFilter === 'all' ? products : products.filter((p) => (p.supplier_key ?? 'manual') === supplierFilter);
 
   const trending = products.filter((p) => p.is_trending).length;
   const featured = products.filter((p) => p.is_featured).length;
@@ -1295,72 +1381,50 @@ export default function TrendingDropshippingPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-[#6B3FD9]" />
-            Prodora Products
+            All Products
           </h1>
           <p className="text-gray-600 text-sm mt-1">
-            Products you add here appear on the Prodora dropshipping storefront
+            Everything on Prodora, physical and digital, numbered with its supplier ID
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {backfillResult && (
-            <span className="text-xs text-gray-600 max-w-[180px]">{backfillResult}</span>
-          )}
-          {autoAttachResult && (
-            <span className="text-xs text-gray-600 max-w-[180px]">{autoAttachResult}</span>
-          )}
-          <button
-            type="button"
-            onClick={handleBackfillDescriptions}
-            disabled={backfilling}
-            title="Re-cleans descriptions saved before the image-strip/word-limit fix existed — safe to run anytime"
-            className="inline-flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 hover:border-[#6B3FD9]/50 transition text-sm disabled:opacity-50"
-          >
-            {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Clean up descriptions
-          </button>
-          <button
-            type="button"
-            onClick={handleAutoAttachAds}
-            disabled={autoAttaching}
-            title="Searches Meta Ad Library for products missing a Facebook ad link and attaches the best match — throttled, runs in the background"
-            className="inline-flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 hover:border-[#6B3FD9]/50 transition text-sm disabled:opacity-50"
-          >
-            {autoAttaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-            Auto-attach Meta Ads
-          </button>
-          <a
-            href="https://prodora.exiuscart.com"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 hover:border-[#6B3FD9]/50 transition text-sm"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Preview Prodora
-          </a>
-          <button
-            type="button"
-            onClick={() => setShowCjModal(true)}
-            className="inline-flex items-center gap-2 bg-gray-50 border border-gray-300 hover:border-[#6B3FD9]/50 text-gray-900 font-semibold px-4 py-2.5 rounded-lg transition"
-          >
-            <ShoppingBag className="w-4 h-4 text-[#6B3FD9]" />
-            {cjConnected ? 'Import from CJ' : 'Connect CJ'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowAliexpressModal(true)}
-            className="inline-flex items-center gap-2 bg-gray-50 border border-gray-300 hover:border-[#6B3FD9]/50 text-gray-900 font-semibold px-4 py-2.5 rounded-lg transition"
-          >
-            <ShoppingBag className="w-4 h-4 text-[#6B3FD9]" />
-            {aliexpressConnected ? 'Import from AliExpress' : 'Connect AliExpress'}
-          </button>
-          <button
-            type="button"
-            onClick={openAdd}
+          {backfillResult && <span className="text-xs text-gray-600 max-w-[180px]">{backfillResult}</span>}
+          {autoAttachResult && <span className="text-xs text-gray-600 max-w-[180px]">{autoAttachResult}</span>}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setToolsOpen((v) => !v)}
+              className="inline-flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 hover:border-[#6B3FD9]/50 transition text-sm"
+            >
+              Tools <ChevronDown className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {toolsOpen && (
+              <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">
+                <button
+                  type="button" disabled={autoAttaching}
+                  onClick={() => { setToolsOpen(false); handleAutoAttachAds(); }}
+                  title="Searches Meta Ad Library for products missing a Facebook ad link and attaches the best match. Runs in the background."
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  {autoAttaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4 text-gray-400" />}
+                  Auto-attach Meta Ads
+                </button>
+                <a
+                  href="https://prodora.exiuscart.com" target="_blank" rel="noreferrer"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <ExternalLink className="w-4 h-4 text-gray-400" /> Preview Prodora
+                </a>
+              </div>
+            )}
+          </div>
+          <Link
+            href="/dashboard/shopping/add"
             className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-4 py-2.5 rounded-lg transition"
           >
             <Plus className="w-4 h-4" />
-            Add Product
-          </button>
+            Add Products
+          </Link>
         </div>
       </div>
 
@@ -1382,27 +1446,38 @@ export default function TrendingDropshippingPage() {
         />
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Products" value={String(products.length)} icon={<Package className="w-5 h-5" />} />
-        <StatCard label="Trending" value={String(trending)} icon={<Flame className="w-5 h-5" />} accent="orange" />
-        <StatCard label="Featured" value={String(featured)} icon={<Star className="w-5 h-5" />} accent="yellow" />
-        <StatCard label="Active / Visible" value={String(active)} icon={<Eye className="w-5 h-5" />} accent="green" />
-      </div>
-
       {/* Search */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+      <div className="mb-4">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
             type="text"
-            placeholder="Search dropshipping products..."
+            placeholder="Search by name or ID (e.g. CJ001)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:border-[#6B3FD9] focus:outline-none text-sm"
           />
         </div>
       </div>
+
+      {supplierOptions.length > 1 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button" onClick={() => setSupplierFilter('all')}
+            className={`inline-flex h-10 items-center rounded-lg border px-4 text-sm font-medium transition ${supplierFilter === 'all' ? 'border-[#6B3FD9] bg-[#6B3FD9]/10 text-[#5A2EC9]' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+          >
+            All suppliers
+          </button>
+          {supplierOptions.map((o) => (
+            <button
+              key={o.key} type="button" onClick={() => setSupplierFilter(o.key)}
+              className={`inline-flex h-10 items-center gap-2 rounded-lg border pl-1.5 pr-4 text-sm font-medium transition ${supplierFilter === o.key ? 'border-[#6B3FD9] bg-[#6B3FD9]/10 text-[#5A2EC9]' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              <SupplierLogo supplier={o.key} label={o.label} className="h-7 w-7" /> {o.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -1413,14 +1488,10 @@ export default function TrendingDropshippingPage() {
         ) : products.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-gray-500">
             <TrendingUp className="w-12 h-12 mb-2 opacity-30" />
-            <p className="text-sm">No dropshipping products yet</p>
-            <button
-              type="button"
-              onClick={openAdd}
-              className="mt-3 text-sm text-[#6B3FD9] hover:underline"
-            >
+            <p className="text-sm">No products yet</p>
+            <Link href="/dashboard/shopping/add" className="mt-3 text-sm text-[#6B3FD9] hover:underline">
               Add your first product
-            </button>
+            </Link>
           </div>
         ) : (
           <>
@@ -1429,22 +1500,32 @@ export default function TrendingDropshippingPage() {
               <table className="w-full">
                 <thead>
                   <tr className="text-left text-xs text-gray-500 border-b border-gray-200 uppercase tracking-wider">
+                    <th className="px-4 py-3 font-medium">#</th>
                     <th className="px-4 py-3 font-medium">Product</th>
+                    <th className="px-4 py-3 font-medium">Supplier</th>
+                    <th className="px-4 py-3 font-medium">ID</th>
                     <th className="px-4 py-3 font-medium text-right">Buying Price</th>
                     <th className="px-4 py-3 font-medium text-right">Selling Price</th>
                     <th className="px-4 py-3 font-medium text-center">Margin</th>
+                    <th className="px-4 py-3 font-medium text-right">Views</th>
+                    <th className="px-4 py-3 font-medium text-right">Imports</th>
                     <th className="px-4 py-3 font-medium text-center">Flags</th>
                     <th className="px-4 py-3 font-medium text-center">Status</th>
                     <th className="px-4 py-3 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {products.map((p) => {
+                  {shown.map((p) => {
+                    const idx = products.indexOf(p);
+                    const isDigital = p.kind === 'digital';
                     const margin = p.cost_price && p.price > p.cost_price
                       ? Math.round(((p.price - p.cost_price) / p.price) * 100)
                       : null;
                     return (
-                      <tr key={p.id} className="hover:bg-gray-50 transition">
+                      <tr key={`${p.kind ?? 'product'}-${p.id}`} className="hover:bg-gray-50 transition">
+                        {/* Running number */}
+                        <td className="px-4 py-4 text-sm font-semibold text-gray-500">{idx + 1}</td>
+
                         {/* Product */}
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
@@ -1468,6 +1549,19 @@ export default function TrendingDropshippingPage() {
                               {p.sku && <p className="text-xs text-gray-400 mt-0.5">SKU: {p.sku}</p>}
                             </div>
                           </div>
+                        </td>
+
+                        {/* Supplier */}
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center gap-2 text-sm text-gray-700">
+                            <SupplierLogo supplier={p.supplier_key ?? 'manual'} label={p.supplier_label} className="h-7 w-7" />
+                            {p.supplier_label ?? 'Manual'}
+                          </span>
+                        </td>
+
+                        {/* Catalogue ID */}
+                        <td className="px-4 py-4">
+                          <span className="font-mono text-sm font-semibold text-gray-900">{p.code ?? '—'}</span>
                         </td>
 
                         {/* Buying price */}
@@ -1499,8 +1593,13 @@ export default function TrendingDropshippingPage() {
                           )}
                         </td>
 
+                        {/* Views + imports */}
+                        <td className="px-4 py-4 text-right text-sm tabular-nums text-gray-700">{p.views == null ? <span className="text-gray-300">—</span> : p.views.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-right text-sm tabular-nums text-gray-700">{p.imports == null ? <span className="text-gray-300">—</span> : p.imports.toLocaleString()}</td>
+
                         {/* Flags */}
                         <td className="px-4 py-4">
+                          {isDigital ? <div className="text-center text-xs text-gray-300">—</div> : (
                           <div className="flex items-center justify-center gap-1">
                             <QuickToggle
                               active={p.is_trending}
@@ -1509,17 +1608,23 @@ export default function TrendingDropshippingPage() {
                               title={p.is_trending ? 'Remove Trending' : 'Mark Trending'}
                             />
                             <QuickToggle
-                              active={p.is_featured}
-                              onClick={() => toggle(p, 'is_featured')}
-                              icon={<Star className="w-4 h-4" />}
-                              title={p.is_featured ? 'Remove Featured' : 'Mark Featured'}
+                              active={!!p.is_bestseller}
+                              onClick={() => toggle(p, 'is_bestseller')}
+                              icon={<Trophy className="w-4 h-4" />}
+                              title={p.is_bestseller ? 'Remove from Global Bestsellers' : 'Show in Global Bestsellers'}
                             />
                             {togglingId === p.id && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
                           </div>
+                          )}
                         </td>
 
                         {/* Active */}
                         <td className="px-4 py-4 text-center">
+                          {isDigital ? (
+                            <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${p.is_active ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-gray-500/10 text-gray-500 border-gray-300'}`}>
+                              {p.is_active ? 'Active' : 'Hidden'}
+                            </span>
+                          ) : (
                           <button
                             type="button"
                             onClick={() => toggle(p, 'is_active')}
@@ -1531,11 +1636,21 @@ export default function TrendingDropshippingPage() {
                           >
                             {p.is_active ? 'Active' : 'Hidden'}
                           </button>
+                          )}
                         </td>
 
                         {/* Actions */}
                         <td className="px-4 py-4">
                           <div className="flex items-center justify-end gap-2">
+                            {isDigital ? (
+                              <Link
+                                href={`/dashboard/digital-bundles?edit=${p.id}`}
+                                className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition inline-flex"
+                                title="Edit in Digital Products"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Link>
+                            ) : (<>
                             {p.source_url && (
                               <a
                                 href={p.source_url}
@@ -1547,6 +1662,14 @@ export default function TrendingDropshippingPage() {
                                 <ExternalLink className="w-4 h-4" />
                               </a>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleFindAd(p)}
+                              className="p-1.5 text-gray-500 hover:text-[#6B3FD9] hover:bg-gray-100 rounded-lg transition"
+                              title="Find a Meta ad for this product"
+                            >
+                              <Megaphone className="w-4 h-4" />
+                            </button>
                             <button
                               type="button"
                               onClick={() => openEdit(p)}
@@ -1563,6 +1686,7 @@ export default function TrendingDropshippingPage() {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
+                            </>)}
                           </div>
                         </td>
                       </tr>
@@ -1574,8 +1698,8 @@ export default function TrendingDropshippingPage() {
 
             {/* Mobile cards */}
             <div className="md:hidden divide-y divide-gray-200">
-              {products.map((p) => (
-                <div key={p.id} className="p-4 flex gap-3">
+              {shown.map((p) => (
+                <div key={`${p.kind ?? 'product'}-${p.id}`} className="p-4 flex gap-3">
                   <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-200 flex-shrink-0 overflow-hidden">
                     {p.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -1588,7 +1712,12 @@ export default function TrendingDropshippingPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-gray-900 text-sm truncate">{p.name}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 text-sm truncate">{p.name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          <span className="font-mono font-semibold text-gray-700">{p.code ?? '—'}</span> · {p.supplier_label ?? 'Manual'}
+                        </p>
+                      </div>
                       <span className="text-sm font-bold text-[#6B3FD9] flex-shrink-0">
                         {p.price.toFixed(2)} {p.currency}
                       </span>
@@ -1598,11 +1727,16 @@ export default function TrendingDropshippingPage() {
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       {p.is_trending && <Badge label="🔥 Trending" color="bg-orange-500/10 text-orange-600 border-orange-500/20" />}
-                      {p.is_featured && <Badge label="⭐ Featured" color="bg-yellow-500/10 text-yellow-600 border-yellow-500/20" />}
+                      {p.is_bestseller && <Badge label="🏆 Bestseller" color="bg-yellow-500/10 text-yellow-600 border-yellow-500/20" />}
                       {!p.is_active && <Badge label="Hidden" color="bg-gray-200 text-gray-600 border-gray-400" />}
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
+                    {p.kind === 'digital' ? (
+                      <Link href={`/dashboard/digital-bundles?edit=${p.id}`} className="p-1.5 text-gray-500 hover:text-gray-900 rounded-lg" title="Edit in Digital Products">
+                        <Pencil className="w-4 h-4" />
+                      </Link>
+                    ) : (<>
                     {p.source_url && (
                       <a href={p.source_url} target="_blank" rel="noopener noreferrer"
                         className="p-1.5 text-gray-500 hover:text-[#6B3FD9] rounded-lg inline-flex" title="Open real CJ product page">
@@ -1615,6 +1749,7 @@ export default function TrendingDropshippingPage() {
                     <button type="button" onClick={() => setDeleteId(p.id)} className="p-1.5 text-gray-500 hover:text-red-600 rounded-lg">
                       <Trash2 className="w-4 h-4" />
                     </button>
+                    </>)}
                   </div>
                 </div>
               ))}
@@ -1625,8 +1760,8 @@ export default function TrendingDropshippingPage() {
 
       {/* ── Add / Edit Modal ─────────────────────────────────────────────── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-5xl max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70">
+          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-[1400px] max-h-[95vh] overflow-y-auto">
             {/* Modal header */}
             <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-gray-200 z-10">
               <h2 className="text-lg font-semibold text-gray-900">
@@ -1637,7 +1772,7 @@ export default function TrendingDropshippingPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-5 space-y-4">
+            <form onSubmit={handleSave} className="p-6 xl:p-8 space-y-5">
               {modalError && (
                 <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-600 text-sm">
                   {modalError}
@@ -1645,7 +1780,7 @@ export default function TrendingDropshippingPage() {
               )}
 
               {/* Content (left) + Pricing/meta (right) */}
-              <div className="grid lg:grid-cols-2 gap-x-6 gap-y-4">
+              <div className="grid lg:grid-cols-2 gap-x-8 xl:gap-x-12 gap-y-5">
                 {/* ── Left: Image, Name, Description, Source ── */}
                 <div className="space-y-4">
                   {/* Product Image Upload */}
@@ -1726,7 +1861,7 @@ export default function TrendingDropshippingPage() {
                         return res.data.url;
                       }}
                     />
-                    <p className="mt-1 text-xs text-gray-400">Truncated automatically past 200 words when saved — matches every plan's minimum description limit.</p>
+                    <p className="mt-1 text-xs text-gray-400">Up to 1,000 words are kept. When a seller imports the product it is trimmed to their plan's limit (Launch 350, Growth 500, Scale 1,000 words).</p>
                   </div>
 
                   {/* Source / Supplier Link */}
@@ -1800,12 +1935,14 @@ export default function TrendingDropshippingPage() {
 
                   {/* Category */}
                   <div>
+                    <CategoryDatalist id="prodora-category-options" />
                     <label className="text-sm text-gray-600 mb-1 block">Category</label>
                     <input
                       type="text"
+                      list="prodora-category-options"
                       value={form.category_name}
                       onChange={(e) => setForm((f) => ({ ...f, category_name: e.target.value }))}
-                      placeholder="e.g. Electronics, Fashion"
+                      placeholder="Pick one of your categories or type a new one"
                       className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                     />
                   </div>
@@ -2164,15 +2301,14 @@ export default function TrendingDropshippingPage() {
                 <p className="text-xs text-gray-400 -mt-1">Optional — real buyer geography breakdown, if you have it. Leave empty to hide it.</p>
                 {topCountries.map((c, i) => (
                   <div key={i} className="flex gap-2">
-                    <input type="text" value={c.country}
-                      onChange={(e) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, country: e.target.value } : x))}
-                      placeholder="United States" className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
-                    <input type="text" value={c.code} maxLength={2}
-                      onChange={(e) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, code: e.target.value } : x))}
-                      placeholder="US" className="w-16 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    <CountrySelect
+                      code={c.code}
+                      exclude={topCountries.filter((_, j) => j !== i).map((x) => x.code.toUpperCase())}
+                      onChange={(code, name) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, code, country: name } : x))}
+                    />
                     <input type="number" value={c.percent} min="0" max="100"
                       onChange={(e) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, percent: e.target.value } : x))}
-                      placeholder="%" className="w-20 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      placeholder="%" className="w-24 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                     <button type="button" onClick={() => setTopCountries((arr) => arr.filter((_, j) => j !== i))}
                       className="px-2 text-gray-500 hover:text-red-600"><X className="w-4 h-4" /></button>
                   </div>
@@ -2183,22 +2319,25 @@ export default function TrendingDropshippingPage() {
 
               {/* Flags */}
               <div className="space-y-3 border border-gray-200 rounded-xl p-4 bg-gray-50">
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">Visibility & Flags</p>
+                <div className="mb-2">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Visibility & Flags</p>
+                  <p className="mt-1 text-xs text-gray-500">Choose where this product appears in Prodora.</p>
+                </div>
                 <label className="flex items-center justify-between cursor-pointer">
                   <span className="text-sm text-gray-700 flex items-center gap-2">
-                    <Flame className="w-4 h-4 text-orange-600" /> Mark as Trending
+                    Show in Current Trends
                   </span>
                   <Toggle on={form.is_trending} onChange={() => setForm((f) => ({ ...f, is_trending: !f.is_trending }))} color="bg-orange-500" />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer">
                   <span className="text-sm text-gray-700 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-yellow-600" /> Mark as Featured
+                    Show in Global Bestsellers
                   </span>
-                  <Toggle on={form.is_featured} onChange={() => setForm((f) => ({ ...f, is_featured: !f.is_featured }))} color="bg-yellow-500" />
+                  <Toggle on={form.is_bestseller} onChange={() => setForm((f) => ({ ...f, is_bestseller: !f.is_bestseller }))} color="bg-yellow-500" />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer">
                   <span className="text-sm text-gray-700 flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-green-600" /> Active (visible on storefront)
+                    Active (visible on storefront)
                   </span>
                   <Toggle on={form.is_active} onChange={() => setForm((f) => ({ ...f, is_active: !f.is_active }))} color="bg-green-500" />
                 </label>

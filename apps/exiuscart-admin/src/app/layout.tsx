@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
+// Flag sprites bundled locally (not fetched from a CDN). Imported before
+// globals.css so Tailwind's width/height utilities win over the flag sizing.
+import 'flag-icons/css/flag-icons.min.css';
 import './globals.css';
 
 // Self-hosted (not next/font/google) — the production server's build step
