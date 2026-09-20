@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, User, Store, CheckCircle, Ban, Loader2, Tag } from 'lucide-react';
+import { Search, Filter, User, Store, CheckCircle, Ban, Loader2, Tag, Eye, X, Mail, Phone } from 'lucide-react';
 import { adminApi } from '@/lib/api';
-import { PlanChip, StatusChip, PlanDates, fmtDate } from '@/lib/subscription-ui';
+import { PlanChip, StatusChip, PlanDates, fmtDate, daysLeftText } from '@/lib/subscription-ui';
 
 interface AdminUser {
   id: number;
@@ -45,6 +45,7 @@ export default function UsersPage() {
   const [searchQuery, setSearch]  = useState('');
   const [statusFilter, setStatus] = useState('all');
   const [sourceFilter, setSource] = useState('all');
+  const [selected, setSelected] = useState<AdminUser | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -143,96 +144,84 @@ export default function UsersPage() {
           {/* Desktop Table */}
           <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-sm text-gray-600 border-b border-gray-200">
-                    <th className="px-6 py-4 font-medium">User</th>
-                    <th className="px-6 py-4 font-medium">Store</th>
-                    <th className="px-6 py-4 font-medium">Plan</th>
-                    <th className="px-6 py-4 font-medium">Plan period</th>
-                    <th className="px-6 py-4 font-medium">Source</th>
-                    <th className="px-6 py-4 font-medium">Referred By</th>
-                    <th className="px-6 py-4 font-medium">Account</th>
-                    <th className="px-6 py-4 font-medium">Registered</th>
-                    <th className="px-6 py-4 font-medium">Actions</th>
+                  <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-200">
+                    <th className="px-4 py-3 font-medium">User</th>
+                    <th className="px-4 py-3 font-medium">Store</th>
+                    <th className="px-4 py-3 font-medium">Plan</th>
+                    <th className="px-4 py-3 font-medium">Expires</th>
+                    <th className="px-4 py-3 font-medium">Account</th>
+                    <th className="px-4 py-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((user) => (
-                    <tr key={user.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-200 transition">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-[#6B3FD9]">
-                              {user.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                            </span>
+                  {filtered.map((user) => {
+                    const left = daysLeftText(user.expires_at);
+                    return (
+                      <tr key={user.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-[#6B3FD9]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-semibold text-[#6B3FD9]">
+                                {user.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                              </span>
+                            </div>
+                            <div className="min-w-0 max-w-[15rem]">
+                              <p className="truncate font-medium text-gray-900">{user.full_name}</p>
+                              <p className="truncate text-xs text-gray-500">{user.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{user.full_name}</p>
-                            <p className="text-xs text-gray-500">{user.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {user.store_name ? (
-                          <div className="flex items-center gap-2">
-                            <Store className="w-4 h-4 text-gray-500" />
-                            <span className="text-gray-900">{user.store_name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">No store</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {user.plan_type ? (
-                          <div className="flex flex-col items-start gap-1">
-                            <PlanChip plan={user.plan_type} />
-                            <StatusChip status={user.plan_status} />
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">No plan</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <PlanDates startsAt={user.starts_at} expiresAt={user.expires_at} status={user.plan_status} />
-                      </td>
-                      <td className="px-6 py-4">
-                        {user.source === 'thedersi' ? (
-                          <span className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 font-medium">
-                            TheDersi
+                        </td>
+                        <td className="px-4 py-3">
+                          {user.store_name ? (
+                            <span className="block max-w-[10rem] truncate text-gray-800" title={user.store_name}>{user.store_name}</span>
+                          ) : (
+                            <span className="text-gray-400">No store</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {user.plan_type ? (
+                            <div className="flex items-center gap-2 whitespace-nowrap">
+                              <PlanChip plan={user.plan_type} />
+                              <StatusChip status={user.plan_status} />
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">No plan</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                          {user.plan_type ? (
+                            <>
+                              {user.expires_at ? fmtDate(user.expires_at) : 'Lifetime'}
+                              {left && user.plan_status !== 'expired' && user.plan_status !== 'cancelled' && (
+                                <span className={left.tone === 'gone' ? 'block text-red-600' : left.tone === 'soon' ? 'block text-orange-600' : 'block text-gray-400'}>{left.text}</span>
+                              )}
+                            </>
+                          ) : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs px-2.5 py-1 rounded-lg ${user.is_active ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                            {user.is_active ? 'Active' : 'Suspended'}
                           </span>
-                        ) : (
-                          <span className="text-xs px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-600 font-medium">
-                            Direct
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {user.referred_by_code ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-[#6B3FD9]/10 text-purple-600 font-medium">
-                            <Tag className="w-3 h-3" />{user.referred_by_code}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-sm">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`text-xs px-2.5 py-1 rounded-lg ${user.is_active ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
-                          {user.is_active ? 'Active' : 'Suspended'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600 text-sm">
-                        {fmtDate(user.created_at)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button type="button" onClick={() => toggleStatus(user)}
-                          title={user.is_active ? 'Suspend user' : 'Activate user'}
-                          className={`p-2 rounded-lg transition ${user.is_active ? 'text-red-600 hover:bg-red-500/10' : 'text-green-600 hover:bg-green-500/10'}`}>
-                          {user.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <button type="button" onClick={() => setSelected(user)} title="View all details" aria-label={`View details for ${user.full_name}`}
+                              className="p-2 rounded-lg text-[#6B3FD9] hover:bg-[#6B3FD9]/10 transition">
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button type="button" onClick={() => toggleStatus(user)}
+                              title={user.is_active ? 'Suspend user' : 'Activate user'}
+                              aria-label={user.is_active ? `Suspend ${user.full_name}` : `Activate ${user.full_name}`}
+                              className={`p-2 rounded-lg transition ${user.is_active ? 'text-red-600 hover:bg-red-500/10' : 'text-green-600 hover:bg-green-500/10'}`}>
+                              {user.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -278,6 +267,10 @@ export default function UsersPage() {
                 )}
                 <div className="pt-3 border-t border-gray-200">
                   <p className="mb-2 text-xs text-gray-400">Registered {fmtDate(user.created_at)}</p>
+                  <button type="button" onClick={() => setSelected(user)}
+                    className="mr-2 text-xs px-3 py-1.5 rounded-lg bg-[#6B3FD9]/10 text-[#6B3FD9] transition">
+                    View details
+                  </button>
                   <button type="button" onClick={() => toggleStatus(user)}
                     className={`text-xs px-3 py-1.5 rounded-lg transition ${user.is_active ? 'bg-red-500/10 text-red-600' : 'bg-green-500/10 text-green-600'}`}>
                     {user.is_active ? 'Suspend User' : 'Activate User'}
@@ -288,6 +281,107 @@ export default function UsersPage() {
           </div>
         </>
       )}
+      {selected && <UserDrawer user={selected} onClose={() => setSelected(null)} onToggle={toggleStatus} />}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2 text-sm">
+      <span className="shrink-0 text-gray-500">{label}</span>
+      <span className="min-w-0 break-words text-right font-medium text-gray-900">{children}</span>
+    </div>
+  );
+}
+
+function UserDrawer({ user, onClose, onToggle }: { user: AdminUser; onClose: () => void; onToggle: (u: AdminUser) => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const left = daysLeftText(user.expires_at);
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <aside role="dialog" aria-label={`Details for ${user.full_name}`} className="relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-gray-200 p-5">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 bg-[#6B3FD9]/10 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="font-semibold text-[#6B3FD9]">{user.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2)}</span>
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate font-semibold text-gray-900">{user.full_name}</h2>
+              <span className={`mt-0.5 inline-block text-xs px-2 py-0.5 rounded-lg ${user.is_active ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                {user.is_active ? 'Active account' : 'Suspended'}
+              </span>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-6 overflow-y-auto p-5">
+          <section>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Contact</h3>
+            <div className="divide-y divide-gray-100">
+              <Field label="Email"><a href={`mailto:${user.email}`} className="inline-flex items-center gap-1.5 text-[#6B3FD9] hover:underline"><Mail className="w-3.5 h-3.5" />{user.email}</a></Field>
+              <Field label="Phone">{user.phone ? <span className="inline-flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-gray-400" />{user.phone}</span> : <span className="text-gray-400">Not given</span>}</Field>
+              <Field label="Registered">{fmtDate(user.created_at)}</Field>
+              <Field label="User ID">#{user.id}</Field>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Store</h3>
+            <div className="divide-y divide-gray-100">
+              <Field label="Store">{user.store_name ? <span className="inline-flex items-center gap-1.5"><Store className="w-3.5 h-3.5 text-gray-400" />{user.store_name}</span> : <span className="text-gray-400">No store yet</span>}</Field>
+              {user.store_id && <Field label="Store ID">#{user.store_id}</Field>}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Plan</h3>
+            {user.plan_type ? (
+              <div className="divide-y divide-gray-100">
+                <Field label="Plan"><PlanChip plan={user.plan_type} /></Field>
+                <Field label="Status"><StatusChip status={user.plan_status} /></Field>
+                <Field label="Billing"><span className="capitalize">{user.billing_type?.replace('_', '-') ?? '—'}</span></Field>
+                <Field label="Started">{fmtDate(user.starts_at)}</Field>
+                <Field label="Expires">
+                  {user.expires_at ? fmtDate(user.expires_at) : 'Lifetime'}
+                  {left && user.plan_status !== 'expired' && user.plan_status !== 'cancelled' && (
+                    <span className={`block text-xs font-normal ${left.tone === 'gone' ? 'text-red-600' : left.tone === 'soon' ? 'text-orange-600' : 'text-gray-400'}`}>{left.text}</span>
+                  )}
+                </Field>
+              </div>
+            ) : (
+              <p className="py-2 text-sm text-gray-400">No plan on this account.</p>
+            )}
+          </section>
+
+          <section>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Where they came from</h3>
+            <div className="divide-y divide-gray-100">
+              <Field label="Source">{user.source === 'thedersi' ? 'TheDersi' : 'ExiusCart direct'}</Field>
+              <Field label="Referred by">{user.referred_by_code ? <span className="inline-flex items-center gap-1.5"><Tag className="w-3.5 h-3.5 text-[#6B3FD9]" />{user.referred_by_code}</span> : <span className="text-gray-400">Nobody</span>}</Field>
+            </div>
+          </section>
+        </div>
+
+        <div className="border-t border-gray-200 p-4">
+          <button
+            type="button"
+            onClick={() => { onToggle(user); onClose(); }}
+            className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium transition ${user.is_active ? 'bg-red-500/10 text-red-600 hover:bg-red-500/20' : 'bg-green-500/10 text-green-600 hover:bg-green-500/20'}`}
+          >
+            {user.is_active ? 'Suspend this user' : 'Activate this user'}
+          </button>
+        </div>
+      </aside>
     </div>
   );
 }
