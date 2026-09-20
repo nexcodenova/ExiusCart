@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, User, Store, CheckCircle, Ban, Loader2, Tag } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { PlanChip, StatusChip, PlanDates, fmtDate } from '@/lib/subscription-ui';
 
 interface AdminUser {
   id: number;
@@ -15,6 +16,9 @@ interface AdminUser {
   store_id: number | null;
   plan_type: string | null;
   plan_status: string | null;
+  billing_type: string | null;
+  starts_at: string | null;
+  expires_at: string | null;
   source: 'thedersi' | 'exiuscart';
   referred_by_code: string | null;
 }
@@ -145,9 +149,10 @@ export default function UsersPage() {
                     <th className="px-6 py-4 font-medium">User</th>
                     <th className="px-6 py-4 font-medium">Store</th>
                     <th className="px-6 py-4 font-medium">Plan</th>
+                    <th className="px-6 py-4 font-medium">Plan period</th>
                     <th className="px-6 py-4 font-medium">Source</th>
                     <th className="px-6 py-4 font-medium">Referred By</th>
-                    <th className="px-6 py-4 font-medium">Status</th>
+                    <th className="px-6 py-4 font-medium">Account</th>
                     <th className="px-6 py-4 font-medium">Registered</th>
                     <th className="px-6 py-4 font-medium">Actions</th>
                   </tr>
@@ -180,12 +185,16 @@ export default function UsersPage() {
                       </td>
                       <td className="px-6 py-4">
                         {user.plan_type ? (
-                          <span className={`text-xs px-2.5 py-1 rounded-lg font-medium ${PLAN_COLOR[user.plan_type] ?? 'bg-gray-500/10 text-gray-600'}`}>
-                            {PLAN_LABEL[user.plan_type] ?? user.plan_type}
-                          </span>
+                          <div className="flex flex-col items-start gap-1">
+                            <PlanChip plan={user.plan_type} />
+                            <StatusChip status={user.plan_status} />
+                          </div>
                         ) : (
-                          <span className="text-gray-400 text-sm">—</span>
+                          <span className="text-gray-400 text-sm">No plan</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <PlanDates startsAt={user.starts_at} expiresAt={user.expires_at} status={user.plan_status} />
                       </td>
                       <td className="px-6 py-4">
                         {user.source === 'thedersi' ? (
@@ -213,7 +222,7 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-gray-600 text-sm">
-                        {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
+                        {fmtDate(user.created_at)}
                       </td>
                       <td className="px-6 py-4">
                         <button type="button" onClick={() => toggleStatus(user)}
@@ -256,16 +265,19 @@ export default function UsersPage() {
                       <span>{user.store_name}</span>
                     </div>
                   )}
-                  {user.plan_type && (
-                    <span className={`text-xs px-2 py-0.5 rounded-lg ${PLAN_COLOR[user.plan_type] ?? 'bg-gray-500/10 text-gray-600'}`}>
-                      {PLAN_LABEL[user.plan_type] ?? user.plan_type}
-                    </span>
-                  )}
+                  {user.plan_type && <PlanChip plan={user.plan_type} />}
+                  {user.plan_type && <StatusChip status={user.plan_status} />}
                   <span className={`text-xs px-2 py-0.5 rounded-lg ${user.source === 'thedersi' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-purple-500/10 text-purple-600'}`}>
                     {user.source === 'thedersi' ? 'TheDersi' : 'Direct'}
                   </span>
                 </div>
+                {user.plan_type && (
+                  <div className="mb-3">
+                    <PlanDates startsAt={user.starts_at} expiresAt={user.expires_at} status={user.plan_status} />
+                  </div>
+                )}
                 <div className="pt-3 border-t border-gray-200">
+                  <p className="mb-2 text-xs text-gray-400">Registered {fmtDate(user.created_at)}</p>
                   <button type="button" onClick={() => toggleStatus(user)}
                     className={`text-xs px-3 py-1.5 rounded-lg transition ${user.is_active ? 'bg-red-500/10 text-red-600' : 'bg-green-500/10 text-green-600'}`}>
                     {user.is_active ? 'Suspend User' : 'Activate User'}

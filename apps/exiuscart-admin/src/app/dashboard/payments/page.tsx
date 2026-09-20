@@ -6,6 +6,7 @@ import {
   TrendingUp, AlertCircle, Check, X, Loader2, Zap, UserCheck, Receipt, Ban,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { PLAN_LABELS } from '@/lib/subscription-ui';
 
 interface Subscription {
   id: number;
@@ -267,7 +268,7 @@ export default function PaymentsPage() {
                     <tr key={sub.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-200 transition">
                       <td className="px-6 py-4 font-medium text-gray-900">{sub.shop_name}</td>
                       <td className={`px-6 py-4 font-medium capitalize ${planStyles[sub.plan_type] ?? 'text-gray-600'}`}>
-                        {sub.plan_type === 'free_trial' ? 'Free Trial' : sub.plan_type}
+                        {PLAN_LABELS[sub.plan_type] ?? sub.plan_type}
                       </td>
                       <td className="px-6 py-4 text-gray-600 capitalize">{sub.billing_type?.replace('_', '-')}</td>
                       <td className="px-6 py-4 font-semibold text-gray-900">
@@ -317,7 +318,7 @@ export default function PaymentsPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm mb-3">
                   <span className={`font-medium ${planStyles[sub.plan_type] ?? 'text-gray-600'}`}>
-                    {sub.plan_type === 'free_trial' ? 'Free Trial' : sub.plan_type}
+                    {PLAN_LABELS[sub.plan_type] ?? sub.plan_type}
                   </span>
                   <span className="font-semibold text-gray-900">{sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'}</span>
                 </div>
@@ -454,7 +455,7 @@ function PaymentLedgerTable({ ledger, loading, searchQuery, setSearchQuery }: {
                 {filtered.map((p) => (
                   <tr key={p.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-200 transition">
                     <td className="px-6 py-4 font-medium text-gray-900">{p.shop_name}</td>
-                    <td className="px-6 py-4 text-gray-700 capitalize">{p.plan_type} · {p.billing_type}</td>
+                    <td className="px-6 py-4 text-gray-700 capitalize">{PLAN_LABELS[p.plan_type] ?? p.plan_type} · {p.billing_type}</td>
                     <td className="px-6 py-4">
                       <span className="font-semibold text-gray-900">{p.amount.toFixed(2)} {p.currency}</span>
                       {p.refunded_at && (

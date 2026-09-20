@@ -6,6 +6,7 @@ import {
   Check, X, AlertTriangle, ChevronDown, Pencil, ChevronRight,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { PlanDates, fmtDate as fmtDay } from '@/lib/subscription-ui';
 
 interface Subscription {
   id: number;
@@ -19,6 +20,7 @@ interface Subscription {
   starts_at: string | null;
   expires_at: string | null;
   created_at: string | null;
+  shop_registered_at?: string | null;
   // true while a card is still being billed through Lemon Squeezy
   card_billing?: boolean;
 }
@@ -143,6 +145,7 @@ function EditModal({ sub, onClose, onSaved }: {
     status:       sub.status,
     amount_paid:  sub.amount_paid,
     currency:     sub.currency || 'USD',
+    starts_at:    sub.starts_at ? sub.starts_at.slice(0, 10) : '',
     expires_at:   sub.expires_at ? sub.expires_at.slice(0, 10) : '',
     cancel_card:  false,
   });
@@ -174,6 +177,7 @@ function EditModal({ sub, onClose, onSaved }: {
         status:       form.status,
         amount_paid:  Number(form.amount_paid),
         currency:     form.currency,
+        starts_at:    form.starts_at || null,
         expires_at:   stale ? null : (form.expires_at || null),
         cancel_card_billing: sub.card_billing ? form.cancel_card : false,
       });
@@ -181,7 +185,8 @@ function EditModal({ sub, onClose, onSaved }: {
       onSaved({
         ...sub, ...rest,
         amount_paid: Number(form.amount_paid),
-        expires_at: res.data?.expires_at ?? null,  // the date the server actually saved
+        starts_at: res.data?.starts_at ?? null,    // the dates the server actually saved
+        expires_at: res.data?.expires_at ?? null,
         card_billing: cancel_card ? false : sub.card_billing,
       });
     } catch (e: any) {
@@ -288,13 +293,21 @@ function EditModal({ sub, onClose, onSaved }: {
             </div>
           </div>
 
-          {/* Expiry */}
-          <div>
-            <label className="text-xs text-gray-600 mb-1.5 block">
-              Expiry Date <span className="text-gray-400">(leave empty = set automatically from the plan and status)</span>
-            </label>
-            <input type="date" value={form.expires_at} onChange={(e) => set('expires_at', e.target.value)}
-              className={INPUT_CLS} />
+          {/* Period */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="sub-start" className="text-xs text-gray-600 mb-1.5 block">Start date</label>
+              <input id="sub-start" type="date" value={form.starts_at} onChange={(e) => set('starts_at', e.target.value)}
+                className={INPUT_CLS} />
+            </div>
+            <div>
+              <label htmlFor="sub-expiry" className="text-xs text-gray-600 mb-1.5 block">Expiry date</label>
+              <input id="sub-expiry" type="date" value={form.expires_at} onChange={(e) => set('expires_at', e.target.value)}
+                className={INPUT_CLS} />
+            </div>
+            <p className="col-span-2 -mt-1 text-xs text-gray-400">
+              Leave both empty and they are set from the plan and status: starting today, ending after the trial or billing period.
+            </p>
           </div>
 
           {/* A card is still being billed for this account */}
@@ -343,6 +356,7 @@ export default function SubscriptionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [planFilter, setPlanFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showHistory, setShowHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<'subscriptions' | 'pending'>('subscriptions');
 
   const [confirmModal, setConfirmModal] = useState<{ sub: Subscription; action: 'approve' | 'reject' } | null>(null);
@@ -361,11 +375,12 @@ export default function SubscriptionsPage() {
       const res = await adminApi.getSubscriptions({
         plan_filter:   planFilter !== 'all' ? planFilter : undefined,
         status_filter: statusFilter !== 'all' ? statusFilter : undefined,
+        history: showHistory || undefined,
       });
       setSubs(res.data ?? []);
     } catch { setSubs([]); }
     setLoading(false);
-  }, [planFilter, statusFilter]);
+  }, [planFilter, statusFilter, showHistory]);
 
   useEffect(() => { fetchSubs(); }, [fetchSubs]);
 
@@ -503,7 +518,12 @@ export default function SubscriptionsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-[#6B3FD9] focus:outline-none transition text-sm" />
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor="sub-history" className="flex cursor-pointer select-none items-center gap-2 text-sm text-gray-600">
+              <input id="sub-history" type="checkbox" checked={showHistory} onChange={(e) => setShowHistory(e.target.checked)}
+                className="h-4 w-4 accent-[#6B3FD9]" />
+              Show past subscriptions
+            </label>
             <div className="relative">
               <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}
                 className="pl-3 pr-8 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer text-sm">
@@ -555,7 +575,8 @@ export default function SubscriptionsPage() {
                   <th className="px-5 py-3.5 font-medium">Billing</th>
                   <th className="px-5 py-3.5 font-medium">Status</th>
                   <th className="px-5 py-3.5 font-medium">Amount</th>
-                  <th className="px-5 py-3.5 font-medium">Expires</th>
+                  <th className="px-5 py-3.5 font-medium">Plan period</th>
+                  <th className="px-5 py-3.5 font-medium">Registered</th>
                   <th className="px-5 py-3.5 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -577,7 +598,10 @@ export default function SubscriptionsPage() {
                     <td className="px-5 py-4 text-gray-900 text-sm font-medium">
                       {sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'}
                     </td>
-                    <td className="px-5 py-4 text-gray-600 text-sm">{fmtDate(sub.expires_at)}</td>
+                    <td className="px-5 py-4">
+                      <PlanDates startsAt={sub.starts_at} expiresAt={sub.expires_at} status={sub.status} />
+                    </td>
+                    <td className="px-5 py-4 text-gray-600 text-xs">{fmtDay(sub.shop_registered_at)}</td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {sub.status === 'pending_approval' && (
@@ -624,7 +648,7 @@ export default function SubscriptionsPage() {
                   <span className="text-xs text-gray-500 capitalize">{sub.billing_type?.replace('_', '-')}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm pt-3 border-t border-gray-200 mt-3">
-                  <span className="text-gray-600 text-xs">{fmtDate(sub.expires_at)}</span>
+                  <PlanDates startsAt={sub.starts_at} expiresAt={sub.expires_at} status={sub.status} />
                   <span className="text-gray-900 font-medium text-xs">{sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'}</span>
                 </div>
                 <div className="flex gap-2 mt-3">

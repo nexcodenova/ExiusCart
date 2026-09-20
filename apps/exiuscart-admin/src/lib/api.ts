@@ -61,7 +61,7 @@ export const adminApi = {
     api.put(`/admin/users/${userId}/status`),
 
   // Subscriptions / Payments
-  getSubscriptions: (params?: { status_filter?: string; plan_filter?: string }) =>
+  getSubscriptions: (params?: { status_filter?: string; plan_filter?: string; history?: boolean }) =>
     api.get('/admin/subscriptions', { params }),
   getSubscriptionPayments: (params?: { shop_id?: number; source_filter?: string }) =>
     api.get('/admin/subscription-payments', { params }),
@@ -73,7 +73,7 @@ export const adminApi = {
     api.put(`/admin/subscriptions/${subId}/reject`),
   updateSubscription: (subId: number, data: {
     plan_type: string; billing_type: string; status: string;
-    amount_paid: number; currency: string; expires_at?: string | null;
+    amount_paid: number; currency: string; starts_at?: string | null; expires_at?: string | null;
     cancel_card_billing?: boolean;
   }) => api.patch(`/admin/subscriptions/${subId}`, data),
 

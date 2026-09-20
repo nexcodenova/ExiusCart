@@ -106,11 +106,14 @@ function MonthGrid({
 }
 
 export function DateRangePicker({
-  value, onChange, today = startOfDay(new Date()),
+  value, onChange, today = startOfDay(new Date()), allTime = false, onAllTime,
 }: {
   value: DateRange;
   onChange: (r: DateRange) => void;
   today?: Date;
+  /** True while the report covers everything; the button then reads "All time". */
+  allTime?: boolean;
+  onAllTime?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [draftFrom, setDraftFrom] = useState<Date | null>(value.from);
@@ -137,7 +140,7 @@ export function DateRangePicker({
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
   }, [open]);
 
-  const activePreset = useMemo(() => presetIdFor(value, today), [value, today]);
+  const activePreset = useMemo(() => (allTime ? 'all' : presetIdFor(value, today)), [value, today, allTime]);
 
   const pick = (d: Date) => {
     if (!draftFrom || draftTo) { setDraftFrom(d); setDraftTo(null); return; }
@@ -148,7 +151,9 @@ export function DateRangePicker({
   const apply = (r: DateRange) => { onChange(r); setOpen(false); };
   const canApply = !!draftFrom && !!draftTo;
 
-  const label = isSameDay(value.from, value.to)
+  const label = allTime
+    ? 'All time'
+    : isSameDay(value.from, value.to)
     ? format(value.from, 'MMM d, yyyy')
     : `${format(value.from, 'MMM d, yyyy')} – ${format(value.to, 'MMM d, yyyy')}`;
 
@@ -172,6 +177,18 @@ export function DateRangePicker({
           className="absolute right-0 z-50 mt-2 flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl sm:flex-row"
         >
           <div className="flex gap-1 overflow-x-auto border-b border-gray-100 p-2 sm:w-40 sm:flex-col sm:overflow-visible sm:border-b-0 sm:border-r">
+            {onAllTime && (
+              <button
+                type="button"
+                onClick={() => { onAllTime(); setOpen(false); }}
+                className={cn(
+                  'shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-left text-sm transition-colors',
+                  activePreset === 'all' ? 'bg-[#6B3FD9]/10 font-semibold text-[#6B3FD9]' : 'text-gray-600 hover:bg-gray-50',
+                )}
+              >
+                All time
+              </button>
+            )}
             {PRESETS.map((p) => (
               <button
                 key={p.id}

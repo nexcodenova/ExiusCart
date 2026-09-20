@@ -170,6 +170,28 @@ def get_admin_stats(
 
 # ── Shops ─────────────────────────────────────────────────────────────────────
 
+LIVE_SUB_STATUSES = ("active", "trial", "trial_dollar", "pending_approval")
+
+
+def _current_subscriptions(db: Session, shop_ids=None) -> dict:
+    """One subscription per store: the one that counts right now.
+
+    A store can carry several subscription rows over time (an expired trial, a
+    cancelled plan, the plan it is on today). Every admin page must show the
+    same one, so the rule lives here: a live row wins over a finished one, and
+    the newest row wins among equals.
+    """
+    query = db.query(Subscription)
+    if shop_ids is not None:
+        query = query.filter(Subscription.shop_id.in_(list(shop_ids)))
+    best: dict = {}
+    for sub in query.order_by(Subscription.created_at.asc(), Subscription.id.asc()).all():
+        held = best.get(sub.shop_id)
+        if held is None or (sub.status in LIVE_SUB_STATUSES) or (held.status not in LIVE_SUB_STATUSES):
+            best[sub.shop_id] = sub
+    return best
+
+
 @router.get("/admin/shops")
 def list_shops(
     search: Optional[str] = None,
@@ -179,7 +201,6 @@ def list_shops(
 ):
     query = db.query(Shop).options(
         joinedload(Shop.owner),
-        joinedload(Shop.subscription),
     ).filter(Shop.slug.notin_(SYSTEM_SHOP_SLUGS))
     if search:
         q = f"%{search}%"
@@ -193,9 +214,10 @@ def list_shops(
 
     shops = query.order_by(Shop.created_at.desc()).all()
 
+    current = _current_subscriptions(db, [s.id for s in shops])
     result = []
     for shop in shops:
-        sub = shop.subscription
+        sub = current.get(shop.id)
         product_count = db.query(func.count(Product.id)).filter(Product.shop_id == shop.id).scalar() or 0
         order_count = db.query(func.count(Order.id)).filter(Order.shop_id == shop.id).scalar() or 0
         result.append({
@@ -211,6 +233,8 @@ def list_shops(
             "plan": sub.plan_type if sub else "none",
             "subscription_status": sub.status if sub else "none",
             "billing_type": sub.billing_type if sub else None,
+            "amount_paid": float(sub.amount_paid) if sub and sub.amount_paid else 0,
+            "currency": sub.currency if sub else None,
             "starts_at": sub.starts_at.isoformat() if sub and sub.starts_at else None,
             "expires_at": sub.expires_at.isoformat() if sub and sub.expires_at else None,
             "product_count": product_count,
@@ -249,11 +273,12 @@ def change_shop_plan(
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     now = datetime.now(timezone.utc)
-    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    sub = _current_subscriptions(db, [shop_id]).get(shop_id)  # the same row every admin page shows
     if sub:
         sub.plan_type = data.plan_type
         sub.billing_type = data.billing_type
         sub.status = "active"
+        sub.trial_dollar_ends_at = None  # a manual grant must not be picked up by the $1 -> full price job
         sub.starts_at = now
         sub.expires_at = now + timedelta(days=365 if data.billing_type == "yearly" else 30)
     else:
@@ -305,10 +330,11 @@ def list_users(
         )
     users = query.order_by(User.created_at.desc()).all()
 
+    current = _current_subscriptions(db, [u.shops[0].id for u in users if u.shops])
     result = []
     for user in users:
         shop = user.shops[0] if user.shops else None
-        sub = db.query(Subscription).filter(Subscription.shop_id == shop.id).order_by(Subscription.created_at.desc()).first() if shop else None
+        sub = current.get(shop.id) if shop else None
         source = "thedersi" if (sub and sub.promo_code == "partner_thedersi") else "exiuscart"
         result.append({
             "id": user.id,
@@ -321,6 +347,9 @@ def list_users(
             "store_id": shop.id if shop else None,
             "plan_type": sub.plan_type if sub else None,
             "plan_status": sub.status if sub else None,
+            "billing_type": sub.billing_type if sub else None,
+            "starts_at": sub.starts_at.isoformat() if sub and sub.starts_at else None,
+            "expires_at": sub.expires_at.isoformat() if sub and sub.expires_at else None,
             "source": source,
             "referred_by_code": user.referred_by_code or None,
         })
@@ -347,9 +376,12 @@ def toggle_user_status(
 def list_subscriptions(
     status_filter: Optional[str] = None,
     plan_filter: Optional[str] = None,
+    history: bool = False,
     db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
+    """One row per store (its current subscription). history=true lists every
+    subscription row a store has ever had, past trials and cancellations included."""
     query = db.query(Subscription).options(joinedload(Subscription.shop))
     if status_filter:
         query = query.filter(Subscription.status == status_filter)
@@ -357,6 +389,9 @@ def list_subscriptions(
         query = query.filter(Subscription.plan_type == plan_filter)
 
     subs = query.order_by(Subscription.created_at.desc()).all()
+    if not history:
+        current_ids = {s.id for s in _current_subscriptions(db).values()}
+        subs = [s for s in subs if s.id in current_ids]
 
     now = datetime.now(timezone.utc)
     seven_days = now + timedelta(days=7)
@@ -387,6 +422,7 @@ def list_subscriptions(
             "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
             "trial_ends_at": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
             "created_at": sub.created_at.isoformat() if sub.created_at else None,
+            "shop_registered_at": sub.shop.created_at.isoformat() if sub.shop and sub.shop.created_at else None,
         })
     return result
 
@@ -650,6 +686,7 @@ class UpdateSubscriptionIn(BaseModel):
     amount_paid: float = 0.0
     currency: str = "USD"
     expires_at: Optional[str] = None  # ISO date string or null for lifetime
+    starts_at: Optional[str] = None   # ISO date string; empty = start today when the plan/status changes
     # Also stop the card subscription at Lemon Squeezy. Without this an admin
     # edit is a database change only and the card keeps being billed.
     cancel_card_billing: bool = False
@@ -692,6 +729,7 @@ def update_subscription(
     elif on_card:
         card_billing = "still_active"
 
+    changed_plan = (sub.plan_type, sub.billing_type, sub.status) != (body.plan_type, body.billing_type, body.status)
     sub.plan_type = body.plan_type
     sub.billing_type = body.billing_type
     sub.status = body.status
@@ -736,7 +774,17 @@ def update_subscription(
         # A manual grant must never be picked up by the $1 -> full price job.
         sub.trial_dollar_ends_at = None
 
-    if body.status in ("active", "trial") and not sub.starts_at:
+    # Start date: the admin's own date if given; otherwise a plan/status change
+    # starts a new period today. Finished statuses keep the old start date.
+    start_given = None
+    if body.starts_at:
+        try:
+            start_given = datetime.strptime(body.starts_at[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except Exception:
+            start_given = None
+    if start_given is not None:
+        sub.starts_at = start_given
+    elif body.status in live_statuses and (changed_plan or not sub.starts_at):
         sub.starts_at = now
 
     db.commit()
@@ -744,6 +792,7 @@ def update_subscription(
     # past date is replaced), and the admin table must show the saved value.
     return {
         "message": "Subscription updated", "id": sub_id, "card_billing": card_billing,
+        "starts_at": sub.starts_at.isoformat() if sub.starts_at else None,
         "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
     }
 
@@ -1125,8 +1174,21 @@ def admin_reports_advanced(
 ):
     """Reports for an inclusive date range (UTC days), optionally compared with the
     same-length period right before it."""
-    start_d = _parse_report_date(start, "start")
     end_d = _parse_report_date(end, "end")
+    if start == "all":
+        # From the first thing ever recorded (a store, a user or a payment).
+        firsts = [
+            db.query(func.min(Shop.created_at)).filter(Shop.slug.notin_(SYSTEM_SHOP_SLUGS)).scalar(),
+            db.query(func.min(User.created_at)).filter(User.is_superuser == False).scalar(),
+            db.query(func.min(SubscriptionPayment.confirmed_at)).scalar(),
+        ]
+        firsts = [f for f in firsts if f is not None]
+        start_d = min(_utc_date(f) for f in firsts) if firsts else end_d
+        if start_d > end_d:
+            start_d = end_d
+        compare = False  # nothing exists before "all time"
+    else:
+        start_d = _parse_report_date(start, "start")
     if end_d < start_d:
         raise HTTPException(status_code=422, detail="The end date is before the start date.")
     days = (end_d - start_d).days + 1

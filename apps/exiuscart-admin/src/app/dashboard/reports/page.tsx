@@ -155,6 +155,8 @@ function downloadCsv(report: Report) {
 
 export default function ReportsPage() {
   const today = useMemo(() => startOfDay(new Date()), []);
+  // Opens on everything ever recorded; pick a preset or dates to narrow it.
+  const [allTime, setAllTime] = useState(true);
   const [range, setRange] = useState<DateRange>({ from: subDays(today, 29), to: today });
   const [compare, setCompare] = useState(true);
   const [metric, setMetric] = useState<Metric>('revenue');
@@ -166,14 +168,18 @@ export default function ReportsPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await adminApi.getAdvancedReports({ start: ymd(range.from), end: ymd(range.to), compare });
+      const res = await adminApi.getAdvancedReports({
+        start: allTime ? 'all' : ymd(range.from),
+        end: ymd(allTime ? today : range.to),
+        compare: allTime ? false : compare,
+      });
       setData(res.data);
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Could not load the report. Try again.');
     } finally {
       setLoading(false);
     }
-  }, [range, compare]);
+  }, [range, compare, allTime, today]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -187,32 +193,46 @@ export default function ReportsPage() {
     }));
   }, [data, metric]);
 
+  const showCompare = compare && !allTime;
   const money = METRICS.find((m) => m.id === metric)!.money;
-  const days = differenceInCalendarDays(range.to, range.from) + 1;
+  const days = data?.range.days ?? differenceInCalendarDays(range.to, range.from) + 1;
   const planTotal = data?.by_plan.reduce((s, b) => s + b.revenue, 0) ?? 0;
   const maxStore = data?.top_stores[0]?.revenue ?? 0;
 
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="max-w-xl">
           <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
           <p className="mt-1 text-sm text-gray-500">
             Money received, sign-ups and trials for any period. All amounts are in USD, refunds are left out of revenue.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          <label
+            className={cn(
+              'flex h-10 select-none items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-700',
+              allTime ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+            )}
+            title={allTime ? 'There is nothing before "All time" to compare with' : undefined}
+          >
             <input
               id="compare-toggle"
               type="checkbox"
-              checked={compare}
+              checked={compare && !allTime}
+              disabled={allTime}
               onChange={(e) => setCompare(e.target.checked)}
               className="h-4 w-4 accent-[#6B3FD9]"
             />
             Compare to previous period
           </label>
-          <DateRangePicker value={range} onChange={setRange} today={today} />
+          <DateRangePicker
+            value={range}
+            onChange={(r) => { setAllTime(false); setRange(r); }}
+            today={today}
+            allTime={allTime}
+            onAllTime={() => setAllTime(true)}
+          />
           <button
             type="button"
             disabled={!data || loading}
@@ -238,19 +258,20 @@ export default function ReportsPage() {
           <p className="text-xs text-gray-500">
             {format(new Date(data.range.start + 'T00:00:00'), 'MMM d, yyyy')} – {format(new Date(data.range.end + 'T00:00:00'), 'MMM d, yyyy')}
             {' · '}{days} {days === 1 ? 'day' : 'days'}, grouped by {data.granularity}
+            {allTime && ' · from the first store, user or payment ever recorded'}
             {data.previous && (
               <> · compared with {format(new Date(data.previous.start + 'T00:00:00'), 'MMM d, yyyy')} – {format(new Date(data.previous.end + 'T00:00:00'), 'MMM d, yyyy')}</>
             )}
           </p>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <KpiCard label="Revenue" icon={DollarSign} tint="bg-emerald-50 text-emerald-600" value={usd(data.kpis.revenue.value ?? 0, 2)} kpi={data.kpis.revenue} format={(n) => usd(n, 2)} compare={compare} />
-            <KpiCard label="Payments" icon={CreditCard} tint="bg-blue-50 text-blue-600" value={num(data.kpis.payments.value ?? 0)} kpi={data.kpis.payments} format={num} compare={compare} />
-            <KpiCard label="Average payment" icon={Receipt} tint="bg-violet-50 text-violet-600" value={usd(data.kpis.avg_payment.value ?? 0, 2)} kpi={data.kpis.avg_payment} format={(n) => usd(n, 2)} compare={compare} />
-            <KpiCard label="Refunded" icon={RotateCcw} tint="bg-red-50 text-red-600" value={usd(data.kpis.refunded.value ?? 0, 2)} kpi={data.kpis.refunded} format={(n) => usd(n, 2)} compare={compare} invert />
-            <KpiCard label="New stores" icon={Store} tint="bg-amber-50 text-amber-600" value={num(data.kpis.new_stores.value ?? 0)} kpi={data.kpis.new_stores} format={num} compare={compare} />
-            <KpiCard label="New users" icon={UserPlus} tint="bg-sky-50 text-sky-600" value={num(data.kpis.new_users.value ?? 0)} kpi={data.kpis.new_users} format={num} compare={compare} />
-            <KpiCard label="Trials started" icon={Timer} tint="bg-orange-50 text-orange-600" value={num(data.kpis.trials.value ?? 0)} kpi={data.kpis.trials} format={num} compare={compare} />
+            <KpiCard label="Revenue" icon={DollarSign} tint="bg-emerald-50 text-emerald-600" value={usd(data.kpis.revenue.value ?? 0, 2)} kpi={data.kpis.revenue} format={(n) => usd(n, 2)} compare={showCompare} />
+            <KpiCard label="Payments" icon={CreditCard} tint="bg-blue-50 text-blue-600" value={num(data.kpis.payments.value ?? 0)} kpi={data.kpis.payments} format={num} compare={showCompare} />
+            <KpiCard label="Average payment" icon={Receipt} tint="bg-violet-50 text-violet-600" value={usd(data.kpis.avg_payment.value ?? 0, 2)} kpi={data.kpis.avg_payment} format={(n) => usd(n, 2)} compare={showCompare} />
+            <KpiCard label="Refunded" icon={RotateCcw} tint="bg-red-50 text-red-600" value={usd(data.kpis.refunded.value ?? 0, 2)} kpi={data.kpis.refunded} format={(n) => usd(n, 2)} compare={showCompare} invert />
+            <KpiCard label="New stores" icon={Store} tint="bg-amber-50 text-amber-600" value={num(data.kpis.new_stores.value ?? 0)} kpi={data.kpis.new_stores} format={num} compare={showCompare} />
+            <KpiCard label="New users" icon={UserPlus} tint="bg-sky-50 text-sky-600" value={num(data.kpis.new_users.value ?? 0)} kpi={data.kpis.new_users} format={num} compare={showCompare} />
+            <KpiCard label="Trials started" icon={Timer} tint="bg-orange-50 text-orange-600" value={num(data.kpis.trials.value ?? 0)} kpi={data.kpis.trials} format={num} compare={showCompare} />
             <div className="rounded-2xl border border-gray-200 bg-white p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Trial to paid</span>
@@ -261,7 +282,7 @@ export default function ReportsPage() {
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <span className="text-xs text-gray-400">{data.kpis.trial_conversion.converted} of {data.kpis.trial_conversion.trials} trials now paying</span>
-                {compare && data.kpis.trial_conversion.change !== null && <Change change={data.kpis.trial_conversion.change} suffix=" pts" />}
+                {showCompare && data.kpis.trial_conversion.change !== null && <Change change={data.kpis.trial_conversion.change} suffix=" pts" />}
               </div>
             </div>
           </div>
@@ -302,7 +323,7 @@ export default function ReportsPage() {
                     contentStyle={{ borderRadius: 12, border: '1px solid #E5E7EB', fontSize: 12 }}
                     formatter={(v: number, name) => [money ? usd(v, 2) : num(v), name === 'current' ? 'This period' : 'Previous period']}
                   />
-                  {compare && (
+                  {showCompare && (
                     <Line type="monotone" dataKey="previous" stroke="#9CA3AF" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
                   )}
                   <Area type="monotone" dataKey="current" stroke={PURPLE} strokeWidth={2.5} fill="url(#reportFill)" />

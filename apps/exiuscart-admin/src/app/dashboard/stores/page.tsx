@@ -6,6 +6,7 @@ import {
   Trash2, RefreshCw, ChevronDown,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { StatusChip, PlanDates, fmtDate } from '@/lib/subscription-ui';
 
 interface ShopRow {
   id: number;
@@ -37,20 +38,6 @@ const PLAN_COLORS: Record<string, string> = {
   scale:      'text-[#6B3FD9]',
   none:       'text-gray-500',
 };
-
-const STATUS_COLORS: Record<string, string> = {
-  active:           'bg-green-500/10 text-green-600',
-  trial:            'bg-blue-500/10 text-blue-600',
-  pending_approval: 'bg-yellow-500/10 text-yellow-600',
-  expired:          'bg-red-500/10 text-red-600',
-  cancelled:        'bg-gray-500/10 text-gray-600',
-  none:             'bg-gray-500/10 text-gray-500',
-};
-
-function fmt(dateStr: string | null) {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
 
 export default function StoresPage() {
   const [shops, setShops] = useState<ShopRow[]>([]);
@@ -189,8 +176,7 @@ export default function StoresPage() {
                 <th className="px-5 py-3 font-medium">Owner</th>
                 <th className="px-5 py-3 font-medium">Plan</th>
                 <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium">Starts</th>
-                <th className="px-5 py-3 font-medium">Expires</th>
+                <th className="px-5 py-3 font-medium">Plan period</th>
                 <th className="px-5 py-3 font-medium">Registered</th>
                 <th className="px-5 py-3 font-medium">Actions</th>
               </tr>
@@ -248,16 +234,15 @@ export default function StoresPage() {
                     </div>
                   </td>
                   <td className="px-5 py-4">
-                    <span className={`text-xs px-2.5 py-1 rounded-lg capitalize ${STATUS_COLORS[shop.subscription_status] ?? 'bg-gray-500/10 text-gray-600'}`}>
-                      {shop.subscription_status === 'none' ? '—' : shop.subscription_status}
-                    </span>
+                    <StatusChip status={shop.subscription_status} />
                     {!shop.is_active && (
                       <span className="ml-1 text-xs px-2 py-0.5 rounded-lg bg-red-500/10 text-red-600">suspended</span>
                     )}
                   </td>
-                  <td className="px-5 py-4 text-xs text-gray-600">{fmt(shop.starts_at)}</td>
-                  <td className="px-5 py-4 text-xs text-gray-600">{fmt(shop.expires_at)}</td>
-                  <td className="px-5 py-4 text-xs text-gray-600">{fmt(shop.created_at)}</td>
+                  <td className="px-5 py-4">
+                    <PlanDates startsAt={shop.starts_at} expiresAt={shop.expires_at} status={shop.subscription_status} />
+                  </td>
+                  <td className="px-5 py-4 text-xs text-gray-600">{fmtDate(shop.created_at)}</td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-1">
                       <button
