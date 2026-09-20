@@ -3,7 +3,10 @@ Super-admin endpoints — all routes require is_superuser.
 """
 import logging
 import re
+import secrets
 import httpx
+from types import SimpleNamespace
+from urllib.parse import urlencode
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status, BackgroundTasks
@@ -127,8 +130,9 @@ def get_admin_stats(
     db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
-    total_shops = db.query(func.count(Shop.id)).scalar() or 0
-    active_shops = db.query(func.count(Shop.id)).filter(Shop.is_active == True).scalar() or 0
+    # Internal shops (blog + catalogue) are not customers.
+    total_shops = db.query(func.count(Shop.id)).filter(Shop.slug.notin_(SYSTEM_SHOP_SLUGS)).scalar() or 0
+    active_shops = db.query(func.count(Shop.id)).filter(Shop.is_active == True, Shop.slug.notin_(SYSTEM_SHOP_SLUGS)).scalar() or 0
     total_users = db.query(func.count(User.id)).filter(User.is_superuser == False).scalar() or 0
 
     # Revenue: sum of amount_paid from approved/active subscriptions
@@ -138,9 +142,10 @@ def get_admin_stats(
         .group_by(Subscription.currency).all()
     )
 
-    # Pending subscriptions (need manual approval)
-    pending_count = db.query(func.count(Subscription.id)).filter(
-        Subscription.status.in_(["trial", "pending_approval"])
+    # Pending approvals: only subscriptions actually waiting for an admin. A
+    # running trial starts on its own and is not pending anything.
+    pending_count = db.query(func.count(Subscription.id)).join(Shop, Subscription.shop_id == Shop.id).filter(
+        Subscription.status == "pending_approval", Shop.slug.notin_(SYSTEM_SHOP_SLUGS),
     ).scalar() or 0
 
     # Expiring soon (within 7 days)
@@ -175,7 +180,7 @@ def list_shops(
     query = db.query(Shop).options(
         joinedload(Shop.owner),
         joinedload(Shop.subscription),
-    )
+    ).filter(Shop.slug.notin_(SYSTEM_SHOP_SLUGS))
     if search:
         q = f"%{search}%"
         query = query.join(User, Shop.owner_id == User.id).filter(
@@ -374,6 +379,10 @@ def list_subscriptions(
             "amount_usd": _to_usd(sub.amount_paid, sub.currency),
             "currency": sub.currency,
             "payment_source": sub.payment_source or "manual",
+            "card_billing": bool(
+                sub.lemon_squeezy_subscription_id and sub.payment_source == "lemon_squeezy"
+                and sub.status in ("active", "trial_dollar")
+            ),
             "starts_at": sub.starts_at.isoformat() if sub.starts_at else None,
             "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
             "trial_ends_at": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
@@ -641,6 +650,9 @@ class UpdateSubscriptionIn(BaseModel):
     amount_paid: float = 0.0
     currency: str = "USD"
     expires_at: Optional[str] = None  # ISO date string or null for lifetime
+    # Also stop the card subscription at Lemon Squeezy. Without this an admin
+    # edit is a database change only and the card keeps being billed.
+    cancel_card_billing: bool = False
 
 
 @router.patch("/admin/subscriptions/{sub_id}")
@@ -662,41 +674,73 @@ def update_subscription(
         raise HTTPException(status_code=404, detail="Subscription not found")
 
     now = datetime.now(timezone.utc)
+    live_statuses = ("active", "trial", "trial_dollar")
+
+    # Stop the card first: if Lemon Squeezy refuses, nothing else is saved.
+    card_billing = "none"
+    on_card = bool(sub.lemon_squeezy_subscription_id) and sub.payment_source == "lemon_squeezy"
+    if body.cancel_card_billing and on_card:
+        from app.core.lemonsqueezy import cancel_subscription_sync
+        try:
+            cancel_subscription_sync(sub.lemon_squeezy_subscription_id)
+        except RuntimeError as e:
+            raise HTTPException(status_code=502, detail=f"{e} Nothing was changed.")
+        # From here the account is managed by hand, so the cancellation event
+        # coming back from Lemon Squeezy must not overwrite this edit.
+        sub.payment_source = "manual"
+        card_billing = "cancelled"
+    elif on_card:
+        card_billing = "still_active"
+
     sub.plan_type = body.plan_type
     sub.billing_type = body.billing_type
     sub.status = body.status
     sub.amount_paid = body.amount_paid
     sub.currency = body.currency
 
+    provided = None
     if body.expires_at:
         try:
             # Accept "YYYY-MM-DD" or full ISO string
-            raw = body.expires_at[:10]  # take date part only
-            sub.expires_at = datetime.strptime(raw, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            provided = datetime.strptime(body.expires_at[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
         except Exception:
-            sub.expires_at = None
-    else:
-        # Auto-calculate if activating a paid plan without explicit date
-        if body.status == "active" and not body.expires_at:
-            if body.billing_type == "monthly":
-                sub.expires_at = now + timedelta(days=30)
-            elif body.billing_type == "yearly":
-                sub.expires_at = now + timedelta(days=365)
-            else:
-                sub.expires_at = None  # Lifetime
-        elif body.status in ("trial", "trial_dollar"):
-            from app.core.lemonsqueezy import TRIAL_FREE_DAYS, TRIAL_DOLLAR_DAYS
-            days = TRIAL_FREE_DAYS if body.status == "trial" else TRIAL_DOLLAR_DAYS
-            sub.expires_at = now + timedelta(days=days)
-            sub.trial_ends_at = now + timedelta(days=days)
+            provided = None
+    # The edit form pre-fills the OLD expiry date. A live status with a date that
+    # has already passed would expire the account again on the next request, so
+    # such a date is ignored and a fresh one is worked out below.
+    if provided is not None and body.status in live_statuses and provided <= now:
+        provided = None
+
+    if provided is not None:
+        sub.expires_at = provided
+    elif body.status == "active":
+        if body.billing_type == "monthly":
+            sub.expires_at = now + timedelta(days=30)
+        elif body.billing_type == "yearly":
+            sub.expires_at = now + timedelta(days=365)
         else:
-            sub.expires_at = None
+            sub.expires_at = None  # Lifetime
+    elif body.status in ("trial", "trial_dollar"):
+        from app.core.lemonsqueezy import TRIAL_FREE_DAYS, TRIAL_DOLLAR_DAYS
+        days = TRIAL_FREE_DAYS if body.status == "trial" else TRIAL_DOLLAR_DAYS
+        sub.expires_at = now + timedelta(days=days)
+    else:
+        sub.expires_at = None
+
+    # Keep the trial clocks in step with the status so nothing else acts on a stale one.
+    if body.status == "trial":
+        sub.trial_ends_at = sub.expires_at
+    elif body.status == "trial_dollar":
+        sub.trial_dollar_ends_at = sub.expires_at
+    elif body.status == "active":
+        # A manual grant must never be picked up by the $1 -> full price job.
+        sub.trial_dollar_ends_at = None
 
     if body.status in ("active", "trial") and not sub.starts_at:
         sub.starts_at = now
 
     db.commit()
-    return {"message": "Subscription updated", "id": sub_id}
+    return {"message": "Subscription updated", "id": sub_id, "card_billing": card_billing}
 
 
 # ── Dashboard quick panels ────────────────────────────────────────────────────
@@ -706,9 +750,9 @@ def pending_subscriptions(
     db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
-    """Accounts awaiting manual admin approval (pending_approval = new registrations, trial = legacy)."""
-    subs = db.query(Subscription).options(joinedload(Subscription.shop)).filter(
-        Subscription.status.in_(["pending_approval", "trial"])
+    """Accounts awaiting manual admin approval. A running trial is not pending."""
+    subs = db.query(Subscription).join(Shop, Subscription.shop_id == Shop.id).options(joinedload(Subscription.shop)).filter(
+        Subscription.status == "pending_approval", Shop.slug.notin_(SYSTEM_SHOP_SLUGS),
     ).order_by(Subscription.created_at.desc()).limit(50).all()
 
     return [
@@ -1433,8 +1477,7 @@ def _ensure_prodora_codes(db: Session) -> None:
 
     products = (
         db.query(Product)
-        .join(Shop, Product.shop_id == Shop.id)
-        .filter(Shop.slug == "exiuscart-dropshipping-system")
+        .filter(Product.shop_id.is_(None))
         .order_by(Product.id.asc())
         .all()
     )
@@ -1604,9 +1647,8 @@ def admin_list_shopping_products(
 ):
     query = (
         db.query(Product)
-        .join(Shop, Product.shop_id == Shop.id)
-        .options(joinedload(Product.shop), joinedload(Product.category))
-        .filter(Shop.slug == "exiuscart-dropshipping-system")
+        .options(joinedload(Product.category))
+        .filter(Product.shop_id.is_(None))
         .order_by(Product.is_trending.desc(), Product.is_featured.desc(), Product.created_at.desc())
     )
     if search:
@@ -1632,9 +1674,8 @@ def admin_prodora_catalog(
 
     query = (
         db.query(Product)
-        .join(Shop, Product.shop_id == Shop.id)
-        .options(joinedload(Product.shop), joinedload(Product.category))
-        .filter(Shop.slug == "exiuscart-dropshipping-system")
+        .options(joinedload(Product.category))
+        .filter(Product.shop_id.is_(None))
     )
     bundle_query = db.query(ProdoraDigitalBundle)
     if search:
@@ -1838,20 +1879,11 @@ def _truncate_description(html: Optional[str], word_limit: int) -> Optional[str]
     return f"<p>{' '.join(words[:word_limit])}…</p>"
 
 
-def _get_or_create_system_shop(db: Session, admin_user: User) -> Shop:
-    """Get or create the dedicated ExiusCart Dropshipping system shop."""
-    shop = db.query(Shop).filter(Shop.slug == "exiuscart-dropshipping-system").first()
-    if not shop:
-        shop = Shop(
-            name="ExiusCart Dropshipping",
-            slug="exiuscart-dropshipping-system",
-            owner_id=admin_user.id,
-            currency="USD",
-            is_active=True,
-        )
-        db.add(shop)
-        db.flush()
-    return shop
+# The Prodora catalogue belongs to the platform, not to a shop: its products,
+# categories, supplier links and supplier connections all have shop_id NULL.
+# This stand-in only carries the two values the import code reads from a shop
+# (id is None, so "shop_id == shop.id" means "shop_id IS NULL").
+_CATALOGUE = SimpleNamespace(id=None, currency="USD", name="Prodora catalogue")
 
 
 # ── Admin — Website blog (exiuscart.com/blog) ────────────────────────────────
@@ -1860,26 +1892,26 @@ def _get_or_create_system_shop(db: Session, admin_user: User) -> Shop:
 # model, slug generation, and public read API (/public/store/{shop_slug}/blog)
 # that seller storefronts already use — this just points that same machinery
 # at a dedicated system shop instead of a real seller's, same pattern as
-# _get_or_create_system_shop above. The website reads posts from
+# the catalogue constant above. The website reads posts from
 # GET /public/store/exiuscart-website/blog with zero backend changes needed.
 
 from app.models.blog import BlogPost
 from app.api.v1.endpoints.blog import _post_out as _blog_post_out, _generate_blog_slug
 
 
-def _get_or_create_website_shop(db: Session, admin_user: User) -> Shop:
-    shop = db.query(Shop).filter(Shop.slug == "exiuscart-website").first()
-    if not shop:
-        shop = Shop(
-            name="ExiusCart Website",
-            slug="exiuscart-website",
-            owner_id=admin_user.id,
-            currency="USD",
-            is_active=True,
-        )
-        db.add(shop)
-        db.flush()
-    return shop
+# Each site has its own blog. A post carries a `site` tag (no shop involved) and is
+# read publicly through /public/store/<site>-website/blog (see blog.py).
+_BLOG_SITES = ("exiuscart", "prodora", "affiliate")
+
+# Internal shops that are not real customers. They are left out of the admin's
+# pending-approval list, store list and counts, and never get a trial subscription.
+# (The blog ones only remain here in case a leftover row could not be deleted.)
+SYSTEM_SHOP_SLUGS = ("exiuscart-website", "exiuscart-dropshipping-system", "prodora-website", "affiliate-website")
+
+
+def _check_blog_site(site: str) -> None:
+    if site not in _BLOG_SITES:
+        raise HTTPException(status_code=422, detail="Unknown site. Use exiuscart, prodora or affiliate.")
 
 
 class WebsiteBlogPostIn(BaseModel):
@@ -1896,11 +1928,12 @@ class WebsiteBlogPostIn(BaseModel):
 @router.get("/admin/website-blog")
 def admin_list_website_blog_posts(
     status_filter: Optional[str] = None,
+    site: str = "exiuscart",
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_website_shop(db, current_admin)
-    q = db.query(BlogPost).filter(BlogPost.shop_id == shop.id)
+    _check_blog_site(site)
+    q = db.query(BlogPost).filter(BlogPost.site == site)
     if status_filter:
         q = q.filter(BlogPost.status == status_filter)
     posts = q.order_by(BlogPost.created_at.desc()).all()
@@ -1911,11 +1944,12 @@ def admin_list_website_blog_posts(
 @router.get("/admin/website-blog/{post_id}")
 def admin_get_website_blog_post(
     post_id: int,
+    site: str = "exiuscart",
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_website_shop(db, current_admin)
-    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.shop_id == shop.id).first()
+    _check_blog_site(site)
+    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.site == site).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     db.commit()
@@ -1925,14 +1959,15 @@ def admin_get_website_blog_post(
 @router.post("/admin/website-blog", status_code=201)
 def admin_create_website_blog_post(
     data: WebsiteBlogPostIn,
+    site: str = "exiuscart",
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_website_shop(db, current_admin)
+    _check_blog_site(site)
     if not data.title.strip():
         raise HTTPException(status_code=422, detail="Title is required.")
     post = BlogPost(
-        shop_id=shop.id,
+        site=site,
         title=data.title.strip(),
         slug=_generate_blog_slug(data.title),
         excerpt=data.excerpt,
@@ -1954,11 +1989,12 @@ def admin_create_website_blog_post(
 def admin_update_website_blog_post(
     post_id: int,
     data: WebsiteBlogPostIn,
+    site: str = "exiuscart",
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_website_shop(db, current_admin)
-    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.shop_id == shop.id).first()
+    _check_blog_site(site)
+    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.site == site).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
@@ -1978,11 +2014,12 @@ def admin_update_website_blog_post(
 @router.delete("/admin/website-blog/{post_id}")
 def admin_delete_website_blog_post(
     post_id: int,
+    site: str = "exiuscart",
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_website_shop(db, current_admin)
-    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.shop_id == shop.id).first()
+    _check_blog_site(site)
+    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.site == site).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     db.delete(post)
@@ -1998,11 +2035,12 @@ class WebsiteBlogPublishIn(BaseModel):
 def admin_publish_website_blog_post(
     post_id: int,
     data: WebsiteBlogPublishIn,
+    site: str = "exiuscart",
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_website_shop(db, current_admin)
-    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.shop_id == shop.id).first()
+    _check_blog_site(site)
+    post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.site == site).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
@@ -2039,7 +2077,7 @@ def admin_create_shopping_product(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
 
     cat_id = None
     if data.category_name:
@@ -2139,7 +2177,7 @@ def admin_backfill_shopping_descriptions(
     rather than discarded. Idempotent — already-clean descriptions are
     untouched.
     """
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     products = db.query(Product).filter(Product.shop_id == shop.id).all()
     updated = 0
     for p in products:
@@ -2177,7 +2215,7 @@ def admin_list_categories(
     if prodora:
         # Only the internal Prodora catalogue shop's categories — not every
         # seller's own product categories.
-        query = query.join(Shop, Shop.id == Category.shop_id).filter(Shop.slug == "exiuscart-dropshipping-system")
+        query = query.filter(Category.shop_id.is_(None))
     cats = query.order_by(Category.name).all()
     counts = dict(
         db.query(Product.category_id, func.count(Product.id))
@@ -2218,7 +2256,7 @@ def admin_create_category(
     name = data.name.strip()
     if not name:
         raise HTTPException(status_code=422, detail="Category name is required.")
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     slug = slugify(name)
     if db.query(Category).filter(Category.shop_id == shop.id, Category.slug == slug).first():
         raise HTTPException(status_code=409, detail="A category with that name already exists.")
@@ -2280,7 +2318,7 @@ def admin_delete_category(
 # ── Admin — CJ Dropshipping as a source for the Prodora catalog ─────────────
 # Reuses the same DropshipConnection model and CJ helper functions (token
 # handling, price parsing) already built for sellers, just scoped to the
-# internal "exiuscart-dropshipping-system" shop instead of a real seller's.
+# platform itself (a connection with no shop) instead of a real seller.
 
 class CJConnectAdminIn(BaseModel):
     api_key: str
@@ -2308,7 +2346,7 @@ def admin_cj_status(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop.id,
         DropshipConnection.supplier_type == "cj",
@@ -2323,7 +2361,7 @@ async def admin_connect_cj(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     token_data = await _cj_get_token(data.api_key)
 
     enc_key = encrypt(data.api_key)
@@ -2357,7 +2395,7 @@ async def admin_cj_search(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
     token = await _cj_ensure_token(conn, db)
 
@@ -2394,7 +2432,7 @@ async def admin_cj_trending(
 ):
     """CJ's own curated hot-products feed (searchType=2 on /product/list) —
     real data CJ maintains, not scraped. Verified against their live API docs."""
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
     token = await _cj_ensure_token(conn, db)
 
@@ -2431,7 +2469,7 @@ async def admin_cj_categories(
     """CJ's real 3-level category tree (verified via /product/getCategory) —
     flattened to the leaf (3rd level) categories, since only those carry a
     categoryId usable to filter /product/list."""
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
     token = await _cj_ensure_token(conn, db)
 
@@ -2461,7 +2499,7 @@ async def admin_cj_by_category(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
     token = await _cj_ensure_token(conn, db)
 
@@ -2498,7 +2536,7 @@ async def admin_cj_my_products(
 ):
     """The curated shortlist from CJ's own site (Product Sourcing -> My
     Product) — already vetted, so no search-relevance issues like /cj/search."""
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
     token = await _cj_ensure_token(conn, db)
 
@@ -2620,7 +2658,7 @@ async def admin_cj_import(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
     token = await _cj_ensure_token(conn, db)
 
@@ -2649,7 +2687,7 @@ async def admin_cj_import_bulk(
     """Imports several CJ products in one call — for the Trending/My CJ
     Products tabs' multi-select. Each pid succeeds or fails independently
     so one bad pid doesn't block the rest of the batch."""
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
     token = await _cj_ensure_token(conn, db)
 
@@ -2670,10 +2708,9 @@ async def admin_cj_import_bulk(
 
 # ── Admin — AliExpress as a source for the Prodora catalog ──────────────────
 # Reuses the same DropshipConnection + OAuth flow already built for regular
-# sellers (dropshipping.py) — the system shop IS a real Shop row, so
-# GET /shops/{system_shop_id}/dropship/aliexpress/authorize (no admin-only
-# duplicate needed) connects it exactly the same way a seller would connect
-# their own shop. This endpoint is just the import step, mirroring
+# sellers (dropshipping.py). The platform's connection has no shop (shop_id NULL)
+# and is started from GET /admin/shopping/aliexpress/authorize below. The
+# import endpoint is just the import step, mirroring
 # admin_cj_import above — paste a link instead of picking from search,
 # since AliExpress doesn't expose a catalog worth building a search UI
 # against (see _aliexpress_fetch_product's docstring in dropshipping.py).
@@ -2689,18 +2726,56 @@ def admin_aliexpress_status(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    """Connection state + the system shop's id, so the admin frontend can
-    build the OAuth authorize link (GET /shops/{system_shop_id}/dropship/
-    aliexpress/authorize) — that route is the existing seller-facing one,
-    reused as-is rather than duplicated for admin (see comment above
-    admin_aliexpress_import)."""
-    shop = _get_or_create_system_shop(db, current_admin)
+    """Whether the platform's AliExpress account is connected. Connecting goes
+    through GET /admin/shopping/aliexpress/authorize."""
+    shop = _CATALOGUE
     conn = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop.id,
         DropshipConnection.supplier_type == "aliexpress",
         DropshipConnection.is_active == True,
     ).first()
-    return {"connected": conn is not None, "system_shop_id": shop.id}
+    return {"connected": conn is not None}
+
+
+@router.get("/admin/shopping/aliexpress/authorize")
+def admin_aliexpress_authorize(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    """Start the AliExpress OAuth flow for the Prodora catalogue. Same flow a
+    seller uses, but the resulting connection belongs to the platform (no shop)."""
+    from app.api.v1.endpoints.dropshipping import ALIEXPRESS_APP_KEY, ALIEXPRESS_AUTHORIZE_URL, _aliexpress_callback_url
+
+    if not ALIEXPRESS_APP_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="AliExpress integration isn't configured yet — ExiusCart's app registration is still pending.",
+        )
+    if db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id.is_(None), DropshipConnection.supplier_type == "aliexpress",
+        DropshipConnection.is_active == True,
+    ).first():
+        raise HTTPException(status_code=400, detail="Already connected to AliExpress")
+
+    state = secrets.token_urlsafe(32)
+    pending = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id.is_(None), DropshipConnection.supplier_type == "aliexpress",
+        DropshipConnection.is_active == False,
+    ).first()
+    if pending:
+        pending.oauth_state = state
+    else:
+        db.add(DropshipConnection(shop_id=None, supplier_type="aliexpress", is_active=False, oauth_state=state))
+    db.commit()
+
+    params = {
+        "response_type": "code",
+        "force_auth": "true",
+        "redirect_uri": _aliexpress_callback_url(),
+        "client_id": ALIEXPRESS_APP_KEY,
+        "state": state,
+    }
+    return {"authorize_url": f"{ALIEXPRESS_AUTHORIZE_URL}?{urlencode(params)}"}
 
 
 @router.get("/admin/shopping/aliexpress/search")
@@ -2714,12 +2789,12 @@ async def admin_aliexpress_search(
     system — that one needs business-team-granted feed names, this doesn't."""
     if not q.strip():
         return {"products": [], "total": 0, "page": page}
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop.id, DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
     ).first()
     if not conn:
-        raise HTTPException(status_code=400, detail=f"AliExpress is not connected. Connect it via GET /shops/{shop.id}/dropship/aliexpress/authorize first.")
+        raise HTTPException(status_code=400, detail="AliExpress is not connected. Connect it from Add Products first.")
     token = await _aliexpress_ensure_token(conn, db)
 
     result = _aliexpress_search_products(token, q.strip(), page=page, currency=shop.currency or "USD")
@@ -2739,12 +2814,12 @@ async def admin_aliexpress_import(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
-    shop = _get_or_create_system_shop(db, current_admin)
+    shop = _CATALOGUE
     conn = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop.id, DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
     ).first()
     if not conn:
-        raise HTTPException(status_code=400, detail=f"AliExpress is not connected. Connect it via GET /shops/{shop.id}/dropship/aliexpress/authorize first.")
+        raise HTTPException(status_code=400, detail="AliExpress is not connected. Connect it from Add Products first.")
     token = await _aliexpress_ensure_token(conn, db)
 
     product_id = _parse_aliexpress_product_id(body.product_url)
@@ -2892,10 +2967,7 @@ def admin_meta_ads_auto_attach(
             "error": "meta_not_configured",
             "message": "Meta Ad Library isn't connected yet, so no ads can be searched. It needs META_AD_LIBRARY_TOKEN from a verified Meta developer account.",
         })
-    shop = db.query(Shop).filter(Shop.slug == "exiuscart-dropshipping-system").first()
-    if not shop:
-        raise HTTPException(status_code=400, detail="System shop not found.")
-    query = db.query(Product).filter(Product.shop_id == shop.id, Product.ad_facebook_url.is_(None))
+    query = db.query(Product).filter(Product.shop_id.is_(None), Product.ad_facebook_url.is_(None))
     if product_id is not None:
         query = query.filter(Product.id == product_id)
     products = query.order_by(Product.created_at.desc()).limit(limit).all()

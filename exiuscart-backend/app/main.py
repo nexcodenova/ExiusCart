@@ -170,7 +170,13 @@ _MIGRATIONS = [
        SELECT s.id, 'launch', 'monthly', 'trial', 0, COALESCE(s.currency, 'USD'), NOW(), NOW() + INTERVAL '7 days', NOW() + INTERVAL '7 days'
        FROM shops s JOIN users u ON u.id = s.owner_id
        WHERE u.is_verified = TRUE
+         AND s.slug NOT IN ('exiuscart-website', 'exiuscart-dropshipping-system', 'prodora-website', 'affiliate-website')
          AND NOT EXISTS (SELECT 1 FROM subscriptions sub WHERE sub.shop_id = s.id);""",
+    # Internal shops (blog + catalogue) are not customers; remove the trial
+    # rows earlier versions of the back-fill above gave them.
+    """DELETE FROM subscriptions
+       WHERE status = 'trial' AND COALESCE(amount_paid, 0) = 0
+         AND shop_id IN (SELECT id FROM shops WHERE slug IN ('exiuscart-website', 'exiuscart-dropshipping-system', 'prodora-website', 'affiliate-website'));""",
     # Affiliate commission model — chosen at application, locked forever
     "ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS commission_model VARCHAR(20) DEFAULT 'one_time';",
     "ALTER TABLE commissions ADD COLUMN IF NOT EXISTS commission_type VARCHAR(20) DEFAULT 'one_time';",
@@ -276,6 +282,34 @@ _MIGRATIONS = [
     "UPDATE subscriptions SET plan_type = 'launch' WHERE plan_type = 'free_trial' AND status = 'trial' AND shop_id NOT IN (SELECT shop_id FROM channel_connections WHERE channel_type = 'thedersi' AND shop_id IS NOT NULL);",
     "UPDATE partner_licenses SET plan_type = 'launch' WHERE plan_type = 'starter';",
     "UPDATE partner_licenses SET plan_type = 'scale' WHERE plan_type = 'premium';",
+    # Site blogs (exiuscart / prodora / affiliate) no longer live on hidden shops.
+    "ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS site VARCHAR(20);",
+    "ALTER TABLE blog_posts ALTER COLUMN shop_id DROP NOT NULL;",
+    "CREATE INDEX IF NOT EXISTS ix_blog_posts_site ON blog_posts (site);",
+    # 1. move every post off the hidden blog shops and onto its site
+    """UPDATE blog_posts b
+       SET site = CASE s.slug WHEN 'exiuscart-website' THEN 'exiuscart' WHEN 'prodora-website' THEN 'prodora' ELSE 'affiliate' END,
+           shop_id = NULL
+       FROM shops s
+       WHERE b.shop_id = s.id AND s.slug IN ('exiuscart-website', 'prodora-website', 'affiliate-website');""",
+    # 2. then delete those shops (and anything hanging off them). If a foreign
+    #    key still points at one of them this simply fails and is skipped; the
+    #    shop is then only an unused row that the admin lists already hide.
+    "DELETE FROM subscriptions WHERE shop_id IN (SELECT id FROM shops WHERE slug IN ('exiuscart-website', 'prodora-website', 'affiliate-website'));",
+    "DELETE FROM shops WHERE slug IN ('exiuscart-website', 'prodora-website', 'affiliate-website');",
+    # Prodora's catalogue belongs to the platform, not to a hidden shop. Products,
+    # categories, supplier links and the CJ / AliExpress connections are kept and
+    # simply detached (shop_id NULL); then the hidden shop itself is deleted.
+    "ALTER TABLE products ALTER COLUMN shop_id DROP NOT NULL;",
+    "ALTER TABLE categories ALTER COLUMN shop_id DROP NOT NULL;",
+    "ALTER TABLE dropship_connections ALTER COLUMN shop_id DROP NOT NULL;",
+    "ALTER TABLE dropship_product_links ALTER COLUMN shop_id DROP NOT NULL;",
+    "UPDATE products SET shop_id = NULL WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
+    "UPDATE categories SET shop_id = NULL WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
+    "UPDATE dropship_product_links SET shop_id = NULL WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
+    "UPDATE dropship_connections SET shop_id = NULL WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
+    "DELETE FROM subscriptions WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
+    "DELETE FROM shops WHERE slug = 'exiuscart-dropshipping-system';",
 ]
 
 for _sql in _MIGRATIONS:
@@ -412,6 +446,44 @@ def _run_video_gen_poll_scheduler():
 
 _video_gen_poll_thread = threading.Thread(target=_run_video_gen_poll_scheduler, daemon=True)
 _video_gen_poll_thread.start()
+
+# Move $1 trials to full price once their week is over (see
+# app/core/subscription_lifecycle.py). This used to need an outside cron job
+# calling POST /cron/advance-trial-stages; if nobody set that up, no customer
+# was ever charged the full price. It now runs on its own: every hour it looks
+# for trials whose week has ended (a run with nothing due does nothing, so the
+# hourly check is safe and means a customer waits at most an hour, not a day).
+# A Postgres advisory lock makes sure only one backend process runs it at a
+# time, so a second worker can never charge the same card twice.
+_TRIAL_STAGE_LOCK_KEY = 7420001
+
+
+def _run_trial_stage_scheduler():
+    import asyncio
+    time.sleep(90)  # let the app finish starting first
+    while True:
+        try:
+            from app.core.lemonsqueezy import is_configured
+            if is_configured():
+                with engine.connect() as lock_conn:
+                    got = lock_conn.execute(_sa_text("SELECT pg_try_advisory_lock(:k)"), {"k": _TRIAL_STAGE_LOCK_KEY}).scalar()
+                    if got:
+                        try:
+                            from app.core.subscription_lifecycle import advance_trial_stages
+                            db = SessionLocal()
+                            try:
+                                asyncio.run(advance_trial_stages(db))
+                            finally:
+                                db.close()
+                        finally:
+                            lock_conn.execute(_sa_text("SELECT pg_advisory_unlock(:k)"), {"k": _TRIAL_STAGE_LOCK_KEY})
+                            lock_conn.commit()
+        except Exception as exc:
+            logger.error(f"[Trial stage scheduler] {exc}")
+        time.sleep(3600)
+
+_trial_stage_thread = threading.Thread(target=_run_trial_stage_scheduler, daemon=True)
+_trial_stage_thread.start()
 
 # Publish due scheduled social posts (every 5 minutes) — matches the drip
 # flow runner's cadence, plenty tight for a "schedule for later today" tool.
