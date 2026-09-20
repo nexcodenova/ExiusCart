@@ -1128,6 +1128,15 @@ def get_dashboard_stats(
     recent_orders = db.query(Ord).filter(Ord.shop_id == shop_id).order_by(
         Ord.created_at.desc()
     ).limit(5).all()
+    # Units per recent order, for the "Items" column on the dashboard.
+    recent_item_counts = {}
+    if recent_orders:
+        recent_item_counts = {
+            oid: int(qty or 0)
+            for oid, qty in db.query(OrderItem.order_id, func.sum(OrderItem.quantity))
+            .filter(OrderItem.order_id.in_([o.id for o in recent_orders]))
+            .group_by(OrderItem.order_id).all()
+        }
 
     # Order status breakdown (all time)
     from sqlalchemy import extract
@@ -1628,6 +1637,7 @@ def get_dashboard_stats(
                 "amount": str(o.total),
                 "status": o.status,
                 "time": o.created_at.isoformat(),
+                "items": recent_item_counts.get(o.id, 0),
             }
             for o in recent_orders
         ],
