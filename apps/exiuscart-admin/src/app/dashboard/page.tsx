@@ -7,6 +7,8 @@ import {
   Clock, AlertCircle, ArrowUpRight, DollarSign, Loader2,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { SystemHealth } from '@/components/system-health';
+import { PlanChip, StatusChip, fmtDate } from '@/lib/subscription-ui';
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<any>(null);
@@ -56,6 +58,8 @@ export default function AdminDashboardPage() {
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-600 text-sm mt-1">Welcome back, Super Admin</p>
       </div>
+
+      <SystemHealth />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
@@ -221,34 +225,17 @@ function StatCard({ title, value, subtitle, icon, color }: {
 }
 
 function ShopRow({ shop }: { shop: any }) {
-  const statusStyles: Record<string, string> = {
-    active: 'bg-green-500/10 text-green-600',
-    trial: 'bg-blue-500/10 text-blue-600',
-    cancelled: 'bg-gray-500/10 text-gray-600',
-    expired: 'bg-red-500/10 text-red-600',
-    none: 'bg-gray-500/10 text-gray-600',
-  };
-  const planStyles: Record<string, string> = {
-    starter: 'text-gray-600',
-    business: 'text-blue-600',
-    pro: 'text-[#6B3FD9]',
-    none: 'text-gray-400',
-  };
-  const status = shop.is_active ? (shop.subscription_status || 'active') : 'suspended';
-  const registeredDate = shop.created_at ? new Date(shop.created_at).toLocaleDateString() : '—';
-
   return (
     <tr className="border-b border-gray-200 last:border-0">
       <td className="py-3 font-medium text-gray-900">{shop.name}</td>
       <td className="py-3 text-gray-600 hidden sm:table-cell">{shop.owner}</td>
-      <td className={`py-3 capitalize ${planStyles[shop.plan] ?? 'text-gray-600'}`}>{shop.plan}</td>
+      <td className="py-3"><PlanChip plan={shop.plan} /></td>
       <td className="py-3">
-        <span className={`text-xs px-2 py-1 rounded-lg capitalize ${statusStyles[status] ?? 'bg-gray-500/10 text-gray-600'}`}>
-          {status}
-        </span>
+        {shop.is_active
+          ? <StatusChip status={shop.subscription_status} />
+          : <span className="inline-block rounded-lg bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-600">Suspended</span>}
       </td>
-      <td className="py-3 text-gray-500 hidden md:table-cell">{registeredDate}</td>
+      <td className="py-3 text-gray-500 hidden md:table-cell">{fmtDate(shop.created_at)}</td>
     </tr>
   );
 }
-

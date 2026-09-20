@@ -38,6 +38,7 @@ export const authApi = {
 export const adminApi = {
   getStats: () => api.get('/admin/stats'),
   getReports: (params?: { date_range?: string }) => api.get('/admin/reports', { params }),
+  getHealth: (refresh = false) => api.get('/admin/health', { params: refresh ? { refresh: true } : undefined }),
   getAdvancedReports: (params: { start: string; end: string; compare?: boolean }) =>
     api.get('/admin/reports/advanced', { params }),
   getPendingSubscriptions: () => api.get('/admin/pending-subscriptions'),

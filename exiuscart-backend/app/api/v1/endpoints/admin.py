@@ -859,16 +859,16 @@ def recent_shops(
     """Last 10 registered shops for the dashboard."""
     shops = db.query(Shop).options(
         joinedload(Shop.owner),
-        joinedload(Shop.subscription),
-    ).order_by(Shop.created_at.desc()).limit(10).all()
+    ).filter(Shop.slug.notin_(SYSTEM_SHOP_SLUGS)).order_by(Shop.created_at.desc()).limit(10).all()
+    current = _current_subscriptions(db, [s.id for s in shops])
 
     return [
         {
             "id": shop.id,
             "name": shop.name,
             "owner": shop.owner.full_name,
-            "plan": shop.subscription.plan_type if shop.subscription else "none",
-            "subscription_status": shop.subscription.status if shop.subscription else "none",
+            "plan": current[shop.id].plan_type if shop.id in current else "none",
+            "subscription_status": current[shop.id].status if shop.id in current else "none",
             "is_active": shop.is_active,
             "created_at": shop.created_at.isoformat() if shop.created_at else None,
         }
@@ -1059,6 +1059,17 @@ def get_admin_reports(
             "total_revenue": float(total_revenue),
         },
     }
+
+
+@router.get("/admin/health")
+def admin_health(
+    refresh: bool = False,
+    _: User = Depends(require_superuser),
+):
+    """Live status of the API, database, background jobs, every public site and
+    the connected services. Cached for 30 seconds; refresh=true forces a new run."""
+    from app.core.health import get_health
+    return get_health(refresh=refresh)
 
 
 # ── Advanced reports (date range + comparison) ───────────────────────────────
