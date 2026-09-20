@@ -10,6 +10,7 @@ import {
 import { useTheme } from '@/components/providers/theme-provider';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
 import { ordersApi } from '@/lib/api';
+import { FeedbackPopover } from '@/components/feedback-dialog';
 import {
   type ActivityEvent, ACTIVITY_EVENT_META, DEFAULT_ACTIVITY_EVENT_META, activityTimeAgo,
 } from '@/lib/activity-event-meta';
@@ -180,6 +181,9 @@ export function Header({ onMenuClick }: HeaderProps) {
           className="md:hidden flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
           <Search className="w-5 h-5" />
         </button>
+
+        {/* Feedback — goes to the admin Reviews queue */}
+        <FeedbackPopover />
 
         {/* Prodora cross-sell — moved here from the sidebar so it reads as
             an invitation to a separate product, not a regular nav link.

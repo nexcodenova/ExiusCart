@@ -68,6 +68,12 @@ export const authApi = {
     api.post('/auth/complete-profile', data),
 };
 
+// ── Feedback ──────────────────────────────────────────
+export const feedbackApi = {
+  submit: (message: string, rating: number, area: 'exiuscart' | 'prodora' = 'exiuscart') =>
+    api.post('/feedback', { message, rating, area }),
+};
+
 // ── Users ─────────────────────────────────────────────
 export const usersApi = {
   getMe: () => api.get('/users/me'),

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { CountryFlag } from '@/components/country-flag';
+import { DrawerShell } from '@/components/ui/drawer-shell';
 
 // Matches app/core/country_utils.py's COUNTRY_NAME_TO_ISO on the backend —
 // the small set of countries ExiusCart's channel/country-gated features
@@ -281,8 +282,7 @@ function CustomerDetailPanel({ customer, onClose, onUpdated, onEdit, onDelete }:
           hidden` safeguard (globals.css) would then silently clip it with
           no way to scroll to the rest — a fixed right-edge drawer can't run
           into that regardless of how wide the table gets. */}
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[400px] bg-card border-l border-border shadow-2xl flex flex-col">
+      <DrawerShell onClose={onClose}>
       <div className="flex items-start justify-between p-5 border-b border-border">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -436,7 +436,7 @@ function CustomerDetailPanel({ customer, onClose, onUpdated, onEdit, onDelete }:
           <Trash2 className="w-3.5 h-3.5" /> Delete Customer
         </button>
       </div>
-      </div>
+      </DrawerShell>
     </>
   );
 }

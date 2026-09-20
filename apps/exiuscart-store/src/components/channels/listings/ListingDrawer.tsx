@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DrawerShell } from '@/components/ui/drawer-shell';
 import Image from 'next/image';
 import { X, Check, XCircle as XIcon, Copy, Pencil, ExternalLink, Package, AlertTriangle, Loader2 } from 'lucide-react';
 import { channelMeta } from '../channelMeta';
@@ -52,13 +53,7 @@ export default function ListingDrawer({ detail, loading, onClose }: {
   const tips = detail ? fixTips(detail.error_message) : [];
 
   return (
-    <aside
-      // top:64px is the app header height — set inline so the panel always
-      // sits *below* the sticky header (never on top of the profile/currency
-      // controls) regardless of how Tailwind purges responsive utilities.
-      style={{ top: 64 }}
-      className="fixed right-0 bottom-0 left-0 sm:left-auto z-[60] flex flex-col w-full sm:w-[400px] border-t sm:border-t-0 border-l border-border bg-card shadow-2xl"
-    >
+    <DrawerShell onClose={onClose}>
       <div className="flex items-center justify-between border-b border-border bg-card px-5 py-4 shrink-0">
         <h2 className="font-bold text-foreground">Listing details</h2>
         <button onClick={onClose} className="rounded-md p-1.5 hover:bg-muted text-muted-foreground">
@@ -166,6 +161,6 @@ export default function ListingDrawer({ detail, loading, onClose }: {
           </div>
         </div>
       )}
-    </aside>
+    </DrawerShell>
   );
 }
