@@ -102,6 +102,7 @@ export interface Category {
   id: number;
   name: string;
   slug: string;
+  image_url?: string | null;
 }
 
 export interface ProductsParams {
@@ -187,3 +188,28 @@ export interface ShippingEstimate {
   country_code: string;
   options: ShippingOption[];
 }
+
+export interface ProdoraAccount {
+  name: string;
+  email: string;
+  plan_type: string | null;
+  plan_name: string;
+  status: string | null;
+  trial_ends_at: string | null;
+  imports: { used: number; limit: number | null; resets_at: string };
+  store_products: { used: number; limit: number | null };
+}
+
+export const accountApi = {
+  me: async (): Promise<ProdoraAccount> => {
+    const response = await apiClient.get('/shopping/me');
+    return response.data;
+  },
+};
+
+// Sent to the ExiusCart admin Reviews queue; only goes live once approved.
+export const feedbackApi = {
+  submit: async (message: string, rating: number): Promise<void> => {
+    await apiClient.post('/feedback', { message, rating, area: 'prodora' });
+  },
+};

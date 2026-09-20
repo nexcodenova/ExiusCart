@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
+import LoadingImage from '@/components/LoadingImage';
 import DOMPurify from 'dompurify';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -207,7 +208,7 @@ function ProductDetailContent() {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
         <Sidebar />
-        <main className="app-main pt-16">
+        <main className="app-main pt-12">
           <div className="bg-white border-b border-[#E5E7EB] px-4 py-3">
             <div className="max-w-6xl mx-auto h-5 w-24 bg-gray-100 rounded animate-pulse" />
           </div>
@@ -227,7 +228,7 @@ function ProductDetailContent() {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
         <Sidebar />
-        <main className="app-main pt-16 flex flex-col items-center justify-center gap-5 px-4 text-center min-h-screen">
+        <main className="app-main pt-12 flex flex-col items-center justify-center gap-5 px-4 text-center min-h-screen">
           <Package className="w-16 h-16 text-gray-300" />
           <h1 className="text-2xl font-bold text-[#111827]">Product not found</h1>
           <p className="text-[#6B7280]">This product may have been removed or doesn&apos;t exist.</p>
@@ -277,7 +278,7 @@ function ProductDetailContent() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <Sidebar />
-      <main className="app-main pt-16">
+      <main className="app-main pt-12">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-2 text-sm text-[#6B7280]">
@@ -303,7 +304,7 @@ function ProductDetailContent() {
                 <div className="flex gap-3">
                   <div className="relative bg-gray-50 group rounded-xl overflow-hidden flex-1" style={{ minHeight: '340px' }}>
                     {activeImage ? (
-                      <Image src={activeImage} alt={name} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 60vw" priority />
+                      <LoadingImage src={activeImage} alt={name} className="object-cover" sizes="(max-width: 1024px) 100vw, 60vw" priority />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center"><Package className="w-24 h-24 text-gray-300" /></div>
                     )}

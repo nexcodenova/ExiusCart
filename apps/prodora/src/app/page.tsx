@@ -16,6 +16,7 @@ const FULFILLMENT_STEPS = [
   { icon: PackageCheck, title: 'Delivered', desc: "Your customer gets their order. You never touch the product." },
 ];
 import { Button } from '@/components/ui/button';
+import SellerReviews from '@/components/SellerReviews';
 import { Badge } from '@/components/ui/badge';
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
@@ -251,6 +252,8 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      <SellerReviews />
 
       {/* ── Pricing (simple, honest — free) ──────────────────────────── */}
       <section id="pricing" className="border-t border-border bg-card">

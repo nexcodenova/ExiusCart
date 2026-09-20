@@ -4,10 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
-import {
-  LayoutGrid, Flame, Star, Download, Tag, ChevronDown, Store, ExternalLink, ArrowRight, Search,
-  Trophy, Compass, Swords, GraduationCap, ShoppingBag, Package, ClipboardList, PanelLeftClose, PanelLeftOpen, X,
-} from 'lucide-react';
+import { ChevronDown, ExternalLink, ArrowRight, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { WinningIcon, MarketplaceIcon, StoreIcon, AcademyIcon, InstructionsIcon } from '@/components/SidebarIcons';
 import { shoppingApi, Category } from '@/lib/api';
 import TopBar from '@/components/TopBar';
 
@@ -24,7 +22,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [open, setOpen] = useState<Record<string, boolean>>({ research: true, marketplace: false, store: false });
+  const [open, setOpen] = useState<Record<string, boolean>>({ research: true, store: false });
   const [collapsed, setCollapsed] = useState(false);
   const [promoDismissed, setPromoDismissed] = useState(false);
 
@@ -53,64 +51,46 @@ export default function Sidebar() {
     try { localStorage.setItem(PROMO_KEY, '1'); } catch {}
   };
   const toggle = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
+  const openGroup = (k: string) => setOpen((o) => ({ ...o, [k]: true }));
 
   const view = pathname === '/browse' ? (searchParams.get('view') || 'all') : null;
   const onProduct = pathname.startsWith('/product/');
-  const soon = pathname.startsWith('/research/') ? pathname.split('/')[2] : pathname === '/academy' ? 'academy' : null;
+  const onMarketplace = pathname === '/marketplace';
+  const soon = pathname === '/academy' ? 'academy' : null;
   const isCategory = !!view && categories.some((c) => c.slug === view);
 
-  const researchActive = view === 'featured' || view === 'bestsellers' || view === 'trending' || (!!soon && soon !== 'academy');
-  const marketplaceActive = view === 'all' || view === 'digital' || isCategory || onProduct;
+  const researchActive = view === 'all' || isCategory || view === 'bestsellers' || view === 'trending' || onProduct || pathname === '/digital';
 
   return (
     <>
-      <aside className={`hidden lg:flex flex-col fixed inset-y-0 left-0 bg-[#0B1D3A] text-white z-30 transition-[width] duration-200 ${collapsed ? 'w-[4.5rem]' : 'w-64'}`}>
-        <Link href="/browse" className={`flex items-center h-16 shrink-0 ${collapsed ? 'justify-center' : 'gap-2.5 px-5'}`}>
+      <aside className={`hidden lg:flex flex-col fixed inset-y-0 left-0 bg-[#0E2647] text-white z-30 transition-[width] duration-200 ${collapsed ? 'w-[4.5rem]' : 'w-[14.5rem]'}`}>
+        <Link href="/browse" className={`flex items-center h-12 shrink-0 bg-[#06122A] ${collapsed ? 'justify-center' : 'gap-2.5 px-5'}`}>
           <Image src="/prodora-logo.png" alt="" width={30} height={30} className="rounded-lg" />
           {!collapsed && <span className="font-extrabold text-xl tracking-tight">Prodora</span>}
         </Link>
 
         <nav className="flex-1 overflow-y-auto overflow-x-hidden pb-4">
-          <Group id="research" label="Product Research" icon={Search} collapsed={collapsed} open={open.research} onToggle={toggle} highlight={researchActive}>
-            <NavItem href="/browse?view=featured" label="Product Picks" icon={LayoutGrid} active={view === 'featured'} />
-            <NavItem href="/research/store-explorer" label="Store Explorer" icon={Compass} active={soon === 'store-explorer'} soon />
-            <NavItem href="/research/competitor-research" label="Competitor Research" icon={Swords} active={soon === 'competitor-research'} soon />
-            <NavItem href="/browse?view=bestsellers" label="Global Bestsellers" icon={Trophy} active={view === 'bestsellers'} />
-            <NavItem href="/browse?view=trending" label="Current Trends" icon={Flame} active={view === 'trending'} />
+          <Group id="research" label="Research Hub" href="/browse" icon={WinningIcon} collapsed={collapsed} open={open.research} onToggle={toggle} onOpen={openGroup} highlight={researchActive}>
+            <NavItem href="/browse" label="Picked Products" active={view === 'all' || isCategory || onProduct} />
+            <NavItem href="/browse?view=bestsellers" label="Global Bestsellers" active={view === 'bestsellers'} />
+            <NavItem href="/browse?view=trending" label="Current Trends" active={view === 'trending'} />
+            <NavItem href="/digital" label="Digital Products" active={pathname === '/digital'} />
           </Group>
 
-          <Group id="marketplace" label="Marketplace" icon={ShoppingBag} collapsed={collapsed} open={open.marketplace} onToggle={toggle} highlight={marketplaceActive}>
-            <NavItem href="/browse" label="All Products" icon={Package} active={view === 'all' || onProduct} />
-            <NavItem href="/browse?view=digital" label="Digital Products" icon={Download} active={view === 'digital'} />
-            {categories.map((cat) => (
-              <NavItem key={cat.id} href={`/browse?view=${cat.slug}`} label={cat.name} icon={Tag} active={view === cat.slug} />
-            ))}
+          <SingleItem href="/marketplace" label="Marketplace" icon={MarketplaceIcon} active={onMarketplace} collapsed={collapsed} />
+
+          <Group id="store" label="My Store" icon={StoreIcon} collapsed={collapsed} open={open.store} onToggle={toggle}>
+            <NavItem href="https://store.exiuscart.com/dashboard/products" label="Products" external />
+            <NavItem href="https://store.exiuscart.com/dashboard/orders" label="Orders" external />
+            <NavItem href="https://store.exiuscart.com/dashboard" label="Dashboard" external />
           </Group>
 
-          <Group id="store" label="My Store" icon={Store} collapsed={collapsed} open={open.store} onToggle={toggle}>
-            <NavItem href="https://store.exiuscart.com/dashboard/products" label="Products" icon={Package} external />
-            <NavItem href="https://store.exiuscart.com/dashboard/orders" label="Orders" icon={ClipboardList} external />
-            <NavItem href="https://store.exiuscart.com/dashboard" label="Dashboard" icon={LayoutGrid} external />
-          </Group>
+          <SingleItem href="/instructions" label="Instructions" icon={InstructionsIcon} active={pathname === '/instructions'} collapsed={collapsed} />
 
-          <Link
-            href="/academy"
-            title="Academy"
-            className={`mt-1 mx-3 flex items-center rounded-lg py-3 text-[15px] font-semibold transition hover:bg-white/5 ${
-              collapsed ? 'justify-center px-0' : 'gap-3 px-3'
-            } ${soon === 'academy' ? 'bg-[#122C55] text-white' : 'text-white/75 hover:text-white'}`}
-          >
-            <GraduationCap className="h-5 w-5 shrink-0" />
-            {!collapsed && (
-              <>
-                <span className="flex-1">Academy</span>
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">Soon</span>
-              </>
-            )}
-          </Link>
+          <SingleItem href="/academy" label="Academy" icon={AcademyIcon} active={soon === 'academy'} collapsed={collapsed} soon />
         </nav>
 
-        <div className="shrink-0">
+        <div className="shrink-0 bg-[#06122A] pt-3">
           {!collapsed && !promoDismissed && (
             <div className="relative mx-4 mb-3 rounded-xl bg-white/5 p-3.5 ring-1 ring-white/10">
               <button type="button" onClick={dismissPromo} aria-label="Dismiss" className="absolute right-2 top-2 text-white/40 hover:text-white">
@@ -142,49 +122,78 @@ export default function Sidebar() {
   );
 }
 
+const ROW = 'flex w-full items-center text-left text-[15px] font-semibold transition';
+
 function Group({
-  id, label, icon: Icon, open, onToggle, highlight, collapsed, children,
+  id, label, href, icon: Icon, open, onToggle, onOpen, highlight, collapsed, children,
 }: {
-  id: string; label: string; icon: React.ElementType; open: boolean; onToggle: (id: string) => void;
+  id: string; label: string; href?: string; icon: React.ElementType; open: boolean;
+  onToggle: (id: string) => void; onOpen?: (id: string) => void;
   highlight?: boolean; collapsed: boolean; children: React.ReactNode;
 }) {
+  const tone = highlight || open ? 'text-white' : 'text-white/70';
+  const labelCls = `${ROW} h-14 min-w-0 flex-1 hover:bg-white/5 ${collapsed ? 'justify-center' : 'gap-3.5 pl-5'} ${tone}`;
+  const inner = (
+    <>
+      <Icon className="h-6 w-6 shrink-0" />
+      {!collapsed && <span className="min-w-0 flex-1 truncate whitespace-nowrap">{label}</span>}
+    </>
+  );
   return (
-    <div className="mt-1">
-      <button
-        type="button"
-        title={label}
-        onClick={() => onToggle(id)}
-        className={`mx-3 flex w-[calc(100%-1.5rem)] items-center rounded-lg py-3 text-left text-[15px] font-semibold transition hover:bg-white/5 ${
-          collapsed ? 'justify-center px-0' : 'gap-3 px-3'
-        } ${highlight ? 'text-white' : 'text-white/75'}`}
-      >
-        <Icon className="h-5 w-5 shrink-0" />
-        {!collapsed && (
-          <>
-            <span className="flex-1">{label}</span>
-            <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-          </>
+    <div>
+      <div className="flex items-stretch">
+        {href ? (
+          // Opens the group's first page and expands it in one click.
+          <Link href={href} title={label} onClick={() => onOpen?.(id)} className={labelCls}>{inner}</Link>
+        ) : (
+          <button type="button" title={label} onClick={() => onToggle(id)} className={labelCls}>{inner}</button>
         )}
-      </button>
-      {open && !collapsed && <div className="mt-0.5">{children}</div>}
+        {!collapsed && (
+          <button
+            type="button" aria-label={open ? `Collapse ${label}` : `Expand ${label}`} onClick={() => onToggle(id)}
+            className={`flex w-12 shrink-0 items-center justify-center hover:bg-white/5 ${tone}`}
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        )}
+      </div>
+      {open && !collapsed && <div>{children}</div>}
     </div>
   );
 }
 
-function NavItem({
-  href, label, icon: Icon, active, soon, external,
+function SingleItem({
+  href, label, icon: Icon, active, collapsed, soon,
 }: {
-  href: string; label: string; icon: React.ElementType; active?: boolean; soon?: boolean; external?: boolean;
+  href: string; label: string; icon: React.ElementType; active: boolean; collapsed: boolean; soon?: boolean;
 }) {
-  const cls = `relative flex items-center gap-3 py-2.5 pl-12 pr-4 text-sm transition ${
-    active ? 'bg-[#122C55] font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+  return (
+    <Link
+      href={href}
+      title={label}
+      className={`${ROW} relative h-14 hover:bg-white/5 ${collapsed ? 'justify-center' : 'gap-3.5 px-5'} ${active ? 'bg-[#1A3E72] text-white' : 'text-white/70 hover:text-white'}`}
+    >
+      {active && <span className="absolute inset-y-0 left-0 w-1 bg-[#3B82F6]" />}
+      <Icon className="h-6 w-6 shrink-0" />
+      {!collapsed && (
+        <>
+          <span className="flex-1">{label}</span>
+          {soon && <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">Soon</span>}
+        </>
+      )}
+    </Link>
+  );
+}
+
+// Sub-items are text only, indented under their group's label.
+function NavItem({ href, label, active, external }: { href: string; label: string; active?: boolean; external?: boolean }) {
+  const cls = `relative flex h-12 items-center gap-2 pl-[3.6rem] pr-4 text-[15px] transition ${
+    active ? 'bg-[#1A3E72] font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
   }`;
   const inner = (
     <>
       {active && <span className="absolute inset-y-0 left-0 w-1 bg-[#3B82F6]" />}
-      <Icon className="absolute left-5 h-4 w-4 shrink-0 opacity-70" />
       <span className="flex-1 truncate">{label}</span>
-      {soon && <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/60">Soon</span>}
       {external && <ExternalLink className="h-3 w-3 opacity-50" />}
     </>
   );
