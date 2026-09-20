@@ -422,16 +422,24 @@ async def _push_to_woocommerce(shop_id: int, post: BlogPost, db: Session) -> dic
 
 # ── Public — Custom Website API ───────────────────────────────────────────────
 
+# ExiusCart's own sites read their blog through the same URL a storefront uses,
+# with these names in place of a shop slug. There is no shop behind them.
+SITE_BLOG_NAMES = {"exiuscart-website": "exiuscart", "prodora-website": "prodora", "affiliate-website": "affiliate"}
+
+
 @router.get("/public/store/{shop_slug}/blog")
 @limiter.limit("120/minute")
 def public_blog_list(request: Request, shop_slug: str, tag: Optional[str] = None, db: Session = Depends(get_db)):
     """No-auth — a custom storefront's blog listing reads this directly,
     same pattern as public_store_products."""
-    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
-    if not shop:
-        raise HTTPException(status_code=404, detail="Store not found")
-
-    q = db.query(BlogPost).filter(BlogPost.shop_id == shop.id, BlogPost.status == "published")
+    site = SITE_BLOG_NAMES.get(shop_slug)
+    if site:
+        q = db.query(BlogPost).filter(BlogPost.site == site, BlogPost.status == "published")
+    else:
+        shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+        if not shop:
+            raise HTTPException(status_code=404, detail="Store not found")
+        q = db.query(BlogPost).filter(BlogPost.shop_id == shop.id, BlogPost.status == "published")
     posts = q.order_by(BlogPost.published_at.desc()).all()
     if tag:
         posts = [p for p in posts if p.tags and tag.lower() in [t.strip().lower() for t in p.tags.split(",")]]
@@ -448,13 +456,18 @@ def public_blog_list(request: Request, shop_slug: str, tag: Optional[str] = None
 @router.get("/public/store/{shop_slug}/blog/{slug}")
 @limiter.limit("120/minute")
 def public_blog_detail(request: Request, shop_slug: str, slug: str, db: Session = Depends(get_db)):
-    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
-    if not shop:
-        raise HTTPException(status_code=404, detail="Store not found")
-
-    post = db.query(BlogPost).filter(
-        BlogPost.shop_id == shop.id, BlogPost.slug == slug, BlogPost.status == "published",
-    ).first()
+    site = SITE_BLOG_NAMES.get(shop_slug)
+    if site:
+        post = db.query(BlogPost).filter(
+            BlogPost.site == site, BlogPost.slug == slug, BlogPost.status == "published",
+        ).first()
+    else:
+        shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+        if not shop:
+            raise HTTPException(status_code=404, detail="Store not found")
+        post = db.query(BlogPost).filter(
+            BlogPost.shop_id == shop.id, BlogPost.slug == slug, BlogPost.status == "published",
+        ).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 

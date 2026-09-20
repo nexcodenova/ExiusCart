@@ -38,6 +38,9 @@ export default function Navbar() {
             >
               Pricing
             </a>
+            <Link href="/blog" className="text-[15px] font-medium text-foreground/80 hover:text-foreground transition-colors">
+              Resources
+            </Link>
           </nav>
 
           {/* Desktop CTAs — mobile gets just the logo + menu button below
@@ -84,6 +87,13 @@ export default function Navbar() {
             >
               Pricing
             </a>
+            <Link
+              href="/blog"
+              onClick={() => setIsOpen(false)}
+              className="text-2xl font-semibold text-foreground/90 hover:text-foreground transition-colors py-4 border-b border-border"
+            >
+              Resources
+            </Link>
           </nav>
           <div className="mt-8 space-y-3">
             <Button

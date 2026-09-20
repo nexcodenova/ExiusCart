@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Plus, Loader2, Eye, Pencil, Trash2, FileText } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { BLOG_SITES, useBlogSite } from '@/lib/blog-sites';
 
 interface BlogPostRow {
   id: number;
@@ -19,6 +20,12 @@ interface BlogPostRow {
 }
 
 export default function AdminBlogListPage() {
+  return <Suspense fallback={null}><BlogList /></Suspense>;
+}
+
+function BlogList() {
+  const site = useBlogSite();
+  const meta = BLOG_SITES.find((s) => s.key === site)!;
   const [posts, setPosts] = useState<BlogPostRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'all' | 'published' | 'draft'>('all');
@@ -26,19 +33,19 @@ export default function AdminBlogListPage() {
 
   const load = () => {
     setLoading(true);
-    adminApi.listWebsiteBlogPosts()
+    adminApi.listWebsiteBlogPosts(undefined, site)
       .then((r) => setPosts(r.data?.posts ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [site]);
 
   const remove = async (id: number) => {
     if (!window.confirm('Delete this post? This cannot be undone.')) return;
     setDeletingId(id);
     try {
-      await adminApi.deleteWebsiteBlogPost(id);
+      await adminApi.deleteWebsiteBlogPost(id, site);
       load();
     } finally { setDeletingId(null); }
   };
@@ -46,15 +53,17 @@ export default function AdminBlogListPage() {
   const filtered = tab === 'all' ? posts : posts.filter((p) => p.status === tab);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Blog</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{meta.label} Blog</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Publishes live to <strong className="text-gray-800">exiuscart.com/blog</strong>.
+            {meta.live
+              ? <>Publishes live to <strong className="text-gray-800">{meta.where}</strong> only.</>
+              : <>Posts written here are saved for the affiliate site. It has no blog page yet, so nothing is shown publicly.</>}
           </p>
         </div>
-        <Link href="/dashboard/blogs/new"
+        <Link href={`/dashboard/blogs/new?site=${site}`}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#6B3FD9] text-white rounded-lg text-sm font-medium hover:bg-[#5A2EC9] transition">
           <Plus className="w-4 h-4" /> New Post
         </Link>
@@ -104,7 +113,7 @@ export default function AdminBlogListPage() {
                   <span className="flex items-center gap-1 text-[11px] text-gray-600 mt-auto pt-2"><Eye className="w-3 h-3" /> {p.view_count}</span>
                 )}
                 <div className="flex gap-2 pt-2">
-                  <Link href={`/dashboard/blogs/${p.id}`}
+                  <Link href={`/dashboard/blogs/${p.id}?site=${site}`}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-800 hover:bg-gray-100 transition">
                     <Pencil className="w-3.5 h-3.5" /> Edit
                   </Link>

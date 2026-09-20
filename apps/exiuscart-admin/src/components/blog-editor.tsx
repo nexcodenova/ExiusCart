@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, Loader2, Upload, X, CheckCircle2, Eye } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { useBlogSite } from '@/lib/blog-sites';
 import { RichTextEditor } from '@/components/rich-text-editor';
 
 const IMAGE_LIMIT = 15;
 
 export function AdminBlogEditor({ postId }: { postId?: number }) {
+  const site = useBlogSite();
   const router = useRouter();
   const [loading, setLoading] = useState(!!postId);
   const [saving, setSaving] = useState(false);
@@ -32,7 +34,7 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
 
   useEffect(() => {
     if (!postId) return;
-    adminApi.getWebsiteBlogPost(postId).then((r) => {
+    adminApi.getWebsiteBlogPost(postId, site).then((r) => {
       const p = r.data;
       setTitle(p.title ?? '');
       setExcerpt(p.excerpt ?? '');
@@ -62,10 +64,10 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
     setSaving(true); setError(''); setSaved(false);
     try {
       if (postId) {
-        await adminApi.updateWebsiteBlogPost(postId, buildPayload());
+        await adminApi.updateWebsiteBlogPost(postId, buildPayload(), site);
       } else {
-        const r = await adminApi.createWebsiteBlogPost(buildPayload());
-        router.replace(`/dashboard/blogs/${r.data.id}`);
+        const r = await adminApi.createWebsiteBlogPost(buildPayload(), site);
+        router.replace(`/dashboard/blogs/${r.data.id}?site=${site}`);
         return;
       }
       setSaved(true);
@@ -81,14 +83,14 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
     try {
       let id = postId;
       if (!id) {
-        const r = await adminApi.createWebsiteBlogPost(buildPayload());
+        const r = await adminApi.createWebsiteBlogPost(buildPayload(), site);
         id = r.data.id;
       } else {
-        await adminApi.updateWebsiteBlogPost(id, buildPayload());
+        await adminApi.updateWebsiteBlogPost(id, buildPayload(), site);
       }
-      const res = await adminApi.publishWebsiteBlogPost(id!, published);
+      const res = await adminApi.publishWebsiteBlogPost(id!, published, site);
       setStatus(res.data.status);
-      if (!postId) router.replace(`/dashboard/blogs/${id}`);
+      if (!postId) router.replace(`/dashboard/blogs/${id}?site=${site}`);
     } catch (e: any) {
       setError(e?.response?.data?.detail ?? 'Could not publish. Try again.');
     } finally { setPublishing(false); }
@@ -118,7 +120,7 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <button onClick={() => router.push('/dashboard/blogs')}
+        <button onClick={() => router.push(`/dashboard/blogs?site=${site}`)}
           className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition">
           <ArrowLeft className="w-4 h-4" /> Back to Blog
         </button>

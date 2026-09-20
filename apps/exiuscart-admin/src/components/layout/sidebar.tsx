@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { BLOG_SITES, parseBlogSite } from '@/lib/blog-sites';
 import {
   LayoutDashboard,
   Store,
@@ -58,10 +59,35 @@ interface AdminSidebarProps {
   onCollapsedChange: (collapsed: boolean) => void;
 }
 
+// One link per site under Blogs. Reads ?site= to highlight the current one, so
+// it has to sit inside a Suspense boundary.
+function BlogSiteLinks({ onBlogs }: { onBlogs: boolean }) {
+  const current = parseBlogSite(useSearchParams().get('site'));
+  return (
+    <div className="mt-0.5 space-y-0.5">
+      {BLOG_SITES.map((s) => {
+        const active = onBlogs && current === s.key;
+        return (
+          <Link
+            key={s.key} href={`/dashboard/blogs?site=${s.key}`}
+            className={`block rounded-lg py-2 pl-[44px] pr-3 text-sm font-medium transition-all ${
+              active ? 'bg-white text-[#5A2EC9] shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-gray-900'
+            }`}
+          >
+            {s.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps) {
   const pathname = usePathname();
   const onProdora = pathname.startsWith('/dashboard/shopping') || PRODORA_CHILDREN.some((c) => pathname.startsWith(c.match));
   const [prodoraOpen, setProdoraOpen] = useState(onProdora);
+  const onBlogs = pathname.startsWith('/dashboard/blogs');
+  const [blogsOpen, setBlogsOpen] = useState(onBlogs);
 
   return (
     <aside
@@ -132,6 +158,39 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                       );
                     })}
                   </div>
+                )}
+              </div>
+            );
+          }
+          if (item.href === '/dashboard/blogs') {
+            return (
+              <div key={item.href}>
+                <div className={`flex items-stretch rounded-lg transition-all ${onBlogs ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
+                  {collapsed ? (
+                    <Link href="/dashboard/blogs?site=exiuscart" title={item.label} className="flex flex-1 items-center gap-3 px-3 py-2.5">
+                      <Icon className="w-5 h-5 flex-shrink-0 mx-auto" />
+                    </Link>
+                  ) : (
+                    <button
+                      type="button" onClick={() => setBlogsOpen((v) => !v)} aria-expanded={blogsOpen}
+                      className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="font-medium text-sm">{item.label}</span>
+                    </button>
+                  )}
+                  {!collapsed && (
+                    <button
+                      type="button" aria-label={blogsOpen ? 'Collapse Blogs' : 'Expand Blogs'}
+                      onClick={() => setBlogsOpen((v) => !v)}
+                      className="flex w-10 items-center justify-center"
+                    >
+                      <ChevronDown className={`w-4 h-4 transition-transform ${blogsOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+                {blogsOpen && !collapsed && (
+                  <Suspense fallback={null}><BlogSiteLinks onBlogs={onBlogs} /></Suspense>
                 )}
               </div>
             );

@@ -12,7 +12,11 @@ class BlogPost(Base):
     __tablename__ = "blog_posts"
 
     id = Column(Integer, primary_key=True, index=True)
-    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
+    # A seller's post belongs to their shop. A post on one of ExiusCart's own
+    # sites (exiuscart / prodora / affiliate) has no shop at all: shop_id is
+    # empty and `site` says where it appears.
+    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=True)
+    site = Column(String(20), nullable=True, index=True)
 
     title = Column(String(255), nullable=False)
     slug = Column(String(255), nullable=False)
