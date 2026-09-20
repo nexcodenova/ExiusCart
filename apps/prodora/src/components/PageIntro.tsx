@@ -6,6 +6,16 @@ import { Info, Trophy, Lightbulb, Zap, X, UserRound, MessageCircle, PlayCircle }
 
 const RESEARCHER_WHATSAPP = 'https://wa.me/971562393573';
 
+// The tutorial video in the "How it works" popup. To change it, paste any
+// YouTube link here (watch, youtu.be or embed all work).
+const HOW_IT_WORKS_VIDEO = 'https://www.youtube.com/watch?v=DNdBJ5tgyjI';
+
+function youtubeId(url: string): string | null {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/))([\w-]{11})/);
+  return m ? m[1] : null;
+}
+const VIDEO_ID = youtubeId(HOW_IT_WORKS_VIDEO);
+
 // Title block shared by the browse views: heading with a "How it works"
 // link, the subtitle, and the researcher help card on the right. The
 // researcher's photo is /public/researcher.png — until that file exists the
@@ -13,17 +23,12 @@ const RESEARCHER_WHATSAPP = 'https://wa.me/971562393573';
 export default function PageIntro({ title, subtitle }: { title: string; subtitle: string }) {
   const [showHow, setShowHow] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
-  // The popup's media is /public/how-it-works.png (cover image) and
-  // /public/how-it-works.mp4 (tutorial). Each only appears once the file
-  // exists; the "Watch Tutorial" button is hidden until there is a video.
-  const [hasVideo, setHasVideo] = useState(false);
+  // The popup's cover image is /public/how-it-works.png (hidden until the file
+  // exists); the tutorial is the YouTube video above, played inline.
   const [imageFailed, setImageFailed] = useState(false);
   const [playing, setPlaying] = useState(false);
 
-  useEffect(() => {
-    if (!showHow) { setPlaying(false); return; }
-    fetch('/how-it-works.mp4', { method: 'HEAD' }).then((r) => setHasVideo(r.ok)).catch(() => setHasVideo(false));
-  }, [showHow]);
+  useEffect(() => { if (!showHow) setPlaying(false); }, [showHow]);
 
   return (
     <>
@@ -72,8 +77,11 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
             </button>
 
             {playing ? (
-              // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src="/how-it-works.mp4" controls autoPlay className="aspect-video w-full bg-black" />
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${VIDEO_ID}?autoplay=1&rel=0`}
+                title="How Prodora works" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
+                className="aspect-video w-full bg-black"
+              />
             ) : !imageFailed ? (
               <div className="border-b border-gray-100 bg-gray-50">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -107,7 +115,7 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
                 </li>
               </ul>
               <div className="mt-6 flex gap-3">
-                {hasVideo && !playing && (
+                {VIDEO_ID && !playing && (
                   <button type="button" onClick={() => setPlaying(true)} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 transition hover:bg-gray-50">
                     <PlayCircle className="h-4 w-4" /> Watch Tutorial
                   </button>
