@@ -62,7 +62,7 @@ export default function InstructionsPage() {
     <div className="min-h-screen bg-[#F3F5F9]">
       <Sidebar />
       <main className="app-main pt-12">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 pb-12 pt-4 sm:px-6">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-4 pb-12 pt-4 sm:px-6">
           <div>
             <h1 className="text-[22px] font-bold leading-tight text-gray-900">Instructions</h1>
             <p className="mt-0.5 text-sm text-gray-500">Everything you need to find a product, read its data and get it selling on your store.</p>
@@ -71,7 +71,7 @@ export default function InstructionsPage() {
           <PlanUsage account={account} />
 
           <Section title="How Prodora works">
-            <ol className="grid gap-3 sm:grid-cols-2">
+            <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {STEPS.map((s, i) => (
                 <li key={s.title} className="flex gap-3 rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200/70">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600"><s.icon className="h-5 w-5" /></span>
@@ -85,7 +85,7 @@ export default function InstructionsPage() {
           </Section>
 
           <Section title="How to read a product's data">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {DATA_GUIDE.map((d) => (
                 <div key={d.term} className="flex gap-3 rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200/70">
                   <d.icon className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" />

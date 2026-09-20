@@ -210,9 +210,9 @@ function ProductDetailContent() {
         <Sidebar />
         <main className="app-main pt-12">
           <div className="bg-white border-b border-[#E5E7EB] px-4 py-3">
-            <div className="max-w-6xl mx-auto h-5 w-24 bg-gray-100 rounded animate-pulse" />
+            <div className="max-w-[1400px] mx-auto h-5 w-24 bg-gray-100 rounded animate-pulse" />
           </div>
-          <div className="max-w-6xl mx-auto px-4 py-6 animate-pulse grid lg:grid-cols-3 gap-5">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 animate-pulse grid lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 aspect-square bg-gray-100 rounded-2xl" />
             <div className="space-y-4">
               <div className="h-4 bg-gray-100 rounded w-1/3" />
@@ -281,7 +281,7 @@ function ProductDetailContent() {
       <main className="app-main pt-12">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-2 text-sm text-[#6B7280]">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3 flex items-center gap-2 text-sm text-[#6B7280]">
           <button onClick={() => router.back()} className="flex items-center gap-1.5 hover:text-[#2563EB] transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
@@ -293,7 +293,7 @@ function ProductDetailContent() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="grid lg:grid-cols-3 gap-5 items-start">
 
           {/* ── Left: main content ── */}
@@ -804,7 +804,7 @@ function ProductDetailContent() {
           </div>
       </div>
 
-      <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-[#6B7280]">
+      <footer className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8 text-center text-xs text-[#6B7280]">
         © {new Date().getFullYear()} Fairam Private Limited &nbsp;·&nbsp; Prodora by ExiusCart
       </footer>
       </main>

@@ -10,7 +10,7 @@ import { shoppingApi, Category } from '@/lib/api';
 import TopBar from '@/components/TopBar';
 
 const COLLAPSED_KEY = 'prodora_sidebar_collapsed';
-const PROMO_KEY = 'prodora_promo_dismissed';
+const PROMO_KEY = 'prodora_promo_dismissed_v2'; // v2: earlier dismissals skipped the confirmation, so start fresh
 
 // Persistent app chrome — dark left navigation + top bar — shared by every
 // authenticated page. Items backed by real catalogue data open a real view
@@ -25,6 +25,7 @@ export default function Sidebar() {
   const [open, setOpen] = useState<Record<string, boolean>>({ research: true, store: false });
   const [collapsed, setCollapsed] = useState(false);
   const [promoDismissed, setPromoDismissed] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   useEffect(() => {
     shoppingApi.getCategories().then(setCategories).catch(() => {});
@@ -47,6 +48,7 @@ export default function Sidebar() {
     });
   };
   const dismissPromo = () => {
+    setConfirmClose(false);
     setPromoDismissed(true);
     try { localStorage.setItem(PROMO_KEY, '1'); } catch {}
   };
@@ -93,7 +95,7 @@ export default function Sidebar() {
         <div className="shrink-0 bg-[#06122A] pt-3">
           {!collapsed && !promoDismissed && (
             <div className="relative mx-4 mb-3 rounded-xl bg-white/5 p-3.5 ring-1 ring-white/10">
-              <button type="button" onClick={dismissPromo} aria-label="Dismiss" className="absolute right-2 top-2 text-white/40 hover:text-white">
+              <button type="button" onClick={() => setConfirmClose(true)} aria-label="Dismiss" className="absolute right-2 top-2 text-white/40 hover:text-white">
                 <X className="h-4 w-4" />
               </button>
               <p className="pr-5 text-sm font-bold">Ready to sell?</p>
@@ -118,6 +120,25 @@ export default function Sidebar() {
         </div>
       </aside>
       <TopBar />
+
+      {confirmClose && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={() => setConfirmClose(false)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="close-promo-title" className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 id="close-promo-title" className="text-lg font-bold text-gray-900">Close this reminder?</h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-500">
+              Are you sure? You may miss out on selling something. Import a product and it is live on your ExiusCart store right away.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button type="button" onClick={dismissPromo} className="h-10 flex-1 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
+                Yes, close
+              </button>
+              <button type="button" autoFocus onClick={() => setConfirmClose(false)} className="h-10 flex-1 rounded-lg bg-[#2563EB] text-sm font-semibold text-white transition hover:bg-[#1E4FC2]">
+                Keep it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
