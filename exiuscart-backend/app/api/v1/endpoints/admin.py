@@ -740,7 +740,12 @@ def update_subscription(
         sub.starts_at = now
 
     db.commit()
-    return {"message": "Subscription updated", "id": sub_id, "card_billing": card_billing}
+    # expires_at is returned because it may differ from what was sent (a stale
+    # past date is replaced), and the admin table must show the saved value.
+    return {
+        "message": "Subscription updated", "id": sub_id, "card_billing": card_billing,
+        "expires_at": sub.expires_at.isoformat() if sub.expires_at else None,
+    }
 
 
 # ── Dashboard quick panels ────────────────────────────────────────────────────
@@ -1003,6 +1008,248 @@ def get_admin_reports(
             "payments_count": payments_count,
             "avg_revenue_per_shop": round(avg_revenue_per_shop, 2),
             "total_revenue": float(total_revenue),
+        },
+    }
+
+
+# ── Advanced reports (date range + comparison) ───────────────────────────────
+# Built on confirmed payments (SubscriptionPayment, the single source of truth
+# for money received), not on subscription rows. Refunded payments are counted
+# separately and left out of revenue. Every amount is converted to USD.
+
+def _parse_report_date(value: str, field: str):
+    from datetime import date as _date
+    try:
+        return _date.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"{field} must be a date like 2026-09-21.")
+
+
+def _utc_date(dt):
+    """Calendar day of a timestamp in UTC (naive timestamps are already UTC)."""
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc)
+    return dt.date()
+
+
+def _bucket_start(d, gran: str):
+    if gran == "week":
+        return d - timedelta(days=d.weekday())  # weeks start on Monday
+    if gran == "month":
+        return d.replace(day=1)
+    return d
+
+
+def _next_bucket(d, gran: str):
+    if gran == "week":
+        return d + timedelta(days=7)
+    if gran == "month":
+        return (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return d + timedelta(days=1)
+
+
+def _bucket_label(d, gran: str) -> str:
+    if gran == "month":
+        return d.strftime("%b %Y")
+    return d.strftime("%b %d").replace(" 0", " ")
+
+
+def _change_pct(current: float, previous: Optional[float]) -> Optional[float]:
+    if previous is None or previous == 0:
+        return None
+    return round((current - previous) / previous * 100, 1)
+
+
+def _report_period(db: Session, start_dt: datetime, end_dt: datetime, with_detail: bool) -> dict:
+    """Numbers for [start_dt, end_dt). with_detail adds the row lists the charts need."""
+    real_shop = Shop.slug.notin_(SYSTEM_SHOP_SLUGS)
+
+    payments = (
+        db.query(
+            SubscriptionPayment.id, SubscriptionPayment.shop_id, SubscriptionPayment.amount, SubscriptionPayment.currency,
+            SubscriptionPayment.plan_type, SubscriptionPayment.source, SubscriptionPayment.confirmed_at,
+            SubscriptionPayment.refunded_at, Shop.name,
+        )
+        .join(Shop, SubscriptionPayment.shop_id == Shop.id)
+        .filter(real_shop, SubscriptionPayment.confirmed_at >= start_dt, SubscriptionPayment.confirmed_at < end_dt)
+        .all()
+    )
+    rows = []
+    for pid, shop_id, amount, currency, plan, source, confirmed, refunded, shop_name in payments:
+        rows.append({
+            "shop_id": shop_id, "shop": shop_name, "usd": _to_usd(amount, currency), "plan": plan or "unknown",
+            "source": source or "manual", "at": confirmed, "refunded": refunded is not None,
+        })
+    good = [r for r in rows if not r["refunded"]]
+    revenue = round(sum(r["usd"] for r in good), 2)
+
+    new_shops = db.query(Shop.id, Shop.created_at).filter(
+        real_shop, Shop.created_at >= start_dt, Shop.created_at < end_dt).all()
+    new_users = db.query(User.id, User.created_at).filter(
+        User.is_superuser == False, User.created_at >= start_dt, User.created_at < end_dt).all()
+
+    trial_subs = (
+        db.query(Subscription.status)
+        .join(Shop, Subscription.shop_id == Shop.id)
+        .filter(
+            real_shop, Subscription.created_at >= start_dt, Subscription.created_at < end_dt,
+            (Subscription.trial_ends_at.isnot(None)) | (Subscription.trial_dollar_ends_at.isnot(None)),
+        ).all()
+    )
+    trials = len(trial_subs)
+    converted = sum(1 for (st,) in trial_subs if st == "active")
+
+    out = {
+        "revenue": revenue,
+        "payments": len(good),
+        "refunded": round(sum(r["usd"] for r in rows if r["refunded"]), 2),
+        "new_stores": len(new_shops),
+        "new_users": len(new_users),
+        "trials": trials,
+        "converted": converted,
+    }
+    if with_detail:
+        out["_rows"] = good
+        out["_shops"] = [c for _, c in new_shops]
+        out["_users"] = [c for _, c in new_users]
+    return out
+
+
+@router.get("/admin/reports/advanced")
+def admin_reports_advanced(
+    start: str,
+    end: str,
+    compare: bool = True,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    """Reports for an inclusive date range (UTC days), optionally compared with the
+    same-length period right before it."""
+    start_d = _parse_report_date(start, "start")
+    end_d = _parse_report_date(end, "end")
+    if end_d < start_d:
+        raise HTTPException(status_code=422, detail="The end date is before the start date.")
+    days = (end_d - start_d).days + 1
+    if days > 3700:
+        raise HTTPException(status_code=422, detail="Pick a range of 10 years or less.")
+
+    utc = timezone.utc
+    start_dt = datetime(start_d.year, start_d.month, start_d.day, tzinfo=utc)
+    end_dt = datetime(end_d.year, end_d.month, end_d.day, tzinfo=utc) + timedelta(days=1)
+    span = end_dt - start_dt
+    prev_start, prev_end = start_dt - span, start_dt
+
+    gran = "day" if days <= 62 else "week" if days <= 210 else "month"
+
+    cur = _report_period(db, start_dt, end_dt, with_detail=True)
+    prev = _report_period(db, prev_start, prev_end, with_detail=True) if compare else None
+
+    def series(period: dict, s_d, e_d):
+        keys, d = [], _bucket_start(s_d, gran)
+        while d <= e_d:
+            keys.append(d)
+            d = _next_bucket(d, gran)
+        idx = {k: i for i, k in enumerate(keys)}
+        out = [{"label": _bucket_label(k, gran), "date": k.isoformat(), "revenue": 0.0, "payments": 0, "stores": 0, "users": 0} for k in keys]
+        for r in period["_rows"]:
+            i = idx.get(_bucket_start(_utc_date(r["at"]), gran))
+            if i is not None:
+                out[i]["revenue"] = round(out[i]["revenue"] + r["usd"], 2)
+                out[i]["payments"] += 1
+        for c in period["_shops"]:
+            i = idx.get(_bucket_start(_utc_date(c), gran))
+            if i is not None:
+                out[i]["stores"] += 1
+        for c in period["_users"]:
+            i = idx.get(_bucket_start(_utc_date(c), gran))
+            if i is not None:
+                out[i]["users"] += 1
+        return out
+
+    main_series = series(cur, start_d, end_d)
+    prev_series = None
+    if prev is not None:
+        prev_series = series(prev, (prev_start.date()), (prev_end - timedelta(days=1)).date())
+
+    def kpi(key: str, money: bool = False) -> dict:
+        value = cur[key]
+        p = prev[key] if prev is not None else None
+        return {"value": value, "prev": p, "change": _change_pct(value, p)}
+
+    trial_rate = round(cur["converted"] / cur["trials"] * 100, 1) if cur["trials"] else None
+    prev_rate = round(prev["converted"] / prev["trials"] * 100, 1) if prev and prev["trials"] else None
+    avg = round(cur["revenue"] / cur["payments"], 2) if cur["payments"] else 0.0
+    prev_avg = round(prev["revenue"] / prev["payments"], 2) if prev and prev["payments"] else None
+
+    kpis = {
+        "revenue": kpi("revenue"),
+        "payments": kpi("payments"),
+        "avg_payment": {"value": avg, "prev": prev_avg, "change": _change_pct(avg, prev_avg)},
+        "new_stores": kpi("new_stores"),
+        "new_users": kpi("new_users"),
+        "trials": kpi("trials"),
+        "trial_conversion": {
+            "value": trial_rate, "prev": prev_rate,
+            "change": None if trial_rate is None or prev_rate is None else round(trial_rate - prev_rate, 1),
+            "converted": cur["converted"], "trials": cur["trials"],
+        },
+        "refunded": kpi("refunded"),
+    }
+
+    # breakdowns for the selected period
+    def group(field: str) -> list:
+        acc: dict = {}
+        for r in cur["_rows"]:
+            g = acc.setdefault(r[field], {"key": r[field], "revenue": 0.0, "payments": 0})
+            g["revenue"] = round(g["revenue"] + r["usd"], 2)
+            g["payments"] += 1
+        return sorted(acc.values(), key=lambda g: g["revenue"], reverse=True)
+
+    shops: dict = {}
+    for r in cur["_rows"]:
+        g = shops.setdefault(r["shop_id"], {"name": r["shop"], "revenue": 0.0, "payments": 0, "plan": r["plan"]})
+        g["revenue"] = round(g["revenue"] + r["usd"], 2)
+        g["payments"] += 1
+    top_stores = sorted(shops.values(), key=lambda g: g["revenue"], reverse=True)[:10]
+
+    # snapshot: the state right now, independent of the date range
+    real_shop = Shop.slug.notin_(SYSTEM_SHOP_SLUGS)
+    status_rows = (
+        db.query(Subscription.status, func.count(Subscription.id))
+        .join(Shop, Subscription.shop_id == Shop.id).filter(real_shop).group_by(Subscription.status).all()
+    )
+    active_rows = (
+        db.query(Subscription.plan_type, Subscription.billing_type, Subscription.currency, Subscription.amount_paid)
+        .join(Shop, Subscription.shop_id == Shop.id)
+        .filter(real_shop, Subscription.status == "active").all()
+    )
+    mrr = 0.0
+    by_plan_active: dict = {}
+    for plan, billing, currency, amount in active_rows:
+        usd = _to_usd(amount, currency)
+        mrr += usd / 12 if billing == "yearly" else usd
+        by_plan_active[plan or "unknown"] = by_plan_active.get(plan or "unknown", 0) + 1
+    total_active = len(active_rows)
+    plan_distribution = [
+        {"plan": k, "count": v, "percentage": round(v / total_active * 100) if total_active else 0}
+        for k, v in sorted(by_plan_active.items(), key=lambda kv: kv[1], reverse=True)
+    ]
+
+    return {
+        "range": {"start": start_d.isoformat(), "end": end_d.isoformat(), "days": days},
+        "previous": {"start": prev_start.date().isoformat(), "end": (prev_end - timedelta(days=1)).date().isoformat()} if compare else None,
+        "granularity": gran,
+        "kpis": kpis,
+        "series": main_series,
+        "previous_series": prev_series,
+        "by_plan": group("plan"),
+        "by_source": group("source"),
+        "top_stores": top_stores,
+        "snapshot": {
+            "mrr": round(mrr, 2),
+            "active": total_active,
+            "by_status": {st: n for st, n in status_rows},
+            "plan_distribution": plan_distribution,
         },
     }
 

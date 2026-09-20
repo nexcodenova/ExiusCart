@@ -164,17 +164,26 @@ function EditModal({ sub, onClose, onSaved }: {
     setSaving(true);
     setError('');
     try {
-      await adminApi.updateSubscription(sub.id, {
+      // A live status with a date already in the past would expire the account
+      // again, so send no date and let the server pick a fresh one.
+      const stale = ['active', 'trial', 'trial_dollar'].includes(form.status)
+        && !!form.expires_at && new Date(form.expires_at) <= new Date();
+      const res = await adminApi.updateSubscription(sub.id, {
         plan_type:    form.plan_type,
         billing_type: form.billing_type,
         status:       form.status,
         amount_paid:  Number(form.amount_paid),
         currency:     form.currency,
-        expires_at:   form.expires_at || null,
+        expires_at:   stale ? null : (form.expires_at || null),
         cancel_card_billing: sub.card_billing ? form.cancel_card : false,
       });
       const { cancel_card, ...rest } = form;
-      onSaved({ ...sub, ...rest, amount_paid: Number(form.amount_paid), card_billing: cancel_card ? false : sub.card_billing });
+      onSaved({
+        ...sub, ...rest,
+        amount_paid: Number(form.amount_paid),
+        expires_at: res.data?.expires_at ?? null,  // the date the server actually saved
+        card_billing: cancel_card ? false : sub.card_billing,
+      });
     } catch (e: any) {
       setError(e?.response?.data?.detail ?? 'Save failed');
     } finally {
