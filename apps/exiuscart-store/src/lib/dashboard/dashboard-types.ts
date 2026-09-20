@@ -5,7 +5,7 @@ export interface DashboardStats {
   sales: number; salesChange: number; orders: number;
   products: number; customers: number;
   lowStockAlerts: { name: string; stock: number; min: number }[];
-  recentOrders: { id: string; customer: string; amount: string; status: string; time: string }[];
+  recentOrders: { id: string; customer: string; amount: string; status: string; time: string; items?: number }[];
   orderStatusBreakdown?: Record<string, number>;
   channelBreakdown?: { source: string; sales: number; orders: number }[];
   activityWindow?: string;

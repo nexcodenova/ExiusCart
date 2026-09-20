@@ -20,7 +20,9 @@ export function RevenueByChannel({ stats, fmt, periodLabel }: { stats: Dashboard
   const { sym, convert } = useCurrency();
   const compactFmt = (n: number) => `${sym}${new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(convert(n))}`;
 
-  const channelPie = (stats?.channelBreakdown ?? []).map((c, i) => {
+  // Only real sales channels: POS returns are refunds (negative), not a
+  // channel, so they stay out of this breakdown.
+  const channelPie = (stats?.channelBreakdown ?? []).filter((c) => c.source !== 'pos_return' && c.sales > 0).map((c, i) => {
     const meta = channelMeta(c.source);
     return {
       source: c.source,
@@ -33,7 +35,7 @@ export function RevenueByChannel({ stats, fmt, periodLabel }: { stats: Dashboard
   const channelTotal = channelPie.reduce((s, d) => s + d.value, 0);
 
   return (
-    <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-5">
+    <div className="flex flex-col lg:col-span-2 rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-3 flex items-center gap-2">
         <TrendingUp className="h-4 w-4 text-muted-foreground" />
         <h2 className="font-semibold text-foreground">Revenue by channel</h2>
@@ -42,7 +44,7 @@ export function RevenueByChannel({ stats, fmt, periodLabel }: { stats: Dashboard
       {channelTotal === 0 ? (
         <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">No sales in this period</div>
       ) : (
-        <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+        <div className="flex flex-1 flex-col items-center gap-5 sm:flex-row sm:items-center">
           <div className="relative h-32 w-32 shrink-0">
             {activeIdx !== null && channelPie[activeIdx] && (
               <div className="pointer-events-none absolute -top-2 left-1/2 z-10 w-max max-w-[10rem] -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
