@@ -18,20 +18,27 @@ export function TrialBanner() {
   const [dismissed, setDismissed] = useState(false);
   const router = useRouter();
 
+  // Refreshes on focus and every minute, and clears itself once the account is
+  // active again, so a reminder never outlives the problem.
   useEffect(() => {
-    const shopId = localStorage.getItem('shop_id');
-    if (!shopId) return;
-
-    import('@/lib/api').then(({ subscriptionApi }) => {
-      subscriptionApi.getCurrent(shopId)
-        .then((res: any) => {
-          const p = res.data?.plan;
-          if (p && (p.is_trial || p.is_expired)) {
-            setPlan(p);
-          }
-        })
-        .catch(() => {});
-    });
+    let stopped = false;
+    const check = () => {
+      const shopId = localStorage.getItem('shop_id');
+      if (!shopId) return;
+      import('@/lib/api').then(({ subscriptionApi }) => {
+        subscriptionApi.getCurrent(shopId)
+          .then((res: any) => {
+            if (stopped) return;
+            const p = res.data?.plan;
+            setPlan(p && (p.is_trial || p.is_expired) ? p : null);
+          })
+          .catch(() => {});
+      });
+    };
+    check();
+    window.addEventListener('focus', check);
+    const timer = window.setInterval(check, 60_000);
+    return () => { stopped = true; window.removeEventListener('focus', check); window.clearInterval(timer); };
   }, []);
 
   if (!plan || dismissed) return null;
@@ -44,7 +51,7 @@ export function TrialBanner() {
       <div className="bg-red-600 text-white px-4 py-2.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-medium">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span>Your free trial has expired. Upgrade to keep using ExiusCart.</span>
+          <span>Your trial or plan has ended, or your last payment did not go through. Choose a plan or update your card to keep using ExiusCart.</span>
         </div>
       </div>
     );

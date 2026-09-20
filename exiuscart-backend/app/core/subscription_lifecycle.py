@@ -52,8 +52,13 @@ async def advance_trial_stages(db: Session) -> dict:
                     f"no full-price Lemon Squeezy variant configured for {sub.plan_type}/{sub.billing_type}"
                 )
             await update_subscription_variant(sub.lemon_squeezy_subscription_id, variant_id)
+            # The full-price charge happens now, at Lemon Squeezy. Do NOT grant the
+            # whole period on a hope: give a short grace window and let the payment
+            # webhook extend it to 30 / 365 days once the money has actually
+            # arrived. If the card fails, the failure webhook (or the end of this
+            # window) expires the account and the store sends the owner to billing.
             sub.status = "active"
-            sub.expires_at = now + timedelta(days=365 if sub.billing_type == "yearly" else 30)
+            sub.expires_at = now + timedelta(days=2)
             advanced_to_active.append(sub.id)
             db.commit()
         except Exception as e:

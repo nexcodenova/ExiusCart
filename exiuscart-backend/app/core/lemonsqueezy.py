@@ -205,6 +205,29 @@ async def update_subscription_variant(
         raise RuntimeError(f"Lemon Squeezy rejected the subscription update for {lemon_squeezy_subscription_id}.")
 
 
+def cancel_subscription_sync(lemon_squeezy_subscription_id: str) -> None:
+    """
+    Cancels a Lemon Squeezy subscription (DELETE /v1/subscriptions/{id}), so the
+    customer's card is not charged again. Lemon Squeezy keeps it in a "cancelled"
+    grace state until the paid period ends. Raises RuntimeError if Lemon Squeezy
+    refuses, so the caller can stop instead of pretending it worked.
+    """
+    if not is_configured():
+        raise RuntimeError("Lemon Squeezy is not configured.")
+    with httpx.Client(timeout=20) as client:
+        r = client.delete(
+            f"{LEMONSQUEEZY_API_BASE}/subscriptions/{lemon_squeezy_subscription_id}",
+            headers={
+                "Authorization": f"Bearer {LEMONSQUEEZY_API_KEY}",
+                "Content-Type": "application/vnd.api+json",
+                "Accept": "application/vnd.api+json",
+            },
+        )
+    if r.status_code >= 300:
+        logger.error(f"[LemonSqueezy] cancel failed for {lemon_squeezy_subscription_id}: {r.status_code} {r.text[:300]}")
+        raise RuntimeError("Lemon Squeezy refused to cancel the card subscription.")
+
+
 async def get_customer_portal_url(lemon_squeezy_subscription_id: str) -> str:
     """
     Fetches the signed, self-service Customer Portal URL for a subscription —

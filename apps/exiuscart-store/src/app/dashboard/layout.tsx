@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Lock } from 'lucide-react';
 import { ShopSidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
@@ -14,10 +13,10 @@ import { applyBrandColor } from '@/lib/brand-color';
 import { WelcomeSplash } from '@/components/welcome-splash';
 import { ProfileCompletionDialog } from '@/components/profile-completion-dialog';
 
-// Only page an expired trial can still reach — everywhere else (Quotations,
-// POS, Add Product, every sidebar link) shows the lock screen below instead
-// of its real content. Blocking specific actions one-by-one kept missing
-// things (Quotations wasn't gated at all); replacing the whole dashboard is
+// Only page an expired account can still reach. Everywhere else (Quotations,
+// POS, Add Product, every sidebar link) sends the owner to Billing instead of
+// showing the real page. Blocking specific actions one-by-one kept missing
+// things (Quotations wasn't gated at all); redirecting the whole dashboard is
 // the version that can't be missed.
 const ALLOWED_WHEN_EXPIRED = ['/dashboard/billing'];
 
@@ -68,15 +67,43 @@ function DashboardShell({
     }
   }, [router]);
 
+  // Re-check the subscription now, whenever the tab is focused again, and
+  // every minute. A plan an admin changes (or a card payment that clears) then
+  // unlocks the account by itself, and one that expires locks it, without the
+  // owner having to reload the page.
   useEffect(() => {
-    const shopId = localStorage.getItem('shop_id');
-    if (!shopId) return;
-    import('@/lib/api').then(({ subscriptionApi }) => {
-      subscriptionApi.getCurrent(shopId)
-        .then((res: any) => setTrialExpired(!!res.data?.plan?.is_expired))
-        .catch(() => {});
-    });
-  }, []);
+    if (!authed) return;
+    let stopped = false;
+    const check = () => {
+      import('@/lib/api').then(async ({ subscriptionApi, shopApi }) => {
+        let shopId = localStorage.getItem('shop_id');
+        if (!shopId) {
+          try { shopId = String((await shopApi.getMyShop()).data?.id ?? ''); } catch { return; }
+          if (!shopId) return;
+        }
+        subscriptionApi.getCurrent(shopId)
+          .then((res: any) => { if (!stopped) setTrialExpired(!!res.data?.plan?.is_expired); })
+          .catch(() => {});
+      });
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+    check();
+    window.addEventListener('focus', check);
+    document.addEventListener('visibilitychange', onVisible);
+    const timer = window.setInterval(check, 60_000);
+    return () => {
+      stopped = true;
+      window.removeEventListener('focus', check);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.clearInterval(timer);
+    };
+  }, [authed]);
+
+  // An expired trial, a failed first payment or a lapsed plan can only use Billing.
+  const blocked = trialExpired && !ALLOWED_WHEN_EXPIRED.includes(pathname);
+  useEffect(() => {
+    if (blocked) router.replace('/dashboard/billing');
+  }, [blocked, router]);
 
   if (!authed) return <div className="min-h-screen bg-background" />;
 
@@ -84,39 +111,7 @@ function DashboardShell({
     return <CurrencyProvider>{children}</CurrencyProvider>;
   }
 
-  if (trialExpired && !ALLOWED_WHEN_EXPIRED.includes(pathname)) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="bg-card rounded-2xl border border-border w-full max-w-md p-8 text-center">
-          <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-7 h-7 text-red-600" />
-          </div>
-          <h1 className="text-lg font-bold text-foreground mb-2">Your trial has ended</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Add a card to keep selling, adding products, and using ExiusCart — pick Launch, Growth, or Scale to continue.
-          </p>
-          <button
-            type="button"
-            onClick={() => router.push('/dashboard/billing')}
-            className="w-full bg-red-600 text-white font-bold px-4 py-2.5 rounded-lg hover:bg-red-700 transition mb-3"
-          >
-            Upgrade Now
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.removeItem('access_token');
-              localStorage.removeItem('shop_id');
-              router.replace('/login');
-            }}
-            className="text-sm text-muted-foreground hover:text-foreground transition"
-          >
-            Log out
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (blocked) return <div className="min-h-screen bg-background" />;
 
   return (
     <CurrencyProvider>

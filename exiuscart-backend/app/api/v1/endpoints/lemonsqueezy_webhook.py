@@ -57,12 +57,42 @@ async def lemonsqueezy_webhook(request: Request, db: Session = Depends(get_db)):
     elif event_name in ("subscription_cancelled", "subscription_expired"):
         _handle_subscription_ended(db, resource, event_name)
     elif event_name == "subscription_payment_failed":
-        logger.warning(f"[LemonSqueezy] payment failed — subscription_id={attrs.get('subscription_id')}")
+        _handle_payment_failed(db, attrs)
     elif event_name == "subscription_payment_refunded":
         _handle_payment_refunded(db, resource)
 
     # Always 200 quickly — Lemon Squeezy retries on non-2xx
     return {"received": True}
+
+
+def _handle_payment_failed(db: Session, attrs: dict) -> None:
+    """
+    A failed charge on the first full-price payment after the $1 week (card
+    declined, no balance) must not leave the account working. The subscription
+    is marked expired right away, so the store sends the owner to the billing
+    page. If the card is fixed and Lemon Squeezy's retry succeeds,
+    _handle_payment_success reactivates it. Failed renewals of accounts that
+    have already paid a full-price cycle are left to run to their paid-until date.
+    """
+    ls_subscription_id = str(attrs.get("subscription_id", ""))
+    logger.warning(f"[LemonSqueezy] payment failed — subscription_id={ls_subscription_id}")
+    if not ls_subscription_id:
+        return
+    sub = db.query(Subscription).filter(Subscription.lemon_squeezy_subscription_id == ls_subscription_id).first()
+    if not sub or sub.payment_source != "lemon_squeezy" or sub.status not in ("active", "trial_dollar"):
+        return
+    ends = sub.trial_dollar_ends_at
+    if ends is None:
+        return
+    if ends.tzinfo is None:
+        ends = ends.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    payments = db.query(SubscriptionPayment).filter(SubscriptionPayment.subscription_id == sub.id).count()
+    if ends <= now and payments <= 1:
+        sub.status = "expired"
+        sub.expires_at = now
+        db.commit()
+        logger.warning(f"[LemonSqueezy] first full-price payment failed — subscription {sub.id} set to expired")
 
 
 def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attrs: dict) -> None:
@@ -309,6 +339,10 @@ def _handle_subscription_ended(db: Session, resource: dict, event_name: str) -> 
         return
     sub = db.query(Subscription).filter(Subscription.lemon_squeezy_subscription_id == ls_subscription_id).first()
     if not sub:
+        return
+    # An admin who took the account off card billing (manual grant) owns the
+    # status now; the cancellation coming back must not lock it again.
+    if sub.payment_source != "lemon_squeezy":
         return
     sub.status = "cancelled" if event_name == "subscription_cancelled" else "expired"
 

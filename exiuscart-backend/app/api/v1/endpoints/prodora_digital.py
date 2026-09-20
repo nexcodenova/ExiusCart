@@ -277,18 +277,21 @@ def import_digital_bundle(bundle_id: int, db: Session = Depends(get_db), current
 async def prodora_whop_webhook(request: Request, db: Session = Depends(get_db)):
     body = await request.body()
 
-    if PRODORA_WHOP_WEBHOOK_SECRET:
-        ok = _verify_whop_webhook_signature(
-            PRODORA_WHOP_WEBHOOK_SECRET,
-            request.headers.get("webhook-id", ""),
-            request.headers.get("webhook-timestamp", ""),
-            request.headers.get("webhook-signature", ""),
-            body,
-        )
-        if not ok:
-            raise HTTPException(status_code=401, detail="Invalid webhook signature")
-    else:
-        logger.warning("[Prodora Whop Webhook] PRODORA_WHOP_WEBHOOK_SECRET not set — accepting unverified. Set this before relying on this in production.")
+    # Fails closed. Without a signature check anyone could post a fake
+    # "payment.succeeded" for any email and receive a paid bundle for free, so an
+    # unset secret means "do not accept", not "accept everything".
+    if not PRODORA_WHOP_WEBHOOK_SECRET:
+        logger.error("[Prodora Whop Webhook] PRODORA_WHOP_WEBHOOK_SECRET is not set - rejecting the payment notification.")
+        raise HTTPException(status_code=503, detail="PRODORA_WHOP_WEBHOOK_SECRET is not configured on the server.")
+    ok = _verify_whop_webhook_signature(
+        PRODORA_WHOP_WEBHOOK_SECRET,
+        request.headers.get("webhook-id", ""),
+        request.headers.get("webhook-timestamp", ""),
+        request.headers.get("webhook-signature", ""),
+        body,
+    )
+    if not ok:
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     try:
         payload = json.loads(body)

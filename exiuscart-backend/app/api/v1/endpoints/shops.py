@@ -447,7 +447,15 @@ def get_shop_subscription(
         # need to flip to "expired" too, or is_expired below stays False
         # forever and the dashboard's lock screen never shows even though
         # access should already be blocked.
-        if sub.status in ("trial", "trial_dollar", "active") and days_left is not None and days_left < 0:
+        # A card-billed $1 trial gets 2 extra days: the daily job
+        # (subscription_lifecycle.py) only converts subscriptions still marked
+        # "trial_dollar", so expiring one here the moment day 7 passes would leave
+        # it locked and never charged the full price. Without the job it still
+        # expires after the grace.
+        grace_days = 2 if (
+            sub.status == "trial_dollar" and sub.payment_source == "lemon_squeezy" and sub.lemon_squeezy_subscription_id
+        ) else 0
+        if sub.status in ("trial", "trial_dollar", "active") and days_left is not None and days_left < -grace_days:
             sub.status = "expired"
             db.commit()
 

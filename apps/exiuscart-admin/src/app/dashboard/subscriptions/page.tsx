@@ -19,6 +19,8 @@ interface Subscription {
   starts_at: string | null;
   expires_at: string | null;
   created_at: string | null;
+  // true while a card is still being billed through Lemon Squeezy
+  card_billing?: boolean;
 }
 
 // TheDersi Pro deliberately has no entry here — it's not a distinct
@@ -142,11 +144,21 @@ function EditModal({ sub, onClose, onSaved }: {
     amount_paid:  sub.amount_paid,
     currency:     sub.currency || 'USD',
     expires_at:   sub.expires_at ? sub.expires_at.slice(0, 10) : '',
+    cancel_card:  false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
 
-  const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: string, v: any) => setForm((f) => {
+    const next = { ...f, [k]: v };
+    // The form starts with the OLD expiry date. Switching to a live status with
+    // a date that has already passed would expire the account again straight
+    // away, so the date is cleared and worked out fresh on save.
+    if (k === 'status' && ['active', 'trial', 'trial_dollar'].includes(v) && f.expires_at && new Date(f.expires_at) <= new Date()) {
+      next.expires_at = '';
+    }
+    return next;
+  });
 
   const handleSave = async () => {
     setSaving(true);
@@ -159,8 +171,10 @@ function EditModal({ sub, onClose, onSaved }: {
         amount_paid:  Number(form.amount_paid),
         currency:     form.currency,
         expires_at:   form.expires_at || null,
+        cancel_card_billing: sub.card_billing ? form.cancel_card : false,
       });
-      onSaved({ ...sub, ...form, amount_paid: Number(form.amount_paid) });
+      const { cancel_card, ...rest } = form;
+      onSaved({ ...sub, ...rest, amount_paid: Number(form.amount_paid), card_billing: cancel_card ? false : sub.card_billing });
     } catch (e: any) {
       setError(e?.response?.data?.detail ?? 'Save failed');
     } finally {
@@ -268,11 +282,23 @@ function EditModal({ sub, onClose, onSaved }: {
           {/* Expiry */}
           <div>
             <label className="text-xs text-gray-600 mb-1.5 block">
-              Expiry Date <span className="text-gray-400">(leave empty = lifetime)</span>
+              Expiry Date <span className="text-gray-400">(leave empty = set automatically from the plan and status)</span>
             </label>
             <input type="date" value={form.expires_at} onChange={(e) => set('expires_at', e.target.value)}
               className={INPUT_CLS} />
           </div>
+
+          {/* A card is still being billed for this account */}
+          {sub.card_billing && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+              <p className="font-semibold">This account is billed by card through Lemon Squeezy.</p>
+              <p className="mt-1">Saving here changes the account in ExiusCart only. The card keeps being charged, and each payment can reset the expiry date you set. To give a free period, stop the card billing too.</p>
+              <label className="mt-2 flex items-start gap-2 font-medium">
+                <input type="checkbox" checked={form.cancel_card} onChange={(e) => set('cancel_card', e.target.checked)} className="mt-0.5" />
+                <span>Also stop the card billing (cancels the Lemon Squeezy subscription)</span>
+              </label>
+            </div>
+          )}
 
           {/* Info box */}
           <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-600 space-y-1">
