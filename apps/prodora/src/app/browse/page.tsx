@@ -4,9 +4,9 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X, SlidersHorizontal, ArrowUpDown, LayoutGrid } from 'lucide-react';
-import { shoppingApi, prodoraAuth, Product, Category } from '@/lib/api';
+import { shoppingApi, digitalBundlesApi, prodoraAuth, Product, Category, DigitalBundle } from '@/lib/api';
 import { SORT_LABEL, sortProducts, type SortKey } from '@/lib/catalogue';
-import { SkeletonCard } from '@/components/DigitalBundleCard';
+import { SkeletonCard, DigitalBundleCard } from '@/components/DigitalBundleCard';
 import ProductCard from '@/components/ProductCard';
 import Sidebar from '@/components/Sidebar';
 import PageIntro from '@/components/PageIntro';
@@ -107,6 +107,12 @@ function BrowseContent() {
     shoppingApi.getCategories().then(setCategories).catch(() => {});
   }, [authorized]);
 
+  const [bundles, setBundles] = useState<DigitalBundle[]>([]);
+  useEffect(() => {
+    if (!authorized || (view !== 'trending' && view !== 'bestsellers')) { setBundles([]); return; }
+    digitalBundlesApi.list().then(setBundles).catch(() => setBundles([]));
+  }, [authorized, view]);
+
   useEffect(() => {
     if (!authorized) return;
     setLoading(true);
@@ -114,6 +120,7 @@ function BrowseContent() {
     const params: Parameters<typeof shoppingApi.getProducts>[0] = {};
     if (debouncedSearch) params.search = debouncedSearch;
     if (view === 'trending') params.trending = true;
+    else if (view === 'bestsellers') params.bestseller = true;
     else if (view === 'featured') params.featured = true;
     else if (view !== 'all') params.category = view;
     shoppingApi
@@ -134,9 +141,15 @@ function BrowseContent() {
     : view === 'featured' ? 'Hand-Picked Products'
     : activeCategoryName || 'Picked by Researchers & Prodora AI';
   const subtitle = view === 'trending' ? 'Products with the fastest-growing demand right now.'
-    : view === 'bestsellers' ? 'The products with the most orders.'
+    : view === 'bestsellers' ? 'Products picked as bestsellers, ranked by orders.'
     : 'Explore winning products, verified by real-time sales data and expert research.';
   const visible = applyFiltersAndSort(products, filters, sort);
+  // Digital products the admin flagged Trending / Bestseller also appear here.
+  const flaggedBundles = bundles.filter((b) => {
+    if (view === 'trending' ? !b.is_trending : !b.is_bestseller) return false;
+    const q = debouncedSearch.trim().toLowerCase();
+    return !q || b.name.toLowerCase().includes(q) || (b.description ?? '').toLowerCase().includes(q);
+  });
   const activeFilters = filters.chips.length + (filters.minPrice ? 1 : 0) + (filters.maxPrice ? 1 : 0);
   const chipOptions = buildChips(products);
 
@@ -145,7 +158,7 @@ function BrowseContent() {
       <Sidebar />
 
       <main className="app-main pt-12">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-4 pb-6 flex flex-col gap-4">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6 flex flex-col gap-4">
 
           {/* Mobile category/trending tabs — sidebar is desktop-only */}
           <div className="lg:hidden -mx-4 px-4 flex gap-0 overflow-x-auto scrollbar-none border-b border-gray-200 pb-px">
@@ -225,13 +238,14 @@ function BrowseContent() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
                 </div>
-              ) : visible.length === 0 ? (
+              ) : visible.length === 0 && flaggedBundles.length === 0 ? (
                 <div className="grid grid-cols-1">
                   <EmptyState hasSearch={!!debouncedSearch || activeFilters > 0} />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
                   {visible.map(p => <ProductCard key={p.id} product={p} />)}
+                  {flaggedBundles.map(b => <DigitalBundleCard key={`digital-${b.id}`} bundle={b} />)}
                 </div>
               )}
         </div>

@@ -42,7 +42,7 @@ export default function DigitalProductsPage() {
     <div className="min-h-screen bg-[#F3F5F9]">
       <Sidebar />
       <main className="app-main pt-12">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 pb-8 pt-4 sm:px-6">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 pb-8 pt-2 sm:px-6">
           <PageIntro title="Digital Products" subtitle="Ready to sell. Buy once, get the licence, and sell as much as you like." />
 
           <ul className="grid gap-3 sm:grid-cols-3">

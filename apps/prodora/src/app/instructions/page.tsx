@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { prodoraAuth, accountApi, ProdoraAccount } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
+import PageFooter from '@/components/PageFooter';
 
 const BILLING = 'https://store.exiuscart.com/dashboard/billing';
 
@@ -62,7 +63,7 @@ export default function InstructionsPage() {
     <div className="min-h-screen bg-[#F3F5F9]">
       <Sidebar />
       <main className="app-main pt-12">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-4 pb-12 pt-4 sm:px-6">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-6 px-4 pb-28 pt-4 sm:px-6">
           <div>
             <h1 className="text-[22px] font-bold leading-tight text-gray-900">Instructions</h1>
             <p className="mt-0.5 text-sm text-gray-500">Everything you need to find a product, read its data and get it selling on your store.</p>
@@ -131,6 +132,30 @@ export default function InstructionsPage() {
             </a>
           </Section>
 
+          <Section title="About Prodora">
+            <div className="rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200/70">
+              <p className="text-sm leading-relaxed text-gray-600">
+                Prodora is the product research tool inside ExiusCart. It is built and owned by{" "}
+                <a href="https://nexcodenova.com" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">NexCode Nova</a>,
+                the SaaS company behind ExiusCart, a small team based in Sri Lanka and expanding into Dubai. Access comes with an active or trialling Launch, Growth or Scale plan.
+              </p>
+            </div>
+          </Section>
+
+          <Section title="Privacy and terms">
+            <div className="rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200/70">
+              <p className="text-sm leading-relaxed text-gray-600">
+                Prodora signs you in with your ExiusCart account email. Each time a product page is opened it is added to that product’s view count, and each import is recorded so your monthly import allowance can be tracked. Prodora is covered by the same policies as ExiusCart.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
+                <a href="https://exiuscart.com/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">Privacy Policy</a>
+                <a href="https://exiuscart.com/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">Terms of Service</a>
+                <a href="https://exiuscart.com/refund-policy" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">Refund Policy</a>
+                <a href="https://exiuscart.com/contact" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">Contact</a>
+              </div>
+            </div>
+          </Section>
+
           <Section title="Common questions">
             <div className="divide-y divide-gray-100 rounded-lg bg-white shadow-sm ring-1 ring-gray-200/70">
               {FAQ.map((f) => (
@@ -152,6 +177,7 @@ export default function InstructionsPage() {
           </div>
         </div>
       </main>
+      <PageFooter />
     </div>
   );
 }

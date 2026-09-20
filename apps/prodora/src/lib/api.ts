@@ -68,6 +68,7 @@ export interface Product {
   source_url?: string | null;
   is_trending: boolean;
   is_featured: boolean;
+  is_bestseller?: boolean;
   category_name?: string;
   category_slug?: string;
   category_id?: number | null;
@@ -110,6 +111,7 @@ export interface ProductsParams {
   search?: string;
   trending?: boolean;
   featured?: boolean;
+  bestseller?: boolean;
 }
 
 export const shoppingApi = {
@@ -160,6 +162,8 @@ export interface DigitalBundle {
   ad_instagram_url: string | null;
   ad_pinterest_url: string | null;
   whop_checkout_url: string | null;
+  is_trending?: boolean;
+  is_bestseller?: boolean;
   purchased: boolean;
 }
 

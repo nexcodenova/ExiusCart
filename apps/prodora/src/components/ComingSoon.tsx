@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowRight, CheckCircle2, MessageSquareText } from 'lucide-react';
 import { prodoraAuth } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
+import PageFooter from '@/components/PageFooter';
 
 // Honest placeholder for sections that have no data behind them yet: what is
 // coming, what to look forward to, a way to tell us what you want from it, and
@@ -32,7 +33,7 @@ export default function ComingSoon({
     <div className="min-h-screen bg-[#F3F5F9]">
       <Sidebar />
       <main className="app-main pt-12">
-        <div className="mx-auto max-w-[1400px] px-4 pb-8 pt-4 sm:px-6">
+        <div className="mx-auto max-w-[1400px] px-4 pb-28 pt-4 sm:px-6">
           <div className="relative mx-auto max-w-3xl overflow-hidden rounded-2xl bg-white px-6 py-10 text-center shadow-sm ring-1 ring-gray-200/70 sm:px-12 sm:py-14">
             <div aria-hidden className="pointer-events-none absolute -top-28 left-1/2 h-64 w-[34rem] max-w-full -translate-x-1/2 rounded-full bg-blue-100/70 blur-3xl" />
 
@@ -80,6 +81,7 @@ export default function ComingSoon({
           </div>
         </div>
       </main>
+      <PageFooter />
     </div>
   );
 }

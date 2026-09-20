@@ -18,8 +18,8 @@ const VIDEO_ID = youtubeId(HOW_IT_WORKS_VIDEO);
 
 // Title block shared by the browse views: heading with a "How it works"
 // link, the subtitle, and the researcher help card on the right. The
-// researcher's photo is /public/researcher.png — until that file exists the
-// card shows a neutral avatar.
+// support photo is /public/support/support_2.jpg — if it ever fails to load
+// the card shows a neutral avatar.
 export default function PageIntro({ title, subtitle }: { title: string; subtitle: string }) {
   const [showHow, setShowHow] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -57,7 +57,7 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
               <UserRound className="h-5 w-5" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src="/researcher.png" alt="" className="h-full w-full object-cover" onError={() => setPhotoFailed(true)} />
+              <img src="/support/support_2.jpg" alt="" className="h-full w-full object-cover" onError={() => setPhotoFailed(true)} />
             )}
           </span>
           <span className="text-sm leading-tight">

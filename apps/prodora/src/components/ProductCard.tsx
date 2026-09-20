@@ -18,7 +18,7 @@ const fmt = (n: number) =>
 // viewport while scrolling) and shows the animated Prodora logo until it has
 // loaded, then fades in.
 export default function ProductCard({ product, showDetailsBar = true }: { product: Product; showDetailsBar?: boolean }) {
-  const { id, name, price, cost_price, discount_pct, image_url, is_trending, is_featured, orders_count } = product;
+  const { id, name, price, cost_price, discount_pct, image_url, is_trending, is_featured, is_bestseller, orders_count } = product;
   const profit = cost_price != null ? price - cost_price : null;
 
   return (
@@ -29,6 +29,8 @@ export default function ProductCard({ product, showDetailsBar = true }: { produc
             <span className="absolute left-2 top-2 z-10 rounded bg-[#2563EB] px-2 py-1 text-xs font-bold text-white shadow-sm">{discount_pct}% OFF</span>
           ) : is_trending ? (
             <span className="absolute left-2 top-2 z-10 rounded bg-orange-500 px-2 py-1 text-xs font-bold text-white shadow-sm">Trending</span>
+          ) : is_bestseller ? (
+            <span className="absolute left-2 top-2 z-10 rounded bg-emerald-500 px-2 py-1 text-xs font-bold text-white shadow-sm">Bestseller</span>
           ) : is_featured ? (
             <span className="absolute left-2 top-2 z-10 rounded bg-amber-400 px-2 py-1 text-xs font-bold text-white shadow-sm">Featured</span>
           ) : null}

@@ -66,6 +66,7 @@ html[data-sidebar='collapsed'] { --sidebar-w: 4.5rem; }
 @media (min-width: 1024px) {
   .app-main { padding-left: var(--sidebar-w); }
   .app-topbar { left: var(--sidebar-w); }
+  .app-footer { left: var(--sidebar-w); }
 }
 
 /* Loading indicator shown while an image loads: a 2x2 grid of blue dots
