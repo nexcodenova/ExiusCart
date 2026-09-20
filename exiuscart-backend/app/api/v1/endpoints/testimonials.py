@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.rate_limit import limiter
+from app.models.shop import Shop
 from app.models.testimonial import Testimonial
 from app.models.user import User
 from app.api.v1.deps import get_current_user
@@ -81,6 +82,48 @@ def public_submit_testimonial(request: Request, data: TestimonialSubmitIn, db: S
     db.add(t)
     db.commit()
     return {"message": "Thanks — your review is submitted and will appear once approved."}
+
+
+# ── Signed-in sellers — feedback from inside the apps ───────────────────────
+# The Feedback button in the ExiusCart dashboard and in Prodora posts here. It
+# lands in the same moderation queue as every other submission (unapproved,
+# so it appears in the admin Reviews page), and only goes live on
+# exiuscart.com and Prodora's site once an admin approves it.
+
+class FeedbackIn(BaseModel):
+    message: str
+    rating: int = 5
+    area: str = "exiuscart"  # exiuscart | prodora — which product it is about
+
+
+@router.post("/feedback", status_code=201)
+@limiter.limit("10/hour")
+def submit_feedback(
+    request: Request,
+    data: FeedbackIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    message = data.message.strip()
+    if len(message) < 10:
+        raise HTTPException(status_code=422, detail="Please write at least a sentence so we can act on it.")
+    if data.area not in ("exiuscart", "prodora"):
+        raise HTTPException(status_code=422, detail="Unknown feedback area.")
+
+    shop = db.query(Shop).filter(Shop.owner_id == current_user.id).order_by(Shop.id.asc()).first()
+    t = Testimonial(
+        company_name=((shop.name if shop else None) or current_user.full_name or current_user.email)[:200],
+        subtitle=((shop.country if shop else None) or None),
+        quote_text=message[:1500],
+        rating=min(max(data.rating, 1), 5),
+        reviewer_name=(current_user.full_name or "").strip()[:200] or None,
+        submitter_email=current_user.email,
+        is_approved=False,
+        source="prodora" if data.area == "prodora" else "store",
+    )
+    db.add(t)
+    db.commit()
+    return {"message": "Thank you! Your feedback was sent to our team."}
 
 
 # ── Admin — review, approve, manage ──────────────────────────────────────────

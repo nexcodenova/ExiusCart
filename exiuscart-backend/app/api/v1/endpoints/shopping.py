@@ -134,6 +134,60 @@ def request_prodora_access(body: ProdoraAccessRequest, db: Session = Depends(get
     return {"access_token": token, "name": user.full_name or user.email}
 
 
+_PLAN_NAMES = {"launch": "Launch", "growth": "Growth", "scale": "Scale"}
+
+
+@router.get("/shopping/me")
+def prodora_me(db: Session = Depends(get_db), user: User = Depends(get_prodora_user)):
+    """
+    The signed-in seller's Prodora standing: plan, trial end and this month's
+    import allowance. Powers the account menu and the Instructions page.
+    """
+    from app.api.v1.endpoints.usage import PRODUCT_LIMITS
+
+    sub = _find_eligible_subscription(db, user)
+    shop = (
+        db.query(Shop)
+        .filter(Shop.owner_id == user.id, Shop.is_active == True)
+        .order_by(Shop.id.asc())
+        .first()
+    )
+    plan = sub.plan_type if sub else None
+    now = datetime.now(timezone.utc)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    next_month = (month_start + timedelta(days=32)).replace(day=1)
+
+    imports_used = 0
+    store_products = 0
+    if shop:
+        imports_used = db.query(ProdoraImportLog).filter(
+            ProdoraImportLog.shop_id == shop.id,
+            ProdoraImportLog.created_at >= month_start,
+        ).count()
+        store_products = db.query(func.count(Product.id)).filter(
+            Product.shop_id == shop.id, Product.is_active == True,
+        ).scalar() or 0
+
+    trial_end = None
+    if sub and sub.status in ("trial", "trial_dollar"):
+        trial_end = sub.trial_dollar_ends_at if sub.status == "trial_dollar" else sub.trial_ends_at
+
+    return {
+        "name": user.full_name or user.email,
+        "email": user.email,
+        "plan_type": plan,
+        "plan_name": _PLAN_NAMES.get(plan or "", "Free"),
+        "status": sub.status if sub else None,
+        "trial_ends_at": trial_end.isoformat() if trial_end else None,
+        "imports": {
+            "used": imports_used,
+            "limit": PRODORA_MONTHLY_IMPORT_LIMIT.get(plan or "", 0),
+            "resets_at": next_month.isoformat(),
+        },
+        "store_products": {"used": store_products, "limit": PRODUCT_LIMITS.get(plan or "")},
+    }
+
+
 def _product_out(p: Product) -> dict:
     selling = float(p.price)
     buying = float(p.cost_price) if p.cost_price else None
@@ -344,7 +398,7 @@ def import_shopping_product(
             raise HTTPException(status_code=403, detail={
                 "error": "prodora_import_limit_reached",
                 "limit": monthly_limit,
-                "message": f"You've used all {monthly_limit} Prodora imports for this month on your Starter plan. Upgrade to Premium for unlimited Prodora imports.",
+                "message": f"You've used all {monthly_limit} Prodora imports for this month on your {(sub.plan_type if sub else '').title()} plan. Upgrade your plan for a higher monthly import limit.",
             })
 
     # Match by category name into the seller's own categories — the source
@@ -531,4 +585,6 @@ def list_shopping_categories(db: Session = Depends(get_db), _: User = Depends(ge
         .order_by(Category.name)
         .all()
     )
-    return [{"id": c.id, "name": c.name, "slug": c.slug} for c in rows]
+    # image_url is set by an admin (Admin > Prodora > Categories); the Marketplace
+    # only shows a category tile when one is set.
+    return [{"id": c.id, "name": c.name, "slug": c.slug, "image_url": c.image_url} for c in rows]

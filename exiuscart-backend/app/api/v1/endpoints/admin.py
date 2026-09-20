@@ -1964,14 +1964,112 @@ def admin_list_shops_for_product(
 @router.get("/admin/shopping/categories")
 def admin_list_categories(
     shop_id: Optional[int] = None,
+    prodora: bool = False,
     db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
     query = db.query(Category)
     if shop_id:
         query = query.filter(Category.shop_id == shop_id)
+    if prodora:
+        # Only the internal Prodora catalogue shop's categories — not every
+        # seller's own product categories.
+        query = query.join(Shop, Shop.id == Category.shop_id).filter(Shop.slug == "exiuscart-dropshipping-system")
     cats = query.order_by(Category.name).all()
-    return [{"id": c.id, "name": c.name, "slug": c.slug, "shop_id": c.shop_id} for c in cats]
+    counts = dict(
+        db.query(Product.category_id, func.count(Product.id))
+        .filter(Product.category_id.in_([c.id for c in cats] or [0]))
+        .group_by(Product.category_id).all()
+    )
+    return [
+        {
+            "id": c.id, "name": c.name, "slug": c.slug, "shop_id": c.shop_id,
+            "image_url": c.image_url, "product_count": int(counts.get(c.id, 0)),
+        }
+        for c in cats
+    ]
+
+
+class ShoppingCategoryIn(BaseModel):
+    name: str
+    image_url: Optional[str] = None
+
+
+def _category_out(c: Category, product_count: int = 0) -> dict:
+    return {
+        "id": c.id, "name": c.name, "slug": c.slug, "shop_id": c.shop_id,
+        "image_url": c.image_url, "product_count": product_count,
+    }
+
+
+# The Prodora Marketplace's category tiles are exactly the categories that
+# have an image here (and at least one active product), so managing them is
+# scoped to the internal Prodora system shop, like the products themselves.
+@router.post("/admin/shopping/categories", status_code=201)
+def admin_create_category(
+    data: ShoppingCategoryIn,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_superuser),
+):
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Category name is required.")
+    shop = _get_or_create_system_shop(db, current_admin)
+    slug = slugify(name)
+    if db.query(Category).filter(Category.shop_id == shop.id, Category.slug == slug).first():
+        raise HTTPException(status_code=409, detail="A category with that name already exists.")
+    cat = Category(name=name, slug=slug, shop_id=shop.id, image_url=(data.image_url or None))
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+    return _category_out(cat)
+
+
+@router.put("/admin/shopping/categories/{category_id}")
+def admin_update_category(
+    category_id: int,
+    data: ShoppingCategoryIn,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    cat = db.query(Category).filter(Category.id == category_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Category name is required.")
+    slug = slugify(name)
+    if slug != cat.slug and db.query(Category).filter(
+        Category.shop_id == cat.shop_id, Category.slug == slug, Category.id != cat.id,
+    ).first():
+        raise HTTPException(status_code=409, detail="A category with that name already exists.")
+    cat.name = name
+    cat.slug = slug
+    cat.image_url = data.image_url or None
+    db.commit()
+    db.refresh(cat)
+    n = db.query(func.count(Product.id)).filter(Product.category_id == cat.id).scalar() or 0
+    return _category_out(cat, int(n))
+
+
+@router.delete("/admin/shopping/categories/{category_id}")
+def admin_delete_category(
+    category_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    cat = db.query(Category).filter(Category.id == category_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    n = db.query(func.count(Product.id)).filter(Product.category_id == cat.id).scalar() or 0
+    if n:
+        raise HTTPException(
+            status_code=409,
+            detail=f"This category still has {n} product{'s' if n != 1 else ''}. Move or delete them first.",
+        )
+    db.delete(cat)
+    db.commit()
+    return {"ok": True}
 
 
 # ── Admin — CJ Dropshipping as a source for the Prodora catalog ─────────────
