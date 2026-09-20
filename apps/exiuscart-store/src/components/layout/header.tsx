@@ -153,7 +153,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
+    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
       {/* Mobile logo (replaces hamburger — sidebar is desktop-only) */}
       <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
         <Image src="/logo.svg" alt="ExiusCart" width={26} height={26} />
@@ -167,7 +167,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="group relative w-full">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-indigo-500 transition-colors" />
           <input type="text" placeholder="Search products, orders, customers…"
-            className="w-full h-11 pl-11 pr-16 bg-muted/50 border border-border/60 rounded-xl text-sm text-foreground placeholder:text-muted-foreground/80 outline-none transition-all focus:bg-background focus:border-indigo-400/70 focus:ring-4 focus:ring-indigo-500/10 focus:shadow-sm" />
+            className="w-full h-9 pl-11 pr-16 bg-muted/50 border border-border/60 rounded-md text-sm text-foreground placeholder:text-muted-foreground/80 outline-none transition-all focus:bg-background focus:border-indigo-400/70 focus:ring-4 focus:ring-indigo-500/10 focus:shadow-sm" />
           <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-0.5 rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             <span className="text-xs">⌘</span>K
           </kbd>
@@ -178,36 +178,19 @@ export function Header({ onMenuClick }: HeaderProps) {
       <div className="flex shrink-0 items-center gap-1.5 lg:gap-2 ml-3">
         {/* Mobile search */}
         <button type="button" aria-label="Search"
-          className="md:hidden flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
+          className="md:hidden flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
           <Search className="w-5 h-5" />
         </button>
 
         {/* Feedback — goes to the admin Reviews queue */}
         <FeedbackPopover />
 
-        {/* Prodora cross-sell — moved here from the sidebar so it reads as
-            an invitation to a separate product, not a regular nav link.
-            Mobile: just the logo (matches the other icon-only mobile
-            header buttons). sm+: full box with the "Prodora" label. */}
-        <button type="button" onClick={openProdora} aria-label="Prodora"
-          className="lg:hidden flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 transition">
-          <img src="/prodora-logo.png" alt="" className="w-5 h-5 rounded-md" />
-        </button>
-        <button type="button" onClick={openProdora}
-          className="hidden lg:flex h-11 items-center gap-1.5 px-3.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition">
-          <img src="/prodora-logo.png" alt="" className="w-5 h-5 shrink-0 rounded-md" />
-          <span className="text-left leading-tight">
-            <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400">Prodora</span>
-            <span className="hidden xl:block text-[10px] text-emerald-600/80 dark:text-emerald-400/70">AI Product Sourcing</span>
-          </span>
-        </button>
-
         {/* Active branch — also carries the shop's plan + days left, moved
             here from the sidebar's old shop-info block */}
         {(planLabel || daysLeft != null) && (
           <Link href="/dashboard/billing"
             title={activeBranchName ? `Branch: ${activeBranchName}` : undefined}
-            className="hidden xl:flex h-11 items-center gap-2 px-3.5 bg-indigo-50 text-indigo-600 border border-indigo-200 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400 rounded-xl text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition">
+            className="hidden xl:flex h-9 items-center gap-2 px-3.5 bg-indigo-50 text-indigo-600 border border-indigo-200 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400 rounded-md text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition">
             {planLabel && (
               <span className="inline-flex items-center gap-1 font-semibold">
                 <Crown className="w-3.5 h-3.5" /> {planLabel}
@@ -226,7 +209,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div ref={currencyRef} className="relative">
           <button type="button" onClick={() => !isTheDersiShop && setShowCurrencyDrop(v => !v)}
             title={isTheDersiShop ? 'LKR — TheDersi marketplace' : 'Change currency'}
-            className="hidden sm:flex h-11 items-center gap-1.5 px-3.5 rounded-xl border border-border/60 bg-muted/50 text-xs font-semibold text-foreground hover:bg-muted transition">
+            className="hidden sm:flex h-9 items-center gap-1.5 px-3.5 rounded-md border border-border/60 bg-muted/50 text-xs font-semibold text-foreground hover:bg-muted transition">
             <span>{currency}</span>
             {!isTheDersiShop && <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showCurrencyDrop ? 'rotate-180' : ''}`} />}
           </button>
@@ -250,17 +233,17 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Theme toggle */}
         <button type="button" onClick={toggleTheme}
           aria-label={resolvedTheme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
           {resolvedTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
         </button>
 
         {/* Notifications */}
         <div ref={notifRef} className="relative">
           <button type="button" onClick={() => setShowNotif(v => !v)} aria-label="Notifications"
-            className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
+            className="relative flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
             <Bell className="w-5 h-5" />
             {unreadNotifCount > 0 && (
-              <span className="absolute top-2.5 right-2.5 flex h-2 w-2 rounded-full bg-indigo-500" />
+              <span className="absolute top-2 right-2 flex h-2 w-2 rounded-full bg-indigo-500" />
             )}
           </button>
           {showNotif && (
@@ -324,8 +307,8 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Profile */}
         <div ref={profileRef} className="relative">
           <button type="button" onClick={() => setShowProfile(v => !v)} aria-label="Account menu"
-            className="flex items-center rounded-full transition hover:ring-2 hover:ring-indigo-500/30">
-            <div className="w-11 h-11 bg-indigo-600 rounded-full flex items-center justify-center text-xs font-semibold text-white">
+            className="flex items-center rounded-md transition hover:ring-2 hover:ring-indigo-500/30">
+            <div className="w-9 h-9 bg-indigo-600 rounded-md flex items-center justify-center text-xs font-semibold text-white">
               {initials || <User className="w-4 h-4" />}
             </div>
           </button>

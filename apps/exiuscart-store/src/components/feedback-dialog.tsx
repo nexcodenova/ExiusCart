@@ -22,6 +22,18 @@ export function FeedbackPopover() {
     setTimeout(() => { setSent(false); setMessage(''); setRating(5); setError(''); }, 200);
   };
 
+  // Other pages (e.g. "Coming soon") can ask for this popover to open, with a
+  // starter sentence.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const prefill = (e as CustomEvent<{ prefill?: string }>).detail?.prefill;
+      setOpen(true);
+      if (prefill) setMessage((m) => m || prefill);
+    };
+    window.addEventListener('open-feedback', onOpen);
+    return () => window.removeEventListener('open-feedback', onOpen);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) close(); };
@@ -48,18 +60,17 @@ export function FeedbackPopover() {
   };
 
   return (
-    <div ref={ref} className="relative hidden md:block">
+    <div ref={ref} className="hidden md:block">
       <button
         type="button" onClick={() => (open ? close() : setOpen(true))} aria-expanded={open} aria-label="Send feedback"
-        className="flex h-11 items-center gap-2 rounded-xl border border-border/60 bg-muted/50 px-3.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+        className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-muted/50 px-3.5 text-xs font-semibold text-foreground transition hover:bg-muted"
       >
         <MessageSquareText className="h-4 w-4 text-muted-foreground" />
         <span className="hidden xl:inline">Feedback</span>
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-3 w-[34rem] max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 shadow-xl">
-          <span className="absolute -top-1.5 right-6 h-3 w-3 rotate-45 border-l border-t border-border bg-card" />
+        <div className="absolute right-4 top-full z-50 mt-2 w-[34rem] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card p-4 shadow-xl lg:right-6">
           {sent ? (
             <div className="py-6 text-center">
               <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
@@ -76,7 +87,7 @@ export function FeedbackPopover() {
                 ))}
               </div>
               <textarea
-                value={message} onChange={(e) => setMessage(e.target.value)} rows={4} maxLength={1500} autoFocus
+                value={message} onChange={(e) => setMessage(e.target.value)} rows={4} maxLength={1500} autoFocus onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
                 placeholder="Type your feedback here..."
                 className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
               />

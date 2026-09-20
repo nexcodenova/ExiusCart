@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, ShoppingCart, FileText, Users, Package, Boxes,
   Truck, Store, ClipboardList, BookOpen, Wallet, BarChart3,
-  Settings, LogOut, ChevronLeft, CreditCard,
+  Settings, PanelLeftClose, PanelLeftOpen, CreditCard,
   UserCheck, Paintbrush, GitBranch, Shield, ChevronDown,
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
   UserPlus, Clock, Car, Kanban, Headphones, CalendarCheck, Briefcase,
@@ -460,10 +460,9 @@ export function ShopSidebar() {
   return (
     <>
       <Sidebar collapsible="icon">
-        {/* Logo — collapsed is icon-width only, so logo + toggle stack
-            vertically instead of fighting for horizontal space, same
-            layout the old fixed <aside> version used. */}
-        <SidebarHeader className={`border-b border-sidebar-border ${collapsed ? 'flex flex-col items-center justify-center gap-1.5 py-3' : 'h-14 flex-row flex items-center justify-between px-4'}`}>
+        {/* Logo only — hiding/showing the menu lives in the footer ("Hide
+            menu"), same as Prodora. */}
+        <SidebarHeader className={`h-14 flex-row flex items-center border-b border-sidebar-border ${collapsed ? 'justify-center' : 'px-4'}`}>
           <Link href="/dashboard" className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center' : ''}`}>
             <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} className="flex-shrink-0" />
             {!collapsed && (
@@ -472,11 +471,6 @@ export function ShopSidebar() {
               </span>
             )}
           </Link>
-          <button type="button" onClick={toggleSidebar}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="p-1 rounded-lg text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition">
-            <ChevronLeft className={`w-4 h-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
-          </button>
         </SidebarHeader>
 
         <SidebarContent>
@@ -724,16 +718,12 @@ export function ShopSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                tooltip={collapsed ? 'Logout' : undefined}
-                onClick={() => {
-                  localStorage.removeItem('access_token');
-                  localStorage.removeItem('user');
-                  window.location.href = '/login';
-                }}
-                className="text-sidebar-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                tooltip={collapsed ? 'Show menu' : undefined}
+                onClick={toggleSidebar}
+                className="text-sidebar-muted-foreground hover:text-sidebar-foreground"
               >
-                <LogOut className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && <span className="font-medium text-sm">Logout</span>}
+                {collapsed ? <PanelLeftOpen className="w-5 h-5 flex-shrink-0" /> : <PanelLeftClose className="w-5 h-5 flex-shrink-0" />}
+                {!collapsed && <span className="font-medium text-sm">Hide menu</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

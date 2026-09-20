@@ -133,10 +133,9 @@ function DashboardShell({
           <SidebarInset className="min-h-screen pb-20 lg:pb-0">
             <Header onMenuClick={() => {}} />
             <TrialBanner />
-            {/* Tightened from p-4 lg:p-6 — the extra 8px on desktop read as
-                dead space between the header and each page's own heading,
-                per feedback to reduce gaps across the app generally. */}
-            <main className="p-4 lg:p-5">{children}</main>
+            {/* Small top padding (pt-3): a bigger one reads as dead space between
+                the header and each page's own heading. */}
+            <main className="px-4 pb-4 pt-3 lg:px-5 lg:pb-5 lg:pt-3">{children}</main>
             <ProfileCompletionDialog />
           </SidebarInset>
         </SidebarProvider>
