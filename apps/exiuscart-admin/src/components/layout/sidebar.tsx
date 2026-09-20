@@ -46,9 +46,9 @@ export const menuItems = [
 // (above) stays flat because the mobile bottom nav reads it directly, so the
 // Digital Bundles entry there is skipped when the sidebar draws its own list.
 const PRODORA_CHILDREN = [
+  { href: '/dashboard/shopping', match: '/dashboard/shopping', label: 'All Products', exact: true },
   { href: '/dashboard/shopping/add', match: '/dashboard/shopping/add', label: 'Add Products', exact: true },
   { href: '/dashboard/digital-bundles', match: '/dashboard/digital-bundles', label: 'Digital Products', exact: false },
-  { href: '/dashboard/shopping', match: '/dashboard/shopping', label: 'All Products', exact: true },
   { href: '/dashboard/shopping/categories', match: '/dashboard/shopping/categories', label: 'Categories', exact: false },
 ];
 const IN_PRODORA_GROUP = ['/dashboard/digital-bundles'];

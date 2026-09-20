@@ -142,6 +142,40 @@ function Toggle({
   );
 }
 
+// A switch for the flag columns. Digital products are edited on their own page,
+// so their cells only show the current state.
+function FlagCell({ on, readOnly, busy, color, title, onChange }: {
+  on: boolean; readOnly?: boolean; busy?: boolean; color: string; title: string; onChange: () => void;
+}) {
+  if (readOnly) {
+    return <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${on ? 'bg-green-500/10 text-green-600' : 'text-gray-300'}`}>{on ? 'On' : '—'}</span>;
+  }
+  return (
+    <span className={`inline-flex ${busy ? 'pointer-events-none opacity-50' : ''}`}>
+      <button
+        type="button" onClick={onChange} aria-pressed={on} title={on ? `Remove from ${title}` : `Show in ${title}`}
+        className={`flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${on ? color : 'bg-gray-200'}`}
+      >
+        <span className={`mx-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-4' : 'translate-x-0'}`} />
+      </button>
+    </span>
+  );
+}
+
+// Tooltip for the row's source link: it opens whatever link that product was
+// saved with, so name the supplier instead of always saying CJ.
+function sourceLinkTitle(p: { supplier_key?: string; supplier_label?: string }): string {
+  return p.supplier_key && p.supplier_key !== 'manual' && p.supplier_label ? `Open on ${p.supplier_label}` : 'Open source link';
+}
+
+// Margin = (selling - buying) / selling. One decimal only when it is not a
+// whole number, so 49.7% is not shown as 50%.
+function marginOf(p: { price: number; cost_price: number | null }): number | null {
+  if (!p.cost_price || !p.price) return null;
+  return ((p.price - p.cost_price) / p.price) * 100;
+}
+const fmtMargin = (m: number) => `${Number.isInteger(Math.round(m * 10) / 10) ? Math.round(m) : (Math.round(m * 10) / 10).toFixed(1)}%`;
+
 function QuickToggle({
   active, onClick, icon, title,
 }: {
@@ -1056,9 +1090,7 @@ export default function TrendingDropshippingPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const params: any = {};
-      if (search) params.search = search;
-      const res = await adminApi.getProdoraCatalog(params);
+      const res = await adminApi.getProdoraCatalog();
       setProducts(res.data);
     } catch {
       // handled by empty state
@@ -1067,7 +1099,7 @@ export default function TrendingDropshippingPage() {
     }
   };
 
-  useEffect(() => { fetchProducts(); }, [search]);
+  useEffect(() => { fetchProducts(); }, []);
 
   // "Add Products" sends people here with ?add=cj | aliexpress | manual to
   // open that supplier's window straight away.
@@ -1366,7 +1398,13 @@ export default function TrendingDropshippingPage() {
   const supplierOptions = Array.from(
     new Map(products.map((p) => [p.supplier_key ?? 'manual', p.supplier_label ?? 'Manual'])).entries(),
   ).map(([key, label]) => ({ key, label }));
-  const shown = supplierFilter === 'all' ? products : products.filter((p) => (p.supplier_key ?? 'manual') === supplierFilter);
+  const words = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const shown = products.filter((p) => {
+    if (supplierFilter !== 'all' && (p.supplier_key ?? 'manual') !== supplierFilter) return false;
+    if (!words.length) return true;
+    const haystack = [p.name, p.code, p.supplier_label, p.sku, p.category_name].map((v) => (v ?? '').toLowerCase()).join(' ');
+    return words.every((w) => haystack.includes(w));
+  });
 
   const trending = products.filter((p) => p.is_trending).length;
   const featured = products.filter((p) => p.is_featured).length;
@@ -1390,6 +1428,19 @@ export default function TrendingDropshippingPage() {
         <div className="flex items-center gap-2">
           {backfillResult && <span className="text-xs text-gray-600 max-w-[180px]">{backfillResult}</span>}
           {autoAttachResult && <span className="text-xs text-gray-600 max-w-[180px]">{autoAttachResult}</span>}
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, ID or supplier"
+              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-8 text-sm text-gray-900 placeholder:text-gray-500 focus:border-[#6B3FD9] focus:outline-none"
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <div className="relative">
             <button
               type="button"
@@ -1446,20 +1497,6 @@ export default function TrendingDropshippingPage() {
         />
       )}
 
-      {/* Search */}
-      <div className="mb-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Search by name or ID (e.g. CJ001)..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:border-[#6B3FD9] focus:outline-none text-sm"
-          />
-        </div>
-      </div>
-
       {supplierOptions.length > 1 && (
         <div className="mb-4 flex flex-wrap gap-2">
           <button
@@ -1493,6 +1530,11 @@ export default function TrendingDropshippingPage() {
               Add your first product
             </Link>
           </div>
+        ) : shown.length === 0 ? (
+          <div className="flex h-40 flex-col items-center justify-center text-gray-500">
+            <p className="text-sm">No products match your search or supplier filter.</p>
+            <button type="button" onClick={() => { setSearch(''); setSupplierFilter('all'); }} className="mt-2 text-sm text-[#6B3FD9] hover:underline">Clear filters</button>
+          </div>
         ) : (
           <>
             {/* Desktop table */}
@@ -1500,36 +1542,36 @@ export default function TrendingDropshippingPage() {
               <table className="w-full">
                 <thead>
                   <tr className="text-left text-xs text-gray-500 border-b border-gray-200 uppercase tracking-wider">
-                    <th className="px-4 py-3 font-medium">#</th>
-                    <th className="px-4 py-3 font-medium">Product</th>
-                    <th className="px-4 py-3 font-medium">Supplier</th>
-                    <th className="px-4 py-3 font-medium">ID</th>
-                    <th className="px-4 py-3 font-medium text-right">Buying Price</th>
-                    <th className="px-4 py-3 font-medium text-right">Selling Price</th>
-                    <th className="px-4 py-3 font-medium text-center">Margin</th>
-                    <th className="px-4 py-3 font-medium text-right">Views</th>
-                    <th className="px-4 py-3 font-medium text-right">Imports</th>
-                    <th className="px-4 py-3 font-medium text-center">Flags</th>
-                    <th className="px-4 py-3 font-medium text-center">Status</th>
-                    <th className="px-4 py-3 font-medium text-right">Actions</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium">#</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium">Product</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium">Supplier</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium">ID</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium">SKU</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium text-right">Buying<br />(USD)</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium text-right">Selling<br />(USD)</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium text-center">Margin</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium text-right">Views</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium text-right">Imports</th>
+                    <th className="px-3 py-2.5 font-medium text-center leading-tight">Current<br />Trends</th>
+                    <th className="px-3 py-2.5 font-medium text-center leading-tight">Global<br />Bestsellers</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium text-center">Status</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {shown.map((p) => {
                     const idx = products.indexOf(p);
                     const isDigital = p.kind === 'digital';
-                    const margin = p.cost_price && p.price > p.cost_price
-                      ? Math.round(((p.price - p.cost_price) / p.price) * 100)
-                      : null;
+                    const margin = marginOf(p);
                     return (
                       <tr key={`${p.kind ?? 'product'}-${p.id}`} className="hover:bg-gray-50 transition">
                         {/* Running number */}
-                        <td className="px-4 py-4 text-sm font-semibold text-gray-500">{idx + 1}</td>
+                        <td className="px-3 py-2 text-sm font-semibold text-gray-500">#{idx + 1}</td>
 
                         {/* Product */}
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-2">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-gray-50 border border-gray-200 flex-shrink-0 overflow-hidden">
+                            <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 flex-shrink-0 overflow-hidden">
                               {p.image_url ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
@@ -1542,51 +1584,51 @@ export default function TrendingDropshippingPage() {
                             <div className="min-w-0">
                               <p className="font-medium text-gray-900 text-sm truncate max-w-[200px]">{p.name}</p>
                               {p.category_name && (
-                                <span className="inline-flex items-center gap-1 text-xs text-gray-500 mt-0.5">
-                                  <Tag className="w-3 h-3" /> {p.category_name}
+                                <span title={p.category_name} className="inline-flex max-w-[220px] items-center gap-1 truncate text-xs text-gray-500">
+                                  <Tag className="w-3 h-3 shrink-0" /> <span className="truncate">{p.category_name.split('>').pop()!.trim()}</span>
                                 </span>
                               )}
-                              {p.sku && <p className="text-xs text-gray-400 mt-0.5">SKU: {p.sku}</p>}
                             </div>
                           </div>
                         </td>
 
                         {/* Supplier */}
-                        <td className="px-4 py-4">
-                          <span className="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <td className="px-3 py-2">
+                          <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-gray-700">
                             <SupplierLogo supplier={p.supplier_key ?? 'manual'} label={p.supplier_label} className="h-7 w-7" />
                             {p.supplier_label ?? 'Manual'}
                           </span>
                         </td>
 
                         {/* Catalogue ID */}
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-2">
                           <span className="font-mono text-sm font-semibold text-gray-900">{p.code ?? '—'}</span>
                         </td>
 
+                        {/* SKU */}
+                        <td className="px-3 py-2">
+                          <span title={p.sku ?? undefined} className="block max-w-[130px] truncate font-mono text-xs text-gray-600">{p.sku || '—'}</span>
+                        </td>
+
                         {/* Buying price */}
-                        <td className="px-4 py-4 text-right">
+                        <td className="px-3 py-2 text-right">
                           {p.cost_price ? (
-                            <span className="text-sm text-gray-600">
-                              {p.cost_price.toFixed(2)} <span className="text-xs text-gray-400">{p.currency}</span>
-                            </span>
+                            <span className="whitespace-nowrap text-sm text-gray-600">{p.cost_price.toFixed(2)}</span>
                           ) : (
                             <span className="text-xs text-gray-300">—</span>
                           )}
                         </td>
 
                         {/* Selling price */}
-                        <td className="px-4 py-4 text-right">
-                          <span className="text-sm font-semibold text-[#6B3FD9]">
-                            {p.price.toFixed(2)} <span className="text-xs font-normal text-gray-500">{p.currency}</span>
-                          </span>
+                        <td className="px-3 py-2 text-right">
+                          <span className="whitespace-nowrap text-sm font-semibold text-[#6B3FD9]">{p.price.toFixed(2)}</span>
                         </td>
 
                         {/* Margin */}
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-3 py-2 text-center">
                           {margin !== null ? (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20">
-                              {margin}%
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${margin < 0 ? 'bg-red-500/10 text-red-600 border-red-500/20' : margin < 20 ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-green-500/10 text-green-600 border-green-500/20'}`}>
+                              {fmtMargin(margin)}
                             </span>
                           ) : (
                             <span className="text-xs text-gray-300">—</span>
@@ -1594,32 +1636,19 @@ export default function TrendingDropshippingPage() {
                         </td>
 
                         {/* Views + imports */}
-                        <td className="px-4 py-4 text-right text-sm tabular-nums text-gray-700">{p.views == null ? <span className="text-gray-300">—</span> : p.views.toLocaleString()}</td>
-                        <td className="px-4 py-4 text-right text-sm tabular-nums text-gray-700">{p.imports == null ? <span className="text-gray-300">—</span> : p.imports.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right text-sm tabular-nums text-gray-700">{p.views == null ? <span className="text-gray-300">—</span> : p.views.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right text-sm tabular-nums text-gray-700">{p.imports == null ? <span className="text-gray-300">—</span> : p.imports.toLocaleString()}</td>
 
-                        {/* Flags */}
-                        <td className="px-4 py-4">
-                          {isDigital ? <div className="text-center text-xs text-gray-300">—</div> : (
-                          <div className="flex items-center justify-center gap-1">
-                            <QuickToggle
-                              active={p.is_trending}
-                              onClick={() => toggle(p, 'is_trending')}
-                              icon={<Flame className="w-4 h-4" />}
-                              title={p.is_trending ? 'Remove Trending' : 'Mark Trending'}
-                            />
-                            <QuickToggle
-                              active={!!p.is_bestseller}
-                              onClick={() => toggle(p, 'is_bestseller')}
-                              icon={<Trophy className="w-4 h-4" />}
-                              title={p.is_bestseller ? 'Remove from Global Bestsellers' : 'Show in Global Bestsellers'}
-                            />
-                            {togglingId === p.id && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
-                          </div>
-                          )}
+                        {/* Current Trends + Global Bestsellers */}
+                        <td className="px-3 py-2 text-center">
+                          <FlagCell on={!!p.is_trending} readOnly={isDigital} busy={togglingId === p.id} color="bg-orange-500" title="Current Trends" onChange={() => toggle(p, 'is_trending')} />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <FlagCell on={!!p.is_bestseller} readOnly={isDigital} busy={togglingId === p.id} color="bg-yellow-500" title="Global Bestsellers" onChange={() => toggle(p, 'is_bestseller')} />
                         </td>
 
                         {/* Active */}
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-3 py-2 text-center">
                           {isDigital ? (
                             <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${p.is_active ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-gray-500/10 text-gray-500 border-gray-300'}`}>
                               {p.is_active ? 'Active' : 'Hidden'}
@@ -1640,7 +1669,7 @@ export default function TrendingDropshippingPage() {
                         </td>
 
                         {/* Actions */}
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-2">
                           <div className="flex items-center justify-end gap-2">
                             {isDigital ? (
                               <Link
@@ -1657,7 +1686,7 @@ export default function TrendingDropshippingPage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-1.5 text-gray-500 hover:text-[#6B3FD9] hover:bg-gray-100 rounded-lg transition inline-flex"
-                                title="Open real CJ product page"
+                                title={sourceLinkTitle(p)}
                               >
                                 <ExternalLink className="w-4 h-4" />
                               </a>
@@ -1739,7 +1768,7 @@ export default function TrendingDropshippingPage() {
                     ) : (<>
                     {p.source_url && (
                       <a href={p.source_url} target="_blank" rel="noopener noreferrer"
-                        className="p-1.5 text-gray-500 hover:text-[#6B3FD9] rounded-lg inline-flex" title="Open real CJ product page">
+                        className="p-1.5 text-gray-500 hover:text-[#6B3FD9] rounded-lg inline-flex" title={sourceLinkTitle(p)}>
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
