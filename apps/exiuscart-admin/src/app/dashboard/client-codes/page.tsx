@@ -26,10 +26,10 @@ interface NexCode {
 const PLAN_OPTIONS = ['scale', 'growth', 'launch', 'free_trial', 'thedersi_free_forever', 'thedersi_lite'];
 
 function StatusBadge({ code }: { code: NexCode }) {
-  if (!code.is_active) return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400">Deactivated</span>;
-  if (code.is_used_up) return <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">Used Up</span>;
-  if (code.code_expires_at && new Date(code.code_expires_at) < new Date()) return <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">Expired</span>;
-  return <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Active</span>;
+  if (!code.is_active) return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-600">Deactivated</span>;
+  if (code.is_used_up) return <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-600">Used Up</span>;
+  if (code.code_expires_at && new Date(code.code_expires_at) < new Date()) return <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-600">Expired</span>;
+  return <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-600">Active</span>;
 }
 
 function CopyButton({ value }: { value: string }) {
@@ -40,8 +40,8 @@ function CopyButton({ value }: { value: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <button onClick={handleCopy} title="Copy code" className="p-1.5 hover:bg-gray-700 rounded transition text-gray-400 hover:text-white">
-      {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+    <button onClick={handleCopy} title="Copy code" className="p-1.5 hover:bg-gray-200 rounded transition text-gray-600 hover:text-gray-900">
+      {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
     </button>
   );
 }
@@ -130,11 +130,11 @@ export default function ClientCodesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Client Codes</h1>
-          <p className="text-gray-400 text-sm mt-1">Generate NexCode Nova one-time activation codes for clients</p>
+          <h1 className="text-2xl font-bold text-gray-900">Client Codes</h1>
+          <p className="text-gray-600 text-sm mt-1">Generate NexCode Nova one-time activation codes for clients</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchCodes} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition">
+          <button onClick={fetchCodes} className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition">
             <RefreshCw className="w-5 h-5" />
           </button>
           <button
@@ -148,124 +148,124 @@ export default function ClientCodesPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-          <p className="text-gray-400 text-xs mb-1">Total Codes</p>
-          <p className="text-2xl font-bold text-white">{codes.length}</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-gray-600 text-xs mb-1">Total Codes</p>
+          <p className="text-2xl font-bold text-gray-900">{codes.length}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-          <p className="text-gray-400 text-xs mb-1">Active</p>
-          <p className="text-2xl font-bold text-green-400">{activeCodes.length}</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-gray-600 text-xs mb-1">Active</p>
+          <p className="text-2xl font-bold text-green-600">{activeCodes.length}</p>
         </div>
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-          <p className="text-gray-400 text-xs mb-1">Used</p>
-          <p className="text-2xl font-bold text-blue-400">{usedCodes.length}</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-gray-600 text-xs mb-1">Used</p>
+          <p className="text-2xl font-bold text-blue-600">{usedCodes.length}</p>
         </div>
       </div>
 
       {/* Create Form */}
       {showCreate && (
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-          <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Key className="w-5 h-5 text-[#6B3FD9]" /> Generate New Code
           </h2>
 
           {/* New code display */}
           {newCode && (
             <div className="mb-5 bg-[#6B3FD9]/10 border border-[#6B3FD9]/30 rounded-xl p-4">
-              <p className="text-xs text-gray-400 mb-1">Code generated successfully</p>
+              <p className="text-xs text-gray-600 mb-1">Code generated successfully</p>
               <div className="flex items-center gap-3">
                 <code className="text-2xl font-mono font-bold text-[#6B3FD9] tracking-widest">{newCode.code}</code>
                 <CopyButton value={newCode.code} />
               </div>
-              {newCode.client_email && <p className="text-xs text-gray-400 mt-1">For: {newCode.client_email}</p>}
+              {newCode.client_email && <p className="text-xs text-gray-600 mt-1">For: {newCode.client_email}</p>}
             </div>
           )}
 
           <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Client Email</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Client Email</label>
               <input
                 type="email"
                 value={form.client_email}
                 onChange={e => setForm({ ...form, client_email: e.target.value })}
                 placeholder="client@example.com"
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] outline-none"
+                className="w-full px-3 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-[#6B3FD9] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Plan</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Plan</label>
               <div className="relative">
                 <select
                   value={form.plan_type}
                   onChange={e => setForm({ ...form, plan_type: e.target.value })}
-                  className="appearance-none w-full px-3 py-2.5 pr-8 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] outline-none"
+                  className="appearance-none w-full px-3 py-2.5 pr-8 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] outline-none"
                 >
                   {PLAN_OPTIONS.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
                 </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 pointer-events-none" />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Duration (months, blank = lifetime)</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Duration (months, blank = lifetime)</label>
               <input
                 type="number"
                 min="1"
                 value={form.duration_months}
                 onChange={e => setForm({ ...form, duration_months: e.target.value })}
                 placeholder="e.g. 12"
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] outline-none"
+                className="w-full px-3 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-[#6B3FD9] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Max Stores</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Max Stores</label>
               <input
                 type="number"
                 min="1"
                 value={form.max_shops}
                 onChange={e => setForm({ ...form, max_shops: e.target.value })}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] outline-none"
+                className="w-full px-3 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Max Uses</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Max Uses</label>
               <input
                 type="number"
                 min="1"
                 value={form.max_uses}
                 onChange={e => setForm({ ...form, max_uses: e.target.value })}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] outline-none"
+                className="w-full px-3 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Code expires in (days, blank = never)</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Code expires in (days, blank = never)</label>
               <input
                 type="number"
                 min="1"
                 value={form.code_expires_days}
                 onChange={e => setForm({ ...form, code_expires_days: e.target.value })}
                 placeholder="e.g. 30"
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] outline-none"
+                className="w-full px-3 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-[#6B3FD9] outline-none"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-sm text-gray-400 mb-1.5">Notes</label>
+              <label className="block text-sm text-gray-600 mb-1.5">Notes</label>
               <input
                 type="text"
                 value={form.notes}
                 onChange={e => setForm({ ...form, notes: e.target.value })}
                 placeholder="e.g. Ahmed — 450 package, 6-month deal"
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] outline-none"
+                className="w-full px-3 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-[#6B3FD9] outline-none"
               />
             </div>
 
             {createError && (
-              <div className="sm:col-span-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-red-400">{createError}</div>
+              <div className="sm:col-span-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-red-600">{createError}</div>
             )}
 
             <div className="sm:col-span-2 flex gap-3">
@@ -273,7 +273,7 @@ export default function ClientCodesPage() {
                 <Key className="w-4 h-4" />
                 {creating ? 'Generating...' : 'Generate Code'}
               </button>
-              <button type="button" onClick={() => setShowCreate(false)} className="px-5 py-2.5 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 transition">
+              <button type="button" onClick={() => setShowCreate(false)} className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition">
                 Cancel
               </button>
             </div>
@@ -282,31 +282,31 @@ export default function ClientCodesPage() {
       )}
 
       {/* Codes List */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="p-8 space-y-3">
-            {[1,2,3].map(i => <div key={i} className="h-16 bg-gray-800 rounded-lg animate-pulse" />)}
+            {[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />)}
           </div>
         ) : codes.length === 0 ? (
           <div className="p-16 text-center">
-            <Key className="w-14 h-14 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No codes yet. Generate one for a client.</p>
+            <Key className="w-14 h-14 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">No codes yet. Generate one for a client.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-800/50">
                 <tr>
-                  <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Code</th>
-                  <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium hidden sm:table-cell">Client</th>
-                  <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Plan</th>
-                  <th className="text-center px-5 py-3 text-xs text-gray-400 font-medium hidden md:table-cell">Uses</th>
-                  <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium hidden lg:table-cell">Notes</th>
-                  <th className="text-center px-5 py-3 text-xs text-gray-400 font-medium">Status</th>
-                  <th className="text-center px-5 py-3 text-xs text-gray-400 font-medium">Actions</th>
+                  <th className="text-left px-5 py-3 text-xs text-gray-600 font-medium">Code</th>
+                  <th className="text-left px-5 py-3 text-xs text-gray-600 font-medium hidden sm:table-cell">Client</th>
+                  <th className="text-left px-5 py-3 text-xs text-gray-600 font-medium">Plan</th>
+                  <th className="text-center px-5 py-3 text-xs text-gray-600 font-medium hidden md:table-cell">Uses</th>
+                  <th className="text-left px-5 py-3 text-xs text-gray-600 font-medium hidden lg:table-cell">Notes</th>
+                  <th className="text-center px-5 py-3 text-xs text-gray-600 font-medium">Status</th>
+                  <th className="text-center px-5 py-3 text-xs text-gray-600 font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-gray-200">
                 {codes.map(code => (
                   <tr key={code.id} className="hover:bg-gray-800/30 transition">
                     <td className="px-5 py-4">
@@ -318,24 +318,24 @@ export default function ClientCodesPage() {
                     </td>
                     <td className="px-5 py-4 hidden sm:table-cell">
                       {code.client_email
-                        ? <span className="text-sm text-gray-300 flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-gray-500" />{code.client_email}</span>
+                        ? <span className="text-sm text-gray-700 flex items-center gap-1"><Mail className="w-3.5 h-3.5 text-gray-500" />{code.client_email}</span>
                         : <span className="text-xs text-gray-500">Any email</span>}
                     </td>
                     <td className="px-5 py-4">
                       <div>
-                        <span className="text-sm text-white capitalize">{code.plan_type}</span>
+                        <span className="text-sm text-gray-900 capitalize">{code.plan_type}</span>
                         <p className="text-xs text-gray-500">
                           {code.duration_months ? `${code.duration_months}mo` : 'Lifetime'} · {code.max_shops} store{code.max_shops > 1 ? 's' : ''}
                         </p>
                       </div>
                     </td>
                     <td className="px-5 py-4 text-center hidden md:table-cell">
-                      <span className={`text-sm font-medium ${code.is_used_up ? 'text-blue-400' : 'text-gray-300'}`}>
+                      <span className={`text-sm font-medium ${code.is_used_up ? 'text-blue-600' : 'text-gray-700'}`}>
                         {code.used_count}/{code.max_uses}
                       </span>
                     </td>
                     <td className="px-5 py-4 hidden lg:table-cell">
-                      <span className="text-xs text-gray-400">{code.notes || '—'}</span>
+                      <span className="text-xs text-gray-600">{code.notes || '—'}</span>
                     </td>
                     <td className="px-5 py-4 text-center">
                       <StatusBadge code={code} />
@@ -352,17 +352,17 @@ export default function ClientCodesPage() {
                           onClick={() => handleToggle(code)}
                           disabled={toggling === code.id}
                           title={code.is_active ? 'Deactivate' : 'Activate'}
-                          className="p-1.5 hover:bg-gray-700 rounded transition text-gray-400 hover:text-white"
+                          className="p-1.5 hover:bg-gray-200 rounded transition text-gray-600 hover:text-gray-900"
                         >
                           {code.is_active
-                            ? <ToggleRight className="w-5 h-5 text-green-400" />
+                            ? <ToggleRight className="w-5 h-5 text-green-600" />
                             : <ToggleLeft className="w-5 h-5 text-gray-500" />}
                         </button>
                         <button
                           onClick={() => handleDelete(code.id)}
                           disabled={deleting === code.id}
                           title="Delete"
-                          className="p-1.5 hover:bg-red-500/10 rounded transition text-gray-400 hover:text-red-400"
+                          className="p-1.5 hover:bg-red-500/10 rounded transition text-gray-600 hover:text-red-600"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

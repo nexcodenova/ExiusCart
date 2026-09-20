@@ -26,12 +26,12 @@ export function MobileBottomNav() {
 
       {/* More Menu Panel */}
       {showMore && (
-        <div className="fixed bottom-16 left-0 right-0 bg-[#0B1121] border-t border-gray-800 z-50 lg:hidden rounded-t-2xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-            <span className="text-sm font-semibold text-white">More Options</span>
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 z-50 lg:hidden rounded-t-2xl">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+            <span className="text-sm font-semibold text-gray-900">More Options</span>
             <button
               onClick={() => setShowMore(false)}
-              className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800"
+              className="p-1 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
             >
               <X className="w-5 h-5" />
             </button>
@@ -50,8 +50,8 @@ export function MobileBottomNav() {
                   onClick={() => setShowMore(false)}
                   className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${
                     isActive
-                      ? 'bg-[#6B3FD9] text-black'
-                      : 'text-gray-400 hover:bg-[#151F32] hover:text-white'
+                      ? 'bg-[#6B3FD9]/10 text-[#5A2EC9]'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -61,7 +61,7 @@ export function MobileBottomNav() {
             })}
             {/* Logout button */}
             <button
-              className="flex flex-col items-center gap-1 p-3 rounded-xl text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all"
+              className="flex flex-col items-center gap-1 p-3 rounded-xl text-gray-500 hover:bg-red-500/10 hover:text-red-600 transition-all"
             >
               <LogOut className="w-5 h-5" />
               <span className="text-[10px] font-medium">Logout</span>
@@ -71,7 +71,7 @@ export function MobileBottomNav() {
       )}
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#0B1121] border-t border-gray-800 z-50 lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 lg:hidden">
         <div className="flex items-center justify-around px-2 py-1 safe-area-pb">
           {mainItems.map((item) => {
             const Icon = item.icon;
@@ -86,7 +86,7 @@ export function MobileBottomNav() {
                 className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-all min-w-[60px] ${
                   isActive
                     ? 'text-[#6B3FD9]'
-                    : 'text-gray-400 hover:text-white'
+                    : 'text-gray-500 hover:text-gray-900'
                 }`}
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : ''}`} />
@@ -103,7 +103,7 @@ export function MobileBottomNav() {
           <button
             onClick={() => setShowMore(!showMore)}
             className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-all min-w-[60px] ${
-              showMore ? 'text-[#6B3FD9]' : 'text-gray-400 hover:text-white'
+              showMore ? 'text-[#6B3FD9]' : 'text-gray-500 hover:text-gray-900'
             }`}
           >
             <MoreHorizontal className="w-5 h-5" />

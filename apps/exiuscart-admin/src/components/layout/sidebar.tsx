@@ -13,7 +13,8 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   UserPlus,
   Link2,
   ShoppingBag,
@@ -42,11 +43,14 @@ export const menuItems = [
 ];
 
 // Sub-pages under Prodora — shown as a dropdown in this sidebar. menuItems
-// (above) stays flat because the mobile bottom nav reads it directly.
+// (above) stays flat because the mobile bottom nav reads it directly, so the
+// Digital Bundles entry there is skipped when the sidebar draws its own list.
 const PRODORA_CHILDREN = [
   { href: '/dashboard/shopping', label: 'Products', exact: true },
   { href: '/dashboard/shopping/categories', label: 'Categories', exact: false },
+  { href: '/dashboard/digital-bundles', label: 'Digital Bundles', exact: false },
 ];
+const IN_PRODORA_GROUP = ['/dashboard/digital-bundles'];
 
 interface AdminSidebarProps {
   collapsed: boolean;
@@ -55,56 +59,36 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps) {
   const pathname = usePathname();
-  const onProdora = pathname.startsWith('/dashboard/shopping');
+  const onProdora = pathname.startsWith('/dashboard/shopping') || PRODORA_CHILDREN.some((c) => pathname.startsWith(c.href));
   const [prodoraOpen, setProdoraOpen] = useState(onProdora);
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-full bg-[#0B1121] border-r border-gray-800 transition-all duration-300 z-50 flex flex-col ${
+      className={`fixed left-0 top-0 h-full bg-[#EFEDF8] border-r border-[#E0DCF0] transition-all duration-300 z-50 flex flex-col ${
         collapsed ? 'w-20' : 'w-64'
       }`}
     >
       {/* Logo */}
-      <div className="h-16 shrink-0 flex items-center justify-between px-4 border-b border-gray-800">
+      <div className={`h-16 shrink-0 flex items-center border-b border-[#E0DCF0] ${collapsed ? 'justify-center' : 'px-4'}`}>
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image src="/logo.svg" alt="ExiusCart" width={32} height={32} className="flex-shrink-0" />
           {!collapsed && (
-            <span className="text-xl font-bold text-white tracking-tight">
-              <span className="text-[#6B3FD9]">Exius</span>Cart
-            </span>
+            <span className="text-xl font-bold tracking-tight text-gray-900">Admin</span>
           )}
         </Link>
-        <button
-          onClick={() => onCollapsedChange(!collapsed)}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition hidden lg:block"
-        >
-          <ChevronLeft
-            className={`w-5 h-5 transition-transform ${collapsed ? 'rotate-180' : ''}`}
-          />
-        </button>
       </div>
-
-      {/* Admin Badge */}
-      {!collapsed && (
-        <div className="shrink-0 px-4 py-3 border-b border-gray-800">
-          <span className="text-xs font-semibold text-[#6B3FD9] bg-[#6B3FD9]/10 px-2.5 py-1 rounded">
-            ADMIN PANEL
-          </span>
-        </div>
-      )}
 
       {/* Navigation — scrolls on its own when the menu is taller than the
           screen, instead of running underneath the Admin Info block below
           (which used to sit on top via absolute positioning and covered
           the last couple of items on any laptop-height screen). */}
       <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
-        {menuItems.map((item) => {
+        {menuItems.filter((item) => !IN_PRODORA_GROUP.includes(item.href)).map((item) => {
           const Icon = item.icon;
           if (item.href === '/dashboard/shopping') {
             return (
               <div key={item.href}>
-                <div className={`flex items-stretch rounded-lg transition-all ${onProdora ? 'bg-[#151F32] text-white' : 'text-gray-400 hover:bg-[#151F32] hover:text-white'}`}>
+                <div className={`flex items-stretch rounded-lg transition-all ${onProdora ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
                   <Link
                     href={item.href}
                     title={collapsed ? item.label : undefined}
@@ -125,14 +109,16 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                   )}
                 </div>
                 {prodoraOpen && !collapsed && (
-                  <div className="mt-1 space-y-1 pl-4">
+                  // Text only, lined up with the "Prodora" label above: 12px padding
+                  // + 20px icon + 12px gap = 44px.
+                  <div className="mt-0.5 space-y-0.5">
                     {PRODORA_CHILDREN.map((child) => {
                       const active = child.exact ? pathname === child.href : pathname.startsWith(child.href);
                       return (
                         <Link
                           key={child.href} href={child.href}
-                          className={`block rounded-lg px-3 py-2 text-sm font-medium transition-all ${
-                            active ? 'bg-[#6B3FD9] text-black' : 'text-gray-400 hover:bg-[#151F32] hover:text-white'
+                          className={`block rounded-lg py-2 pl-[44px] pr-3 text-sm font-medium transition-all ${
+                            active ? 'bg-white text-[#5A2EC9] shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-gray-900'
                           }`}
                         >
                           {child.label}
@@ -155,8 +141,8 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
               title={collapsed ? item.label : undefined}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                 isActive
-                  ? 'bg-[#6B3FD9] text-black'
-                  : 'text-gray-400 hover:bg-[#151F32] hover:text-white'
+                  ? 'bg-white text-[#5A2EC9] shadow-sm'
+                  : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'
               }`}
             >
               <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
@@ -167,25 +153,36 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
       </nav>
 
       {/* Admin Info */}
-      <div className="shrink-0 p-3 border-t border-gray-800">
+      <div className="shrink-0 p-3 border-t border-[#E0DCF0]">
         {!collapsed && (
           <div className="flex items-center gap-3 mb-3 px-2">
             <div className="w-10 h-10 bg-[#6B3FD9] rounded-full flex items-center justify-center">
-              <span className="text-sm font-bold text-black">SA</span>
+              <span className="text-sm font-bold text-white">SA</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">Super Admin</p>
+              <p className="text-sm font-medium text-gray-900 truncate">Super Admin</p>
               <p className="text-xs text-gray-500 truncate">admin@exiuscart.com</p>
             </div>
           </div>
         )}
         <button
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-400 w-full transition ${
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-red-500/10 hover:text-red-600 w-full transition ${
             collapsed ? 'justify-center' : ''
           }`}
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span className="font-medium text-sm">Logout</span>}
+        </button>
+        <button
+          type="button"
+          onClick={() => onCollapsedChange(!collapsed)}
+          title={collapsed ? 'Show menu' : undefined}
+          className={`hidden lg:flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-white/70 hover:text-gray-900 w-full transition ${
+            collapsed ? 'justify-center' : ''
+          }`}
+        >
+          {collapsed ? <PanelLeftOpen className="w-5 h-5 flex-shrink-0" /> : <PanelLeftClose className="w-5 h-5 flex-shrink-0" />}
+          {!collapsed && <span className="font-medium text-sm">Hide menu</span>}
         </button>
       </div>
     </aside>

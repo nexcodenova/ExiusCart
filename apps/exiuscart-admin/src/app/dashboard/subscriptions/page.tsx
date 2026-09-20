@@ -47,23 +47,23 @@ const PLAN_REFERENCE_PRICING: Record<string, { monthly: number; yearly: number }
 };
 
 const planStyles: Record<string, string> = {
-  free_trial:            'text-gray-400',
-  thedersi_free_forever: 'text-blue-400',
+  free_trial:            'text-gray-600',
+  thedersi_free_forever: 'text-blue-600',
   thedersi_lite:         'text-teal-400',
-  launch:                'text-gray-300',
+  launch:                'text-gray-700',
   growth:                'text-[#0D70BB]',
   scale:                 'text-[#6B3FD9]',
   pro:                   'text-[#6B3FD9]',
 };
 
 const statusStyles: Record<string, string> = {
-  active:           'bg-green-500/10 text-green-400',
-  trial:            'bg-blue-500/10 text-blue-400',
-  trial_dollar:     'bg-purple-500/10 text-purple-400',
-  pending_approval: 'bg-yellow-500/10 text-yellow-400',
-  expiring:         'bg-orange-500/10 text-orange-400',
-  expired:          'bg-red-500/10 text-red-400',
-  cancelled:        'bg-gray-500/10 text-gray-400',
+  active:           'bg-green-500/10 text-green-600',
+  trial:            'bg-blue-500/10 text-blue-600',
+  trial_dollar:     'bg-purple-500/10 text-purple-600',
+  pending_approval: 'bg-yellow-500/10 text-yellow-600',
+  expiring:         'bg-orange-500/10 text-orange-600',
+  expired:          'bg-red-500/10 text-red-600',
+  cancelled:        'bg-gray-500/10 text-gray-600',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -71,8 +71,8 @@ const STATUS_LABEL: Record<string, string> = {
   expired: 'Expired', cancelled: 'Cancelled',
 };
 
-const SELECT_CLS = "w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none appearance-none text-sm";
-const INPUT_CLS  = "w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none text-sm";
+const SELECT_CLS = "w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] focus:outline-none appearance-none text-sm";
+const INPUT_CLS  = "w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] focus:outline-none text-sm";
 
 // ── Confirm Modal (Approve / Reject) ─────────────────────────────────────────
 
@@ -84,30 +84,30 @@ function ConfirmModal({ sub, action, onConfirm, onCancel, loading, error }: {
   const isApprove = action === 'approve';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-      <div className="bg-[#151F32] border border-gray-700 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5">
+      <div className="bg-white border border-gray-300 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isApprove ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-            {isApprove ? <Check className="w-5 h-5 text-green-400" /> : <AlertTriangle className="w-5 h-5 text-red-400" />}
+            {isApprove ? <Check className="w-5 h-5 text-green-600" /> : <AlertTriangle className="w-5 h-5 text-red-600" />}
           </div>
           <div>
-            <h3 className="font-semibold text-white">{isApprove ? 'Approve Subscription?' : 'Reject Subscription?'}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h3 className="font-semibold text-gray-900">{isApprove ? 'Approve Subscription?' : 'Reject Subscription?'}</h3>
+            <p className="text-xs text-gray-600 mt-0.5">
               {isApprove
                 ? 'This will activate the plan and send the seller a dashboard access email.'
                 : 'This will cancel the request. The seller stays on their current plan.'}
             </p>
           </div>
         </div>
-        <div className="bg-[#0B1121] rounded-xl p-4 space-y-2 text-sm">
+        <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
           <Row label="Shop" value={sub.shop_name} />
           <Row label="Plan" value={PLAN_LABELS[sub.plan_type] ?? sub.plan_type} cls={planStyles[sub.plan_type]} />
           <Row label="Billing" value={sub.billing_type?.replace('_', '-') ?? '—'} />
           <Row label="Amount" value={sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'} />
         </div>
-        {error && <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
+        {error && <p className="text-sm text-red-600 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
         <div className="flex gap-3">
           <button onClick={onCancel} disabled={loading}
-            className="flex-1 px-4 py-2.5 border border-gray-700 rounded-lg text-sm font-medium text-gray-300 hover:bg-[#1A2540] transition disabled:opacity-50">
+            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-200 transition disabled:opacity-50">
             Cancel
           </button>
           <button onClick={onConfirm} disabled={loading}
@@ -121,10 +121,10 @@ function ConfirmModal({ sub, action, onConfirm, onCancel, loading, error }: {
   );
 }
 
-function Row({ label, value, cls = 'text-white' }: { label: string; value: string; cls?: string }) {
+function Row({ label, value, cls = 'text-gray-900' }: { label: string; value: string; cls?: string }) {
   return (
     <div className="flex justify-between">
-      <span className="text-gray-400">{label}</span>
+      <span className="text-gray-600">{label}</span>
       <span className={`font-medium ${cls}`}>{value}</span>
     </div>
   );
@@ -170,16 +170,16 @@ function EditModal({ sub, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-      <div className="bg-[#151F32] border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl">
+      <div className="bg-white border border-gray-300 rounded-2xl w-full max-w-md shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
-            <h2 className="font-semibold text-white flex items-center gap-2">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
               <Pencil className="w-4 h-4 text-[#6B3FD9]" /> Edit Subscription
             </h2>
-            <p className="text-xs text-gray-400 mt-0.5">{sub.shop_name}</p>
+            <p className="text-xs text-gray-600 mt-0.5">{sub.shop_name}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-[#1A2540] rounded-lg text-gray-400 hover:text-white">
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-gray-900">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -188,7 +188,7 @@ function EditModal({ sub, onClose, onSaved }: {
           {/* Plan */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Plan</label>
+              <label className="text-xs text-gray-600 mb-1.5 block">Plan</label>
               <div className="relative">
                 <select value={form.plan_type} onChange={(e) => set('plan_type', e.target.value)} className={SELECT_CLS}>
                   <option value="free_trial">Free Trial</option>
@@ -202,7 +202,7 @@ function EditModal({ sub, onClose, onSaved }: {
               </div>
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Billing Type</label>
+              <label className="text-xs text-gray-600 mb-1.5 block">Billing Type</label>
               <div className="relative">
                 <select value={form.billing_type} onChange={(e) => set('billing_type', e.target.value)} className={SELECT_CLS}>
                   <option value="monthly">Monthly</option>
@@ -217,18 +217,18 @@ function EditModal({ sub, onClose, onSaved }: {
 
           {/* Status */}
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Status</label>
+            <label className="text-xs text-gray-600 mb-1.5 block">Status</label>
             <div className="grid grid-cols-3 gap-2">
               {(['active', 'trial', 'trial_dollar', 'pending_approval', 'expired', 'cancelled'] as const).map((s) => (
                 <button type="button" key={s} onClick={() => set('status', s)}
                   className={`py-2 rounded-lg text-xs font-semibold border transition ${form.status === s
-                    ? s === 'active' ? 'bg-green-500/20 border-green-500 text-green-400'
-                      : s === 'trial' ? 'bg-blue-500/20 border-blue-500 text-blue-400'
-                      : s === 'trial_dollar' ? 'bg-purple-500/20 border-purple-500 text-purple-400'
-                      : s === 'pending_approval' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
-                      : s === 'expired' ? 'bg-red-500/20 border-red-500 text-red-400'
-                      : 'bg-gray-500/20 border-gray-500 text-gray-400'
-                    : 'bg-transparent border-gray-700 text-gray-500 hover:border-gray-500'}`}>
+                    ? s === 'active' ? 'bg-green-500/20 border-green-500 text-green-600'
+                      : s === 'trial' ? 'bg-blue-500/20 border-blue-500 text-blue-600'
+                      : s === 'trial_dollar' ? 'bg-purple-500/20 border-purple-500 text-purple-600'
+                      : s === 'pending_approval' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-600'
+                      : s === 'expired' ? 'bg-red-500/20 border-red-500 text-red-600'
+                      : 'bg-gray-500/20 border-gray-400 text-gray-600'
+                    : 'bg-transparent border-gray-300 text-gray-500 hover:border-gray-400'}`}>
                   {STATUS_LABEL[s]}
                 </button>
               ))}
@@ -238,7 +238,7 @@ function EditModal({ sub, onClose, onSaved }: {
           {/* Amount + Currency */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Amount Paid</label>
+              <label className="text-xs text-gray-600 mb-1.5 block">Amount Paid</label>
               <input type="number" min={0} step="0.01" value={form.amount_paid}
                 onChange={(e) => set('amount_paid', e.target.value)}
                 className={INPUT_CLS} />
@@ -255,7 +255,7 @@ function EditModal({ sub, onClose, onSaved }: {
               )}
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Currency</label>
+              <label className="text-xs text-gray-600 mb-1.5 block">Currency</label>
               <div className="relative">
                 <select value={form.currency} onChange={(e) => set('currency', e.target.value)} className={SELECT_CLS}>
                   <option value="USD">USD</option>
@@ -267,26 +267,26 @@ function EditModal({ sub, onClose, onSaved }: {
 
           {/* Expiry */}
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">
-              Expiry Date <span className="text-gray-600">(leave empty = lifetime)</span>
+            <label className="text-xs text-gray-600 mb-1.5 block">
+              Expiry Date <span className="text-gray-400">(leave empty = lifetime)</span>
             </label>
             <input type="date" value={form.expires_at} onChange={(e) => set('expires_at', e.target.value)}
               className={INPUT_CLS} />
           </div>
 
           {/* Info box */}
-          <div className="bg-[#0B1121] rounded-xl p-3 text-xs text-gray-400 space-y-1">
-            <p>• Setting <span className="text-white">Active</span> with no expiry date → auto-calculates 30d (monthly) / 365d (yearly)</p>
-            <p>• Setting <span className="text-white">Trial</span> or <span className="text-white">$1 Trial</span> with no expiry → auto-sets 7 days</p>
-            <p>• Setting <span className="text-white">Lifetime</span> → no expiry, never expires</p>
+          <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-600 space-y-1">
+            <p>• Setting <span className="text-gray-900">Active</span> with no expiry date → auto-calculates 30d (monthly) / 365d (yearly)</p>
+            <p>• Setting <span className="text-gray-900">Trial</span> or <span className="text-gray-900">$1 Trial</span> with no expiry → auto-sets 7 days</p>
+            <p>• Setting <span className="text-gray-900">Lifetime</span> → no expiry, never expires</p>
           </div>
 
-          {error && <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
+          {error && <p className="text-sm text-red-600 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
         </div>
 
         <div className="px-6 pb-6 flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 border border-gray-700 rounded-lg text-sm font-medium text-gray-300 hover:bg-[#1A2540] transition">
+            className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-200 transition">
             Cancel
           </button>
           <button onClick={handleSave} disabled={saving}
@@ -377,7 +377,7 @@ export default function SubscriptionsPage() {
     <div>
       {/* Toast */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-[#151F32] border border-gray-700 rounded-xl px-4 py-3 text-sm text-white shadow-xl animate-in slide-in-from-right">
+        <div className="fixed top-4 right-4 z-50 bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 shadow-xl animate-in slide-in-from-right">
           {toast}
         </div>
       )}
@@ -398,8 +398,8 @@ export default function SubscriptionsPage() {
       )}
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Subscriptions</h1>
-        <p className="text-gray-400 text-sm mt-1">Manage plans and active subscriptions</p>
+        <h1 className="text-2xl font-bold text-gray-900">Subscriptions</h1>
+        <p className="text-gray-600 text-sm mt-1">Manage plans and active subscriptions</p>
       </div>
 
       {/* Plan pricing reference — real prices, same names/numbers as the
@@ -407,19 +407,19 @@ export default function SubscriptionsPage() {
           billed by TheDersi, not ExiusCart, so they have no price here. */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {(['launch', 'growth', 'scale'] as const).map((p) => (
-          <div key={p} className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
+          <div key={p} className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center justify-between mb-1">
               <span className={`text-sm font-semibold ${planStyles[p]}`}>{PLAN_LABELS[p]}</span>
               {p === 'growth' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#6B3FD9]/20 text-[#6B3FD9] font-semibold">Most Popular</span>}
             </div>
-            <p className="text-xl font-bold text-white">
-              ${PLAN_REFERENCE_PRICING[p].monthly.toFixed(2)}<span className="text-sm font-normal text-gray-400">/mo</span>
+            <p className="text-xl font-bold text-gray-900">
+              ${PLAN_REFERENCE_PRICING[p].monthly.toFixed(2)}<span className="text-sm font-normal text-gray-600">/mo</span>
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
               or ${PLAN_REFERENCE_PRICING[p].yearly.toFixed(2)}/yr (25% off)
             </p>
             {p !== 'launch' && (
-              <p className="text-xs text-purple-400 mt-1.5">$1 trial for 7 days first</p>
+              <p className="text-xs text-purple-600 mt-1.5">$1 trial for 7 days first</p>
             )}
           </div>
         ))}
@@ -428,11 +428,11 @@ export default function SubscriptionsPage() {
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button type="button" onClick={() => setActiveTab('subscriptions')}
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition ${activeTab === 'subscriptions' ? 'bg-[#6B3FD9] text-white' : 'bg-[#151F32] text-gray-400 hover:text-white border border-gray-800'}`}>
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition ${activeTab === 'subscriptions' ? 'bg-[#6B3FD9] text-white' : 'bg-white text-gray-600 hover:text-white border border-gray-200'}`}>
           All Subscriptions
         </button>
         <button type="button" onClick={() => setActiveTab('pending')}
-          className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${activeTab === 'pending' ? 'bg-[#6B3FD9] text-white' : 'bg-[#151F32] text-gray-400 hover:text-white border border-gray-800'}`}>
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 ${activeTab === 'pending' ? 'bg-[#6B3FD9] text-white' : 'bg-white text-gray-600 hover:text-white border border-gray-200'}`}>
           Pending Approval
           {pendingCount > 0 && (
             <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === 'pending' ? 'bg-white/20 text-white' : 'bg-orange-500 text-white'}`}>
@@ -445,14 +445,14 @@ export default function SubscriptionsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Active',   value: subs.filter(s => s.status === 'active').length,           icon: <Package className="w-5 h-5" />, color: 'bg-green-500/10 text-green-400' },
-          { label: 'Monthly',  value: subs.filter(s => s.billing_type === 'monthly').length,     icon: <Calendar className="w-5 h-5" />, color: 'bg-blue-500/10 text-blue-400' },
+          { label: 'Active',   value: subs.filter(s => s.status === 'active').length,           icon: <Package className="w-5 h-5" />, color: 'bg-green-500/10 text-green-600' },
+          { label: 'Monthly',  value: subs.filter(s => s.billing_type === 'monthly').length,     icon: <Calendar className="w-5 h-5" />, color: 'bg-blue-500/10 text-blue-600' },
           { label: 'Yearly',   value: subs.filter(s => s.billing_type === 'yearly').length,      icon: <TrendingUp className="w-5 h-5" />, color: 'bg-[#6B3FD9]/10 text-[#6B3FD9]' },
-          { label: 'Pending',  value: pendingCount,                                              icon: <AlertCircle className="w-5 h-5" />, color: 'bg-orange-500/10 text-orange-400' },
+          { label: 'Pending',  value: pendingCount,                                              icon: <AlertCircle className="w-5 h-5" />, color: 'bg-orange-500/10 text-orange-600' },
         ].map((s) => (
-          <div key={s.label} className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
+          <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center justify-between">
-              <div><p className="text-gray-400 text-sm">{s.label}</p><p className="text-2xl font-bold text-white mt-1">{s.value}</p></div>
+              <div><p className="text-gray-600 text-sm">{s.label}</p><p className="text-2xl font-bold text-gray-900 mt-1">{s.value}</p></div>
               <div className={`p-2.5 rounded-lg ${s.color}`}>{s.icon}</div>
             </div>
           </div>
@@ -460,18 +460,18 @@ export default function SubscriptionsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 mb-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input type="text" placeholder="Search stores..." value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none transition text-sm" />
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-[#6B3FD9] focus:outline-none transition text-sm" />
           </div>
           <div className="flex gap-3">
             <div className="relative">
               <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}
-                className="pl-3 pr-8 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer text-sm">
+                className="pl-3 pr-8 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer text-sm">
                 <option value="all">All Plans</option>
                 <option value="free_trial">Free Trial</option>
                 <option value="launch">Launch</option>
@@ -484,7 +484,7 @@ export default function SubscriptionsPage() {
             </div>
             <div className="relative">
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                className="pl-3 pr-8 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer text-sm">
+                className="pl-3 pr-8 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer text-sm">
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="trial">Trial</option>
@@ -504,17 +504,17 @@ export default function SubscriptionsPage() {
           <Loader2 className="w-8 h-8 text-[#6B3FD9] animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-[#151F32] rounded-xl border border-gray-800 p-16 text-center">
-          <Package className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400">No subscriptions found</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
+          <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">No subscriptions found</p>
         </div>
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="hidden lg:block bg-[#151F32] rounded-xl border border-gray-800 overflow-hidden">
+          <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="text-left text-xs text-gray-400 border-b border-gray-800 uppercase tracking-wider">
+                <tr className="text-left text-xs text-gray-600 border-b border-gray-200 uppercase tracking-wider">
                   <th className="px-5 py-3.5 font-medium">Store</th>
                   <th className="px-5 py-3.5 font-medium">Plan</th>
                   <th className="px-5 py-3.5 font-medium">Billing</th>
@@ -526,35 +526,35 @@ export default function SubscriptionsPage() {
               </thead>
               <tbody>
                 {filtered.map((sub) => (
-                  <tr key={sub.id} className="border-b border-gray-800/60 last:border-0 hover:bg-[#1A2540] transition">
-                    <td className="px-5 py-4 font-medium text-white">{sub.shop_name}</td>
-                    <td className={`px-5 py-4 font-semibold text-sm ${planStyles[sub.plan_type] ?? 'text-gray-400'}`}>
+                  <tr key={sub.id} className="border-b border-gray-800/60 last:border-0 hover:bg-gray-200 transition">
+                    <td className="px-5 py-4 font-medium text-gray-900">{sub.shop_name}</td>
+                    <td className={`px-5 py-4 font-semibold text-sm ${planStyles[sub.plan_type] ?? 'text-gray-600'}`}>
                       {PLAN_LABELS[sub.plan_type] ?? sub.plan_type}
                     </td>
-                    <td className="px-5 py-4 text-gray-400 capitalize text-sm">
+                    <td className="px-5 py-4 text-gray-600 capitalize text-sm">
                       {sub.billing_type?.replace('_', '-') ?? '—'}
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`text-xs px-2.5 py-1 rounded-lg capitalize font-medium ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
+                      <span className={`text-xs px-2.5 py-1 rounded-lg capitalize font-medium ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-600'}`}>
                         {STATUS_LABEL[sub.status] ?? sub.status}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-white text-sm font-medium">
+                    <td className="px-5 py-4 text-gray-900 text-sm font-medium">
                       {sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'}
                     </td>
-                    <td className="px-5 py-4 text-gray-400 text-sm">{fmtDate(sub.expires_at)}</td>
+                    <td className="px-5 py-4 text-gray-600 text-sm">{fmtDate(sub.expires_at)}</td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {sub.status === 'pending_approval' && (
                           <>
                             <button type="button"
                               onClick={() => { setConfirmError(''); setConfirmModal({ sub, action: 'approve' }); }}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-green-500/10 text-green-400 hover:bg-green-500/20 transition">
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-green-500/10 text-green-600 hover:bg-green-500/20 transition">
                               <Check className="w-3.5 h-3.5" /> Approve
                             </button>
                             <button type="button"
                               onClick={() => { setConfirmError(''); setConfirmModal({ sub, action: 'reject' }); }}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition">
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-600 hover:bg-red-500/20 transition">
                               <X className="w-3.5 h-3.5" /> Reject
                             </button>
                           </>
@@ -574,35 +574,35 @@ export default function SubscriptionsPage() {
           {/* Mobile Cards */}
           <div className="lg:hidden space-y-3">
             {filtered.map((sub) => (
-              <div key={sub.id} className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
+              <div key={sub.id} className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="font-semibold text-white">{sub.shop_name}</p>
-                  <span className={`text-xs px-2.5 py-1 rounded-lg font-medium ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-400'}`}>
+                  <p className="font-semibold text-gray-900">{sub.shop_name}</p>
+                  <span className={`text-xs px-2.5 py-1 rounded-lg font-medium ${statusStyles[sub.status] ?? 'bg-gray-500/10 text-gray-600'}`}>
                     {STATUS_LABEL[sub.status] ?? sub.status}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mb-1">
-                  <ChevronRight className="w-3 h-3 text-gray-600" />
-                  <span className={`text-sm font-semibold ${planStyles[sub.plan_type] ?? 'text-gray-400'}`}>
+                  <ChevronRight className="w-3 h-3 text-gray-400" />
+                  <span className={`text-sm font-semibold ${planStyles[sub.plan_type] ?? 'text-gray-600'}`}>
                     {PLAN_LABELS[sub.plan_type] ?? sub.plan_type}
                   </span>
                   <span className="text-xs text-gray-500 capitalize">{sub.billing_type?.replace('_', '-')}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm pt-3 border-t border-gray-800 mt-3">
-                  <span className="text-gray-400 text-xs">{fmtDate(sub.expires_at)}</span>
-                  <span className="text-white font-medium text-xs">{sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'}</span>
+                <div className="flex items-center justify-between text-sm pt-3 border-t border-gray-200 mt-3">
+                  <span className="text-gray-600 text-xs">{fmtDate(sub.expires_at)}</span>
+                  <span className="text-gray-900 font-medium text-xs">{sub.amount_paid > 0 ? `${sub.amount_paid} ${sub.currency}` : 'Free'}</span>
                 </div>
                 <div className="flex gap-2 mt-3">
                   {sub.status === 'pending_approval' && (
                     <>
                       <button type="button"
                         onClick={() => { setConfirmError(''); setConfirmModal({ sub, action: 'approve' }); }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition text-xs font-semibold">
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 transition text-xs font-semibold">
                         <Check className="w-3.5 h-3.5" /> Approve
                       </button>
                       <button type="button"
                         onClick={() => { setConfirmError(''); setConfirmModal({ sub, action: 'reject' }); }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition text-xs font-semibold">
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-500/10 text-red-600 hover:bg-red-500/20 transition text-xs font-semibold">
                         <X className="w-3.5 h-3.5" /> Reject
                       </button>
                     </>

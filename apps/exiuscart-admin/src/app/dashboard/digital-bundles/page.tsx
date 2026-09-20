@@ -55,23 +55,23 @@ function MetaAdSearchPanel({ query, setQuery, onPick, onClose }: {
   };
 
   return (
-    <div className="mt-2 p-3 bg-[#0B1121] border border-gray-700 rounded-lg space-y-2">
+    <div className="mt-2 p-3 bg-gray-50 border border-gray-300 rounded-lg space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-gray-400">Search real ads on Meta Ad Library</p>
-        <button type="button" onClick={onClose} className="text-gray-500 hover:text-white"><X className="w-3.5 h-3.5" /></button>
+        <p className="text-xs font-medium text-gray-600">Search real ads on Meta Ad Library</p>
+        <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-900"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
         <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runSearch(); } }}
           placeholder="Search by product or brand name…"
-          className="flex-1 px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+          className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
         <button type="button" onClick={runSearch} disabled={loading}
           className="px-3 py-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center gap-1.5">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
         </button>
       </div>
       {error && (
-        <div className="flex items-start gap-2 text-xs text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
+        <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2">
           <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}
         </div>
       )}
@@ -79,8 +79,8 @@ function MetaAdSearchPanel({ query, setQuery, onPick, onClose }: {
         <div className="space-y-1.5 max-h-56 overflow-y-auto">
           {ads.map((ad) => (
             <button key={ad.id} type="button" onClick={() => onPick(ad.snapshot_url)}
-              className="w-full text-left px-3 py-2 bg-[#151F32] hover:bg-[#1c2842] border border-gray-800 rounded-lg transition">
-              <p className="text-xs font-medium text-white truncate">{ad.page_name || 'Unknown advertiser'}</p>
+              className="w-full text-left px-3 py-2 bg-white hover:bg-gray-200 border border-gray-200 rounded-lg transition">
+              <p className="text-xs font-medium text-gray-900 truncate">{ad.page_name || 'Unknown advertiser'}</p>
               {ad.body && <p className="text-xs text-gray-500 truncate mt-0.5">{ad.body}</p>}
             </button>
           ))}
@@ -180,7 +180,7 @@ export default function DigitalBundlesPage() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Digital Bundles</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Digital Bundles</h1>
           <p className="text-sm text-gray-500 mt-0.5">Design packs ExiusCart sells to sellers through Prodora — coloring books, POD design sets.</p>
         </div>
         <button onClick={openCreate} className="flex items-center gap-1.5 px-4 py-2.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium">
@@ -195,30 +195,30 @@ export default function DigitalBundlesPage() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {bundles.map((b) => (
-            <div key={b.id} className="bg-[#101825] border border-gray-800 rounded-2xl overflow-hidden">
-              <div className="relative aspect-video bg-[#0B1121]">
+            <div key={b.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              <div className="relative aspect-video bg-gray-50">
                 {b.cover_image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={b.cover_image_url} alt={b.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center"><Download className="w-8 h-8 text-gray-700" /></div>
+                  <div className="w-full h-full flex items-center justify-center"><Download className="w-8 h-8 text-gray-300" /></div>
                 )}
-                {!b.is_active && <span className="absolute top-2 left-2 text-[10px] px-2 py-0.5 bg-gray-800 text-gray-400 rounded-full">Inactive</span>}
+                {!b.is_active && <span className="absolute top-2 left-2 text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">Inactive</span>}
               </div>
               <div className="p-4 space-y-2">
-                <p className="font-medium text-white truncate">{b.name}</p>
+                <p className="font-medium text-gray-900 truncate">{b.name}</p>
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span>${b.price.toFixed(2)} → resell ${b.suggested_resale_price?.toFixed(2) ?? '—'}</span>
                   <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {b.purchase_count}</span>
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <button onClick={() => openEdit(b)} className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 border border-gray-700 rounded-lg text-xs text-gray-300 hover:bg-gray-800">
+                  <button onClick={() => openEdit(b)} className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-700 hover:bg-gray-100">
                     <Edit2 className="w-3 h-3" /> Edit
                   </button>
-                  <button onClick={() => setGrantTarget(b)} className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 border border-gray-700 rounded-lg text-xs text-gray-300 hover:bg-gray-800">
+                  <button onClick={() => setGrantTarget(b)} className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-700 hover:bg-gray-100">
                     Grant access
                   </button>
-                  <button onClick={() => handleDelete(b.id)} className="px-2.5 py-1.5 border border-gray-700 rounded-lg text-red-400 hover:bg-red-500/10">
+                  <button onClick={() => handleDelete(b.id)} className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-red-600 hover:bg-red-500/10">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -231,35 +231,35 @@ export default function DigitalBundlesPage() {
       {/* Create/Edit form */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0B1121] border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-gray-800 sticky top-0 bg-[#0B1121]">
-              <p className="font-semibold text-white">{editingId ? 'Edit Bundle' : 'New Digital Bundle'}</p>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-gray-50">
+              <p className="font-semibold text-gray-900">{editingId ? 'Edit Bundle' : 'New Digital Bundle'}</p>
+              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-900"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-5 space-y-4">
-              {error && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{error}</div>}
+              {error && <div className="bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
 
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Name *</label>
                 <input value={form.name} onChange={(e) => setForm((f: any) => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm((f: any) => ({ ...f, description: e.target.value }))} rows={3}
-                  className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none resize-none" />
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none resize-none" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Price to seller ($) *</label>
                   <input type="number" step="0.01" value={form.price} onChange={(e) => setForm((f: any) => ({ ...f, price: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Suggested resale price ($)</label>
                   <input type="number" step="0.01" value={form.suggested_resale_price} onChange={(e) => setForm((f: any) => ({ ...f, suggested_resale_price: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
               </div>
 
@@ -267,18 +267,18 @@ export default function DigitalBundlesPage() {
                 <label className="text-xs text-gray-500 mb-1 block">Where to sell / resale notes</label>
                 <textarea value={form.resale_notes} onChange={(e) => setForm((f: any) => ({ ...f, resale_notes: e.target.value }))} rows={2}
                   placeholder="e.g. Great on Etsy and TikTok Shop, target parents 25-40…"
-                  className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none resize-none" />
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none resize-none" />
               </div>
 
               {/* Files */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-3">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Files</p>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 flex items-center justify-between">
                     <span>Editable source file</span>
-                    {form.editable_file_url && <span className="text-green-400">Uploaded ✓</span>}
+                    {form.editable_file_url && <span className="text-green-600">Uploaded ✓</span>}
                   </label>
-                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 border border-dashed border-gray-700 rounded-lg text-xs text-gray-400 hover:border-[#6B3FD9] cursor-pointer">
+                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 border border-dashed border-gray-300 rounded-lg text-xs text-gray-600 hover:border-[#6B3FD9] cursor-pointer">
                     {uploadingEditable ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                     {uploadingEditable ? 'Uploading…' : 'Upload editable file (PSD, AI, ZIP…)'}
                     <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'editable')} />
@@ -287,9 +287,9 @@ export default function DigitalBundlesPage() {
                 <div>
                   <label className="text-xs text-gray-500 mb-1 flex items-center justify-between">
                     <span>Finished PDF / ebook</span>
-                    {form.pdf_file_url && <span className="text-green-400">Uploaded ✓</span>}
+                    {form.pdf_file_url && <span className="text-green-600">Uploaded ✓</span>}
                   </label>
-                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 border border-dashed border-gray-700 rounded-lg text-xs text-gray-400 hover:border-[#6B3FD9] cursor-pointer">
+                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 border border-dashed border-gray-300 rounded-lg text-xs text-gray-600 hover:border-[#6B3FD9] cursor-pointer">
                     {uploadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                     {uploadingPdf ? 'Uploading…' : 'Upload finished PDF'}
                     <input type="file" accept="application/pdf" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'pdf')} />
@@ -298,12 +298,12 @@ export default function DigitalBundlesPage() {
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Cover image URL</label>
                   <input value={form.cover_image_url} onChange={(e) => setForm((f: any) => ({ ...f, cover_image_url: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
               </div>
 
               {/* Ad proof */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-3">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Social Proof Links</p>
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -311,7 +311,7 @@ export default function DigitalBundlesPage() {
                     <button type="button" onClick={() => { setShowMetaSearch('facebook'); setMetaQuery(form.name); }} className="text-xs text-[#6B3FD9] hover:underline">Search Meta Ads</button>
                   </div>
                   <input value={form.ad_facebook_url} onChange={(e) => setForm((f: any) => ({ ...f, ad_facebook_url: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   {showMetaSearch === 'facebook' && (
                     <MetaAdSearchPanel query={metaQuery} setQuery={setMetaQuery}
                       onPick={(url) => { setForm((f: any) => ({ ...f, ad_facebook_url: url })); setShowMetaSearch(null); }}
@@ -324,7 +324,7 @@ export default function DigitalBundlesPage() {
                     <button type="button" onClick={() => { setShowMetaSearch('instagram'); setMetaQuery(form.name); }} className="text-xs text-[#6B3FD9] hover:underline">Search Meta Ads</button>
                   </div>
                   <input value={form.ad_instagram_url} onChange={(e) => setForm((f: any) => ({ ...f, ad_instagram_url: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   {showMetaSearch === 'instagram' && (
                     <MetaAdSearchPanel query={metaQuery} setQuery={setMetaQuery}
                       onPick={(url) => { setForm((f: any) => ({ ...f, ad_instagram_url: url })); setShowMetaSearch(null); }}
@@ -335,34 +335,34 @@ export default function DigitalBundlesPage() {
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">TikTok Ad URL</label>
                     <input value={form.ad_tiktok_url} onChange={(e) => setForm((f: any) => ({ ...f, ad_tiktok_url: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Pinterest Ad URL</label>
                     <input value={form.ad_pinterest_url} onChange={(e) => setForm((f: any) => ({ ...f, ad_pinterest_url: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                 </div>
               </div>
 
               {/* Whop */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-3">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Whop Checkout</p>
-                <p className="text-xs text-gray-600 -mt-2">Create this bundle as a product in ExiusCart&apos;s own Whop dashboard first, then paste its checkout link and product ID here.</p>
+                <p className="text-xs text-gray-400 -mt-2">Create this bundle as a product in ExiusCart&apos;s own Whop dashboard first, then paste its checkout link and product ID here.</p>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Whop checkout URL</label>
                   <input value={form.whop_checkout_url} onChange={(e) => setForm((f: any) => ({ ...f, whop_checkout_url: e.target.value }))}
                     placeholder="https://whop.com/checkout/..."
-                    className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Whop product/plan ID <span className="opacity-60">— used to auto-match webhook payments</span></label>
                   <input value={form.whop_product_id} onChange={(e) => setForm((f: any) => ({ ...f, whop_product_id: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-gray-300">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f: any) => ({ ...f, is_active: e.target.checked }))} />
                 Visible to sellers in Prodora
               </label>
@@ -380,13 +380,13 @@ export default function DigitalBundlesPage() {
       {/* Manual grant */}
       {grantTarget && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0B1121] border border-gray-800 rounded-2xl w-full max-w-sm p-5">
-            <p className="font-semibold text-white mb-1">Grant &ldquo;{grantTarget.name}&rdquo;</p>
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl w-full max-w-sm p-5">
+            <p className="font-semibold text-gray-900 mb-1">Grant &ldquo;{grantTarget.name}&rdquo;</p>
             <p className="text-xs text-gray-500 mb-4">Use this if a real Whop payment came in but wasn&apos;t auto-matched — check the backend logs for the shop_id it couldn&apos;t match.</p>
             <input type="number" value={grantShopId} onChange={(e) => setGrantShopId(e.target.value)} placeholder="Shop ID"
-              className="w-full px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white text-sm mb-3 focus:border-[#6B3FD9] focus:outline-none" />
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm mb-3 focus:border-[#6B3FD9] focus:outline-none" />
             <div className="flex gap-2">
-              <button onClick={() => setGrantTarget(null)} className="flex-1 py-2 border border-gray-700 rounded-lg text-sm text-gray-300">Cancel</button>
+              <button onClick={() => setGrantTarget(null)} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm text-gray-700">Cancel</button>
               <button onClick={handleGrant} disabled={granting} className="flex-1 py-2 bg-[#6B3FD9] rounded-lg text-sm text-white disabled:opacity-60">
                 {granting ? 'Granting…' : 'Grant Access'}
               </button>

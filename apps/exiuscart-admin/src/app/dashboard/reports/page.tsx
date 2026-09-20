@@ -91,14 +91,14 @@ export default function ReportsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Reports</h1>
-          <p className="text-gray-400 text-sm mt-1">Analytics and insights for your platform</p>
+          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+          <p className="text-gray-600 text-sm mt-1">Analytics and insights for your platform</p>
         </div>
         <div className="flex gap-3">
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="px-4 py-2.5 bg-[#151F32] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer"
+            className="px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer"
           >
             <option value="last_7_days">Last 7 days</option>
             <option value="last_30_days">Last 30 days</option>
@@ -107,7 +107,7 @@ export default function ReportsPage() {
           </select>
           <button
             type="button"
-            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-black font-semibold px-4 py-2.5 rounded-lg transition"
+            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-4 py-2.5 rounded-lg transition"
           >
             <Download className="w-5 h-5" />
             <span className="hidden sm:inline">Export</span>
@@ -137,10 +137,10 @@ export default function ReportsPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Revenue Chart */}
-        <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 md:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-white">Revenue Overview</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Revenue Overview</h3>
               <p className="text-sm text-gray-500">Monthly revenue trend</p>
             </div>
             <BarChart3 className="w-5 h-5 text-[#6B3FD9]" />
@@ -167,10 +167,10 @@ export default function ReportsPage() {
               })}
             </div>
           )}
-          <div className="mt-4 pt-4 border-t border-gray-800">
+          <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Total this period</span>
-              <span className="text-lg font-semibold text-white">
+              <span className="text-sm text-gray-600">Total this period</span>
+              <span className="text-lg font-semibold text-gray-900">
                 ${monthly.reduce((sum, m) => sum + m.value, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
             </div>
@@ -178,10 +178,10 @@ export default function ReportsPage() {
         </div>
 
         {/* Plan Distribution */}
-        <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 md:p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-white">Plan Distribution</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Plan Distribution</h3>
               <p className="text-sm text-gray-500">Active subscriptions by plan</p>
             </div>
             <Package className="w-5 h-5 text-[#6B3FD9]" />
@@ -197,12 +197,12 @@ export default function ReportsPage() {
                 return (
                   <div key={plan.plan}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-300 capitalize">{plan.plan}</span>
-                      <span className="text-sm text-gray-400">
+                      <span className="text-sm text-gray-700 capitalize">{plan.plan}</span>
+                      <span className="text-sm text-gray-600">
                         {plan.count} stores ({plan.percentage}%)
                       </span>
                     </div>
-                    <div className="h-3 bg-[#0B1121] rounded-full overflow-hidden">
+                    <div className="h-3 bg-gray-50 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${colorClass}`}
                         style={{ width: `${plan.percentage}%` }}
@@ -213,10 +213,10 @@ export default function ReportsPage() {
               })}
             </div>
           )}
-          <div className="mt-6 pt-4 border-t border-gray-800">
+          <div className="mt-6 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Total active</span>
-              <span className="text-lg font-semibold text-white">
+              <span className="text-sm text-gray-600">Total active</span>
+              <span className="text-lg font-semibold text-gray-900">
                 {planDist.reduce((sum, p) => sum + p.count, 0)} subscriptions
               </span>
             </div>
@@ -225,10 +225,10 @@ export default function ReportsPage() {
       </div>
 
       {/* Top Shops */}
-      <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 md:p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-white">Top Performing Stores</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Top Performing Stores</h3>
             <p className="text-sm text-gray-500">Ranked by revenue</p>
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function ReportsPage() {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-sm text-gray-400 border-b border-gray-800">
+                  <tr className="text-left text-sm text-gray-600 border-b border-gray-200">
                     <th className="pb-3 font-medium">Rank</th>
                     <th className="pb-3 font-medium">Store Name</th>
                     <th className="pb-3 font-medium text-right">Revenue</th>
@@ -249,16 +249,16 @@ export default function ReportsPage() {
                 </thead>
                 <tbody>
                   {topShops.map((shop, index) => (
-                    <tr key={shop.name} className="border-b border-gray-800 last:border-0">
+                    <tr key={shop.name} className="border-b border-gray-200 last:border-0">
                       <td className="py-4">
                         <span
                           className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
                             index === 0
                               ? 'bg-[#6B3FD9]/10 text-[#6B3FD9]'
                               : index === 1
-                              ? 'bg-gray-400/10 text-gray-400'
+                              ? 'bg-gray-400/10 text-gray-600'
                               : index === 2
-                              ? 'bg-orange-400/10 text-orange-400'
+                              ? 'bg-orange-400/10 text-orange-600'
                               : 'bg-gray-700/50 text-gray-500'
                           }`}
                         >
@@ -270,10 +270,10 @@ export default function ReportsPage() {
                           <div className="w-10 h-10 bg-[#6B3FD9]/10 rounded-lg flex items-center justify-center">
                             <Store className="w-5 h-5 text-[#6B3FD9]" />
                           </div>
-                          <span className="font-medium text-white">{shop.name}</span>
+                          <span className="font-medium text-gray-900">{shop.name}</span>
                         </div>
                       </td>
-                      <td className="py-4 text-right font-semibold text-white">
+                      <td className="py-4 text-right font-semibold text-gray-900">
                         ${shop.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </td>
                     </tr>
@@ -285,25 +285,25 @@ export default function ReportsPage() {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-3">
               {topShops.map((shop, index) => (
-                <div key={shop.name} className="bg-[#0B1121] rounded-lg p-4 flex items-center gap-4">
+                <div key={shop.name} className="bg-gray-50 rounded-lg p-4 flex items-center gap-4">
                   <span
                     className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold flex-shrink-0 ${
                       index === 0
                         ? 'bg-[#6B3FD9]/10 text-[#6B3FD9]'
                         : index === 1
-                        ? 'bg-gray-400/10 text-gray-400'
+                        ? 'bg-gray-400/10 text-gray-600'
                         : index === 2
-                        ? 'bg-orange-400/10 text-orange-400'
+                        ? 'bg-orange-400/10 text-orange-600'
                         : 'bg-gray-700/50 text-gray-500'
                     }`}
                   >
                     {index + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-white truncate">{shop.name}</p>
+                    <p className="font-medium text-gray-900 truncate">{shop.name}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-white">
+                    <p className="font-semibold text-gray-900">
                       ${shop.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </p>
                     <p className="text-xs text-gray-500">USD</p>
@@ -352,11 +352,11 @@ function StatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="p-2 rounded-lg bg-[#6B3FD9]/10 text-[#6B3FD9]">{icon}</div>
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
       <p className="text-sm text-gray-500 mt-1">{label}</p>
     </div>
   );
@@ -372,11 +372,11 @@ function QuickStatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-gray-500/10 text-gray-400">{icon}</div>
+        <div className="p-2 rounded-lg bg-gray-500/10 text-gray-600">{icon}</div>
         <div>
-          <p className="text-lg font-bold text-white">{value}</p>
+          <p className="text-lg font-bold text-gray-900">{value}</p>
           <p className="text-xs text-gray-500">{label}</p>
         </div>
       </div>

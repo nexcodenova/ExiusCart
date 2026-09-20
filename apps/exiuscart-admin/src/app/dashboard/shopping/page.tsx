@@ -123,7 +123,7 @@ function Toggle({
     <button
       type="button"
       onClick={onChange}
-      className={`w-9 h-5 rounded-full transition-colors flex items-center flex-shrink-0 ${on ? color : 'bg-gray-700'}`}
+      className={`w-9 h-5 rounded-full transition-colors flex items-center flex-shrink-0 ${on ? color : 'bg-gray-200'}`}
     >
       <span className={`w-3.5 h-3.5 bg-white rounded-full shadow transition-transform mx-0.5 ${on ? 'translate-x-4' : 'translate-x-0'}`} />
     </button>
@@ -140,7 +140,7 @@ function QuickToggle({
       type="button"
       title={title}
       onClick={onClick}
-      className={`p-1.5 rounded-lg transition ${active ? 'bg-[#6B3FD9]/20 text-[#6B3FD9]' : 'text-gray-600 hover:text-gray-400 hover:bg-gray-800'}`}
+      className={`p-1.5 rounded-lg transition ${active ? 'bg-[#6B3FD9]/20 text-[#6B3FD9]' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
     >
       {icon}
     </button>
@@ -160,46 +160,46 @@ function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, 
 }) {
   const [previewId, setPreviewId] = useState<string | null>(null);
   return (
-    <div className="mt-2 p-3 bg-[#0B1121] border border-gray-700 rounded-lg space-y-2">
+    <div className="mt-2 p-3 bg-gray-50 border border-gray-300 rounded-lg space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-gray-400">Search real ads on Meta Ad Library</p>
-        <button type="button" onClick={onClose} className="text-gray-500 hover:text-white"><X className="w-3.5 h-3.5" /></button>
+        <p className="text-xs font-medium text-gray-600">Search real ads on Meta Ad Library</p>
+        <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-900"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
         <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
           placeholder="Search by product or brand name…"
-          className="flex-1 px-3 py-2 bg-[#151F32] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+          className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
         <button type="button" onClick={onSearch} disabled={loading}
           className="px-3 py-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center gap-1.5">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
         </button>
       </div>
       {error && (
-        <div className="flex items-start gap-2 text-xs text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
+        <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2">
           <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}
         </div>
       )}
       {ads.length > 0 && (
         <div className="space-y-1.5 max-h-72 overflow-y-auto">
           {ads.map((ad) => (
-            <div key={ad.id} className="bg-[#151F32] border border-gray-800 rounded-lg overflow-hidden">
+            <div key={ad.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
               <div className="flex items-center">
                 <button type="button" onClick={() => onPick(ad.snapshot_url)}
-                  className="flex-1 text-left px-3 py-2 hover:bg-[#1c2842] transition min-w-0">
-                  <p className="text-xs font-medium text-white truncate">{ad.page_name || 'Unknown advertiser'}</p>
+                  className="flex-1 text-left px-3 py-2 hover:bg-gray-200 transition min-w-0">
+                  <p className="text-xs font-medium text-gray-900 truncate">{ad.page_name || 'Unknown advertiser'}</p>
                   {ad.body && <p className="text-xs text-gray-500 truncate mt-0.5">{ad.body}</p>}
                 </button>
                 <button type="button" onClick={() => setPreviewId(previewId === ad.id ? null : ad.id)}
-                  title="Preview this ad" className="px-3 py-2 text-gray-500 hover:text-white shrink-0">
+                  title="Preview this ad" className="px-3 py-2 text-gray-500 hover:text-gray-900 shrink-0">
                   <Eye className="w-4 h-4" />
                 </button>
               </div>
               {previewId === ad.id && (
-                <div className="border-t border-gray-800">
+                <div className="border-t border-gray-200">
                   <iframe src={ad.snapshot_url} className="w-full h-72" title="Ad preview" />
                   <button type="button" onClick={() => onPick(ad.snapshot_url)}
-                    className="w-full py-1.5 text-xs font-medium text-[#6B3FD9] hover:bg-[#1c2842] transition">
+                    className="w-full py-1.5 text-xs font-medium text-[#6B3FD9] hover:bg-gray-200 transition">
                     Use this ad
                   </button>
                 </div>
@@ -403,36 +403,36 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0F1729] border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-gray-800 sticky top-0 bg-[#0F1729] z-10">
+      <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-3xl shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div>
-            <p className="font-semibold text-white flex items-center gap-2">
+            <p className="font-semibold text-gray-900 flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-[#6B3FD9]" /> Import from CJ Dropshipping
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">Products go straight into the Prodora catalog</p>
+            <p className="text-xs text-gray-600 mt-0.5">Products go straight into the Prodora catalog</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600"><X className="w-4 h-4" /></button>
         </div>
 
         {!connected ? (
           <form onSubmit={connect} className="p-5 space-y-4">
             {connectError && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{connectError}</div>
+              <div className="bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">{connectError}</div>
             )}
             <div>
-              <label className="text-sm text-gray-400 mb-1.5 block">CJ API Key *</label>
+              <label className="text-sm text-gray-600 mb-1.5 block">CJ API Key *</label>
               <div className="relative">
                 <input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(e) => setApiKey(e.target.value)} required
                   placeholder="CJUserNum@api@..."
-                  className="w-full px-3 py-2.5 pr-10 bg-[#0B1121] border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-white text-sm" />
+                  className="w-full px-3 py-2.5 pr-10 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-gray-900 text-sm" />
                 <button type="button" onClick={() => setShowApiKey((v) => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900"
                   aria-label={showApiKey ? 'Hide API key' : 'Show API key'}>
                   {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-            <p className="text-xs text-gray-400 bg-[#0B1121] rounded-lg px-3 py-2.5 leading-relaxed">
+            <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2.5 leading-relaxed">
               Generate a key at CJ &rarr; My CJ &rarr; API management &rarr; Add API &rarr; Type: &quot;API Key&quot;. This connects CJ to the Prodora catalog only, separate from any individual seller&apos;s own CJ connection.
             </p>
             <button type="submit" disabled={connecting}
@@ -444,28 +444,28 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
         ) : (
           <div className="p-5 space-y-4">
             {/* Tabs */}
-            <div className="flex gap-1 border-b border-gray-800">
+            <div className="flex gap-1 border-b border-gray-200">
               <button onClick={() => setActiveTab('trending')}
                 className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition flex items-center gap-1.5 ${
-                  activeTab === 'trending' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                  activeTab === 'trending' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}>
                 <Flame className="w-3.5 h-3.5" /> Trending
               </button>
               <button onClick={() => setActiveTab('my')}
                 className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
-                  activeTab === 'my' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                  activeTab === 'my' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}>
                 My CJ Products
               </button>
               <button onClick={() => setActiveTab('category')}
                 className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
-                  activeTab === 'category' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                  activeTab === 'category' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}>
                 Categories
               </button>
               <button onClick={() => setActiveTab('search')}
                 className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
-                  activeTab === 'search' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                  activeTab === 'search' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}>
                 Search Catalog
               </button>
@@ -480,13 +480,13 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
                     value={inputVal}
                     onChange={(e) => setInputVal(e.target.value)}
                     placeholder="Search CJ products e.g. wireless earbuds, phone case, yoga mat…"
-                    className="w-full pl-10 pr-4 py-3 bg-[#0B1121] border border-gray-700 rounded-xl text-sm text-white placeholder:text-gray-500 focus:ring-2 focus:ring-[#6B3FD9] outline-none"
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-[#6B3FD9] outline-none"
                   />
                   {loading && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-500" />}
                 </div>
 
                 {inputVal.trim().split(/\s+/).filter(Boolean).length > 4 && (
-                  <div className="flex items-start gap-2 text-xs text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2.5">
+                  <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2.5">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>CJ&apos;s search works best with short, simple terms (1–3 words) — long phrases tend to return unrelated results.</span>
                   </div>
@@ -509,7 +509,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
             {activeTab === 'category' && (
               <div className="space-y-2">
                 <select value={selectedCategoryId} onChange={(e) => handleSelectCategory(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-[#6B3FD9] outline-none">
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#6B3FD9] outline-none">
                   <option value="">
                     {categoriesLoaded ? 'Select a category…' : 'Loading categories…'}
                   </option>
@@ -522,13 +522,13 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
             )}
 
             {importedCount > 0 && (
-              <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2.5 text-sm text-green-400">
+              <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2.5 text-sm text-green-600">
                 <Check className="w-4 h-4" /> {importedCount} product{importedCount > 1 ? 's' : ''} imported into Prodora
               </div>
             )}
 
             {activeTab === 'search' && searchError && (
-              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">
                 <AlertCircle className="w-4 h-4 shrink-0" /> {searchError}
               </div>
             )}
@@ -544,7 +544,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
             )}
 
             {activeTab === 'my' && myError && (
-              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">
                 <AlertCircle className="w-4 h-4 shrink-0" /> {myError}
               </div>
             )}
@@ -562,17 +562,17 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
             )}
 
             {activeTab === 'trending' && trendingError && (
-              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">
                 <AlertCircle className="w-4 h-4 shrink-0" /> {trendingError}
               </div>
             )}
 
             {/* Bulk selection bar — Trending & My CJ Products only */}
             {activeTab !== 'search' && selected.size > 0 && (
-              <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-[#151F32] border border-[#6B3FD9]/40 rounded-lg px-4 py-2.5">
-                <span className="text-sm text-white">{selected.size} selected</span>
+              <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-white border border-[#6B3FD9]/40 rounded-lg px-4 py-2.5">
+                <span className="text-sm text-gray-900">{selected.size} selected</span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-white">Clear</button>
+                  <button onClick={() => setSelected(new Set())} className="text-xs text-gray-600 hover:text-gray-900">Clear</button>
                   <button onClick={handleBulkImport} disabled={bulkImporting}
                     className="text-xs px-3 py-1.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg font-medium disabled:opacity-60 flex items-center gap-1.5">
                     {bulkImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
@@ -585,27 +585,27 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
             {displayProducts.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {displayProducts.map((p) => (
-                  <div key={p.pid} className={`relative bg-[#0B1121] border rounded-xl overflow-hidden flex flex-col transition ${selected.has(p.pid) ? 'border-[#6B3FD9]' : 'border-gray-800'}`}>
+                  <div key={p.pid} className={`relative bg-gray-50 border rounded-xl overflow-hidden flex flex-col transition ${selected.has(p.pid) ? 'border-[#6B3FD9]' : 'border-gray-200'}`}>
                     {activeTab !== 'search' && (
                       <button type="button" onClick={() => toggleSelect(p.pid)}
                         className={`absolute top-2 left-2 z-10 w-5 h-5 rounded border flex items-center justify-center transition ${
-                          selected.has(p.pid) ? 'bg-[#6B3FD9] border-[#6B3FD9]' : 'bg-black/50 border-gray-500 hover:border-white'
+                          selected.has(p.pid) ? 'bg-[#6B3FD9] border-[#6B3FD9]' : 'bg-black/50 border-gray-400 hover:border-white'
                         }`}>
-                        {selected.has(p.pid) && <Check className="w-3.5 h-3.5 text-white" />}
+                        {selected.has(p.pid) && <Check className="w-3.5 h-3.5 text-gray-900" />}
                       </button>
                     )}
-                    <div className="relative aspect-square bg-gray-900">
+                    <div className="relative aspect-square bg-white">
                       {p.image
                         ? <Image src={p.image} alt={p.name} fill className="object-cover" unoptimized />
-                        : <div className="absolute inset-0 flex items-center justify-center"><Package className="w-8 h-8 text-gray-700" /></div>
+                        : <div className="absolute inset-0 flex items-center justify-center"><Package className="w-8 h-8 text-gray-300" /></div>
                       }
                     </div>
                     <div className="p-3 flex flex-col gap-2 flex-1">
-                      <p className="text-xs text-white font-medium line-clamp-2 leading-snug">{p.name}</p>
+                      <p className="text-xs text-gray-900 font-medium line-clamp-2 leading-snug">{p.name}</p>
                       <div className="flex items-center justify-between mt-auto">
                         <div>
                           <p className="text-[10px] text-gray-500">CJ cost</p>
-                          <p className="text-sm font-bold text-white">${p.cost_price.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-gray-900">${p.cost_price.toFixed(2)}</p>
                         </div>
                         <button onClick={() => handleImport(p)} disabled={importingPid === p.pid}
                           className="text-xs px-2.5 py-1.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg transition font-medium shrink-0 disabled:opacity-60 flex items-center gap-1">
@@ -622,13 +622,13 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
               <div className="flex flex-col items-center gap-2 pt-1">
                 <div className="flex items-center gap-3">
                   <button type="button" disabled={trendingPage <= 1} onClick={() => loadTrending(trendingPage - 1)}
-                    className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Previous</button>
+                    className="text-xs px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 disabled:opacity-40">Previous</button>
                   <span className="text-xs text-gray-500">Page {trendingPage}</span>
                   <button type="button" disabled={!trendingHasMore} onClick={() => loadTrending(trendingPage + 1)}
-                    className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Next</button>
+                    className="text-xs px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 disabled:opacity-40">Next</button>
                 </div>
                 {!trendingHasMore && (
-                  <p className="text-xs text-gray-600">That&apos;s everything in CJ&apos;s current trending list.</p>
+                  <p className="text-xs text-gray-400">That&apos;s everything in CJ&apos;s current trending list.</p>
                 )}
               </div>
             )}
@@ -655,7 +655,7 @@ function CJImportModal({ connected, onClose, onConnected, onImported }: {
               <div className="flex justify-center pt-1">
                 <button type="button" disabled={loadingCategory || !categoryHasMore}
                   onClick={() => loadCategoryProducts(selectedCategoryId, categoryPage + 1, true)}
-                  className="text-xs px-4 py-2 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:border-gray-500 disabled:opacity-40 flex items-center gap-1.5">
+                  className="text-xs px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:text-gray-900 hover:border-gray-400 disabled:opacity-40 flex items-center gap-1.5">
                   {loadingCategory ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                   {!categoryHasMore ? 'No more products' : loadingCategory ? 'Loading…' : 'Load More'}
                 </button>
@@ -776,23 +776,23 @@ function AliexpressImportModal({ connected, systemShopId, onClose, onImported }:
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0F1729] border border-gray-800 rounded-2xl w-full max-w-3xl shadow-2xl max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-gray-800 sticky top-0 bg-[#0F1729] z-10">
+      <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-3xl shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div>
-            <p className="font-semibold text-white flex items-center gap-2">
+            <p className="font-semibold text-gray-900 flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-[#6B3FD9]" /> Import from AliExpress
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">Products go straight into the Prodora catalog</p>
+            <p className="text-xs text-gray-600 mt-0.5">Products go straight into the Prodora catalog</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600"><X className="w-4 h-4" /></button>
         </div>
 
         {!connected ? (
           <div className="p-5 space-y-4">
             {connectError && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{connectError}</div>
+              <div className="bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">{connectError}</div>
             )}
-            <p className="text-xs text-gray-400 bg-[#0B1121] rounded-lg px-3 py-2.5 leading-relaxed">
+            <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2.5 leading-relaxed">
               Connects to a real AliExpress account via their own login page (same OAuth flow sellers use to connect their own AliExpress). This connects it to the Prodora catalog only, separate from any individual seller&apos;s own connection.
             </p>
             <button type="button" onClick={connect} disabled={connecting || !systemShopId}
@@ -804,23 +804,23 @@ function AliexpressImportModal({ connected, systemShopId, onClose, onImported }:
         ) : (
           <div className="p-5 space-y-4">
             {/* Tabs */}
-            <div className="flex gap-1 border-b border-gray-800">
+            <div className="flex gap-1 border-b border-gray-200">
               <button onClick={() => setActiveTab('search')}
                 className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition flex items-center gap-1.5 ${
-                  activeTab === 'search' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                  activeTab === 'search' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}>
                 <Search className="w-3.5 h-3.5" /> Search Catalog
               </button>
               <button onClick={() => setActiveTab('link')}
                 className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
-                  activeTab === 'link' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-300'
+                  activeTab === 'link' ? 'border-[#6B3FD9] text-[#6B3FD9]' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}>
                 Paste Link
               </button>
             </div>
 
             {importedCount > 0 && (
-              <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2.5 text-sm text-green-400">
+              <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2.5 text-sm text-green-600">
                 <Check className="w-4 h-4" /> {importedCount} product{importedCount > 1 ? 's' : ''} imported into Prodora
               </div>
             )}
@@ -834,13 +834,13 @@ function AliexpressImportModal({ connected, systemShopId, onClose, onImported }:
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     placeholder="Search AliExpress e.g. phone case, yoga mat, LED lamp…"
-                    className="w-full pl-10 pr-4 py-3 bg-[#0B1121] border border-gray-700 rounded-xl text-sm text-white placeholder:text-gray-500 focus:ring-2 focus:ring-[#6B3FD9] outline-none"
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-[#6B3FD9] outline-none"
                   />
                   {searchLoading && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-500" />}
                 </div>
 
                 {searchError && (
-                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{searchError}</div>
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">{searchError}</div>
                 )}
 
                 {!searchQuery && (
@@ -854,19 +854,19 @@ function AliexpressImportModal({ connected, systemShopId, onClose, onImported }:
                 {searchResults.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {searchResults.map((p) => (
-                      <div key={p.item_id} className="relative bg-[#0B1121] border border-gray-800 rounded-xl overflow-hidden flex flex-col">
-                        <div className="relative aspect-square bg-gray-900">
+                      <div key={p.item_id} className="relative bg-gray-50 border border-gray-200 rounded-xl overflow-hidden flex flex-col">
+                        <div className="relative aspect-square bg-white">
                           {p.image
                             ? <Image src={p.image} alt={p.name} fill className="object-cover" unoptimized />
-                            : <div className="absolute inset-0 flex items-center justify-center"><Package className="w-8 h-8 text-gray-700" /></div>
+                            : <div className="absolute inset-0 flex items-center justify-center"><Package className="w-8 h-8 text-gray-300" /></div>
                           }
                         </div>
                         <div className="p-3 flex flex-col gap-2 flex-1">
-                          <p className="text-xs text-white font-medium line-clamp-2 leading-snug">{p.name}</p>
+                          <p className="text-xs text-gray-900 font-medium line-clamp-2 leading-snug">{p.name}</p>
                           <div className="flex items-center justify-between mt-auto">
                             <div>
                               <p className="text-[10px] text-gray-500">Price</p>
-                              <p className="text-sm font-bold text-white">{p.currency} {p.price.toFixed(2)}</p>
+                              <p className="text-sm font-bold text-gray-900">{p.currency} {p.price.toFixed(2)}</p>
                             </div>
                             <button onClick={() => handleSearchImport(p)} disabled={importingItemId === p.item_id}
                               className="text-xs px-2.5 py-1.5 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg transition font-medium shrink-0 disabled:opacity-60 flex items-center gap-1">
@@ -882,10 +882,10 @@ function AliexpressImportModal({ connected, systemShopId, onClose, onImported }:
                 {searchResults.length > 0 && (
                   <div className="flex items-center justify-center gap-3 pt-1">
                     <button type="button" disabled={searchPage <= 1 || searchLoading} onClick={() => runSearch(searchQuery, searchPage - 1)}
-                      className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Previous</button>
+                      className="text-xs px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 disabled:opacity-40">Previous</button>
                     <span className="text-xs text-gray-500">Page {searchPage} · {searchTotal} results</span>
                     <button type="button" disabled={searchPage * 20 >= searchTotal || searchLoading} onClick={() => runSearch(searchQuery, searchPage + 1)}
-                      className="text-xs px-3 py-1.5 border border-gray-700 rounded-lg text-gray-400 hover:text-white disabled:opacity-40">Next</button>
+                      className="text-xs px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 disabled:opacity-40">Next</button>
                   </div>
                 )}
               </div>
@@ -894,26 +894,26 @@ function AliexpressImportModal({ connected, systemShopId, onClose, onImported }:
             {activeTab === 'link' && (
               <form onSubmit={handleImport} className="space-y-4">
                 {importError && (
-                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{importError}</div>
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">{importError}</div>
                 )}
                 <div>
-                  <label className="text-sm text-gray-400 mb-1.5 block">AliExpress product link *</label>
+                  <label className="text-sm text-gray-600 mb-1.5 block">AliExpress product link *</label>
                   <input type="url" value={productUrl} onChange={(e) => setProductUrl(e.target.value)} required
                     placeholder="https://www.aliexpress.com/item/....html"
-                    className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-white text-sm" />
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-gray-900 text-sm" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-sm text-gray-400 mb-1.5 block">Selling price <span className="text-gray-600">(optional)</span></label>
+                    <label className="text-sm text-gray-600 mb-1.5 block">Selling price <span className="text-gray-400">(optional)</span></label>
                     <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)}
                       placeholder="Auto: 2× cost"
-                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-white text-sm" />
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-gray-900 text-sm" />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-400 mb-1.5 block">Category <span className="text-gray-600">(optional)</span></label>
+                    <label className="text-sm text-gray-600 mb-1.5 block">Category <span className="text-gray-400">(optional)</span></label>
                     <input type="text" value={categoryName} onChange={(e) => setCategoryName(e.target.value)}
                       placeholder="e.g. Electronics"
-                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-white text-sm" />
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6B3FD9] outline-none text-gray-900 text-sm" />
                   </div>
                 </div>
                 <button type="submit" disabled={importing || !productUrl.trim()}
@@ -1293,27 +1293,27 @@ export default function TrendingDropshippingPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-[#6B3FD9]" />
             Prodora Products
           </h1>
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-gray-600 text-sm mt-1">
             Products you add here appear on the Prodora dropshipping storefront
           </p>
         </div>
         <div className="flex items-center gap-2">
           {backfillResult && (
-            <span className="text-xs text-gray-400 max-w-[180px]">{backfillResult}</span>
+            <span className="text-xs text-gray-600 max-w-[180px]">{backfillResult}</span>
           )}
           {autoAttachResult && (
-            <span className="text-xs text-gray-400 max-w-[180px]">{autoAttachResult}</span>
+            <span className="text-xs text-gray-600 max-w-[180px]">{autoAttachResult}</span>
           )}
           <button
             type="button"
             onClick={handleBackfillDescriptions}
             disabled={backfilling}
             title="Re-cleans descriptions saved before the image-strip/word-limit fix existed — safe to run anytime"
-            className="inline-flex items-center gap-2 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-[#6B3FD9]/50 transition text-sm disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 hover:border-[#6B3FD9]/50 transition text-sm disabled:opacity-50"
           >
             {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Clean up descriptions
@@ -1323,7 +1323,7 @@ export default function TrendingDropshippingPage() {
             onClick={handleAutoAttachAds}
             disabled={autoAttaching}
             title="Searches Meta Ad Library for products missing a Facebook ad link and attaches the best match — throttled, runs in the background"
-            className="inline-flex items-center gap-2 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-[#6B3FD9]/50 transition text-sm disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 hover:border-[#6B3FD9]/50 transition text-sm disabled:opacity-50"
           >
             {autoAttaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
             Auto-attach Meta Ads
@@ -1332,7 +1332,7 @@ export default function TrendingDropshippingPage() {
             href="https://prodora.exiuscart.com"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-[#6B3FD9]/50 transition text-sm"
+            className="inline-flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 hover:border-[#6B3FD9]/50 transition text-sm"
           >
             <ExternalLink className="w-4 h-4" />
             Preview Prodora
@@ -1340,7 +1340,7 @@ export default function TrendingDropshippingPage() {
           <button
             type="button"
             onClick={() => setShowCjModal(true)}
-            className="inline-flex items-center gap-2 bg-[#0B1121] border border-gray-700 hover:border-[#6B3FD9]/50 text-white font-semibold px-4 py-2.5 rounded-lg transition"
+            className="inline-flex items-center gap-2 bg-gray-50 border border-gray-300 hover:border-[#6B3FD9]/50 text-gray-900 font-semibold px-4 py-2.5 rounded-lg transition"
           >
             <ShoppingBag className="w-4 h-4 text-[#6B3FD9]" />
             {cjConnected ? 'Import from CJ' : 'Connect CJ'}
@@ -1348,7 +1348,7 @@ export default function TrendingDropshippingPage() {
           <button
             type="button"
             onClick={() => setShowAliexpressModal(true)}
-            className="inline-flex items-center gap-2 bg-[#0B1121] border border-gray-700 hover:border-[#6B3FD9]/50 text-white font-semibold px-4 py-2.5 rounded-lg transition"
+            className="inline-flex items-center gap-2 bg-gray-50 border border-gray-300 hover:border-[#6B3FD9]/50 text-gray-900 font-semibold px-4 py-2.5 rounded-lg transition"
           >
             <ShoppingBag className="w-4 h-4 text-[#6B3FD9]" />
             {aliexpressConnected ? 'Import from AliExpress' : 'Connect AliExpress'}
@@ -1391,7 +1391,7 @@ export default function TrendingDropshippingPage() {
       </div>
 
       {/* Search */}
-      <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 mb-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
@@ -1399,13 +1399,13 @@ export default function TrendingDropshippingPage() {
             placeholder="Search dropshipping products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:border-[#6B3FD9] focus:outline-none text-sm"
+            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:border-[#6B3FD9] focus:outline-none text-sm"
           />
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-[#151F32] rounded-xl border border-gray-800 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-48">
             <Loader2 className="w-8 h-8 animate-spin text-[#6B3FD9]" />
@@ -1428,7 +1428,7 @@ export default function TrendingDropshippingPage() {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-xs text-gray-500 border-b border-gray-800 uppercase tracking-wider">
+                  <tr className="text-left text-xs text-gray-500 border-b border-gray-200 uppercase tracking-wider">
                     <th className="px-4 py-3 font-medium">Product</th>
                     <th className="px-4 py-3 font-medium text-right">Buying Price</th>
                     <th className="px-4 py-3 font-medium text-right">Selling Price</th>
@@ -1438,34 +1438,34 @@ export default function TrendingDropshippingPage() {
                     <th className="px-4 py-3 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800">
+                <tbody className="divide-y divide-gray-200">
                   {products.map((p) => {
                     const margin = p.cost_price && p.price > p.cost_price
                       ? Math.round(((p.price - p.cost_price) / p.price) * 100)
                       : null;
                     return (
-                      <tr key={p.id} className="hover:bg-[#0B1121]/50 transition">
+                      <tr key={p.id} className="hover:bg-gray-50 transition">
                         {/* Product */}
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-[#0B1121] border border-gray-800 flex-shrink-0 overflow-hidden">
+                            <div className="w-12 h-12 rounded-lg bg-gray-50 border border-gray-200 flex-shrink-0 overflow-hidden">
                               {p.image_url ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <Package className="w-5 h-5 text-gray-600" />
+                                  <Package className="w-5 h-5 text-gray-400" />
                                 </div>
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium text-white text-sm truncate max-w-[200px]">{p.name}</p>
+                              <p className="font-medium text-gray-900 text-sm truncate max-w-[200px]">{p.name}</p>
                               {p.category_name && (
                                 <span className="inline-flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                                   <Tag className="w-3 h-3" /> {p.category_name}
                                 </span>
                               )}
-                              {p.sku && <p className="text-xs text-gray-600 mt-0.5">SKU: {p.sku}</p>}
+                              {p.sku && <p className="text-xs text-gray-400 mt-0.5">SKU: {p.sku}</p>}
                             </div>
                           </div>
                         </td>
@@ -1473,11 +1473,11 @@ export default function TrendingDropshippingPage() {
                         {/* Buying price */}
                         <td className="px-4 py-4 text-right">
                           {p.cost_price ? (
-                            <span className="text-sm text-gray-400">
-                              {p.cost_price.toFixed(2)} <span className="text-xs text-gray-600">{p.currency}</span>
+                            <span className="text-sm text-gray-600">
+                              {p.cost_price.toFixed(2)} <span className="text-xs text-gray-400">{p.currency}</span>
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-700">—</span>
+                            <span className="text-xs text-gray-300">—</span>
                           )}
                         </td>
 
@@ -1491,11 +1491,11 @@ export default function TrendingDropshippingPage() {
                         {/* Margin */}
                         <td className="px-4 py-4 text-center">
                           {margin !== null ? (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20">
                               {margin}%
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-700">—</span>
+                            <span className="text-xs text-gray-300">—</span>
                           )}
                         </td>
 
@@ -1525,8 +1525,8 @@ export default function TrendingDropshippingPage() {
                             onClick={() => toggle(p, 'is_active')}
                             className={`text-xs px-2.5 py-1 rounded-full border font-medium transition ${
                               p.is_active
-                                ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20'
-                                : 'bg-gray-500/10 text-gray-500 border-gray-700 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500/20'
+                                ? 'bg-green-500/10 text-green-600 border-green-500/20 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/20'
+                                : 'bg-gray-500/10 text-gray-500 border-gray-300 hover:bg-green-500/10 hover:text-green-600 hover:border-green-500/20'
                             }`}
                           >
                             {p.is_active ? 'Active' : 'Hidden'}
@@ -1541,7 +1541,7 @@ export default function TrendingDropshippingPage() {
                                 href={p.source_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-1.5 text-gray-500 hover:text-[#6B3FD9] hover:bg-gray-800 rounded-lg transition inline-flex"
+                                className="p-1.5 text-gray-500 hover:text-[#6B3FD9] hover:bg-gray-100 rounded-lg transition inline-flex"
                                 title="Open real CJ product page"
                               >
                                 <ExternalLink className="w-4 h-4" />
@@ -1550,7 +1550,7 @@ export default function TrendingDropshippingPage() {
                             <button
                               type="button"
                               onClick={() => openEdit(p)}
-                              className="p-1.5 text-gray-500 hover:text-white hover:bg-gray-800 rounded-lg transition"
+                              className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
                               title="Edit"
                             >
                               <Pencil className="w-4 h-4" />
@@ -1558,7 +1558,7 @@ export default function TrendingDropshippingPage() {
                             <button
                               type="button"
                               onClick={() => setDeleteId(p.id)}
-                              className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-500/10 rounded-lg transition"
                               title="Delete"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1573,22 +1573,22 @@ export default function TrendingDropshippingPage() {
             </div>
 
             {/* Mobile cards */}
-            <div className="md:hidden divide-y divide-gray-800">
+            <div className="md:hidden divide-y divide-gray-200">
               {products.map((p) => (
                 <div key={p.id} className="p-4 flex gap-3">
-                  <div className="w-14 h-14 rounded-xl bg-[#0B1121] border border-gray-800 flex-shrink-0 overflow-hidden">
+                  <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-200 flex-shrink-0 overflow-hidden">
                     {p.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Package className="w-6 h-6 text-gray-600" />
+                        <Package className="w-6 h-6 text-gray-400" />
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-white text-sm truncate">{p.name}</p>
+                      <p className="font-medium text-gray-900 text-sm truncate">{p.name}</p>
                       <span className="text-sm font-bold text-[#6B3FD9] flex-shrink-0">
                         {p.price.toFixed(2)} {p.currency}
                       </span>
@@ -1597,9 +1597,9 @@ export default function TrendingDropshippingPage() {
                       <p className="text-xs text-gray-500 mt-0.5">Cost: {p.cost_price.toFixed(2)}</p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {p.is_trending && <Badge label="🔥 Trending" color="bg-orange-500/10 text-orange-400 border-orange-500/20" />}
-                      {p.is_featured && <Badge label="⭐ Featured" color="bg-yellow-500/10 text-yellow-400 border-yellow-500/20" />}
-                      {!p.is_active && <Badge label="Hidden" color="bg-gray-700 text-gray-400 border-gray-600" />}
+                      {p.is_trending && <Badge label="🔥 Trending" color="bg-orange-500/10 text-orange-600 border-orange-500/20" />}
+                      {p.is_featured && <Badge label="⭐ Featured" color="bg-yellow-500/10 text-yellow-600 border-yellow-500/20" />}
+                      {!p.is_active && <Badge label="Hidden" color="bg-gray-200 text-gray-600 border-gray-400" />}
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
@@ -1609,10 +1609,10 @@ export default function TrendingDropshippingPage() {
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
-                    <button type="button" onClick={() => openEdit(p)} className="p-1.5 text-gray-500 hover:text-white rounded-lg">
+                    <button type="button" onClick={() => openEdit(p)} className="p-1.5 text-gray-500 hover:text-gray-900 rounded-lg">
                       <Pencil className="w-4 h-4" />
                     </button>
-                    <button type="button" onClick={() => setDeleteId(p.id)} className="p-1.5 text-gray-500 hover:text-red-400 rounded-lg">
+                    <button type="button" onClick={() => setDeleteId(p.id)} className="p-1.5 text-gray-500 hover:text-red-600 rounded-lg">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -1626,20 +1626,20 @@ export default function TrendingDropshippingPage() {
       {/* ── Add / Edit Modal ─────────────────────────────────────────────── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="bg-[#151F32] rounded-2xl border border-gray-800 w-full max-w-5xl max-h-[92vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-5xl max-h-[92vh] overflow-y-auto">
             {/* Modal header */}
-            <div className="sticky top-0 bg-[#151F32] flex items-center justify-between px-5 py-4 border-b border-gray-800 z-10">
-              <h2 className="text-lg font-semibold text-white">
+            <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-gray-200 z-10">
+              <h2 className="text-lg font-semibold text-gray-900">
                 {editProduct ? 'Edit Dropshipping Product' : 'Add Dropshipping Product'}
               </h2>
-              <button type="button" onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white transition">
+              <button type="button" onClick={() => setShowModal(false)} className="text-gray-600 hover:text-gray-900 transition">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
               {modalError && (
-                <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-600 text-sm">
                   {modalError}
                 </div>
               )}
@@ -1650,10 +1650,10 @@ export default function TrendingDropshippingPage() {
                 <div className="space-y-4">
                   {/* Product Image Upload */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-2 block">Product Image</label>
+                    <label className="text-sm text-gray-600 mb-2 block">Product Image</label>
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="relative cursor-pointer group border-2 border-dashed border-gray-700 hover:border-[#6B3FD9]/60 rounded-xl transition overflow-hidden"
+                      className="relative cursor-pointer group border-2 border-dashed border-gray-300 hover:border-[#6B3FD9]/60 rounded-xl transition overflow-hidden"
                       style={{ minHeight: '160px' }}
                     >
                       {imagePreview ? (
@@ -1665,13 +1665,13 @@ export default function TrendingDropshippingPage() {
                             className="w-full h-40 object-cover"
                           />
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                            <div className="text-white text-sm font-medium flex items-center gap-2">
+                            <div className="text-gray-900 text-sm font-medium flex items-center gap-2">
                               <Upload className="w-4 h-4" /> Change Image
                             </div>
                           </div>
                         </>
                       ) : (
-                        <div className="flex flex-col items-center justify-center h-40 gap-3 text-gray-500 group-hover:text-gray-400 transition">
+                        <div className="flex flex-col items-center justify-center h-40 gap-3 text-gray-500 group-hover:text-gray-600 transition">
                           <ImageIcon className="w-10 h-10 opacity-40" />
                           <div className="text-center">
                             <p className="text-sm font-medium">Click to upload image</p>
@@ -1691,7 +1691,7 @@ export default function TrendingDropshippingPage() {
                       <button
                         type="button"
                         onClick={() => { setImageFile(null); setImagePreview(''); setForm(f => ({ ...f, image_url: '' })); }}
-                        className="mt-1 text-xs text-gray-500 hover:text-red-400 transition"
+                        className="mt-1 text-xs text-gray-500 hover:text-red-600 transition"
                       >
                         Remove image
                       </button>
@@ -1700,7 +1700,7 @@ export default function TrendingDropshippingPage() {
 
                   {/* Name */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Product Name *</label>
+                    <label className="text-sm text-gray-600 mb-1 block">Product Name *</label>
                     <input
                       ref={firstInputRef}
                       type="text"
@@ -1708,13 +1708,13 @@ export default function TrendingDropshippingPage() {
                       value={form.name}
                       onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                       placeholder="e.g. Wireless Earbuds Pro"
-                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                     />
                   </div>
 
                   {/* Description */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Description</label>
+                    <label className="text-sm text-gray-600 mb-1 block">Description</label>
                     <RichTextEditor
                       value={form.description}
                       onChange={(html) => setForm((f) => ({ ...f, description: html }))}
@@ -1726,21 +1726,21 @@ export default function TrendingDropshippingPage() {
                         return res.data.url;
                       }}
                     />
-                    <p className="mt-1 text-xs text-gray-600">Truncated automatically past 200 words when saved — matches every plan's minimum description limit.</p>
+                    <p className="mt-1 text-xs text-gray-400">Truncated automatically past 200 words when saved — matches every plan's minimum description limit.</p>
                   </div>
 
                   {/* Source / Supplier Link */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-gray-600 mb-1 block">
                       Supplier / Source Link
-                      <span className="ml-2 text-xs text-gray-600">where dropshippers can find &amp; order this product</span>
+                      <span className="ml-2 text-xs text-gray-400">where dropshippers can find &amp; order this product</span>
                     </label>
                     <input
                       type="url"
                       value={form.source_url}
                       onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
                       placeholder="https://aliexpress.com/... or CJ, Temu, etc."
-                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                     />
                   </div>
                 </div>
@@ -1750,8 +1750,8 @@ export default function TrendingDropshippingPage() {
                   {/* Buying Price + Selling Price */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-sm text-gray-400 mb-1 block">
-                        Buying Price <span className="text-xs text-gray-600">(USD · your cost)</span>
+                      <label className="text-sm text-gray-600 mb-1 block">
+                        Buying Price <span className="text-xs text-gray-400">(USD · your cost)</span>
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
@@ -1762,13 +1762,13 @@ export default function TrendingDropshippingPage() {
                           value={form.cost_price}
                           onChange={(e) => setForm((f) => ({ ...f, cost_price: e.target.value }))}
                           placeholder="0.00"
-                          className="w-full pl-7 pr-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                          className="w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm text-gray-400 mb-1 block">
-                        Selling Price * <span className="text-xs text-gray-600">(USD · shown publicly)</span>
+                      <label className="text-sm text-gray-600 mb-1 block">
+                        Selling Price * <span className="text-xs text-gray-400">(USD · shown publicly)</span>
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
@@ -1780,7 +1780,7 @@ export default function TrendingDropshippingPage() {
                           value={form.price}
                           onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                           placeholder="0.00"
-                          className="w-full pl-7 pr-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                          className="w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                         />
                       </div>
                     </div>
@@ -1789,8 +1789,8 @@ export default function TrendingDropshippingPage() {
                   {/* Margin preview */}
                   {form.cost_price && form.price && parseFloat(form.price) > parseFloat(form.cost_price) && (
                     <div className="px-3 py-2 bg-green-500/5 border border-green-500/20 rounded-lg flex items-center justify-between">
-                      <span className="text-xs text-gray-400">Profit margin</span>
-                      <span className="text-sm font-bold text-green-400">
+                      <span className="text-xs text-gray-600">Profit margin</span>
+                      <span className="text-sm font-bold text-green-600">
                         {Math.round(((parseFloat(form.price) - parseFloat(form.cost_price)) / parseFloat(form.price)) * 100)}%
                         &nbsp;·&nbsp;
                         +{(parseFloat(form.price) - parseFloat(form.cost_price)).toFixed(2)} per sale
@@ -1800,21 +1800,21 @@ export default function TrendingDropshippingPage() {
 
                   {/* Category */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">Category</label>
+                    <label className="text-sm text-gray-600 mb-1 block">Category</label>
                     <input
                       type="text"
                       value={form.category_name}
                       onChange={(e) => setForm((f) => ({ ...f, category_name: e.target.value }))}
                       placeholder="e.g. Electronics, Fashion"
-                      className="w-full px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                     />
                   </div>
 
                   {/* SKU */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-gray-600 mb-1 block">
                       SKU
-                      <span className="ml-1 text-xs text-gray-600">(product code)</span>
+                      <span className="ml-1 text-xs text-gray-400">(product code)</span>
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -1822,12 +1822,12 @@ export default function TrendingDropshippingPage() {
                         value={form.sku}
                         onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
                         placeholder="e.g. WBT-BLK-001"
-                        className="flex-1 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                        className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                       />
                       <button
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, sku: generateSku(f.name) }))}
-                        className="px-3 py-2 text-xs font-medium bg-[#0B1121] border border-gray-700 rounded-lg hover:border-[#6B3FD9] text-gray-400 hover:text-white transition whitespace-nowrap"
+                        className="px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-300 rounded-lg hover:border-[#6B3FD9] text-gray-600 hover:text-gray-900 transition whitespace-nowrap"
                       >
                         Generate
                       </button>
@@ -1836,19 +1836,19 @@ export default function TrendingDropshippingPage() {
 
                   {/* Videos */}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1 block">
+                    <label className="text-sm text-gray-600 mb-1 block">
                       Videos
-                      <span className="ml-2 text-xs text-gray-600">optional · up to 6</span>
+                      <span className="ml-2 text-xs text-gray-400">optional · up to 6</span>
                     </label>
                     {videoUrls.length > 0 && (
                       <div className="space-y-1.5 mb-2">
                         {videoUrls.map((url, i) => (
-                          <div key={i} className="flex items-center gap-2 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg">
-                            <span className="flex-1 text-xs text-gray-300 truncate">{url}</span>
+                          <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                            <span className="flex-1 text-xs text-gray-700 truncate">{url}</span>
                             <button
                               type="button"
                               onClick={() => setVideoUrls((v) => v.filter((_, idx) => idx !== i))}
-                              className="text-gray-500 hover:text-red-400 transition shrink-0"
+                              className="text-gray-500 hover:text-red-600 transition shrink-0"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -1863,7 +1863,7 @@ export default function TrendingDropshippingPage() {
                           value={newVideoUrl}
                           onChange={(e) => setNewVideoUrl(e.target.value)}
                           placeholder="https://youtube.com/... or tiktok.com/..."
-                          className="flex-1 px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
+                          className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm"
                         />
                         <button
                           type="button"
@@ -1873,38 +1873,38 @@ export default function TrendingDropshippingPage() {
                             setVideoUrls((v) => [...v, trimmed]);
                             setNewVideoUrl('');
                           }}
-                          className="px-3 py-2 text-xs font-medium bg-[#0B1121] border border-gray-700 rounded-lg hover:border-[#6B3FD9] text-gray-400 hover:text-white transition whitespace-nowrap"
+                          className="px-3 py-2 text-xs font-medium bg-gray-50 border border-gray-300 rounded-lg hover:border-[#6B3FD9] text-gray-600 hover:text-gray-900 transition whitespace-nowrap"
                         >
                           Add
                         </button>
                       </div>
                     )}
-                    <p className="mt-1 text-xs text-gray-600">YouTube or TikTok — thumbnail/title fetched automatically on save.</p>
+                    <p className="mt-1 text-xs text-gray-400">YouTube or TikTok — thumbnail/title fetched automatically on save.</p>
                   </div>
                 </div>
               </div>
 
               {/* Gallery images (beyond the primary upload above) */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-2">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Extra Gallery Images</p>
-                <p className="text-xs text-gray-600 -mt-1">Optional — paste more image URLs for the product gallery, in addition to the primary image above.</p>
+                <p className="text-xs text-gray-400 -mt-1">Optional — paste more image URLs for the product gallery, in addition to the primary image above.</p>
                 {extraImages.map((url, i) => (
                   <div key={i} className="flex gap-2 items-center">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-900 border border-gray-700 shrink-0">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-gray-300 shrink-0">
                       {url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={url} alt="" className="w-full h-full object-cover"
                           onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-4 h-4 text-gray-700" /></div>
+                        <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-4 h-4 text-gray-300" /></div>
                       )}
                     </div>
                     <input type="url" value={url}
                       onChange={(e) => setExtraImages((arr) => arr.map((u, j) => j === i ? e.target.value : u))}
                       placeholder="https://..."
-                      className="flex-1 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm" />
+                      className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm" />
                     <button type="button" onClick={() => setExtraImages((arr) => arr.filter((_, j) => j !== i))}
-                      className="px-2 text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                      className="px-2 text-gray-500 hover:text-red-600"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setExtraImages((arr) => [...arr, ''])}
@@ -1912,20 +1912,20 @@ export default function TrendingDropshippingPage() {
               </div>
 
               {/* Variants (color swatches) */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-2">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Variants</p>
-                <p className="text-xs text-gray-600 -mt-1">Optional — informational color swatches shown on the product page (not stock-managed).</p>
+                <p className="text-xs text-gray-400 -mt-1">Optional — informational color swatches shown on the product page (not stock-managed).</p>
                 {variants.map((v, i) => (
                   <div key={i} className="flex gap-2 items-center">
                     <input type="text" value={v.color}
                       onChange={(e) => setVariants((arr) => arr.map((x, j) => j === i ? { ...x, color: e.target.value } : x))}
                       placeholder="e.g. Black"
-                      className="flex-1 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm" />
+                      className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 focus:border-[#6B3FD9] focus:outline-none text-sm" />
                     <input type="color" value={v.color_hex || '#888888'}
                       onChange={(e) => setVariants((arr) => arr.map((x, j) => j === i ? { ...x, color_hex: e.target.value } : x))}
-                      className="w-9 h-9 rounded border border-gray-700 bg-[#0B1121] cursor-pointer" />
+                      className="w-9 h-9 rounded border border-gray-300 bg-gray-50 cursor-pointer" />
                     <button type="button" onClick={() => setVariants((arr) => arr.filter((_, j) => j !== i))}
-                      className="px-2 text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                      className="px-2 text-gray-500 hover:text-red-600"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setVariants((arr) => [...arr, { color: '', color_hex: '' }])}
@@ -1933,28 +1933,28 @@ export default function TrendingDropshippingPage() {
               </div>
 
               {/* Market Data — real, admin-entered; blank = hidden on the product page */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-3">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Market Data</p>
-                <p className="text-xs text-gray-600 -mt-2">Optional. Leave blank to hide the Winning Analytics block entirely for this product.</p>
+                <p className="text-xs text-gray-400 -mt-2">Optional. Leave blank to hide the Winning Analytics block entirely for this product.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Winning Score (0-100)</label>
                     <input type="number" min="0" max="100" value={form.winning_score}
                       onChange={(e) => setForm((f) => ({ ...f, winning_score: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Trend %</label>
                     <input type="number" step="0.01" value={form.trend_percent}
                       onChange={(e) => setForm((f) => ({ ...f, trend_percent: e.target.value }))}
                       placeholder="e.g. 68"
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Competition</label>
                     <select value={form.competition_level}
                       onChange={(e) => setForm((f) => ({ ...f, competition_level: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none">
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none">
                       <option value="">—</option>
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
@@ -1965,7 +1965,7 @@ export default function TrendingDropshippingPage() {
                     <label className="text-xs text-gray-500 mb-1 block">Saturation</label>
                     <select value={form.saturation_level}
                       onChange={(e) => setForm((f) => ({ ...f, saturation_level: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none">
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none">
                       <option value="">—</option>
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
@@ -1976,70 +1976,70 @@ export default function TrendingDropshippingPage() {
                     <label className="text-xs text-gray-500 mb-1 block">Orders (social proof count)</label>
                     <input type="number" min="0" value={form.orders_count}
                       onChange={(e) => setForm((f) => ({ ...f, orders_count: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                 </div>
               </div>
 
               {/* Supplier Info */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-3">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Supplier Info</p>
-                <p className="text-xs text-gray-600 -mt-2">Auto-filled when importing from CJ. Optional otherwise — leave blank to hide this block.</p>
+                <p className="text-xs text-gray-400 -mt-2">Auto-filled when importing from CJ. Optional otherwise — leave blank to hide this block.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Supplier Name</label>
                     <input type="text" value={form.supplier_name}
                       onChange={(e) => setForm((f) => ({ ...f, supplier_name: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Supplier Rating (0-5)</label>
                     <input type="number" min="0" max="5" step="0.1" value={form.supplier_rating}
                       onChange={(e) => setForm((f) => ({ ...f, supplier_rating: e.target.value }))}
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Fulfillment Rate (%)</label>
                     <input type="number" min="0" max="100" step="0.1" value={form.fulfillment_rate}
                       onChange={(e) => setForm((f) => ({ ...f, fulfillment_rate: e.target.value }))}
                       placeholder="e.g. 99.2"
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Shipping Cost ($ per unit)</label>
                     <input type="number" min="0" step="0.01" value={form.shipping_cost}
                       onChange={(e) => setForm((f) => ({ ...f, shipping_cost: e.target.value }))}
                       placeholder="Used for the profit breakdown"
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Processing Time</label>
                     <input type="text" value={form.processing_time}
                       onChange={(e) => setForm((f) => ({ ...f, processing_time: e.target.value }))}
                       placeholder="e.g. 1-3 Days"
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Shipping Time</label>
                     <input type="text" value={form.shipping_time}
                       onChange={(e) => setForm((f) => ({ ...f, shipping_time: e.target.value }))}
                       placeholder="e.g. 7-12 Days"
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs text-gray-500 mb-1 block">Warehouse Country</label>
                     <input type="text" value={form.warehouse_country}
                       onChange={(e) => setForm((f) => ({ ...f, warehouse_country: e.target.value }))}
                       placeholder="e.g. US Warehouse"
-                      className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   </div>
                 </div>
               </div>
 
               {/* Social Proof Links */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-3">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Social Proof Links</p>
-                <p className="text-xs text-gray-600 -mt-2">Optional — link to a real running ad per platform. Facebook/Instagram can be searched live from Meta&apos;s Ad Library.</p>
+                <p className="text-xs text-gray-400 -mt-2">Optional — link to a real running ad per platform. Facebook/Instagram can be searched live from Meta&apos;s Ad Library.</p>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -2050,7 +2050,7 @@ export default function TrendingDropshippingPage() {
                   <input type="url" value={form.ad_facebook_url}
                     onChange={(e) => setForm((f) => ({ ...f, ad_facebook_url: e.target.value }))}
                     placeholder="https://www.facebook.com/ads/library/?id=..."
-                    className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   {showMetaSearch === 'facebook' && (
                     <MetaAdSearchPanel query={metaQuery} setQuery={handleMetaQueryChange} ads={metaAds} loading={metaLoading}
                       error={metaError} hasSearched={metaHasSearched} onSearch={runMetaSearch} onPick={pickMetaAd} onClose={() => setShowMetaSearch(null)} />
@@ -2066,7 +2066,7 @@ export default function TrendingDropshippingPage() {
                   <input type="url" value={form.ad_instagram_url}
                     onChange={(e) => setForm((f) => ({ ...f, ad_instagram_url: e.target.value }))}
                     placeholder="https://www.facebook.com/ads/library/?id=..."
-                    className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   {showMetaSearch === 'instagram' && (
                     <MetaAdSearchPanel query={metaQuery} setQuery={handleMetaQueryChange} ads={metaAds} loading={metaLoading}
                       error={metaError} hasSearched={metaHasSearched} onSearch={runMetaSearch} onPick={pickMetaAd} onClose={() => setShowMetaSearch(null)} />
@@ -2078,7 +2078,7 @@ export default function TrendingDropshippingPage() {
                   <input type="url" value={form.ad_tiktok_url}
                     onChange={(e) => setForm((f) => ({ ...f, ad_tiktok_url: e.target.value }))}
                     placeholder="https://..."
-                    className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
 
                 <div>
@@ -2086,24 +2086,24 @@ export default function TrendingDropshippingPage() {
                   <input type="url" value={form.ad_pinterest_url}
                     onChange={(e) => setForm((f) => ({ ...f, ad_pinterest_url: e.target.value }))}
                     placeholder="https://..."
-                    className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
               </div>
 
               {/* Specs & Tags */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-3">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Specs &amp; Tags</p>
                 <div className="space-y-2">
                   {specs.map((s, i) => (
                     <div key={i} className="flex gap-2">
                       <input type="text" value={s.key}
                         onChange={(e) => setSpecs((arr) => arr.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
-                        placeholder="Material" className="w-1/3 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                        placeholder="Material" className="w-1/3 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                       <input type="text" value={s.value}
                         onChange={(e) => setSpecs((arr) => arr.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
-                        placeholder="Stainless Steel" className="flex-1 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                        placeholder="Stainless Steel" className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                       <button type="button" onClick={() => setSpecs((arr) => arr.filter((_, j) => j !== i))}
-                        className="px-2 text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                        className="px-2 text-gray-500 hover:text-red-600"><X className="w-4 h-4" /></button>
                     </div>
                   ))}
                   <button type="button" onClick={() => setSpecs((arr) => [...arr, { key: '', value: '' }])}
@@ -2114,24 +2114,24 @@ export default function TrendingDropshippingPage() {
                   <input type="text" value={form.tags}
                     onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
                     placeholder="BPA Free, Leak Proof, Eco Friendly"
-                    className="w-full px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
               </div>
 
               {/* Demand Trend */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-2">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Demand Trend</p>
-                <p className="text-xs text-gray-600 -mt-1">Optional — real data points (e.g. weekly order counts) for the trend chart. Leave empty to hide it.</p>
+                <p className="text-xs text-gray-400 -mt-1">Optional — real data points (e.g. weekly order counts) for the trend chart. Leave empty to hide it.</p>
                 {demandTrend.map((d, i) => (
                   <div key={i} className="flex gap-2">
                     <input type="text" value={d.label}
                       onChange={(e) => setDemandTrend((arr) => arr.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
-                      placeholder="e.g. May 17" className="w-1/3 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      placeholder="e.g. May 17" className="w-1/3 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                     <input type="number" value={d.value}
                       onChange={(e) => setDemandTrend((arr) => arr.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
-                      placeholder="Value" className="flex-1 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      placeholder="Value" className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                     <button type="button" onClick={() => setDemandTrend((arr) => arr.filter((_, j) => j !== i))}
-                      className="px-2 text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                      className="px-2 text-gray-500 hover:text-red-600"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setDemandTrend((arr) => [...arr, { label: '', value: '' }])}
@@ -2139,19 +2139,19 @@ export default function TrendingDropshippingPage() {
               </div>
 
               {/* Orders Trend — separate signal from Demand Trend, shown as its own chart on the product page */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-2">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Orders Trend</p>
-                <p className="text-xs text-gray-600 -mt-1">Optional — real orders-over-time data points (social proof), separate from Demand Trend above. Leave empty to hide it.</p>
+                <p className="text-xs text-gray-400 -mt-1">Optional — real orders-over-time data points (social proof), separate from Demand Trend above. Leave empty to hide it.</p>
                 {ordersTrend.map((d, i) => (
                   <div key={i} className="flex gap-2">
                     <input type="text" value={d.label}
                       onChange={(e) => setOrdersTrend((arr) => arr.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
-                      placeholder="e.g. May 17" className="w-1/3 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      placeholder="e.g. May 17" className="w-1/3 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                     <input type="number" value={d.value}
                       onChange={(e) => setOrdersTrend((arr) => arr.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
-                      placeholder="Value" className="flex-1 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      placeholder="Value" className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                     <button type="button" onClick={() => setOrdersTrend((arr) => arr.filter((_, j) => j !== i))}
-                      className="px-2 text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                      className="px-2 text-gray-500 hover:text-red-600"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setOrdersTrend((arr) => [...arr, { label: '', value: '' }])}
@@ -2159,22 +2159,22 @@ export default function TrendingDropshippingPage() {
               </div>
 
               {/* Top Countries */}
-              <div className="border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40 space-y-2">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Top Countries</p>
-                <p className="text-xs text-gray-600 -mt-1">Optional — real buyer geography breakdown, if you have it. Leave empty to hide it.</p>
+                <p className="text-xs text-gray-400 -mt-1">Optional — real buyer geography breakdown, if you have it. Leave empty to hide it.</p>
                 {topCountries.map((c, i) => (
                   <div key={i} className="flex gap-2">
                     <input type="text" value={c.country}
                       onChange={(e) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, country: e.target.value } : x))}
-                      placeholder="United States" className="flex-1 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      placeholder="United States" className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                     <input type="text" value={c.code} maxLength={2}
                       onChange={(e) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, code: e.target.value } : x))}
-                      placeholder="US" className="w-16 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      placeholder="US" className="w-16 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                     <input type="number" value={c.percent} min="0" max="100"
                       onChange={(e) => setTopCountries((arr) => arr.map((x, j) => j === i ? { ...x, percent: e.target.value } : x))}
-                      placeholder="%" className="w-20 px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                      placeholder="%" className="w-20 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                     <button type="button" onClick={() => setTopCountries((arr) => arr.filter((_, j) => j !== i))}
-                      className="px-2 text-gray-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                      className="px-2 text-gray-500 hover:text-red-600"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setTopCountries((arr) => [...arr, { country: '', code: '', percent: '' }])}
@@ -2182,23 +2182,23 @@ export default function TrendingDropshippingPage() {
               </div>
 
               {/* Flags */}
-              <div className="space-y-3 border border-gray-800 rounded-xl p-4 bg-[#0B1121]/40">
+              <div className="space-y-3 border border-gray-200 rounded-xl p-4 bg-gray-50">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2">Visibility & Flags</p>
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm text-gray-300 flex items-center gap-2">
-                    <Flame className="w-4 h-4 text-orange-400" /> Mark as Trending
+                  <span className="text-sm text-gray-700 flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-orange-600" /> Mark as Trending
                   </span>
                   <Toggle on={form.is_trending} onChange={() => setForm((f) => ({ ...f, is_trending: !f.is_trending }))} color="bg-orange-500" />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm text-gray-300 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-yellow-400" /> Mark as Featured
+                  <span className="text-sm text-gray-700 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-yellow-600" /> Mark as Featured
                   </span>
                   <Toggle on={form.is_featured} onChange={() => setForm((f) => ({ ...f, is_featured: !f.is_featured }))} color="bg-yellow-500" />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm text-gray-300 flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-green-400" /> Active (visible on storefront)
+                  <span className="text-sm text-gray-700 flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-green-600" /> Active (visible on storefront)
                   </span>
                   <Toggle on={form.is_active} onChange={() => setForm((f) => ({ ...f, is_active: !f.is_active }))} color="bg-green-500" />
                 </label>
@@ -2209,7 +2209,7 @@ export default function TrendingDropshippingPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-3 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 rounded-xl text-sm font-semibold transition"
+                  className="flex-1 py-3 border border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 rounded-xl text-sm font-semibold transition"
                 >
                   Cancel
                 </button>
@@ -2236,19 +2236,19 @@ export default function TrendingDropshippingPage() {
       {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
       {deleteId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="bg-[#151F32] rounded-2xl border border-gray-800 w-full max-w-sm p-6 text-center">
+          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-sm p-6 text-center">
             <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-7 h-7 text-red-400" />
+              <Trash2 className="w-7 h-7 text-red-600" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">Delete Product?</h3>
-            <p className="text-sm text-gray-400 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Product?</h3>
+            <p className="text-sm text-gray-600 mb-6">
               This product will be permanently removed from the dropshipping storefront.
             </p>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setDeleteId(null)}
-                className="flex-1 py-2.5 border border-gray-700 text-gray-400 hover:text-white rounded-xl text-sm font-medium transition"
+                className="flex-1 py-2.5 border border-gray-300 text-gray-600 hover:text-gray-900 rounded-xl text-sm font-medium transition"
               >
                 Cancel
               </button>
@@ -2274,18 +2274,18 @@ function StatCard({
   label: string; value: string; icon: React.ReactNode; accent?: 'orange' | 'yellow' | 'red' | 'green';
 }) {
   const colorMap = {
-    orange: 'bg-orange-500/10 text-orange-400',
-    yellow: 'bg-yellow-500/10 text-yellow-400',
-    red: 'bg-red-500/10 text-red-400',
-    green: 'bg-green-500/10 text-green-400',
+    orange: 'bg-orange-500/10 text-orange-600',
+    yellow: 'bg-yellow-500/10 text-yellow-600',
+    red: 'bg-red-500/10 text-red-600',
+    green: 'bg-green-500/10 text-green-600',
   };
   const iconColor = accent ? colorMap[accent] : 'bg-[#6B3FD9]/10 text-[#6B3FD9]';
   return (
-    <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4">
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
         <div className={`p-2 rounded-lg ${iconColor}`}>{icon}</div>
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
       <p className="text-sm text-gray-500 mt-1">{label}</p>
     </div>
   );

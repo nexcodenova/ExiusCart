@@ -31,19 +31,19 @@ const PLAN_OPTIONS = [
 ];
 
 const PLAN_COLORS: Record<string, string> = {
-  free_trial: 'text-blue-400',
-  launch:     'text-gray-300',
+  free_trial: 'text-blue-600',
+  launch:     'text-gray-700',
   growth:     'text-[#0D70BB]',
   scale:      'text-[#6B3FD9]',
   none:       'text-gray-500',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  active:           'bg-green-500/10 text-green-400',
-  trial:            'bg-blue-500/10 text-blue-400',
-  pending_approval: 'bg-yellow-500/10 text-yellow-400',
-  expired:          'bg-red-500/10 text-red-400',
-  cancelled:        'bg-gray-500/10 text-gray-400',
+  active:           'bg-green-500/10 text-green-600',
+  trial:            'bg-blue-500/10 text-blue-600',
+  pending_approval: 'bg-yellow-500/10 text-yellow-600',
+  expired:          'bg-red-500/10 text-red-600',
+  cancelled:        'bg-gray-500/10 text-gray-600',
   none:             'bg-gray-500/10 text-gray-500',
 };
 
@@ -119,37 +119,37 @@ export default function StoresPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Stores</h1>
-        <p className="text-gray-400 text-sm mt-1">Manage all registered stores</p>
+        <h1 className="text-2xl font-bold text-gray-900">Stores</h1>
+        <p className="text-gray-600 text-sm mt-1">Manage all registered stores</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
           <div>
-            <p className="text-gray-400 text-sm">Total Stores</p>
-            <p className="text-2xl font-bold text-white mt-1">{shops.length}</p>
+            <p className="text-gray-600 text-sm">Total Stores</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{shops.length}</p>
           </div>
           <div className="p-2.5 rounded-lg bg-[#6B3FD9]/10 text-[#6B3FD9]"><Store className="w-5 h-5" /></div>
         </div>
-        <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
           <div>
-            <p className="text-gray-400 text-sm">Active</p>
-            <p className="text-2xl font-bold text-white mt-1">{totalActive}</p>
+            <p className="text-gray-600 text-sm">Active</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{totalActive}</p>
           </div>
-          <div className="p-2.5 rounded-lg bg-green-500/10 text-green-400"><CheckCircle className="w-5 h-5" /></div>
+          <div className="p-2.5 rounded-lg bg-green-500/10 text-green-600"><CheckCircle className="w-5 h-5" /></div>
         </div>
-        <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
           <div>
-            <p className="text-gray-400 text-sm">Suspended</p>
-            <p className="text-2xl font-bold text-white mt-1">{totalSuspended}</p>
+            <p className="text-gray-600 text-sm">Suspended</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{totalSuspended}</p>
           </div>
-          <div className="p-2.5 rounded-lg bg-red-500/10 text-red-400"><XCircle className="w-5 h-5" /></div>
+          <div className="p-2.5 rounded-lg bg-red-500/10 text-red-600"><XCircle className="w-5 h-5" /></div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 mb-6 flex flex-col sm:flex-row gap-3">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
@@ -157,13 +157,13 @@ export default function StoresPage() {
             placeholder="Search stores, owners, emails..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-[#6B3FD9] focus:outline-none text-sm"
+            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:border-[#6B3FD9] focus:outline-none text-sm"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none text-sm"
+          className="px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] focus:outline-none text-sm"
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
@@ -176,15 +176,15 @@ export default function StoresPage() {
           <Loader2 className="w-8 h-8 text-[#6B3FD9] animate-spin" />
         </div>
       ) : shops.length === 0 ? (
-        <div className="bg-[#151F32] rounded-xl border border-gray-800 p-16 text-center">
-          <Store className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400">No stores found</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
+          <Store className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">No stores found</p>
         </div>
       ) : (
-        <div className="bg-[#151F32] rounded-xl border border-gray-800 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="text-left text-xs text-gray-400 border-b border-gray-800">
+              <tr className="text-left text-xs text-gray-600 border-b border-gray-200">
                 <th className="px-5 py-3 font-medium">Store</th>
                 <th className="px-5 py-3 font-medium">Owner</th>
                 <th className="px-5 py-3 font-medium">Plan</th>
@@ -197,13 +197,13 @@ export default function StoresPage() {
             </thead>
             <tbody>
               {shops.map((shop) => (
-                <tr key={shop.id} className="border-b border-gray-800 last:border-0 hover:bg-[#1A2540] transition">
+                <tr key={shop.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-200 transition">
                   <td className="px-5 py-4">
-                    <p className="font-medium text-white text-sm">{shop.name}</p>
+                    <p className="font-medium text-gray-900 text-sm">{shop.name}</p>
                     <p className="text-xs text-gray-500">{shop.email}</p>
                   </td>
                   <td className="px-5 py-4">
-                    <p className="text-sm text-gray-300">{shop.owner}</p>
+                    <p className="text-sm text-gray-700">{shop.owner}</p>
                     <p className="text-xs text-gray-500">{shop.owner_email}</p>
                   </td>
                   <td className="px-5 py-4">
@@ -211,7 +211,7 @@ export default function StoresPage() {
                       <button
                         type="button"
                         onClick={() => setPlanDropdown(planDropdown === shop.id ? null : shop.id)}
-                        className={`flex items-center gap-1 text-sm font-medium capitalize hover:opacity-80 transition ${PLAN_COLORS[shop.plan] ?? 'text-gray-400'}`}
+                        className={`flex items-center gap-1 text-sm font-medium capitalize hover:opacity-80 transition ${PLAN_COLORS[shop.plan] ?? 'text-gray-600'}`}
                         title="Click to change plan"
                       >
                         {changingPlan === shop.id ? (
@@ -221,14 +221,14 @@ export default function StoresPage() {
                         <ChevronDown className="w-3 h-3" />
                       </button>
                       {planDropdown === shop.id && (
-                        <div className="absolute z-50 left-0 top-7 w-48 bg-[#0B1121] border border-gray-700 rounded-xl shadow-xl overflow-hidden">
+                        <div className="absolute z-50 left-0 top-7 w-48 bg-gray-50 border border-gray-300 rounded-xl shadow-xl overflow-hidden">
                           <p className="px-3 pt-2 pb-1 text-xs text-gray-500 font-medium">Change plan</p>
                           {PLAN_OPTIONS.map((opt) => (
                             <div key={opt.value} className="px-1 pb-1">
                               <button
                                 type="button"
                                 onClick={() => changePlan(shop.id, opt.value, 'monthly')}
-                                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#6B3FD9]/10 rounded-lg transition"
+                                className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-[#6B3FD9]/10 rounded-lg transition"
                               >
                                 {opt.label} <span className="text-gray-500 text-xs">(monthly)</span>
                               </button>
@@ -236,7 +236,7 @@ export default function StoresPage() {
                                 <button
                                   type="button"
                                   onClick={() => changePlan(shop.id, opt.value, 'yearly')}
-                                  className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#6B3FD9]/10 rounded-lg transition"
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-[#6B3FD9]/10 rounded-lg transition"
                                 >
                                   {opt.label} <span className="text-gray-500 text-xs">(yearly)</span>
                                 </button>
@@ -248,16 +248,16 @@ export default function StoresPage() {
                     </div>
                   </td>
                   <td className="px-5 py-4">
-                    <span className={`text-xs px-2.5 py-1 rounded-lg capitalize ${STATUS_COLORS[shop.subscription_status] ?? 'bg-gray-500/10 text-gray-400'}`}>
+                    <span className={`text-xs px-2.5 py-1 rounded-lg capitalize ${STATUS_COLORS[shop.subscription_status] ?? 'bg-gray-500/10 text-gray-600'}`}>
                       {shop.subscription_status === 'none' ? '—' : shop.subscription_status}
                     </span>
                     {!shop.is_active && (
-                      <span className="ml-1 text-xs px-2 py-0.5 rounded-lg bg-red-500/10 text-red-400">suspended</span>
+                      <span className="ml-1 text-xs px-2 py-0.5 rounded-lg bg-red-500/10 text-red-600">suspended</span>
                     )}
                   </td>
-                  <td className="px-5 py-4 text-xs text-gray-400">{fmt(shop.starts_at)}</td>
-                  <td className="px-5 py-4 text-xs text-gray-400">{fmt(shop.expires_at)}</td>
-                  <td className="px-5 py-4 text-xs text-gray-400">{fmt(shop.created_at)}</td>
+                  <td className="px-5 py-4 text-xs text-gray-600">{fmt(shop.starts_at)}</td>
+                  <td className="px-5 py-4 text-xs text-gray-600">{fmt(shop.expires_at)}</td>
+                  <td className="px-5 py-4 text-xs text-gray-600">{fmt(shop.created_at)}</td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-1">
                       <button
@@ -265,7 +265,7 @@ export default function StoresPage() {
                         title={shop.is_active ? 'Suspend store' : 'Activate store'}
                         onClick={() => toggleStatus(shop)}
                         disabled={togglingId === shop.id}
-                        className={`p-1.5 rounded-lg transition ${shop.is_active ? 'text-orange-400 hover:bg-orange-500/10' : 'text-green-400 hover:bg-green-500/10'}`}
+                        className={`p-1.5 rounded-lg transition ${shop.is_active ? 'text-orange-600 hover:bg-orange-500/10' : 'text-green-600 hover:bg-green-500/10'}`}
                       >
                         {togglingId === shop.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                       </button>
@@ -273,7 +273,7 @@ export default function StoresPage() {
                         type="button"
                         title="Delete store"
                         onClick={() => setConfirmDelete(shop)}
-                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition"
+                        className="p-1.5 rounded-lg text-red-600 hover:bg-red-500/10 transition"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -289,15 +289,15 @@ export default function StoresPage() {
       {/* Delete confirmation modal */}
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#151F32] border border-gray-700 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+          <div className="bg-white border border-gray-300 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-xl bg-red-500/10">
-                <Trash2 className="w-5 h-5 text-red-400" />
+                <Trash2 className="w-5 h-5 text-red-600" />
               </div>
-              <h3 className="text-lg font-bold text-white">Delete Store</h3>
+              <h3 className="text-lg font-bold text-gray-900">Delete Store</h3>
             </div>
-            <p className="text-gray-400 text-sm mb-2">
-              Are you sure you want to delete <span className="text-white font-medium">{confirmDelete.name}</span>?
+            <p className="text-gray-600 text-sm mb-2">
+              Are you sure you want to delete <span className="text-gray-900 font-medium">{confirmDelete.name}</span>?
             </p>
             <p className="text-gray-500 text-xs mb-6">
               This will deactivate the store and cancel the subscription. The data will be archived.
@@ -306,7 +306,7 @@ export default function StoresPage() {
               <button
                 type="button"
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 py-2.5 rounded-xl bg-[#0B1121] border border-gray-700 text-gray-300 text-sm font-medium hover:text-white transition"
+                className="flex-1 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium hover:text-gray-900 transition"
               >
                 Cancel
               </button>

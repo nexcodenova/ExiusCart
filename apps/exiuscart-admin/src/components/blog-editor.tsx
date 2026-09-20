@@ -109,7 +109,7 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-6xl mx-auto flex items-center justify-center py-24 text-gray-400 gap-2">
+      <div className="p-6 max-w-6xl mx-auto flex items-center justify-center py-24 text-gray-600 gap-2">
         <Loader2 className="w-5 h-5 animate-spin" /> Loading…
       </div>
     );
@@ -119,24 +119,24 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <button onClick={() => router.push('/dashboard/blogs')}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition">
+          className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition">
           <ArrowLeft className="w-4 h-4" /> Back to Blog
         </button>
         <div className="flex items-center gap-2">
           {status === 'published' && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-400">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-500/10 text-green-600">
               <CheckCircle2 className="w-3 h-3" /> Published
             </span>
           )}
           <button onClick={save} disabled={saving || publishing}
-            className="px-4 py-2 border border-gray-700 rounded-lg text-sm font-medium text-gray-200 hover:bg-gray-800 transition disabled:opacity-60 flex items-center gap-2">
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-800 hover:bg-gray-100 transition disabled:opacity-60 flex items-center gap-2">
             {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {saved && !saving && <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />}
             {saving ? 'Saving…' : saved ? 'Saved' : 'Save Draft'}
           </button>
           {status === 'published' ? (
             <button onClick={() => publish(false)} disabled={saving || publishing}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition disabled:opacity-60">
+              className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg text-sm font-medium hover:bg-gray-200 transition disabled:opacity-60">
               Unpublish
             </button>
           ) : (
@@ -150,31 +150,31 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{error}</div>
+        <div className="bg-red-500/10 border border-red-500/30 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>
       )}
 
       {/* Live preview — shows exactly what exiuscart.com/blog will render */}
-      <div className="bg-[#151F32] border border-gray-800 rounded-xl overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-gray-800 bg-gray-900/40 flex items-center gap-2">
-          <Eye className="w-3.5 h-3.5 text-gray-400" />
-          <p className="text-xs font-medium text-gray-400">Live Preview</p>
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-900/40 flex items-center gap-2">
+          <Eye className="w-3.5 h-3.5 text-gray-600" />
+          <p className="text-xs font-medium text-gray-600">Live Preview</p>
         </div>
         <div className="p-6 sm:p-8 max-w-2xl mx-auto">
           {coverImage && (
-            <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-6 bg-gray-900">
+            <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-6 bg-white">
               <Image src={coverImage} alt="" fill className="object-cover" unoptimized />
             </div>
           )}
-          <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight">{title || 'Your post title'}</h1>
-          <div className="flex items-center gap-2 text-xs text-gray-400 mt-3">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{title || 'Your post title'}</h1>
+          <div className="flex items-center gap-2 text-xs text-gray-600 mt-3">
             {authorName && <span>{authorName}</span>}
             {tags && <span className="flex gap-1">{tags.split(',').map((t) => t.trim()).filter(Boolean).map((t) => (
-              <span key={t} className="px-2 py-0.5 bg-gray-800 rounded-full">{t}</span>
+              <span key={t} className="px-2 py-0.5 bg-gray-100 rounded-full">{t}</span>
             ))}</span>}
           </div>
-          {excerpt && <p className="text-gray-400 mt-4 leading-relaxed">{excerpt}</p>}
+          {excerpt && <p className="text-gray-600 mt-4 leading-relaxed">{excerpt}</p>}
           <div
-            className="text-gray-200 text-sm sm:text-base leading-relaxed mt-6 [&_p]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-3 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-4"
+            className="text-gray-800 text-sm sm:text-base leading-relaxed mt-6 [&_p]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-3 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-4"
             dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-500 italic">Start writing below — it\'ll appear here as you go.</p>' }}
           />
           {ctaText && (
@@ -189,17 +189,17 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <div>
-            <label className="text-sm text-gray-400 mb-1.5 block">Title *</label>
+            <label className="text-sm text-gray-600 mb-1.5 block">Title *</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="How to pick the right POS for a UAE small business"
-              className="w-full px-3 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
+              className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
           </div>
           <div>
-            <label className="text-sm text-gray-400 mb-1.5 block">Excerpt <span className="opacity-60">— short teaser shown on the blog list</span></label>
+            <label className="text-sm text-gray-600 mb-1.5 block">Excerpt <span className="opacity-60">— short teaser shown on the blog list</span></label>
             <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} maxLength={500}
-              className="w-full px-3 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9] resize-none" />
+              className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9] resize-none" />
           </div>
           <div>
-            <label className="text-sm text-gray-400 mb-1.5 block">
+            <label className="text-sm text-gray-600 mb-1.5 block">
               Content <span className="opacity-60">— up to {IMAGE_LIMIT} images</span>
             </label>
             <RichTextEditor
@@ -215,18 +215,18 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm text-gray-400 mb-1.5 block">Cover Image</label>
+            <label className="text-sm text-gray-600 mb-1.5 block">Cover Image</label>
             {coverImage ? (
-              <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gray-900 group">
+              <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-white group">
                 <Image src={coverImage} alt="" fill className="object-cover" unoptimized />
                 <button onClick={() => setCoverImage('')}
-                  className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-lg opacity-0 group-hover:opacity-100 transition">
+                  className="absolute top-2 right-2 p-1.5 bg-black/60 text-gray-900 rounded-lg opacity-0 group-hover:opacity-100 transition">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
               <button onClick={() => coverInputRef.current?.click()} disabled={uploadingCover}
-                className="w-full aspect-video border-2 border-dashed border-gray-700 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-[#6B3FD9]/40 hover:text-[#6B3FD9] transition">
+                className="w-full aspect-video border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-600 hover:border-[#6B3FD9]/40 hover:text-[#6B3FD9] transition">
                 {uploadingCover ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
                 <span className="text-xs">{uploadingCover ? 'Uploading…' : 'Upload cover image'}</span>
               </button>
@@ -235,28 +235,28 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
           </div>
 
           <div>
-            <label className="text-sm text-gray-400 mb-1.5 block">Author</label>
+            <label className="text-sm text-gray-600 mb-1.5 block">Author</label>
             <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="e.g. ExiusCart Team"
-              className="w-full px-3 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
+              className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
           </div>
 
           <div>
-            <label className="text-sm text-gray-400 mb-1.5 block">Tags <span className="opacity-60">— comma separated</span></label>
+            <label className="text-sm text-gray-600 mb-1.5 block">Tags <span className="opacity-60">— comma separated</span></label>
             <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="pos, uae, guides"
-              className="w-full px-3 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
+              className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
           </div>
 
-          <div className="border-t border-gray-800 pt-4 space-y-3">
-            <p className="text-sm font-medium text-white">Call to Action</p>
+          <div className="border-t border-gray-200 pt-4 space-y-3">
+            <p className="text-sm font-medium text-gray-900">Call to Action</p>
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Button text</label>
+              <label className="text-xs text-gray-600 mb-1 block">Button text</label>
               <input value={ctaText} onChange={(e) => setCtaText(e.target.value)} placeholder="Start Free Trial"
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Button link</label>
+              <label className="text-xs text-gray-600 mb-1 block">Button link</label>
               <input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="/register"
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm outline-none focus:ring-2 focus:ring-[#6B3FD9]" />
             </div>
           </div>
         </div>

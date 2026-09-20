@@ -35,13 +35,13 @@ interface ReferralBreakdown {
 }
 
 const REFERRAL_STATUS_STYLES: Record<string, string> = {
-  active:           'bg-green-500/10 text-green-400 border border-green-500/20',
-  trial:            'bg-blue-500/10 text-blue-400 border border-blue-500/20',
-  trial_dollar:     'bg-purple-500/10 text-purple-400 border border-purple-500/20',
-  pending_approval: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
-  expired:          'bg-red-500/10 text-red-400 border border-red-500/20',
-  cancelled:        'bg-gray-500/10 text-gray-400 border border-gray-500/20',
-  registered:       'bg-gray-500/10 text-gray-400 border border-gray-500/20',
+  active:           'bg-green-500/10 text-green-600 border border-green-500/20',
+  trial:            'bg-blue-500/10 text-blue-600 border border-blue-500/20',
+  trial_dollar:     'bg-purple-500/10 text-purple-600 border border-purple-500/20',
+  pending_approval: 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20',
+  expired:          'bg-red-500/10 text-red-600 border border-red-500/20',
+  cancelled:        'bg-gray-500/10 text-gray-600 border border-gray-500/20',
+  registered:       'bg-gray-500/10 text-gray-600 border border-gray-500/20',
 };
 
 const REFERRAL_STATUS_LABELS: Record<string, string> = {
@@ -82,9 +82,9 @@ interface Affiliate {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
-  active: 'bg-green-500/10 text-green-400 border border-green-500/20',
-  suspended: 'bg-red-500/10 text-red-400 border border-red-500/20',
+  pending: 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20',
+  active: 'bg-green-500/10 text-green-600 border border-green-500/20',
+  suspended: 'bg-red-500/10 text-red-600 border border-red-500/20',
 };
 
 const STATUS_NEXT_LABEL: Record<string, string> = {
@@ -221,8 +221,8 @@ export default function AffiliatesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Affiliates</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage affiliate partners and their commissions</p>
+          <h1 className="text-2xl font-bold text-gray-900">Affiliates</h1>
+          <p className="text-gray-600 text-sm mt-1">Manage affiliate partners and their commissions</p>
         </div>
       </div>
 
@@ -235,7 +235,7 @@ export default function AffiliatesPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-[#151F32] rounded-xl border border-gray-800 p-4 mb-4 flex flex-col sm:flex-row gap-3">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
@@ -243,13 +243,13 @@ export default function AffiliatesPage() {
             placeholder="Search by name, email, or code..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:border-[#6B3FD9] focus:outline-none text-sm"
+            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:border-[#6B3FD9] focus:outline-none text-sm"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2.5 bg-[#0B1121] border border-gray-700 rounded-lg text-white focus:border-[#6B3FD9] focus:outline-none text-sm"
+          className="px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] focus:outline-none text-sm"
         >
           <option value="">All Status</option>
           <option value="pending">Pending</option>
@@ -259,7 +259,7 @@ export default function AffiliatesPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-[#151F32] rounded-xl border border-gray-800 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-48">
             <Loader2 className="w-8 h-8 animate-spin text-[#6B3FD9]" />
@@ -271,7 +271,7 @@ export default function AffiliatesPage() {
             <p className="text-xs mt-1">Applications will appear here once submitted</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-800">
+          <div className="divide-y divide-gray-200">
             {affiliates.map((affiliate) => {
               const detail = detailCache[affiliate.id];
               const isExpanded = expandedId === affiliate.id;
@@ -284,7 +284,7 @@ export default function AffiliatesPage() {
                     <button
                       type="button"
                       onClick={() => expand(affiliate.id)}
-                      className="text-gray-500 hover:text-white transition flex-shrink-0"
+                      className="text-gray-500 hover:text-gray-900 transition flex-shrink-0"
                     >
                       {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </button>
@@ -292,7 +292,7 @@ export default function AffiliatesPage() {
                     {/* Identity */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium text-white">{affiliate.name}</p>
+                        <p className="font-medium text-gray-900">{affiliate.name}</p>
                         {affiliate.company && (
                           <span className="text-xs text-gray-500">({affiliate.company})</span>
                         )}
@@ -301,36 +301,36 @@ export default function AffiliatesPage() {
                         </span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           affiliate.affiliate_type === 'shop_owner'
-                            ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                            ? 'bg-purple-500/10 text-purple-600 border border-purple-500/20'
+                            : 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
                         }`}>
                           {affiliate.affiliate_type === 'shop_owner' ? 'Store Owner' : 'External'}
                         </span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           affiliate.commission_model === 'recurring'
-                            ? 'bg-[#6B3FD9]/10 text-[#A78BFA] border border-[#6B3FD9]/30'
-                            : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                            ? 'bg-[#6B3FD9]/10 text-purple-600 border border-[#6B3FD9]/30'
+                            : 'bg-gray-500/10 text-gray-600 border border-gray-500/20'
                         }`}>
                           {affiliate.commission_model === 'recurring' ? 'Recurring 50%' : 'One-Time $75'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-400 truncate">{affiliate.email}</p>
+                      <p className="text-sm text-gray-600 truncate">{affiliate.email}</p>
                       {affiliate.phone && <p className="text-xs text-gray-500">{affiliate.phone}</p>}
                     </div>
 
                     {/* Referral Code */}
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5 bg-[#0B1121] border border-gray-700 px-3 py-1.5 rounded-lg">
+                      <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 px-3 py-1.5 rounded-lg">
                         <Link2 className="w-3.5 h-3.5 text-[#6B3FD9]" />
-                        <span className="text-sm font-mono text-white">{affiliate.referral_code}</span>
+                        <span className="text-sm font-mono text-gray-900">{affiliate.referral_code}</span>
                         <button
                           type="button"
                           onClick={() => copyCode(affiliate.referral_code)}
-                          className="text-gray-500 hover:text-white transition ml-1"
+                          className="text-gray-500 hover:text-gray-900 transition ml-1"
                           title="Copy code"
                         >
                           {copied === affiliate.referral_code ? (
-                            <Check className="w-3.5 h-3.5 text-green-400" />
+                            <Check className="w-3.5 h-3.5 text-green-600" />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
                           )}
@@ -342,24 +342,24 @@ export default function AffiliatesPage() {
                     <div className="flex gap-4 text-center">
                       <div>
                         <p className="text-xs text-gray-500">Referrals</p>
-                        <p className="text-sm font-semibold text-white">{affiliate.referral_count}</p>
+                        <p className="text-sm font-semibold text-gray-900">{affiliate.referral_count}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Earned</p>
-                        <p className="text-sm font-semibold text-white">${affiliate.total_earned.toFixed(0)}</p>
+                        <p className="text-sm font-semibold text-gray-900">${affiliate.total_earned.toFixed(0)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Pending</p>
-                        <p className="text-sm font-semibold text-yellow-400">${affiliate.pending_amount.toFixed(0)}</p>
+                        <p className="text-sm font-semibold text-yellow-600">${affiliate.pending_amount.toFixed(0)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Payout</p>
                         {affiliate.payout_method ? (
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 capitalize">
                             {affiliate.payout_method}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-600">—</span>
+                          <span className="text-xs text-gray-400">—</span>
                         )}
                       </div>
                     </div>
@@ -374,8 +374,8 @@ export default function AffiliatesPage() {
                           affiliate.status === 'pending'
                             ? 'bg-green-600 hover:bg-green-700 text-white'
                             : affiliate.status === 'active'
-                            ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400'
-                            : 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
+                            ? 'bg-red-600/20 hover:bg-red-600/30 text-red-600'
+                            : 'bg-green-600/20 hover:bg-green-600/30 text-green-600'
                         }`}
                       >
                         {togglingId === affiliate.id ? (
@@ -389,7 +389,7 @@ export default function AffiliatesPage() {
 
                   {/* Expanded Detail */}
                   {isExpanded && (
-                    <div className="bg-[#0B1121] border-t border-gray-800 p-5">
+                    <div className="bg-gray-50 border-t border-gray-200 p-5">
                       {loadingDetail === affiliate.id ? (
                         <div className="flex justify-center py-4">
                           <Loader2 className="w-5 h-5 animate-spin text-[#6B3FD9]" />
@@ -398,12 +398,12 @@ export default function AffiliatesPage() {
                         <div className="space-y-4">
                           {/* Application Details */}
                           <div>
-                            <p className="text-gray-400 text-sm font-medium mb-3">Application Details</p>
+                            <p className="text-gray-600 text-sm font-medium mb-3">Application Details</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                               <AppField label="Applied" value={new Date(detail.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} />
                               {detail.phone && <AppField label="Phone" value={detail.phone} />}
                               {detail.website && (
-                                <div className="bg-[#151F32] rounded-lg px-4 py-3">
+                                <div className="bg-white rounded-lg px-4 py-3">
                                   <p className="text-gray-500 text-xs mb-1">Website / Profile</p>
                                   <a href={detail.website} target="_blank" rel="noreferrer" className="text-[#6B3FD9] text-sm flex items-center gap-1 hover:underline truncate">
                                     {detail.website} <ExternalLink className="w-3 h-3 shrink-0" />
@@ -428,15 +428,15 @@ export default function AffiliatesPage() {
                                     {region     && <AppField label="Target Region" value={region} />}
                                     {experience && <AppField label="Experience" value={experience} />}
                                     {desc && (
-                                      <div className="sm:col-span-2 lg:col-span-3 bg-[#151F32] rounded-lg px-4 py-3">
+                                      <div className="sm:col-span-2 lg:col-span-3 bg-white rounded-lg px-4 py-3">
                                         <p className="text-gray-500 text-xs mb-1">Promotion Plan</p>
-                                        <p className="text-gray-300 text-sm leading-relaxed">{desc}</p>
+                                        <p className="text-gray-700 text-sm leading-relaxed">{desc}</p>
                                       </div>
                                     )}
                                     {!platform && !audience && !region && !experience && !desc && (
-                                      <div className="sm:col-span-2 lg:col-span-3 bg-[#151F32] rounded-lg px-4 py-3">
+                                      <div className="sm:col-span-2 lg:col-span-3 bg-white rounded-lg px-4 py-3">
                                         <p className="text-gray-500 text-xs mb-1">Promotion Plan</p>
-                                        <p className="text-gray-300 text-sm">{detail.how_promote}</p>
+                                        <p className="text-gray-700 text-sm">{detail.how_promote}</p>
                                       </div>
                                     )}
                                   </>
@@ -455,10 +455,10 @@ export default function AffiliatesPage() {
                               <button
                                 type="button"
                                 onClick={() => copyCode(detail.referral_link)}
-                                className="text-gray-400 hover:text-white transition"
+                                className="text-gray-600 hover:text-gray-900 transition"
                               >
                                 {copied === detail.referral_link ? (
-                                  <Check className="w-4 h-4 text-green-400" />
+                                  <Check className="w-4 h-4 text-green-600" />
                                 ) : (
                                   <Copy className="w-4 h-4" />
                                 )}
@@ -468,13 +468,13 @@ export default function AffiliatesPage() {
 
                           {/* Payout Details */}
                           <div>
-                            <p className="text-gray-400 text-sm font-medium mb-3">Payout Details</p>
+                            <p className="text-gray-600 text-sm font-medium mb-3">Payout Details</p>
                             {(detail.payout_method || detail.paypal_email || detail.skrill_email || detail.payoneer_id) ? (
                               <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 {detail.payout_method && (
                                   <div>
                                     <p className="text-gray-500 text-xs mb-1">Preferred Method</p>
-                                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">{detail.payout_method}</span>
+                                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 capitalize">{detail.payout_method}</span>
                                   </div>
                                 )}
                                 {detail.paypal_email && (
@@ -497,24 +497,24 @@ export default function AffiliatesPage() {
                                 )}
                               </div>
                             ) : (
-                              <p className="text-gray-600 text-sm bg-[#151F32] rounded-lg px-4 py-3">No payout details saved yet — affiliate has not set their payment method.</p>
+                              <p className="text-gray-400 text-sm bg-white rounded-lg px-4 py-3">No payout details saved yet — affiliate has not set their payment method.</p>
                             )}
                           </div>
 
                           {/* Referral Breakdown — who they brought, what each is paying, what this affiliate has earned */}
                           <div>
-                            <p className="text-gray-400 text-sm font-medium mb-2">
+                            <p className="text-gray-600 text-sm font-medium mb-2">
                               Referral Breakdown
-                              <span className="text-gray-600 font-normal ml-1.5">
+                              <span className="text-gray-400 font-normal ml-1.5">
                                 ({detail.referral_breakdown?.length ?? 0} referral{(detail.referral_breakdown?.length ?? 0) !== 1 ? 's' : ''})
                               </span>
                             </p>
                             {!detail.referral_breakdown || detail.referral_breakdown.length === 0 ? (
-                              <p className="text-gray-600 text-sm">No paying referrals yet</p>
+                              <p className="text-gray-400 text-sm">No paying referrals yet</p>
                             ) : (
-                              <div className="overflow-x-auto rounded-lg border border-gray-800">
+                              <div className="overflow-x-auto rounded-lg border border-gray-200">
                                 <table className="w-full text-sm">
-                                  <thead className="bg-[#151F32]">
+                                  <thead className="bg-white">
                                     <tr>
                                       <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Shop</th>
                                       <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">Plan</th>
@@ -525,32 +525,32 @@ export default function AffiliatesPage() {
                                       <th className="text-right px-4 py-2 text-xs font-medium text-gray-500">Earned From This Referral</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-gray-800">
+                                  <tbody className="divide-y divide-gray-200">
                                     {detail.referral_breakdown.map((r) => (
-                                      <tr key={r.shop_id ?? r.shop_name} className="bg-[#0B1121]">
-                                        <td className="px-4 py-2.5 text-white font-medium">{r.shop_name}</td>
-                                        <td className="px-4 py-2.5 text-gray-400 capitalize">{r.plan_type?.replace('_', ' ') ?? '—'}</td>
+                                      <tr key={r.shop_id ?? r.shop_name} className="bg-gray-50">
+                                        <td className="px-4 py-2.5 text-gray-900 font-medium">{r.shop_name}</td>
+                                        <td className="px-4 py-2.5 text-gray-600 capitalize">{r.plan_type?.replace('_', ' ') ?? '—'}</td>
                                         <td className="px-4 py-2.5 text-center">
-                                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${REFERRAL_STATUS_STYLES[r.status] ?? 'bg-gray-500/10 text-gray-400 border border-gray-500/20'}`}>
+                                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${REFERRAL_STATUS_STYLES[r.status] ?? 'bg-gray-500/10 text-gray-600 border border-gray-500/20'}`}>
                                             {REFERRAL_STATUS_LABELS[r.status] ?? r.status}
                                           </span>
                                         </td>
-                                        <td className="px-4 py-2.5 text-right text-gray-300">
+                                        <td className="px-4 py-2.5 text-right text-gray-700">
                                           {r.subscription_amount != null ? `$${r.subscription_amount.toFixed(2)} ${r.billing_type === 'yearly' ? '/yr' : '/mo'}` : '—'}
                                         </td>
                                         <td className="px-4 py-2.5 text-center">
                                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                                             r.commission_type === 'recurring'
-                                              ? 'bg-[#6B3FD9]/10 text-[#A78BFA] border border-[#6B3FD9]/30'
-                                              : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                                              ? 'bg-[#6B3FD9]/10 text-purple-600 border border-[#6B3FD9]/30'
+                                              : 'bg-gray-500/10 text-gray-600 border border-gray-500/20'
                                           }`}>
                                             {r.commission_type === 'recurring' ? 'Recurring' : 'One-Time'}
                                           </span>
                                         </td>
-                                        <td className="px-4 py-2.5 text-center text-gray-400">
+                                        <td className="px-4 py-2.5 text-center text-gray-600">
                                           {r.commission_type === 'recurring' ? `${r.months_paid}/12 paid` : '—'}
                                         </td>
-                                        <td className="px-4 py-2.5 text-right font-semibold text-white">
+                                        <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
                                           {r.total_earned_from_referral > 0 ? (
                                             `$${r.total_earned_from_referral.toFixed(2)}`
                                           ) : (
@@ -569,9 +569,9 @@ export default function AffiliatesPage() {
 
                           {/* Commission History */}
                           <div>
-                            <p className="text-gray-400 text-sm font-medium mb-2">Commission History</p>
+                            <p className="text-gray-600 text-sm font-medium mb-2">Commission History</p>
                             {!detail.commissions || detail.commissions.length === 0 ? (
-                              <p className="text-gray-600 text-sm">No commissions yet</p>
+                              <p className="text-gray-400 text-sm">No commissions yet</p>
                             ) : (
                               <div className="space-y-2">
                                 {detail.commissions.map((c) => {
@@ -583,12 +583,12 @@ export default function AffiliatesPage() {
                                   const isApproved = c.status === 'approved';
                                   const isPaid = c.status === 'paid';
                                   return (
-                                    <div key={c.id} className="flex items-center justify-between bg-[#151F32] rounded-lg px-4 py-3">
+                                    <div key={c.id} className="flex items-center justify-between bg-white rounded-lg px-4 py-3">
                                       <div>
-                                        <p className="text-sm font-medium text-white">
+                                        <p className="text-sm font-medium text-gray-900">
                                           {c.shop_name}
                                           {c.commission_type === 'recurring' && c.period_month && (
-                                            <span className="ml-2 text-xs font-normal text-[#A78BFA]">Month {c.period_month}/12</span>
+                                            <span className="ml-2 text-xs font-normal text-purple-600">Month {c.period_month}/12</span>
                                           )}
                                         </p>
                                         <p className="text-xs text-gray-500">
@@ -598,11 +598,11 @@ export default function AffiliatesPage() {
                                         </p>
                                       </div>
                                       <div className="flex items-center gap-3">
-                                        <span className="text-sm font-semibold text-white">
+                                        <span className="text-sm font-semibold text-gray-900">
                                           {c.amount.toFixed(2)} {c.currency}
                                         </span>
                                         {isLocked && (
-                                          <span className="text-xs px-2 py-1 bg-gray-500/10 text-gray-400 rounded-full">Locked 30d</span>
+                                          <span className="text-xs px-2 py-1 bg-gray-500/10 text-gray-600 rounded-full">Locked 30d</span>
                                         )}
                                         {isPendingApproval && (
                                           <button
@@ -625,7 +625,7 @@ export default function AffiliatesPage() {
                                           </button>
                                         )}
                                         {isPaid && (
-                                          <span className="text-xs px-2 py-1 bg-green-500/10 text-green-400 rounded-full">Paid</span>
+                                          <span className="text-xs px-2 py-1 bg-green-500/10 text-green-600 rounded-full">Paid</span>
                                         )}
                                       </div>
                                     </div>
@@ -649,13 +649,13 @@ export default function AffiliatesPage() {
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-bold text-white">Payout Requests</h2>
-            <p className="text-gray-400 text-sm mt-0.5">Affiliates requesting their available balance</p>
+            <h2 className="text-xl font-bold text-gray-900">Payout Requests</h2>
+            <p className="text-gray-600 text-sm mt-0.5">Affiliates requesting their available balance</p>
           </div>
           <select
             value={payoutFilter}
             onChange={e => setPayoutFilter(e.target.value)}
-            className="px-3 py-2 bg-[#0B1121] border border-gray-700 rounded-lg text-white text-sm focus:border-[#6B3FD9] focus:outline-none"
+            className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none"
           >
             <option value="pending">Pending</option>
             <option value="paid">Paid</option>
@@ -663,7 +663,7 @@ export default function AffiliatesPage() {
           </select>
         </div>
 
-        <div className="bg-[#151F32] rounded-xl border border-gray-800 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {loadingPayouts ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="w-6 h-6 animate-spin text-[#6B3FD9]" />
@@ -674,22 +674,22 @@ export default function AffiliatesPage() {
               <p className="text-sm">No {payoutFilter} payout requests</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-800">
+            <div className="divide-y divide-gray-200">
               {payoutRequests.map((req) => (
                 <div key={req.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="text-white font-semibold text-sm">{req.affiliate_name}</p>
+                      <p className="text-gray-900 font-semibold text-sm">{req.affiliate_name}</p>
                       <span className="text-gray-500 text-xs">{req.affiliate_email}</span>
                     </div>
-                    <div className="flex flex-wrap gap-3 text-xs text-gray-400">
-                      <span className="bg-[#0B1121] px-2 py-1 rounded-md font-mono">{req.payout_method?.toUpperCase()}</span>
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+                      <span className="bg-gray-50 px-2 py-1 rounded-md font-mono">{req.payout_method?.toUpperCase()}</span>
                       <span>{req.payout_address}</span>
-                      <span className="text-white font-semibold">${req.amount.toFixed(2)} {req.currency}</span>
+                      <span className="text-gray-900 font-semibold">${req.amount.toFixed(2)} {req.currency}</span>
                       <span>{new Date(req.requested_at).toLocaleDateString()}</span>
                     </div>
                     {req.admin_notes && (
-                      <p className="text-xs text-red-400 mt-1">Note: {req.admin_notes}</p>
+                      <p className="text-xs text-red-600 mt-1">Note: {req.admin_notes}</p>
                     )}
                   </div>
                   {req.status === 'pending' && (
@@ -705,19 +705,19 @@ export default function AffiliatesPage() {
                       <button
                         onClick={() => handleRejectPayout(req.id)}
                         disabled={processingPayout === req.id}
-                        className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold px-4 py-2 rounded-lg transition border border-red-500/20"
+                        className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 text-xs font-semibold px-4 py-2 rounded-lg transition border border-red-500/20"
                       >
                         <X className="w-3.5 h-3.5" /> Reject
                       </button>
                     </div>
                   )}
                   {req.status === 'paid' && (
-                    <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 shrink-0">
+                    <span className="text-xs font-medium text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 shrink-0">
                       Paid {req.paid_at ? new Date(req.paid_at).toLocaleDateString() : ''}
                     </span>
                   )}
                   {req.status === 'rejected' && (
-                    <span className="text-xs font-medium text-red-400 bg-red-500/10 px-3 py-1.5 rounded-full border border-red-500/20 shrink-0">
+                    <span className="text-xs font-medium text-red-600 bg-red-500/10 px-3 py-1.5 rounded-full border border-red-500/20 shrink-0">
                       Rejected
                     </span>
                   )}
@@ -733,9 +733,9 @@ export default function AffiliatesPage() {
 
 function AppField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#151F32] rounded-lg px-4 py-3">
+    <div className="bg-white rounded-lg px-4 py-3">
       <p className="text-gray-500 text-xs mb-1">{label}</p>
-      <p className="text-gray-200 text-sm font-medium">{value}</p>
+      <p className="text-gray-800 text-sm font-medium">{value}</p>
     </div>
   );
 }
@@ -752,13 +752,13 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <div className={`rounded-xl border p-4 ${highlight ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-[#151F32] border-gray-800'}`}>
+    <div className={`rounded-xl border p-4 ${highlight ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-white border-gray-200'}`}>
       <div className="flex items-center justify-between mb-3">
-        <div className={`p-2 rounded-lg ${highlight ? 'bg-yellow-500/10 text-yellow-400' : 'bg-[#6B3FD9]/10 text-[#6B3FD9]'}`}>
+        <div className={`p-2 rounded-lg ${highlight ? 'bg-yellow-500/10 text-yellow-600' : 'bg-[#6B3FD9]/10 text-[#6B3FD9]'}`}>
           {icon}
         </div>
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
       <p className="text-sm text-gray-500 mt-1">{label}</p>
     </div>
   );

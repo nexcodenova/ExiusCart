@@ -27,7 +27,7 @@ export default function AdminDashboardLayout({
   if (!authed) return null;
 
   return (
-    <div className="min-h-screen bg-[#0B1121]">
+    <div className="min-h-screen bg-[#F3F5F9]">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div

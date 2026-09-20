@@ -106,8 +106,8 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploa
   const isEmpty = !value || value === '<br>' || value === '<div><br></div>';
 
   return (
-    <div className="border border-gray-700 rounded-lg bg-[#0B1121] overflow-hidden focus-within:border-[#6B3FD9]">
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-700 bg-[#151F32]">
+    <div className="border border-gray-300 rounded-lg bg-gray-50 overflow-hidden focus-within:border-[#6B3FD9]">
+      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-300 bg-white">
         {TOOLBAR_BUTTONS.map(({ command, icon: Icon, label }) => (
           <button
             key={command}
@@ -115,7 +115,7 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploa
             title={label}
             onMouseDown={(e) => e.preventDefault()} // keep focus/selection in the editor
             onClick={() => exec(command)}
-            className="p-1.5 rounded hover:bg-gray-800 transition text-gray-400 hover:text-white"
+            className="p-1.5 rounded hover:bg-gray-100 transition text-gray-600 hover:text-gray-900"
           >
             <Icon className="w-3.5 h-3.5" />
           </button>
@@ -125,20 +125,20 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploa
           title="Heading"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => exec('formatBlock', 'h3')}
-          className="p-1.5 rounded hover:bg-gray-800 transition text-gray-400 hover:text-white"
+          className="p-1.5 rounded hover:bg-gray-100 transition text-gray-600 hover:text-gray-900"
         >
           <Heading className="w-3.5 h-3.5" />
         </button>
         {onUploadImage && (
           <>
-            <div className="w-px h-4 bg-gray-700 mx-0.5" />
+            <div className="w-px h-4 bg-gray-200 mx-0.5" />
             <button
               type="button"
               title={`Insert image (up to ${maxImages})`}
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleImageButtonClick}
               disabled={uploadingImage}
-              className="p-1.5 rounded hover:bg-gray-800 transition text-gray-400 hover:text-white disabled:opacity-50"
+              className="p-1.5 rounded hover:bg-gray-100 transition text-gray-600 hover:text-gray-900 disabled:opacity-50"
             >
               {uploadingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
             </button>
@@ -148,7 +148,7 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploa
       </div>
       <div className="relative">
         {isEmpty && placeholder && (
-          <p className="absolute top-2.5 left-3 text-gray-600 pointer-events-none select-none text-sm">{placeholder}</p>
+          <p className="absolute top-2.5 left-3 text-gray-400 pointer-events-none select-none text-sm">{placeholder}</p>
         )}
         <div
           ref={editorRef}
@@ -157,11 +157,11 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, onUploa
           onInput={() => onChange(editorRef.current?.innerHTML ?? '')}
           onBlur={() => onChange(editorRef.current?.innerHTML ?? '')}
           onPaste={handlePaste}
-          className="w-full px-3 py-2.5 outline-none text-white text-sm leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-2"
+          className="w-full px-3 py-2.5 outline-none text-gray-900 text-sm leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-2"
           style={{ minHeight: `${rows * 1.6}rem` }}
         />
       </div>
-      {imageError && <p className="text-xs text-red-400 px-3 pb-2">{imageError}</p>}
+      {imageError && <p className="text-xs text-red-600 px-3 pb-2">{imageError}</p>}
     </div>
   );
 }
