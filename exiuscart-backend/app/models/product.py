@@ -14,6 +14,10 @@ class Category(Base):
     image_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True)
     sort_order = Column(Integer, default=0)
+    # Prodora catalogue categories: true only for ones an admin added on
+    # Admin > Prodora > Categories. Categories that arrive from a supplier's own
+    # category text (CJ, AliExpress) stay false and are not listed in Prodora.
+    prodora_managed = Column(Boolean, default=False, server_default="false", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Foreign Keys
@@ -125,6 +129,12 @@ class Product(Base):
     saturation_level = Column(String(20), nullable=True)    # "Low" / "Medium" / "High"
     orders_count = Column(Integer, nullable=True)
     supplier_name = Column(String(255), nullable=True)
+    # Prodora catalogue ID: supplier prefix + running number per supplier
+    # (CJ001, AL001, ...). Only set on Prodora catalogue products.
+    prodora_code = Column(String(20), nullable=True, index=True)
+    # Prodora "Global Bestsellers" view: shows only products an admin marked
+    # as bestsellers here (Current Trends uses is_trending).
+    is_bestseller = Column(Boolean, default=False, server_default="false", nullable=False)
     supplier_rating = Column(Numeric(3, 2), nullable=True)  # e.g. 4.80
     fulfillment_rate = Column(Numeric(5, 2), nullable=True) # e.g. 99.20 (%)
     processing_time = Column(String(50), nullable=True)     # e.g. "1-3 Days"

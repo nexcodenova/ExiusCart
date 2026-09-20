@@ -209,6 +209,7 @@ def _product_out(p: Product) -> dict:
         "source_url": getattr(p, "source_url", None),
         "is_trending": p.is_trending,
         "is_featured": p.is_featured,
+        "is_bestseller": bool(p.is_bestseller),
         "stock": p.quantity,
         "sku": p.sku,
         "category_name": p.category.name if p.category else None,
@@ -245,6 +246,7 @@ def list_shopping_products(
     category: Optional[str] = None,      # category slug
     trending: Optional[bool] = None,
     featured: Optional[bool] = None,
+    bestseller: Optional[bool] = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_prodora_user),
 ):
@@ -269,10 +271,21 @@ def list_shopping_products(
     )
 
     if search:
-        q = f"%{search}%"
-        query = query.filter(
-            (Product.name.ilike(q)) | (Product.description.ilike(q))
-        )
+        # Every word must match somewhere (name, description, tags, SKU,
+        # supplier or category), in any order: "phone cleaner" finds
+        # "Mobile Phone Screen Cleaner". LIKE wildcards typed by the user are
+        # escaped so "50%" or "a_b" search literally.
+        from sqlalchemy import or_
+        for word in search.split():
+            like = "%" + word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            query = query.filter(or_(
+                Product.name.ilike(like, escape="\\"),
+                Product.description.ilike(like, escape="\\"),
+                Product.tags.ilike(like, escape="\\"),
+                Product.sku.ilike(like, escape="\\"),
+                Product.supplier_name.ilike(like, escape="\\"),
+                Category.name.ilike(like, escape="\\"),
+            ))
 
     if category:
         query = query.filter(Category.slug == category)
@@ -282,6 +295,9 @@ def list_shopping_products(
 
     if featured is True:
         query = query.filter(Product.is_featured == True)
+
+    if bestseller is True:
+        query = query.filter(Product.is_bestseller == True)
 
     # Trending first, then featured, then newest
     products = query.order_by(
@@ -316,6 +332,10 @@ def get_shopping_product(
     )
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    # Every open of the product page counts, not one per device. Shown as
+    # "Views" on the admin All Products list.
+    product.view_count = (product.view_count or 0) + 1
+    db.commit()
     return _product_out(product)
 
 
@@ -412,11 +432,18 @@ def import_shopping_product(
         if match:
             category_id = match.id
 
+    # The catalogue keeps the full description; trim it to THIS seller's plan
+    # limit (Launch 350, Growth 500, Scale 1,000 words) so a Scale seller keeps
+    # more and nobody lands over their own limit.
+    from app.api.v1.endpoints.admin import _truncate_description
+    from app.api.v1.endpoints.product_fields import _description_word_limit
+    seller_description = _truncate_description(source.description, _description_word_limit(shop.id, db))
+
     new_product = Product(
         shop_id=shop.id,
         category_id=category_id,
         name=source.name,
-        description=source.description,
+        description=seller_description,
         price=source.price,
         cost_price=source.cost_price,
         sku=f"{(source.sku or 'PRODORA')}-{uuid.uuid4().hex[:6]}",
@@ -498,7 +525,7 @@ def import_shopping_product(
             new_product.quantity = 999999
             new_product.low_stock_threshold = 0
 
-    db.add(ProdoraImportLog(shop_id=shop.id, product_id=new_product.id))
+    db.add(ProdoraImportLog(shop_id=shop.id, product_id=new_product.id, source_product_id=source.id))
     db.commit()
     db.refresh(new_product)
     return {"product_id": new_product.id, "name": new_product.name, "shop_id": shop.id}
@@ -580,6 +607,7 @@ def list_shopping_categories(db: Session = Depends(get_db), _: User = Depends(ge
             Product.is_active == True,
             Shop.is_active == True,
             Shop.slug == "exiuscart-dropshipping-system",
+            Category.prodora_managed == True,  # only categories an admin added
         )
         .distinct()
         .order_by(Category.name)

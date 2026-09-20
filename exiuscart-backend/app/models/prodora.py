@@ -12,5 +12,6 @@ class ProdoraImportLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
-    product_id = Column(Integer, nullable=True)
+    product_id = Column(Integer, nullable=True)         # the new product created in the seller's store
+    source_product_id = Column(Integer, nullable=True)  # the Prodora catalogue product that was imported
     created_at = Column(DateTime(timezone=True), server_default=func.now())

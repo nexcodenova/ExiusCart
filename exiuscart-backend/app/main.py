@@ -96,6 +96,16 @@ _sa_text = __import__('sqlalchemy').text
 _MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE NOT NULL;",
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS source_url VARCHAR(1000);",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS prodora_code VARCHAR(20);",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS is_bestseller BOOLEAN NOT NULL DEFAULT FALSE;",
+    "ALTER TABLE categories ADD COLUMN IF NOT EXISTS prodora_managed BOOLEAN NOT NULL DEFAULT FALSE;",
+    # Categories an admin already gave a tile image were curated by hand.
+    "UPDATE categories SET prodora_managed = TRUE WHERE image_url IS NOT NULL AND shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
+    "CREATE INDEX IF NOT EXISTS ix_products_prodora_code ON products (prodora_code);",
+    "ALTER TABLE prodora_digital_bundles ADD COLUMN IF NOT EXISTS code VARCHAR(20);",
+    "ALTER TABLE prodora_digital_bundles ADD COLUMN IF NOT EXISTS is_trending BOOLEAN NOT NULL DEFAULT FALSE;",
+    "ALTER TABLE prodora_digital_bundles ADD COLUMN IF NOT EXISTS is_bestseller BOOLEAN NOT NULL DEFAULT FALSE;",
+    "ALTER TABLE prodora_import_logs ADD COLUMN IF NOT EXISTS source_product_id INTEGER;",
     "ALTER TABLE affiliates ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);",
     "ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);",
     "ALTER TABLE order_items ALTER COLUMN product_id DROP NOT NULL;",

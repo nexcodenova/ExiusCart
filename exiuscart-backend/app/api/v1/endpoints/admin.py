@@ -16,7 +16,13 @@ from app.api.v1.deps import get_current_user
 from app.core.encryption import encrypt
 from app.models.dropship import DropshipConnection, DropshipProductLink
 from app.api.v1.endpoints.dropshipping import _cj_get_token, _cj_ensure_token, _parse_cj_price, CJ_BASE
-from app.api.v1.endpoints.product_fields import DESCRIPTION_WORDS_DEFAULT
+from app.api.v1.endpoints.product_fields import _DESCRIPTION_WORD_LIMITS
+
+# The Prodora catalogue keeps descriptions up to the LARGEST plan limit (Scale),
+# not the smallest. Each seller's import is then trimmed to their own plan's
+# limit (see import_shopping_product in shopping.py), so a Scale seller gets the
+# full text and a Launch seller never ends up over their limit.
+DESCRIPTION_WORDS_DEFAULT = max(_DESCRIPTION_WORD_LIMITS.values())
 from app.core.email import (
     send_dashboard_live_email,
     send_affiliate_pending_email,
@@ -1386,9 +1392,91 @@ def _slugify_unique(name: str) -> str:
     return f"{base}-{_uuid.uuid4().hex[:6]}"
 
 
+# ── Prodora catalogue IDs (CJ001, AL001, DG001, ...) ─────────────────────────
+# Every catalogue product and digital bundle gets a readable ID made of its
+# supplier's prefix and a running number for that supplier. Assigned once and
+# never reused, so the ID stays the same even if an earlier product is deleted.
+
+_SUPPLIER_LABELS = {
+    "cj": "CJ Dropshipping", "aliexpress": "AliExpress", "hypersku": "HyperSKU", "eprolo": "EPROLO",
+    "1688": "1688", "printful": "Printful", "printify": "Printify", "gelato": "Gelato",
+    "manual": "Manual", "digital": "Digital",
+}
+_SUPPLIER_PREFIX = {
+    "cj": "CJ", "aliexpress": "AL", "hypersku": "HS", "eprolo": "EP", "1688": "AB",
+    "printful": "PF", "printify": "PY", "gelato": "GL", "manual": "MN", "digital": "DG",
+}
+
+
+def _code_prefix(key: str) -> str:
+    return _SUPPLIER_PREFIX.get(key) or (re.sub(r"[^A-Za-z]", "", key)[:2].upper() or "XX")
+
+
+def _supplier_key(product: Product, link_type: Optional[str]) -> str:
+    if link_type:
+        return link_type.lower()
+    name = (product.supplier_name or "").lower()
+    if "aliexpress" in name:
+        return "aliexpress"
+    if "cj" in name:
+        return "cj"
+    return "manual"
+
+
+def _ensure_prodora_codes(db: Session) -> None:
+    """Gives every catalogue product / digital bundle that has no ID yet the
+    next free one for its supplier, oldest first. Safe to call any time."""
+    from app.models.prodora_digital import ProdoraDigitalBundle
+
+    products = (
+        db.query(Product)
+        .join(Shop, Product.shop_id == Shop.id)
+        .filter(Shop.slug == "exiuscart-dropshipping-system")
+        .order_by(Product.id.asc())
+        .all()
+    )
+    link_types: dict = {}
+    if products:
+        rows = db.query(DropshipProductLink.product_id, DropshipProductLink.supplier_type).filter(
+            DropshipProductLink.product_id.in_([p.id for p in products]),
+            DropshipProductLink.is_primary == True,
+        ).all()
+        link_types = {pid: stype for pid, stype in rows}
+    bundles = db.query(ProdoraDigitalBundle).order_by(ProdoraDigitalBundle.id.asc()).all()
+
+    highest: dict = {}
+
+    def note(code: Optional[str]) -> None:
+        m = re.match(r"^([A-Z]+)(\d+)$", code or "")
+        if m:
+            highest[m.group(1)] = max(highest.get(m.group(1), 0), int(m.group(2)))
+
+    for p in products:
+        note(p.prodora_code)
+    for b in bundles:
+        note(b.code)
+
+    def take(prefix: str) -> str:
+        highest[prefix] = highest.get(prefix, 0) + 1
+        return f"{prefix}{highest[prefix]:03d}"
+
+    changed = False
+    for p in products:
+        if not p.prodora_code:
+            p.prodora_code = take(_code_prefix(_supplier_key(p, link_types.get(p.id))))
+            changed = True
+    for b in bundles:
+        if not b.code:
+            b.code = take("DG")
+            changed = True
+    if changed:
+        db.flush()
+
+
 def _shopping_product_out(p: Product) -> dict:
     return {
         "id": p.id,
+        "code": p.prodora_code,
         "name": p.name,
         "description": p.description,
         "price": float(p.price),
@@ -1401,6 +1489,7 @@ def _shopping_product_out(p: Product) -> dict:
         "source_url": getattr(p, "source_url", None),
         "is_active": p.is_active,
         "is_featured": p.is_featured,
+        "is_bestseller": bool(p.is_bestseller),
         "is_trending": p.is_trending,
         "stock": p.quantity,
         "sku": p.sku,
@@ -1479,6 +1568,7 @@ class ShoppingProductCreate(ShoppingProductExtras):
     source_url: Optional[str] = None     # supplier page (AliExpress, CJ, etc.)
     category_name: Optional[str] = None  # free-text, auto-creates category in admin shop
     is_featured: bool = False
+    is_bestseller: bool = False
     is_trending: bool = False
     is_active: bool = True
 
@@ -1494,6 +1584,7 @@ class ShoppingProductUpdate(ShoppingProductExtras):
     source_url: Optional[str] = None
     category_name: Optional[str] = None
     is_featured: Optional[bool] = None
+    is_bestseller: Optional[bool] = None
     is_trending: Optional[bool] = None
     is_active: Optional[bool] = None
 
@@ -1518,6 +1609,74 @@ def admin_list_shopping_products(
     if shop_id:
         query = query.filter(Product.shop_id == shop_id)
     return [_shopping_product_out(p) for p in query.limit(200).all()]
+
+
+@router.get("/admin/prodora/catalog")
+def admin_prodora_catalog(
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    """Everything on Prodora in one list — supplier products and digital
+    bundles — oldest first, each with its catalogue ID (CJ001, AL001, DG001)."""
+    from app.models.prodora_digital import ProdoraDigitalBundle
+
+    _ensure_prodora_codes(db)
+    db.commit()
+
+    query = (
+        db.query(Product)
+        .join(Shop, Product.shop_id == Shop.id)
+        .options(joinedload(Product.shop), joinedload(Product.category))
+        .filter(Shop.slug == "exiuscart-dropshipping-system")
+    )
+    bundle_query = db.query(ProdoraDigitalBundle)
+    if search:
+        q = f"%{search}%"
+        query = query.filter((Product.name.ilike(q)) | (Product.prodora_code.ilike(q)))
+        bundle_query = bundle_query.filter((ProdoraDigitalBundle.name.ilike(q)) | (ProdoraDigitalBundle.code.ilike(q)))
+    products = query.all()
+
+    link_types: dict = {}
+    if products:
+        rows = db.query(DropshipProductLink.product_id, DropshipProductLink.supplier_type).filter(
+            DropshipProductLink.product_id.in_([p.id for p in products]),
+            DropshipProductLink.is_primary == True,
+        ).all()
+        link_types = {pid: stype for pid, stype in rows}
+
+    from app.models.prodora import ProdoraImportLog
+    import_counts = dict(
+        db.query(ProdoraImportLog.source_product_id, func.count(ProdoraImportLog.id))
+        .filter(ProdoraImportLog.source_product_id.isnot(None))
+        .group_by(ProdoraImportLog.source_product_id).all()
+    )
+
+    result = []
+    for p in products:
+        key = _supplier_key(p, link_types.get(p.id))
+        out = _shopping_product_out(p)
+        out.update({
+            "kind": "product", "supplier_key": key, "supplier_label": _SUPPLIER_LABELS.get(key, key.title()),
+            "views": p.view_count or 0, "imports": import_counts.get(p.id, 0),
+        })
+        result.append(out)
+    for b in bundle_query.all():
+        result.append({
+            "kind": "digital", "id": b.id, "code": b.code, "supplier_key": "digital", "supplier_label": "Digital",
+            "name": b.name, "description": b.description, "price": float(b.price), "cost_price": None,
+            "currency": "USD", "image_url": b.cover_image_url, "images": [], "videos": [], "video_url": None,
+            "source_url": None, "is_active": b.is_active, "is_featured": False, "is_trending": bool(b.is_trending), "is_bestseller": bool(b.is_bestseller),
+            "sku": None, "category_name": None, "created_at": b.created_at, "variants": [],
+            "views": None, "imports": None,
+        })
+
+    def created_key(row: dict) -> float:
+        c = row.get("created_at")
+        return c.timestamp() if c else 0.0
+
+    result.sort(key=lambda r: (created_key(r), r["kind"] == "digital", r["id"]))
+    return result
 
 
 def _get_or_create_category(db: Session, shop_id: int, name: str):
@@ -1894,6 +2053,7 @@ def admin_create_shopping_product(
         category_id=cat_id,
         shop_id=shop.id,
         is_featured=data.is_featured,
+        is_bestseller=data.is_bestseller,
         is_trending=data.is_trending,
         is_active=data.is_active,
     )
@@ -1901,6 +2061,7 @@ def admin_create_shopping_product(
     db.flush()
     _apply_shopping_extras(db, product, data.model_dump(exclude_unset=True))
     _preserve_unique_description_images(db, product, data.description, set(data.images or []))
+    _ensure_prodora_codes(db)
     db.commit()
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
@@ -1930,7 +2091,7 @@ def admin_update_shopping_product(
             product.description = _truncate_description(_strip_description_images(value), DESCRIPTION_WORDS_DEFAULT)
         elif field in ("name", "price", "cost_price", "sku",
                        "image_url", "video_url", "source_url",
-                       "is_featured", "is_trending", "is_active"):
+                       "is_featured", "is_bestseller", "is_trending", "is_active"):
             setattr(product, field, value)
     _apply_shopping_extras(db, product, payload)
     if raw_description is not None:
@@ -2035,6 +2196,7 @@ def _category_out(c: Category, product_count: int = 0) -> dict:
     return {
         "id": c.id, "name": c.name, "slug": c.slug, "shop_id": c.shop_id,
         "image_url": c.image_url, "product_count": product_count,
+        "managed": bool(c.prodora_managed),
     }
 
 
@@ -2054,7 +2216,7 @@ def admin_create_category(
     slug = slugify(name)
     if db.query(Category).filter(Category.shop_id == shop.id, Category.slug == slug).first():
         raise HTTPException(status_code=409, detail="A category with that name already exists.")
-    cat = Category(name=name, slug=slug, shop_id=shop.id, image_url=(data.image_url or None))
+    cat = Category(name=name, slug=slug, shop_id=shop.id, image_url=(data.image_url or None), prodora_managed=True)
     db.add(cat)
     db.commit()
     db.refresh(cat)
@@ -2082,6 +2244,7 @@ def admin_update_category(
     cat.name = name
     cat.slug = slug
     cat.image_url = data.image_url or None
+    cat.prodora_managed = True  # saving a category from the admin page lists it in Prodora
     db.commit()
     db.refresh(cat)
     n = db.query(func.count(Product.id)).filter(Product.category_id == cat.id).scalar() or 0
@@ -2447,6 +2610,7 @@ async def _cj_import_one(db: Session, shop: Shop, token: str, cj_pid: str, price
 @router.post("/admin/shopping/cj/import", status_code=201)
 async def admin_cj_import(
     body: CJImportAdminIn,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
@@ -2455,7 +2619,9 @@ async def admin_cj_import(
     token = await _cj_ensure_token(conn, db)
 
     product = await _cj_import_one(db, shop, token, body.cj_pid, body.price, body.category_name)
+    _ensure_prodora_codes(db)
     db.commit()
+    background_tasks.add_task(_run_meta_ads_auto_attach, [product.id])
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
     ).filter(Product.id == product.id).first()
@@ -2464,11 +2630,13 @@ async def admin_cj_import(
 
 class CJBulkImportIn(BaseModel):
     cj_pids: List[str]
+    category_name: Optional[str] = None  # overrides the supplier's own category
 
 
 @router.post("/admin/shopping/cj/import-bulk", status_code=201)
 async def admin_cj_import_bulk(
     body: CJBulkImportIn,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
@@ -2482,12 +2650,15 @@ async def admin_cj_import_bulk(
     imported, failed = [], []
     for pid in body.cj_pids[:50]:
         try:
-            product = await _cj_import_one(db, shop, token, pid)
+            product = await _cj_import_one(db, shop, token, pid, None, body.category_name)
+            _ensure_prodora_codes(db)
             db.commit()
             imported.append(product.id)
         except Exception:
             db.rollback()
             failed.append(pid)
+    if imported:
+        background_tasks.add_task(_run_meta_ads_auto_attach, list(imported))
     return {"imported": imported, "failed": failed}
 
 
@@ -2558,6 +2729,7 @@ class AliexpressImportAdminIn(BaseModel):
 @router.post("/admin/shopping/aliexpress/import", status_code=201)
 async def admin_aliexpress_import(
     body: AliexpressImportAdminIn,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_superuser),
 ):
@@ -2636,7 +2808,10 @@ async def admin_aliexpress_import(
         is_primary=True,
     ))
 
+    db.flush()
+    _ensure_prodora_codes(db)
     db.commit()
+    background_tasks.add_task(_run_meta_ads_auto_attach, [product.id])
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
     ).filter(Product.id == product.id).first()
@@ -2669,6 +2844,10 @@ async def _run_meta_ads_auto_attach(product_ids: list[int]):
     A single product's failure (no match, a transient error) just gets
     skipped and logged, never aborts the rest of the batch."""
     import asyncio
+    from app.core import meta_ad_library as _mal
+    if not _mal.META_AD_LIBRARY_TOKEN:
+        logger.info("[Meta Ads auto-attach] skipped: META_AD_LIBRARY_TOKEN is not set")
+        return
     db = SessionLocal()
     attached = 0
     try:
@@ -2694,18 +2873,26 @@ async def _run_meta_ads_auto_attach(product_ids: list[int]):
 def admin_meta_ads_auto_attach(
     background_tasks: BackgroundTasks,
     limit: int = 50,
+    product_id: Optional[int] = None,
     db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
     """Queues a throttled background search for products missing a Facebook
     ad link — returns immediately so the admin isn't stuck waiting (a run
     of, say, 1000 products takes ~30+ minutes at the throttled rate)."""
+    from app.core import meta_ad_library as _mal
+    if not _mal.META_AD_LIBRARY_TOKEN:
+        raise HTTPException(status_code=400, detail={
+            "error": "meta_not_configured",
+            "message": "Meta Ad Library isn't connected yet, so no ads can be searched. It needs META_AD_LIBRARY_TOKEN from a verified Meta developer account.",
+        })
     shop = db.query(Shop).filter(Shop.slug == "exiuscart-dropshipping-system").first()
     if not shop:
         raise HTTPException(status_code=400, detail="System shop not found.")
-    products = db.query(Product).filter(
-        Product.shop_id == shop.id, Product.ad_facebook_url.is_(None),
-    ).order_by(Product.created_at.desc()).limit(limit).all()
+    query = db.query(Product).filter(Product.shop_id == shop.id, Product.ad_facebook_url.is_(None))
+    if product_id is not None:
+        query = query.filter(Product.id == product_id)
+    products = query.order_by(Product.created_at.desc()).limit(limit).all()
     product_ids = [p.id for p in products]
     background_tasks.add_task(_run_meta_ads_auto_attach, product_ids)
     return {"queued": len(product_ids)}

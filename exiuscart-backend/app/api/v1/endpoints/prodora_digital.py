@@ -68,6 +68,7 @@ def _bundle_out(b: ProdoraDigitalBundle, purchased: bool) -> dict:
         "ad_facebook_url": b.ad_facebook_url, "ad_tiktok_url": b.ad_tiktok_url,
         "ad_instagram_url": b.ad_instagram_url, "ad_pinterest_url": b.ad_pinterest_url,
         "whop_checkout_url": b.whop_checkout_url,
+        "is_trending": bool(b.is_trending), "is_bestseller": bool(b.is_bestseller),
         "purchased": purchased,
     }
 
@@ -90,6 +91,8 @@ class BundleIn(BaseModel):
     whop_checkout_url: Optional[str] = None
     whop_product_id: Optional[str] = None
     is_active: bool = True
+    is_trending: bool = False
+    is_bestseller: bool = False
 
     # Whop (and card networks generally) enforce a real minimum charge
     # around $0.50 — a bundle priced below that would fail at checkout on
