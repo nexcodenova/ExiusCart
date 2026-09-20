@@ -183,10 +183,7 @@ export default function ChannelListingsPage() {
         margin from its space-y-6 siblings and anchors exactly under the
         64px app header. */}
     {openId && (
-      <>
-        <div className="fixed inset-0 bg-black/40 z-[55] sm:hidden" onClick={() => setOpenId(null)} />
-        <ListingDrawer detail={detail} loading={loadingDetail} onClose={() => setOpenId(null)} />
-      </>
+      <ListingDrawer detail={detail} loading={loadingDetail} onClose={() => setOpenId(null)} />
     )}
     </>
   );

@@ -101,7 +101,8 @@ export default function FiltersPanel({
   onChange: (next: Partial<FiltersState>) => void;
   onClearAll: () => void;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  // Hidden until someone opens it; the badge shows how many filters are on.
+  const [collapsed, setCollapsed] = useState(true);
 
   const channelOptions = activeChannels.map((c) => ({ value: c, label: CHANNEL_META[c]?.label ?? c, icon: CHANNEL_META[c]?.icon, color: CHANNEL_META[c]?.color, channelType: c }));
   const supplierOptions = activeSuppliers.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }));
@@ -120,6 +121,9 @@ export default function FiltersPanel({
       <button onClick={() => setCollapsed((c) => !c)} className="w-full flex items-center justify-between px-5 py-4">
         <span className="flex items-center gap-2 text-sm font-bold text-foreground">
           <Filter className="w-4 h-4" /> Filters
+          {activeFilterChips.length > 0 && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">{activeFilterChips.length} active</span>
+          )}
         </span>
         <div className="flex items-center gap-4">
           {activeFilterChips.length > 0 && (
