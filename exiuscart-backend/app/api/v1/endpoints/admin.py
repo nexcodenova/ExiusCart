@@ -23,6 +23,7 @@ from app.core.email import (
     send_affiliate_approved_email,
 )
 from app.core.security import create_access_token
+from app.core.currency import convert_amount_sync
 from app.core.affiliate_commissions import generate_commission_for_payment
 from app.models.user import User
 from app.models.shop import Shop
@@ -45,6 +46,31 @@ def require_superuser(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Superuser access required")
     return current_user
+
+
+# ── Money helpers ─────────────────────────────────────────────────────────────
+# A subscription can be charged in different currencies (Lemon Squeezy bills in
+# the buyer's own currency, e.g. AED). Every admin total is shown in USD, so
+# each amount is converted first — adding raw numbers would count 998.99 AED as
+# 998.99 USD.
+
+_AED_PER_USD = 3.6725  # AED is pegged to the dollar, so this is a safe fallback
+
+
+def _to_usd(amount, currency) -> float:
+    amount = float(amount or 0)
+    cur = (currency or "USD").upper()
+    if cur == "USD" or amount == 0:
+        return amount
+    converted = convert_amount_sync(amount, cur, "USD")
+    if converted == amount and cur == "AED":  # rate service unavailable
+        return round(amount / _AED_PER_USD, 2)
+    return converted
+
+
+def _usd_total(rows) -> float:
+    """rows: (currency, amount) pairs, already summed per currency."""
+    return round(sum(_to_usd(amount, cur) for cur, amount in rows), 2)
 
 
 # ── Pydantic schemas ──────────────────────────────────────────────────────────
@@ -100,9 +126,11 @@ def get_admin_stats(
     total_users = db.query(func.count(User.id)).filter(User.is_superuser == False).scalar() or 0
 
     # Revenue: sum of amount_paid from approved/active subscriptions
-    total_revenue = db.query(func.sum(Subscription.amount_paid)).filter(
-        Subscription.status == "active"
-    ).scalar() or 0
+    total_revenue = _usd_total(
+        db.query(Subscription.currency, func.sum(Subscription.amount_paid))
+        .filter(Subscription.status == "active")
+        .group_by(Subscription.currency).all()
+    )
 
     # Pending subscriptions (need manual approval)
     pending_count = db.query(func.count(Subscription.id)).filter(
@@ -337,6 +365,7 @@ def list_subscriptions(
             "billing_type": sub.billing_type,
             "status": derived_status,
             "amount_paid": float(sub.amount_paid) if sub.amount_paid else 0,
+            "amount_usd": _to_usd(sub.amount_paid, sub.currency),
             "currency": sub.currency,
             "payment_source": sub.payment_source or "manual",
             "starts_at": sub.starts_at.isoformat() if sub.starts_at else None,
@@ -682,6 +711,7 @@ def pending_subscriptions(
             "shop_name": sub.shop.name if sub.shop else "Unknown",
             "plan_type": sub.plan_type,
             "amount_paid": float(sub.amount_paid) if sub.amount_paid else 0,
+            "amount_usd": _to_usd(sub.amount_paid, sub.currency),
             "currency": sub.currency,
             "created_at": sub.created_at.isoformat() if sub.created_at else None,
         }
@@ -830,43 +860,47 @@ def get_admin_reports(
     monthly_rows = (
         db.query(
             func.date_trunc("month", Subscription.created_at).label("month"),
+            Subscription.currency,
             func.sum(Subscription.amount_paid).label("total"),
         )
         .filter(
             Subscription.status == "active",
             Subscription.created_at >= start_date,
         )
-        .group_by(func.date_trunc("month", Subscription.created_at))
+        .group_by(func.date_trunc("month", Subscription.created_at), Subscription.currency)
         .order_by(func.date_trunc("month", Subscription.created_at))
         .all()
     )
+    monthly_usd: dict = {}  # month -> USD total, in month order
+    for row in monthly_rows:
+        monthly_usd[row.month] = monthly_usd.get(row.month, 0.0) + _to_usd(row.total, row.currency)
     monthly_revenue = [
         {
-            "month": row.month.strftime("%b") if row.month else "",
-            "value": float(row.total or 0),
+            "month": month.strftime("%b") if month else "",
+            "value": round(value, 2),
         }
-        for row in monthly_rows
+        for month, value in monthly_usd.items()
     ]
 
     # Top shops: by number of active subscriptions (proxy for revenue activity)
     top_shop_rows = (
         db.query(
             Shop,
+            Subscription.currency,
             func.coalesce(func.sum(Subscription.amount_paid), 0).label("revenue"),
         )
         .join(Subscription, Subscription.shop_id == Shop.id, isouter=True)
         .filter(Shop.is_active == True)
-        .group_by(Shop.id)
-        .order_by(func.coalesce(func.sum(Subscription.amount_paid), 0).desc())
-        .limit(10)
+        .group_by(Shop.id, Subscription.currency)
         .all()
     )
+    shop_usd: dict = {}  # shop id -> [shop, USD total]
+    for shop, currency, revenue in top_shop_rows:
+        entry = shop_usd.setdefault(shop.id, [shop, 0.0])
+        entry[1] += _to_usd(revenue, currency)
     top_shops = [
-        {
-            "name": shop.name,
-            "revenue": float(revenue or 0),
-        }
-        for shop, revenue in top_shop_rows
+        {"name": shop.name, "revenue": round(value, 2)}
+        for shop, value in sorted(shop_usd.values(), key=lambda e: e[1], reverse=True)[:10]
     ]
 
     # Plan distribution
@@ -902,9 +936,11 @@ def get_admin_reports(
         .scalar() or 0
     )
     total_active_shops = db.query(func.count(Shop.id)).filter(Shop.is_active == True).scalar() or 1
-    total_revenue = db.query(func.sum(Subscription.amount_paid)).filter(
-        Subscription.status == "active"
-    ).scalar() or 0
+    total_revenue = _usd_total(
+        db.query(Subscription.currency, func.sum(Subscription.amount_paid))
+        .filter(Subscription.status == "active")
+        .group_by(Subscription.currency).all()
+    )
     avg_revenue_per_shop = float(total_revenue) / total_active_shops
 
     return {
