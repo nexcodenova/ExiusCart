@@ -1416,9 +1416,12 @@ def _supplier_key(product: Product, link_type: Optional[str]) -> str:
     if link_type:
         return link_type.lower()
     name = (product.supplier_name or "").lower()
-    if "aliexpress" in name:
+    url = (getattr(product, "source_url", None) or "").lower()
+    sku = (product.sku or "").upper()
+    if "aliexpress" in name or "aliexpress." in url or sku.startswith("AE-"):
         return "aliexpress"
-    if "cj" in name:
+    # Real CJ SKUs look like CJYD3005432 / CJJT2956901 (CJ + 2 letters + digits).
+    if "cj" in name or "cjdropshipping.com" in url or re.fullmatch(r"CJ[A-Z]{2}\d{6,}", sku):
         return "cj"
     return "manual"
 
@@ -1462,8 +1465,11 @@ def _ensure_prodora_codes(db: Session) -> None:
 
     changed = False
     for p in products:
-        if not p.prodora_code:
-            p.prodora_code = take(_code_prefix(_supplier_key(p, link_types.get(p.id))))
+        prefix = _code_prefix(_supplier_key(p, link_types.get(p.id)))
+        # Give a product an ID when it has none, or when its ID's prefix no longer
+        # matches its supplier (e.g. a CJ product first numbered as Manual).
+        if not p.prodora_code or not re.fullmatch(rf"{prefix}\d+", p.prodora_code):
+            p.prodora_code = take(prefix)
             changed = True
     for b in bundles:
         if not b.code:

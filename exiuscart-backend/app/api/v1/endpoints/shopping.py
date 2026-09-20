@@ -600,7 +600,7 @@ def list_shopping_categories(db: Session = Depends(get_db), _: User = Depends(ge
     Returns all categories that have at least one active product in an active shop.
     """
     rows = (
-        db.query(Category)
+        db.query(Category, func.count(Product.id))
         .join(Product, Product.category_id == Category.id)
         .join(Shop, Product.shop_id == Shop.id)
         .filter(
@@ -609,10 +609,15 @@ def list_shopping_categories(db: Session = Depends(get_db), _: User = Depends(ge
             Shop.slug == "exiuscart-dropshipping-system",
             Category.prodora_managed == True,  # only categories an admin added
         )
-        .distinct()
+        .group_by(Category.id)
         .order_by(Category.name)
         .all()
     )
     # image_url is set by an admin (Admin > Prodora > Categories); the Marketplace
     # only shows a category tile when one is set.
-    return [{"id": c.id, "name": c.name, "slug": c.slug, "image_url": c.image_url} for c in rows]
+    # product_count ranks the "Top selling categories" in the Prodora filter
+    # (most products first); it is not shown to sellers.
+    return [
+        {"id": c.id, "name": c.name, "slug": c.slug, "image_url": c.image_url, "product_count": int(n)}
+        for c, n in rows
+    ]
