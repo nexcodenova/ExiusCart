@@ -25,7 +25,6 @@ interface ShopRow {
 }
 
 const PLAN_OPTIONS = [
-  { value: 'free_trial', label: 'Free Trial' },
   { value: 'launch', label: 'Launch' },
   { value: 'growth', label: 'Growth' },
   { value: 'scale', label: 'Scale' },

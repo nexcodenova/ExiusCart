@@ -54,6 +54,12 @@ const PRODORA_CHILDREN = [
 ];
 const IN_PRODORA_GROUP = ['/dashboard/digital-bundles'];
 
+// Sub-pages under Affiliates.
+const AFFILIATE_CHILDREN = [
+  { href: '/dashboard/affiliates', match: '/dashboard/affiliates', label: 'Overview', exact: true },
+  { href: '/dashboard/affiliates/payouts', match: '/dashboard/affiliates/payouts', label: 'Payouts', exact: false },
+];
+
 interface AdminSidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
@@ -86,6 +92,8 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
   const pathname = usePathname();
   const onProdora = pathname.startsWith('/dashboard/shopping') || PRODORA_CHILDREN.some((c) => pathname.startsWith(c.match));
   const [prodoraOpen, setProdoraOpen] = useState(onProdora);
+  const onAffiliates = pathname.startsWith('/dashboard/affiliates');
+  const [affiliatesOpen, setAffiliatesOpen] = useState(onAffiliates);
   const onBlogs = pathname.startsWith('/dashboard/blogs');
   const [blogsOpen, setBlogsOpen] = useState(onBlogs);
 
@@ -145,6 +153,53 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                   // + 20px icon + 12px gap = 44px.
                   <div className="mt-0.5 space-y-0.5">
                     {PRODORA_CHILDREN.map((child) => {
+                      const active = child.exact ? pathname === child.match : pathname.startsWith(child.match);
+                      return (
+                        <Link
+                          key={child.href} href={child.href}
+                          className={`block rounded-lg py-2 pl-[44px] pr-3 text-sm font-medium transition-all ${
+                            active ? 'bg-white text-[#5A2EC9] shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-gray-900'
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+          if (item.href === '/dashboard/affiliates') {
+            return (
+              <div key={item.href}>
+                <div className={`flex items-stretch rounded-lg transition-all ${onAffiliates ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
+                  {collapsed ? (
+                    <Link href="/dashboard/affiliates" title={item.label} className="flex flex-1 items-center gap-3 px-3 py-2.5">
+                      <Icon className="w-5 h-5 flex-shrink-0 mx-auto" />
+                    </Link>
+                  ) : (
+                    <button
+                      type="button" onClick={() => setAffiliatesOpen((v) => !v)} aria-expanded={affiliatesOpen}
+                      className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="font-medium text-sm">{item.label}</span>
+                    </button>
+                  )}
+                  {!collapsed && (
+                    <button
+                      type="button" aria-label={affiliatesOpen ? 'Collapse Affiliates' : 'Expand Affiliates'}
+                      onClick={() => setAffiliatesOpen((v) => !v)}
+                      className="flex w-10 items-center justify-center"
+                    >
+                      <ChevronDown className={`w-4 h-4 transition-transform ${affiliatesOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+                {affiliatesOpen && !collapsed && (
+                  <div className="mt-0.5 space-y-0.5">
+                    {AFFILIATE_CHILDREN.map((child) => {
                       const active = child.exact ? pathname === child.match : pathname.startsWith(child.match);
                       return (
                         <Link

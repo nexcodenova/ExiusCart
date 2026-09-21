@@ -23,7 +23,8 @@ interface NexCode {
   is_used_up: boolean;
 }
 
-const PLAN_OPTIONS = ['scale', 'growth', 'launch', 'free_trial', 'thedersi_free_forever', 'thedersi_lite'];
+// Codes are for ExiusCart's own plans only.
+const PLAN_OPTIONS = ['scale', 'growth', 'launch'];
 
 function StatusBadge({ code }: { code: NexCode }) {
   if (!code.is_active) return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-600">Deactivated</span>;

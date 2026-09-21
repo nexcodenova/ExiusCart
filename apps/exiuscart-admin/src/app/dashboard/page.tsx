@@ -59,8 +59,6 @@ export default function AdminDashboardPage() {
         <p className="text-gray-600 text-sm mt-1">Welcome back, Super Admin</p>
       </div>
 
-      <SystemHealth />
-
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
         <StatCard
@@ -92,6 +90,8 @@ export default function AdminDashboardPage() {
           color="orange"
         />
       </div>
+
+      <SystemHealth />
 
       {/* Panels */}
       <div className="grid lg:grid-cols-2 gap-4 lg:gap-6 mb-8">
