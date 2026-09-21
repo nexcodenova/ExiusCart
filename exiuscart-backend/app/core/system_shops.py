@@ -55,3 +55,30 @@ def purge_hidden_system_shops(engine, base) -> None:
         logger.info(f"[purge] removed hidden platform shops {ids}")
     except Exception as exc:
         logger.warning(f"[purge] hidden shops still referenced, kept: {exc!r:.160}")
+
+
+def purge_expired_free_trials(engine) -> None:
+    """Delete the old generic "free_trial" subscriptions that have already expired.
+
+    That plan no longer exists (Launch, Growth and Scale replaced it). Only
+    expired rows go, and only those with no payment or commission attached, so
+    no money record is ever removed; a row that still has one is kept and
+    logged. Safe to run on every start.
+    """
+    sql = """
+        DELETE FROM subscriptions
+        WHERE plan_type = 'free_trial' AND status = 'expired'
+          AND id NOT IN (SELECT subscription_id FROM subscription_payments WHERE subscription_id IS NOT NULL)
+          AND id NOT IN (SELECT subscription_id FROM commissions WHERE subscription_id IS NOT NULL)
+    """
+    try:
+        with engine.connect() as conn:
+            done = conn.execute(text(sql)).rowcount
+            kept = conn.execute(text("SELECT COUNT(*) FROM subscriptions WHERE plan_type = 'free_trial' AND status = 'expired'")).scalar()
+            conn.commit()
+        if done:
+            logger.info(f"[purge] removed {done} expired free_trial subscription(s)")
+        if kept:
+            logger.warning(f"[purge] {kept} expired free_trial subscription(s) kept: a payment or commission still points at them")
+    except Exception as exc:
+        logger.warning(f"[purge] free_trial cleanup skipped: {exc!r:.160}")

@@ -60,21 +60,21 @@ export default function TopBar({ onMenu }: { onMenu?: () => void }) {
         </div>
         <p className="hidden lg:block text-sm text-gray-500">Winning products, ready to list on your store.</p>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <FeedbackButton />
           <a
             href={STORE}
             target="_blank" rel="noopener noreferrer"
-            className="hidden sm:inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="hidden sm:inline-flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
           >
-            <LayoutDashboard className="h-4 w-4" /> ExiusCart dashboard
+            <LayoutDashboard className="h-[18px] w-[18px]" /> ExiusCart dashboard
           </a>
           <div ref={ref} className="relative">
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               aria-label="Account menu" aria-expanded={open}
-              className={`flex h-8 w-8 items-center justify-center rounded-md bg-[#E6F0FB] text-xs font-bold text-[#1E4E8C] transition hover:bg-[#D6E6F8] ${open ? 'ring-2 ring-blue-200' : ''}`}
+              className={`flex h-10 w-10 items-center justify-center rounded-lg bg-[#E6F0FB] text-sm font-bold text-[#1E4E8C] transition hover:bg-[#D6E6F8] ${open ? 'ring-2 ring-blue-200' : ''}`}
             >
               {initials}
             </button>

@@ -64,9 +64,9 @@ export default function FeedbackButton() {
       <button
         type="button" onClick={() => (open ? close() : setOpen(true))} aria-expanded={open}
         aria-label="Send feedback"
-        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 sm:px-3"
+        className="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 sm:px-4"
       >
-        <Lightbulb className="h-4 w-4" /> <span className="hidden sm:inline">Feedback</span>
+        <Lightbulb className="h-5 w-5" /> <span className="hidden sm:inline">Feedback</span>
       </button>
 
       {open && (

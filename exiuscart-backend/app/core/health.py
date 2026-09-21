@@ -174,26 +174,24 @@ def _check_email() -> dict:
     return _check("email", "Email (SMTP)", "integrations", "ok", "Mail server reachable", int((time.perf_counter() - started) * 1000))
 
 
-def _check_suppliers() -> List[dict]:
+def _check_suppliers() -> dict:
+    """One answer: is a supplier connected to the Prodora catalogue or not."""
     from app.core.database import SessionLocal
     from app.models.dropship import DropshipConnection
-    out = []
     db = SessionLocal()
     try:
-        for stype, label in (("cj", "CJ Dropshipping"), ("aliexpress", "AliExpress")):
-            conn = db.query(DropshipConnection).filter(
-                DropshipConnection.shop_id.is_(None), DropshipConnection.supplier_type == stype,
-                DropshipConnection.is_active == True,
-            ).first()
-            if conn:
-                out.append(_check(stype, label, "integrations", "ok", "Connected for the Prodora catalogue"))
-            else:
-                out.append(_check(stype, label, "integrations", "off", "Not connected"))
+        conn = db.query(DropshipConnection).filter(
+            DropshipConnection.shop_id.is_(None),
+            DropshipConnection.supplier_type.in_(("cj", "aliexpress")),
+            DropshipConnection.is_active == True,
+        ).first()
     except Exception:
-        out = [_check(k, n, "integrations", "warn", "Could not read the connection") for k, n in (("cj", "CJ Dropshipping"), ("aliexpress", "AliExpress"))]
+        return _check("suppliers", "Suppliers", "integrations", "warn", "Could not read the connection")
     finally:
         db.close()
-    return out
+    if conn:
+        return _check("suppliers", "Suppliers", "integrations", "ok", "Connected")
+    return _check("suppliers", "Suppliers", "integrations", "off", "Not connected")
 
 
 def _configured(key: str, name: str, ok_detail: str, off_detail: str, *env_names: str) -> dict:

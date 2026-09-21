@@ -76,48 +76,56 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
               <X className="h-5 w-5" />
             </button>
 
-            {playing ? (
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${VIDEO_ID}?autoplay=1&rel=0`}
-                title="How Prodora works" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
-                className="aspect-video w-full bg-black"
-              />
-            ) : !imageFailed ? (
+            {!playing && !imageFailed && (
               <div className="border-b border-gray-100 bg-gray-50">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/how-it-works.png" alt="" className="aspect-video w-full object-cover" onError={() => setImageFailed(true)} />
               </div>
-            ) : null}
+            )}
 
             <div className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900">Prodora</h2>
-              <ul className="mt-4 space-y-4">
-                <li className="flex gap-3">
-                  <Trophy className="mt-0.5 h-5 w-5 shrink-0 text-gray-700" />
-                  <div>
-                    <p className="font-semibold text-gray-900">Discover proven winning products</p>
-                    <p className="text-sm text-gray-500">Products picked by researchers and Prodora AI, with the supplier cost and your profit shown up front.</p>
-                  </div>
-                </li>
-                <li className="flex gap-3">
-                  <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-gray-700" />
-                  <div>
-                    <p className="font-semibold text-gray-900">See the research behind each pick</p>
-                    <p className="text-sm text-gray-500">Open a product to see its demand, competition and shipping estimate before you decide.</p>
-                  </div>
-                </li>
-                <li className="flex gap-3">
-                  <Zap className="mt-0.5 h-5 w-5 shrink-0 text-gray-700" />
-                  <div>
-                    <p className="font-semibold text-gray-900">Import and start selling</p>
-                    <p className="text-sm text-gray-500">Import to your ExiusCart store in one click, and it is live on your store right away.</p>
-                  </div>
-                </li>
-              </ul>
+              {playing ? (
+                // Same width as the box, right under the title; the list makes room.
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${VIDEO_ID}?autoplay=1&rel=0`}
+                  title="How Prodora works" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
+                  className="mt-4 aspect-video w-full rounded-xl bg-black"
+                />
+              ) : (
+                <ul className="mt-4 space-y-4">
+                  <li className="flex gap-3">
+                    <Trophy className="mt-0.5 h-5 w-5 shrink-0 text-gray-700" />
+                    <div>
+                      <p className="font-semibold text-gray-900">Discover proven winning products</p>
+                      <p className="text-sm text-gray-500">Products picked by researchers and Prodora AI, with the supplier cost and your profit shown up front.</p>
+                    </div>
+                  </li>
+                  <li className="flex gap-3">
+                    <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-gray-700" />
+                    <div>
+                      <p className="font-semibold text-gray-900">See the research behind each pick</p>
+                      <p className="text-sm text-gray-500">Open a product to see its demand, competition and shipping estimate before you decide.</p>
+                    </div>
+                  </li>
+                  <li className="flex gap-3">
+                    <Zap className="mt-0.5 h-5 w-5 shrink-0 text-gray-700" />
+                    <div>
+                      <p className="font-semibold text-gray-900">Import and start selling</p>
+                      <p className="text-sm text-gray-500">Import to your ExiusCart store in one click, and it is live on your store right away.</p>
+                    </div>
+                  </li>
+                </ul>
+              )}
               <div className="mt-6 flex gap-3">
                 {VIDEO_ID && !playing && (
                   <button type="button" onClick={() => setPlaying(true)} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 transition hover:bg-gray-50">
                     <PlayCircle className="h-4 w-4" /> Watch Tutorial
+                  </button>
+                )}
+                {playing && (
+                  <button type="button" onClick={() => setPlaying(false)} className="flex h-11 flex-1 items-center justify-center rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 transition hover:bg-gray-50">
+                    Back
                   </button>
                 )}
                 <button type="button" onClick={() => setShowHow(false)} className="h-11 flex-1 rounded-lg bg-[#2563EB] text-sm font-semibold text-white transition hover:bg-[#1E4FC2]">

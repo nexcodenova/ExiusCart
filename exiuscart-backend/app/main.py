@@ -324,8 +324,9 @@ for _sql in _MIGRATIONS:
         logger.warning(f"[migration] skipped (already applied or harmless): {_e!r:.120}")
 
 
-from app.core.system_shops import purge_hidden_system_shops
+from app.core.system_shops import purge_hidden_system_shops, purge_expired_free_trials
 purge_hidden_system_shops(engine, Base)
+purge_expired_free_trials(engine)
 
 
 
