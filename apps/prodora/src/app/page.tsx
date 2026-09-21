@@ -26,25 +26,31 @@ import HeroCTAButtons from '@/components/HeroCTAButtons';
 import OpenLoginButton from '@/components/OpenLoginButton';
 import { IntegrationsGrid } from '@/components/ui/integrations-grid';
 
+// The pictures live in /public/how-it-works. Step 3 has no picture: it shows
+// the real order flow instead (see ORDER_FLOW).
 const STEPS = [
   {
-    icon: Search,
     title: 'Find products',
-    desc: 'Browse a constantly refreshed catalog of trending, ready-to-sell products across every category.',
-    img: '/figma-assets/howitworks-step1-find-products.png',
+    desc: 'Browse trending, ready-to-sell products with the supplier cost and your profit shown up front.',
+    img: { src: '/how-it-works/find-products.png', w: 1536, h: 1024 },
   },
   {
-    icon: Link2,
-    title: 'Copy the supplier link',
-    desc: 'Every product comes with a direct source link — no guesswork on where to fulfill from.',
-    img: '/figma-assets/howitworks-step2-create-store.png',
+    title: 'Import in one click',
+    desc: 'One click adds the product to your ExiusCart store, with images, price and description ready to sell.',
+    img: { src: '/how-it-works/how-it-works.png', w: 1672, h: 941 },
   },
   {
-    icon: Package,
-    title: 'List & start selling',
-    desc: 'Add it to your ExiusCart store in minutes and start taking orders the same day.',
-    img: '/figma-assets/howitworks-step3-start-selling.png',
+    title: 'Orders fulfil themselves',
+    desc: 'A customer orders and ExiusCart places it with your connected supplier and syncs the tracking back. You never touch the product.',
+    img: null,
   },
+];
+
+const ORDER_FLOW = [
+  { icon: PackagePlus, label: 'Customer places an order' },
+  { icon: Truck, label: 'Sent to your supplier automatically' },
+  { icon: RefreshCw, label: 'Tracking syncs back to your store' },
+  { icon: PackageCheck, label: 'Delivered to your customer' },
 ];
 
 const FEATURES = [
@@ -75,15 +81,15 @@ const FEATURES = [
   },
   {
     icon: ShieldCheck,
-    title: 'Source links included',
-    desc: 'No dead ends — every listing links straight to where you can fulfill it from.',
+    title: 'Profit shown up front',
+    desc: 'Supplier cost, selling price and your profit on every product, before you import it.',
   },
 ];
 
 const FAQS = [
   {
     q: 'What is Prodora?',
-    a: 'Prodora is a winning-products discovery tool built into ExiusCart. It helps you find trending, ready-to-sell products — complete with supplier links — so you can list them on your own store fast.',
+    a: 'Prodora is a winning-products discovery tool built into ExiusCart. It helps you find trending, ready-to-sell products, with the supplier cost and your profit shown up front, so you can import them into your own store in one click.',
   },
   {
     q: 'Do I need a separate account for Prodora?',
@@ -94,8 +100,8 @@ const FAQS = [
     a: 'The catalog is refreshed regularly with new trending picks across categories, so there’s always something new to discover.',
   },
   {
-    q: 'Can I fulfill these products automatically?',
-    a: 'Prodora gives you the supplier source link for each product. Automated fulfillment depends on the supplier — pair it with ExiusCart’s dropshipping integrations for a fully automated flow.',
+    q: 'Are orders fulfilled automatically?',
+    a: 'Yes. Import a product, connect your supplier in ExiusCart, and each customer order is placed with the supplier automatically. Tracking and delivery status sync back to your store, so there is nothing to copy or paste.',
   },
 ];
 
@@ -131,8 +137,8 @@ export default function LandingPage() {
               research &amp; auto-fulfillment tool
             </h1>
             <p className="mt-6 text-lg text-muted-foreground">
-              Browse trending, ready-to-sell products with supplier links included, then import
-              them straight into ExiusCart — and sell everywhere, from Shopify to Amazon to your
+              Browse trending, ready-to-sell products with the supplier cost and your profit shown
+              up front, then import them straight into ExiusCart — and sell everywhere, from Shopify to Amazon to your
               own website, all in one platform.
             </p>
             <div className="flex justify-center">
@@ -166,13 +172,30 @@ export default function LandingPage() {
                   <p className="text-[15px] leading-relaxed text-muted-foreground">{step.desc}</p>
                 </div>
                 <div className="mt-auto px-8 pt-2">
-                  <Image
-                    src={step.img}
-                    alt={step.title}
-                    width={480}
-                    height={320}
-                    className="w-full h-auto rounded-t-lg border border-b-0 border-border shadow-sm"
-                  />
+                  {/* Same 3:2 frame for every step, so the three cards line up. */}
+                  <div className="relative aspect-[3/2] overflow-hidden rounded-t-lg border border-b-0 border-border bg-white shadow-sm">
+                    {step.img ? (
+                      <Image
+                        src={step.img.src}
+                        alt={step.title}
+                        width={step.img.w}
+                        height={step.img.h}
+                        sizes="(max-width: 640px) 90vw, 420px"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <ol className="flex h-full flex-col justify-center gap-2 px-5">
+                        {ORDER_FLOW.map((f) => (
+                          <li key={f.label} className="flex items-center gap-2.5 rounded-lg bg-primary/5 px-3 py-2">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                              <f.icon className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="text-[13px] font-semibold leading-tight text-foreground">{f.label}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

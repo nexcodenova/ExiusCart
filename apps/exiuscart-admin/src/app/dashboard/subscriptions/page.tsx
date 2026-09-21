@@ -177,6 +177,21 @@ function EditModal({ sub, onClose, onSaved }: {
   })();
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+
+  // One trial per plan, the way customers get them: Launch has the free 7-day
+  // Trial; Growth and Scale have the $1 Trial. TheDersi plans have none.
+  const trialFor = (plan: string): 'trial' | 'trial_dollar' | null =>
+    plan === 'launch' || plan === 'free_trial' ? 'trial' : plan === 'growth' || plan === 'scale' ? 'trial_dollar' : null;
+  const statusChoices: string[] = ['active', ...(trialFor(form.plan_type) ? [trialFor(form.plan_type)!] : []), 'pending_approval', 'expired', 'cancelled'];
+  // A row already on some other trial keeps its button, so it is never hidden.
+  if (!statusChoices.includes(form.status)) statusChoices.splice(1, 0, form.status);
+
+  // Changing the plan moves a running trial to that plan's own kind of trial.
+  const changePlan = (plan: string) => setForm((f) => {
+    const t = trialFor(plan);
+    const onTrial = f.status === 'trial' || f.status === 'trial_dollar';
+    return { ...f, plan_type: plan, status: onTrial && t ? t : f.status };
+  });
   const setDate = (k: 'starts_at' | 'expires_at', v: string) => { setDatesTouched(true); set(k, v); };
 
   const handleSave = async () => {
@@ -254,7 +269,7 @@ function EditModal({ sub, onClose, onSaved }: {
             <div>
               <label className="text-xs text-gray-600 mb-1.5 block">Plan</label>
               <div className="relative">
-                <select value={form.plan_type} onChange={(e) => set('plan_type', e.target.value)} className={SELECT_CLS}>
+                <select value={form.plan_type} onChange={(e) => changePlan(e.target.value)} className={SELECT_CLS}>
                   <PlanOptions current={sub.plan_type} />
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
@@ -278,7 +293,7 @@ function EditModal({ sub, onClose, onSaved }: {
           <div>
             <label className="text-xs text-gray-600 mb-1.5 block">Status</label>
             <div className="grid grid-cols-3 gap-2">
-              {(['active', 'trial', 'trial_dollar', 'pending_approval', 'expired', 'cancelled'] as const).map((s) => (
+              {statusChoices.map((s) => (
                 <button type="button" key={s} onClick={() => set('status', s)}
                   className={`py-2 rounded-lg text-xs font-semibold border transition ${form.status === s
                     ? s === 'active' ? 'bg-green-500/20 border-green-500 text-green-600'

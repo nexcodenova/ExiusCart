@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useEffect } from 'react';
+import Image from 'next/image';
 import { Info, Trophy, Lightbulb, Zap, X, UserRound, MessageCircle, PlayCircle } from 'lucide-react';
 
 const RESEARCHER_WHATSAPP = 'https://wa.me/971562393573';
@@ -29,6 +30,12 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => { if (!showHow) setPlaying(false); }, [showHow]);
+  useEffect(() => {
+    if (!showHow) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowHow(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showHow]);
 
   return (
     <>
@@ -69,30 +76,25 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
         </a>
       </div>
 
-      {showHow && (
+      {showHow && !playing && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={() => setShowHow(false)}>
           <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => setShowHow(false)} aria-label="Close" className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-500 shadow hover:text-gray-800">
               <X className="h-5 w-5" />
             </button>
 
-            {!playing && !imageFailed && (
+            {!imageFailed && (
               <div className="border-b border-gray-100 bg-gray-50">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/how-it-works.png" alt="" className="aspect-video w-full object-cover" onError={() => setImageFailed(true)} />
+                <Image
+                  src="/how-it-works/how-it-works.png" alt="" width={1672} height={941} priority
+                  sizes="(max-width: 640px) 100vw, 576px"
+                  className="aspect-video w-full object-cover" onError={() => setImageFailed(true)}
+                />
               </div>
             )}
 
             <div className="p-5 sm:p-6">
               <h2 className="text-xl font-bold text-gray-900">Prodora</h2>
-              {playing ? (
-                // Same width as the box, right under the title; the list makes room.
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${VIDEO_ID}?autoplay=1&rel=0`}
-                  title="How Prodora works" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
-                  className="mt-4 aspect-video w-full rounded-xl bg-black"
-                />
-              ) : (
                 <ul className="mt-4 space-y-4">
                   <li className="flex gap-3">
                     <Trophy className="mt-0.5 h-5 w-5 shrink-0 text-gray-700" />
@@ -116,16 +118,10 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
                     </div>
                   </li>
                 </ul>
-              )}
               <div className="mt-6 flex gap-3">
-                {VIDEO_ID && !playing && (
+                {VIDEO_ID && (
                   <button type="button" onClick={() => setPlaying(true)} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 transition hover:bg-gray-50">
                     <PlayCircle className="h-4 w-4" /> Watch Tutorial
-                  </button>
-                )}
-                {playing && (
-                  <button type="button" onClick={() => setPlaying(false)} className="flex h-11 flex-1 items-center justify-center rounded-lg border border-gray-200 text-sm font-semibold text-gray-800 transition hover:bg-gray-50">
-                    Back
                   </button>
                 )}
                 <button type="button" onClick={() => setShowHow(false)} className="h-11 flex-1 rounded-lg bg-[#2563EB] text-sm font-semibold text-white transition hover:bg-[#1E4FC2]">
@@ -133,6 +129,28 @@ export default function PageIntro({ title, subtitle }: { title: string; subtitle
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* The tutorial plays on its own, large, like a normal video popup. */}
+      {showHow && playing && VIDEO_ID && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 p-3 sm:p-6" onClick={() => setShowHow(false)}>
+          <div
+            className="relative mx-auto w-[min(100%,calc((100dvh-6rem)*16/9),1280px)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button" onClick={() => setShowHow(false)} aria-label="Close video"
+              className="absolute -top-11 right-0 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-gray-700 shadow hover:bg-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${VIDEO_ID}?autoplay=1&rel=0`}
+              title="How Prodora works" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
+              className="aspect-video w-full rounded-xl bg-black shadow-2xl"
+            />
           </div>
         </div>
       )}
