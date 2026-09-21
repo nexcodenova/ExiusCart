@@ -6,7 +6,7 @@ import {
   Check, X, AlertTriangle, ChevronDown, Pencil, ChevronRight,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
-import { PlanDates, fmtDate as fmtDay } from '@/lib/subscription-ui';
+import { PlanChip, StatusChip, PlanDates, PlanOptions, fmtDate as fmtDay } from '@/lib/subscription-ui';
 
 interface Subscription {
   id: number;
@@ -151,34 +151,50 @@ function EditModal({ sub, onClose, onSaved }: {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
+  // True once the admin types a date. Until then the dates are worked out by
+  // the server, so an old date pre-filled from the last plan can never sneak in.
+  const [datesTouched, setDatesTouched] = useState(false);
 
-  const set = (k: string, v: any) => setForm((f) => {
-    const next = { ...f, [k]: v };
-    // The form starts with the OLD expiry date. Switching to a live status with
-    // a date that has already passed would expire the account again straight
-    // away, so the date is cleared and worked out fresh on save.
-    if (k === 'status' && ['active', 'trial', 'trial_dollar'].includes(v) && f.expires_at && new Date(f.expires_at) <= new Date()) {
-      next.expires_at = '';
-    }
-    return next;
-  });
+  const LIVE = ['active', 'trial', 'trial_dollar'];
+  const isLive = LIVE.includes(form.status);
+  const periodChanged =
+    form.plan_type !== sub.plan_type || form.billing_type !== (sub.billing_type || 'monthly') || form.status !== sub.status;
+  // The saved expiry has already passed but the row is (being made) live: it
+  // would expire again at once, so it needs a fresh period too.
+  const oldExpiryPassed = !!sub.expires_at && new Date(sub.expires_at) <= new Date();
+  const autoDates = isLive && !datesTouched && (periodChanged || oldExpiryPassed);
+
+  // The same rule the server applies, shown before saving.
+  const preview = (() => {
+    if (!autoDates) return null;
+    const today = new Date();
+    const plus = (d: number) => new Date(today.getTime() + d * 86400000);
+    const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (form.status === 'trial' || form.status === 'trial_dollar') return `Starts today (${fmt(today)}), ends ${fmt(plus(7))} · 7-day trial`;
+    if (form.billing_type === 'monthly') return `Starts today (${fmt(today)}), ends ${fmt(plus(30))} · 30 days`;
+    if (form.billing_type === 'yearly') return `Starts today (${fmt(today)}), ends ${fmt(plus(365))} · 1 year`;
+    return `Starts today (${fmt(today)}), never expires`;
+  })();
+
+  const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  const setDate = (k: 'starts_at' | 'expires_at', v: string) => { setDatesTouched(true); set(k, v); };
 
   const handleSave = async () => {
     setSaving(true);
     setError('');
     try {
-      // A live status with a date already in the past would expire the account
-      // again, so send no date and let the server pick a fresh one.
-      const stale = ['active', 'trial', 'trial_dollar'].includes(form.status)
-        && !!form.expires_at && new Date(form.expires_at) <= new Date();
+      // Automatic: send no dates and the server starts the period today. Typed
+      // dates are sent as typed, except an expiry already in the past on a live
+      // status, which would expire the account again straight away.
+      const typedExpiryPast = isLive && !!form.expires_at && new Date(form.expires_at) <= new Date();
       const res = await adminApi.updateSubscription(sub.id, {
         plan_type:    form.plan_type,
         billing_type: form.billing_type,
         status:       form.status,
         amount_paid:  Number(form.amount_paid),
         currency:     form.currency,
-        starts_at:    form.starts_at || null,
-        expires_at:   stale ? null : (form.expires_at || null),
+        starts_at:    autoDates ? null : (form.starts_at || null),
+        expires_at:   autoDates || typedExpiryPast ? null : (form.expires_at || null),
         cancel_card_billing: sub.card_billing ? form.cancel_card : false,
       });
       const { cancel_card, ...rest } = form;
@@ -196,11 +212,21 @@ function EditModal({ sub, onClose, onSaved }: {
     }
   };
 
+  // Closes with Esc, like the drawer on the Users page.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // Opens as a side panel: it always fits the screen, the form scrolls and the
+  // Save / Cancel buttons stay in view at the bottom.
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-      <div className="bg-white border border-gray-300 rounded-2xl w-full max-w-md shadow-2xl">
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <aside role="dialog" aria-label={`Edit subscription for ${sub.shop_name}`} className="relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex shrink-0 items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
               <Pencil className="w-4 h-4 text-[#6B3FD9]" /> Edit Subscription
@@ -212,19 +238,24 @@ function EditModal({ sub, onClose, onSaved }: {
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* What the account has right now */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">Right now</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <PlanChip plan={sub.plan_type} />
+              <StatusChip status={sub.status} />
+            </div>
+            <div className="mt-2"><PlanDates startsAt={sub.starts_at} expiresAt={sub.expires_at} status={sub.status} /></div>
+          </div>
+
           {/* Plan */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-600 mb-1.5 block">Plan</label>
               <div className="relative">
                 <select value={form.plan_type} onChange={(e) => set('plan_type', e.target.value)} className={SELECT_CLS}>
-                  <option value="free_trial">Free Trial</option>
-                  <option value="launch">Launch</option>
-                  <option value="growth">Growth</option>
-                  <option value="scale">Scale</option>
-                  <option value="thedersi_free_forever">TheDersi Free Forever</option>
-                  <option value="thedersi_lite">TheDersi Lite</option>
+                  <PlanOptions current={sub.plan_type} />
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
               </div>
@@ -235,8 +266,8 @@ function EditModal({ sub, onClose, onSaved }: {
                 <select value={form.billing_type} onChange={(e) => set('billing_type', e.target.value)} className={SELECT_CLS}>
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
-                  <option value="lifetime">Lifetime</option>
-                  <option value="one_time">One-Time</option>
+                  <option value="lifetime">Lifetime (never expires)</option>
+                  <option value="one_time">One-Time (paid once, no renewal)</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
               </div>
@@ -297,17 +328,25 @@ function EditModal({ sub, onClose, onSaved }: {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="sub-start" className="text-xs text-gray-600 mb-1.5 block">Start date</label>
-              <input id="sub-start" type="date" value={form.starts_at} onChange={(e) => set('starts_at', e.target.value)}
+              <input id="sub-start" type="date" value={autoDates ? '' : form.starts_at} onChange={(e) => setDate('starts_at', e.target.value)}
                 className={INPUT_CLS} />
             </div>
             <div>
               <label htmlFor="sub-expiry" className="text-xs text-gray-600 mb-1.5 block">Expiry date</label>
-              <input id="sub-expiry" type="date" value={form.expires_at} onChange={(e) => set('expires_at', e.target.value)}
+              <input id="sub-expiry" type="date" value={autoDates ? '' : form.expires_at} onChange={(e) => setDate('expires_at', e.target.value)}
                 className={INPUT_CLS} />
             </div>
-            <p className="col-span-2 -mt-1 text-xs text-gray-400">
-              Leave both empty and they are set from the plan and status: starting today, ending after the trial or billing period.
-            </p>
+            {preview ? (
+              <p className="col-span-2 rounded-lg bg-purple-50 px-3 py-2 text-xs font-medium text-purple-800">
+                Set automatically: {preview}. Pick your own dates above to override.
+              </p>
+            ) : (
+              <p className="col-span-2 -mt-1 text-xs text-gray-400">
+                {isLive
+                  ? 'These are the saved dates. Change the plan, billing or status and new dates are set from today.'
+                  : 'The saved dates are kept for this status.'}
+              </p>
+            )}
           </div>
 
           {/* A card is still being billed for this account */}
@@ -322,17 +361,10 @@ function EditModal({ sub, onClose, onSaved }: {
             </div>
           )}
 
-          {/* Info box */}
-          <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-600 space-y-1">
-            <p>• Setting <span className="text-gray-900">Active</span> with no expiry date → auto-calculates 30d (monthly) / 365d (yearly)</p>
-            <p>• Setting <span className="text-gray-900">Trial</span> or <span className="text-gray-900">$1 Trial</span> with no expiry → auto-sets 7 days</p>
-            <p>• Setting <span className="text-gray-900">Lifetime</span> → no expiry, never expires</p>
-          </div>
-
           {error && <p className="text-sm text-red-600 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>}
         </div>
 
-        <div className="px-6 pb-6 flex gap-3">
+        <div className="shrink-0 border-t border-gray-200 bg-white px-6 py-4 flex gap-3">
           <button onClick={onClose}
             className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-200 transition">
             Cancel
@@ -343,7 +375,7 @@ function EditModal({ sub, onClose, onSaved }: {
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
-      </div>
+      </aside>
     </div>
   );
 }
@@ -528,12 +560,7 @@ export default function SubscriptionsPage() {
               <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value)}
                 className="pl-3 pr-8 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:border-[#6B3FD9] focus:outline-none transition appearance-none cursor-pointer text-sm">
                 <option value="all">All Plans</option>
-                <option value="free_trial">Free Trial</option>
-                <option value="launch">Launch</option>
-                <option value="growth">Growth</option>
-                <option value="scale">Scale</option>
-                <option value="thedersi_free_forever">TheDersi Free Forever</option>
-                <option value="thedersi_lite">TheDersi Lite</option>
+                <PlanOptions all />
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
             </div>

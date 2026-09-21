@@ -97,3 +97,32 @@ export function PlanDates({
     </div>
   );
 }
+
+// Plan pickers list our own plans first. TheDersi plans are billed by TheDersi,
+// so they only appear (in their own group) on a row that already has one, and
+// the old generic trial only on a row that still has it.
+export const EXIUSCART_PLAN_VALUES = ['launch', 'growth', 'scale'] as const;
+const THEDERSI_PLAN_VALUES = ['thedersi_free_forever', 'thedersi_lite'] as const;
+
+/** <option> groups for a plan <select>. `current` is the plan the row has now. */
+export function PlanOptions({ current, all = false }: { current?: string; all?: boolean }) {
+  const showTheDersi = all || (current ?? '').startsWith('thedersi_');
+  const showLegacy = current === 'free_trial'; // never offered as a choice; only shown so a leftover row is not mislabelled
+  return (
+    <>
+      <optgroup label="ExiusCart plans">
+        {EXIUSCART_PLAN_VALUES.map((v) => <option key={v} value={v}>{PLAN_LABELS[v]}</option>)}
+      </optgroup>
+      {showTheDersi && (
+        <optgroup label="TheDersi (billed by TheDersi)">
+          {THEDERSI_PLAN_VALUES.map((v) => <option key={v} value={v}>{PLAN_LABELS[v]}</option>)}
+        </optgroup>
+      )}
+      {showLegacy && (
+        <optgroup label="Old plan">
+          <option value="free_trial">Free Trial (old 7-day trial)</option>
+        </optgroup>
+      )}
+    </>
+  );
+}

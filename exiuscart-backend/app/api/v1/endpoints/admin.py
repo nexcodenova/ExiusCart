@@ -730,6 +730,12 @@ def update_subscription(
         card_billing = "still_active"
 
     changed_plan = (sub.plan_type, sub.billing_type, sub.status) != (body.plan_type, body.billing_type, body.status)
+    # A saved expiry that has already passed means the old period is over: saving
+    # a live status starts a new one instead of keeping the old start date.
+    old_expiry = sub.expires_at
+    if old_expiry is not None and old_expiry.tzinfo is None:
+        old_expiry = old_expiry.replace(tzinfo=timezone.utc)
+    old_period_over = old_expiry is not None and old_expiry <= now
     sub.plan_type = body.plan_type
     sub.billing_type = body.billing_type
     sub.status = body.status
@@ -784,7 +790,7 @@ def update_subscription(
             start_given = None
     if start_given is not None:
         sub.starts_at = start_given
-    elif body.status in live_statuses and (changed_plan or not sub.starts_at):
+    elif body.status in live_statuses and (changed_plan or old_period_over or not sub.starts_at):
         sub.starts_at = now
 
     db.commit()
