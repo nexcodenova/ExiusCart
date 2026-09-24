@@ -60,7 +60,7 @@ function SetupPasswordForm() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-3">
-            <Image src="/logo.svg" alt="ExiusCart" width={36} height={36} />
+            <Image src="/logo-ec.png" alt="ExiusCart" width={45} height={36} />
             <span className="text-white font-bold text-lg">ExiusCart</span>
             <span className="text-[#7B4FE9] text-xs font-semibold border border-[#7B4FE9]/40 px-2 py-0.5 rounded-full">Affiliates</span>
           </div>

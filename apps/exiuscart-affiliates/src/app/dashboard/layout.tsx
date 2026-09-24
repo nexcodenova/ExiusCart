@@ -97,7 +97,7 @@ function SidebarContent({
       {/* Logo */}
       <div className="px-5 py-5 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="ExiusCart" width={32} height={32} className="flex-shrink-0" />
+          <Image src="/logo-ec.png" alt="ExiusCart" width={40} height={32} className="flex-shrink-0" />
           <div>
             <p className="text-gray-900 font-bold text-sm leading-tight">ExiusCart</p>
             <p className="text-[#7B4FE9] text-xs font-medium">Affiliates</p>

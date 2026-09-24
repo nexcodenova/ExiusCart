@@ -9,6 +9,7 @@ import { BorderBeam } from '@/components/ui/border-beam';
 import { WELCOME_FLAG } from '@/components/welcome-splash';
 import { SocialAuthButtons, type SocialProvider } from '@/components/auth/social-auth-buttons';
 import { AuthHeader } from '@/components/auth/auth-header';
+import { SupportCard } from '@/components/auth/support-card';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -190,10 +191,9 @@ export default function LoginPage() {
       <div className="flex-1 mx-auto grid w-full max-w-6xl content-center items-center gap-10 px-4 py-6 lg:grid-cols-[minmax(0,28rem)_1fr]">
         <div className="flex flex-col items-center gap-3">
           {loginFormCard}
+          <SupportCard text="Trouble logging in?" />
           <p className="text-xs text-gray-500 text-center">
-            Need a hand? <a href="mailto:support@exiuscart.com" className="text-[#6B3FD9] hover:underline">support@exiuscart.com</a>
-            {' · '}
-            <a href="https://wa.me/971562393573" target="_blank" rel="noopener noreferrer" className="text-[#6B3FD9] hover:underline">WhatsApp +971 562 393 573</a>
+            Or email <a href="mailto:support@exiuscart.com" className="text-[#6B3FD9] hover:underline">support@exiuscart.com</a>
           </p>
         </div>
 

@@ -88,7 +88,7 @@ export function Footer() {
         {/* Logo + Socials row */}
         <div className="flex items-center justify-between py-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <Image src="/logo.svg" alt="ExiusCart" width={26} height={26} />
+            <Image src="/logo-ec.png" alt="ExiusCart" width={33} height={26} />
             <span className="text-lg font-bold text-white tracking-tight">
               <span className="text-[#6B3FD9]">Exius</span>Cart
             </span>

@@ -54,7 +54,7 @@ function SetupForm() {
       <div className="w-full max-w-md">
         <div className="bg-[#151F32] rounded-2xl border border-gray-800 p-8">
           <div className="flex items-center justify-center gap-2 mb-8">
-            <Image src="/logo.svg" alt="ExiusCart" width={36} height={36} />
+            <Image src="/logo-ec.png" alt="ExiusCart" width={45} height={36} />
             <span className="text-2xl font-bold text-white">
               <span className="text-[#6B3FD9]">Exius</span>Cart
             </span>

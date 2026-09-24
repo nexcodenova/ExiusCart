@@ -32,9 +32,9 @@ export const metadata: Metadata = {
   description: 'Manage your shop with ExiusCart - POS, Inventory, Orders',
   manifest: '/manifest.json',
   icons: {
-    icon: '/logo.svg',
-    shortcut: '/logo.svg',
-    apple: '/logo.svg',
+    icon: '/logo-ec-square.png',
+    shortcut: '/logo-ec-square.png',
+    apple: '/logo-ec-square.png',
   },
   appleWebApp: {
     capable: true,

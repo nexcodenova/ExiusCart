@@ -19,9 +19,9 @@ export const metadata: Metadata = {
   title: 'Admin Dashboard | ExiusCart',
   description: 'ExiusCart Admin - Manage stores, payments, and subscriptions',
   icons: {
-    icon: '/logo.svg',
-    shortcut: '/logo.svg',
-    apple: '/logo.svg',
+    icon: '/logo-ec-square.png',
+    shortcut: '/logo-ec-square.png',
+    apple: '/logo-ec-square.png',
   },
 };
 

@@ -464,7 +464,7 @@ export function ShopSidebar() {
             menu"), same as Prodora. */}
         <SidebarHeader className={`h-14 flex-row flex items-center border-b border-sidebar-border ${collapsed ? 'justify-center' : 'px-4'}`}>
           <Link href="/dashboard" className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center' : ''}`}>
-            <Image src="/logo.svg" alt="ExiusCart" width={28} height={28} className="flex-shrink-0" />
+            <Image src="/logo-ec.png" alt="ExiusCart" width={35} height={28} className="flex-shrink-0" />
             {!collapsed && (
               <span className="text-xl font-bold tracking-tight">
                 <span className="text-indigo-400">Exius</span><span className="text-sidebar-foreground">Cart</span>

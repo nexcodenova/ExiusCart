@@ -9,9 +9,9 @@
   "theme_color": "#3b82f6",
   "icons": [
     {
-      "src": "/logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/logo-ec-square.png",
+      "sizes": "256x256",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

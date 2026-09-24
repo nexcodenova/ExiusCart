@@ -44,9 +44,9 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   keywords: ['POS', 'Point of Sale', 'UAE', 'Inventory', 'Invoicing', 'worldwide', 'small business'],
   icons: {
-    icon: '/logo.svg',
-    shortcut: '/logo.svg',
-    apple: '/logo.svg',
+    icon: '/logo-ec-square.png',
+    shortcut: '/logo-ec-square.png',
+    apple: '/logo-ec-square.png',
   },
   alternates: {
     canonical: '/',

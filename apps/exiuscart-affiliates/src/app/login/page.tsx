@@ -140,7 +140,7 @@ export default function LoginPage() {
       {/* Logo */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 mb-3">
-          <Image src="/logo.svg" alt="ExiusCart" width={36} height={36} />
+          <Image src="/logo-ec.png" alt="ExiusCart" width={45} height={36} />
           <span className="text-gray-900 font-bold text-lg">
             <span className="text-[#6B3FD9]">Exius</span>Cart
           </span>

@@ -69,7 +69,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-[4.5rem]">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="ExiusCart" width={32} height={32} className="flex-shrink-0" />
+            <Image src="/logo-ec.png" alt="ExiusCart" width={40} height={32} className="flex-shrink-0" />
             <span className="text-xl font-bold text-white tracking-tight">
               <span className="text-[#6B3FD9]">Exius</span>Cart
             </span>

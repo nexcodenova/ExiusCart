@@ -156,7 +156,7 @@ export function Header({ onMenuClick }: HeaderProps) {
     <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
       {/* Mobile logo (replaces hamburger — sidebar is desktop-only) */}
       <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
-        <Image src="/logo.svg" alt="ExiusCart" width={26} height={26} />
+        <Image src="/logo-ec.png" alt="ExiusCart" width={33} height={26} />
         <span className="text-lg font-bold">
           <span className="text-indigo-600 dark:text-indigo-400">Exius</span><span className="text-foreground">Cart</span>
         </span>

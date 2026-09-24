@@ -115,7 +115,7 @@ export function WelcomeSplash() {
           ))}
           <div className="welcome-anim flex h-24 w-24 items-center justify-center rounded-3xl bg-card shadow-xl ring-1 ring-border"
             style={{ animation: 'welcome-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both' }}>
-            <Image src="/logo.svg" alt="ExiusCart" width={56} height={56} priority />
+            <Image src="/logo-ec.png" alt="ExiusCart" width={70} height={56} priority />
           </div>
         </div>
 

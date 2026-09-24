@@ -10,6 +10,7 @@ import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Loader2, Check, Tag, Mail, Zap, ShieldCheck, Globe2 } from 'lucide-react';
 import { AuthHeader } from '@/components/auth/auth-header';
 import { SocialAuthButtons, type SocialProvider } from '@/components/auth/social-auth-buttons';
+import { SupportCard } from '@/components/auth/support-card';
 
 // Deliberately short: name, email, password. Store name, phone, country and
 // referral code are collected once inside the dashboard right after first
@@ -383,9 +384,12 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-[#F5F3EF] flex flex-col">
       <AuthHeader />
       <div className="mx-auto grid w-full max-w-6xl flex-1 content-center items-center gap-10 px-4 py-6 lg:grid-cols-[minmax(0,28rem)_1fr]">
-        <Suspense fallback={null}>
-          <RegisterForm />
-        </Suspense>
+        <div className="flex flex-col items-center gap-3">
+          <Suspense fallback={null}>
+            <RegisterForm />
+          </Suspense>
+          <SupportCard text="Need a hand signing up?" />
+        </div>
         <Showcase />
       </div>
     </div>

@@ -106,7 +106,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
       {/* Logo */}
       <div className={`h-16 shrink-0 flex items-center border-b border-[#E0DCF0] ${collapsed ? 'justify-center' : 'px-4'}`}>
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="ExiusCart" width={32} height={32} className="flex-shrink-0" />
+          <Image src="/logo-ec.png" alt="ExiusCart" width={40} height={32} className="flex-shrink-0" />
           {!collapsed && (
             <span className="text-xl font-bold tracking-tight text-gray-900">Admin</span>
           )}
