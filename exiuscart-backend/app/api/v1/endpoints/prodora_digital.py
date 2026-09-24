@@ -27,6 +27,7 @@ import json
 import logging
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
@@ -37,12 +38,21 @@ from app.models.shop import Shop
 from app.models.prodora_digital import ProdoraDigitalBundle, ProdoraDigitalPurchase
 from app.api.v1.endpoints.admin import require_superuser
 from app.api.v1.endpoints.shopping import get_prodora_user
-from app.api.v1.endpoints.whop import _verify_whop_webhook_signature
+from app.api.v1.endpoints.whop import _verify_whop_webhook_signature, WHOP_API_BASE
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 PRODORA_WHOP_WEBHOOK_SECRET = os.getenv("PRODORA_WHOP_WEBHOOK_SECRET", "")
+
+# Platform-level credentials for ExiusCart's OWN Whop business (Fairam,
+# biz_...) — deliberately separate from every other Whop credential in this
+# codebase, which is always a per-seller BYOK value stored on a
+# ChannelConnection/Custom Website gateway row (see whop.py, payment_gateways.py).
+# This is the one case where ExiusCart itself is the Whop seller, so the key
+# lives in env, not the database.
+WHOP_API_KEY = os.getenv("WHOP_API_KEY", "")
+WHOP_BUSINESS_ID = os.getenv("WHOP_BUSINESS_ID", "")
 
 # Digital sourcing gets its own, separate monthly cap from Prodora's regular
 # (physical) PRODORA_MONTHLY_IMPORT_LIMIT in shopping.py — a seller can buy
@@ -71,6 +81,56 @@ def _bundle_out(b: ProdoraDigitalBundle, purchased: bool) -> dict:
         "is_trending": bool(b.is_trending), "is_bestseller": bool(b.is_bestseller),
         "purchased": purchased,
     }
+
+
+def _push_bundle_to_whop(bundle: ProdoraDigitalBundle) -> dict:
+    """Creates (or, via a stable external_id, updates) this bundle as a real
+    product on ExiusCart's own Whop business account — the same POST
+    /products call whop.py's per-seller create_whop_product already makes
+    against a live Whop account, just with the platform's own company_id/
+    API key instead of a seller's ChannelConnection. Replaces the manual
+    "create it in Whop's dashboard, copy the checkout link back" step;
+    the manual fields (BundleIn.whop_checkout_url/whop_product_id) still
+    work as a fallback/override for anyone who'd rather do it by hand."""
+    if not WHOP_API_KEY or not WHOP_BUSINESS_ID:
+        raise HTTPException(
+            status_code=503,
+            detail="Whop isn't configured on the server yet (WHOP_API_KEY / WHOP_BUSINESS_ID) — enter the checkout URL and product ID manually below instead.",
+        )
+    body = {
+        "company_id": WHOP_BUSINESS_ID,
+        "title": bundle.name,
+        "description": bundle.description or bundle.name,
+        # Re-pushing the same bundle updates its existing Whop product
+        # instead of creating a duplicate, per Whop's own docs — same
+        # discipline as whop.py's create_whop_product.
+        "external_id": f"exiuscart-bundle-{bundle.id}",
+        "visibility": "visible" if bundle.is_active else "hidden",
+        "initial_price": float(bundle.price),
+    }
+    if bundle.cover_image_url:
+        body["gallery"] = [{"url": bundle.cover_image_url}]
+    try:
+        with httpx.Client(timeout=20) as client:
+            resp = client.post(
+                f"{WHOP_API_BASE}/products",
+                headers={"Authorization": f"Bearer {WHOP_API_KEY}", "Accept": "application/json", "Content-Type": "application/json"},
+                json=body,
+            )
+    except Exception as e:
+        logger.error(f"[Prodora Whop Push] bundle={bundle.id} request failed: {e}")
+        raise HTTPException(status_code=502, detail="Could not reach Whop — try again in a moment.")
+    if resp.status_code >= 300:
+        logger.error(f"[Prodora Whop Push] bundle={bundle.id} Whop rejected: {resp.status_code} {resp.text[:500]}")
+        raise HTTPException(status_code=502, detail=f"Whop rejected the product: {resp.text[:300]}")
+
+    data = resp.json()
+    external_id = str(data.get("id") or data.get("data", {}).get("id") or "")
+    checkout_url = data.get("checkout_url") or data.get("data", {}).get("checkout_url") or ""
+    if not external_id:
+        logger.error(f"[Prodora Whop Push] bundle={bundle.id} — Whop response had no product id: {data}")
+        raise HTTPException(status_code=502, detail="Whop accepted the product but didn't return an id — check it manually in your Whop dashboard.")
+    return {"whop_product_id": external_id, "whop_checkout_url": checkout_url}
 
 
 # ── Admin: manage bundles ─────────────────────────────────────────────────────
@@ -147,6 +207,23 @@ def admin_update_bundle(bundle_id: int, body: BundleIn, db: Session = Depends(ge
         setattr(bundle, k, v)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/admin/prodora-bundles/{bundle_id}/push-to-whop")
+def admin_push_bundle_to_whop(bundle_id: int, db: Session = Depends(get_db), _: User = Depends(require_superuser)):
+    """Save the bundle first (name + price at minimum), then call this —
+    it creates/updates the matching product on ExiusCart's own Whop
+    account and writes the resulting checkout URL + product ID straight
+    onto the bundle, same fields the manual form inputs set."""
+    bundle = db.query(ProdoraDigitalBundle).filter(ProdoraDigitalBundle.id == bundle_id).first()
+    if not bundle:
+        raise HTTPException(status_code=404, detail="Bundle not found")
+    result = _push_bundle_to_whop(bundle)
+    bundle.whop_product_id = result["whop_product_id"]
+    if result["whop_checkout_url"]:
+        bundle.whop_checkout_url = result["whop_checkout_url"]
+    db.commit()
+    return result
 
 
 @router.delete("/admin/prodora-bundles/{bundle_id}")

@@ -281,14 +281,21 @@ def get_whop_listing_status(
 
 def _verify_whop_webhook_signature(secret: str, webhook_id: str, webhook_timestamp: str,
                                     webhook_signature: str, body: bytes) -> bool:
-    """Standard Webhooks verification (standardwebhooks.com) — the open
-    spec Whop's own docs say to use for new integrations, not their
-    legacy per-vendor scheme. `secret` is the whsec_... string Whop shows
-    once when a webhook endpoint is registered."""
+    """Same signed-content shape as the open Standard Webhooks spec
+    (standardwebhooks.com) — `{id}.{timestamp}.{body}`, HMAC-SHA256,
+    base64 digest, compared against each `v1,<sig>` entry in the header —
+    but Whop's own implementation departs from that spec on the secret
+    itself: `secret` is the ws_... string Whop shows once when a webhook
+    endpoint is created, and it's used AS-IS (utf-8 bytes) as the HMAC
+    key — not base64-decoded, not hex-decoded, prefix not stripped. The
+    original version of this function assumed the spec's own whsec_
+    <base64> shape, which is wrong for a real ws_... secret and silently
+    fails every signature check — confirmed against a secret actually
+    issued by a live Whop account, not guessed."""
     if not secret or not webhook_id or not webhook_timestamp or not webhook_signature:
         return False
     try:
-        secret_bytes = base64.b64decode(secret.split("_", 1)[1] if secret.startswith("whsec_") else secret)
+        secret_bytes = secret.encode("utf-8")
         signed_content = f"{webhook_id}.{webhook_timestamp}.{body.decode('utf-8')}"
         expected = base64.b64encode(
             hmac.new(secret_bytes, signed_content.encode("utf-8"), hashlib.sha256).digest()

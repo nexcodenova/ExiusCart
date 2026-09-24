@@ -140,6 +140,7 @@ export const adminApi = {
   },
   grantBundlePurchase: (bundleId: number, shopId: number) =>
     api.post(`/admin/prodora-bundles/${bundleId}/grant`, { shop_id: shopId }),
+  pushBundleToWhop: (bundleId: number) => api.post(`/admin/prodora-bundles/${bundleId}/push-to-whop`),
 
   // Site blogs (exiuscart, prodora, affiliate) — written here, read live by each
   // site via /public/store/<site>-website/blog.

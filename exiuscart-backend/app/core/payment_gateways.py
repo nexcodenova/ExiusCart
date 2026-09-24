@@ -194,14 +194,17 @@ def whop_create_checkout_configuration(api_key: str, company_id: str, order_numb
 
 
 def whop_verify_webhook_signature(secret: str, webhook_id: str, webhook_timestamp: str, webhook_signature: str, body: bytes) -> bool:
-    """Standard Webhooks verification (standardwebhooks.com) — identical
-    scheme to whop.py's marketplace-channel webhook, duplicated here
-    rather than imported since this core module shouldn't depend on an
-    endpoints file."""
+    """Identical scheme to whop.py's own _verify_whop_webhook_signature
+    (duplicated here rather than imported since this core module
+    shouldn't depend on an endpoints file) — see that function's
+    docstring: the ws_... secret is used as-is as the HMAC key, not
+    base64-decoded the way the Standard Webhooks spec's own whsec_
+    convention would suggest. Confirmed against a real secret from a
+    live Whop account, not guessed."""
     if not secret or not webhook_id or not webhook_timestamp or not webhook_signature:
         return False
     try:
-        secret_bytes = base64.b64decode(secret.split("_", 1)[1] if secret.startswith("whsec_") else secret)
+        secret_bytes = secret.encode("utf-8")
         signed_content = f"{webhook_id}.{webhook_timestamp}.{body.decode('utf-8')}"
         expected = base64.b64encode(
             hmac.new(secret_bytes, signed_content.encode("utf-8"), hashlib.sha256).digest()

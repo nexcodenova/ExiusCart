@@ -121,6 +121,8 @@ export default function DigitalBundlesPage() {
   const [grantTarget, setGrantTarget] = useState<Bundle | null>(null);
   const [grantShopId, setGrantShopId] = useState('');
   const [granting, setGranting] = useState(false);
+  const [pushingWhop, setPushingWhop] = useState(false);
+  const [pushWhopError, setPushWhopError] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -192,6 +194,22 @@ export default function DigitalBundlesPage() {
     if (!confirm('Delete this bundle? Sellers who already bought it keep their purchase record, but the files will no longer be accessible.')) return;
     await adminApi.deleteDigitalBundle(id);
     load();
+  };
+
+  const handlePushToWhop = async () => {
+    if (!editingId) return;
+    setPushingWhop(true); setPushWhopError('');
+    try {
+      const r = await adminApi.pushBundleToWhop(editingId);
+      setForm((f: any) => ({
+        ...f,
+        whop_checkout_url: r.data?.whop_checkout_url || f.whop_checkout_url,
+        whop_product_id: r.data?.whop_product_id || f.whop_product_id,
+      }));
+      load();
+    } catch (e: any) {
+      setPushWhopError(e?.response?.data?.detail ?? 'Could not push to Whop.');
+    } finally { setPushingWhop(false); }
   };
 
   const handleGrant = async () => {
@@ -375,8 +393,26 @@ export default function DigitalBundlesPage() {
 
               {/* Whop */}
               <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Whop Checkout</p>
-                <p className="text-xs text-gray-400 -mt-2">Create this bundle as a product in ExiusCart&apos;s own Whop dashboard first, then paste its checkout link and product ID here.</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Whop Checkout</p>
+                  {editingId && (
+                    <button type="button" onClick={handlePushToWhop} disabled={pushingWhop}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-xs font-medium disabled:opacity-60">
+                      {pushingWhop && <Loader2 className="w-3 h-3 animate-spin" />}
+                      {pushingWhop ? 'Pushing…' : 'Push to Whop'}
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 -mt-2">
+                  {editingId
+                    ? 'Push to Whop creates or updates this product on ExiusCart’s own Whop account and fills in the fields below automatically. Or paste them in yourself if you’d rather create the product in Whop’s dashboard by hand.'
+                    : 'Save this bundle first, then use "Push to Whop" here to create it on ExiusCart’s own Whop account — or create it manually in Whop’s dashboard and paste the checkout link and product ID below.'}
+                </p>
+                {pushWhopError && (
+                  <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {pushWhopError}
+                  </div>
+                )}
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Whop checkout URL</label>
                   <input value={form.whop_checkout_url} onChange={(e) => setForm((f: any) => ({ ...f, whop_checkout_url: e.target.value }))}
