@@ -3,12 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
-export type SocialProvider = 'google' | 'facebook' | 'apple';
+export type SocialProvider = 'google' | 'facebook';
 
 interface SocialConfig {
   google: { client_id: string } | null;
   facebook: { app_id: string } | null;
-  apple: { client_id: string } | null;
 }
 
 interface Props {
@@ -53,13 +52,6 @@ function GoogleIcon() {
     </svg>
   );
 }
-function AppleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true" fill="currentColor">
-      <path d="M16.37 1.43c0 1.14-.46 2.22-1.2 3.02-.8.87-2.1 1.55-3.16 1.46-.13-1.1.42-2.25 1.15-3.01.81-.86 2.2-1.5 3.21-1.47zM20.5 17.3c-.55 1.27-.82 1.84-1.53 2.96-1 1.56-2.4 3.5-4.14 3.52-1.55.02-1.95-1-4.05-.99-2.1.01-2.54 1.01-4.09.99-1.74-.02-3.07-1.77-4.07-3.33C-.2 15.3-.5 10.2 1.1 7.7c1.14-1.78 2.94-2.82 4.63-2.82 1.72 0 2.8 1.02 4.22 1.02 1.38 0 2.22-1.02 4.21-1.02 1.5 0 3.09.82 4.22 2.23-3.71 2.03-3.11 7.33.12 8.19z" />
-    </svg>
-  );
-}
 function FacebookIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true" fill="#1877F2">
@@ -97,14 +89,6 @@ export function SocialAuthButtons({ apiBase, beforeStart, onToken, onError }: Pr
       const fb = config.facebook;
       w().fbAsyncInit = () => w().FB.init({ appId: fb.app_id, cookie: false, xfbml: false, version: 'v19.0' });
       loadScript('https://connect.facebook.net/en_US/sdk.js').catch(() => {});
-    }
-    if (config.apple) {
-      loadScript('https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js')
-        .then(() => w().AppleID.auth.init({
-          clientId: config.apple!.client_id, scope: 'name email',
-          redirectURI: window.location.origin, usePopup: true,
-        }))
-        .catch(() => {});
     }
   }, [config]);
 
@@ -148,27 +132,11 @@ export function SocialAuthButtons({ apiBase, beforeStart, onToken, onError }: Pr
     ), { scope: 'email,public_profile' });
   }));
 
-  const apple = () => !config?.apple ? notReady('Apple') : run('apple', async () => {
-    if (!w().AppleID) throw new Error('Apple sign-in is still loading — try again in a moment.');
-    try {
-      const res = await w().AppleID.auth.signIn();
-      const n = res?.user?.name;
-      return { token: res.authorization.id_token, name: n ? `${n.firstName ?? ''} ${n.lastName ?? ''}`.trim() : undefined };
-    } catch {
-      throw new Error('cancelled');
-    }
-  });
-
-
   return (
     <div className="space-y-1.5">
       <button type="button" className={`${BTN} bg-[#4285F4]`} disabled={!!busy} onClick={google}>
         <span className={TILE}>{busy === 'google' ? <Loader2 className="h-4 w-4 animate-spin text-gray-500" /> : <GoogleIcon />}</span>
         <span className="flex-1 pr-[38px] text-center">Continue with Google</span>
-      </button>
-      <button type="button" className={`${BTN} bg-black`} disabled={!!busy} onClick={apple}>
-        <span className={`${TILE} text-black`}>{busy === 'apple' ? <Loader2 className="h-4 w-4 animate-spin text-gray-500" /> : <AppleIcon />}</span>
-        <span className="flex-1 pr-[38px] text-center">Continue with Apple</span>
       </button>
       <button type="button" className={`${BTN} bg-[#3B5998]`} disabled={!!busy} onClick={facebook}>
         <span className={TILE}>{busy === 'facebook' ? <Loader2 className="h-4 w-4 animate-spin text-gray-500" /> : <FacebookIcon />}</span>

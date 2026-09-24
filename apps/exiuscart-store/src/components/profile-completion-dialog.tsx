@@ -11,7 +11,7 @@ import { CountryFlag } from '@/components/country-flag';
 import { COUNTRY_OPTIONS } from '@/lib/countries';
 import { authApi, usersApi, shopApi } from '@/lib/api';
 
-// Google/Apple/Facebook sign-ins — and the streamlined email signup — give us
+// Google/Facebook sign-ins — and the streamlined email signup — give us
 // a name and email, never a phone number, country or referral code. This asks
 // for them once, right after first login. It reappears next session until a
 // phone number is saved, so "skip" is a postponement, not a way to never

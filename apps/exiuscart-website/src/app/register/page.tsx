@@ -15,7 +15,7 @@ import { SupportCard } from '@/components/auth/support-card';
 // Deliberately short: name, email, password. Store name, phone, country and
 // referral code are collected once inside the dashboard right after first
 // login (the "Finish setting up" step) - the same step social sign-ins use,
-// since Google/Apple/Facebook can't supply them either.
+// since Google/Facebook can't supply them either.
 const registerSchema = z.object({
   ownerName: z.string().min(2, 'Your name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email'),
@@ -39,7 +39,7 @@ function RegisterForm() {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
   // Controlled so the social buttons can require it too — a first-time
-  // Google/Apple/Facebook sign-in creates an account, same as this form.
+  // Google/Facebook sign-in creates an account, same as this form.
   const [termsAccepted, setTermsAccepted] = useState(false);
   const searchParams = useSearchParams();
   const refFromUrl = searchParams.get('ref') || '';

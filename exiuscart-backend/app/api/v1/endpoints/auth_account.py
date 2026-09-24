@@ -1,16 +1,20 @@
-"""Social sign-in (Google / Apple / Facebook) and password reset.
+"""Social sign-in (Google / Facebook) and password reset.
 
 Social login never trusts anything the browser says about who the user is:
 each provider's token is verified server-side against the provider itself and
-checked to have been issued for OUR app (Google `aud`, Facebook `app_id`,
-Apple `aud`), so a token minted for some other site can't be replayed here.
+checked to have been issued for OUR app (Google `aud`, Facebook `app_id`), so
+a token minted for some other site can't be replayed here.
 
 A provider only appears in /auth/social/config (and so only shows a button in
 the apps) once its credentials are set in the backend environment — nothing
 is half-enabled:
   GOOGLE_CLIENT_ID
   FACEBOOK_APP_ID + FACEBOOK_APP_SECRET
-  APPLE_CLIENT_ID  (the Services ID configured for Sign in with Apple)
+
+Apple sign-in was removed (no Apple Developer Program membership) — if it
+ever comes back, GOOGLE_CLIENT_ID/FACEBOOK_APP_ID above are the pattern to
+follow: an APPLE_CLIENT_ID env var, a _verify_apple() identity check, and an
+entry in social_config()'s response.
 """
 import hashlib
 import logging
@@ -54,8 +58,6 @@ RESET_TOKEN_TTL = timedelta(hours=1)
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 FACEBOOK_APP_ID = os.getenv("FACEBOOK_APP_ID", "")
 FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET", "")
-APPLE_CLIENT_ID = os.getenv("APPLE_CLIENT_ID", "")
-_APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
 _HTTP_TIMEOUT = 8.0
 
 
@@ -73,7 +75,6 @@ def social_config():
     return {
         "google": {"client_id": GOOGLE_CLIENT_ID} if GOOGLE_CLIENT_ID else None,
         "facebook": {"app_id": FACEBOOK_APP_ID} if FACEBOOK_APP_ID and FACEBOOK_APP_SECRET else None,
-        "apple": {"client_id": APPLE_CLIENT_ID} if APPLE_CLIENT_ID else None,
     }
 
 
@@ -137,24 +138,6 @@ def _verify_facebook(access_token: str) -> _Identity:
         raise HTTPException(status_code=502, detail="Couldn't reach Facebook. Please try again.")
 
 
-def _verify_apple(identity_token: str, name_hint: str) -> _Identity:
-    if not APPLE_CLIENT_ID:
-        raise HTTPException(status_code=503, detail="Apple sign-in isn't set up yet.")
-    try:
-        signing_key = jwt.PyJWKClient(_APPLE_JWKS_URL).get_signing_key_from_jwt(identity_token)
-        claims = jwt.decode(
-            identity_token, signing_key.key, algorithms=["RS256"],
-            audience=APPLE_CLIENT_ID, issuer="https://appleid.apple.com",
-        )
-    except Exception:
-        logger.warning("[social] apple token verification failed", exc_info=True)
-        raise HTTPException(status_code=401, detail="Apple sign-in failed. Please try again.")
-    email = (claims.get("email") or "").lower()
-    if not email:
-        raise HTTPException(status_code=400, detail="Apple didn't share an email address.")
-    return _Identity(email=email, name=name_hint)
-
-
 # ── Find-or-create account ────────────────────────────────────────────────────
 
 def _create_account(db: Session, identity: _Identity, ref_code: Optional[str], country: Optional[str]) -> User:
@@ -213,9 +196,8 @@ def _create_account(db: Session, identity: _Identity, ref_code: Optional[str], c
 
 
 class SocialLoginIn(BaseModel):
-    provider: str                      # google | facebook | apple
-    token: str                         # google/facebook: access token; apple: identity token
-    name: Optional[str] = None         # apple only sends the name on the very first authorization
+    provider: str                      # google | facebook
+    token: str                         # the provider's access token
     ref_code: Optional[str] = None
     country: Optional[str] = None
     # False from the login page: signing in must never silently create an
@@ -230,8 +212,6 @@ def social_login(request: Request, data: SocialLoginIn, db: Session = Depends(ge
         identity = _verify_google(data.token)
     elif data.provider == "facebook":
         identity = _verify_facebook(data.token)
-    elif data.provider == "apple":
-        identity = _verify_apple(data.token, (data.name or "").strip())
     else:
         raise HTTPException(status_code=422, detail="Unknown sign-in provider")
 
@@ -345,7 +325,7 @@ def complete_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Google/Apple/Facebook hand over a name and email, never a phone number,
+    """Google/Facebook hand over a name and email, never a phone number,
     country or referral code — and the streamlined email signup skips them too.
     The dashboard collects them once, right after first login, through this
     endpoint. Every field is optional so a partial answer still saves."""
