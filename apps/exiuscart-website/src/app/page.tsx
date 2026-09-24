@@ -20,6 +20,16 @@ export const metadata: Metadata = {
     url: 'https://exiuscart.com',
     siteName: 'ExiusCart',
     type: 'website',
+    // Next.js doesn't merge a page's own openGraph object with the root
+    // layout's — defining openGraph here at all replaces it entirely, so
+    // without this the homepage was the one page shipping NO preview image.
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'ExiusCart — Sell Everywhere. Run Everything.' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ExiusCart - All-in-One POS, Inventory & Multichannel Selling Platform',
+    description: 'POS, inventory, invoicing, HR, marketing, and every sales channel — plus Prodora product sourcing — in one platform, worldwide. From $14.99/month.',
+    images: ['/og-image.png'],
   },
 };
 

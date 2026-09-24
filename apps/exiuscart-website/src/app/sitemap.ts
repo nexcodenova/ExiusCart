@@ -32,6 +32,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/integrations`,               priority: 0.7, changeFrequency: 'monthly' },
     { url: `${BASE}/developers`,                 priority: 0.6, changeFrequency: 'monthly' },
     { url: `${BASE}/affiliate`,                  priority: 0.6, changeFrequency: 'monthly' },
+    { url: `${BASE}/referral`,                   priority: 0.5, changeFrequency: 'monthly' },
+    { url: `${BASE}/review`,                     priority: 0.5, changeFrequency: 'monthly' },
     { url: `${BASE}/shopify`,                    priority: 0.6, changeFrequency: 'monthly' },
     { url: `${BASE}/careers`,                    priority: 0.5, changeFrequency: 'monthly' },
     { url: `${BASE}/industries`,                 priority: 0.6, changeFrequency: 'monthly' },

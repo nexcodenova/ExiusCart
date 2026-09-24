@@ -27,9 +27,9 @@ const cairo = Cairo({
 });
 
 const SITE_URL = 'https://exiuscart.com';
-const SITE_TITLE = 'ExiusCart - Smart Multi-Shop Business System';
+const SITE_TITLE = 'ExiusCart - All-in-One POS, Inventory & Multichannel Selling Platform';
 const SITE_DESCRIPTION =
-  'All-in-one POS, inventory & invoicing platform for small businesses worldwide — UAE and international.';
+  'POS, inventory, invoicing, HR, and marketing, connecting every sales channel — plus Prodora product sourcing from verified suppliers. One platform, worldwide, from $14.99/month.';
 
 export const metadata: Metadata = {
   // Without this, every relative image URL in openGraph/twitter below
@@ -42,7 +42,11 @@ export const metadata: Metadata = {
     template: '%s | ExiusCart',
   },
   description: SITE_DESCRIPTION,
-  keywords: ['POS', 'Point of Sale', 'UAE', 'Inventory', 'Invoicing', 'worldwide', 'small business'],
+  keywords: [
+    'POS', 'Point of Sale', 'Inventory management', 'Invoicing', 'Multichannel selling',
+    'Dropshipping', 'Product sourcing', 'E-commerce platform', 'Small business software',
+    'Prodora', 'Shopify alternative', 'UAE', 'worldwide',
+  ],
   icons: {
     icon: '/logo-ec-square.png',
     shortcut: '/logo-ec-square.png',
@@ -63,13 +67,13 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     locale: 'en_US',
-    images: [{ url: '/dashboard.png', width: 1200, height: 630, alt: 'ExiusCart dashboard' }],
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'ExiusCart — Sell Everywhere. Run Everything.' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ['/dashboard.png'],
+    images: ['/og-image.png'],
   },
 };
 
