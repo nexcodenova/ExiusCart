@@ -4,12 +4,12 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X, ArrowUpDown, ChevronRight, ShoppingBasket, Download } from 'lucide-react';
-import { shoppingApi, prodoraAuth, Product, Category } from '@/lib/api';
+import { shoppingApi, digitalBundlesApi, prodoraAuth, Product, Category, DigitalBundle } from '@/lib/api';
 import { SORT_LABEL, sortProducts, type SortKey } from '@/lib/catalogue';
 import Sidebar from '@/components/Sidebar';
 import PageIntro from '@/components/PageIntro';
 import ProductCard from '@/components/ProductCard';
-import { SkeletonCard } from '@/components/DigitalBundleCard';
+import { SkeletonCard, DigitalBundleCard } from '@/components/DigitalBundleCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Soft pastel backgrounds, cycled across the category tiles.
@@ -51,6 +51,14 @@ function MarketplaceContent() {
       .finally(() => setLoading(false));
   }, [authorized]);
 
+  // Digital bundles have no category, so they only show in "All products",
+  // never inside a specific category tile.
+  const [bundles, setBundles] = useState<DigitalBundle[]>([]);
+  useEffect(() => {
+    if (!authorized || cat !== 'all') { setBundles([]); return; }
+    digitalBundlesApi.list().then(setBundles).catch(() => setBundles([]));
+  }, [authorized, cat]);
+
   // A tile only exists for a category an admin has given an image
   // (Admin > Prodora > Categories), and it shows that image.
   const tileCategories = useMemo(() => categories.filter((c) => !!c.image_url), [categories]);
@@ -64,6 +72,12 @@ function MarketplaceContent() {
     });
     return sortProducts(filtered, sort);
   }, [products, cat, search, sort]);
+
+  const visibleBundles = useMemo(() => {
+    if (cat !== 'all') return [];
+    const q = search.trim().toLowerCase();
+    return bundles.filter((b) => !q || b.name.toLowerCase().includes(q) || (b.description ?? '').toLowerCase().includes(q));
+  }, [bundles, cat, search]);
 
   if (!authorized) return null;
 
@@ -128,10 +142,13 @@ function MarketplaceContent() {
 
           {loading ? (
             <Grid>{Array.from({ length: 10 }).map((_, i) => <SkeletonCard key={i} />)}</Grid>
-          ) : visible.length === 0 ? (
+          ) : visible.length === 0 && visibleBundles.length === 0 ? (
             <Empty title="No products found" text="Try a different search or category." />
           ) : (
-            <Grid>{visible.map((p) => <ProductCard key={p.id} product={p} showDetailsBar={false} />)}</Grid>
+            <Grid>
+              {visible.map((p) => <ProductCard key={p.id} product={p} showDetailsBar={false} />)}
+              {visibleBundles.map((b) => <DigitalBundleCard key={`digital-${b.id}`} bundle={b} />)}
+            </Grid>
           )}
         </div>
       </main>

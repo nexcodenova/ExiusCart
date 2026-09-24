@@ -105,11 +105,14 @@ function BrowseContent() {
     shoppingApi.getCategories().then(setCategories).catch(() => {});
   }, [authorized]);
 
+  // Digital bundles have no category, so they only ever show on the
+  // catalogue-wide views: Picked Products, Bestsellers and Trends.
+  const SHOWS_BUNDLES = view === 'all' || view === 'trending' || view === 'bestsellers';
   const [bundles, setBundles] = useState<DigitalBundle[]>([]);
   useEffect(() => {
-    if (!authorized || (view !== 'trending' && view !== 'bestsellers')) { setBundles([]); return; }
+    if (!authorized || !SHOWS_BUNDLES) { setBundles([]); return; }
     digitalBundlesApi.list().then(setBundles).catch(() => setBundles([]));
-  }, [authorized, view]);
+  }, [authorized, SHOWS_BUNDLES]);
 
   useEffect(() => {
     if (!authorized) return;
@@ -142,9 +145,11 @@ function BrowseContent() {
     : view === 'bestsellers' ? 'Products picked as bestsellers, ranked by orders.'
     : 'Explore winning products, verified by real-time sales data and expert research.';
   const visible = applyFiltersAndSort(products, filters, sort);
-  // Digital products the admin flagged Trending / Bestseller also appear here.
+  // Picked Products shows every digital bundle; Bestsellers/Trends show only
+  // the ones the admin flagged that way.
   const flaggedBundles = bundles.filter((b) => {
-    if (view === 'trending' ? !b.is_trending : !b.is_bestseller) return false;
+    if (view === 'trending' && !b.is_trending) return false;
+    if (view === 'bestsellers' && !b.is_bestseller) return false;
     const q = debouncedSearch.trim().toLowerCase();
     return !q || b.name.toLowerCase().includes(q) || (b.description ?? '').toLowerCase().includes(q);
   });
