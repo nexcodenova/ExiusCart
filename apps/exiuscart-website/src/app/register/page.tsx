@@ -52,8 +52,13 @@ function RegisterForm() {
   // signup, unchanged.
   const planFromUrl = searchParams.get('plan');
   const billingFromUrl = searchParams.get('billing') || 'monthly';
-  const chosenPlan = planFromUrl === 'launch' ? planFromUrl : null;
-  const chosenPlanLabel = chosenPlan ? 'Launch' : null;
+  // trial=dollar — arrived from Growth/Scale's "Try for $1" CTA. Those two
+  // plans have no free week: the account is created here first (same as
+  // Launch), then handed straight to a real Lemon Squeezy $1 checkout for
+  // the new shop — see continueAfterSignup below.
+  const trialDollarFromUrl = searchParams.get('trial') === 'dollar';
+  const chosenPlan = planFromUrl === 'launch' || planFromUrl === 'growth' || planFromUrl === 'scale' ? planFromUrl : null;
+  const chosenPlanLabel = chosenPlan === 'launch' ? 'Launch' : chosenPlan === 'growth' ? 'Growth' : chosenPlan === 'scale' ? 'Scale' : null;
 
   const {
     register,
@@ -97,11 +102,38 @@ function RegisterForm() {
 
   const refCode = watch('refCode');
 
-  const requireTerms = () => {
-    if (termsAccepted) return true;
-    setError('Please tick the Terms of Service and Privacy Policy box below to continue.');
-    document.getElementById('terms')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return false;
+  // The account now exists — for Launch (or an organic signup) that's the
+  // whole story, straight to the dashboard. For Growth/Scale's $1 trial,
+  // the account was deliberately created with no subscription yet (see the
+  // backend's register()/social()), so the seller is sent straight to a
+  // real Lemon Squeezy checkout for the shop that was just created. If
+  // anything here fails, fall back to the dashboard rather than strand a
+  // real account on a broken screen — Billing can always start the $1
+  // checkout again from there.
+  const continueAfterSignup = async (accessToken: string) => {
+    if ((chosenPlan === 'growth' || chosenPlan === 'scale') && trialDollarFromUrl) {
+      try {
+        const shopRes = await fetch(`${API_BASE}/api/v1/shops/me`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const shop = await shopRes.json();
+        if (shopRes.ok && shop?.id) {
+          const checkoutRes = await fetch(`${API_BASE}/api/v1/shops/${shop.id}/subscription/checkout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify({ plan: chosenPlan, billing_type: billingFromUrl, trial_dollar: true }),
+          });
+          const checkoutData = await checkoutRes.json().catch(() => ({}));
+          if (checkoutRes.ok && checkoutData?.checkout_url) {
+            window.location.href = checkoutData.checkout_url;
+            return;
+          }
+        }
+      } catch {
+        // fall through to the dashboard below
+      }
+    }
+    window.location.href = `https://store.exiuscart.com/login#token=${accessToken}`;
   };
 
   const handleSocial = async (provider: SocialProvider, token: string, extra?: { name?: string }) => {
@@ -112,14 +144,13 @@ function RegisterForm() {
       body: JSON.stringify({
         provider, token, name: extra?.name,
         ref_code: refCode || undefined,
+        plan_type: chosenPlan || undefined,
       }),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(typeof body.detail === 'string' ? body.detail : 'Sign-in failed. Please try again.');
     setSuccess(true);
-    // Same hand-off as email signup: the token rides in the hash fragment
-    // (never sent to a server) so the dashboard opens already signed in.
-    window.location.href = `https://store.exiuscart.com/login#token=${body.access_token}`;
+    await continueAfterSignup(body.access_token);
   };
 
   const onSubmit = async (data: RegisterForm) => {
@@ -164,7 +195,7 @@ function RegisterForm() {
       const res = await fetch(`${API_BASE}/api/v1/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: pendingEmail, otp_code: otpCode }),
+        body: JSON.stringify({ email: pendingEmail, otp_code: otpCode, plan_type: chosenPlan || undefined }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -172,14 +203,13 @@ function RegisterForm() {
       }
       setSuccess(true);
       // Immediate access — verify-otp already returns a real access token (no
-      // more admin-approval wait), so hand it straight to the dashboard via
-      // hash fragment (never sent to a server) instead of making them log in
-      // again with a password they just typed seconds ago.
+      // more admin-approval wait). Launch/organic goes straight to the
+      // dashboard; Growth/Scale's $1 trial continues to a real checkout —
+      // see continueAfterSignup.
       const token = body.access_token;
       setTimeout(() => {
-        window.location.href = token
-          ? `https://store.exiuscart.com/login#token=${token}`
-          : 'https://store.exiuscart.com/login';
+        if (token) continueAfterSignup(token);
+        else window.location.href = 'https://store.exiuscart.com/login';
       }, 1500);
     } catch (err: any) {
       setOtpError(err.message || 'Invalid or expired code');
@@ -262,10 +292,15 @@ function RegisterForm() {
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-3">Email Verified!</h2>
         <p className="text-gray-500 text-sm mb-4">
-          Your account is ready — taking you to your dashboard now.
+          {(chosenPlan === 'growth' || chosenPlan === 'scale') && trialDollarFromUrl
+            ? 'Your account is ready — taking you to the $1 checkout now.'
+            : 'Your account is ready — taking you to your dashboard now.'}
         </p>
         <p className="text-gray-400 text-xs flex items-center justify-center gap-1.5">
-          <Loader2 className="w-3 h-3 animate-spin" /> Redirecting to your dashboard...
+          <Loader2 className="w-3 h-3 animate-spin" />
+          {(chosenPlan === 'growth' || chosenPlan === 'scale') && trialDollarFromUrl
+            ? 'Redirecting to checkout...'
+            : 'Redirecting to your dashboard...'}
         </p>
       </div>
     );
@@ -276,7 +311,11 @@ function RegisterForm() {
     <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm w-full max-w-md mx-auto [@media(max-height:760px)]:p-4">
       <h1 className="text-xl font-bold text-gray-900 text-center">Sign up for ExiusCart</h1>
       <p className="text-gray-500 mb-3 mt-0.5 text-sm text-center [@media(max-height:700px)]:hidden">
-        {chosenPlan ? `Start your ${chosenPlanLabel} plan — free for 7 days` : 'Start your 7-day free trial — no credit card'}
+        {chosenPlan === 'launch'
+          ? `Start your ${chosenPlanLabel} plan — free for 7 days`
+          : trialDollarFromUrl && chosenPlanLabel
+          ? `Start your ${chosenPlanLabel} plan — $1 for 7 days`
+          : 'Start your 7-day free trial — no credit card'}
       </p>
 
       {refCode && (
@@ -295,7 +334,10 @@ function RegisterForm() {
       )}
 
       <div className="mb-2.5">
-        <SocialAuthButtons apiBase={API_BASE} beforeStart={requireTerms} onToken={handleSocial} onError={setError} />
+        {/* Google/Facebook skip the terms tick-box — only the email form
+            enforces it, since the checkbox sits below the password field,
+            after the two social buttons. */}
+        <SocialAuthButtons apiBase={API_BASE} onToken={handleSocial} onError={setError} />
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-2.5">

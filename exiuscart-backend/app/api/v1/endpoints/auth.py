@@ -4,6 +4,7 @@ import random
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 import jwt
@@ -104,14 +105,23 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             )
             db.add(sub)
             logger.info(f"[domain_thedersi] scale granted to {new_user.email}")
+        elif user_data.plan_type in ("growth", "scale"):
+            # Arrived from the pricing page's Growth/Scale "Try for $1" CTA.
+            # No free week for these two — the account exists, but no
+            # subscription is created yet. Once the email is verified (or,
+            # for a social signup, immediately), the frontend sends the
+            # seller straight to a real Lemon Squeezy $1 checkout for this
+            # shop (POST /shops/{shop_id}/subscription/checkout); the
+            # subscription only comes into existence once that payment
+            # actually succeeds, same as everywhere else a card is charged.
+            pass
         else:
-            # Arrived from the pricing page's Launch "Try for free" CTA — a
-            # real 7-day free trial, no payment info at all, immediate
-            # access once the email is verified (no admin approval gate —
-            # making a signup wait on manual review kills conversion for
-            # something that costs nothing and requires no card). Growth/
-            # Scale never reach this branch: they have no free week, only
-            # the $1 checkout flow (see auth.py's checkout_signup).
+            # Arrived from the pricing page's Launch "Try for free" CTA, or
+            # an organic signup with no plan at all — a real 7-day free
+            # trial, no payment info at all, immediate access once the email
+            # is verified (no admin approval gate — making a signup wait on
+            # manual review kills conversion for something that costs
+            # nothing and requires no card).
             from app.core.lemonsqueezy import TRIAL_FREE_DAYS
             now = datetime.now(timezone.utc)
             trial_ends = now + timedelta(days=TRIAL_FREE_DAYS)
@@ -156,6 +166,9 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 class VerifyOTPIn(BaseModel):
     email: str
     otp_code: str
+    # Mirrors register()'s plan_type — a growth/scale $1-checkout signup
+    # must not get papered over with a free trial by the fallback below.
+    plan_type: Optional[str] = None
 
 
 @router.post("/verify-otp", response_model=Token)
@@ -188,8 +201,12 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
     # creates a real "trial" subscription for a specific plan (Launch); this
     # fallback only fires for a plan-less organic signup that somehow has no
     # subscription row yet, giving it the same 7-day trial everyone else gets.
+    # A Growth/Scale $1-checkout signup (data.plan_type) deliberately has no
+    # subscription yet either way — register() left it that way on purpose —
+    # so this must never paper over that with a free trial.
     shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
-    if shop:
+    paid_plan_pending = data.plan_type in ("growth", "scale")
+    if shop and not paid_plan_pending:
         existing_sub = db.query(Subscription).filter(Subscription.shop_id == shop.id).first()
         if not existing_sub:
             from app.core.lemonsqueezy import TRIAL_FREE_DAYS
@@ -210,14 +227,26 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    _email_pool.submit(send_welcome_email, user.email, user.full_name or "", "Launch (7-day trial)")
-    _email_pool.submit(
-        send_new_signup_notification,
-        user.full_name or "",
-        user.email,
-        shop.name if shop else "",
-        "Launch (7-day trial)",
-    )
+    if paid_plan_pending:
+        # No "your store is live" email yet — it isn't, until the $1 charge
+        # actually goes through (the frontend sends them there next). Just a
+        # heads-up to us that someone verified and is headed to checkout.
+        _email_pool.submit(
+            send_new_signup_notification,
+            user.full_name or "",
+            user.email,
+            shop.name if shop else "",
+            f"{data.plan_type.title()} — pending $1 checkout",
+        )
+    else:
+        _email_pool.submit(send_welcome_email, user.email, user.full_name or "", "Launch (7-day trial)")
+        _email_pool.submit(
+            send_new_signup_notification,
+            user.full_name or "",
+            user.email,
+            shop.name if shop else "",
+            "Launch (7-day trial)",
+        )
 
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token, user=UserResponse.model_validate(user))

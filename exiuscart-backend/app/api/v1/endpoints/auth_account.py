@@ -140,7 +140,7 @@ def _verify_facebook(access_token: str) -> _Identity:
 
 # ── Find-or-create account ────────────────────────────────────────────────────
 
-def _create_account(db: Session, identity: _Identity, ref_code: Optional[str], country: Optional[str]) -> User:
+def _create_account(db: Session, identity: _Identity, ref_code: Optional[str], country: Optional[str], plan_type: Optional[str] = None) -> User:
     """Same shape as a verified email signup: user + shop + 7-day trial. The
     provider already verified the email, so no OTP step. The random password
     is unusable on purpose — they can set a real one via Forgot password."""
@@ -171,12 +171,19 @@ def _create_account(db: Session, identity: _Identity, ref_code: Optional[str], c
     db.flush()
 
     now = datetime.now(timezone.utc)
+    paid_plan_pending = plan_type in ("growth", "scale")
     if is_thedersi_staff:
         db.add(Subscription(
             shop_id=shop.id, plan_type="scale", billing_type="yearly", status="active",
             amount_paid=0, currency=currency, promo_code="domain_thedersi",
             starts_at=now, expires_at=None,
         ))
+    elif paid_plan_pending:
+        # Arrived from the pricing page's Growth/Scale "Try for $1" CTA via
+        # Google/Facebook — same as register()'s email path: no subscription
+        # yet, the caller (social_login below) sends the seller straight to
+        # a real Lemon Squeezy $1 checkout for this shop right after.
+        pass
     else:
         from app.core.lemonsqueezy import TRIAL_FREE_DAYS
         ends = now + timedelta(days=TRIAL_FREE_DAYS)
@@ -189,9 +196,14 @@ def _create_account(db: Session, identity: _Identity, ref_code: Optional[str], c
 
     if is_thedersi_staff:
         _email_pool.submit(send_thedersi_welcome_email, user.email, user.full_name or "")
+        _email_pool.submit(send_new_signup_notification, user.full_name or "", user.email, shop.name, "Launch (7-day trial)")
+    elif paid_plan_pending:
+        # No "your store is live" email yet — it isn't, until the $1 charge
+        # actually goes through.
+        _email_pool.submit(send_new_signup_notification, user.full_name or "", user.email, shop.name, f"{plan_type.title()} — pending $1 checkout")
     else:
         _email_pool.submit(send_welcome_email, user.email, user.full_name or "", "Launch (7-day trial)")
-    _email_pool.submit(send_new_signup_notification, user.full_name or "", user.email, shop.name, "Launch (7-day trial)")
+        _email_pool.submit(send_new_signup_notification, user.full_name or "", user.email, shop.name, "Launch (7-day trial)")
     return user
 
 
@@ -200,6 +212,11 @@ class SocialLoginIn(BaseModel):
     token: str                         # the provider's access token
     ref_code: Optional[str] = None
     country: Optional[str] = None
+    # Mirrors register()'s plan_type — set when arriving from the pricing
+    # page's Growth/Scale "Try for $1" CTA, so a brand-new account isn't
+    # given a free trial it never asked for. None on the login page and on
+    # Launch's free-trial signup (both fall back to the normal 7-day trial).
+    plan_type: Optional[str] = None
     # False from the login page: signing in must never silently create an
     # account — sign-up is where the terms are accepted.
     allow_signup: bool = True
@@ -223,7 +240,7 @@ def social_login(request: Request, data: SocialLoginIn, db: Session = Depends(ge
             detail="We couldn't find an ExiusCart account for that email. Please sign up first.",
         )
     if user is None:
-        user = _create_account(db, identity, data.ref_code, data.country)
+        user = _create_account(db, identity, data.ref_code, data.country, data.plan_type)
     else:
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account is deactivated")

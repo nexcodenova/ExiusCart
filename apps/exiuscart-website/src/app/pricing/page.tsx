@@ -598,7 +598,7 @@ export default function PricingPage() {
                   required. Covers the first 7 days, then subscription_
                   lifecycle.py's daily cron switches to full price. */}
               <Link
-                href={`/checkout?plan=growth&billing=${billing}&trial=dollar`}
+                href={`/register?plan=growth&billing=${billing}&trial=dollar`}
                 className="block text-center bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-3 rounded-2xl text-sm transition-all mb-8"
               >
                 Try for $1
@@ -640,7 +640,7 @@ export default function PricingPage() {
                   required. Covers the first 7 days, then subscription_
                   lifecycle.py's daily cron switches to full price. */}
               <Link
-                href={`/checkout?plan=scale&billing=${billing}&trial=dollar`}
+                href={`/register?plan=scale&billing=${billing}&trial=dollar`}
                 className="block text-center bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 rounded-2xl text-sm transition-all mb-8"
               >
                 Try for $1
