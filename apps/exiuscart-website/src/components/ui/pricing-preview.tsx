@@ -17,7 +17,7 @@ export function PricingPreview() {
   const scaleMonthly = prices.scale.monthly;
   const priceDisplay = `$${launchMonthly}`;
   const scaleDisplay = `$${scaleMonthly}`;
-  const frontImage = '/integration/pricing-usd.jpg';
+  const frontImage = '/integration/pricing-usd.webp';
 
   return (
     <div

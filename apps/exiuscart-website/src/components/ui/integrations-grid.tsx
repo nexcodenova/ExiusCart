@@ -35,12 +35,12 @@ const CARDS: IntegrationCard[] = [
   },
   {
     id: 'shopify', name: 'Shopify', status: 'live',
-    image: '/integration/shopify.jpg', imageSize: '480×600',
+    image: '/integration/shopify.webp', imageSize: '480×600',
     desc: 'Sync products, inventory and orders between Shopify and ExiusCart automatically.',
   },
   {
     id: 'woocommerce', name: 'WooCommerce', status: 'live',
-    image: '/integration/woocommerce.jpg', imageSize: '480×600',
+    image: '/integration/woocommerce.webp', imageSize: '480×600',
     desc: 'Sync your WooCommerce store — products, orders and stock managed directly from ExiusCart.',
   },
   {
@@ -86,25 +86,22 @@ const CARDS: IntegrationCard[] = [
     image: '/integration/TheDersi.jpg', imageSize: '480×600',
     desc: "Sri Lanka's #1 fashion marketplace. ExiusCart is the official seller backend — orders and stock sync automatically.",
   },
-  // Image files below don't exist yet — real "Partner with X" art to be
-  // supplied and dropped into /public/integration/ later, same filename
-  // convention as the cards above. Card's own onError hides a broken
-  // image cleanly rather than showing a blank alt icon, so this ships
-  // safely today and picks up the real art with zero code changes once
-  // the file lands.
+  // Real art landed 2026-09-24 (resized to 960w and re-encoded as webp,
+  // matching every other card here). Card's own onError still hides a
+  // broken image cleanly if a file is ever missing.
   {
     id: 'bigcommerce', name: 'BigCommerce', status: 'live',
-    image: '/integration/bigcommerce.jpg', imageSize: '480×600',
+    image: '/integration/bigcommerce.webp', imageSize: '480×600',
     desc: 'Sync your BigCommerce store — products, orders and inventory managed directly from ExiusCart.',
   },
   {
     id: 'wix', name: 'Wix Stores', status: 'soon',
-    image: '/integration/wix.jpg', imageSize: '480×600',
+    image: '/integration/wixstores.webp', imageSize: '480×600',
     desc: 'Connect your Wix store — products, orders and inventory stay in sync automatically. Rolling out.',
   },
   {
     id: 'walmart', name: 'Walmart', status: 'soon',
-    image: '/integration/walmart.jpg', imageSize: '480×600',
+    image: '/integration/walmart.webp', imageSize: '480×600',
     desc: 'Reach US shoppers on Walmart Marketplace — list products and manage orders through ExiusCart. Rolling out.',
   },
   {
@@ -112,17 +109,17 @@ const CARDS: IntegrationCard[] = [
     // section, alongside TikTok Shop) — this card was just missing from
     // the marketing site's own marketplace line.
     id: 'instagram', name: 'Instagram Shopping', status: 'soon',
-    image: '/integration/instagram.jpg', imageSize: '480×600',
+    image: '/integration/instagram-shopping.webp', imageSize: '480×600',
     desc: 'Tag products in your Instagram posts and stories — orders sync straight to ExiusCart. Rolling out.',
   },
   {
     id: 'jumia', name: 'Jumia', status: 'soon',
-    image: '/integration/jumia.jpg', imageSize: '480×600',
+    image: '/integration/jumia.webp', imageSize: '480×600',
     desc: "Africa's leading marketplace — list products and manage orders through ExiusCart. Rolling out.",
   },
   {
     id: 'trendyol', name: 'Trendyol', status: 'soon',
-    image: '/integration/trendyol.jpg', imageSize: '480×600',
+    image: '/integration/trendyol.webp', imageSize: '480×600',
     desc: "Turkey's largest online marketplace — list products and manage orders through ExiusCart. Rolling out.",
   },
   // Digital-product channels — a different category from the marketplaces
@@ -131,12 +128,12 @@ const CARDS: IntegrationCard[] = [
   // to sell). Own ScrollLine below rather than folded into MARKETPLACE_IDS.
   {
     id: 'whop', name: 'Whop', status: 'rolling-out',
-    image: '/integration/whop.jpg', imageSize: '480×600',
+    image: '/integration/whop.webp', imageSize: '480×600',
     desc: 'Sell digital products with no business registration needed — Whop handles payment and tax compliance for you. Rolling out.',
   },
   {
     id: 'gumroad', name: 'Gumroad', status: 'soon',
-    image: '/integration/gumroad.jpg', imageSize: '480×600',
+    image: '/integration/gumroad.webp', imageSize: '480×600',
     desc: 'List your digital products on Gumroad and manage orders from ExiusCart. Rolling out.',
   },
 ];
