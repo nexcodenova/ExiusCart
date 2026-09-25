@@ -1,17 +1,12 @@
 'use client';
 
 import { Fragment, useState, useEffect, useCallback } from 'react';
-import { format } from 'date-fns';
-import {
-  Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
 import {
   ScrollText, Search, ChevronDown, ChevronRight, Loader2,
   LogIn, LogOut, UserPlus, ShieldAlert, ShieldCheck, RefreshCw,
+  Monitor, Smartphone, Store,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
-
-interface TimelineBucket { time: string; count: number }
 
 interface AuditEvent {
   id: number;
@@ -28,10 +23,8 @@ interface AuditEvent {
   created_at: string;
 }
 
-// Same visual language as StatusChip/PlanChip elsewhere in the admin —
-// each event type gets a distinct color + icon so the list scans quickly,
-// the way the Google Cloud Logs Explorer view this mirrors does with
-// severity colors.
+// Each event type gets a distinct color + icon so the list scans quickly,
+// the way a Logs Explorer's severity colors do.
 const EVENT_STYLES: Record<string, { label: string; color: string; icon: typeof LogIn }> = {
   signup: { label: 'Signup', color: 'bg-green-500/10 text-green-700 border-green-500/20', icon: UserPlus },
   social_signup: { label: 'Social Signup', color: 'bg-green-500/10 text-green-700 border-green-500/20', icon: UserPlus },
@@ -43,27 +36,76 @@ const EVENT_STYLES: Record<string, { label: string; color: string; icon: typeof 
   staff_accepted: { label: 'Staff Joined', color: 'bg-amber-500/10 text-amber-700 border-amber-500/20', icon: UserPlus },
   staff_removed: { label: 'Staff Removed', color: 'bg-gray-500/10 text-gray-700 border-gray-500/20', icon: LogOut },
   staff_role_changed: { label: 'Staff Role Changed', color: 'bg-amber-500/10 text-amber-700 border-amber-500/20', icon: ShieldCheck },
+  staff_suspended: { label: 'Staff Paused', color: 'bg-gray-500/10 text-gray-700 border-gray-500/20', icon: LogOut },
+  staff_reactivated: { label: 'Staff Reactivated', color: 'bg-amber-500/10 text-amber-700 border-amber-500/20', icon: UserPlus },
+  role_created: { label: 'Role Created', color: 'bg-indigo-500/10 text-indigo-700 border-indigo-500/20', icon: ShieldCheck },
+  role_updated: { label: 'Role Updated', color: 'bg-indigo-500/10 text-indigo-700 border-indigo-500/20', icon: ShieldCheck },
+  role_deleted: { label: 'Role Deleted', color: 'bg-gray-500/10 text-gray-700 border-gray-500/20', icon: LogOut },
 };
 
 function eventStyle(type: string) {
   return EVENT_STYLES[type] ?? { label: type, color: 'bg-gray-500/10 text-gray-700 border-gray-500/20', icon: ScrollText };
 }
 
-function fmtTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtClock(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 }
 
-// A small flag rendered from the 2-letter country code without any extra
-// asset/library — matches the fi-<cc> convention already used for
-// CountryFlag elsewhere, but this admin app doesn't have flag-icons
-// installed, so this is a lightweight standalone equivalent.
-function CountryTag({ code }: { code: string | null }) {
-  if (!code) return <span className="text-gray-400">—</span>;
-  const flag = code
-    .toUpperCase()
-    .replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
-  return <span title={code}>{flag} {code}</span>;
+function timeAgo(iso: string) {
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+// Deliberately small, dependency-free UA parsing — enough to tell an admin
+// "Chrome on Windows" vs "Safari on iPhone" at a glance, not a full
+// device-detection library. Order matters: Edge/Opera/Chrome all contain
+// "Chrome", and iOS/Android UAs contain "Safari"/"Linux".
+function parseUserAgent(ua: string | null): { browser: string; os: string; mobile: boolean } {
+  if (!ua) return { browser: 'Unknown', os: 'Unknown', mobile: false };
+  const browser =
+    /Edg\//.test(ua) ? 'Edge' :
+    /OPR\/|Opera/.test(ua) ? 'Opera' :
+    /Firefox\//.test(ua) ? 'Firefox' :
+    /Chrome\//.test(ua) ? 'Chrome' :
+    /Safari\//.test(ua) ? 'Safari' :
+    /python-requests|curl|httpx|axios|node/i.test(ua) ? 'Script' : 'Other';
+  const os =
+    /iPhone|iPad|iOS/.test(ua) ? 'iOS' :
+    /Android/.test(ua) ? 'Android' :
+    /Windows/.test(ua) ? 'Windows' :
+    /Mac OS X|Macintosh/.test(ua) ? 'macOS' :
+    /Linux/.test(ua) ? 'Linux' : 'Other';
+  return { browser, os, mobile: /Mobile|iPhone|Android/.test(ua) };
+}
+
+// Bundled via the `flag-icons` package (its CSS is imported once in the root
+// layout) - a real flag image, not a unicode flag emoji, which Windows
+// browsers render as plain letters ("AE") instead of a flag.
+function CountryCell({ code }: { code: string | null }) {
+  if (!code || code.length !== 2) return <span className="text-gray-400">—</span>;
+  let name = code.toUpperCase();
+  try { name = new Intl.DisplayNames(['en'], { type: 'region' }).of(code.toUpperCase()) ?? name; } catch { /* keep code */ }
+  return (
+    <span className="inline-flex items-center gap-2" title={name}>
+      <span className={`fi fi-${code.toLowerCase()} inline-block h-4 w-[22px] shrink-0 rounded-sm shadow-sm`} role="img" aria-label={name} />
+      <span className="text-gray-700">{name}</span>
+    </span>
+  );
+}
+
+function Detail({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-gray-400">{label}</p>
+      <div className="text-xs text-gray-700 mt-0.5 break-all">{children}</div>
+    </div>
+  );
 }
 
 export default function AuditLogPage() {
@@ -79,9 +121,6 @@ export default function AuditLogPage() {
   const [searchInput, setSearchInput] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [nextBeforeId, setNextBeforeId] = useState<number | null>(null);
-
-  const [timeline, setTimeline] = useState<TimelineBucket[]>([]);
-  const [timelineDays, setTimelineDays] = useState(7);
 
   const load = useCallback((reset: boolean) => {
     const setter = reset ? setLoading : setLoadingMore;
@@ -106,11 +145,6 @@ export default function AuditLogPage() {
 
   useEffect(() => { load(true); }, [filterType, search]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { adminApi.auditLogEventTypes().then((r) => setEventTypes(r.data?.event_types ?? [])).catch(() => {}); }, []);
-  useEffect(() => {
-    adminApi.auditLogTimeline({ event_type: filterType || undefined, q: search || undefined, days: timelineDays })
-      .then((r) => setTimeline(r.data?.buckets ?? []))
-      .catch(() => setTimeline([]));
-  }, [filterType, search, timelineDays]);
 
   const runSearch = () => setSearch(searchInput.trim());
 
@@ -121,53 +155,12 @@ export default function AuditLogPage() {
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <ScrollText className="w-6 h-6 text-[#6B3FD9]" /> Audit Log
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Every signup, login, and staff action across the platform — with IP and country.</p>
+          <p className="text-sm text-gray-500 mt-0.5">Every signup, login, and staff action across the platform, with IP, country, and device.</p>
         </div>
         <button onClick={() => load(true)} disabled={loading}
           className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-60">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Timeline</p>
-          <div className="flex gap-1">
-            {[7, 14, 30].map((d) => (
-              <button key={d} onClick={() => setTimelineDays(d)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${
-                  timelineDays === d ? 'bg-[#6B3FD9] text-white' : 'text-gray-500 hover:bg-gray-100'
-                }`}>
-                {d}d
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="h-[140px]">
-          {timeline.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-xs text-gray-400">No events in this range.</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={timeline} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                <XAxis
-                  dataKey="time"
-                  tickFormatter={(v) => format(new Date(v), timelineDays > 2 ? 'MMM d' : 'HH:mm')}
-                  tick={{ fontSize: 11, fill: '#9CA3AF' }}
-                  axisLine={{ stroke: '#E5E7EB' }}
-                  tickLine={false}
-                  minTickGap={40}
-                />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip
-                  labelFormatter={(v) => format(new Date(v), 'MMM d, yyyy HH:mm')}
-                  formatter={(value: number) => [value, 'events']}
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
-                />
-                <Bar dataKey="count" fill="#6B3FD9" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -194,55 +187,84 @@ export default function AuditLogPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               <tr>
-                <th className="px-4 py-3 w-8"></th>
-                <th className="px-4 py-3">Event</th>
-                <th className="px-4 py-3">Time</th>
-                <th className="px-4 py-3">Actor</th>
-                <th className="px-4 py-3">Country</th>
-                <th className="px-4 py-3">IP</th>
-                <th className="px-4 py-3">Description</th>
+                <th className="pl-4 pr-1 py-2.5 w-8"></th>
+                <th className="px-3 py-2.5">Event</th>
+                <th className="px-3 py-2.5">When</th>
+                <th className="px-3 py-2.5">Actor</th>
+                <th className="px-3 py-2.5">Store</th>
+                <th className="px-3 py-2.5">Location</th>
+                <th className="px-3 py-2.5">Device</th>
+                <th className="px-3 py-2.5">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-500">
+                <tr><td colSpan={8} className="px-4 py-16 text-center text-gray-500">
                   <Loader2 className="w-5 h-5 animate-spin inline mr-2" /> Loading…
                 </td></tr>
               ) : events.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-500">No events found.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-16 text-center text-gray-500">No events found.</td></tr>
               ) : events.map((ev) => {
                 const style = eventStyle(ev.event_type);
                 const Icon = style.icon;
                 const isOpen = expanded === ev.id;
+                const ua = parseUserAgent(ev.user_agent);
+                const DeviceIcon = ua.mobile ? Smartphone : Monitor;
                 return (
                   <Fragment key={ev.id}>
                     <tr onClick={() => setExpanded(isOpen ? null : ev.id)}
                       className="hover:bg-gray-50 cursor-pointer transition">
-                      <td className="px-4 py-3 text-gray-400">
+                      <td className="pl-4 pr-1 py-2 text-gray-400">
                         {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${style.color}`}>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${style.color}`}>
                           <Icon className="w-3 h-3" /> {style.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap font-mono text-xs">{fmtTime(ev.created_at)}</td>
-                      <td className="px-4 py-3 text-gray-900">{ev.actor_email ?? <span className="text-gray-400">—</span>}</td>
-                      <td className="px-4 py-3"><CountryTag code={ev.country} /></td>
-                      <td className="px-4 py-3 text-gray-500 font-mono text-xs">{ev.ip_address ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{ev.description ?? '—'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-xs">
+                        <span className="text-gray-900 font-medium">{fmtDate(ev.created_at)}</span>
+                        <span className="text-gray-500 font-mono ml-1.5">{fmtClock(ev.created_at)}</span>
+                        <span className="text-gray-400 ml-1.5">· {timeAgo(ev.created_at)}</span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-xs">
+                        <span className="text-gray-900 font-medium">{ev.actor_name || '—'}</span>
+                        <span className="text-gray-500 ml-1.5">{ev.actor_email ?? ''}</span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {ev.shop_id != null ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-700 bg-gray-100 rounded px-1.5 py-0.5">
+                            <Store className="w-3 h-3 text-gray-500" /> #{ev.shop_id}
+                          </span>
+                        ) : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-xs">
+                        <CountryCell code={ev.country} />
+                        <span className="text-gray-400 font-mono ml-2">{ev.ip_address ?? ''}</span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">
+                        <span className="inline-flex items-center gap-1.5">
+                          <DeviceIcon className="w-3.5 h-3.5 text-gray-400" /> {ua.browser}
+                          <span className="text-gray-400">· {ua.os}</span>
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-gray-600 text-xs max-w-[240px] truncate" title={ev.description ?? undefined}>{ev.description ?? '—'}</td>
                     </tr>
                     {isOpen && (
                       <tr className="bg-gray-50">
-                        <td colSpan={7} className="px-4 py-4">
-                          <div className="grid sm:grid-cols-2 gap-x-8 gap-y-1.5 text-xs text-gray-600 max-w-3xl">
-                            <p><span className="text-gray-400">Event ID:</span> {ev.id}</p>
-                            <p><span className="text-gray-400">Actor user ID:</span> {ev.actor_user_id ?? '—'}</p>
-                            <p><span className="text-gray-400">Actor name:</span> {ev.actor_name ?? '—'}</p>
-                            <p><span className="text-gray-400">Shop ID:</span> {ev.shop_id ?? '—'}</p>
-                            <p className="sm:col-span-2 break-all"><span className="text-gray-400">User agent:</span> {ev.user_agent ?? '—'}</p>
+                        <td colSpan={8} className="px-6 py-4">
+                          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-3 max-w-5xl">
+                            <Detail label="Event ID">{ev.id}</Detail>
+                            <Detail label="Exact time">{new Date(ev.created_at).toISOString()}</Detail>
+                            <Detail label="Country code">{ev.country ?? '—'}</Detail>
+                            <Detail label="IP address">{ev.ip_address ?? '—'}</Detail>
+                            <Detail label="Actor user ID">{ev.actor_user_id ?? '—'}</Detail>
+                            <Detail label="Shop ID">{ev.shop_id ?? '—'}</Detail>
+                            <div className="sm:col-span-2"><Detail label="User agent">{ev.user_agent ?? '—'}</Detail></div>
                             {ev.extra && (
-                              <p className="sm:col-span-2"><span className="text-gray-400">Extra:</span> <code className="text-[11px]">{JSON.stringify(ev.extra)}</code></p>
+                              <div className="sm:col-span-2 lg:col-span-4">
+                                <Detail label="Extra"><code className="text-[11px]">{JSON.stringify(ev.extra)}</code></Detail>
+                              </div>
                             )}
                           </div>
                         </td>

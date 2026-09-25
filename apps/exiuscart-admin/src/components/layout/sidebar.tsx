@@ -62,6 +62,12 @@ const AFFILIATE_CHILDREN = [
   { href: '/dashboard/affiliates/payouts', match: '/dashboard/affiliates/payouts', label: 'Payouts', exact: false },
 ];
 
+// Sub-pages under Audit Log: the platform-wide event log, and the store-by-store report.
+const AUDIT_CHILDREN = [
+  { href: '/dashboard/audit-log', match: '/dashboard/audit-log', label: 'Activity Log', exact: true },
+  { href: '/dashboard/audit-log/stores', match: '/dashboard/audit-log/stores', label: 'Store Activity', exact: false },
+];
+
 interface AdminSidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
@@ -96,6 +102,8 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
   const [prodoraOpen, setProdoraOpen] = useState(onProdora);
   const onAffiliates = pathname.startsWith('/dashboard/affiliates');
   const [affiliatesOpen, setAffiliatesOpen] = useState(onAffiliates);
+  const onAudit = pathname.startsWith('/dashboard/audit-log');
+  const [auditOpen, setAuditOpen] = useState(onAudit);
   const onBlogs = pathname.startsWith('/dashboard/blogs');
   const [blogsOpen, setBlogsOpen] = useState(onBlogs);
 
@@ -219,6 +227,53 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
               </div>
             );
           }
+          if (item.href === '/dashboard/audit-log') {
+            return (
+              <div key={item.href}>
+                <div className={`flex items-stretch rounded-lg transition-all ${onAudit ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
+                  {collapsed ? (
+                    <Link href="/dashboard/audit-log" title={item.label} className="flex flex-1 items-center gap-3 px-3 py-2.5">
+                      <Icon className="w-5 h-5 flex-shrink-0 mx-auto" />
+                    </Link>
+                  ) : (
+                    <button
+                      type="button" onClick={() => setAuditOpen((v) => !v)} aria-expanded={auditOpen}
+                      className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="font-medium text-sm">{item.label}</span>
+                    </button>
+                  )}
+                  {!collapsed && (
+                    <button
+                      type="button" aria-label={auditOpen ? 'Collapse Audit Log' : 'Expand Audit Log'}
+                      onClick={() => setAuditOpen((v) => !v)}
+                      className="flex w-10 items-center justify-center"
+                    >
+                      <ChevronDown className={`w-4 h-4 transition-transform ${auditOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+                {auditOpen && !collapsed && (
+                  <div className="mt-0.5 space-y-0.5">
+                    {AUDIT_CHILDREN.map((child) => {
+                      const active = child.exact ? pathname === child.match : pathname.startsWith(child.match);
+                      return (
+                        <Link
+                          key={child.href} href={child.href}
+                          className={`block rounded-lg py-2 pl-[44px] pr-3 text-sm font-medium transition-all ${
+                            active ? 'bg-white text-[#5A2EC9] shadow-sm' : 'text-gray-500 hover:bg-white/70 hover:text-gray-900'
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
           if (item.href === '/dashboard/blogs') {
             return (
               <div key={item.href}>
@@ -295,17 +350,19 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
           <LogOut className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span className="font-medium text-sm">Logout</span>}
         </button>
-        <button
-          type="button"
-          onClick={() => onCollapsedChange(!collapsed)}
-          title={collapsed ? 'Show menu' : undefined}
-          className={`hidden lg:flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-white/70 hover:text-gray-900 w-full transition ${
-            collapsed ? 'justify-center' : ''
-          }`}
-        >
-          {collapsed ? <PanelLeftOpen className="w-5 h-5 flex-shrink-0" /> : <PanelLeftClose className="w-5 h-5 flex-shrink-0" />}
-          {!collapsed && <span className="font-medium text-sm">Hide menu</span>}
-        </button>
+        {/* Icon only, on the right - the menu reads from the left, so the collapse
+            control sits opposite it. Centered once collapsed (no room). */}
+        <div className={`hidden lg:flex ${collapsed ? 'justify-center' : 'justify-end'}`}>
+          <button
+            type="button"
+            onClick={() => onCollapsedChange(!collapsed)}
+            title={collapsed ? 'Show menu' : 'Hide menu'}
+            aria-label={collapsed ? 'Show menu' : 'Hide menu'}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition hover:bg-white/70 hover:text-gray-900"
+          >
+            {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
     </aside>
   );
