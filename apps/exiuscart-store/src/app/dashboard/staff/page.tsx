@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  UserPlus, Crown, ShieldCheck, Mail, Trash2, Loader2, CheckCircle, X, Pause, Play, Send,
+  UserPlus, Crown, ShieldCheck, Mail, Trash2, Loader2, CheckCircle, X, Pause, Play, Send, Activity,
 } from 'lucide-react';
 import { teamApi, type TeamMember, type TeamRole } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -149,6 +149,7 @@ export default function TeamPage() {
           <p className="text-sm text-muted-foreground">Invite people to help run your store, and choose exactly what each of them can do.</p>
         </div>
         <div className="flex gap-2">
+          <Button asChild variant="outline"><Link href="/dashboard/staff/activity"><Activity className="h-4 w-4" /> Activity</Link></Button>
           <Button asChild variant="outline"><Link href="/dashboard/staff/roles"><ShieldCheck className="h-4 w-4" /> Roles &amp; permissions</Link></Button>
           <Button onClick={openInvite} disabled={loading}><UserPlus className="h-4 w-4" /> Invite member</Button>
         </div>
