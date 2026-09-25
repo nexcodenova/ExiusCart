@@ -411,7 +411,7 @@ export const teamApi = {
     api.put(`/shops/${shopId}/team/members/${memberId}`, data),
   resend: (shopId: string, memberId: number) => api.post(`/shops/${shopId}/team/members/${memberId}/resend`),
   remove: (shopId: string, memberId: number) => api.delete(`/shops/${shopId}/team/members/${memberId}`),
-  activity: (shopId: string, params: { actor_email?: string; before_id?: number; limit?: number }) =>
+  activity: (shopId: string, params: { actor_email?: string; kind?: string; before_id?: number; limit?: number }) =>
     api.get(`/shops/${shopId}/team/activity`, { params }),
   // Public - the invitee has no session yet.
   inviteInfo: (token: string) => api.get('/team/invite-info', { params: { token } }),

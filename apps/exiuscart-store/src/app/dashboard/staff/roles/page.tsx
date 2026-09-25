@@ -129,7 +129,7 @@ export default function RolesPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="space-y-6">
       {toast && (
         <div className={`fixed right-4 top-4 z-[70] flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium shadow-lg ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
           {toast.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -137,19 +137,19 @@ export default function RolesPage() {
         </div>
       )}
 
-      <Link href="/dashboard/staff" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/dashboard/staff" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Team
       </Link>
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Roles &amp; permissions</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Roles &amp; permissions</h1>
           <p className="text-sm text-muted-foreground">You decide what each role can see and change. Billing, settings, connected accounts and this team screen always stay with you.</p>
         </div>
         <Button onClick={openNew} disabled={loading}><Plus className="h-4 w-4" /> New role</Button>
       </div>
 
       {loading ? (
-        <div className="grid gap-3 sm:grid-cols-2">{[0, 1].map((i) => <Skeleton key={i} className="h-40 rounded-xl" />)}</div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-40 rounded-xl" />)}</div>
       ) : roles.length === 0 ? (
         <Card>
           <CardContent className="p-10 text-center">
@@ -162,7 +162,7 @@ export default function RolesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {roles.map((r) => {
             const { manage, viewOnly } = summary(r);
             return (

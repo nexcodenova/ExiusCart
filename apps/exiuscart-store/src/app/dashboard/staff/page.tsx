@@ -135,7 +135,7 @@ export default function TeamPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="space-y-6">
       {toast && (
         <div className={`fixed right-4 top-4 z-[70] flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium shadow-lg ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
           {toast.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -143,10 +143,10 @@ export default function TeamPage() {
         </div>
       )}
 
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Team</h1>
-          <p className="text-sm text-muted-foreground">Invite people to help run your store, and choose exactly what each of them can do.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Team</h1>
+          <p className="text-sm text-muted-foreground">Invite people to help run your store, and choose exactly what each of them can do</p>
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline"><Link href="/dashboard/staff/activity"><Activity className="h-4 w-4" /> Activity</Link></Button>
@@ -160,7 +160,7 @@ export default function TeamPage() {
       ) : (
         <>
           {roles.length === 0 && (
-            <Card className="mb-4 border-amber-500/30 bg-amber-500/5">
+            <Card className="border-amber-500/30 bg-amber-500/5">
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <p className="text-sm text-foreground">
                   <span className="font-medium">Start by creating a role.</span>{' '}

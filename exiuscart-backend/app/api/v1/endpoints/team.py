@@ -353,22 +353,25 @@ def remove_member(shop_id: int, member_id: int, request: Request,
 def team_activity(
     shop_id: int,
     actor_email: Optional[str] = None,
+    kind: Optional[str] = None,          # "changes" | "signins" (default: both)
     before_id: Optional[int] = None,
     limit: int = 50,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Every change made in this store (by the owner or the team) plus team
-    sign-ins, newest first. Owner-only, like the rest of /team. The same
-    events feed Admin > Audit Log across all stores."""
+    sign-ins, newest first, with where and on what device. Owner-only, like the
+    rest of /team. The same events feed Admin > Audit Log across all stores.
+
+    Anything done by ExiusCart support (an admin) is shown, but their IP and
+    device are withheld - the store owner is entitled to know it happened, not
+    to see our staff's network details."""
     from app.models.audit_log import AuditLog
-    _owner_shop(shop_id, current_user, db)
+    shop = _owner_shop(shop_id, current_user, db)
     limit = min(max(limit, 1), 100)
 
-    q = db.query(AuditLog).filter(
-        AuditLog.shop_id == shop_id,
-        AuditLog.event_type.in_(("shop_action", "login", "social_login")),
-    )
+    types = {"changes": ("shop_action",), "signins": ("login", "social_login")}.get(kind or "", ("shop_action", "login", "social_login"))
+    q = db.query(AuditLog).filter(AuditLog.shop_id == shop_id, AuditLog.event_type.in_(types))
     if actor_email:
         q = q.filter(func.lower(AuditLog.actor_email) == actor_email.strip().lower())
     if before_id:
@@ -377,15 +380,34 @@ def team_activity(
     has_more = len(rows) > limit
     rows = rows[:limit]
 
+    # Sign-in rows don't record the role; work it out from who is on the team now.
+    role_by_user = {
+        m.user_id: (m.role.name if m.role else None)
+        for m in db.query(ShopStaff).options(joinedload(ShopStaff.role)).filter(ShopStaff.shop_id == shop_id, ShopStaff.user_id.isnot(None)).all()
+    }
+
+    out = []
+    for r in rows:
+        extra = r.extra or {}
+        acting_as = extra.get("as")
+        role = extra.get("role")
+        if acting_as is None:  # a sign-in
+            if r.actor_user_id == shop.owner_id:
+                acting_as = "owner"
+            elif r.actor_user_id in role_by_user:
+                acting_as, role = "staff", role_by_user[r.actor_user_id]
+        hide_network = acting_as == "admin"
+        out.append({
+            "id": r.id, "event_type": r.event_type, "actor_email": r.actor_email, "actor_name": r.actor_name,
+            "description": r.description, "country": None if hide_network else r.country,
+            "ip_address": None if hide_network else r.ip_address,
+            "user_agent": None if hide_network else r.user_agent,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "acting_as": acting_as, "role": role, "area": extra.get("area"),
+        })
+
     return {
-        "events": [
-            {
-                "id": r.id, "event_type": r.event_type, "actor_email": r.actor_email, "actor_name": r.actor_name,
-                "description": r.description, "country": r.country, "created_at": r.created_at.isoformat() if r.created_at else None,
-                "acting_as": (r.extra or {}).get("as"), "role": (r.extra or {}).get("role"), "area": (r.extra or {}).get("area"),
-            }
-            for r in rows
-        ],
+        "events": out,
         "has_more": has_more,
         "next_before_id": rows[-1].id if rows and has_more else None,
     }

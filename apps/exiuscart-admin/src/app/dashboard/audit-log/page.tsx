@@ -48,15 +48,17 @@ function eventStyle(type: string) {
   return EVENT_STYLES[type] ?? { label: type, color: 'bg-gray-500/10 text-gray-700 border-gray-500/20', icon: ScrollText };
 }
 
+// The API sends UTC timestamps without a zone suffix; without this the browser reads them as local time.
+const utc = (iso: string) => new Date(/(Z|[+-]\d\d:?\d\d)$/i.test(iso) ? iso : iso + 'Z');
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return utc(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 function fmtClock(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  return utc(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 }
 
 function timeAgo(iso: string) {
-  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  const s = Math.max(0, Math.floor((Date.now() - utc(iso).getTime()) / 1000));
   if (s < 60) return `${s}s ago`;
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
@@ -285,7 +287,7 @@ export default function AuditLogPage() {
                         <td colSpan={8} className="px-6 py-4">
                           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-3 max-w-5xl">
                             <Detail label="Event ID">{ev.id}</Detail>
-                            <Detail label="Exact time">{new Date(ev.created_at).toISOString()}</Detail>
+                            <Detail label="Exact time">{utc(ev.created_at).toISOString()}</Detail>
                             <Detail label="Country code">{ev.country ?? '—'}</Detail>
                             <Detail label="IP address">{ev.ip_address ?? '—'}</Detail>
                             <Detail label="Actor user ID">{ev.actor_user_id ?? '—'}</Detail>

@@ -60,7 +60,7 @@ const money = (n: number, cur: string | null) =>
 
 function ago(iso: string | null): string {
   if (!iso) return 'Never';
-  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  const s = Math.max(0, Math.floor((Date.now() - new Date(/(Z|[+-]\d\d:?\d\d)$/i.test(iso) ? iso : iso + 'Z').getTime()) / 1000));
   if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
   if (s < 86400 * 60) return `${Math.floor(s / 86400)}d ago`;
