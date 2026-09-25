@@ -31,12 +31,13 @@ from app.models.channel_order_meta import ChannelOrderMeta
 from app.models.dropship import DropshipOrder
 from app.models.marketing import ShopLead, EmailCampaign, SMSCampaign, DripFlowEnrollment
 from app.models.whatsapp_marketing import WhatsAppCampaign
+from app.core.shop_access import get_shop_for_member
 
 router = APIRouter()
 
 
 def _shop_or_404(shop_id: int, user: User, db: Session) -> Shop:
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

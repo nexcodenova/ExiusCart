@@ -367,6 +367,31 @@ def send_password_reset_email(to: str, full_name: str, reset_url: str) -> bool:
     )
 
 
+def send_staff_invite_email(to: str, full_name: str, shop_name: str, inviter_name: str, role_name: str, accept_url: str) -> bool:
+    first = (full_name or "there").split()[0]
+    who = inviter_name or "The owner"
+    content = f"""
+      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">You're invited to join {shop_name}</h2>
+      <p style="margin:0 0 20px;color:#94a3b8;line-height:1.7;">
+        Hi {first}, <strong style="color:#fff;">{who}</strong> has invited you to help run
+        <strong style="color:#fff;">{shop_name}</strong> on ExiusCart as
+        <strong style="color:#fff;">{role_name}</strong>. Accept the invitation to set your password and get started.
+        This link expires in <strong style="color:#fff;">7 days</strong>.
+      </p>
+      <a href="{accept_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:600;font-size:14px;margin-bottom:20px;">
+        Accept invitation →
+      </a>
+      <p style="margin:0;color:#64748b;font-size:12px;">
+        Weren't expecting this? You can safely ignore this email — nothing happens unless you accept.
+      </p>"""
+    return send_email(
+        to=to,
+        subject=f"{who} invited you to join {shop_name} on ExiusCart",
+        html_body=_welcome_base(content),
+        text_body=f"Hi {first}, {who} invited you to join {shop_name} on ExiusCart as {role_name}. Accept here: {accept_url} (expires in 7 days). If you weren't expecting this, ignore this email.",
+    )
+
+
 # ── Affiliate email templates ─────────────────────────────────────────────────
 
 def send_affiliate_pending_email(to: str, full_name: str) -> bool:

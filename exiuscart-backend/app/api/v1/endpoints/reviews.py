@@ -19,6 +19,7 @@ from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.review import ProductReview
 from app.api.v1.deps import get_current_user
+from app.core.shop_access import get_shop_for_member
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -28,7 +29,7 @@ STORE_BASE_URL = "https://store.exiuscart.com"
 
 def _shop_or_404(shop_id: int, user: User, db: Session):
     from app.models.shop import Shop
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

@@ -24,12 +24,13 @@ from app.models.shop import Shop
 from app.models.customer import Customer
 from app.models.order import Order
 from app.models.customer_segment import CustomerSegment
+from app.core.shop_access import get_shop_for_member
 
 router = APIRouter()
 
 
 def _shop_or_404(shop_id: int, user: User, db: Session) -> Shop:
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

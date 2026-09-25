@@ -22,6 +22,7 @@ from app.models.quotation import Quotation
 from app.schemas.shop import ShopCreate, ShopResponse, ShopUpdate
 from app.api.v1.deps import get_current_user
 import math
+from app.core.shop_access import get_shop_for_member
 
 # Plan catalogue (source of truth) — prices must mirror
 # apps/exiuscart-website/src/config/pricing.ts exactly. USD only, on
@@ -101,6 +102,10 @@ async def get_my_shop(
         Shop.is_active == True,
     ).order_by(Shop.id.asc()).first()
     if not shop:
+        # Not an owner - maybe someone the owner invited to their team.
+        from app.core.shop_access import find_staff_shop
+        shop = find_staff_shop(db, current_user)
+    if not shop:
         raise HTTPException(status_code=404, detail="No shop found")
     return shop
 
@@ -165,6 +170,11 @@ async def get_my_shops(
     db: Session = Depends(get_db)
 ):
     shops = db.query(Shop).filter(Shop.owner_id == current_user.id).all()
+    if not shops:
+        from app.core.shop_access import find_staff_shop
+        staff_shop = find_staff_shop(db, current_user)
+        if staff_shop:
+            shops = [staff_shop]
     return shops
 
 
@@ -217,10 +227,7 @@ async def get_shop(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    shop = db.query(Shop).filter(
-        Shop.id == shop_id,
-        Shop.owner_id == current_user.id
-    ).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
 
     if not shop:
         raise HTTPException(
@@ -259,10 +266,7 @@ async def update_shop(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    shop = db.query(Shop).filter(
-        Shop.id == shop_id,
-        Shop.owner_id == current_user.id
-    ).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
 
     if not shop:
         raise HTTPException(
@@ -316,7 +320,7 @@ async def upload_shop_logo(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     if file.content_type not in _ALLOWED_IMAGE_TYPES:
@@ -344,7 +348,7 @@ async def upload_shop_banner(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     if file.content_type not in _ALLOWED_IMAGE_TYPES:
@@ -392,10 +396,7 @@ async def delete_shop(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    shop = db.query(Shop).filter(
-        Shop.id == shop_id,
-        Shop.owner_id == current_user.id
-    ).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
 
     if not shop:
         raise HTTPException(
@@ -415,9 +416,7 @@ def get_shop_subscription(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(
-        Shop.id == shop_id, Shop.owner_id == current_user.id
-    ).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -564,9 +563,7 @@ def get_subscription_usage(
     copy (PLAN_CATALOGUE has no enforced product cap, and there's no real
     staff/team-member backend yet), so only the real *used* counts are
     computed here — the frontend pairs them with the plan's advertised cap."""
-    shop = db.query(Shop).filter(
-        Shop.id == shop_id, Shop.owner_id == current_user.id
-    ).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -585,9 +582,7 @@ def request_plan_upgrade(
     db: Session = Depends(get_db),
 ):
     """Shop owner submits an upgrade request — admin approves manually."""
-    shop = db.query(Shop).filter(
-        Shop.id == shop_id, Shop.owner_id == current_user.id
-    ).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -631,9 +626,7 @@ async def create_subscription_checkout(
     """
     from app.core.lemonsqueezy import create_checkout, is_configured, get_variant_id, update_subscription_variant
 
-    shop = db.query(Shop).filter(
-        Shop.id == shop_id, Shop.owner_id == current_user.id
-    ).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -704,9 +697,7 @@ async def get_subscription_portal(
     """
     from app.core.lemonsqueezy import get_customer_portal_url
 
-    shop = db.query(Shop).filter(
-        Shop.id == shop_id, Shop.owner_id == current_user.id
-    ).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -735,7 +726,7 @@ def get_sales_report(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -761,7 +752,7 @@ def get_top_products(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -790,7 +781,7 @@ def get_channel_revenue(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -817,7 +808,7 @@ def get_financial_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -870,7 +861,7 @@ def get_vat_report(
     Returns output VAT (collected on sales), input VAT (paid on purchases via cost price),
     and net VAT payable, grouped by month inside the requested period.
     """
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -966,7 +957,7 @@ def get_low_stock(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -1001,7 +992,7 @@ def adjust_inventory(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -1081,7 +1072,7 @@ def get_dashboard_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     if period not in _PERIOD_DAYS:
@@ -1675,7 +1666,7 @@ def list_suppliers(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     q = db.query(Supplier).filter(Supplier.shop_id == shop_id, Supplier.is_active == True)
@@ -1691,7 +1682,7 @@ def create_supplier(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     supplier = Supplier(
@@ -1721,7 +1712,7 @@ def update_supplier(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id, Supplier.shop_id == shop_id).first()
@@ -1741,7 +1732,7 @@ def delete_supplier(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id, Supplier.shop_id == shop_id).first()
@@ -1791,7 +1782,7 @@ def list_purchases(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     from sqlalchemy.orm import joinedload
@@ -1812,7 +1803,7 @@ def create_purchase(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -1864,7 +1855,7 @@ def mark_purchase_received(
     db: Session = Depends(get_db),
 ):
     """Mark all or specific items as received — updates product inventory."""
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     from sqlalchemy.orm import joinedload
@@ -1943,7 +1934,7 @@ def list_credit_notes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     from sqlalchemy.orm import joinedload
@@ -1964,7 +1955,7 @@ def create_credit_note(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -1998,7 +1989,7 @@ def void_credit_note(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     cn = db.query(CreditNote).filter(CreditNote.id == cn_id, CreditNote.shop_id == shop_id).first()
@@ -2019,7 +2010,7 @@ def get_cash_flow(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -2176,7 +2167,7 @@ def list_recurring_invoices(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     rows = db.query(RecurringInvoice).filter(RecurringInvoice.shop_id == shop_id).order_by(RecurringInvoice.id.desc()).all()
@@ -2190,7 +2181,7 @@ def create_recurring_invoice(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -2229,7 +2220,7 @@ def update_recurring_invoice(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     ri = db.query(RecurringInvoice).filter(RecurringInvoice.id == ri_id, RecurringInvoice.shop_id == shop_id).first()
@@ -2250,7 +2241,7 @@ def delete_recurring_invoice(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     ri = db.query(RecurringInvoice).filter(RecurringInvoice.id == ri_id, RecurringInvoice.shop_id == shop_id).first()
@@ -2267,7 +2258,7 @@ def send_recurring_invoice_now(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     ri = db.query(RecurringInvoice).filter(RecurringInvoice.id == ri_id, RecurringInvoice.shop_id == shop_id).first()
@@ -2310,7 +2301,7 @@ def get_pl_statement(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -2405,7 +2396,7 @@ def get_balance_sheet(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -2544,7 +2535,7 @@ def get_loyalty_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return {
@@ -2566,7 +2557,7 @@ def update_loyalty_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     for field in ("loyalty_enabled", "loyalty_points_per_currency", "loyalty_redemption_rate"):
@@ -2587,7 +2578,7 @@ def list_loyalty_accounts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     q = db.query(LoyaltyAccount).filter(
@@ -2612,7 +2603,7 @@ def create_loyalty_account(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     acct = LoyaltyAccount(
@@ -2638,7 +2629,7 @@ def get_loyalty_account(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     acct = db.query(LoyaltyAccount).filter(
@@ -2658,7 +2649,7 @@ def loyalty_earn(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     acct = db.query(LoyaltyAccount).filter(
@@ -2701,7 +2692,7 @@ def loyalty_redeem(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     acct = db.query(LoyaltyAccount).filter(
@@ -2749,7 +2740,7 @@ def lookup_loyalty_account(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     phone = body.get("phone", "").strip()
@@ -2789,7 +2780,7 @@ def list_branches(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     branches = (
@@ -2808,7 +2799,7 @@ def create_branch(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     b = Branch(
@@ -2836,7 +2827,7 @@ def update_branch(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     b = db.query(Branch).filter(Branch.id == bid, Branch.shop_id == shop_id).first()
@@ -2856,7 +2847,7 @@ def delete_branch(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     b = db.query(Branch).filter(Branch.id == bid, Branch.shop_id == shop_id).first()
@@ -2876,7 +2867,7 @@ def set_main_branch(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     b = db.query(Branch).filter(Branch.id == bid, Branch.shop_id == shop_id).first()

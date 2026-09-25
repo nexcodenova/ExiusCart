@@ -17,6 +17,7 @@ from app.core.database import get_db
 from app.models.user import User
 from app.models.custom_product_fields import CustomProductFieldSettings, CUSTOM_FIELD_TYPES
 from app.api.v1.deps import get_current_user
+from app.core.shop_access import get_shop_for_member
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -24,7 +25,7 @@ router = APIRouter()
 
 def _shop_or_404(shop_id: int, user: User, db: Session):
     from app.models.shop import Shop
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

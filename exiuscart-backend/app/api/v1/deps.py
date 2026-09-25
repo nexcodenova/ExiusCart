@@ -117,6 +117,23 @@ async def get_current_user(
                 "error": "subscription_required",
                 "message": "Your trial has ended. Upgrade your plan to keep using ExiusCart.",
             })
+        if not shop:
+            # Store staff own no shop, so the check above never applied to
+            # them - without this, a team member could keep working in a shop
+            # whose plan has lapsed. Same lock, worded for someone who isn't
+            # the one who can fix it.
+            from app.core.shop_access import find_staff_shop
+            staff_shop = find_staff_shop(db, user)
+            if staff_shop and _is_subscription_expired(staff_shop.id, db):
+                # Deliberately NOT "subscription_required": the store app reloads
+                # the page on that code so the owner lands on the Billing lock
+                # screen. Staff can't open Billing, so the same code would put
+                # them in an endless reload loop - they get a code of their own
+                # that the dashboard shows as a plain "ask the owner" screen.
+                raise HTTPException(status_code=402, detail={
+                    "error": "store_plan_expired",
+                    "message": "This store's plan has ended. Ask the store owner to renew it.",
+                })
 
     return user
 

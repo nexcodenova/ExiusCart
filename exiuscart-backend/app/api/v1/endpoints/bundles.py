@@ -10,6 +10,7 @@ from app.models.shop import Shop
 from app.models.product import Product
 from app.models.product_variant import ProductVariant
 from app.models.bundle_component import BundleComponent
+from app.core.shop_access import get_shop_for_member
 
 router = APIRouter()
 
@@ -21,7 +22,7 @@ class BundleComponentIn(BaseModel):
 
 
 def _get_shop(shop_id: int, user: User, db: Session) -> Shop:
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

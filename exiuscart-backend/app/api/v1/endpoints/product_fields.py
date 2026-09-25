@@ -75,7 +75,11 @@ def get_shop_or_404(shop_id: int, db: Session, current_user: User) -> Shop:
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     if shop.owner_id != current_user.id and not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Not authorized")
+        # Store staff: allowed only if the team-access gate already approved
+        # them for this shop (product image/field routes live under /products/).
+        from app.core.shop_access import get_shop_for_member
+        if get_shop_for_member(db, shop_id, current_user) is None:
+            raise HTTPException(status_code=403, detail="Not authorized")
     return shop
 
 def get_product_or_404(product_id: int, shop_id: int, db: Session) -> Product:

@@ -41,7 +41,7 @@ from app.models.subscription_payment import SubscriptionPayment
 from app.models.lead import Lead
 from app.models.affiliate import Affiliate, Commission
 from app.models.product import Product, Category
-from app.models.order import Order
+from app.models.order import Order, OrderItem
 from app.models.partner import PartnerLicense
 from app.models.admin_settings import AdminSettings
 
@@ -3611,31 +3611,167 @@ def list_audit_log_event_types(db: Session = Depends(get_db), _: User = Depends(
     return {"event_types": sorted(r[0] for r in rows)}
 
 
-@router.get("/admin/audit-log/timeline")
-def audit_log_timeline(
-    event_type: Optional[str] = None,
-    q: Optional[str] = None,
-    days: int = 7,
+# ── Store insights ────────────────────────────────────────────────────────────
+# Admin's store-by-store view: how each store is actually doing (orders,
+# revenue, customers, products), what it has connected (sales channels,
+# suppliers), who works there, and when anyone last used it. Read-only.
+# Aggregated with a handful of grouped queries rather than one query set per
+# store, so the table stays fast as the number of stores grows.
+
+_LIVE_ORDER_STATUSES_EXCLUDED = ("cancelled", "refunded")
+
+
+def _store_metrics(db: Session, shop_ids: List[int]) -> dict:
+    from app.models.customer import Customer
+    from app.models.channel import ChannelConnection
+    from app.models.shop_staff import ShopStaff
+    from app.models.audit_log import AuditLog
+
+    since_30d = datetime.now(timezone.utc) - timedelta(days=30)
+    out = {sid: {} for sid in shop_ids}
+    if not shop_ids:
+        return out
+
+    for sid, cnt, revenue, last_at in db.query(
+        Order.shop_id, func.count(Order.id),
+        func.coalesce(func.sum(Order.total), 0), func.max(Order.created_at),
+    ).filter(Order.shop_id.in_(shop_ids), Order.status.notin_(_LIVE_ORDER_STATUSES_EXCLUDED)).group_by(Order.shop_id).all():
+        out[sid].update(order_count=cnt, revenue=float(revenue or 0), last_order_at=last_at.isoformat() if last_at else None)
+
+    for sid, cnt, revenue in db.query(
+        Order.shop_id, func.count(Order.id), func.coalesce(func.sum(Order.total), 0),
+    ).filter(Order.shop_id.in_(shop_ids), Order.created_at >= since_30d,
+             Order.status.notin_(_LIVE_ORDER_STATUSES_EXCLUDED)).group_by(Order.shop_id).all():
+        out[sid].update(orders_30d=cnt, revenue_30d=float(revenue or 0))
+
+    for sid, cnt in db.query(Product.shop_id, func.count(Product.id)).filter(Product.shop_id.in_(shop_ids)).group_by(Product.shop_id).all():
+        out[sid]["product_count"] = cnt
+    for sid, cnt in db.query(Customer.shop_id, func.count(Customer.id)).filter(Customer.shop_id.in_(shop_ids)).group_by(Customer.shop_id).all():
+        out[sid]["customer_count"] = cnt
+
+    channels: dict = {}
+    for sid, ctype in db.query(ChannelConnection.shop_id, ChannelConnection.channel_type).filter(
+        ChannelConnection.shop_id.in_(shop_ids), ChannelConnection.is_active == True,  # noqa: E712
+    ).all():
+        channels.setdefault(sid, []).append(ctype)
+    suppliers: dict = {}
+    for sid, stype in db.query(DropshipConnection.shop_id, DropshipConnection.supplier_type).filter(
+        DropshipConnection.shop_id.in_(shop_ids), DropshipConnection.is_active == True,  # noqa: E712
+    ).all():
+        suppliers.setdefault(sid, []).append(stype)
+    team = dict(db.query(ShopStaff.shop_id, func.count(ShopStaff.id)).filter(ShopStaff.shop_id.in_(shop_ids)).group_by(ShopStaff.shop_id).all())
+
+    # Last time anyone signed in to this store (owner or team), from the audit log.
+    last_login = dict(db.query(AuditLog.shop_id, func.max(AuditLog.created_at)).filter(
+        AuditLog.shop_id.in_(shop_ids), AuditLog.event_type.in_(("login", "social_login", "signup", "social_signup")),
+    ).group_by(AuditLog.shop_id).all())
+
+    for sid in shop_ids:
+        m = out[sid]
+        m.setdefault("order_count", 0); m.setdefault("revenue", 0.0); m.setdefault("last_order_at", None)
+        m.setdefault("orders_30d", 0); m.setdefault("revenue_30d", 0.0)
+        m.setdefault("product_count", 0); m.setdefault("customer_count", 0)
+        m["channels"] = sorted(set(channels.get(sid, [])))
+        m["suppliers"] = sorted(set(suppliers.get(sid, [])))
+        m["team_count"] = team.get(sid, 0)
+        ll = last_login.get(sid)
+        m["last_login_at"] = ll.isoformat() if ll else None
+    return out
+
+
+@router.get("/admin/store-insights")
+def store_insights(
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
     _: User = Depends(require_superuser),
 ):
-    """Hourly event counts for the last `days` days - the bar-chart strip
-    above the table, same idea as Google Cloud Logs Explorer's timeline.
-    Buckets by hour (not day) so a spike within a single day is still
-    visible, matching what that reference view actually shows."""
+    query = db.query(Shop).options(joinedload(Shop.owner)).filter(Shop.slug.notin_(SYSTEM_SHOP_SLUGS))
+    if search:
+        q = f"%{search}%"
+        query = query.join(User, Shop.owner_id == User.id).filter(
+            (Shop.name.ilike(q)) | (User.email.ilike(q)) | (User.full_name.ilike(q))
+        )
+    shops = query.order_by(Shop.created_at.desc()).all()
+    ids = [s.id for s in shops]
+    current = _current_subscriptions(db, ids)
+    metrics = _store_metrics(db, ids)
+
+    rows = []
+    for shop in shops:
+        sub = current.get(shop.id)
+        rows.append({
+            "id": shop.id, "name": shop.name, "country": shop.country, "currency": shop.currency,
+            "is_active": shop.is_active,
+            "owner_name": shop.owner.full_name if shop.owner else None,
+            "owner_email": shop.owner.email if shop.owner else None,
+            "plan": sub.plan_type if sub else "none",
+            "subscription_status": sub.status if sub else "none",
+            "expires_at": sub.expires_at.isoformat() if sub and sub.expires_at else None,
+            "created_at": shop.created_at.isoformat() if shop.created_at else None,
+            **metrics[shop.id],
+        })
+    return {"stores": rows}
+
+
+@router.get("/admin/store-insights/{shop_id}")
+def store_insight_detail(shop_id: int, db: Session = Depends(get_db), _: User = Depends(require_superuser)):
     from app.models.audit_log import AuditLog
-    days = min(max(days, 1), 30)
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    from app.models.shop_staff import ShopStaff
 
-    query = db.query(
-        func.date_trunc("hour", AuditLog.created_at).label("bucket"),
-        func.count(AuditLog.id).label("count"),
-    ).filter(AuditLog.created_at >= since)
-    if event_type:
-        query = query.filter(AuditLog.event_type == event_type)
-    if q:
-        like = f"%{q}%"
-        query = query.filter((AuditLog.actor_email.ilike(like)) | (AuditLog.description.ilike(like)))
+    shop = db.query(Shop).options(joinedload(Shop.owner)).filter(Shop.id == shop_id).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+    sub = _current_subscriptions(db, [shop_id]).get(shop_id)
+    m = _store_metrics(db, [shop_id])[shop_id]
 
-    rows = query.group_by("bucket").order_by("bucket").all()
-    return {"buckets": [{"time": r.bucket.isoformat(), "count": r.count} for r in rows]}
+    by_status = [
+        {"status": st, "count": cnt, "total": float(tot or 0)}
+        for st, cnt, tot in db.query(Order.status, func.count(Order.id), func.sum(Order.total))
+        .filter(Order.shop_id == shop_id).group_by(Order.status).order_by(func.count(Order.id).desc()).all()
+    ]
+    by_source = [
+        {"source": src, "count": cnt, "total": float(tot or 0)}
+        for src, cnt, tot in db.query(Order.source, func.count(Order.id), func.sum(Order.total))
+        .filter(Order.shop_id == shop_id, Order.status.notin_(_LIVE_ORDER_STATUSES_EXCLUDED))
+        .group_by(Order.source).order_by(func.count(Order.id).desc()).all()
+    ]
+    recent_orders = [
+        {"id": o.id, "order_number": o.order_number, "status": o.status, "payment_status": o.payment_status,
+         "source": o.source, "total": float(o.total or 0), "created_at": o.created_at.isoformat() if o.created_at else None}
+        for o in db.query(Order).filter(Order.shop_id == shop_id).order_by(Order.id.desc()).limit(10).all()
+    ]
+    top_products = [
+        {"name": name, "sold": int(qty or 0), "revenue": float(rev or 0)}
+        for name, qty, rev in db.query(OrderItem.product_name, func.sum(OrderItem.quantity), func.sum(OrderItem.total_price))
+        .join(Order, OrderItem.order_id == Order.id)
+        .filter(Order.shop_id == shop_id, Order.status.notin_(_LIVE_ORDER_STATUSES_EXCLUDED))
+        .group_by(OrderItem.product_name).order_by(func.sum(OrderItem.quantity).desc()).limit(5).all()
+    ]
+    team = [
+        {"email": t.email, "full_name": t.full_name, "status": t.status, "role_name": t.role.name if t.role else None}
+        for t in db.query(ShopStaff).options(joinedload(ShopStaff.role)).filter(ShopStaff.shop_id == shop_id).all()
+    ]
+    activity = [
+        {"id": a.id, "event_type": a.event_type, "actor_email": a.actor_email, "country": a.country,
+         "description": a.description, "created_at": a.created_at.isoformat() if a.created_at else None}
+        for a in db.query(AuditLog).filter(AuditLog.shop_id == shop_id).order_by(AuditLog.id.desc()).limit(15).all()
+    ]
+    return {
+        "store": {
+            "id": shop.id, "name": shop.name, "country": shop.country, "currency": shop.currency,
+            "email": shop.email, "phone": shop.phone, "is_active": shop.is_active,
+            "created_at": shop.created_at.isoformat() if shop.created_at else None,
+            "owner_name": shop.owner.full_name if shop.owner else None,
+            "owner_email": shop.owner.email if shop.owner else None,
+            "plan": sub.plan_type if sub else "none",
+            "subscription_status": sub.status if sub else "none",
+            "expires_at": sub.expires_at.isoformat() if sub and sub.expires_at else None,
+        },
+        "metrics": m,
+        "orders_by_status": by_status,
+        "orders_by_source": by_source,
+        "recent_orders": recent_orders,
+        "top_products": top_products,
+        "team": team,
+        "recent_activity": activity,
+    }

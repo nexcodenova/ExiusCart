@@ -72,6 +72,7 @@ from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
 from app.models.social_posting import SocialAccountConnection, SocialPost
+from app.core.shop_access import get_shop_for_member
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -94,7 +95,7 @@ STOREFRONT_BASE = os.getenv("STOREFRONT_BASE_URL", "https://store.exiuscart.com"
 
 
 def _shop_or_404(shop_id: int, user: User, db: Session) -> Shop:
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

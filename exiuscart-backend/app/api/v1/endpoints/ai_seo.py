@@ -9,13 +9,14 @@ from app.api.v1.deps import get_current_user
 import anthropic
 import os
 import json
+from app.core.shop_access import get_shop_for_member
 
 router = APIRouter()
 CLAUDE_MODEL = "claude-haiku-4-5-20251001"  # Fast + cheap for SEO generation
 
 
 def _shop(shop_id: int, user: User, db: Session) -> Shop:
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

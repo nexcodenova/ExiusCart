@@ -313,6 +313,21 @@ _MIGRATIONS = [
     "UPDATE product_ad_videos SET shop_id = NULL WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
     "DELETE FROM subscriptions WHERE shop_id IN (SELECT id FROM shops WHERE slug = 'exiuscart-dropshipping-system');",
     "DELETE FROM shops WHERE slug = 'exiuscart-dropshipping-system';",
+    # audit_logs was first created with plain foreign keys (no ON DELETE), so Postgres
+    # would refuse to delete any user or store that has log rows. The log is meant to
+    # outlive them (actor_email/name are snapshotted for exactly that) -> SET NULL.
+    """DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'audit_logs_actor_user_id_fkey' AND confdeltype <> 'n') THEN
+            ALTER TABLE audit_logs DROP CONSTRAINT audit_logs_actor_user_id_fkey;
+            ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_actor_user_id_fkey FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+    END $$;""",
+    """DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'audit_logs_shop_id_fkey' AND confdeltype <> 'n') THEN
+            ALTER TABLE audit_logs DROP CONSTRAINT audit_logs_shop_id_fkey;
+            ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_shop_id_fkey FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE SET NULL;
+        END IF;
+    END $$;""",
 ]
 
 for _sql in _MIGRATIONS:

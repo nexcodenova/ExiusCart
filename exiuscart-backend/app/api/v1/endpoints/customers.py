@@ -11,6 +11,7 @@ from app.models.order import Order
 from app.models.subscription import Subscription
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
 from app.api.v1.deps import get_current_user
+from app.core.shop_access import get_shop_for_member
 
 router = APIRouter()
 
@@ -69,7 +70,7 @@ async def create_customer(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 

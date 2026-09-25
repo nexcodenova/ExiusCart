@@ -14,6 +14,7 @@ from app.models.quotation import Quotation
 from app.models.subscription import Subscription
 from app.core.email import send_quotation_email, send_payment_reminder_email
 from pydantic import BaseModel
+from app.core.shop_access import get_shop_for_member
 
 router = APIRouter()
 
@@ -63,7 +64,7 @@ class QuotationStatusUpdate(BaseModel):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _get_shop(shop_id: int, user: User, db: Session) -> Shop:
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

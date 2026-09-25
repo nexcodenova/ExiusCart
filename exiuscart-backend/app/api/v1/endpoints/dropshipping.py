@@ -45,6 +45,7 @@ from app.models.dropship import DropshipConnection, DropshipProductLink, Dropshi
 from app.models.supplier_return import SupplierReturn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import EXIUSCART_BASE
+from app.core.shop_access import get_shop_for_member
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -503,7 +504,7 @@ def _check_supplier_allowed(plan: str, supplier_type: str, shop_id: int, db: Ses
 
 def _shop_or_404(shop_id: int, user: User, db: Session):
     from app.models.shop import Shop
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

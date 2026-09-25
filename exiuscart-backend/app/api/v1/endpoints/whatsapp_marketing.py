@@ -53,6 +53,7 @@ from app.models.shop import Shop
 from app.models.subscription import Subscription
 from app.models.customer import Customer
 from app.models.whatsapp_marketing import WhatsAppConnection, WhatsAppTemplate, WhatsAppCampaign, WhatsAppMessageLog
+from app.core.shop_access import get_shop_for_member
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -62,7 +63,7 @@ META_GRAPH_BASE = f"https://graph.facebook.com/{META_GRAPH_VERSION}"
 
 
 def _shop_or_404(shop_id: int, user: User, db: Session) -> Shop:
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
+    shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return shop

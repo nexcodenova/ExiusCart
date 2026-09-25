@@ -22,6 +22,7 @@ from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate, C
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_product_sync, trigger_product_delete
 from app.api.v1.endpoints.product_fields import _description_word_limit, DESCRIPTION_IMAGES_LIMIT
+from app.core.shop_access import get_shop_for_member
 
 PLAN_PRODUCT_LIMITS = {
     "free_trial":            25,
@@ -92,7 +93,7 @@ async def create_category(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -164,7 +165,7 @@ async def bulk_import_products(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -239,7 +240,7 @@ async def create_product(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
@@ -374,7 +375,7 @@ async def get_next_sku(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
     return {"sku": _next_shop_sku(shop, db)}
@@ -390,7 +391,7 @@ async def backfill_product_skus(
     imported via CSV without one) — assigns each the same store-prefix +
     sequential SKU new products get automatically, continuing the sequence
     rather than restarting it."""
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 

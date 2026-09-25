@@ -7,6 +7,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 import uuid
 import logging
+from app.core.shop_access import get_shop_for_member
 
 logger = logging.getLogger(__name__)
 from app.core.database import get_db
@@ -97,7 +98,7 @@ async def create_order(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == current_user.id).first()
+    shop = get_shop_for_member(db, shop_id, current_user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
