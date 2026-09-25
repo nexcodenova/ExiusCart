@@ -40,7 +40,7 @@ export const menuItems = [
   { href: '/dashboard/subscriptions', label: 'Subscriptions', icon: Package },
   { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/dashboard/audit-log', label: 'Audit Log', icon: ScrollText },
+  { href: '/dashboard/audit-log', label: 'Audit', icon: ScrollText },
   { href: '/dashboard/client-codes', label: 'Client Codes', icon: Key },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
@@ -64,7 +64,7 @@ const AFFILIATE_CHILDREN = [
 
 // Sub-pages under Audit Log: the platform-wide event log, and the store-by-store report.
 const AUDIT_CHILDREN = [
-  { href: '/dashboard/audit-log', match: '/dashboard/audit-log', label: 'Activity Log', exact: true },
+  { href: '/dashboard/audit-log', match: '/dashboard/audit-log', label: 'Audit Log', exact: true },
   { href: '/dashboard/audit-log/stores', match: '/dashboard/audit-log/stores', label: 'Store Activity', exact: false },
 ];
 
@@ -246,7 +246,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                   )}
                   {!collapsed && (
                     <button
-                      type="button" aria-label={auditOpen ? 'Collapse Audit Log' : 'Expand Audit Log'}
+                      type="button" aria-label={auditOpen ? 'Collapse Audit' : 'Expand Audit'}
                       onClick={() => setAuditOpen((v) => !v)}
                       className="flex w-10 items-center justify-center"
                     >

@@ -251,6 +251,12 @@ function StoreDrawer({ shopId, onClose }: { shopId: number; onClose: () => void 
               </Section>
 
               <Section title="Recent activity">
+                <a
+                  href={`/dashboard/audit-log?shop=${data.store.id}&type=shop_action`}
+                  className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-[#5A2EC9] hover:underline"
+                >
+                  See everything this store&apos;s team changed <ChevronRight className="h-3 w-3" />
+                </a>
                 <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white text-sm">
                   {data.recent_activity.length === 0 && <p className="p-4 text-gray-400">No recorded activity yet</p>}
                   {data.recent_activity.map((a) => (

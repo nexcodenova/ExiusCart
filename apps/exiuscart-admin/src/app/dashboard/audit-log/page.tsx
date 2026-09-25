@@ -4,7 +4,7 @@ import { Fragment, useState, useEffect, useCallback } from 'react';
 import {
   ScrollText, Search, ChevronDown, ChevronRight, Loader2,
   LogIn, LogOut, UserPlus, ShieldAlert, ShieldCheck, RefreshCw,
-  Monitor, Smartphone, Store,
+  Monitor, Smartphone, Store, Pencil, X,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
@@ -36,6 +36,7 @@ const EVENT_STYLES: Record<string, { label: string; color: string; icon: typeof 
   staff_accepted: { label: 'Staff Joined', color: 'bg-amber-500/10 text-amber-700 border-amber-500/20', icon: UserPlus },
   staff_removed: { label: 'Staff Removed', color: 'bg-gray-500/10 text-gray-700 border-gray-500/20', icon: LogOut },
   staff_role_changed: { label: 'Staff Role Changed', color: 'bg-amber-500/10 text-amber-700 border-amber-500/20', icon: ShieldCheck },
+  shop_action: { label: 'Store Action', color: 'bg-teal-500/10 text-teal-700 border-teal-500/20', icon: Pencil },
   staff_suspended: { label: 'Staff Paused', color: 'bg-gray-500/10 text-gray-700 border-gray-500/20', icon: LogOut },
   staff_reactivated: { label: 'Staff Reactivated', color: 'bg-amber-500/10 text-amber-700 border-amber-500/20', icon: UserPlus },
   role_created: { label: 'Role Created', color: 'bg-indigo-500/10 text-indigo-700 border-indigo-500/20', icon: ShieldCheck },
@@ -117,10 +118,26 @@ export default function AuditLogPage() {
   const [expanded, setExpanded] = useState<number | null>(null);
 
   const [filterType, setFilterType] = useState('');
+  const [shopFilter, setShopFilter] = useState<number | null>(null);
+  const [ready, setReady] = useState(false);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [nextBeforeId, setNextBeforeId] = useState<number | null>(null);
+
+  // Arrive pre-filtered from a store's panel: /dashboard/audit-log?shop=17&type=shop_action
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const shop = Number(q.get('shop'));
+    if (shop > 0) setShopFilter(shop);
+    if (q.get('type')) setFilterType(q.get('type') as string);
+    setReady(true);
+  }, []);
+
+  const clearShop = () => {
+    setShopFilter(null);
+    window.history.replaceState(null, '', window.location.pathname);
+  };
 
   const load = useCallback((reset: boolean) => {
     const setter = reset ? setLoading : setLoadingMore;
@@ -128,6 +145,7 @@ export default function AuditLogPage() {
     setError('');
     adminApi.auditLog({
       event_type: filterType || undefined,
+      shop_id: shopFilter ?? undefined,
       q: search || undefined,
       before_id: reset ? undefined : nextBeforeId ?? undefined,
       limit: 50,
@@ -141,9 +159,9 @@ export default function AuditLogPage() {
       .catch(() => setError('Could not load the audit log.'))
       .finally(() => setter(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterType, search, nextBeforeId]);
+  }, [filterType, shopFilter, search, nextBeforeId]);
 
-  useEffect(() => { load(true); }, [filterType, search]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (ready) load(true); }, [ready, filterType, shopFilter, search]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { adminApi.auditLogEventTypes().then((r) => setEventTypes(r.data?.event_types ?? [])).catch(() => {}); }, []);
 
   const runSearch = () => setSearch(searchInput.trim());
@@ -169,6 +187,12 @@ export default function AuditLogPage() {
           <option value="">All event types</option>
           {eventTypes.map((t) => <option key={t} value={t}>{eventStyle(t).label}</option>)}
         </select>
+        {shopFilter !== null && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#6B3FD9]/30 bg-[#6B3FD9]/10 px-3 py-1.5 text-xs font-medium text-[#5A2EC9]">
+            <Store className="h-3 w-3" /> Store #{shopFilter}
+            <button onClick={clearShop} aria-label="Show all stores" className="rounded-full hover:bg-[#6B3FD9]/20"><X className="h-3 w-3" /></button>
+          </span>
+        )}
         <div className="flex items-center gap-2 flex-1 min-w-[220px] max-w-sm">
           <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') runSearch(); }}
@@ -230,6 +254,12 @@ export default function AuditLogPage() {
                       <td className="px-3 py-2 whitespace-nowrap text-xs">
                         <span className="text-gray-900 font-medium">{ev.actor_name || '—'}</span>
                         <span className="text-gray-500 ml-1.5">{ev.actor_email ?? ''}</span>
+                        {ev.extra && (ev.extra as Record<string, unknown>).as ? (
+                          <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium capitalize text-gray-600">
+                            {String((ev.extra as Record<string, unknown>).as)}
+                            {(ev.extra as Record<string, unknown>).role ? ` · ${String((ev.extra as Record<string, unknown>).role)}` : ''}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {ev.shop_id != null ? (
