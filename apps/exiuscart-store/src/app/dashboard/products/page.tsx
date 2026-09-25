@@ -37,6 +37,8 @@ import { EbayListingFields } from '@/components/ebay-listing-fields';
 import { NoonListingFields, NoonAttributeValues } from '@/components/noon-listing-fields';
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { DropshipSupplierSection, ProductShippingCostPreview } from '@/components/dropship-supplier-section';
+import ChannelLogo from '@/components/channels/ChannelLogo';
+import { SUPPLIER_STYLE } from '@/components/dropshipping/SupplierCard';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency, symFor } from '@/components/providers/currency-provider';
@@ -59,6 +61,55 @@ const CHANNEL_LABELS: Record<string, string> = {
 };
 function channelLabel(channelType: string): string {
   return CHANNEL_LABELS[channelType] ?? channelType;
+}
+
+const DROPSHIP_NAMES: Record<string, string> = {
+  cj: 'CJ Dropshipping', hypersku: 'HyperSKU', eprolo: 'EPROLO', aliexpress: 'AliExpress',
+  '1688': '1688', printful: 'Printful', printify: 'Printify', gelato: 'Gelato',
+};
+
+// Where a product came from: the dropship supplier it was imported from
+// (with its logo), else the local supplier the seller picked, else "Manual".
+function SupplierCell({ product }: { product: Product }) {
+  const dropship = product.dropship_supplier;
+  if (dropship) {
+    const st = SUPPLIER_STYLE[dropship];
+    const Icon = st?.icon;
+    return (
+      <span className="inline-flex items-center gap-2" title={DROPSHIP_NAMES[dropship] ?? dropship}>
+        <span className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md ${st?.bg ?? 'bg-muted'}`}>
+          {st?.logo
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={st.logo} alt="" className={`h-full w-full ${st.logoFit === 'cover' ? 'object-cover' : 'object-contain p-0.5'}`} />
+            : Icon ? <Icon className={`h-3.5 w-3.5 ${st.color}`} /> : <Package className="h-3.5 w-3.5 text-muted-foreground" />}
+        </span>
+        <span className="text-foreground">{DROPSHIP_NAMES[dropship] ?? dropship}</span>
+      </span>
+    );
+  }
+  // Imported, but the API didn't say from which supplier: never call that "Manual".
+  if (product.is_dropship_imported) {
+    return (
+      <span className="inline-flex items-center gap-2" title="Imported from a supplier">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted"><Package className="h-3.5 w-3.5 text-muted-foreground" /></span>
+        <span className="text-foreground">Imported</span>
+      </span>
+    );
+  }
+  if (product.supplier?.name) {
+    return (
+      <span className="inline-flex items-center gap-2" title={`Supplier: ${product.supplier.name}`}>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted"><Truck className="h-3.5 w-3.5 text-muted-foreground" /></span>
+        <span className="max-w-[100px] truncate text-foreground">{product.supplier.name}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-2 text-muted-foreground">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10"><Edit className="h-3.5 w-3.5 text-primary" /></span>
+      Manual
+    </span>
+  );
 }
 
 // Same format the backend auto-assigns to products saved with a blank SKU
@@ -156,6 +207,7 @@ interface Product {
   supplier_id?: number | null;
   supplier?: { id: number; name: string } | null;
   is_dropship_imported?: boolean;
+  dropship_supplier?: string | null;
 }
 
 interface ShopField {
@@ -716,12 +768,12 @@ export default function ProductsPage() {
                 </div>
               ) : null;
             })()}
-            {/* Desktop Table */}
+            {/* Desktop Table — compact: every row is one line, same height */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50">
+              <table className="w-full whitespace-nowrap text-sm">
+                <thead className="bg-muted/50 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   <tr>
-                    <th className="p-4 w-10">
+                    <th className="w-10 py-2.5 pl-4 pr-1">
                       {(() => {
                         const withBarcode = displayedProducts.filter(p => (p as any).barcode);
                         const allSelected = withBarcode.length > 0 && withBarcode.every(p => selectedForPrint.has(p.id));
@@ -742,21 +794,43 @@ export default function ProductsPage() {
                         );
                       })()}
                     </th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Product</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">SKU</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Category</th>
-                    <th className="text-right p-4 text-sm font-medium text-muted-foreground">Cost</th>
-                    <th className="text-right p-4 text-sm font-medium text-muted-foreground">Price</th>
-                    <th className="text-right p-4 text-sm font-medium text-muted-foreground">Revenue</th>
-                    <th className="text-right p-4 text-sm font-medium text-muted-foreground">Margin</th>
-                    <th className="text-center p-4 text-sm font-medium text-muted-foreground">Stock</th>
-                    <th className="text-right p-4 text-sm font-medium text-muted-foreground">Actions</th>
+                    <th className="px-2.5 py-2.5 text-left">#</th>
+                    <th className="px-2.5 py-2.5 text-left">Product</th>
+                    <th className="px-2.5 py-2.5 text-left">Supplier</th>
+                    <th className="px-2.5 py-2.5 text-left">SKU</th>
+                    <th className="px-2.5 py-2.5 text-left">ID</th>
+                    <th className="px-2.5 py-2.5 text-left">Channels</th>
+                    <th className="px-2.5 py-2.5 text-right">Cost</th>
+                    <th className="px-2.5 py-2.5 text-right">Selling</th>
+                    <th className="px-2.5 py-2.5 text-center">Margin</th>
+                    <th className="hidden px-2.5 py-2.5 text-right 2xl:table-cell">Revenue</th>
+                    <th className="px-2.5 py-2.5 text-center">Stock</th>
+                    <th className="py-2.5 pl-3 pr-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {displayedProducts.map((product) => (
-                    <tr key={product.id} className={`hover:bg-muted/30 transition ${selectedForPrint.has(product.id) ? 'bg-primary/5' : ''}`}>
-                      <td className="p-4 w-10">
+                  {displayedProducts.map((product, idx) => {
+                    const perf = perfData[product.id];
+                    // The store's own margin when there is order history, otherwise plain
+                    // (selling - cost) / selling from the two prices on this row.
+                    const margin: number | null = perf?.margin_pct
+                      ? perf.margin_pct
+                      : product.costPrice > 0 && product.sellingPrice > 0
+                        ? Math.round(((product.sellingPrice - product.costPrice) / product.sellingPrice) * 1000) / 10
+                        : null;
+                    const catEntries = channelCategories[product.id]
+                      ? Object.values(channelCategories[product.id]).filter((e) => e.is_listed)
+                      : [];
+                    const td = channelStatuses[product.id]?.thedersi;
+                    const tdBadge = td
+                      ? td.status === 'approved' ? { label: 'Live', cls: 'bg-green-500/10 text-green-600 dark:text-green-400' }
+                        : td.status === 'rejected' ? { label: 'Rejected', cls: 'bg-red-500/10 text-red-500' }
+                        : td.status === 'sync_failed' ? { label: 'Sync failed', cls: 'bg-red-500/10 text-red-500' }
+                        : { label: 'Pending', cls: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' }
+                      : null;
+                    return (
+                    <tr key={product.id} className={`h-[52px] transition hover:bg-muted/30 ${selectedForPrint.has(product.id) ? 'bg-primary/5' : ''}`}>
+                      <td className="w-10 py-1.5 pl-4 pr-1">
                         {(product as any).barcode ? (
                           <input
                             type="checkbox"
@@ -765,11 +839,8 @@ export default function ProductsPage() {
                             className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
                           />
                         ) : (
-                          // This checkbox is for bulk barcode printing — a
-                          // product with no barcode has nothing to print, so
-                          // selecting it wouldn't do anything. Shown disabled
-                          // with a reason instead of just vanishing, which
-                          // read as broken rather than intentional.
+                          // Bulk barcode printing checkbox: a product with no barcode has
+                          // nothing to print, so it's shown disabled with a reason.
                           <input
                             type="checkbox"
                             disabled
@@ -778,110 +849,85 @@ export default function ProductsPage() {
                           />
                         )}
                       </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+                      <td className="px-2.5 py-1.5 text-xs tabular-nums text-muted-foreground">#{idx + 1}</td>
+                      <td className="px-2.5 py-1.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
                             {((product as any).image_url || product.image)
-                              ? <img src={(product as any).image_url || product.image!} alt={product.name} className="w-full h-full object-cover" />
-                              : <Package className="w-6 h-6 text-muted-foreground" />}
+                              ? <img src={(product as any).image_url || product.image!} alt={product.name} className="h-full w-full object-cover" />
+                              : <Package className="h-4 w-4 text-muted-foreground" />}
                           </div>
-                          <div className="min-w-0 max-w-[280px]">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="font-medium text-foreground truncate" title={product.name}>{product.name}</span>
-                              {perfData[product.id]?.heat === 'hot' && <Flame className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                              {perfData[product.id]?.heat === 'moving' && <TrendingUp className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
-                              {perfData[product.id] && perfData[product.id].heat === 'slow' && <Snowflake className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
-                            </div>
-                            <p className="text-xs text-muted-foreground/60 font-mono">#{product.id}</p>
-                            {channelStatuses[product.id]?.thedersi && (() => {
-                              const s = channelStatuses[product.id].thedersi;
-                              const badge = s.status === 'approved'
-                                ? { label: '✅ Live on TheDersi', cls: 'text-green-600 dark:text-green-400' }
-                                : s.status === 'rejected'
-                                ? { label: '❌ Rejected', cls: 'text-red-500' }
-                                : s.status === 'sync_failed'
-                                ? { label: '⚠️ Failed to send to TheDersi', cls: 'text-red-500' }
-                                : { label: '🟡 Pending Review', cls: 'text-yellow-600 dark:text-yellow-400' };
-                              return (
-                                <>
-                                  <p className={`text-xs mt-0.5 ${badge.cls}`}>{badge.label}</p>
-                                  {(s.status === 'rejected' || s.status === 'sync_failed') && s.rejection_reason && (
-                                    <p className="text-xs mt-0.5 text-red-500 bg-red-500/10 rounded px-1.5 py-0.5 max-w-[220px] leading-snug">{s.rejection_reason}</p>
-                                  )}
-                                </>
-                              );
-                            })()}
+                          <div className="flex min-w-0 max-w-[165px] items-center gap-1.5">
+                            <span className="truncate font-medium text-foreground" title={product.name}>{product.name}</span>
+                            {perf?.heat === 'hot' && <Flame className="h-3.5 w-3.5 shrink-0 text-red-500" />}
+                            {perf?.heat === 'moving' && <TrendingUp className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+                            {perf && perf.heat === 'slow' && <Snowflake className="h-3.5 w-3.5 shrink-0 text-blue-400" />}
+                            {tdBadge && (
+                              <span title={`TheDersi: ${tdBadge.label}${td?.rejection_reason ? ` - ${td.rejection_reason}` : ''}`}
+                                className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${tdBadge.cls}`}>
+                                TheDersi · {tdBadge.label}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>
-                      <td className="p-4">
+                      <td className="px-2.5 py-1.5 text-xs"><SupplierCell product={product} /></td>
+                      <td className="px-2.5 py-1.5">
                         {product.sku
-                          ? <span className="text-sm text-muted-foreground font-mono">{product.sku}</span>
-                          : <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">Missing</span>}
+                          ? <span className="block max-w-[130px] truncate font-mono text-xs text-muted-foreground" title={product.sku}>{product.sku}</span>
+                          : <span className="text-xs font-medium text-orange-600 dark:text-orange-400">Missing</span>}
                       </td>
-                      <td className="p-4">
-                        {(() => {
-                          // Just the channels this product is actually listed
-                          // on — the full category breadcrumb (e.g. "Jewelry
-                          // & Watches > Fashion Jewelry > Bracelets & Charms")
-                          // is editing detail, not list-scanning detail, and
-                          // was pushing rows to 3 lines tall.
-                          // A ProductChannelCategory row exists as soon as a
-                          // category is picked for that channel — is_listed
-                          // is the actual "seller turned this on" flag, so a
-                          // channel the seller never enabled (or unlisted
-                          // again) must not show a badge here.
-                          const catEntries = channelCategories[product.id]
-                            ? Object.values(channelCategories[product.id]).filter((e) => e.is_listed)
-                            : [];
-                          if (catEntries.length === 0) {
-                            return <span className="text-sm text-muted-foreground/40">—</span>;
-                          }
-                          return (
-                            <div className="flex flex-wrap gap-1">
-                              {catEntries.map((entry, i) => (
-                                <span key={i} className="text-xs font-medium text-foreground/70 bg-muted border border-border/60 px-2 py-0.5 rounded-full">
-                                  {channelLabel(entry.channel_type)}
-                                </span>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="p-4 text-right"><span className="text-sm text-muted-foreground">{fmt(product.costPrice)}</span></td>
-                      <td className="p-4 text-right"><span className="text-sm font-medium text-foreground">{fmt(product.sellingPrice)}</span></td>
-                      <td className="p-4 text-right">
-                        {perfData[product.id] ? (
-                          <div>
-                            <span className="text-sm font-medium text-foreground">{fmt(perfData[product.id].revenue, 0)}</span>
-                            {perfData[product.id].revenue_30d > 0 && <p className="text-xs text-muted-foreground">{fmt(perfData[product.id].revenue_30d, 0)} /30d</p>}
+                      <td className="px-2.5 py-1.5 font-mono text-xs font-bold tabular-nums text-foreground">{product.id}</td>
+                      <td className="px-2.5 py-1.5">
+                        {catEntries.length === 0 ? (
+                          <span className="text-muted-foreground/40">—</span>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            {catEntries.slice(0, 3).map((entry, i) => (
+                              <span key={i} title={channelLabel(entry.channel_type)}
+                                className="flex h-7 items-center rounded-md border border-border/60 bg-background px-1.5">
+                                <ChannelLogo channelType={entry.channel_type} size={16} />
+                              </span>
+                            ))}
+                            {catEntries.length > 3 && (
+                              <span className="text-[11px] text-muted-foreground" title={catEntries.slice(3).map((e) => channelLabel(e.channel_type)).join(', ')}>
+                                +{catEntries.length - 3}
+                              </span>
+                            )}
                           </div>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                        )}
                       </td>
-                      <td className="p-4 text-right">
-                        {perfData[product.id]?.margin_pct ? (
-                          <span className={`text-sm font-semibold tabular-nums ${perfData[product.id].margin_pct < 20 ? 'text-red-500' : 'text-foreground'}`}>
-                            {perfData[product.id].margin_pct}%
+                      <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmt(product.costPrice)}</td>
+                      <td className="px-2.5 py-1.5 text-right font-semibold tabular-nums text-primary">{fmt(product.sellingPrice)}</td>
+                      <td className="px-2.5 py-1.5 text-center">
+                        {margin !== null ? (
+                          <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
+                            margin < 20 ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>
+                            {margin}%
                           </span>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </td>
-                      <td className="p-4 text-center">
-                        {/* Color reserved for the two states that actually need
-                            attention — out of stock and low stock. A healthy
-                            stock count is just plain text, not a green badge;
-                            "in stock" isn't news, low stock is. */}
-                        <span className={`inline-flex items-center gap-1.5 text-sm font-medium tabular-nums ${
+                      <td className="hidden px-2.5 py-1.5 text-right tabular-nums 2xl:table-cell">
+                        {perf ? (
+                          <span className="font-medium text-foreground" title={perf.revenue_30d > 0 ? `${fmt(perf.revenue_30d, 0)} in the last 30 days` : undefined}>
+                            {fmt(perf.revenue, 0)}
+                          </span>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </td>
+                      <td className="px-2.5 py-1.5 text-center">
+                        {/* Color only for out of stock and low stock; healthy stock is plain text. */}
+                        <span className={`inline-flex items-center gap-1.5 font-medium tabular-nums ${
                           product.stock === 0 ? 'text-red-500'
                           : product.stock <= product.lowStockAlert ? 'text-amber-600 dark:text-amber-400'
                           : 'text-foreground'}`}>
                           {product.stock !== 0 && product.stock <= product.lowStockAlert && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                           )}
                           {product.stock}
                         </span>
                       </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="py-1.5 pl-3 pr-4 text-right">
+                        <div className="flex items-center justify-end gap-0.5">
                           {(product as any).barcode && (
                             <button
                               type="button"
@@ -891,27 +937,28 @@ export default function ProductsPage() {
                                   name: product.name,
                                   sku: product.sku,
                                   barcode: (product as any).barcode,
-                                  // A printed barcode tag is a real price sticker — it must show
+                                  // A printed barcode tag is a real price sticker: it must show
                                   // the actual charged amount, not a currency-preview conversion.
                                   price: fmtBase(product.sellingPrice),
                                 }]));
                                 window.open(`/dashboard/products/barcode?data=${data}`, '_blank');
                               }}
-                              className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
+                              className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
-                              <Barcode className="w-4 h-4" />
+                              <Barcode className="h-4 w-4" />
                             </button>
                           )}
-                          <button type="button" onClick={() => { setEditingProduct(product); setShowAddModal(true); }} aria-label={`Edit ${product.name}`} className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition">
-                            <Edit className="w-4 h-4" />
+                          <button type="button" onClick={() => { setEditingProduct(product); setShowAddModal(true); }} aria-label={`Edit ${product.name}`} className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                            <Edit className="h-4 w-4" />
                           </button>
-                          <button type="button" onClick={() => setShowDeleteConfirm(product.id)} aria-label={`Delete ${product.name}`} className="p-2 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive transition">
-                            <Trash2 className="w-4 h-4" />
+                          <button type="button" onClick={() => setShowDeleteConfirm(product.id)} aria-label={`Delete ${product.name}`} className="rounded-md p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -138,6 +138,8 @@ class ProductResponse(ProductBase):
     supplier_id: Optional[int] = None
     supplier: Optional[SupplierRef] = None
     is_dropship_imported: bool = False
+    # supplier_type of the dropship import this came from (cj, aliexpress, printful...), else None
+    dropship_supplier: Optional[str] = None
 
     @property
     def discount_percent(self) -> Optional[int]:

@@ -10,6 +10,10 @@ import { useCurrency } from '@/components/providers/currency-provider';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -438,6 +442,125 @@ function FeatureChip({ icon: Icon, label, colorClass }: { icon: React.ElementTyp
   );
 }
 
+
+// ── Shared building blocks ───────────────────────────────────────────────────
+
+type SupplierKey = 'cj' | 'printful' | 'aliexpress' | 'hypersku';
+
+const SUPPLIER_ICON: Record<SupplierKey, React.ElementType> = {
+  cj: Package, printful: Shirt, aliexpress: ShoppingBag, hypersku: Package,
+};
+
+const POPULAR_SEARCHES = ['Phone case', 'LED lights', 'Yoga mat', 'Wireless earbuds', 'Pet toys', 'Kitchen gadgets', 'Water bottle', 'Car accessories'];
+
+function ProductGrid({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">{children}</div>;
+}
+
+function ProductGridSkeleton() {
+  return (
+    <ProductGrid>
+      {Array.from({ length: 10 }).map((_, i) => (
+        <Card key={i} className="overflow-hidden">
+          <Skeleton className="aspect-square w-full rounded-none" />
+          <div className="space-y-2 p-3">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        </Card>
+      ))}
+    </ProductGrid>
+  );
+}
+
+function ProductCard({ image, name, fallback: Fallback, cost, costLabel, note, onImport }: {
+  image?: string; name: string; fallback: React.ElementType;
+  cost?: number; costLabel?: string; note?: string; onImport: () => void;
+}) {
+  // The import default is 2x cost (see the help panel), so this is the real
+  // starting price, not a guess.
+  const suggested = cost !== undefined ? cost * 2 : undefined;
+  return (
+    <Card className="group flex flex-col overflow-hidden transition hover:border-primary/40 hover:shadow-md">
+      <div className="relative aspect-square bg-muted">
+        {image
+          ? <Image src={image} alt={name} fill className="object-cover transition duration-300 group-hover:scale-105" unoptimized />
+          : <div className="absolute inset-0 flex items-center justify-center"><Fallback className="h-8 w-8 text-muted-foreground/30" /></div>}
+      </div>
+      <div className="flex flex-1 flex-col gap-3 p-3">
+        <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug text-foreground" title={name}>{name}</p>
+        <div className="mt-auto space-y-2.5">
+          {cost !== undefined ? (
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{costLabel ?? 'Cost'}</p>
+                <p className="text-base font-bold text-foreground">${cost.toFixed(2)}</p>
+              </div>
+              <Badge variant="success" className="px-2 py-0.5 text-[10px]">Sell ~${suggested!.toFixed(2)}</Badge>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{note}</p>
+          )}
+          <Button size="sm" className="w-full" onClick={onImport}>Import</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function EmptyState({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children?: React.ReactNode }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center px-6 py-16 text-center">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+          <Icon className="h-6 w-6 text-primary" />
+        </div>
+        <p className="text-base font-semibold text-foreground">{title}</p>
+        <div className="mt-1.5 max-w-md text-sm leading-relaxed text-muted-foreground">{children}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ErrorLine({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+      <AlertCircle className="h-4 w-4 shrink-0" /> {children}
+    </div>
+  );
+}
+
+function ImportedBanner({ item }: { item: { id: number; name: string } | null }) {
+  if (!item) return null;
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+        <p className="truncate text-sm font-medium text-green-600 dark:text-green-400">&ldquo;{item.name}&rdquo; imported successfully</p>
+      </div>
+      <Link href={`/dashboard/products?edit=${item.id}`} className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline">
+        Edit product <ChevronRight className="h-3.5 w-3.5" />
+      </Link>
+    </div>
+  );
+}
+
+function TabPills<T extends string>({ value, onChange, tabs }: { value: T; onChange: (v: T) => void; tabs: { id: T; label: string }[] }) {
+  return (
+    <div className="inline-flex rounded-lg bg-muted p-1">
+      {tabs.map((t) => (
+        <button key={t.id} onClick={() => onChange(t.id)}
+          className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition ${
+            value === t.id ? 'bg-background text-foreground shadow' : 'text-muted-foreground hover:text-foreground'
+          }`}>
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ImportProductsPage() {
@@ -575,35 +698,25 @@ export default function ImportProductsPage() {
 
   if (checking) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Loading…</span>
-        </div>
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-28 w-full" />
+        <ProductGridSkeleton />
       </div>
     );
   }
 
   if (isTheDersiUser) {
     return (
-      <div className="p-6 max-w-5xl mx-auto space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Import Products</h1>
-          <p className="text-sm text-muted-foreground mt-1">Search CJ&apos;s catalog and add products directly to your store.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Import Products</h1>
+          <p className="text-sm text-muted-foreground">Search CJ&apos;s catalog and add products directly to your store</p>
         </div>
-        <div className="border border-border rounded-2xl bg-card p-8 sm:p-10 flex flex-col items-center text-center max-w-xl mx-auto">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
-            <Lock className="w-7 h-7 text-primary" />
-          </div>
-          <h2 className="text-lg font-semibold text-foreground">Dropshipping is for direct ExiusCart sellers</h2>
-          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Your store is managed by <strong className="text-foreground">TheDersi</strong>, and your orders are fulfilled through TheDersi&apos;s own logistics.
-          </p>
-          <Link href="/dashboard/channels"
-            className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-            Back to Channels
-          </Link>
-        </div>
+        <EmptyState icon={Lock} title="Dropshipping is for direct ExiusCart sellers">
+          Your store is managed by <strong className="text-foreground">TheDersi</strong>, and your orders are fulfilled through TheDersi&apos;s own logistics.
+          <div className="mt-5"><Button asChild><Link href="/dashboard/channels">Back to Channels</Link></Button></div>
+        </EmptyState>
       </div>
     );
   }
@@ -612,181 +725,123 @@ export default function ImportProductsPage() {
 
   if (connectedCount === 0) {
     return (
-      <div className="p-6 max-w-5xl mx-auto space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Import Products</h1>
-          <p className="text-sm text-muted-foreground mt-1">Search a supplier&apos;s catalog and add products directly to your store.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Import Products</h1>
+          <p className="text-sm text-muted-foreground">Search a supplier&apos;s catalog and add products directly to your store</p>
         </div>
-        <div className="border border-border rounded-2xl bg-card p-8 sm:p-10 flex flex-col items-center text-center max-w-xl mx-auto">
-          <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-5">
-            <Package className="w-7 h-7 text-orange-500" />
-          </div>
-          <h2 className="text-lg font-semibold text-foreground">Connect a supplier first</h2>
-          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            You need an active CJ Dropshipping, Printful, AliExpress, or HyperSKU connection before you can browse and import products.
-          </p>
-          <Link href="/dashboard/dropshipping"
-            className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-            Go to Suppliers
-          </Link>
-        </div>
+        <EmptyState icon={Package} title="Connect a supplier first">
+          You need an active CJ Dropshipping, Printful, AliExpress, or HyperSKU connection before you can browse and import products.
+          <div className="mt-5"><Button asChild><Link href="/dashboard/dropshipping">Go to Suppliers</Link></Button></div>
+        </EmptyState>
       </div>
     );
   }
 
+  const suppliers = ([
+    cjConnected && 'cj', printfulConnected && 'printful', aliexpressConnected && 'aliexpress', hyperskuConnected && 'hypersku',
+  ].filter(Boolean)) as SupplierKey[];
+  const SUPPLIER_FULL: Record<SupplierKey, string> = { cj: 'CJ Dropshipping', printful: 'Printful', aliexpress: 'AliExpress', hypersku: 'HyperSKU' };
+
+  const subtitle =
+    supplier === 'cj' ? "Search CJ's catalog and import directly to your store with one click"
+    : supplier === 'printful' ? 'Bring your already-designed Printful products into your store'
+    : supplier === 'hypersku' ? "Browse HyperSKU's catalog and import directly to your store"
+    : 'Paste an AliExpress product link and import it directly';
+
+  const cjList = activeTab === 'search' ? products : myProducts;
+  const hyperskuList = hyperskuTab === 'catalog' ? hyperskuProducts : hyperskuMy;
+  const hyperskuLoading = hyperskuTab === 'catalog' ? loadingHypersku : loadingHyperskuMy;
+  const hyperskuErr = hyperskuTab === 'catalog' ? hyperskuError : hyperskuMyError;
+  const hyperskuIsLoaded = hyperskuTab === 'catalog' ? hyperskuLoaded : hyperskuMyLoaded;
+
   return (
-    <div className="p-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
-    <div className="space-y-6 min-w-0">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Import Products</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {supplier === 'cj' ? "Search CJ's catalog and import directly to your store with one click."
-            : supplier === 'printful' ? 'Bring your already-designed Printful products into your store.'
-            : supplier === 'hypersku' ? "Browse HyperSKU's catalog and import directly to your store."
-            : 'Paste an AliExpress product link and import it directly.'}
-        </p>
-      </div>
-
-      {/* Supplier switcher — only shown once there's actually a choice */}
-      {connectedCount > 1 && (
-        <div className="flex gap-2">
-          {cjConnected && (
-            <button onClick={() => setSupplier('cj')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
-                supplier === 'cj' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
-              }`}>
-              <Package className="w-3.5 h-3.5" /> CJ Dropshipping
-            </button>
-          )}
-          {printfulConnected && (
-            <button onClick={() => setSupplier('printful')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
-                supplier === 'printful' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
-              }`}>
-              <Shirt className="w-3.5 h-3.5" /> Printful
-            </button>
-          )}
-          {aliexpressConnected && (
-            <button onClick={() => setSupplier('aliexpress')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
-                supplier === 'aliexpress' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
-              }`}>
-              <ShoppingBag className="w-3.5 h-3.5" /> AliExpress
-            </button>
-          )}
-          {hyperskuConnected && (
-            <button onClick={() => setSupplier('hypersku')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition ${
-                supplier === 'hypersku' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-muted'
-              }`}>
-              <Package className="w-3.5 h-3.5" /> HyperSKU
-            </button>
-          )}
-        </div>
-      )}
-
-      {supplier === 'hypersku' && (
-        <>
-          {/* Tabs — no keyword search on HyperSKU's catalog endpoint, so this
-              is two flat lists, not a debounced search box like CJ's. */}
-          <div className="flex gap-1 border-b border-border">
-            <button onClick={() => setHyperskuTab('catalog')}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
-                hyperskuTab === 'catalog' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}>
-              Browse Catalog
-            </button>
-            <button onClick={() => setHyperskuTab('my')}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
-                hyperskuTab === 'my' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}>
-              My HyperSKU Products
-            </button>
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Import Products</h1>
+            <p className="text-sm text-muted-foreground">{subtitle}</p>
           </div>
+          <Badge variant="muted" className="w-fit gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> {connectedCount} supplier{connectedCount !== 1 ? 's' : ''} connected
+          </Badge>
+        </div>
 
-          {importedId && (
-            <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
+        {/* One control bar: pick the supplier, pick the list, search */}
+        <Card>
+          <CardContent className="space-y-4 p-4">
+            {suppliers.length > 1 && (
+              <div className={`grid gap-2 sm:grid-cols-2 ${suppliers.length === 3 ? 'xl:grid-cols-3' : suppliers.length === 4 ? 'xl:grid-cols-4' : ''}`}>
+                {suppliers.map((k) => {
+                  const Icon = SUPPLIER_ICON[k];
+                  const on = supplier === k;
+                  return (
+                    <button key={k} onClick={() => setSupplier(k)}
+                      className={`flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-left text-sm font-medium transition ${
+                        on ? 'border-primary bg-primary/5 text-foreground ring-1 ring-primary' : 'border-border text-muted-foreground hover:bg-muted'
+                      }`}>
+                      <span className={`flex h-8 w-8 items-center justify-center rounded-md ${on ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      {SUPPLIER_FULL[k]}
+                    </button>
+                  );
+                })}
               </div>
-              <Link href={`/dashboard/products?edit=${importedId.id}`}
-                className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
-                Edit product <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          )}
+            )}
 
-          {(hyperskuTab === 'catalog' ? loadingHypersku : loadingHyperskuMy) && (
-            <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm">Loading HyperSKU products…</span>
-            </div>
-          )}
-
-          {(hyperskuTab === 'catalog' ? hyperskuError : hyperskuMyError) && (
-            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0" /> {hyperskuTab === 'catalog' ? hyperskuError : hyperskuMyError}
-            </div>
-          )}
-
-          {(() => {
-            const list = hyperskuTab === 'catalog' ? hyperskuProducts : hyperskuMy;
-            const loaded = hyperskuTab === 'catalog' ? hyperskuLoaded : hyperskuMyLoaded;
-            const loading = hyperskuTab === 'catalog' ? loadingHypersku : loadingHyperskuMy;
-            const err = hyperskuTab === 'catalog' ? hyperskuError : hyperskuMyError;
-            return (
-              <>
-                {!loading && loaded && !err && list.length === 0 && (
-                  <div className="text-center py-20 text-sm text-muted-foreground max-w-md mx-auto">
-                    {hyperskuTab === 'catalog' ? 'Nothing came back from HyperSKU right now. Try again shortly.' : "Nothing here yet — add products to your HyperSKU shortlist on their own site first."}
+            {supplier === 'cj' && (
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                <TabPills value={activeTab} onChange={setActiveTab}
+                  tabs={[{ id: 'search', label: 'Search catalog' }, { id: 'my', label: 'My CJ products' }]} />
+                {activeTab === 'search' ? (
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input type="text" value={inputVal} onChange={(e) => setInputVal(e.target.value)}
+                      placeholder="Search CJ products, e.g. wireless earbuds, phone case, yoga mat"
+                      className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-10 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary" />
+                    {loading && <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                    {!loading && inputVal && (
+                      <button onClick={() => setInputVal('')} aria-label="Clear search"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Products you added to &ldquo;My Product&rdquo; on CJ&apos;s own site, already vetted by you</p>
                 )}
-                {list.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {list.map((p) => (
-                      <div key={p.pid} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col hover:border-primary/40 transition group">
-                        <div className="relative aspect-square bg-muted">
-                          {p.image
-                            ? <Image src={p.image} alt={p.name} fill className="object-cover group-hover:scale-105 transition duration-300" unoptimized />
-                            : <div className="absolute inset-0 flex items-center justify-center"><Package className="w-8 h-8 text-muted-foreground/30" /></div>
-                          }
-                        </div>
-                        <div className="p-3 flex flex-col gap-2 flex-1">
-                          <p className="text-xs text-foreground font-medium line-clamp-2 leading-snug">{p.name}</p>
-                          <div className="flex items-center justify-between mt-auto">
-                            <div>
-                              <p className="text-[10px] text-muted-foreground">HyperSKU cost</p>
-                              <p className="text-sm font-bold text-foreground">${p.cost_price.toFixed(2)}</p>
-                            </div>
-                            <button onClick={() => { setHyperskuImportTarget(p); setImportedId(null); }}
-                              className="text-xs px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium shrink-0">
-                              Import
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            );
-          })()}
+              </div>
+            )}
 
-          {hyperskuImportTarget && (
-            <CJImportModal
-              shopId={shopId}
-              product={hyperskuImportTarget}
-              supplier="hypersku"
-              onClose={() => setHyperskuImportTarget(null)}
-              onImported={(id, name) => { setImportedId({ id, name }); setHyperskuImportTarget(null); }}
-            />
-          )}
-        </>
-      )}
+            {supplier === 'hypersku' && (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <TabPills value={hyperskuTab} onChange={setHyperskuTab}
+                  tabs={[{ id: 'catalog', label: 'Browse catalog' }, { id: 'my', label: 'My HyperSKU products' }]} />
+                <p className="text-xs text-muted-foreground">HyperSKU&apos;s catalog has no keyword search, so these are full lists</p>
+              </div>
+            )}
+
+            {supplier === 'printful' && (
+              <p className="text-xs text-muted-foreground">
+                Products you designed on Printful&apos;s own site (Design Lab / Product Templates, then Published), already mocked up and ready to import
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {supplier === 'cj' && activeTab === 'search' && inputVal.trim().split(/\s+/).filter(Boolean).length > 4 && (
+          <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2.5 text-xs text-amber-600 dark:text-amber-400">
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>CJ&apos;s search works best with short, simple terms (1 to 3 words) like &ldquo;vacuum cleaner&rdquo;. Long or very specific phrases tend to return unrelated results.</span>
+          </div>
+        )}
+
+        {supplier !== 'aliexpress' && <ImportedBanner item={importedId} />}
 
       {supplier === 'aliexpress' && (
-        <div className="max-w-xl space-y-4">
+        <div className="max-w-2xl space-y-4">
           {importedId && (
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
@@ -912,212 +967,111 @@ export default function ImportProductsPage() {
         </div>
       )}
 
-      {supplier !== 'aliexpress' && supplier !== 'hypersku' && (supplier === 'printful' ? (
-        <>
-          <p className="text-xs text-muted-foreground -mt-2">
-            Products you&apos;ve designed on Printful&apos;s own site (Design Lab / Product Templates → Published) — already mocked up, ready to import.
-          </p>
-
-          {importedId && (
-            <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
-              </div>
-              <Link href={`/dashboard/products?edit=${importedId.id}`}
-                className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
-                Edit product <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          )}
-
-          {loadingPrintful && (
-            <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm">Loading your Printful products…</span>
-            </div>
-          )}
-
-          {!loadingPrintful && printfulLoaded && printfulProducts.length === 0 && (
-            <div className="text-center py-20 text-sm text-muted-foreground max-w-md mx-auto">
-              Nothing here yet. Design and publish a product on <a href="https://www.printful.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Printful&apos;s dashboard</a> first — it&apos;ll show up here.
-            </div>
-          )}
-
-          {printfulProducts.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {printfulProducts.map((p) => (
-                <div key={p.sync_product_id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col hover:border-primary/40 transition group">
-                  <div className="relative aspect-square bg-muted">
-                    {p.image
-                      ? <Image src={p.image} alt={p.name} fill className="object-cover group-hover:scale-105 transition duration-300" unoptimized />
-                      : <div className="absolute inset-0 flex items-center justify-center"><Shirt className="w-8 h-8 text-muted-foreground/30" /></div>
-                    }
-                  </div>
-                  <div className="p-3 flex flex-col gap-2 flex-1">
-                    <p className="text-xs text-foreground font-medium line-clamp-2 leading-snug">{p.name}</p>
-                    <div className="flex items-center justify-between mt-auto">
-                      <p className="text-[10px] text-muted-foreground">{p.variant_count} variant{p.variant_count !== 1 ? 's' : ''}</p>
-                      <button onClick={() => { setPrintfulImportTarget(p); setImportedId(null); }}
-                        className="text-xs px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium shrink-0">
-                        Import
-                      </button>
-                    </div>
-                  </div>
+        {/* ── CJ ── */}
+        {supplier === 'cj' && (
+          <>
+            {activeTab === 'search' && !query && (
+              <EmptyState icon={Search} title="Find your next product">
+                Type a keyword above to search CJ&apos;s live catalog, or start with a popular search.
+                <div className="mt-5 flex flex-wrap justify-center gap-2">
+                  {POPULAR_SEARCHES.map((q) => (
+                    <button key={q} onClick={() => setInputVal(q)}
+                      className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/40 hover:bg-primary/5">
+                      {q}
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              </EmptyState>
+            )}
+            {activeTab === 'search' && searchError && <ErrorLine>{searchError}</ErrorLine>}
+            {activeTab === 'my' && myError && <ErrorLine>{myError}</ErrorLine>}
+            {((activeTab === 'search' && loading) || (activeTab === 'my' && loadingMy)) && <ProductGridSkeleton />}
+            {activeTab === 'search' && !loading && !searchError && query && products.length === 0 && (
+              <EmptyState icon={Search} title="No products found">Nothing matched &ldquo;{query}&rdquo;. Try a shorter or different keyword.</EmptyState>
+            )}
+            {activeTab === 'my' && !loadingMy && myLoaded && !myError && myProducts.length === 0 && (
+              <EmptyState icon={Package} title="Nothing here yet">
+                On CJ&apos;s site, browse a product and click &ldquo;Add to My Product&rdquo;. It will show up here.
+              </EmptyState>
+            )}
+            {cjList.length > 0 && !(activeTab === 'search' ? loading : loadingMy) && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {cjList.length} product{cjList.length !== 1 ? 's' : ''}{activeTab === 'search' && query ? <> for &ldquo;{query}&rdquo;</> : null}
+                </p>
+                <ProductGrid>
+                  {cjList.map((p) => (
+                    <ProductCard key={p.pid} image={p.image} name={p.name} fallback={Package} cost={p.cost_price} costLabel="CJ cost"
+                      onImport={() => { setImportTarget(p); setImportedId(null); }} />
+                  ))}
+                </ProductGrid>
+              </div>
+            )}
+            {importTarget && (
+              <CJImportModal shopId={shopId} product={importTarget} onClose={() => setImportTarget(null)}
+                onImported={(id, name) => { setImportedId({ id, name }); setImportTarget(null); }} />
+            )}
+          </>
+        )}
 
-          {printfulImportTarget && (
-            <PrintfulImportModal
-              shopId={shopId}
-              product={printfulImportTarget}
-              onClose={() => setPrintfulImportTarget(null)}
-              onImported={(id, name) => { setImportedId({ id, name }); setPrintfulImportTarget(null); }}
-            />
-          )}
-        </>
-      ) : (
-      <>
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
-        <button onClick={() => setActiveTab('search')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
-            activeTab === 'search' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}>
-          Search Catalog
-        </button>
-        <button onClick={() => setActiveTab('my')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
-            activeTab === 'my' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}>
-          My CJ Products
-        </button>
+        {/* ── HyperSKU ── */}
+        {supplier === 'hypersku' && (
+          <>
+            {hyperskuErr && <ErrorLine>{hyperskuErr}</ErrorLine>}
+            {hyperskuLoading && <ProductGridSkeleton />}
+            {!hyperskuLoading && hyperskuIsLoaded && !hyperskuErr && hyperskuList.length === 0 && (
+              <EmptyState icon={Package} title={hyperskuTab === 'catalog' ? 'Nothing came back' : 'Nothing here yet'}>
+                {hyperskuTab === 'catalog' ? 'HyperSKU returned no products right now. Try again shortly.' : 'Add products to your HyperSKU shortlist on their own site first.'}
+              </EmptyState>
+            )}
+            {hyperskuList.length > 0 && !hyperskuLoading && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">{hyperskuList.length} product{hyperskuList.length !== 1 ? 's' : ''}</p>
+                <ProductGrid>
+                  {hyperskuList.map((p) => (
+                    <ProductCard key={p.pid} image={p.image} name={p.name} fallback={Package} cost={p.cost_price} costLabel="HyperSKU cost"
+                      onImport={() => { setHyperskuImportTarget(p); setImportedId(null); }} />
+                  ))}
+                </ProductGrid>
+              </div>
+            )}
+            {hyperskuImportTarget && (
+              <CJImportModal shopId={shopId} product={hyperskuImportTarget} supplier="hypersku" onClose={() => setHyperskuImportTarget(null)}
+                onImported={(id, name) => { setImportedId({ id, name }); setHyperskuImportTarget(null); }} />
+            )}
+          </>
+        )}
+
+        {/* ── Printful ── */}
+        {supplier === 'printful' && (
+          <>
+            {loadingPrintful && <ProductGridSkeleton />}
+            {!loadingPrintful && printfulLoaded && printfulProducts.length === 0 && (
+              <EmptyState icon={Shirt} title="Nothing here yet">
+                Design and publish a product on <a href="https://www.printful.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Printful&apos;s dashboard</a> first. It will show up here.
+              </EmptyState>
+            )}
+            {printfulProducts.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">{printfulProducts.length} product{printfulProducts.length !== 1 ? 's' : ''}</p>
+                <ProductGrid>
+                  {printfulProducts.map((p) => (
+                    <ProductCard key={p.sync_product_id} image={p.image} name={p.name} fallback={Shirt}
+                      note={`${p.variant_count} variant${p.variant_count !== 1 ? 's' : ''}`}
+                      onImport={() => { setPrintfulImportTarget(p); setImportedId(null); }} />
+                  ))}
+                </ProductGrid>
+              </div>
+            )}
+            {printfulImportTarget && (
+              <PrintfulImportModal shopId={shopId} product={printfulImportTarget} onClose={() => setPrintfulImportTarget(null)}
+                onImported={(id, name) => { setImportedId({ id, name }); setPrintfulImportTarget(null); }} />
+            )}
+          </>
+        )}
       </div>
 
-      {activeTab === 'search' && (
-        <>
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              placeholder="Search CJ products e.g. wireless earbuds, phone case, yoga mat…"
-              className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary outline-none"
-            />
-            {loading && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
-          </div>
-
-          {inputVal.trim().split(/\s+/).filter(Boolean).length > 4 && (
-            <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2.5">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              <span>CJ&apos;s search works best with short, simple terms (1–3 words) like &ldquo;vacuum cleaner&rdquo; — long or very specific phrases tend to return unrelated results.</span>
-            </div>
-          )}
-        </>
-      )}
-
-      {activeTab === 'my' && (
-        <p className="text-xs text-muted-foreground -mt-2">
-          Products you&apos;ve added to &ldquo;My Product&rdquo; on CJ&apos;s own site — already vetted by you, ready to import.
-        </p>
-      )}
-
-      {/* Import success toast */}
-      {importedId && (
-        <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-            <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
-          </div>
-          <Link href={`/dashboard/products?edit=${importedId.id}`}
-            className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
-            Edit product <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      )}
-
-      {/* Empty state before any search */}
-      {activeTab === 'search' && !query && (
-        <div className="text-center py-20 text-sm text-muted-foreground">
-          Start typing above to search CJ&apos;s catalog.
-        </div>
-      )}
-
-      {activeTab === 'my' && loadingMy && (
-        <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Loading your CJ products…</span>
-        </div>
-      )}
-
-      {activeTab === 'my' && myError && (
-        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
-          <AlertCircle className="w-4 h-4 shrink-0" /> {myError}
-        </div>
-      )}
-
-      {activeTab === 'my' && !loadingMy && myLoaded && !myError && myProducts.length === 0 && (
-        <div className="text-center py-20 text-sm text-muted-foreground max-w-md mx-auto">
-          Nothing here yet. On CJ&apos;s site, browse a product and click &ldquo;Add to My Product&rdquo; — it&apos;ll show up here.
-        </div>
-      )}
-
-      {/* Results */}
-      {(activeTab === 'search' ? products : myProducts).length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {(activeTab === 'search' ? products : myProducts).map((p) => (
-            <div key={p.pid} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col hover:border-primary/40 transition group">
-              <div className="relative aspect-square bg-muted">
-                {p.image
-                  ? <Image src={p.image} alt={p.name} fill className="object-cover group-hover:scale-105 transition duration-300" unoptimized />
-                  : <div className="absolute inset-0 flex items-center justify-center"><Package className="w-8 h-8 text-muted-foreground/30" /></div>
-                }
-              </div>
-              <div className="p-3 flex flex-col gap-2 flex-1">
-                <p className="text-xs text-foreground font-medium line-clamp-2 leading-snug">{p.name}</p>
-                <div className="flex items-center justify-between mt-auto">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">CJ cost</p>
-                    <p className="text-sm font-bold text-foreground">${p.cost_price.toFixed(2)}</p>
-                  </div>
-                  <button onClick={() => { setImportTarget(p); setImportedId(null); }}
-                    className="text-xs px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium shrink-0">
-                    Import
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeTab === 'search' && searchError && (
-        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
-          <AlertCircle className="w-4 h-4 shrink-0" /> {searchError}
-        </div>
-      )}
-
-      {activeTab === 'search' && !loading && !searchError && query && products.length === 0 && (
-        <div className="text-center py-10 text-sm text-muted-foreground">No products found for &ldquo;{query}&rdquo;. Try a different keyword.</div>
-      )}
-
-      {importTarget && (
-        <CJImportModal
-          shopId={shopId}
-          product={importTarget}
-          onClose={() => setImportTarget(null)}
-          onImported={(id, name) => { setImportedId({ id, name }); setImportTarget(null); }}
-        />
-      )}
-      </>
-      ))}
-    </div>
-
-    <ImportHelpPanel supplier={supplier} />
+      <ImportHelpPanel supplier={supplier} />
     </div>
   );
 }

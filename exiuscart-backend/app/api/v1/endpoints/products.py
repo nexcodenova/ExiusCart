@@ -456,18 +456,21 @@ async def get_products(
     # Which of these came from a dropship import (CJ/HyperSKU/etc.) — drives
     # SKU-lock in the edit form so sellers don't sever the supplier link.
     product_ids = [p.id for p in products]
-    dropship_ids = set()
+    dropship_by_product: dict = {}
     if product_ids:
-        dropship_ids = {
-            row[0] for row in db.query(DropshipProductLink.product_id)
+        # Primary link first, so a product linked to several suppliers shows its main one.
+        for pid, stype in (
+            db.query(DropshipProductLink.product_id, DropshipProductLink.supplier_type)
             .filter(DropshipProductLink.product_id.in_(product_ids))
-            .distinct()
-        }
+            .order_by(DropshipProductLink.is_primary.desc(), DropshipProductLink.id)
+        ):
+            dropship_by_product.setdefault(pid, stype)
 
     for p in products:
         if not p.image_url and p.images:
             p.image_url = p.images[0].url
-        p.is_dropship_imported = p.id in dropship_ids
+        p.is_dropship_imported = p.id in dropship_by_product
+        p.dropship_supplier = dropship_by_product.get(p.id)
     return products
 
 
@@ -487,9 +490,11 @@ async def get_product(
         raise HTTPException(status_code=404, detail="Product not found")
     if not product.image_url and product.images:
         product.image_url = product.images[0].url
-    product.is_dropship_imported = db.query(DropshipProductLink.id).filter(
+    link = db.query(DropshipProductLink.supplier_type).filter(
         DropshipProductLink.product_id == product.id
-    ).first() is not None
+    ).order_by(DropshipProductLink.is_primary.desc(), DropshipProductLink.id).first()
+    product.is_dropship_imported = link is not None
+    product.dropship_supplier = link[0] if link else None
     return product
 
 
