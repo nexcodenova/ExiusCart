@@ -1,9 +1,18 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import type { Metadata } from 'next';
 import {
   Search, TrendingUp, LayoutGrid, Link2, Sparkles, ShieldCheck,
   ArrowRight, Flame, Package, DollarSign, PackagePlus, Truck, RefreshCw, PackageCheck,
 } from 'lucide-react';
+
+// Deliberately only `alternates` here — every other field (title, description,
+// openGraph, twitter) inherits from the root layout untouched, since this
+// object doesn't redeclare them. See layout.tsx's note on why redeclaring
+// openGraph here would silently replace the whole thing instead of merging.
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
 
 // Real fulfillment flow, not illustrative — matches how the CJ/AliExpress/
 // Printful dropship pipeline actually works once a product is imported

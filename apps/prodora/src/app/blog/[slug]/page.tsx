@@ -9,12 +9,39 @@ import { fetchPost, fmtDate } from '@/lib/blog';
 
 export const revalidate = 60;
 
+const SITE_URL = 'https://prodora.exiuscart.com';
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await fetchPost(slug);
-  return post
-    ? { title: `${post.title} | Prodora`, description: post.excerpt ?? undefined }
-    : { title: 'Resources | Prodora' };
+  if (!post) return { title: 'Resources' };
+
+  const description = post.excerpt ?? undefined;
+  const image = post.cover_image_url ?? '/og-image.png';
+  return {
+    title: post.title,
+    description,
+    alternates: { canonical: `/blog/${slug}` },
+    // Redeclaring openGraph here is intentional (unlike the homepage) —
+    // each article gets its own title/description/image instead of
+    // inheriting the site-wide default from the root layout.
+    openGraph: {
+      type: 'article',
+      url: `${SITE_URL}/blog/${slug}`,
+      siteName: 'Prodora',
+      title: post.title,
+      description,
+      images: [{ url: image, width: 1200, height: 630, alt: post.title }],
+      publishedTime: post.published_at ?? undefined,
+      authors: post.author_name ? [post.author_name] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description,
+      images: [image],
+    },
+  };
 }
 
 export default async function ResourcePostPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -22,8 +49,35 @@ export default async function ResourcePostPage({ params }: { params: Promise<{ s
   const post = await fetchPost(slug);
   if (!post) notFound();
 
+  // Article schema - tells Google this is a real article (byline, publish
+  // date, image), not just an arbitrary page - a factor in getting a rich
+  // result / better preview in search. BreadcrumbList mirrors the actual
+  // on-page trail (Home > Blog > this post).
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.excerpt ?? undefined,
+    image: post.cover_image_url ?? `${SITE_URL}/og-image.png`,
+    datePublished: post.published_at ?? undefined,
+    author: post.author_name ? { '@type': 'Person', name: post.author_name } : { '@type': 'Organization', name: 'Prodora' },
+    publisher: { '@type': 'Organization', name: 'Prodora', logo: { '@type': 'ImageObject', url: `${SITE_URL}/prodora-logo.png` } },
+    mainEntityOfPage: `${SITE_URL}/blog/${slug}`,
+  };
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog` },
+      { '@type': 'ListItem', position: 3, name: post.title, item: `${SITE_URL}/blog/${slug}` },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <Navbar />
       <main className="container py-10 sm:py-14">
         <article className="mx-auto max-w-3xl">

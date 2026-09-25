@@ -6,8 +6,9 @@ import Navbar from '@/components/layout/Navbar';
 import { fetchPosts, fmtDate } from '@/lib/blog';
 
 export const metadata: Metadata = {
-  title: 'Resources | Prodora',
-  description: 'Guides and tips for finding winning products and selling them on your store.',
+  title: 'Ecommerce & Product Sourcing Guides',
+  description: 'Guides on finding winning products, comparing suppliers, and sourcing for dropshipping and ecommerce — from the team building Prodora.',
+  alternates: { canonical: '/blog' },
 };
 
 export const revalidate = 60;
