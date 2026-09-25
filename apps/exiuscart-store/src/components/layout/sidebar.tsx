@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, ShoppingCart, FileText, Users, Package, Boxes,
   Truck, Store, ClipboardList, BookOpen, Wallet, BarChart3,
@@ -19,6 +19,7 @@ import {
   TrendingUp, Bell, Lock, ArrowRight,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi, dropshipApi } from '@/lib/api';
+import { useAccess } from '@/components/providers/access-provider';
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
@@ -259,7 +260,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/settings?tab=general',        label: 'Business',            icon: Store      },
       { href: '/dashboard/branches',                    label: 'Branches',            icon: GitBranch  },
       { href: '/dashboard/staff',                        label: 'Team',                icon: Shield     },
-      { href: '/dashboard/staff',                        label: 'Roles & Permissions', icon: Shield     },
+      { href: '/dashboard/staff/roles',                  label: 'Roles & Permissions', icon: Shield     },
       { href: '/dashboard/billing',                      label: 'Billing',             icon: CreditCard },
       { href: '/dashboard/settings?tab=notifications',  label: 'Notifications',       icon: Bell       },
       { href: '/dashboard/settings?tab=security',        label: 'Security',            icon: Shield     },
@@ -373,7 +374,28 @@ export function ShopSidebar() {
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [theDersiModal, setTheDersiModal] = useState<TheDersiModalCopy | null>(null);
-  const [shopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null; isTheDersi: boolean } | null>(null);
+  const access = useAccess();
+  const [ownShopData, setShopData] = useState<{ name: string; plan: string; planLabel: string; daysLeft: number | null; isTheDersi: boolean } | null>(null);
+  // A team member can't read the billing endpoint that fills ownShopData's plan
+  // (it 403s and would leave every premium section looking locked), so their
+  // plan comes from the access lookup instead. Owners are unchanged.
+  const shopData = useMemo(() => {
+    if (access.isOwner || !access.plan) return ownShopData;
+    return {
+      name: ownShopData?.name || '',
+      plan: access.plan.type,
+      planLabel: access.plan.label,
+      daysLeft: access.plan.daysLeft,
+      isTheDersi: access.plan.isTheDersi,
+    };
+  }, [access.isOwner, access.plan, ownShopData]);
+  // Only the sections this person's role includes. Owners see everything.
+  const visibleGroups = useMemo(() => {
+    if (access.isOwner) return GROUPS;
+    return GROUPS
+      .map((g) => ({ ...g, items: g.items.filter((i) => access.canPath(i.href.split('?')[0])) }))
+      .filter((g) => g.items.length > 0);
+  }, [access]);
   const [connectedChannels, setConnectedChannels] = useState<{ channel_type: string }[]>([]);
   const [connectedSuppliers, setConnectedSuppliers] = useState<{ supplier_type: string; name: string }[]>([]);
   // Every group always starts collapsed — just the group name, nothing
@@ -476,7 +498,7 @@ export function ShopSidebar() {
         <SidebarContent>
           <SidebarGroup className="p-2 space-y-0.5">
             <SidebarGroupContent>
-              {GROUPS.map(group => {
+              {visibleGroups.map(group => {
                 const plan = (shopData?.plan || '').toLowerCase();
                 const isTheDersiPlan = shopData?.isTheDersi ?? false;
                 // Off for every TheDersi tier except Official (which shares
@@ -715,18 +737,19 @@ export function ShopSidebar() {
               </button>
             </div>
           )}
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip={collapsed ? 'Show menu' : undefined}
-                onClick={toggleSidebar}
-                className="text-sidebar-muted-foreground hover:text-sidebar-foreground"
-              >
-                {collapsed ? <PanelLeftOpen className="w-5 h-5 flex-shrink-0" /> : <PanelLeftClose className="w-5 h-5 flex-shrink-0" />}
-                {!collapsed && <span className="font-medium text-sm">Hide menu</span>}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          {/* Icon only, on the right - the menu itself reads from the left, so the
+              collapse control sits opposite it. Centered once collapsed (no room). */}
+          <div className={`flex ${collapsed ? 'justify-center' : 'justify-end'}`}>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              title={collapsed ? 'Show menu' : 'Hide menu'}
+              aria-label={collapsed ? 'Show menu' : 'Hide menu'}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-sidebar-muted-foreground transition hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            >
+              {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </button>
+          </div>
         </SidebarFooter>
       </Sidebar>
 

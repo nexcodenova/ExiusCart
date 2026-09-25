@@ -12,6 +12,8 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { applyBrandColor } from '@/lib/brand-color';
 import { WelcomeSplash } from '@/components/welcome-splash';
 import { ProfileCompletionDialog } from '@/components/profile-completion-dialog';
+import { AccessProvider, useAccess } from '@/components/providers/access-provider';
+import { AccessLoading, NoAccess, PlanEnded, StaffHome } from '@/components/dashboard/access-screens';
 
 // Only page an expired account can still reach. Everywhere else (Quotations,
 // POS, Add Product, every sidebar link) sends the owner to Billing instead of
@@ -37,6 +39,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <DashboardShell>{children}</DashboardShell>
     </>
   );
+}
+
+// What a signed-in person actually gets to see. The owner is untouched
+// (children render exactly as before). A team member gets: nothing while we
+// find out who they are, a "plan ended" notice if the owner's plan lapsed, a
+// shortcut home instead of the stats dashboard if their role has no
+// Reports & analytics, and a plain "no access" page for anything their role
+// doesn't include. The API refuses all of these itself - this is only so
+// nobody stares at a screen of failed requests.
+function AccessGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const access = useAccess();
+  if (access.loading) return <AccessLoading />;
+  if (access.isOwner) return <>{children}</>;
+  if (access.planExpired) return <PlanEnded />;
+  if (pathname === '/dashboard' && !access.can('analytics', 'view')) return <StaffHome />;
+  if (!access.canPath(pathname)) return <NoAccess />;
+  return <>{children}</>;
 }
 
 function DashboardShell({
@@ -115,6 +135,7 @@ function DashboardShell({
 
   return (
     <CurrencyProvider>
+      <AccessProvider>
       <ConfirmProvider>
         {/* SidebarProvider now owns collapse state itself (cookie-persisted
             — a real improvement over the old plain useState, which reset
@@ -130,12 +151,13 @@ function DashboardShell({
             <TrialBanner />
             {/* Small top padding (pt-3): a bigger one reads as dead space between
                 the header and each page's own heading. */}
-            <main className="px-4 pb-4 pt-3 lg:px-5 lg:pb-5 lg:pt-3">{children}</main>
+            <main className="px-4 pb-4 pt-3 lg:px-5 lg:pb-5 lg:pt-3"><AccessGate>{children}</AccessGate></main>
             <ProfileCompletionDialog />
           </SidebarInset>
         </SidebarProvider>
         <MobileBottomNav />
       </ConfirmProvider>
+      </AccessProvider>
     </CurrencyProvider>
   );
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { menuItems, PREMIUM_HREFS } from './sidebar';
+import { useAccess } from '@/components/providers/access-provider';
 import { MoreHorizontal, X, LogOut, Lock } from 'lucide-react';
 import { subscriptionApi } from '@/lib/api';
 
@@ -34,8 +35,11 @@ export function MobileBottomNav() {
   // "launch") deliberately does NOT get this.
   const canAccessPremium = plan === 'scale' || plan === 'growth';
 
-  const mainItems = menuItems.slice(0, 4);
-  const moreItems = menuItems.slice(4);
+  // Team members only get the pages their role includes; owners see all.
+  const access = useAccess();
+  const allowedItems = access.isOwner ? menuItems : menuItems.filter((i) => access.canPath(i.href.split('?')[0]));
+  const mainItems = allowedItems.slice(0, 4);
+  const moreItems = allowedItems.slice(4);
 
   const handlePremiumClick = () => {
     setShowMore(false);

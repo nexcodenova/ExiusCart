@@ -377,13 +377,43 @@ export const reservationsApi = {
     api.delete(`/shops/${shopId}/reservations/${id}`),
 };
 
-// ── Staff ─────────────────────────────────────────────
-export const staffApi = {
-  getAll: (shopId: string) => api.get(`/shops/${shopId}/staff`),
-  invite: (shopId: string, data: { email: string; role: string }) =>
-    api.post(`/shops/${shopId}/staff/invite`, data),
-  remove: (shopId: string, staffId: string) =>
-    api.delete(`/shops/${shopId}/staff/${staffId}`),
+// ── Store team (roles the owner builds + the people on them) ──────────
+export interface TeamRole {
+  id: number;
+  name: string;
+  description: string | null;
+  permissions: string[];
+  member_count: number;
+}
+export interface TeamMember {
+  id: number;
+  email: string;
+  full_name: string | null;
+  status: 'invited' | 'active' | 'suspended';
+  role_id: number;
+  role_name: string | null;
+  invited_at: string | null;
+  joined_at: string | null;
+}
+export const teamApi = {
+  myAccess: () => api.get('/shops/me/access'),
+  permissions: (shopId: string) => api.get(`/shops/${shopId}/team/permissions`),
+  listRoles: (shopId: string) => api.get(`/shops/${shopId}/team/roles`),
+  createRole: (shopId: string, data: { name: string; description?: string; permissions: string[] }) =>
+    api.post(`/shops/${shopId}/team/roles`, data),
+  updateRole: (shopId: string, roleId: number, data: { name: string; description?: string; permissions: string[] }) =>
+    api.put(`/shops/${shopId}/team/roles/${roleId}`, data),
+  deleteRole: (shopId: string, roleId: number) => api.delete(`/shops/${shopId}/team/roles/${roleId}`),
+  listMembers: (shopId: string) => api.get(`/shops/${shopId}/team/members`),
+  invite: (shopId: string, data: { email: string; full_name?: string; role_id: number }) =>
+    api.post(`/shops/${shopId}/team/members`, data),
+  updateMember: (shopId: string, memberId: number, data: { role_id?: number; status?: 'active' | 'suspended' }) =>
+    api.put(`/shops/${shopId}/team/members/${memberId}`, data),
+  resend: (shopId: string, memberId: number) => api.post(`/shops/${shopId}/team/members/${memberId}/resend`),
+  remove: (shopId: string, memberId: number) => api.delete(`/shops/${shopId}/team/members/${memberId}`),
+  // Public - the invitee has no session yet.
+  inviteInfo: (token: string) => api.get('/team/invite-info', { params: { token } }),
+  acceptInvite: (data: { token: string; password: string; full_name?: string }) => api.post('/team/accept-invite', data),
 };
 
 // ── Subscription ──────────────────────────────────────

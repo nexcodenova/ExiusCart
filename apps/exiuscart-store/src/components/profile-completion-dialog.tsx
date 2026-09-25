@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { CountryFlag } from '@/components/country-flag';
 import { COUNTRY_OPTIONS } from '@/lib/countries';
 import { authApi, usersApi, shopApi } from '@/lib/api';
+import { useAccess } from '@/components/providers/access-provider';
 
 // Google/Facebook sign-ins — and the streamlined email signup — give us
 // a name and email, never a phone number, country or referral code. This asks
@@ -20,6 +21,10 @@ const SKIPPED_KEY = 'profile_prompt_skipped_session';
 const RECENT_ACCOUNT_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function ProfileCompletionDialog() {
+  // It asks for the STORE OWNER's details (store name, country, phone, referral
+  // code) and saving writes to the shop record, which only the owner can edit -
+  // a team member must never be shown it. Wait until we know who this is.
+  const { isOwner, loading: accessLoading } = useAccess();
   const [open, setOpen] = useState(false);
   const [country, setCountry] = useState('');
   const [dial, setDial] = useState('');
@@ -31,6 +36,7 @@ export function ProfileCompletionDialog() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (accessLoading || !isOwner) return;
     try { if (sessionStorage.getItem(SKIPPED_KEY) === '1') return; } catch {}
     let cancelled = false;
     (async () => {
@@ -53,7 +59,7 @@ export function ProfileCompletionDialog() {
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [accessLoading, isOwner]);
 
   const onCountry = (code: string) => {
     setCountry(code);

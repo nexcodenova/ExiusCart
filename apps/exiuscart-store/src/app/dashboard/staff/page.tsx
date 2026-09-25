@@ -1,200 +1,290 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Plus, Shield, Users, X, Trash2, Crown, ChevronDown } from 'lucide-react';
-import { staffApi } from '@/lib/api';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import {
+  UserPlus, Crown, ShieldCheck, Mail, Trash2, Loader2, CheckCircle, X, Pause, Play, Send,
+} from 'lucide-react';
+import { teamApi, type TeamMember, type TeamRole } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
-interface StaffMember {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'staff';
-  status: 'active' | 'inactive';
-  lastActive?: string;
-}
+const errMsg = (e: any, fallback: string) => {
+  const d = e?.response?.data?.detail;
+  return typeof d === 'string' ? d : fallback;
+};
 
-const ROLES = [
-  { id: 'admin', label: 'Admin', description: 'Full access to all features' },
-  { id: 'staff', label: 'Staff', description: 'POS, Orders, Products, Inventory, Customers' },
-];
+const initials = (name: string | null, email: string) =>
+  (name || email).split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || '?';
 
-export default function StaffPage() {
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [inviteData, setInviteData] = useState({ email: '', role: 'staff' });
+const STATUS: Record<TeamMember['status'], { label: string; variant: 'success' | 'default' | 'muted' }> = {
+  active: { label: 'Active', variant: 'success' },
+  invited: { label: 'Invited', variant: 'default' },
+  suspended: { label: 'Suspended', variant: 'muted' },
+};
+
+export default function TeamPage() {
+  const confirm = useConfirm();
   const shopId = typeof window !== 'undefined' ? localStorage.getItem('shop_id') ?? '' : '';
 
-  const fetchStaff = () => {
+  const [owner, setOwner] = useState<{ email: string | null; full_name: string | null } | null>(null);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [roles, setRoles] = useState<TeamRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invite, setInvite] = useState({ email: '', full_name: '', role_id: '' });
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+
+  const notify = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    window.setTimeout(() => setToast(null), 3500);
+  };
+
+  const load = useCallback(async () => {
     if (!shopId) return;
-    staffApi.getAll(shopId)
-      .then((res) => setStaff(res.data ?? []))
-      .catch(() => setStaff([]))
-      .finally(() => setLoading(false));
+    try {
+      const [m, r] = await Promise.all([teamApi.listMembers(shopId), teamApi.listRoles(shopId)]);
+      setOwner(m.data.owner);
+      setMembers(m.data.members);
+      setRoles(r.data.roles);
+    } catch (e) {
+      notify(errMsg(e, 'Could not load your team.'), 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [shopId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openInvite = () => {
+    setInvite({ email: '', full_name: '', role_id: roles[0] ? String(roles[0].id) : '' });
+    setInviteError('');
+    setInviteOpen(true);
   };
 
-  useEffect(() => { fetchStaff(); }, [shopId]);
-
-  const handleInvite = async (e: React.FormEvent) => {
+  const sendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
+    setInviteError('');
+    if (!invite.role_id) { setInviteError('Pick a role first.'); return; }
+    setInviting(true);
     try {
-      await staffApi.invite(shopId, inviteData);
-      fetchStaff();
-    } catch {}
-    setShowAddModal(false);
-    setInviteData({ email: '', role: 'staff' });
+      await teamApi.invite(shopId, { email: invite.email.trim(), full_name: invite.full_name.trim() || undefined, role_id: Number(invite.role_id) });
+      setInviteOpen(false);
+      notify(`Invitation sent to ${invite.email.trim()}`);
+      load();
+    } catch (err) {
+      setInviteError(errMsg(err, 'Could not send the invitation.'));
+    } finally {
+      setInviting(false);
+    }
   };
 
-  const handleRemove = async (id: string) => {
+  const run = async (id: number, action: () => Promise<unknown>, okMsg: string) => {
+    setBusyId(id);
     try {
-      await staffApi.remove(shopId, id);
-      setStaff((prev) => prev.filter((s) => s.id !== id));
-    } catch {}
+      await action();
+      notify(okMsg);
+      await load();
+    } catch (e) {
+      notify(errMsg(e, 'Something went wrong.'), 'error');
+    } finally {
+      setBusyId(null);
+    }
   };
 
-  const filtered = staff.filter((s) => {
-    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === 'all' || s.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
+  const changeRole = (m: TeamMember, roleId: string) =>
+    run(m.id, () => teamApi.updateMember(shopId, m.id, { role_id: Number(roleId) }), `${m.email} is now ${roles.find((r) => String(r.id) === roleId)?.name ?? 'updated'}`);
+
+  const toggleSuspend = async (m: TeamMember) => {
+    const suspending = m.status === 'active';
+    if (suspending) {
+      const ok = await confirm({
+        title: `Pause ${m.full_name || m.email}?`,
+        description: 'They will be signed out of your store straight away and can’t get back in until you reactivate them. Nothing they did is deleted.',
+        confirmText: 'Pause access',
+        variant: 'destructive',
+      });
+      if (!ok) return;
+    }
+    run(m.id, () => teamApi.updateMember(shopId, m.id, { status: suspending ? 'suspended' : 'active' }),
+      suspending ? `${m.email} paused` : `${m.email} reactivated`);
+  };
+
+  const removeMember = async (m: TeamMember) => {
+    const ok = await confirm({
+      title: `Remove ${m.full_name || m.email}?`,
+      description: m.status === 'invited'
+        ? 'The invitation link stops working.'
+        : 'They lose access to your store immediately. Their own ExiusCart account isn’t deleted.',
+      confirmText: 'Remove',
+      variant: 'destructive',
+    });
+    if (!ok) return;
+    run(m.id, () => teamApi.remove(shopId, m.id), `${m.email} removed`);
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Staff & Roles</h1>
-          <p className="text-muted-foreground text-sm">Manage team members and their access</p>
-        </div>
-        <button type="button" onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition">
-          <Plus className="w-4 h-4" /> Invite Staff
-        </button>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total Staff</p>
-          <p className="text-2xl font-bold text-foreground">{loading ? '—' : staff.length}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-xs text-muted-foreground mb-1">Admins</p>
-          <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{loading ? '—' : staff.filter(s=>s.role==='admin').length}</p>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-xs text-muted-foreground mb-1">Staff Members</p>
-          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{loading ? '—' : staff.filter(s=>s.role==='staff').length}</p>
-        </div>
-      </div>
-
-      <div className="bg-card rounded-xl border border-border p-4 flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <input type="text" placeholder="Search staff..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground" />
-        </div>
-        <div className="relative">
-          <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Filter by role"
-            className="appearance-none w-full sm:w-40 px-4 py-2.5 pr-10 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground">
-            <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-        </div>
-      </div>
-
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        {loading ? (
-          <div className="p-8 space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-16 text-center">
-            <Users className="w-14 h-14 text-muted-foreground mx-auto mb-4 opacity-40" />
-            <h3 className="font-semibold text-foreground mb-1">{searchQuery || roleFilter !== 'all' ? 'No staff found' : 'No staff members yet'}</h3>
-            <p className="text-sm text-muted-foreground mb-5">{searchQuery || roleFilter !== 'all' ? 'Try a different search' : 'Invite your first team member to get started'}</p>
-            {!searchQuery && roleFilter === 'all' && (
-              <button type="button" onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-                <Plus className="w-4 h-4" /> Invite Staff
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {filtered.map((member) => (
-              <div key={member.id} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg font-bold text-primary">{member.name.charAt(0).toUpperCase()}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-foreground">{member.name}</h3>
-                    {member.role === 'admin' && <Crown className="w-4 h-4 text-purple-500" />}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{member.email}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${member.role === 'admin' ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>
-                    {member.role}
-                  </span>
-                  <button type="button" onClick={() => handleRemove(member.id)} aria-label={`Remove ${member.name}`}
-                    className="p-2 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive transition">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Roles Info */}
-      <div className="bg-card rounded-xl border border-border p-5">
-        <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2"><Shield className="w-5 h-5" /> Role Permissions</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
-          {ROLES.map((role) => (
-            <div key={role.id} className={`p-4 rounded-lg border ${role.id === 'admin' ? 'border-purple-500/30 bg-purple-500/5' : 'border-blue-500/30 bg-blue-500/5'}`}>
-              <div className="flex items-center gap-2 mb-1">
-                <Crown className={`w-4 h-4 ${role.id === 'admin' ? 'text-purple-500' : 'text-blue-500'}`} />
-                <span className="font-medium text-foreground">{role.label}</span>
-              </div>
-              <p className="text-xs text-muted-foreground">{role.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-xl border border-border w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="text-lg font-semibold text-foreground">Invite Staff Member</h2>
-              <button type="button" onClick={() => setShowAddModal(false)} aria-label="Close" className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition"><X className="w-5 h-5" /></button>
-            </div>
-            <form onSubmit={handleInvite} className="p-4 space-y-4">
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Email Address *</label>
-                <input type="email" value={inviteData.email} onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })} required
-                  placeholder="staff@yourshop.com" className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground" />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Role *</label>
-                <select value={inviteData.role} onChange={(e) => setInviteData({ ...inviteData, role: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground">
-                  <option value="staff">Staff — Limited Access</option>
-                  <option value="admin">Admin — Full Access</option>
-                </select>
-              </div>
-              <p className="text-xs text-muted-foreground">An invitation email will be sent to this address.</p>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>
-                <button type="submit" className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition font-medium">Send Invite</button>
-              </div>
-            </form>
-          </div>
+    <div className="mx-auto max-w-4xl">
+      {toast && (
+        <div className={`fixed right-4 top-4 z-[70] flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium shadow-lg ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+          {toast.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <X className="h-4 w-4" />}
+          {toast.msg}
         </div>
       )}
+
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Team</h1>
+          <p className="text-sm text-muted-foreground">Invite people to help run your store, and choose exactly what each of them can do.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild variant="outline"><Link href="/dashboard/staff/roles"><ShieldCheck className="h-4 w-4" /> Roles &amp; permissions</Link></Button>
+          <Button onClick={openInvite} disabled={loading}><UserPlus className="h-4 w-4" /> Invite member</Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[72px] w-full rounded-xl" />)}</div>
+      ) : (
+        <>
+          {roles.length === 0 && (
+            <Card className="mb-4 border-amber-500/30 bg-amber-500/5">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <p className="text-sm text-foreground">
+                  <span className="font-medium">Start by creating a role.</span>{' '}
+                  <span className="text-muted-foreground">A role is a set of permissions you choose, like &ldquo;Warehouse&rdquo; or &ldquo;Support desk&rdquo;. You&apos;ll assign one to each person you invite.</span>
+                </p>
+                <Button asChild size="sm"><Link href="/dashboard/staff/roles">Create a role</Link></Button>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardContent className="divide-y divide-border p-0">
+              <div className="flex items-center gap-3 p-4">
+                <Avatar text={initials(owner?.full_name ?? null, owner?.email ?? '')} owner />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{owner?.full_name || owner?.email} <span className="text-muted-foreground">(you)</span></p>
+                  <p className="truncate text-xs text-muted-foreground">{owner?.email}</p>
+                </div>
+                <Badge variant="default"><Crown className="mr-1 h-3 w-3" /> Owner</Badge>
+              </div>
+
+              {members.map((m) => (
+                <div key={m.id} className="flex flex-wrap items-center gap-3 p-4">
+                  <Avatar text={initials(m.full_name, m.email)} />
+                  <div className="min-w-0 flex-1 basis-48">
+                    <p className="truncate text-sm font-medium text-foreground">{m.full_name || m.email}</p>
+                    <p className="truncate text-xs text-muted-foreground">{m.full_name ? m.email : STATUS[m.status].label === 'Invited' ? 'Waiting to accept' : ''}</p>
+                  </div>
+                  <Badge variant={STATUS[m.status].variant}>{STATUS[m.status].label}</Badge>
+                  <div className="w-44">
+                    <Select value={String(m.role_id)} onValueChange={(v) => changeRole(m, v)} disabled={busyId === m.id}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {roles.map((r) => <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {busyId === m.id && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    {m.status === 'invited' && (
+                      <Button variant="ghost" size="icon" title="Resend invitation" disabled={busyId === m.id}
+                        onClick={() => run(m.id, () => teamApi.resend(shopId, m.id), `Invitation re-sent to ${m.email}`)}>
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {m.status === 'active' && (
+                      <Button variant="ghost" size="icon" title="Pause access" disabled={busyId === m.id} onClick={() => toggleSuspend(m)}>
+                        <Pause className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {m.status === 'suspended' && (
+                      <Button variant="ghost" size="icon" title="Reactivate" disabled={busyId === m.id} onClick={() => toggleSuspend(m)}>
+                        <Play className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" title="Remove from team" disabled={busyId === m.id} onClick={() => removeMember(m)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {members.length === 0 && roles.length > 0 && (
+                <div className="p-8 text-center">
+                  <Mail className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+                  <p className="text-sm font-medium text-foreground">Just you so far</p>
+                  <p className="mb-3 text-xs text-muted-foreground">Invite someone and they&apos;ll get an email to set up their login.</p>
+                  <Button size="sm" onClick={openInvite}><UserPlus className="h-4 w-4" /> Invite your first member</Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite a team member</DialogTitle>
+            <DialogDescription>They&apos;ll get an email with a link to set their password. The link works for 7 days.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={sendInvite} className="space-y-4 p-5">
+            {inviteError && <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{inviteError}</div>}
+            <div className="space-y-1.5">
+              <Label htmlFor="invite-email">Email</Label>
+              <Input id="invite-email" type="email" required value={invite.email} placeholder="name@example.com"
+                onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="invite-name">Name <span className="text-muted-foreground">(optional)</span></Label>
+              <Input id="invite-name" value={invite.full_name} placeholder="So the email greets them properly"
+                onChange={(e) => setInvite({ ...invite, full_name: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Role</Label>
+              {roles.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  You haven&apos;t created any roles yet. <Link href="/dashboard/staff/roles" className="font-medium text-primary underline">Create one first</Link>.
+                </p>
+              ) : (
+                <Select value={invite.role_id} onValueChange={(v) => setInvite({ ...invite, role_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Choose a role" /></SelectTrigger>
+                  <SelectContent>
+                    {roles.map((r) => <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={inviting || roles.length === 0}>
+                {inviting && <Loader2 className="h-4 w-4 animate-spin" />} Send invitation
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function Avatar({ text, owner = false }: { text: string; owner?: boolean }) {
+  return (
+    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${owner ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+      {text}
     </div>
   );
 }
