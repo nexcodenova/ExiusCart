@@ -347,6 +347,50 @@ def remove_member(shop_id: int, member_id: int, request: Request,
     return {"ok": True}
 
 
+# ── Team activity (what people did in this store) ─────────────────────────────
+
+@router.get("/shops/{shop_id}/team/activity")
+def team_activity(
+    shop_id: int,
+    actor_email: Optional[str] = None,
+    before_id: Optional[int] = None,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Every change made in this store (by the owner or the team) plus team
+    sign-ins, newest first. Owner-only, like the rest of /team. The same
+    events feed Admin > Audit Log across all stores."""
+    from app.models.audit_log import AuditLog
+    _owner_shop(shop_id, current_user, db)
+    limit = min(max(limit, 1), 100)
+
+    q = db.query(AuditLog).filter(
+        AuditLog.shop_id == shop_id,
+        AuditLog.event_type.in_(("shop_action", "login", "social_login")),
+    )
+    if actor_email:
+        q = q.filter(func.lower(AuditLog.actor_email) == actor_email.strip().lower())
+    if before_id:
+        q = q.filter(AuditLog.id < before_id)
+    rows = q.order_by(AuditLog.id.desc()).limit(limit + 1).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+
+    return {
+        "events": [
+            {
+                "id": r.id, "event_type": r.event_type, "actor_email": r.actor_email, "actor_name": r.actor_name,
+                "description": r.description, "country": r.country, "created_at": r.created_at.isoformat() if r.created_at else None,
+                "acting_as": (r.extra or {}).get("as"), "role": (r.extra or {}).get("role"), "area": (r.extra or {}).get("area"),
+            }
+            for r in rows
+        ],
+        "has_more": has_more,
+        "next_before_id": rows[-1].id if rows and has_more else None,
+    }
+
+
 # ── Accepting an invitation (public - the invitee has no account/session yet) ─
 
 def _load_invite(token: str, db: Session) -> ShopStaff:

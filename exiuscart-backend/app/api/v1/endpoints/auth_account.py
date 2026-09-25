@@ -253,7 +253,10 @@ def social_login(request: Request, data: SocialLoginIn, db: Session = Depends(ge
             db.commit()
             db.refresh(user)
 
-    signup_shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first() if is_new else None
+    signup_shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
+    if signup_shop is None and not user.is_superuser:
+        from app.core.shop_access import find_staff_shop
+        signup_shop = find_staff_shop(db, user)
     record_audit_event(
         db, "social_signup" if is_new else "social_login", request=request,
         actor_user_id=user.id, actor_email=user.email, actor_name=user.full_name,

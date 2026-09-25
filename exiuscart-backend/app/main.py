@@ -646,6 +646,11 @@ app.add_middleware(
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
+# Records who changed what in each store (see app/core/action_audit.py) - runs
+# after the response is sent, only for successful writes, and never fails a request.
+from app.core.action_audit import ShopActionAuditMiddleware  # noqa: E402
+app.add_middleware(ShopActionAuditMiddleware)
+
 
 @app.get("/")
 async def root():

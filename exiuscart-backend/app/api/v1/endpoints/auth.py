@@ -383,10 +383,16 @@ async def login(credentials: UserLogin, request: Request, db: Session = Depends(
                         detail="pending_approval"
                     )
 
+    # A team member owns no store, so tie their sign-in to the store they work at -
+    # otherwise it never shows up under that store in Admin > Store Activity.
+    audit_shop = login_shop
+    if audit_shop is None and not user.is_superuser:
+        from app.core.shop_access import find_staff_shop
+        audit_shop = find_staff_shop(db, user)
     record_audit_event(
         db, "admin_login" if user.is_superuser else "login", request=request,
         actor_user_id=user.id, actor_email=user.email, actor_name=user.full_name,
-        shop_id=login_shop.id if login_shop else None,
+        shop_id=audit_shop.id if audit_shop else None,
         description=f"{user.email} logged in",
     )
 
