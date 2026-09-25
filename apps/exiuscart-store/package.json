@@ -32,7 +32,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.2.0",
-    "dompurify": "^2.5.8",
+    "dompurify": "^3.4.16",
     "flag-icons": "^7.5.0",
     "i18n-iso-countries": "^7.14.0",
     "jsbarcode": "^3.12.3",

@@ -17,7 +17,7 @@
     "axios": "^1.6.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dompurify": "^2.5.8",
+    "dompurify": "^3.4.16",
     "lucide-react": "^0.309.0",
     "next": "^15.5.24",
     "react": "^18.2.0",
