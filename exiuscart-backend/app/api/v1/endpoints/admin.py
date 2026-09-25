@@ -3546,3 +3546,96 @@ def delete_nexcode(
         raise HTTPException(status_code=404, detail="Code not found")
     db.delete(license)
     db.commit()
+
+
+# ── Audit log ─────────────────────────────────────────────────────────────────
+# Platform-wide event trail (signups, logins, staff/admin actions) - the
+# Logs-Explorer-style view. Deliberately read-only and paginated by cursor
+# (id, not offset) since this table only grows and can get large.
+
+@router.get("/audit-log")
+def list_audit_log(
+    event_type: Optional[str] = None,
+    shop_id: Optional[int] = None,
+    q: Optional[str] = None,
+    before_id: Optional[int] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    from app.models.audit_log import AuditLog
+    limit = min(max(limit, 1), 200)
+
+    query = db.query(AuditLog)
+    if event_type:
+        query = query.filter(AuditLog.event_type == event_type)
+    if shop_id:
+        query = query.filter(AuditLog.shop_id == shop_id)
+    if q:
+        like = f"%{q}%"
+        query = query.filter((AuditLog.actor_email.ilike(like)) | (AuditLog.description.ilike(like)))
+    if before_id:
+        query = query.filter(AuditLog.id < before_id)
+
+    rows = query.order_by(AuditLog.id.desc()).limit(limit + 1).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+
+    return {
+        "events": [
+            {
+                "id": r.id,
+                "event_type": r.event_type,
+                "actor_user_id": r.actor_user_id,
+                "actor_email": r.actor_email,
+                "actor_name": r.actor_name,
+                "shop_id": r.shop_id,
+                "ip_address": r.ip_address,
+                "country": r.country,
+                "user_agent": r.user_agent,
+                "description": r.description,
+                "extra": r.extra,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ],
+        "has_more": has_more,
+        "next_before_id": rows[-1].id if rows and has_more else None,
+    }
+
+
+@router.get("/audit-log/event-types")
+def list_audit_log_event_types(db: Session = Depends(get_db), _: User = Depends(require_superuser)):
+    from app.models.audit_log import AuditLog
+    rows = db.query(AuditLog.event_type).distinct().all()
+    return {"event_types": sorted(r[0] for r in rows)}
+
+
+@router.get("/audit-log/timeline")
+def audit_log_timeline(
+    event_type: Optional[str] = None,
+    q: Optional[str] = None,
+    days: int = 7,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superuser),
+):
+    """Hourly event counts for the last `days` days - the bar-chart strip
+    above the table, same idea as Google Cloud Logs Explorer's timeline.
+    Buckets by hour (not day) so a spike within a single day is still
+    visible, matching what that reference view actually shows."""
+    from app.models.audit_log import AuditLog
+    days = min(max(days, 1), 30)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    query = db.query(
+        func.date_trunc("hour", AuditLog.created_at).label("bucket"),
+        func.count(AuditLog.id).label("count"),
+    ).filter(AuditLog.created_at >= since)
+    if event_type:
+        query = query.filter(AuditLog.event_type == event_type)
+    if q:
+        like = f"%{q}%"
+        query = query.filter((AuditLog.actor_email.ilike(like)) | (AuditLog.description.ilike(like)))
+
+    rows = query.group_by("bucket").order_by("bucket").all()
+    return {"buckets": [{"time": r.bucket.isoformat(), "count": r.count} for r in rows]}

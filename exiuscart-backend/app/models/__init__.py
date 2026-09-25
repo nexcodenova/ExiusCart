@@ -60,3 +60,4 @@ from app.models.customer_segment import CustomerSegment
 from app.models.activity_log import ActivityLog
 from app.models.discount import Discount
 from app.models.supplier_return import SupplierReturn
+from app.models.audit_log import AuditLog

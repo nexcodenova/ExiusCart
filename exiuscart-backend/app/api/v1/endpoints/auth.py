@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 import jwt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.email import send_welcome_email, send_thedersi_welcome_email, send_otp_email, send_new_signup_notification
 from app.core.thedersi import is_thedersi_shop
+from app.core.audit_log import record_audit_event
 from app.models.user import User
 from app.models.shop import Shop
 from app.models.subscription import Subscription
@@ -172,7 +173,7 @@ class VerifyOTPIn(BaseModel):
 
 
 @router.post("/verify-otp", response_model=Token)
-def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
+def verify_otp(data: VerifyOTPIn, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Account not found")
@@ -247,6 +248,13 @@ def verify_otp(data: VerifyOTPIn, db: Session = Depends(get_db)):
             shop.name if shop else "",
             "Launch (7-day trial)",
         )
+
+    record_audit_event(
+        db, "signup", request=request,
+        actor_user_id=user.id, actor_email=user.email, actor_name=user.full_name,
+        shop_id=shop.id if shop else None,
+        description=f"{user.email} signed up" + (f" ({data.plan_type})" if data.plan_type else ""),
+    )
 
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token, user=UserResponse.model_validate(user))
@@ -327,10 +335,15 @@ def resend_otp(data: ResendOTPIn, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(credentials: UserLogin, db: Session = Depends(get_db)):
+async def login(credentials: UserLogin, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == credentials.email).first()
 
     if not user or not verify_password(credentials.password, user.hashed_password):
+        record_audit_event(
+            db, "login_failed", request=request,
+            actor_user_id=user.id if user else None, actor_email=credentials.email,
+            description=f"Failed login attempt for {credentials.email}",
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
@@ -351,6 +364,7 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     # Block login only if the account has NEVER been approved (no active/trial sub exists).
     # If user submitted an upgrade request during an active trial, they still have a trial
     # sub — do not block them just because the upgrade is pending_approval.
+    login_shop = None
     if not user.is_superuser:
         login_shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
         if login_shop:
@@ -368,6 +382,13 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="pending_approval"
                     )
+
+    record_audit_event(
+        db, "admin_login" if user.is_superuser else "login", request=request,
+        actor_user_id=user.id, actor_email=user.email, actor_name=user.full_name,
+        shop_id=login_shop.id if login_shop else None,
+        description=f"{user.email} logged in",
+    )
 
     access_token = create_access_token(data={"sub": str(user.id)})
 

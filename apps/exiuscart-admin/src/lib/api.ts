@@ -129,6 +129,13 @@ export const adminApi = {
     api.post('/admin/shopping/meta-ads/auto-attach', null, { params: { limit, product_id: productId } }),
 
   // Prodora Digital Bundles — ExiusCart's own design packs sold to sellers.
+  // Platform-wide audit log — signups, logins, staff/admin actions.
+  auditLog: (params: { event_type?: string; shop_id?: number; q?: string; before_id?: number; limit?: number }) =>
+    api.get('/admin/audit-log', { params }),
+  auditLogEventTypes: () => api.get('/admin/audit-log/event-types'),
+  auditLogTimeline: (params: { event_type?: string; q?: string; days?: number }) =>
+    api.get('/admin/audit-log/timeline', { params }),
+
   listDigitalBundles: () => api.get('/admin/prodora-bundles'),
   createDigitalBundle: (data: any) => api.post('/admin/prodora-bundles', data),
   updateDigitalBundle: (id: number, data: any) => api.put(`/admin/prodora-bundles/${id}`, data),

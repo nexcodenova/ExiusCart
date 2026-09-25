@@ -39,6 +39,7 @@ from app.core.email import (
     send_new_signup_notification,
 )
 from app.core.rate_limit import limiter
+from app.core.audit_log import record_audit_event
 from app.api.v1.deps import get_current_user
 from app.core.security import get_password_hash, create_access_token
 from app.models.affiliate import Affiliate
@@ -251,6 +252,14 @@ def social_login(request: Request, data: SocialLoginIn, db: Session = Depends(ge
             user.is_verified = True
             db.commit()
             db.refresh(user)
+
+    signup_shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first() if is_new else None
+    record_audit_event(
+        db, "social_signup" if is_new else "social_login", request=request,
+        actor_user_id=user.id, actor_email=user.email, actor_name=user.full_name,
+        shop_id=signup_shop.id if signup_shop else None,
+        description=f"{user.email} {'signed up' if is_new else 'logged in'} via {data.provider}",
+    )
 
     token = create_access_token(data={"sub": str(user.id)})
     return {
