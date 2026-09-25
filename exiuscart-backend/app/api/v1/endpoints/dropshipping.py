@@ -2416,6 +2416,18 @@ async def connect_apikey(
     # API docs) and 1688 (no key check) are saved as-is and reported unverified.
     label = SUPPLIER_LABELS.get(data.supplier_type, data.supplier_type.title())
     verdict = await _verify_supplier_key(data.supplier_type, data.api_key)
+    printify_shop_id = None
+    if verdict == "valid" and data.supplier_type == "printify":
+        # Which Printify shop products/orders go through (kept in access_token, like Printful's store id).
+        from app.api.v1.endpoints.printify import pick_shop_id, PRINTIFY_BASE
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                shops = (await client.get(f"{PRINTIFY_BASE}/shops.json", headers={"Authorization": f"Bearer {data.api_key}", "User-Agent": "ExiusCart"})).json()
+        except Exception:
+            shops = None
+        printify_shop_id = pick_shop_id(shops)
+        if not printify_shop_id:
+            raise HTTPException(status_code=400, detail="Your Printify account has no shop yet. Create one in Printify (Manual order or API), then connect again.")
     if verdict == "invalid":
         raise HTTPException(status_code=400, detail=f"{label} rejected this API key. Copy it again from your {label} account and try again.")
     if verdict == "unreachable":
@@ -2429,11 +2441,14 @@ async def connect_apikey(
     if existing:
         existing.api_key = enc_key
         existing.is_active = True
+        if printify_shop_id:
+            existing.access_token = printify_shop_id
     else:
         conn = DropshipConnection(
             shop_id=shop_id,
             supplier_type=data.supplier_type,
             api_key=enc_key,
+            access_token=printify_shop_id,
         )
         db.add(conn)
     db.commit()
@@ -2843,6 +2858,10 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
             "supplier_order_id": pf_order_id,
             "message": "Order sent to Printful. Tracking will appear here once it ships.",
         }
+
+    if supplier_type == "printify":
+        from app.api.v1.endpoints.printify import place_printify_order
+        return await place_printify_order(shop_id, order_id, order, db)
 
     if supplier_type == "aliexpress":
         conn = db.query(DropshipConnection).filter(

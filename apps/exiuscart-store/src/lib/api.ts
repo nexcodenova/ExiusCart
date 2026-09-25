@@ -1114,6 +1114,10 @@ export const dropshipApi = {
     api.get(`/shops/${shopId}/dropship/printful/my-products`, { params: { page } }),
   printfulImport: (shopId: string, syncProductId: number, sellingPrice?: number) =>
     api.post(`/shops/${shopId}/dropship/printful/import`, { sync_product_id: syncProductId, selling_price: sellingPrice }),
+  printifyMyProducts: (shopId: string, page = 1) =>
+    api.get(`/shops/${shopId}/dropship/printify/my-products`, { params: { page } }),
+  printifyImport: (shopId: string, productId: string, sellingPrice?: number) =>
+    api.post(`/shops/${shopId}/dropship/printify/import`, { product_id: productId, selling_price: sellingPrice }),
   aliexpressAuthorize: (shopId: string) =>
     api.get(`/shops/${shopId}/dropship/aliexpress/authorize`),
   aliexpressImport: (shopId: string, productUrl: string, sellingPrice?: number) =>

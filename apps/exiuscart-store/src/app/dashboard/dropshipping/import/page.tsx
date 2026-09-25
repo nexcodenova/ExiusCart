@@ -18,6 +18,8 @@ import FindSupplierMenu, { type CJMatch } from '@/components/dropshipping/FindSu
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
+type SupplierKey = 'cj' | 'printful' | 'printify' | 'aliexpress' | 'hypersku';
+
 interface CJProduct {
   pid: string;
   name: string;
@@ -37,7 +39,7 @@ interface CJProductDetail {
 }
 
 interface PrintfulProduct {
-  sync_product_id: number;
+  sync_product_id: number | string;
   name: string;
   image: string;
   variant_count: number;
@@ -49,9 +51,10 @@ interface PrintfulProduct {
 // no separate detail-preview call: the import endpoint itself fetches full
 // sync_variant detail and creates the product in one step.
 
-function PrintfulImportModal({ shopId, product, onClose, onImported }: {
+function PrintfulImportModal({ shopId, product, onClose, onImported, provider = 'printful' }: {
   shopId: string;
   product: PrintfulProduct;
+  provider?: 'printful' | 'printify';
   onClose: () => void;
   onImported: (productId: number, name: string) => void;
 }) {
@@ -64,7 +67,9 @@ function PrintfulImportModal({ shopId, product, onClose, onImported }: {
     setImporting(true); setError('');
     try {
       const price = parseFloat(sellingPrice) || undefined;
-      const r = await dropshipApi.printfulImport(shopId, product.sync_product_id, price);
+      const r = provider === 'printify'
+        ? await dropshipApi.printifyImport(shopId, String(product.sync_product_id), price)
+        : await dropshipApi.printfulImport(shopId, Number(product.sync_product_id), price);
       onImported(r.data.product_id, r.data.name);
     } catch (e: any) {
       setError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Import failed. Please try again.');
@@ -98,7 +103,7 @@ function PrintfulImportModal({ shopId, product, onClose, onImported }: {
                 <span className="text-muted-foreground text-xs">{baseSym}</span>
                 <input id="pf-sell-price" type="number" step="0.01" min="0" value={sellingPrice}
                   onChange={(e) => setSellingPrice(e.target.value)}
-                  placeholder="Use Printful price"
+                  placeholder={`Use ${provider === 'printify' ? 'Printify' : 'Printful'} price`}
                   className="w-28 px-2 py-1 bg-background border border-border rounded-lg text-sm text-right font-semibold outline-none focus:ring-2 focus:ring-primary text-foreground" />
               </div>
             </div>
@@ -357,17 +362,23 @@ function CJImportModal({ shopId, product, onClose, onImported, supplier = 'cj' }
 // Genuinely describes each supplier's real import flow — no step here that
 // isn't backed by an actual endpoint/behaviour used elsewhere on this page.
 
-const SUPPLIER_LABEL: Record<'cj' | 'printful' | 'aliexpress' | 'hypersku', string> = {
-  cj: 'CJ', printful: 'Printful', aliexpress: 'AliExpress', hypersku: 'HyperSKU',
+const SUPPLIER_LABEL: Record<SupplierKey, string> = {
+  cj: 'CJ', printful: 'Printful', printify: 'Printify', aliexpress: 'AliExpress', hypersku: 'HyperSKU',
 };
 
-const IMPORT_STEPS: Record<'cj' | 'printful' | 'aliexpress' | 'hypersku', { title: string; desc: string }[]> = {
+const IMPORT_STEPS: Record<SupplierKey, { title: string; desc: string }[]> = {
   cj: [
     { title: 'Search the catalog', desc: 'Type a keyword above to search CJ’s live catalog.' },
     { title: 'Review the product', desc: 'Check its real photos, description and USD cost.' },
     { title: 'Set your price', desc: 'Leave it blank to auto-calculate 2x cost, converted to your currency.' },
     { title: 'Import', desc: 'It’s added straight to My Products.' },
     { title: 'Edit anytime', desc: 'Title, images, description and price can all be changed after.' },
+  ],
+  printify: [
+    { title: 'Design on Printify', desc: 'Create and publish a product in your Printify shop first.' },
+    { title: 'It appears here', desc: 'Your Printify products are listed under this tab.' },
+    { title: 'Import it', desc: 'Variants, images and Printify’s own cost come across.' },
+    { title: 'Start selling', desc: 'Orders are sent to Printify automatically once a product is linked.' },
   ],
   printful: [
     { title: 'Design on Printful', desc: 'Publish a product on Printful’s own dashboard first.' },
@@ -389,14 +400,15 @@ const IMPORT_STEPS: Record<'cj' | 'printful' | 'aliexpress' | 'hypersku', { titl
   ],
 };
 
-const IMPORT_PRO_TIP: Record<'cj' | 'printful' | 'aliexpress' | 'hypersku', string> = {
+const IMPORT_PRO_TIP: Record<SupplierKey, string> = {
   cj: 'Before you commit, use the “See real ads for this product” check in the import dialog — it pulls real, currently-running ads from Meta’s Ad Library so you can gauge demand first.',
+  printify: 'Printify shows its own cost for each variant, so your margin is exact. Check that billing is set up on your Printify account before the first order.',
   printful: 'Since you’re selling your own designs, there’s no external cost to compare — just make sure your retail price on Printful’s side already covers their base cost before publishing.',
   aliexpress: 'After importing, use the “See real ads for this product” check that appears below — it pulls real, currently-running ads from Meta’s Ad Library so you can gauge demand.',
   hypersku: 'Before you commit, use the “See real ads for this product” check in the import dialog — it pulls real, currently-running ads from Meta’s Ad Library so you can gauge demand first.',
 };
 
-function ImportHelpPanel({ supplier }: { supplier: 'cj' | 'printful' | 'aliexpress' | 'hypersku' }) {
+function ImportHelpPanel({ supplier }: { supplier: SupplierKey }) {
   const steps = IMPORT_STEPS[supplier];
   return (
     <aside className="lg:sticky lg:top-6 space-y-4">
@@ -446,10 +458,8 @@ function FeatureChip({ icon: Icon, label, colorClass }: { icon: React.ElementTyp
 
 // ── Shared building blocks ───────────────────────────────────────────────────
 
-type SupplierKey = 'cj' | 'printful' | 'aliexpress' | 'hypersku';
-
 const SUPPLIER_ICON: Record<SupplierKey, React.ElementType> = {
-  cj: Package, printful: Shirt, aliexpress: ShoppingBag, hypersku: Package,
+  cj: Package, printful: Shirt, printify: Shirt, aliexpress: ShoppingBag, hypersku: Package,
 };
 
 const POPULAR_SEARCHES = ['Phone case', 'LED lights', 'Yoga mat', 'Wireless earbuds', 'Pet toys', 'Kitchen gadgets', 'Water bottle', 'Car accessories'];
@@ -578,7 +588,7 @@ export default function ImportProductsPage() {
 
   // Only relevant once more than one supplier is connected — otherwise the
   // page just shows whichever one is available with no switcher at all.
-  const [supplier, setSupplier] = useState<'cj' | 'printful' | 'aliexpress' | 'hypersku'>('cj');
+  const [supplier, setSupplier] = useState<SupplierKey>('cj');
 
   // HyperSKU has real catalog + "my products" endpoints (see backend), but
   // catalog list has no keyword filter — so this is two flat lists (tab
@@ -618,6 +628,13 @@ export default function ImportProductsPage() {
   const [printfulLoaded, setPrintfulLoaded] = useState(false);
   const [printfulImportTarget, setPrintfulImportTarget] = useState<PrintfulProduct | null>(null);
 
+  const [printifyConnected, setPrintifyConnected] = useState(false);
+  const [printifyProducts, setPrintifyProducts] = useState<PrintfulProduct[]>([]);
+  const [loadingPrintify, setLoadingPrintify] = useState(false);
+  const [printifyLoaded, setPrintifyLoaded] = useState(false);
+  const [printifyError, setPrintifyError] = useState('');
+  const [printifyImportTarget, setPrintifyImportTarget] = useState<PrintfulProduct | null>(null);
+
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
   useEffect(() => {
@@ -631,13 +648,15 @@ export default function ImportProductsPage() {
         const suppliers = supRes.data?.suppliers ?? [];
         const cj = suppliers.some((s: any) => s.supplier_type === 'cj' && s.connected);
         const printful = suppliers.some((s: any) => s.supplier_type === 'printful' && s.connected);
+        const printify = suppliers.some((s: any) => s.supplier_type === 'printify' && s.connected);
         const aliexpress = suppliers.some((s: any) => s.supplier_type === 'aliexpress' && s.connected);
         const hypersku = suppliers.some((s: any) => s.supplier_type === 'hypersku' && s.connected);
         setCjConnected(cj);
         setPrintfulConnected(printful);
+        setPrintifyConnected(printify);
         setAliexpressConnected(aliexpress);
         setHyperskuConnected(hypersku);
-        setSupplier(cj ? 'cj' : printful ? 'printful' : aliexpress ? 'aliexpress' : 'hypersku');
+        setSupplier(cj ? 'cj' : printful ? 'printful' : printify ? 'printify' : aliexpress ? 'aliexpress' : 'hypersku');
         setIsTheDersiUser((connRes.data ?? []).some((c: any) => c.channel_type === 'thedersi'));
       })
       .catch(() => {})
@@ -652,6 +671,15 @@ export default function ImportProductsPage() {
       .catch(() => {})
       .finally(() => { setLoadingPrintful(false); setPrintfulLoaded(true); });
   }, [supplier, printfulLoaded, shopId, printfulConnected]);
+
+  useEffect(() => {
+    if (supplier !== 'printify' || printifyLoaded || !shopId || !printifyConnected) return;
+    setLoadingPrintify(true); setPrintifyError('');
+    dropshipApi.printifyMyProducts(shopId)
+      .then((r) => setPrintifyProducts((r.data?.products ?? []).map((x: any) => ({ ...x, sync_product_id: x.product_id }))))
+      .catch((e: any) => setPrintifyError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Could not load your Printify products.'))
+      .finally(() => { setLoadingPrintify(false); setPrintifyLoaded(true); });
+  }, [supplier, printifyLoaded, shopId, printifyConnected]);
 
   useEffect(() => {
     if (supplier !== 'hypersku' || hyperskuTab !== 'catalog' || hyperskuLoaded || !shopId || !hyperskuConnected) return;
@@ -725,7 +753,7 @@ export default function ImportProductsPage() {
     );
   }
 
-  const connectedCount = [cjConnected, printfulConnected, aliexpressConnected, hyperskuConnected].filter(Boolean).length;
+  const connectedCount = [cjConnected, printfulConnected, printifyConnected, aliexpressConnected, hyperskuConnected].filter(Boolean).length;
 
   if (connectedCount === 0) {
     return (
@@ -743,13 +771,14 @@ export default function ImportProductsPage() {
   }
 
   const suppliers = ([
-    cjConnected && 'cj', printfulConnected && 'printful', aliexpressConnected && 'aliexpress', hyperskuConnected && 'hypersku',
+    cjConnected && 'cj', printfulConnected && 'printful', printifyConnected && 'printify', aliexpressConnected && 'aliexpress', hyperskuConnected && 'hypersku',
   ].filter(Boolean)) as SupplierKey[];
-  const SUPPLIER_FULL: Record<SupplierKey, string> = { cj: 'CJ Dropshipping', printful: 'Printful', aliexpress: 'AliExpress', hypersku: 'HyperSKU' };
+  const SUPPLIER_FULL: Record<SupplierKey, string> = { cj: 'CJ Dropshipping', printful: 'Printful', printify: 'Printify', aliexpress: 'AliExpress', hypersku: 'HyperSKU' };
 
   const subtitle =
     supplier === 'cj' ? "Search CJ's catalog and import directly to your store with one click"
     : supplier === 'printful' ? 'Bring your already-designed Printful products into your store'
+    : supplier === 'printify' ? 'Bring your Printify products into your store, with Printify’s own cost'
     : supplier === 'hypersku' ? "Browse HyperSKU's catalog and import directly to your store"
     : 'Paste an AliExpress product link and import it directly';
 
@@ -776,7 +805,7 @@ export default function ImportProductsPage() {
         <Card>
           <CardContent className="space-y-4 p-4">
             {suppliers.length > 1 && (
-              <div className={`grid gap-2 sm:grid-cols-2 ${suppliers.length === 3 ? 'xl:grid-cols-3' : suppliers.length === 4 ? 'xl:grid-cols-4' : ''}`}>
+              <div className={`grid gap-2 sm:grid-cols-2 ${suppliers.length === 3 ? 'xl:grid-cols-3' : suppliers.length >= 4 ? 'xl:grid-cols-4' : ''}`}>
                 {suppliers.map((k) => {
                   const Icon = SUPPLIER_ICON[k];
                   const on = supplier === k;
@@ -825,6 +854,10 @@ export default function ImportProductsPage() {
                   tabs={[{ id: 'catalog', label: 'Browse catalog' }, { id: 'my', label: 'My HyperSKU products' }]} />
                 <p className="text-xs text-muted-foreground">HyperSKU&apos;s catalog has no keyword search, so these are full lists</p>
               </div>
+            )}
+
+            {supplier === 'printify' && (
+              <p className="text-xs text-muted-foreground">Products in your Printify shop, with Printify&apos;s own cost for each variant</p>
             )}
 
             {supplier === 'printful' && (
@@ -1075,6 +1108,35 @@ export default function ImportProductsPage() {
             {printfulImportTarget && (
               <PrintfulImportModal shopId={shopId} product={printfulImportTarget} onClose={() => setPrintfulImportTarget(null)}
                 onImported={(id, name) => { setImportedId({ id, name }); setPrintfulImportTarget(null); }} />
+            )}
+          </>
+        )}
+
+        {/* ── Printify ── */}
+        {supplier === 'printify' && (
+          <>
+            {printifyError && <ErrorLine>{printifyError}</ErrorLine>}
+            {loadingPrintify && <ProductGridSkeleton />}
+            {!loadingPrintify && printifyLoaded && !printifyError && printifyProducts.length === 0 && (
+              <EmptyState icon={Shirt} title="Nothing here yet">
+                Create and publish a product in your <a href="https://printify.com/app/store" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Printify shop</a> first. It will show up here.
+              </EmptyState>
+            )}
+            {printifyProducts.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">{printifyProducts.length} product{printifyProducts.length !== 1 ? 's' : ''}</p>
+                <ProductGrid>
+                  {printifyProducts.map((p) => (
+                    <ProductCard key={String(p.sync_product_id)} image={p.image} name={p.name} fallback={Shirt}
+                      note={`${p.variant_count} variant${p.variant_count !== 1 ? 's' : ''}`}
+                      onImport={() => { setPrintifyImportTarget(p); setImportedId(null); }} />
+                  ))}
+                </ProductGrid>
+              </div>
+            )}
+            {printifyImportTarget && (
+              <PrintfulImportModal provider="printify" shopId={shopId} product={printifyImportTarget} onClose={() => setPrintifyImportTarget(null)}
+                onImported={(id, name) => { setImportedId({ id, name }); setPrintifyImportTarget(null); }} />
             )}
           </>
         )}

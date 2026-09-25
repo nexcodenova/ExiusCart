@@ -427,6 +427,19 @@ def _run_printful_tracking_scheduler():
 _printful_tracking_thread = threading.Thread(target=_run_printful_tracking_scheduler, daemon=True)
 _printful_tracking_thread.start()
 
+# Start Printify tracking sync (every 2 hours)
+def _run_printify_tracking_scheduler():
+    while True:
+        try:
+            from app.api.v1.endpoints.printify import sync_printify_tracking_job
+            sync_printify_tracking_job(SessionLocal)
+        except Exception as exc:
+            logger.error(f"[Printify Tracking scheduler] {exc}")
+        time.sleep(2 * 3600)
+
+_printify_tracking_thread = threading.Thread(target=_run_printify_tracking_scheduler, daemon=True)
+_printify_tracking_thread.start()
+
 # Start AliExpress tracking sync (every 2 hours)
 def _run_aliexpress_tracking_scheduler():
     while True:
