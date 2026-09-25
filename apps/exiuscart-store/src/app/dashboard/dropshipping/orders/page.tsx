@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Loader2, Package, CheckCircle2, Truck, AlertCircle, Clock, ExternalLink } from 'lucide-react';
 import { dropshipApi } from '@/lib/api';
 import Link from 'next/link';
+import SupplierBadge, { SUPPLIER_NAMES } from '@/components/dropshipping/SupplierBadge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -77,13 +79,15 @@ export default function DropshipOrdersPage() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
-        <select value={filterSupplier} onChange={(e) => setFilterSupplier(e.target.value)}
-          className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none">
-          <option value="">All suppliers</option>
-          <option value="cj">CJ Dropshipping</option>
-          <option value="hypersku">HyperSKU</option>
-          <option value="eprolo">EPROLO</option>
-        </select>
+        <Select value={filterSupplier || 'all'} onValueChange={(v) => setFilterSupplier(v === 'all' ? '' : v)}>
+          <SelectTrigger aria-label="Filter by supplier" className="h-[38px] w-56 bg-muted"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All suppliers</SelectItem>
+            {Object.keys(SUPPLIER_NAMES).map((k) => (
+              <SelectItem key={k} value={k}><SupplierBadge supplier={k} size={20} /></SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
           className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none">
           <option value="">All statuses</option>
@@ -133,7 +137,7 @@ export default function DropshipOrdersPage() {
                         #{o.order_id}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-xs text-foreground capitalize">{o.supplier_type}</td>
+                    <td className="px-4 py-3 text-xs"><SupplierBadge supplier={o.supplier_type} size={22} /></td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{o.supplier_order_id ?? '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${st.className}`}>

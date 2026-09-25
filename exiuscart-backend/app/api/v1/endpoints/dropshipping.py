@@ -2368,6 +2368,37 @@ async def connect_printful(
     }
 
 
+SUPPLIER_LABELS = {"printify": "Printify", "gelato": "Gelato", "eprolo": "EPROLO", "1688": "1688"}
+
+
+async def _verify_supplier_key(supplier_type: str, api_key: str) -> str:
+    """Ask the supplier itself whether this key works.
+
+    Returns "valid" (supplier accepted it), "invalid" (supplier said 401/403),
+    "unreachable" (timeout / supplier error, so we can't tell) or "unverified"
+    (no check exists: EPROLO's API docs are private, 1688 has no key check, and
+    a Gelato answer other than 200/401/403 is ambiguous - never reject a
+    possibly valid key on an ambiguous answer)."""
+    if supplier_type == "printify":
+        url, headers = "https://api.printify.com/v1/shops.json", {"Authorization": f"Bearer {api_key}", "User-Agent": "ExiusCart"}
+    elif supplier_type == "gelato":
+        url, headers = "https://ecommerce.gelatoapis.com/v1/stores", {"X-API-KEY": api_key}
+    else:
+        return "unverified"
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(url, headers=headers)
+    except httpx.HTTPError:
+        return "unreachable"
+    if resp.status_code == 200:
+        return "valid"
+    if resp.status_code in (401, 403):
+        return "invalid"
+    if resp.status_code == 429 or resp.status_code >= 500:
+        return "unreachable"
+    return "unverified"
+
+
 @router.post("/shops/{shop_id}/dropship/connect/apikey")
 async def connect_apikey(
     shop_id: int,
@@ -2381,9 +2412,14 @@ async def connect_apikey(
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)
 
-    # None of printify/gelato/1688/eprolo have anything confirmed-callable to verify
-    # against yet, unlike CJ/HyperSKU/AliExpress — accepted blindly for now,
-    # same scaffolding-first treatment as before those had real APIs wired in.
+    # Printify and Gelato are checked against the supplier itself. EPROLO (private
+    # API docs) and 1688 (no key check) are saved as-is and reported unverified.
+    label = SUPPLIER_LABELS.get(data.supplier_type, data.supplier_type.title())
+    verdict = await _verify_supplier_key(data.supplier_type, data.api_key)
+    if verdict == "invalid":
+        raise HTTPException(status_code=400, detail=f"{label} rejected this API key. Copy it again from your {label} account and try again.")
+    if verdict == "unreachable":
+        raise HTTPException(status_code=502, detail=f"Could not reach {label} to check the key. Try again in a moment.")
 
     existing = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == shop_id,
@@ -2401,7 +2437,12 @@ async def connect_apikey(
         )
         db.add(conn)
     db.commit()
-    return {"connected": True, "supplier_type": data.supplier_type, "message": f"{data.supplier_type.title()} connected successfully."}
+    verified = verdict == "valid"
+    return {
+        "connected": True, "supplier_type": data.supplier_type, "verified": verified,
+        "message": f"{label} connected and the key was verified." if verified
+        else f"{label} key saved, but it could not be verified yet. Importing and automatic ordering for {label} are not available yet.",
+    }
 
 
 @router.delete("/shops/{shop_id}/dropship/connect/{supplier_type}")

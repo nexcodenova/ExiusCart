@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import SupplierBadge, { supplierKey } from '@/components/dropshipping/SupplierBadge';
 
 // The API sends UTC timestamps without a zone suffix.
 const utc = (iso: string) => new Date(/(Z|[+-]\d\d:?\d\d)$/i.test(iso) ? iso : iso + 'Z');
@@ -162,7 +163,12 @@ export default function ProdoraImportsPage() {
                         </div>
                       </td>
                       <td className="px-2.5 py-1.5 font-mono text-xs font-bold text-foreground">{r.source?.code ?? '-'}</td>
-                      <td className="px-2.5 py-1.5 text-xs text-muted-foreground">{r.source?.supplier_name ?? '-'}</td>
+                      <td className="px-2.5 py-1.5 text-xs">
+                        {(() => {
+                          const k = r.supplier_type ?? supplierKey(r.source?.supplier_name);
+                          return k ? <SupplierBadge supplier={k} /> : <span className="text-muted-foreground">{r.source?.supplier_name ?? '-'}</span>;
+                        })()}
+                      </td>
                       <td className="px-2.5 py-1.5"><span className="block max-w-[150px] truncate font-mono text-xs text-muted-foreground" title={p?.sku ?? undefined}>{p?.sku ?? '-'}</span></td>
                       <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{p?.cost_price != null ? fmt(p.cost_price) : '-'}</td>
                       <td className="px-2.5 py-1.5 text-right font-semibold tabular-nums text-primary">{p?.price != null ? fmt(p.price) : '-'}</td>

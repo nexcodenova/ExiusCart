@@ -12,6 +12,7 @@ from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.shopping import PRODORA_MONTHLY_IMPORT_LIMIT, _find_eligible_subscription
 from app.core.database import get_db
 from app.core.shop_access import get_shop_for_member
+from app.models.dropship import DropshipProductLink
 from app.models.product import Product
 from app.models.prodora import ProdoraImportLog
 from app.models.user import User
@@ -38,6 +39,16 @@ def list_prodora_imports(
     ids = {i for l in logs for i in (l.product_id, l.source_product_id) if i}
     products = {p.id: p for p in db.query(Product).filter(Product.id.in_(ids)).all()} if ids else {}
 
+    # Supplier per product: the link on the store's own copy, else the one on the Prodora catalogue product.
+    link_by_product: dict = {}
+    if ids:
+        for pid, stype in (
+            db.query(DropshipProductLink.product_id, DropshipProductLink.supplier_type)
+            .filter(DropshipProductLink.product_id.in_(ids))
+            .order_by(DropshipProductLink.is_primary.desc(), DropshipProductLink.id)
+        ):
+            link_by_product.setdefault(pid, stype)
+
     rows = []
     for l in logs:
         mine = products.get(l.product_id) if l.product_id else None
@@ -51,6 +62,7 @@ def list_prodora_imports(
             "id": l.id,
             "imported_at": l.created_at.isoformat() if l.created_at else None,
             "removed": mine is None,
+            "supplier_type": link_by_product.get(l.product_id) or link_by_product.get(l.source_product_id),
             "product": None if mine is None else {
                 "id": mine.id, "name": mine.name, "sku": mine.sku, "image_url": mine.image_url,
                 "price": price, "cost_price": cost, "stock": mine.quantity, "is_active": mine.is_active,

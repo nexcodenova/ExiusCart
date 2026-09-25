@@ -306,17 +306,37 @@ function ApiKeyModal({ supplier, shopId, onConnected, onClose }: {
   const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [note, setNote] = useState('');
 
   const connect = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true); setError('');
     try {
-      await dropshipApi.connectApiKey(shopId, { supplier_type: supplier.supplier_type, api_key: apiKey });
-      onConnected();
+      const res = await dropshipApi.connectApiKey(shopId, { supplier_type: supplier.supplier_type, api_key: apiKey });
+      // Saved but not checked with the supplier: tell the seller instead of silently closing.
+      if (res.data?.verified === false) setNote(res.data.message ?? '');
+      else onConnected();
     } catch (err: any) {
       setError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Connection failed. Check your API key.');
     } finally { setSaving(false); }
   };
+
+  if (note) {
+    return (
+      <Dialog open onOpenChange={(open) => !open && onConnected()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{supplier.name} key saved</DialogTitle>
+            <DialogDescription>Not verified yet</DialogDescription>
+          </DialogHeader>
+          <div className="p-5 space-y-4">
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">{note}</div>
+            <div className="flex justify-end"><Button onClick={onConnected}>Got it</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

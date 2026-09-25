@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import FindSupplierMenu, { type CJMatch } from '@/components/dropshipping/FindSupplierMenu';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -474,9 +475,11 @@ function ProductGridSkeleton() {
   );
 }
 
-function ProductCard({ image, name, fallback: Fallback, cost, costLabel, note, onImport }: {
+function ProductCard({ image, name, fallback: Fallback, cost, costLabel, note, onImport, findSupplierExclude, compare }: {
   image?: string; name: string; fallback: React.ElementType;
   cost?: number; costLabel?: string; note?: string; onImport: () => void;
+  findSupplierExclude?: string;
+  compare?: { shopId: string; cost?: number; onPick: (p: CJMatch) => void };
 }) {
   // The import default is 2x cost (see the help panel), so this is the real
   // starting price, not a guess.
@@ -503,6 +506,7 @@ function ProductCard({ image, name, fallback: Fallback, cost, costLabel, note, o
             <p className="text-xs text-muted-foreground">{note}</p>
           )}
           <Button size="sm" className="w-full" onClick={onImport}>Import</Button>
+          {findSupplierExclude !== undefined && <FindSupplierMenu name={name} exclude={findSupplierExclude} compare={compare} />}
         </div>
       </div>
     </Card>
@@ -1001,7 +1005,7 @@ export default function ImportProductsPage() {
                 </p>
                 <ProductGrid>
                   {cjList.map((p) => (
-                    <ProductCard key={p.pid} image={p.image} name={p.name} fallback={Package} cost={p.cost_price} costLabel="CJ cost"
+                    <ProductCard key={p.pid} image={p.image} name={p.name} fallback={Package} cost={p.cost_price} costLabel="CJ cost" findSupplierExclude="cj"
                       onImport={() => { setImportTarget(p); setImportedId(null); }} />
                   ))}
                 </ProductGrid>
@@ -1029,11 +1033,16 @@ export default function ImportProductsPage() {
                 <p className="text-sm text-muted-foreground">{hyperskuList.length} product{hyperskuList.length !== 1 ? 's' : ''}</p>
                 <ProductGrid>
                   {hyperskuList.map((p) => (
-                    <ProductCard key={p.pid} image={p.image} name={p.name} fallback={Package} cost={p.cost_price} costLabel="HyperSKU cost"
+                    <ProductCard key={p.pid} image={p.image} name={p.name} fallback={Package} cost={p.cost_price} costLabel="HyperSKU cost" findSupplierExclude="hypersku"
+                      compare={{ shopId, cost: p.cost_price, onPick: (m) => { setImportTarget(m as unknown as CJProduct); setImportedId(null); } }}
                       onImport={() => { setHyperskuImportTarget(p); setImportedId(null); }} />
                   ))}
                 </ProductGrid>
               </div>
+            )}
+            {importTarget && (
+              <CJImportModal shopId={shopId} product={importTarget} onClose={() => setImportTarget(null)}
+                onImported={(id, name) => { setImportedId({ id, name }); setImportTarget(null); }} />
             )}
             {hyperskuImportTarget && (
               <CJImportModal shopId={shopId} product={hyperskuImportTarget} supplier="hypersku" onClose={() => setHyperskuImportTarget(null)}

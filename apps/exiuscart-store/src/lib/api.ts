@@ -1350,6 +1350,7 @@ export interface ProdoraImportRow {
   id: number;
   imported_at: string | null;
   removed: boolean;
+  supplier_type: string | null;
   product: { id: number; name: string; sku: string | null; image_url: string | null; price: number | null; cost_price: number | null; stock: number; is_active: boolean } | null;
   source: { id: number; name: string; code: string | null; supplier_name: string | null; image_url: string | null } | null;
 }

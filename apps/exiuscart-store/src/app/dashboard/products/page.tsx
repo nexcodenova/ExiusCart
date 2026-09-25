@@ -38,7 +38,8 @@ import { NoonListingFields, NoonAttributeValues } from '@/components/noon-listin
 import { BundleBuilder, BundleComponent } from '@/components/bundle-builder';
 import { DropshipSupplierSection, ProductShippingCostPreview } from '@/components/dropship-supplier-section';
 import ChannelLogo from '@/components/channels/ChannelLogo';
-import { SUPPLIER_STYLE } from '@/components/dropshipping/SupplierCard';
+import SupplierBadge, { SUPPLIER_NAMES } from '@/components/dropshipping/SupplierBadge';
+import { channelMeta } from '@/components/channels/channelMeta';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { BarcodeDisplay, generateBarcode } from '@/components/ui/barcode';
 import { useCurrency, symFor } from '@/components/providers/currency-provider';
@@ -51,29 +52,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectValue, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 
-const CHANNEL_LABELS: Record<string, string> = {
-  thedersi: 'TheDersi',
-  daraz: 'Daraz',
-  ebay: 'eBay',
-  noon: 'Noon',
-  shopify: 'Shopify',
-  custom: 'Custom Website',
-};
 function channelLabel(channelType: string): string {
-  return CHANNEL_LABELS[channelType] ?? channelType;
+  return channelMeta(channelType).label;
 }
-
-const DROPSHIP_NAMES: Record<string, string> = {
-  cj: 'CJ Dropshipping', hypersku: 'HyperSKU', eprolo: 'EPROLO', aliexpress: 'AliExpress',
-  '1688': '1688', printful: 'Printful', printify: 'Printify', gelato: 'Gelato',
-};
 
 // Where a product came from: the dropship supplier it was imported from
 // (with its logo), else the local supplier the seller picked, else "Manual".
 function SupplierCell({ product }: { product: Product }) {
   const dropship = product.dropship_supplier;
   if (product.imported_from === 'prodora') {
-    const via = dropship ? (DROPSHIP_NAMES[dropship] ?? dropship) : null;
+    const via = dropship ? (SUPPLIER_NAMES[dropship] ?? dropship) : null;
     return (
       <span className="inline-flex items-center gap-2" title={via ? `Imported from Prodora, fulfilled by ${via}` : 'Imported from Prodora'}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -82,21 +70,7 @@ function SupplierCell({ product }: { product: Product }) {
       </span>
     );
   }
-  if (dropship) {
-    const st = SUPPLIER_STYLE[dropship];
-    const Icon = st?.icon;
-    return (
-      <span className="inline-flex items-center gap-2" title={DROPSHIP_NAMES[dropship] ?? dropship}>
-        <span className={`flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md ${st?.bg ?? 'bg-muted'}`}>
-          {st?.logo
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={st.logo} alt="" className={`h-full w-full ${st.logoFit === 'cover' ? 'object-cover' : 'object-contain p-0.5'}`} />
-            : Icon ? <Icon className={`h-3.5 w-3.5 ${st.color}`} /> : <Package className="h-3.5 w-3.5 text-muted-foreground" />}
-        </span>
-        <span className="text-foreground">{DROPSHIP_NAMES[dropship] ?? dropship}</span>
-      </span>
-    );
-  }
+  if (dropship) return <SupplierBadge supplier={dropship} />;
   // Imported, but the API didn't say from which supplier: never call that "Manual".
   if (product.is_dropship_imported) {
     return (
@@ -439,7 +413,7 @@ export default function ProductsPage() {
     setGeneratingSkus(false);
   };
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
-  const [channelFilter, setChannelFilter] = useState<'all' | 'thedersi' | 'daraz' | 'ebay' | 'unlisted'>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'physical' | 'digital' | 'affiliate'>('all');
   const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set());
   const [planType, setPlanType] = useState<string>('');
@@ -511,10 +485,19 @@ export default function ProductsPage() {
     ? products.filter(p => p.stock === 0)
     : products;
 
+  // Every channel a product is on: the ones it is listed on plus any with a sync status.
+  const channelsOf = (id: string | number): string[] => Array.from(new Set([
+    ...Object.values(channelCategories[id] ?? {}).filter((e) => e.is_listed).map((e) => e.channel_type),
+    ...Object.keys(channelStatuses[id] ?? {}),
+  ]));
+  const channelCounts = products.reduce<Record<string, number>>((acc, p) => {
+    channelsOf(p.id).forEach((c) => { acc[c] = (acc[c] ?? 0) + 1; });
+    return acc;
+  }, {});
   const channelFiltered = channelFilter === 'unlisted'
-    ? stockFiltered.filter(p => !channelStatuses[p.id] || Object.keys(channelStatuses[p.id]).length === 0)
+    ? stockFiltered.filter(p => channelsOf(p.id).length === 0)
     : channelFilter !== 'all'
-    ? stockFiltered.filter(p => !!channelStatuses[p.id]?.[channelFilter])
+    ? stockFiltered.filter(p => channelsOf(p.id).includes(channelFilter))
     : stockFiltered;
 
   // Product type isn't on the list page's own narrow Product interface —
@@ -661,21 +644,24 @@ export default function ProductsPage() {
               className="w-full pl-9 pr-3 py-2 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground placeholder:text-muted-foreground"
             />
           </div>
-          <div className="relative">
-            <select
-              value={channelFilter}
-              onChange={(e) => setChannelFilter(e.target.value as typeof channelFilter)}
-              aria-label="Filter by channel"
-              className="appearance-none w-full sm:w-44 px-3 py-2 pr-8 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
-            >
-              <option value="all">All Channels</option>
-              <option value="thedersi">TheDersi</option>
-              <option value="daraz">Daraz</option>
-              <option value="ebay">eBay</option>
-              <option value="unlisted">Not listed anywhere</option>
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          </div>
+          <Select value={channelFilter} onValueChange={setChannelFilter}>
+            <SelectTrigger aria-label="Filter by channel" className="h-[38px] w-full bg-muted sm:w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Channels</SelectItem>
+              {Object.entries(channelCounts).sort((x, y) => y[1] - x[1]).map(([type, n]) => (
+                <SelectItem key={type} value={type}>
+                  <span className="flex items-center gap-2">
+                    <ChannelLogo channelType={type} size={16} />
+                    <span>{channelLabel(type)}</span>
+                    <span className="text-xs text-muted-foreground">({n})</span>
+                  </span>
+                </SelectItem>
+              ))}
+              <SelectItem value="unlisted">Not listed anywhere</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="relative">
             <select
               value={typeFilter}
