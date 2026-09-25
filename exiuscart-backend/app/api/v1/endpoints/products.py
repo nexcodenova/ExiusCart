@@ -14,6 +14,7 @@ from app.models.product_variant import ProductVariant
 from app.models.product_fields import ProductImage, ProductAttribute
 from app.models.supplier import PurchaseOrderItem
 from app.models.dropship import DropshipProductLink
+from app.models.prodora import ProdoraImportLog
 from app.models.order import OrderItem
 from app.models.subscription import Subscription
 from app.models.channel_product_status import ChannelProductStatus
@@ -466,9 +467,17 @@ async def get_products(
         ):
             dropship_by_product.setdefault(pid, stype)
 
+    prodora_ids = set()
+    if product_ids:
+        prodora_ids = {
+            row[0] for row in db.query(ProdoraImportLog.product_id)
+            .filter(ProdoraImportLog.shop_id == shop_id, ProdoraImportLog.product_id.in_(product_ids))
+        }
+
     for p in products:
         if not p.image_url and p.images:
             p.image_url = p.images[0].url
+        p.imported_from = "prodora" if p.id in prodora_ids else None
         p.is_dropship_imported = p.id in dropship_by_product
         p.dropship_supplier = dropship_by_product.get(p.id)
     return products
@@ -495,6 +504,9 @@ async def get_product(
     ).order_by(DropshipProductLink.is_primary.desc(), DropshipProductLink.id).first()
     product.is_dropship_imported = link is not None
     product.dropship_supplier = link[0] if link else None
+    product.imported_from = "prodora" if db.query(ProdoraImportLog.id).filter(
+        ProdoraImportLog.shop_id == shop_id, ProdoraImportLog.product_id == product.id
+    ).first() else None
     return product
 
 

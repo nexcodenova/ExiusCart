@@ -72,6 +72,16 @@ const DROPSHIP_NAMES: Record<string, string> = {
 // (with its logo), else the local supplier the seller picked, else "Manual".
 function SupplierCell({ product }: { product: Product }) {
   const dropship = product.dropship_supplier;
+  if (product.imported_from === 'prodora') {
+    const via = dropship ? (DROPSHIP_NAMES[dropship] ?? dropship) : null;
+    return (
+      <span className="inline-flex items-center gap-2" title={via ? `Imported from Prodora, fulfilled by ${via}` : 'Imported from Prodora'}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/prodora-logo.png" alt="" className="h-6 w-6 shrink-0 rounded-md object-cover" />
+        <span className="text-foreground">Prodora{via ? <span className="text-muted-foreground"> · {via.split(' ')[0]}</span> : null}</span>
+      </span>
+    );
+  }
   if (dropship) {
     const st = SUPPLIER_STYLE[dropship];
     const Icon = st?.icon;
@@ -208,6 +218,7 @@ interface Product {
   supplier?: { id: number; name: string } | null;
   is_dropship_imported?: boolean;
   dropship_supplier?: string | null;
+  imported_from?: string | null;
 }
 
 interface ShopField {

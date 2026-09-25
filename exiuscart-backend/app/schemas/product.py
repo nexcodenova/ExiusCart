@@ -140,6 +140,8 @@ class ProductResponse(ProductBase):
     is_dropship_imported: bool = False
     # supplier_type of the dropship import this came from (cj, aliexpress, printful...), else None
     dropship_supplier: Optional[str] = None
+    # 'prodora' when this product was imported from the Prodora catalogue
+    imported_from: Optional[str] = None
 
     @property
     def discount_percent(self) -> Optional[int]:

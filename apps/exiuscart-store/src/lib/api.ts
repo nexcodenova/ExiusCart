@@ -1345,3 +1345,15 @@ export const whatsappApi = {
   deleteCampaign: (shopId: string, id: number) => api.delete(`/shops/${shopId}/whatsapp/campaigns/${id}`),
   sendCampaign: (shopId: string, id: number) => api.post(`/shops/${shopId}/whatsapp/campaigns/${id}/send`),
 };
+
+export interface ProdoraImportRow {
+  id: number;
+  imported_at: string | null;
+  removed: boolean;
+  product: { id: number; name: string; sku: string | null; image_url: string | null; price: number | null; cost_price: number | null; stock: number; is_active: boolean } | null;
+  source: { id: number; name: string; code: string | null; supplier_name: string | null; image_url: string | null } | null;
+}
+export const prodoraImportsApi = {
+  list: (shopId: string) =>
+    api.get<{ imports: ProdoraImportRow[]; usage: { used: number; limit: number | null; resets_at: string } }>(`/shops/${shopId}/prodora-imports`),
+};

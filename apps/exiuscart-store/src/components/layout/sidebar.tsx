@@ -43,9 +43,6 @@ interface MenuItem {
   // list view. Collapsed (icon-only) sidebar mode ignores this and the item
   // behaves like a normal link — no room to show a second nested level there.
   nestedKey?: 'channels' | 'suppliers';
-  // Not a page: clicking dispatches an event the header handles (Prodora opens
-  // in a new tab, behind the same plan/TheDersi checks as the sidebar card).
-  action?: 'prodora';
 }
 interface MenuGroup {
   id: string;
@@ -131,7 +128,7 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/dashboard/dropshipping/import', label: 'Import Products',  icon: ShoppingBag },
       { href: '/dashboard/product-research',    label: 'Product Research', icon: Search      },
-      { href: '#prodora', label: 'Prodora', icon: ProdoraIcon, action: 'prodora' },
+      { href: '/dashboard/prodora-imports', label: 'Prodora', icon: ProdoraIcon },
     ],
   },
   {
@@ -281,7 +278,7 @@ const GROUPS: MenuGroup[] = [
 
 // Flat list for mobile bottom nav / external use — untouched, MobileBottomNav
 // still reads these directly and keeps working exactly as before.
-export const menuItems = GROUPS.flatMap(g => g.items).filter(i => !i.action);
+export const menuItems = GROUPS.flatMap(g => g.items);
 
 // Growth/Scale only. ai-commerce/product-studio/mcp aren't built yet (all
 // "Coming Soon" stubs) but are locked here anyway, so the access rule is
@@ -703,19 +700,6 @@ export function ShopSidebar() {
                                   </SidebarMenu>
                                 )}
                               </div>
-                            );
-                          }
-                          if (item.action === 'prodora') {
-                            return (
-                              <SidebarMenuItem key={item.href}>
-                                <SidebarMenuButton tooltip={collapsed ? item.label : undefined}
-                                  onClick={() => window.dispatchEvent(new CustomEvent('open-prodora'))}
-                                  className="text-sidebar-muted-foreground">
-                                  <Icon className="w-4 h-4 flex-shrink-0" />
-                                  <span className="font-medium">{item.label}</span>
-                                  <ArrowRight className="ml-auto h-3 w-3 -rotate-45 opacity-60" />
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
                             );
                           }
                           return (
