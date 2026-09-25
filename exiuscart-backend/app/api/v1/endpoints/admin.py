@@ -3553,7 +3553,7 @@ def delete_nexcode(
 # Logs-Explorer-style view. Deliberately read-only and paginated by cursor
 # (id, not offset) since this table only grows and can get large.
 
-@router.get("/audit-log")
+@router.get("/admin/audit-log")
 def list_audit_log(
     event_type: Optional[str] = None,
     shop_id: Optional[int] = None,
@@ -3604,14 +3604,14 @@ def list_audit_log(
     }
 
 
-@router.get("/audit-log/event-types")
+@router.get("/admin/audit-log/event-types")
 def list_audit_log_event_types(db: Session = Depends(get_db), _: User = Depends(require_superuser)):
     from app.models.audit_log import AuditLog
     rows = db.query(AuditLog.event_type).distinct().all()
     return {"event_types": sorted(r[0] for r in rows)}
 
 
-@router.get("/audit-log/timeline")
+@router.get("/admin/audit-log/timeline")
 def audit_log_timeline(
     event_type: Optional[str] = None,
     q: Optional[str] = None,
