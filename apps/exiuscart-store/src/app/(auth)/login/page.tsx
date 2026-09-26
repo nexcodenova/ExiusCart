@@ -20,6 +20,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
+  // Set when a Google/Facebook sign-in finds no account: we offer to create
+  // one (behind the terms box) instead of dead-ending on an error.
+  const [pending, setPending] = useState<{ provider: SocialProvider; token: string; name?: string; email: string } | null>(null);
+  const [agreed, setAgreed] = useState(false);
+  const [creating, setCreating] = useState(false);
   // Pre-fill the email from last time when "Remember me" was left on. Only
   // the email is ever stored — never the password.
   useEffect(() => {
@@ -76,12 +81,36 @@ export default function LoginPage() {
     setError('');
     try {
       const { authApi } = await import('@/lib/api');
-      // Signing in only: a social login here never creates an account (that
-      // happens on the sign-up page, where the terms are accepted).
+      // Signing in only: a social login here never creates an account on its
+      // own — the person confirms (and accepts the terms) first.
       const res = await authApi.social(provider, token, extra?.name, false);
       await finishLogin(res.data.access_token, res.data.user);
     } catch (err: any) {
-      throw new Error(err?.response?.data?.detail ?? 'Sign-in failed. Please try again.');
+      const detail = err?.response?.data?.detail;
+      if (detail && typeof detail === 'object' && detail.code === 'no_account') {
+        setAgreed(false);
+        setPending({ provider, token, name: extra?.name, email: detail.email });
+        return;
+      }
+      throw new Error((typeof detail === 'string' ? detail : detail?.message) ?? 'Sign-in failed. Please try again.');
+    }
+  };
+
+  const createWithSocial = async () => {
+    if (!pending) return;
+    if (!agreed) { setError('Please accept the terms of use and privacy policy to create your account.'); return; }
+    setCreating(true);
+    setError('');
+    try {
+      const { authApi } = await import('@/lib/api');
+      const res = await authApi.social(pending.provider, pending.token, pending.name, true);
+      await finishLogin(res.data.access_token, res.data.user);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'We could not create your account. Please choose Continue again.');
+      setPending(null);
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -122,6 +151,44 @@ export default function LoginPage() {
         </div>
       )}
 
+      {pending ? (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-[#6B3FD9]/20 bg-[#6B3FD9]/5 px-3 py-3 text-sm text-gray-700">
+            <p className="font-semibold text-gray-900">No ExiusCart account for {pending.email} yet.</p>
+            <p className="mt-1 text-gray-600">Create one with this {pending.provider === 'google' ? 'Google' : 'Facebook'} account. It starts on Launch, free for 7 days.</p>
+            <p className="mt-1 text-gray-600">
+              Want Growth or Scale?{' '}
+              <Link href="https://exiuscart.com/pricing" className="text-[#6B3FD9] font-medium hover:underline">Pick a plan on the pricing page</Link> first.
+            </p>
+          </div>
+          <label className="flex items-start gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input
+              id="agree-terms" type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5 rounded border-gray-300 bg-gray-50 accent-[#6B3FD9]"
+            />
+            <span>
+              I agree to the{' '}
+              <Link href="https://exiuscart.com/terms" target="_blank" className="text-[#6B3FD9] font-medium hover:underline">terms of use</Link>{' '}
+              and{' '}
+              <Link href="https://exiuscart.com/privacy" target="_blank" className="text-[#6B3FD9] font-medium hover:underline">privacy policy</Link>.
+            </span>
+          </label>
+          <button
+            type="button" onClick={createWithSocial} disabled={creating}
+            className="w-full bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {creating && <Loader2 className="h-5 w-5 animate-spin" />}
+            Create my account with {pending.provider === 'google' ? 'Google' : 'Facebook'}
+          </button>
+          <button
+            type="button" onClick={() => { setPending(null); setError(''); }}
+            className="w-full text-sm font-medium text-gray-500 hover:text-gray-700 transition"
+          >
+            Use a different account
+          </button>
+        </div>
+      ) : (
+        <>
       <div className="mb-2.5">
         <SocialAuthButtons apiBase={API_BASE} onToken={handleSocial} onError={setError} />
       </div>
@@ -174,6 +241,9 @@ export default function LoginPage() {
           Log in
         </button>
       </form>
+
+        </>
+      )}
 
       <p className="text-center mt-3 text-gray-600 text-sm">
         Don&apos;t have an ExiusCart account?{' '}

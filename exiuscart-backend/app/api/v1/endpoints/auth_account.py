@@ -236,9 +236,15 @@ def social_login(request: Request, data: SocialLoginIn, db: Session = Depends(ge
     user = db.query(User).filter(User.email == identity.email).first()
     is_new = user is None
     if user is None and not data.allow_signup:
+        # A structured detail so the login page can offer to create the account
+        # (after the terms box) instead of dead-ending on an error.
         raise HTTPException(
             status_code=404,
-            detail="We couldn't find an ExiusCart account for that email. Please sign up first.",
+            detail={
+                "code": "no_account",
+                "email": identity.email,
+                "message": "We couldn't find an ExiusCart account for that email. Please sign up first.",
+            },
         )
     if user is None:
         user = _create_account(db, identity, data.ref_code, data.country, data.plan_type)
