@@ -129,8 +129,10 @@ def calculate(
         "break_even_roas": round(float(breakeven_roas), 2) if breakeven_roas is not None else None,
         "profitable_before_ads": before_ads > 0,
         "assumptions": assumptions,
-        # High only when nothing was guessed; every default makes it a rough estimate.
-        "confidence": "high" if not assumptions else ("medium" if len(assumptions) <= 2 else "low"),
+        # High only when nothing was guessed. The defaults are standard, small figures
+        # (card fees, typical refund rates), so they cap confidence at medium and are
+        # always listed in `assumptions`; they never make the whole result "low".
+        "confidence": "high" if not assumptions else "medium",
     }
 
 

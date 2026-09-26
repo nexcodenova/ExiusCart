@@ -18,7 +18,7 @@ const fmt = (n: number) =>
 // viewport while scrolling) and shows the animated Prodora logo until it has
 // loaded, then fades in.
 export default function ProductCard({ product, showDetailsBar = true }: { product: Product; showDetailsBar?: boolean }) {
-  const { id, name, price, cost_price, discount_pct, image_url, is_trending, is_featured, is_bestseller, orders_count } = product;
+  const { id, name, price, cost_price, discount_pct, image_url, is_trending, is_featured, is_bestseller, orders_count, intel_verdict } = product;
   const profit = cost_price != null ? price - cost_price : null;
 
   return (
@@ -34,6 +34,16 @@ export default function ProductCard({ product, showDetailsBar = true }: { produc
           ) : is_featured ? (
             <span className="absolute left-1.5 top-1.5 z-10 rounded bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-white shadow-sm sm:left-2 sm:top-2 sm:px-2 sm:py-1 sm:text-xs">Featured</span>
           ) : null}
+          {intel_verdict && (
+            <span
+              title="Verdict from Prodora's competitor and profit analysis"
+              className={`absolute right-1.5 top-1.5 z-10 rounded px-1.5 py-0.5 text-[11px] font-bold shadow-sm sm:right-2 sm:top-2 sm:px-2 sm:py-1 sm:text-xs ${
+                intel_verdict === 'TEST' ? 'bg-green-600 text-white' : intel_verdict === 'WATCH' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {intel_verdict === 'TEST' ? 'Test candidate' : intel_verdict === 'WATCH' ? 'Watch' : 'Low margin'}
+            </span>
+          )}
           <div className="absolute inset-0">
             {image_url ? (
               <LoadingImage

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
+import CompetitionSection from '@/components/CompetitionSection';
 import LoadingImage from '@/components/LoadingImage';
 import DOMPurify from 'dompurify';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -468,6 +469,9 @@ function ProductDetailContent() {
                 </div>
               </div>
             )}
+
+            {/* Competition: real market prices, true profit and a verdict (Growth and Scale) */}
+            <CompetitionSection productId={productId} />
 
             {/* Trends — Demand on the left, Orders (social proof) on the right */}
             {(demandTrend.length >= 2 || ordersTrend.length >= 2) && (

@@ -29,6 +29,7 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
 }
 
 const ATTRIBUTE_CHIPS = ['Has video', 'Has Meta ad'];
+const TEST_CHIP = 'Test candidate';
 
 const tagsOf = (p: Product): string[] =>
   (p.tags ?? '').split(',').map((t) => t.trim()).filter(Boolean);
@@ -40,10 +41,14 @@ function buildChips(products: Product[]): string[] {
   const counts = new Map<string, number>();
   for (const p of products) for (const t of new Set(tagsOf(p))) counts.set(t, (counts.get(t) ?? 0) + 1);
   const tags = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([t]) => t);
-  return [...ATTRIBUTE_CHIPS, ...tags];
+  // Only offered when at least one loaded product actually has that verdict
+  // (Growth and Scale only), so the chip can never match nothing.
+  const hasTest = products.some((p) => p.intel_verdict === 'TEST');
+  return [...(hasTest ? [TEST_CHIP] : []), ...ATTRIBUTE_CHIPS, ...tags];
 }
 
 function matchesChip(p: Product, chip: string): boolean {
+  if (chip === TEST_CHIP) return p.intel_verdict === 'TEST';
   if (chip === 'Has video') return !!(p.video_url || (p.videos && p.videos.length));
   if (chip === 'Has Meta ad') return !!(p.ad_facebook_url || p.ad_instagram_url);
   return tagsOf(p).some((t) => t.toLowerCase() === chip.toLowerCase());

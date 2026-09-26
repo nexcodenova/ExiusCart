@@ -267,3 +267,24 @@ export const adminTeamApi = {
   inviteInfo: (token: string) => api.get('/admin-team/invite-info', { params: { token } }),
   acceptInvite: (data: { token: string; password: string; full_name?: string }) => api.post('/admin-team/accept-invite', data),
 };
+
+// ── Prodora intelligence ──────────────────────────────
+export const intelApi = {
+  status: () => api.get('/admin/intel/status'),
+  analyze: (data: { product_id: number; target_margin_pct: number; ad_cost_per_order?: number | null; use_paid: boolean; force: boolean }) =>
+    api.post('/admin/intel/analyze', data),
+  latest: (productId: number) => api.get(`/admin/intel/products/${productId}`),
+  testSource: (source: string) => api.post('/admin/intel/test-source', { source }),
+};
+
+// ── Prodora intake (bulk add, review queue, publishing) ──
+export const intakeApi = {
+  summary: () => api.get('/admin/intake/summary'),
+  items: (params: { status?: string; verdict?: string; q?: string; offset?: number; limit?: number }) => api.get('/admin/intake/items', { params }),
+  addLinks: (text: string) => api.post('/admin/intake/links', { text }),
+  addCjPids: (cj_pids: string[]) => api.post('/admin/intake/cj-pids', { cj_pids }),
+  bulk: (ids: number[], action: 'approve' | 'reject' | 'retry' | 'delete', reason?: string) => api.post('/admin/intake/bulk', { ids, action, reason }),
+  reanalyze: (id: number, use_paid: boolean) => api.post(`/admin/intake/items/${id}/analyze`, { use_paid }),
+  publishNow: (count?: number) => api.post('/admin/intake/publish-now', count ? { count } : {}),
+  updateSettings: (data: { daily_publish_limit: number; publish_hour_utc: number; auto_publish_enabled: boolean; auto_analyze: boolean }) => api.put('/admin/intake/settings', data),
+};

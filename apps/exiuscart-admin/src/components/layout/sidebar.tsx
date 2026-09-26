@@ -59,6 +59,8 @@ const CHILD_PERMS: Record<string, string> = {
   '/dashboard/shopping/add': 'prodora.add',
   '/dashboard/digital-bundles': 'prodora.digital',
   '/dashboard/shopping/categories': 'prodora.view',
+  '/dashboard/intelligence': 'prodora.view',
+  '/dashboard/intake': 'prodora.view',
 };
 
 // Sub-pages under Prodora — shown as a dropdown in this sidebar. menuItems
@@ -67,6 +69,8 @@ const CHILD_PERMS: Record<string, string> = {
 const PRODORA_CHILDREN = [
   { href: '/dashboard/shopping', match: '/dashboard/shopping', label: 'All Products', exact: true },
   { href: '/dashboard/shopping/add', match: '/dashboard/shopping/add', label: 'Add Products', exact: true },
+  { href: '/dashboard/intake', match: '/dashboard/intake', label: 'Intake', exact: false },
+  { href: '/dashboard/intelligence', match: '/dashboard/intelligence', label: 'Intelligence', exact: false },
   { href: '/dashboard/digital-bundles', match: '/dashboard/digital-bundles', label: 'Digital Products', exact: false },
   { href: '/dashboard/shopping/categories', match: '/dashboard/shopping/categories', label: 'Categories', exact: false },
 ];
@@ -121,7 +125,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
   const showProdoraGroup = isOwner || can('prodora.view') || can('prodora.digital');
   const visibleMenu = menuItems.filter((item) =>
     isOwner || (item.href === '/dashboard/shopping' ? showProdoraGroup : MENU_PERMS[item.href] !== undefined && can(MENU_PERMS[item.href])));
-  const onProdora = pathname.startsWith('/dashboard/shopping') || PRODORA_CHILDREN.some((c) => pathname.startsWith(c.match));
+  const onProdora = pathname.startsWith('/dashboard/shopping') || pathname.startsWith('/dashboard/intelligence') || pathname.startsWith('/dashboard/intake') || PRODORA_CHILDREN.some((c) => pathname.startsWith(c.match));
   const [prodoraOpen, setProdoraOpen] = useState(onProdora);
   const onAffiliates = pathname.startsWith('/dashboard/affiliates');
   const [affiliatesOpen, setAffiliatesOpen] = useState(onAffiliates);
@@ -159,7 +163,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                 <div className={`flex items-stretch rounded-lg transition-all ${onProdora ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
                   {collapsed ? (
                     <Link href="/dashboard/shopping" title={item.label} className="flex flex-1 items-center gap-3 px-3 py-2.5">
-                      <Icon className="w-5 h-5 flex-shrink-0 mx-auto" />
+                      <Icon className="w-6 h-6 flex-shrink-0 mx-auto" />
                     </Link>
                   ) : (
                     // Expanded: only opens or closes the dropdown, it does not change the page.
@@ -167,7 +171,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                       type="button" onClick={() => setProdoraOpen((v) => !v)} aria-expanded={prodoraOpen}
                       className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
                     >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <Icon className="w-[22px] h-[22px] flex-shrink-0" />
                       <span className="font-medium text-sm">{item.label}</span>
                     </button>
                   )}
@@ -209,14 +213,14 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                 <div className={`flex items-stretch rounded-lg transition-all ${onAffiliates ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
                   {collapsed ? (
                     <Link href="/dashboard/affiliates" title={item.label} className="flex flex-1 items-center gap-3 px-3 py-2.5">
-                      <Icon className="w-5 h-5 flex-shrink-0 mx-auto" />
+                      <Icon className="w-6 h-6 flex-shrink-0 mx-auto" />
                     </Link>
                   ) : (
                     <button
                       type="button" onClick={() => setAffiliatesOpen((v) => !v)} aria-expanded={affiliatesOpen}
                       className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
                     >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <Icon className="w-[22px] h-[22px] flex-shrink-0" />
                       <span className="font-medium text-sm">{item.label}</span>
                     </button>
                   )}
@@ -256,14 +260,14 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                 <div className={`flex items-stretch rounded-lg transition-all ${onAudit ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
                   {collapsed ? (
                     <Link href="/dashboard/audit-log" title={item.label} className="flex flex-1 items-center gap-3 px-3 py-2.5">
-                      <Icon className="w-5 h-5 flex-shrink-0 mx-auto" />
+                      <Icon className="w-6 h-6 flex-shrink-0 mx-auto" />
                     </Link>
                   ) : (
                     <button
                       type="button" onClick={() => setAuditOpen((v) => !v)} aria-expanded={auditOpen}
                       className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
                     >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <Icon className="w-[22px] h-[22px] flex-shrink-0" />
                       <span className="font-medium text-sm">{item.label}</span>
                     </button>
                   )}
@@ -303,14 +307,14 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                 <div className={`flex items-stretch rounded-lg transition-all ${onBlogs ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
                   {collapsed ? (
                     <Link href="/dashboard/blogs?site=exiuscart" title={item.label} className="flex flex-1 items-center gap-3 px-3 py-2.5">
-                      <Icon className="w-5 h-5 flex-shrink-0 mx-auto" />
+                      <Icon className="w-6 h-6 flex-shrink-0 mx-auto" />
                     </Link>
                   ) : (
                     <button
                       type="button" onClick={() => setBlogsOpen((v) => !v)} aria-expanded={blogsOpen}
                       className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
                     >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <Icon className="w-[22px] h-[22px] flex-shrink-0" />
                       <span className="font-medium text-sm">{item.label}</span>
                     </button>
                   )}
@@ -345,7 +349,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                   : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'
               }`}
             >
-              <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
+              <Icon className={`flex-shrink-0 ${collapsed ? 'w-6 h-6 mx-auto' : 'w-[22px] h-[22px]'}`} />
               {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
             </Link>
           );
@@ -372,7 +376,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
             collapsed ? 'justify-center' : ''
           }`}
         >
-          <LogOut className="w-5 h-5 flex-shrink-0" />
+          <LogOut className={`flex-shrink-0 ${collapsed ? "w-6 h-6" : "w-[22px] h-[22px]"}`} />
           {!collapsed && <span className="font-medium text-sm">Logout</span>}
         </button>
         {/* Icon only, on the right - the menu reads from the left, so the collapse

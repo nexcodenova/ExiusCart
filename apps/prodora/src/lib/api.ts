@@ -97,6 +97,9 @@ export interface Product {
   ad_pinterest_url?: string | null;
   specs_json?: string | null;
   tags?: string | null;
+  // Only sent to Growth and Scale, and only when an analysis exists.
+  intel_verdict?: 'TEST' | 'WATCH' | 'AVOID';
+  intel_confidence?: 'high' | 'medium' | 'low';
 }
 
 export interface Category {
@@ -115,7 +118,41 @@ export interface ProductsParams {
   bestseller?: boolean;
 }
 
+export interface IntelAnalysis {
+  verdict: 'TEST' | 'WATCH' | 'AVOID';
+  headline: string;
+  confidence: 'high' | 'medium' | 'low';
+  reasons_for: string[];
+  concerns: string[];
+  captured_at: string | null;
+  stale: boolean;
+  market: string;
+  product_type: string | null;
+  target_margin_pct: number | null;
+  basis_price: number | null;
+  price: { market: { lowest: number; median: number; highest: number } | null; low: number | null; high: number | null; floor: number | null; note: string | null };
+  economics: {
+    lines: { key: string; label: string; amount: number; kind: string }[];
+    profit: number | null; margin_pct: number | null; break_even_cac: number | null; break_even_roas: number | null;
+    assumptions: { key: string; label: string; value: number; unit: string }[]; advertising_included: boolean;
+  };
+  checked: { source: string; count: number }[];
+  competitor_count: number;
+  by_marketplace: Record<string, number>;
+  competitors: { marketplace: string; title: string; price: number; url?: string | null; rating?: number | null; review_count?: number | null }[];
+  not_measured: { key: string; label: string; why: string }[];
+}
+
+export type IntelResponse =
+  | { locked: true; plan: string | null; required_plan: string; available: boolean }
+  | { locked: false; available: false }
+  | { locked: false; available: true; analysis: IntelAnalysis };
+
 export const shoppingApi = {
+  getIntelligence: async (id: number): Promise<IntelResponse> => {
+    const response = await apiClient.get(`/shopping/products/${id}/intelligence`);
+    return response.data;
+  },
   getProducts: async (params?: ProductsParams): Promise<Product[]> => {
     const response = await apiClient.get('/shopping/products', { params });
     return response.data;

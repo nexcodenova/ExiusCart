@@ -43,3 +43,23 @@ class PlatformEvent(Base):
     entity_id = Column(String(64), nullable=True)
     payload = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class ProductIntelResult(Base):
+    """The latest market snapshot and verdict for one Prodora product in one
+    market. The snapshot (fingerprint + competitor listings + which sources
+    answered) is what costs money to fetch, so it is kept for a day and reused;
+    the evaluation (economics, verdict) is cheap and is recomputed whenever the
+    seller changes a target or a cost."""
+    __tablename__ = "product_intel_results"
+    __table_args__ = (Index("ix_intel_result_product_market", "product_id", "market", "created_at"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=True, index=True)
+    market = Column(String(2), nullable=False, default="US", server_default="US")
+    snapshot = Column(JSONB, nullable=False)
+    evaluation = Column(JSONB, nullable=False)
+    verdict = Column(String(10), nullable=False)          # TEST | WATCH | AVOID
+    confidence = Column(String(10), nullable=False)       # high | medium | low
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)

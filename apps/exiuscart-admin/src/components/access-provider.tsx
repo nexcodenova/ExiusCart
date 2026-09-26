@@ -11,6 +11,8 @@ import { adminAccessApi, type AdminAccess } from '@/lib/api';
 export const ROUTE_PERMS: { prefix: string; perm: string }[] = [
   { prefix: '/dashboard/shopping/add', perm: 'prodora.add' },
   { prefix: '/dashboard/shopping', perm: 'prodora.view' },
+  { prefix: '/dashboard/intelligence', perm: 'prodora.view' },
+  { prefix: '/dashboard/intake', perm: 'prodora.view' },
   { prefix: '/dashboard/digital-bundles', perm: 'prodora.digital' },
 ];
 

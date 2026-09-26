@@ -390,6 +390,25 @@ async def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded)
 _scheduler_thread = threading.Thread(target=_run_recurring_invoice_scheduler, daemon=True)
 _scheduler_thread.start()
 
+# Prodora intake: retries imports that a restart interrupted and, when
+# auto-publish is on, publishes approved products on the daily schedule.
+def _run_intake_scheduler():
+    while True:
+        try:
+            from app.core.database import SessionLocal
+            from app.intel import intake
+            _db = SessionLocal()
+            try:
+                intake.tick(_db)
+            finally:
+                _db.close()
+        except Exception as exc:
+            logger.error(f"[Intake scheduler] {exc}")
+        time.sleep(5 * 60)
+
+_intake_thread = threading.Thread(target=_run_intake_scheduler, daemon=True)
+_intake_thread.start()
+
 # Start drip flow runner (every 5 minutes)
 def _run_drip_flow_scheduler():
     while True:

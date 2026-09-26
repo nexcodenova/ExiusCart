@@ -24,6 +24,7 @@ from app.models.subscription import Subscription
 from app.models.dropship import DropshipConnection, DropshipProductLink
 from app.models.prodora import ProdoraImportLog
 from app.core.intel import record_event, record_supplier_snapshot
+from app.models.intel import ProductIntelResult
 from app.api.v1.endpoints.dropshipping import _cj_ensure_token, CJ_BASE
 
 router = APIRouter()
@@ -36,6 +37,11 @@ PRODORA_ELIGIBLE_PLANS = ("launch", "growth", "scale")
 # (None). 50/200 picked as generous enough for a real small store's normal
 # pace at each tier, with Scale as the real "no ceiling" option.
 PRODORA_MONTHLY_IMPORT_LIMIT = {"launch": 100, "growth": 500, "scale": None}
+
+# The Competition analysis (market prices, real profit, verdict) is a Growth and
+# Scale feature. Launch sees that it exists and what unlocks it, never the data.
+INTEL_PLANS = ("growth", "scale")
+INTEL_STALE_DAYS = 7
 
 _security = HTTPBearer()
 
@@ -249,7 +255,7 @@ def list_shopping_products(
     featured: Optional[bool] = None,
     bestseller: Optional[bool] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(get_prodora_user),
+    user: User = Depends(get_prodora_user),
 ):
     """
     Product listing for the Prodora storefront. Requires a valid Prodora
@@ -305,7 +311,22 @@ def list_shopping_products(
         Product.created_at.desc(),
     ).limit(100).all()
 
-    return [_product_out(p) for p in products]
+    out = [_product_out(p) for p in products]
+    # Growth and Scale also see each product's verdict on the cards. One small
+    # query for all of them (the newest analysis per product), and nothing at
+    # all for Launch, so the data is never sent to a plan that can't see it.
+    sub = _find_eligible_subscription(db, user)
+    if out and sub and sub.plan_type in INTEL_PLANS:
+        ids = [p["id"] for p in out]
+        newest = (db.query(func.max(ProductIntelResult.id))
+                  .filter(ProductIntelResult.market == "US", ProductIntelResult.product_id.in_(ids))
+                  .group_by(ProductIntelResult.product_id))
+        rows = db.query(ProductIntelResult.product_id, ProductIntelResult.verdict, ProductIntelResult.confidence).filter(ProductIntelResult.id.in_(newest)).all()
+        by_id = {pid: (v, c) for pid, v, c in rows}
+        for p in out:
+            if p["id"] in by_id:
+                p["intel_verdict"], p["intel_confidence"] = by_id[p["id"]]
+    return out
 
 
 @router.get("/shopping/products/{product_id}")
@@ -363,6 +384,70 @@ def get_related_shopping_products(
         .all()
     )
     return [_product_out(p) for p in rows]
+
+
+def _seller_intel_view(row: ProductIntelResult) -> dict:
+    """What a Growth/Scale seller may see of an analysis: the verdict and its
+    evidence, never the operator side (paid-usage counts, which keys are set up,
+    who ran it). Only sources that actually answered are named."""
+    snap, ev = row.snapshot or {}, row.evaluation or {}
+    captured = snap.get("captured_at")
+    stale = False
+    try:
+        when = datetime.fromisoformat(captured) if captured else None
+        stale = bool(when and (datetime.now(timezone.utc) - (when if when.tzinfo else when.replace(tzinfo=timezone.utc))).days >= INTEL_STALE_DAYS)
+    except ValueError:
+        pass
+    listings = snap.get("listings") or []
+    by_market: dict = {}
+    for l in listings:
+        by_market[l["marketplace"]] = by_market.get(l["marketplace"], 0) + 1
+    econ = ev.get("economics") or {}
+    rng = ev.get("price_range") or {}
+    return {
+        "verdict": ev.get("verdict"), "headline": ev.get("headline"), "confidence": ev.get("confidence"),
+        "reasons_for": ev.get("reasons_for") or [], "concerns": ev.get("concerns") or [],
+        "captured_at": captured, "stale": stale, "market": snap.get("market", "US"),
+        "product_type": (snap.get("fingerprint") or {}).get("product_type"),
+        "target_margin_pct": ev.get("target_margin_pct"), "basis_price": ev.get("basis_price"),
+        "price": {"market": rng.get("market"), "low": rng.get("low"), "high": rng.get("high"), "floor": rng.get("floor"), "note": rng.get("note")},
+        "economics": {"lines": econ.get("lines") or [], "profit": econ.get("contribution_profit"), "margin_pct": econ.get("contribution_margin_pct"),
+                      "break_even_cac": econ.get("break_even_cac"), "break_even_roas": econ.get("break_even_roas"),
+                      "assumptions": econ.get("assumptions") or [], "advertising_included": econ.get("advertising_included", False)},
+        "checked": [{"source": s["source"], "count": s["count"]} for s in snap.get("sources", []) if s.get("status") == "ok"],
+        "competitor_count": len(listings), "by_marketplace": by_market, "match_method": snap.get("match_method"),
+        "competitors": [{"marketplace": l["marketplace"], "title": l["title"], "price": l["price"], "url": l.get("url"),
+                         "rating": l.get("rating"), "review_count": l.get("review_count")} for l in listings[:15]],
+        "not_measured": ev.get("not_measured") or [],
+    }
+
+
+@router.get("/shopping/products/{product_id}/intelligence")
+def get_shopping_product_intelligence(
+    product_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_prodora_user),
+):
+    """The Competition section of a Prodora product page.
+
+    Always answers 200 (never 403): the Prodora site signs a seller out on a 403,
+    and being on the Launch plan is not a reason to be signed out. Instead the
+    response says `locked` and what unlocks it."""
+    product = db.query(Product).filter(Product.id == product_id, Product.is_active == True, Product.shop_id.is_(None)).first()  # noqa: E712
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    sub = _find_eligible_subscription(db, user)
+    plan = sub.plan_type if sub else None
+    row = (db.query(ProductIntelResult)
+           .filter(ProductIntelResult.product_id == product_id, ProductIntelResult.market == "US")
+           .order_by(ProductIntelResult.id.desc()).first())
+    if plan not in INTEL_PLANS:
+        return {"locked": True, "plan": plan, "required_plan": "growth", "available": row is not None}
+    if not row:
+        return {"locked": False, "available": False}
+    record_event(db, "prodora_intel_viewed", user_id=user.id, entity_type="prodora_product", entity_id=product_id,
+                 payload={"verdict": row.verdict})
+    return {"locked": False, "available": True, "analysis": _seller_intel_view(row)}
 
 
 @router.post("/shopping/products/{product_id}/import")

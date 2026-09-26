@@ -36,6 +36,9 @@ ADMIN_PERMISSION_AREAS = [
             {"key": "prodora.edit", "label": "Edit products and categories", "hint": "Change details, prices, categories, trending and bestseller flags."},
             {"key": "prodora.delete", "label": "Delete products", "hint": "Remove products and categories for good."},
             {"key": "prodora.digital", "label": "Digital bundles", "hint": "Create and edit digital bundles (drawing books, design packs)."},
+            {"key": "prodora.review", "label": "Review and approve", "hint": "Approve or reject products waiting in the intake queue."},
+            {"key": "prodora.publish", "label": "Publish and schedule", "hint": "Publish approved products and change the daily schedule."},
+            {"key": "prodora.analyze", "label": "Run product analysis", "hint": "Check competitors and get a verdict. Can use paid lookups, so give it only to people you trust with that."},
         ],
     },
 ]

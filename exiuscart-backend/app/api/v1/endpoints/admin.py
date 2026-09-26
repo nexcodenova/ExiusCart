@@ -1965,6 +1965,20 @@ class ShoppingProductUpdate(ShoppingProductExtras):
     is_active: Optional[bool] = None
 
 
+def _hide_intake_drafts(query):
+    """Products still going through the intake queue (not yet published) are hidden
+    from the catalogue lists, so 100+ drafts a day never bury the real catalogue.
+    They are reviewed on the Intake page instead."""
+    from app.models.intake import IntakeItem
+    drafts = db_subquery_of_drafts(IntakeItem)
+    return query.filter(~Product.id.in_(drafts))
+
+
+def db_subquery_of_drafts(IntakeItem):
+    from sqlalchemy import select
+    return select(IntakeItem.product_id).where(IntakeItem.product_id.isnot(None), IntakeItem.status != "published")
+
+
 @router.get("/admin/shopping/products")
 def admin_list_shopping_products(
     search: Optional[str] = None,
@@ -1978,6 +1992,7 @@ def admin_list_shopping_products(
         .filter(Product.shop_id.is_(None))
         .order_by(Product.is_trending.desc(), Product.is_featured.desc(), Product.created_at.desc())
     )
+    query = _hide_intake_drafts(query)
     if search:
         q = f"%{search}%"
         query = query.filter(Product.name.ilike(q))
@@ -2004,6 +2019,7 @@ def admin_prodora_catalog(
         .options(joinedload(Product.category))
         .filter(Product.shop_id.is_(None))
     )
+    query = _hide_intake_drafts(query)
     bundle_query = db.query(ProdoraDigitalBundle)
     if search:
         q = f"%{search}%"
@@ -3134,22 +3150,11 @@ class AliexpressImportAdminIn(BaseModel):
     category_name: Optional[str] = None
 
 
-@router.post("/admin/shopping/aliexpress/import", status_code=201)
-async def admin_aliexpress_import(
-    body: AliexpressImportAdminIn,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    current_admin: User = Depends(require_admin_perm("prodora.add")),
-):
-    shop = _CATALOGUE
-    conn = db.query(DropshipConnection).filter(
-        DropshipConnection.shop_id == shop.id, DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
-    ).first()
-    if not conn:
-        raise HTTPException(status_code=400, detail="AliExpress is not connected. Connect it from Add Products first.")
-    token = await _aliexpress_ensure_token(conn, db)
-
-    product_id = _parse_aliexpress_product_id(body.product_url)
+def _aliexpress_import_one(db: Session, shop, token: str, product_url: str, price: Optional[float] = None,
+                           category_name: Optional[str] = None, active: bool = True) -> Product:
+    """Creates one catalogue product from an AliExpress link. Shared by the single
+    import endpoint (published at once) and the intake queue (created hidden)."""
+    product_id = _parse_aliexpress_product_id(product_url)
     if not product_id:
         raise HTTPException(status_code=400, detail="Couldn't find a product ID in that link — paste the full AliExpress product page URL.")
 
@@ -3158,12 +3163,12 @@ async def admin_aliexpress_import(
         raise HTTPException(status_code=400, detail="This product has no purchasable variants — it may be unavailable for dropshipping.")
 
     primary = detail["variants"][0]
-    final_price = body.price if body.price else round(primary["price"] * 2, 2)
+    final_price = price if price else round(primary["price"] * 2, 2)
     name = detail["name"]
 
     cat_id = None
-    if body.category_name:
-        cat_id = _get_or_create_category(db, shop.id, body.category_name).id
+    if category_name:
+        cat_id = _get_or_create_category(db, shop.id, category_name).id
 
     product = Product(
         name=name,
@@ -3173,13 +3178,13 @@ async def admin_aliexpress_import(
         cost_price=primary["price"] or None,
         sku=f"AE-{product_id}",
         image_url=detail["images"][0] if detail["images"] else None,
-        source_url=body.product_url,
+        source_url=product_url,
         quantity=0,
         category_id=cat_id,
         shop_id=shop.id,
         is_featured=False,
         is_trending=False,
-        is_active=True,
+        is_active=active,
         supplier_name="AliExpress",
     )
     db.add(product)
@@ -3209,7 +3214,7 @@ async def admin_aliexpress_import(
         product_id=product.id,
         supplier_type="aliexpress",
         supplier_product_id=product_id,
-        supplier_product_url=body.product_url,
+        supplier_product_url=product_url,
         supplier_sku=str(primary["sku_id"]),
         supplier_product_name=name,
         cost_price=primary["price"] or None,
@@ -3217,6 +3222,25 @@ async def admin_aliexpress_import(
     ))
 
     db.flush()
+    return product
+
+
+@router.post("/admin/shopping/aliexpress/import", status_code=201)
+async def admin_aliexpress_import(
+    body: AliexpressImportAdminIn,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
+):
+    shop = _CATALOGUE
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop.id, DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail="AliExpress is not connected. Connect it from Add Products first.")
+    token = await _aliexpress_ensure_token(conn, db)
+
+    product = _aliexpress_import_one(db, shop, token, body.product_url, body.price, body.category_name)
     _ensure_prodora_codes(db)
     db.commit()
     background_tasks.add_task(_run_meta_ads_auto_attach, [product.id])
