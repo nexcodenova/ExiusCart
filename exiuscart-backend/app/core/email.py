@@ -3,7 +3,9 @@ Email utility — sends via AWS SES SMTP on port 2587.
 Port 587 is blocked by DigitalOcean; port 2587 is AWS SES's alternate SMTP port that bypasses this.
 """
 import os
+import re
 import smtplib
+from email.utils import formataddr
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -24,20 +26,62 @@ _FROM_BILLING  = os.getenv("SMTP_FROM_BILLING", "billing@exiuscart.com")
 _FROM_NAME     = os.getenv("SMTP_FROM_NAME", "ExiusCart")
 
 
+_NAME_STRIP = re.compile(r'[\x00-\x1f\x7f<>"@\\]')
+_EMAIL_OK = re.compile(r'^[^@\s<>",;]+@[^@\s<>",;]+\.[^@\s<>",;]+$')
+
+
+def _display_name(name: Optional[str]) -> Optional[str]:
+    """A seller-typed shop name is put in the From header, so strip anything that could
+    break or inject headers (control characters, quotes, angle brackets, @ so a name cannot pose as an address) and cap it."""
+    cleaned = _NAME_STRIP.sub("", name or "").strip()[:70]
+    return cleaned or None
+
+
+def _shop_sender(shop_id: Optional[int], shop_name: Optional[str] = None) -> dict:
+    """Extra send_email arguments for mail sent ON BEHALF of a shop: its name as the
+    sender name (the address stays ours so delivery is reliable) and the shop's own
+    email as Reply-To so customers' replies reach the seller."""
+    out: dict = {}
+    reply_to = None
+    if shop_id is not None:
+        try:
+            from app.models.shop import Shop
+            _db = SessionLocal()
+            try:
+                shop = _db.query(Shop.name, Shop.email).filter(Shop.id == shop_id).first()
+            finally:
+                _db.close()
+            if shop:
+                shop_name = shop_name or shop[0]
+                reply_to = shop[1]
+        except Exception:
+            pass
+    name = _display_name(shop_name)
+    if name:
+        out["from_name"] = name
+    if reply_to and _EMAIL_OK.match(reply_to.strip()):
+        out["reply_to"] = reply_to.strip()
+    return out
+
+
 def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] = None,
-               from_email: Optional[str] = None) -> bool:
-    """Send an email via SMTP on port 2587. Returns True if sent, False if skipped."""
+               from_email: Optional[str] = None, from_name: Optional[str] = None,
+               reply_to: Optional[str] = None) -> bool:
+    """Send an email via SMTP on port 2587. Returns True if sent, False if skipped.
+    `from_name` overrides the sender name ("ExiusCart") for mail sent on a shop's behalf."""
     if not _SMTP_ENABLED:
         logger.info(f"[EMAIL SKIPPED — SMTP disabled] To: {to} | Subject: {subject}")
         return False
 
     sender_addr = from_email or _FROM_NOREPLY
-    sender = f"{_FROM_NAME} <{sender_addr}>"
+    sender = formataddr((_display_name(from_name) or _FROM_NAME, sender_addr), charset="utf-8")
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = sender
     msg["To"]      = to
+    if reply_to and _EMAIL_OK.match(reply_to.strip()):
+        msg["Reply-To"] = reply_to.strip()
 
     if text_body:
         msg.attach(MIMEText(text_body, "plain", "utf-8"))
@@ -1041,7 +1085,7 @@ def send_quotation_email(
 </body>
 </html>"""
 
-    send_email(to_email, f"Quotation {quote_number} from {shop_name}", with_thedersi_footer(html, shop_id))
+    send_email(to_email, f"Quotation {quote_number} from {shop_name}", with_thedersi_footer(html, shop_id), **_shop_sender(shop_id, shop_name))
 
 
 # ── Payment Reminder email ─────────────────────────────────────────────────────
@@ -1130,6 +1174,7 @@ def send_payment_reminder_email(
         to_email,
         f"[Reminder {ordinal}] Payment Due – {quote_number} from {shop_name}",
         with_thedersi_footer(html, shop_id),
+        **_shop_sender(shop_id, shop_name),
     )
 
 
@@ -1322,7 +1367,7 @@ def send_recurring_invoice_email(
   </table>
 </body></html>"""
 
-    send_email(to_email, f"Invoice {invoice_number} from {shop_name}", with_thedersi_footer(html, shop_id))
+    send_email(to_email, f"Invoice {invoice_number} from {shop_name}", with_thedersi_footer(html, shop_id), **_shop_sender(shop_id, shop_name))
 
 
 # ── TheDersi Order Cancellation — seller notification ─────────────────────────
@@ -1481,6 +1526,7 @@ def send_review_request_email(
         to_email,
         f"How was your order from {shop_name}?",
         with_thedersi_footer(html, shop_id),
+        **_shop_sender(shop_id, shop_name),
     )
 
 
@@ -1565,4 +1611,4 @@ def send_digital_product_email(
 </body>
 </html>"""
 
-    return send_email(to_email, subject, html)
+    return send_email(to_email, subject, html, **_shop_sender(None, shop_name))

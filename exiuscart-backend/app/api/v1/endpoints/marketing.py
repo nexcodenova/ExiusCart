@@ -160,7 +160,7 @@ def process_drip_flows(db: Session):
             elif step.step_type == "send_email":
                 lead = enrollment.lead
                 if lead and lead.email:
-                    from app.core.email import send_email as _send_email, with_thedersi_footer
+                    from app.core.email import send_email as _send_email, _shop_sender, with_thedersi_footer
                     subj = (cfg.get("subject") or "").replace("{name}", lead.name or "there")
                     body = (cfg.get("body_html") or f"<p>Hi {lead.name or 'there'},</p>").replace("{name}", lead.name or "there")
                     # {cart_items}/{cart_total} — only relevant for cart_abandoned
@@ -182,7 +182,7 @@ def process_drip_flows(db: Session):
                         body = body.replace("{cart_items}", f"<ul>{items_html}</ul>" if items else "")
                         body = body.replace("{cart_total}", f"{total:.2f}")
                     body = with_thedersi_footer(body, lead.shop_id)
-                    ok = _send_email(to=lead.email, subject=subj, html_body=body)
+                    ok = _send_email(to=lead.email, subject=subj, html_body=body, **_shop_sender(lead.shop_id))
                     if ok:
                         enrollment.emails_sent = (enrollment.emails_sent or 0) + 1
                 _set_next_step(enrollment, steps, now)
@@ -395,7 +395,7 @@ def send_email_campaign(shop_id: int, cid: int, current_user: User = Depends(get
     from app.models.email_usage_log import EmailUsageLog
     from app.models.customer import Customer
     from app.api.v1.endpoints.usage import EMAIL_LIMITS, _get_limit, _month_start
-    from app.core.email import send_email as _send_email, with_thedersi_footer
+    from app.core.email import send_email as _send_email, _shop_sender, with_thedersi_footer
     from sqlalchemy import func as sql_func
 
     sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).first()
@@ -435,8 +435,9 @@ def send_email_campaign(shop_id: int, cid: int, current_user: User = Depends(get
     body_html = with_thedersi_footer(c.body_html or f"<p>{c.name}</p>", shop_id)
 
     sent_count = 0
+    sender_kwargs = _shop_sender(shop_id)   # the shop's name as sender, its email as Reply-To
     for customer in to_send:
-        ok = _send_email(to=customer.email, subject=c.subject, html_body=body_html)
+        ok = _send_email(to=customer.email, subject=c.subject, html_body=body_html, **sender_kwargs)
         if ok:
             db.add(EmailUsageLog(shop_id=shop_id, email_type="marketing", recipient_email=customer.email, reference_id=c.id))
             sent_count += 1

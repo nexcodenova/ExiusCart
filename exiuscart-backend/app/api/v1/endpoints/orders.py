@@ -22,7 +22,7 @@ from app.models.customer import Customer
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate, ShipOrderIn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import trigger_stock_sync
-from app.core.email import send_email, build_invoice_html, _FROM_BILLING, send_new_order_email, send_low_stock_alert_email, with_thedersi_footer
+from app.core.email import send_email, _shop_sender, build_invoice_html, _FROM_BILLING, send_new_order_email, send_low_stock_alert_email, with_thedersi_footer
 from app.core.thedersi import notify_thedersi_order_status, notify_thedersi_receipt_uploaded, MONTHLY_ORDER_LIMITS
 from app.models.subscription import Subscription
 from app.models.bundle_component import BundleComponent
@@ -919,6 +919,7 @@ async def send_invoice(
         subject=f"Your Invoice — {order.order_number}",
         html_body=html,
         from_email=_FROM_BILLING,
+        **_shop_sender(shop_id),
     )
 
     return {
