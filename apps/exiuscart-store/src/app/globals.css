@@ -34,18 +34,16 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    /* Sidebar — deliberately dark in BOTH themes (not tied to --card/
-       --background), so the nav rail reads as a distinct, richer surface
-       against the light theme's white page instead of blending into it.
-       True near-black (zero hue saturation), not navy — a lighter charcoal
-       than the dark theme's own sidebar below, "dark accent" rather than
-       "pitch black". */
-    --sidebar-bg: 0 0% 10%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-muted-foreground: 215 20% 71%;
-    --sidebar-accent: 0 0% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
+    /* Sidebar (light theme) — the same soft lavender as the admin panel's
+       sidebar (#EFEDF8 with a #E0DCF0 border), dark text, and a white pill
+       with purple text for the active item. The dark theme below keeps its
+       own dark rail. */
+    --sidebar-bg: 251 44% 95%;
+    --sidebar-border: 251 43% 91%;
+    --sidebar-foreground: 222 30% 22%;
+    --sidebar-muted-foreground: 220 10% 42%;
+    --sidebar-accent: 0 0% 100%;
+    --sidebar-accent-foreground: 255 63% 48%;
   }
 
   .dark {

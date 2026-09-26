@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           title="Total Stores"
           value={stats?.total_shops ?? 0}
@@ -213,13 +213,13 @@ function StatCard({ title, value, subtitle, icon, color }: {
     orange: 'bg-orange-500/10 text-orange-600',
   };
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-2.5 rounded-lg ${colors[color]}`}>{icon}</div>
+    <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-gray-600 text-sm">{title}</p>
+        <p className="text-2xl font-bold text-gray-900 leading-tight mt-0.5">{value}</p>
+        <p className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</p>
       </div>
-      <p className="text-gray-600 text-sm">{title}</p>
-      <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-      <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+      <div className={`p-2.5 rounded-lg shrink-0 ${colors[color]}`}>{icon}</div>
     </div>
   );
 }

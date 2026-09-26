@@ -635,14 +635,14 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <div className={`rounded-xl border p-4 ${highlight ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-white border-gray-200'}`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className={`p-2 rounded-lg ${highlight ? 'bg-yellow-500/10 text-yellow-600' : 'bg-[#6B3FD9]/10 text-[#6B3FD9]'}`}>
-          {icon}
-        </div>
+    <div className={`rounded-xl border p-4 flex items-center justify-between gap-3 ${highlight ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-white border-gray-200'}`}>
+      <div className="min-w-0">
+        <p className="text-sm text-gray-500">{label}</p>
+        <p className="text-2xl font-bold text-gray-900 leading-tight mt-0.5">{value}</p>
       </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-sm text-gray-500 mt-1">{label}</p>
+      <div className={`p-2.5 rounded-lg shrink-0 ${highlight ? 'bg-yellow-500/10 text-yellow-600' : 'bg-[#6B3FD9]/10 text-[#6B3FD9]'}`}>
+        {icon}
+      </div>
     </div>
   );
 }

@@ -155,11 +155,12 @@ export default function LoginPage() {
         <div className="space-y-3">
           <div className="rounded-lg border border-[#6B3FD9]/20 bg-[#6B3FD9]/5 px-3 py-3 text-sm text-gray-700">
             <p className="font-semibold text-gray-900">No ExiusCart account for {pending.email} yet.</p>
-            <p className="mt-1 text-gray-600">Create one with this {pending.provider === 'google' ? 'Google' : 'Facebook'} account. It starts on Launch, free for 7 days.</p>
-            <p className="mt-1 text-gray-600">
-              Want Growth or Scale?{' '}
-              <Link href="https://exiuscart.com/pricing" className="text-[#6B3FD9] font-medium hover:underline">Pick a plan on the pricing page</Link> first.
-            </p>
+            <p className="mt-1 text-gray-600">Create one with this {pending.provider === 'google' ? 'Google' : 'Facebook'} account. The button below starts <strong>Launch, free for 7 days</strong>.</p>
+            <p className="mt-2 text-gray-600">Want Growth or Scale instead? They start with a <strong>$1, 7-day trial</strong> and a secure checkout:</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <a href="https://exiuscart.com/register?plan=growth&billing=monthly&trial=dollar" className="rounded-lg border border-[#6B3FD9]/40 bg-white py-2 text-center text-sm font-semibold text-[#6B3FD9] transition hover:bg-[#6B3FD9]/5">Growth · $1</a>
+              <a href="https://exiuscart.com/register?plan=scale&billing=monthly&trial=dollar" className="rounded-lg border border-[#6B3FD9]/40 bg-white py-2 text-center text-sm font-semibold text-[#6B3FD9] transition hover:bg-[#6B3FD9]/5">Scale · $1</a>
+            </div>
           </div>
           <label className="flex items-start gap-2 text-sm text-gray-600 cursor-pointer select-none">
             <input
