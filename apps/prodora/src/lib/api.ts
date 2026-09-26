@@ -183,6 +183,32 @@ export const digitalBundlesApi = {
   },
 };
 
+// ── Amazon KDP print-ready files for a purchased digital book ─────────────────
+export interface KdpPack {
+  bundle: { id: number; name: string };
+  options: { trim: string; paper: string };
+  choices: { trims: string[]; papers: Record<string, string> };
+  interior: { source_pages: number; final_pages: number; blank_pages_added: number };
+  cover: { width_in: number; height_in: number; spine_in: number; spine_text_allowed: boolean };
+  listing: { title: string; description: string; keywords: string[]; suggested_list_price: number | null };
+  checklist: string[];
+}
+
+export const kdpApi = {
+  pack: async (id: number, trim: string, paper: string): Promise<KdpPack> => {
+    const response = await apiClient.get(`/prodora/digital-bundles/${id}/kdp/pack`, { params: { trim, paper } });
+    return response.data;
+  },
+  file: async (id: number, kind: 'interior' | 'cover', trim: string, paper: string): Promise<Blob> => {
+    const response = await apiClient.get(`/prodora/digital-bundles/${id}/kdp/${kind}.pdf`, { params: { trim, paper }, responseType: 'blob' });
+    return response.data;
+  },
+  track: async (id: number): Promise<{ id: number; status: string }> => {
+    const response = await apiClient.post(`/prodora/digital-bundles/${id}/kdp/track`);
+    return response.data;
+  },
+};
+
 export interface ShippingOption {
   logistic_name: string;
   price: number;

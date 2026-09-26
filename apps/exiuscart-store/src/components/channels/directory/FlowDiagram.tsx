@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { ShoppingCart, Package, Truck, Boxes } from 'lucide-react';
+import { ShoppingCart, Truck, Boxes } from 'lucide-react';
 import { channelMeta } from '@/components/channels/channelMeta';
 import ChannelLogo from '@/components/channels/ChannelLogo';
 
@@ -59,8 +59,9 @@ export default function FlowDiagram() {
           <div className="hidden md:block flex-1 max-w-[80px] h-px bg-gradient-to-r from-border via-primary/40 to-primary/40" />
 
           <div className="shrink-0 flex flex-col items-center gap-1.5 mx-2">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center">
-              <Package className="w-7 h-7 text-primary" />
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-ec-square.png" alt="ExiusCart" className="h-full w-full object-contain p-2" />
             </div>
             <span className="text-xs font-bold text-foreground">EXIUSCART</span>
           </div>

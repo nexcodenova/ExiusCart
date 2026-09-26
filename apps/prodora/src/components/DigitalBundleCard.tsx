@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Download, CheckCircle2, ExternalLink, Loader2 } from 'lucide-react';
 import { digitalBundlesApi, DigitalBundle } from '@/lib/api';
 import { DotsLoader } from '@/components/LoadingImage';
+import { KdpPackModal } from '@/components/KdpPackModal';
 
 export function DigitalBundleCard({ bundle }: { bundle: DigitalBundle }) {
   const [importing, setImporting] = useState(false);
@@ -11,6 +12,7 @@ export function DigitalBundleCard({ bundle }: { bundle: DigitalBundle }) {
   const [downloading, setDownloading] = useState(false);
   const [links, setLinks] = useState<{ editable_file_url: string | null; pdf_file_url: string | null } | null>(null);
   const [error, setError] = useState('');
+  const [kdpOpen, setKdpOpen] = useState(false);
 
   const handleDownload = async () => {
     setDownloading(true); setError('');
@@ -86,6 +88,10 @@ export function DigitalBundleCard({ bundle }: { bundle: DigitalBundle }) {
                   )}
                 </div>
               )}
+              <button onClick={() => setKdpOpen(true)}
+                className="w-full py-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg text-xs font-semibold transition">
+                Prepare for Amazon KDP
+              </button>
               {imported ? (
                 <p className="text-center text-[11px] text-green-600 font-medium py-1.5">Added to your store as &ldquo;{imported.name}&rdquo; ✓</p>
               ) : (
@@ -99,6 +105,7 @@ export function DigitalBundleCard({ bundle }: { bundle: DigitalBundle }) {
           )}
         </div>
       </div>
+      {kdpOpen && <KdpPackModal bundleId={bundle.id} name={bundle.name} onClose={() => setKdpOpen(false)} />}
     </div>
   );
 }

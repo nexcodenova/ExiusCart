@@ -19,10 +19,9 @@ api.interceptors.request.use((config) => {
 // Force logout on 401 (expired/invalid token) or 403 account deactivated.
 // Also: a subscription_required rejection (402, from get_current_user in
 // app/api/v1/deps.py — real enforcement on every request, not just one or
-// two endpoints) means the dashboard layout's own expiry check is stale —
-// e.g. a tab left open from before the trial ran out — so reload to pick up
-// the full lock screen (dashboard/layout.tsx) instead of leaving a
-// confusing generic error on whatever action was attempted.
+// two endpoints) means the shop is locked (expired, cancelled, or no first
+// payment yet) — go straight to Billing instead of leaving a confusing
+// generic error on whatever action was attempted.
 api.interceptors.response.use(
   (res) => res,
   (error) => {
@@ -43,7 +42,11 @@ api.interceptors.response.use(
         window.location.href = isRefunded ? '/login?reason=refunded' : isDeactivated ? '/login?reason=deactivated' : '/login';
       }
       if (status === 402 && (detail?.error === 'subscription_required' || detail?.error === 'trial_expired')) {
-        window.location.reload();
+        // Send the owner to Billing (the only page a locked shop can use). A plain reload
+        // looped forever: the dashboard fires its normal calls, they all answer 402, and
+        // each one reloaded the page before the lock screen could take over. On Billing
+        // itself, further 402s from the header's calls are simply ignored.
+        if (window.location.pathname !== '/dashboard/billing') window.location.replace('/dashboard/billing');
       }
     }
     return Promise.reject(error);
@@ -1361,4 +1364,34 @@ export interface ProdoraImportRow {
 export const prodoraImportsApi = {
   list: (shopId: string) =>
     api.get<{ imports: ProdoraImportRow[]; usage: { used: number; limit: number | null; resets_at: string } }>(`/shops/${shopId}/prodora-imports`),
+};
+
+// ── Amazon KDP (manual channel: no Amazon connection, a tracker plus print-ready files) ──
+export type KdpStatus = 'not_started' | 'files_ready' | 'submitted' | 'live';
+export interface KdpBook {
+  id: number; bundle_id: number | null; title: string; status: KdpStatus; trim: string; paper: string;
+  amazon_url: string | null; list_price: number | null; print_cost: number | null; est_royalty: number | null;
+  notes: string | null; cover_image_url: string | null; updated_at: string | null;
+}
+export interface KdpPack {
+  bundle: { id: number; name: string };
+  options: { trim: string; paper: string };
+  choices: { trims: string[]; papers: Record<string, string> };
+  interior: { source_pages: number; final_pages: number; blank_pages_added: number; trim_in: number[] };
+  cover: { width_in: number; height_in: number; spine_in: number; spine_text_allowed: boolean };
+  listing: { title: string; description: string; keywords: string[]; suggested_list_price: number | null };
+  checklist: string[];
+}
+export const kdpApi = {
+  list: (shopId: string) =>
+    api.get<{ books: KdpBook[]; available: { id: number; name: string; cover_image_url: string | null; has_pdf: boolean }[]; statuses: KdpStatus[] }>(`/shops/${shopId}/kdp/books`),
+  add: (shopId: string, data: { bundle_id?: number; title?: string; trim?: string; paper?: string }) =>
+    api.post<KdpBook>(`/shops/${shopId}/kdp/books`, data),
+  update: (shopId: string, id: number, data: Partial<Pick<KdpBook, 'title' | 'status' | 'trim' | 'paper' | 'amazon_url' | 'list_price' | 'print_cost' | 'notes'>>) =>
+    api.put<KdpBook>(`/shops/${shopId}/kdp/books/${id}`, data),
+  remove: (shopId: string, id: number) => api.delete(`/shops/${shopId}/kdp/books/${id}`),
+  pack: (bundleId: number, trim: string, paper: string) =>
+    api.get<KdpPack>(`/prodora/digital-bundles/${bundleId}/kdp/pack`, { params: { trim, paper } }),
+  file: (bundleId: number, kind: 'interior' | 'cover', trim: string, paper: string) =>
+    api.get<Blob>(`/prodora/digital-bundles/${bundleId}/kdp/${kind}.pdf`, { params: { trim, paper }, responseType: 'blob' }),
 };

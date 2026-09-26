@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Link2, Loader2, Search, FileText, Plus,
   X,
-  ShoppingBag, Globe, ShoppingCart, Package, Instagram, Tag, Music2, Store, CreditCard, Download,
+  ShoppingBag, BookOpen, Globe, ShoppingCart, Package, Instagram, Tag, Music2, Store, CreditCard, Download,
 } from 'lucide-react';
 import { channelsApi, shopifyApi, subscriptionApi } from '@/lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -413,6 +413,20 @@ export default function ChannelsPage() {
             ? () => setUpgradeLimitModal(true)
             : () => router.push('/dashboard/channels/integrations/gumroad'),
       actionLabel: hasGumroad ? 'Manage Gumroad' : (isTheDersiUser ? 'Learn more' : (channelLocked('gumroad') ? 'Upgrade to Premium' : 'Connect Gumroad')),
+    },
+    {
+      // Manual channel: KDP has no API, so there is no connection and it never counts toward the channel limit.
+      id: 'kdp',
+      channelType: 'kdp',
+      name: 'Amazon KDP',
+      category: 'Global Marketplaces',
+      description: 'Publish printed drawing books on Amazon. We prepare the print-ready files and track your books; Amazon prints and ships each order. Manual channel: you upload on KDP yourself.',
+      icon: <BookOpen className="w-5 h-5 text-orange-500" />,
+      // Books come from Prodora, which TheDersi-managed stores don't have.
+      badge: isTheDersiUser ? 'locked' : 'connect',
+      badgeLabel: isTheDersiUser ? 'ExiusCart direct only' : 'Manual channel',
+      onAction: isTheDersiUser ? () => setDersiBlockChannel('kdp') : () => router.push('/dashboard/channels/integrations/kdp'),
+      actionLabel: isTheDersiUser ? 'Learn more' : 'Open KDP tracker',
     },
   ];
 
