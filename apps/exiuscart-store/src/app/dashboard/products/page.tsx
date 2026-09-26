@@ -786,7 +786,7 @@ export default function ProductsPage() {
                                 setSelectedForPrint(new Set(withBarcode.map(p => p.id)));
                               }
                             }}
-                            className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                            className="block w-4 h-4 rounded border-border accent-primary cursor-pointer"
                           />
                         );
                       })()}
@@ -833,7 +833,7 @@ export default function ProductsPage() {
                             type="checkbox"
                             checked={selectedForPrint.has(product.id)}
                             onChange={() => togglePrintSelect(product.id)}
-                            className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                            className="block w-4 h-4 rounded border-border accent-primary cursor-pointer"
                           />
                         ) : (
                           // Bulk barcode printing checkbox: a product with no barcode has
@@ -842,7 +842,7 @@ export default function ProductsPage() {
                             type="checkbox"
                             disabled
                             title="Generate a barcode for this product first to select it for printing"
-                            className="w-4 h-4 rounded border-border cursor-not-allowed opacity-30"
+                            className="block w-4 h-4 rounded border-border cursor-not-allowed opacity-30"
                           />
                         )}
                       </td>
@@ -868,7 +868,7 @@ export default function ProductsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-2.5 py-1.5 text-xs"><SupplierCell product={product} /></td>
+                      <td className="px-2.5 py-1.5 text-xs"><div className="flex items-center"><SupplierCell product={product} /></div></td>
                       <td className="px-2.5 py-1.5">
                         {product.sku
                           ? <span className="block max-w-[130px] truncate font-mono text-xs text-muted-foreground" title={product.sku}>{product.sku}</span>
@@ -897,12 +897,14 @@ export default function ProductsPage() {
                       <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmt(product.costPrice)}</td>
                       <td className="px-2.5 py-1.5 text-right font-semibold tabular-nums text-primary">{fmt(product.sellingPrice)}</td>
                       <td className="px-2.5 py-1.5 text-center">
+                        <div className="flex items-center justify-center">
                         {margin !== null ? (
-                          <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
-                            margin < 20 ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>
+                          <span className={`text-sm font-semibold tabular-nums ${
+                            margin < 20 ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
                             {margin}%
                           </span>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
+                        </div>
                       </td>
                       <td className="hidden px-2.5 py-1.5 text-right tabular-nums 2xl:table-cell">
                         {perf ? (
@@ -913,7 +915,7 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-2.5 py-1.5 text-center">
                         {/* Color only for out of stock and low stock; healthy stock is plain text. */}
-                        <span className={`inline-flex items-center gap-1.5 font-medium tabular-nums ${
+                        <div className={`flex items-center justify-center gap-1.5 font-medium tabular-nums ${
                           product.stock === 0 ? 'text-red-500'
                           : product.stock <= product.lowStockAlert ? 'text-amber-600 dark:text-amber-400'
                           : 'text-foreground'}`}>
@@ -921,7 +923,7 @@ export default function ProductsPage() {
                             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                           )}
                           {product.stock}
-                        </span>
+                        </div>
                       </td>
                       <td className="py-1.5 pl-3 pr-4 text-right">
                         <div className="flex items-center justify-end gap-0.5">

@@ -5,12 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   Bell, Search, User, Sun, Moon, ChevronDown, Crown,
-  Settings, CreditCard, LogOut, UserCircle,
+  Settings, CreditCard, LogOut, UserCircle, LifeBuoy,
 } from 'lucide-react';
 import { useTheme } from '@/components/providers/theme-provider';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
 import { ordersApi } from '@/lib/api';
 import { FeedbackPopover } from '@/components/feedback-dialog';
+import { GlobalSearch } from '@/components/layout/global-search';
 import {
   type ActivityEvent, ACTIVITY_EVENT_META, DEFAULT_ACTIVITY_EVENT_META, activityTimeAgo,
 } from '@/lib/activity-event-meta';
@@ -43,6 +44,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [notifLoaded, setNotifLoaded] = useState(false);
   const unreadNotifCount = notifEvents.filter((e) => !e.is_read).length;
   const [showProfile, setShowProfile] = useState(false);
+  const [storeLogo, setStoreLogo] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [isTheDersiShop, setIsTheDersiShop] = useState(false);
@@ -59,6 +61,14 @@ export function Header({ onMenuClick }: HeaderProps) {
       setUserName(u.full_name || u.email || '');
       setUserEmail(u.email || '');
     } catch {}
+  }, []);
+
+  // Store logo for the avatar; refreshed when the profile page changes it.
+  useEffect(() => {
+    const loadLogo = () => import('@/lib/api').then(({ shopApi }) => shopApi.getMyShop().then((r) => setStoreLogo(r.data?.logo_url ?? null)).catch(() => {}));
+    loadLogo();
+    window.addEventListener('store-updated', loadLogo);
+    return () => window.removeEventListener('store-updated', loadLogo);
   }, []);
 
   useEffect(() => {
@@ -162,26 +172,11 @@ export function Header({ onMenuClick }: HeaderProps) {
         </span>
       </Link>
 
-      {/* Search */}
-      <div className="hidden md:flex items-center flex-1 min-w-0 max-w-xl ml-4">
-        <div className="group relative w-full">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-indigo-500 transition-colors" />
-          <input type="text" placeholder="Search products, orders, customers…"
-            className="w-full h-9 pl-11 pr-16 bg-muted/50 border border-border/60 rounded-md text-sm text-foreground placeholder:text-muted-foreground/80 outline-none transition-all focus:bg-background focus:border-indigo-400/70 focus:ring-4 focus:ring-indigo-500/10 focus:shadow-sm" />
-          <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-0.5 rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            <span className="text-xs">⌘</span>K
-          </kbd>
-        </div>
-      </div>
+      {/* Search (desktop box + phone button) */}
+      <GlobalSearch />
 
       {/* Right side */}
       <div className="flex shrink-0 items-center gap-1.5 lg:gap-2 ml-3">
-        {/* Mobile search */}
-        <button type="button" aria-label="Search"
-          className="md:hidden flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
-          <Search className="w-5 h-5" />
-        </button>
-
         {/* Feedback — goes to the admin Reviews queue */}
         <FeedbackPopover />
 
@@ -229,13 +224,6 @@ export function Header({ onMenuClick }: HeaderProps) {
             </div>
           )}
         </div>
-
-        {/* Theme toggle */}
-        <button type="button" onClick={toggleTheme}
-          aria-label={resolvedTheme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-          className="flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
-          {resolvedTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-        </button>
 
         {/* Notifications */}
         <div ref={notifRef} className="relative">
@@ -308,8 +296,11 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div ref={profileRef} className="relative">
           <button type="button" onClick={() => setShowProfile(v => !v)} aria-label="Account menu"
             className="flex items-center rounded-md transition hover:ring-2 hover:ring-indigo-500/30">
-            <div className="w-9 h-9 bg-indigo-600 rounded-md flex items-center justify-center text-xs font-semibold text-white">
-              {initials || <User className="w-4 h-4" />}
+            <div className="w-9 h-9 bg-indigo-600 rounded-md flex items-center justify-center text-xs font-semibold text-white overflow-hidden">
+              {storeLogo
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={storeLogo} alt="" className="h-full w-full object-cover" onError={() => setStoreLogo(null)} />
+                : (initials || <User className="w-4 h-4" />)}
             </div>
           </button>
           {showProfile && (
@@ -319,9 +310,15 @@ export function Header({ onMenuClick }: HeaderProps) {
                 {userEmail && <p className="truncate text-xs text-muted-foreground">{userEmail}</p>}
               </div>
               <div className="py-1">
-                <MenuLink href="/dashboard/profile" icon={UserCircle} label="My Profile" onClick={() => setShowProfile(false)} />
+                <MenuLink href="/dashboard/profile" icon={UserCircle} label="Store Profile" onClick={() => setShowProfile(false)} />
                 <MenuLink href="/dashboard/settings" icon={Settings} label="Settings" onClick={() => setShowProfile(false)} />
-                <MenuLink href="/dashboard/billing" icon={CreditCard} label="Billing & Plan" onClick={() => setShowProfile(false)} />
+                <MenuLink href="/dashboard/billing" icon={CreditCard} label="Billing & Subscription" onClick={() => setShowProfile(false)} />
+                <MenuLink href="/dashboard/support" icon={LifeBuoy} label="Support" onClick={() => setShowProfile(false)} />
+                <button type="button" onClick={toggleTheme}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition">
+                  {resolvedTheme === 'light' ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
+                  {resolvedTheme === 'light' ? 'Dark mode' : 'Light mode'}
+                </button>
               </div>
               <div className="border-t border-border py-1">
                 <button type="button" onClick={logout}

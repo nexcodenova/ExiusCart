@@ -510,7 +510,7 @@ function ProductCard({ image, name, fallback: Fallback, cost, costLabel, note, o
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{costLabel ?? 'Cost'}</p>
                 <p className="text-base font-bold text-foreground">${cost.toFixed(2)}</p>
               </div>
-              <Badge variant="success" className="px-2 py-0.5 text-[10px]">Sell ~${suggested!.toFixed(2)}</Badge>
+              <span className="text-xs font-semibold text-green-600 dark:text-green-400">Sell ~${suggested!.toFixed(2)}</span>
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">{note}</p>

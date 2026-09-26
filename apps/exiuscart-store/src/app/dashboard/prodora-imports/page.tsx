@@ -158,7 +158,7 @@ export default function ProdoraImportsPage() {
                               ? <img src={image} alt="" className="h-full w-full object-cover" />
                               : <Package className="h-4 w-4 text-muted-foreground" />}
                           </div>
-                          <span className="max-w-[260px] truncate font-medium text-foreground" title={name}>{name}</span>
+                          <span className="max-w-[170px] truncate font-medium text-foreground" title={name}>{name}</span>
                           {r.removed && <Badge variant="outline" className="px-1.5 py-0 text-[10px]">Removed</Badge>}
                         </div>
                       </td>
@@ -174,7 +174,7 @@ export default function ProdoraImportsPage() {
                       <td className="px-2.5 py-1.5 text-right font-semibold tabular-nums text-primary">{p?.price != null ? fmt(p.price) : '-'}</td>
                       <td className="px-2.5 py-1.5 text-center">
                         {margin !== null ? (
-                          <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${margin < 20 ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>{margin}%</span>
+                          <span className={`text-sm font-semibold tabular-nums ${margin < 20 ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>{margin}%</span>
                         ) : <span className="text-xs text-muted-foreground">-</span>}
                       </td>
                       <td className="px-2.5 py-1.5 text-center font-medium tabular-nums text-foreground">{p ? (p.stock >= 999999 ? 'Supplier' : p.stock) : '-'}</td>

@@ -1395,3 +1395,14 @@ export const kdpApi = {
   file: (bundleId: number, kind: 'interior' | 'cover', trim: string, paper: string) =>
     api.get<Blob>(`/prodora/digital-bundles/${bundleId}/kdp/${kind}.pdf`, { params: { trim, paper }, responseType: 'blob' }),
 };
+
+// ── Dashboard search (top bar) ──
+export interface SearchProduct { id: number; name: string; sku: string | null; price: number | null; stock: number; image_url: string | null; reason: string | null }
+export interface SearchOrder { id: number; order_number: string; total: number | null; status: string; customer_name: string | null; created_at: string | null; reason: string | null }
+export interface SearchCustomer { id: number; name: string; email: string | null; phone: string | null; reason: string | null }
+export const searchApi = {
+  search: (shopId: string, q: string) =>
+    api.get<{ query: string; products: SearchProduct[]; orders: SearchOrder[]; customers: SearchCustomer[] }>(`/shops/${shopId}/search`, { params: { q } }),
+  suggestions: (shopId: string) =>
+    api.get<{ best_sellers: SearchProduct[]; low_stock: SearchProduct[]; recent_orders: SearchOrder[]; recent_customers: SearchCustomer[] }>(`/shops/${shopId}/search/suggestions`),
+};

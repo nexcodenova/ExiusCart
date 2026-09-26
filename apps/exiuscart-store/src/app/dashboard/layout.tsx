@@ -20,7 +20,7 @@ import { AccessLoading, NoAccess, PlanEnded, StaffHome } from '@/components/dash
 // showing the real page. Blocking specific actions one-by-one kept missing
 // things (Quotations wasn't gated at all); redirecting the whole dashboard is
 // the version that can't be missed.
-const ALLOWED_WHEN_EXPIRED = ['/dashboard/billing'];
+const ALLOWED_WHEN_EXPIRED = ['/dashboard/billing', '/dashboard/support'];
 
 // Standalone printable documents (invoice, quotation print, payment
 // receipt, packing slip, barcode sheet) — each is a fully self-contained

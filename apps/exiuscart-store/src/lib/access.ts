@@ -62,7 +62,7 @@ const ROUTE_AREAS: Array<[string, string]> = [
 ];
 
 // Pages every signed-in person may open regardless of role (their own profile).
-const OPEN_ROUTES = ['/dashboard/profile'];
+const OPEN_ROUTES = ['/dashboard/profile', '/dashboard/support'];
 
 const matches = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(prefix + '/');
 
