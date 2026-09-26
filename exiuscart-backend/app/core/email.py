@@ -37,18 +37,25 @@ def _display_name(name: Optional[str]) -> Optional[str]:
     return cleaned or None
 
 
-def _shop_sender(shop_id: Optional[int], shop_name: Optional[str] = None) -> dict:
+def _shop_sender(shop_id: Optional[int], shop_name: Optional[str] = None, kind: str = "transactional") -> dict:
     """Extra send_email arguments for mail sent ON BEHALF of a shop: its name as the
-    sender name (the address stays ours so delivery is reliable) and the shop's own
-    email as Reply-To so customers' replies reach the seller."""
-    out: dict = {}
+    sender name, the shop's own email as Reply-To, and - on the Scale plan, once the
+    seller's domain is verified - the seller's own address (invoices@theirshop.com)
+    instead of our shared one. Also carries the shop id so the mail shows up in the
+    email monitor under the right store."""
+    out: dict = {"kind": kind}
     reply_to = None
     if shop_id is not None:
+        out["shop_id"] = shop_id
         try:
             from app.models.shop import Shop
+            from app.core.email_domains import sending_domain
             _db = SessionLocal()
             try:
                 shop = _db.query(Shop.name, Shop.email).filter(Shop.id == shop_id).first()
+                dom = sending_domain(_db, shop_id)
+                if dom:
+                    out["from_email"] = f"{dom.from_local}@{dom.domain}"
             finally:
                 _db.close()
             if shop:
@@ -64,16 +71,55 @@ def _shop_sender(shop_id: Optional[int], shop_name: Optional[str] = None) -> dic
     return out
 
 
+def _record_event(**kw) -> None:
+    """Best-effort: the email monitor must never be the reason an email is not sent."""
+    try:
+        from app.core.email_domains import new_event
+        _db = SessionLocal()
+        try:
+            new_event(_db, **kw)
+        finally:
+            _db.close()
+    except Exception as exc:
+        logger.warning(f"[EMAIL MONITOR] could not record event: {exc}")
+
+
 def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] = None,
                from_email: Optional[str] = None, from_name: Optional[str] = None,
-               reply_to: Optional[str] = None) -> bool:
+               reply_to: Optional[str] = None, shop_id: Optional[int] = None,
+               kind: str = "transactional", bypass_suppression: bool = False) -> bool:
     """Send an email via SMTP on port 2587. Returns True if sent, False if skipped.
-    `from_name` overrides the sender name ("ExiusCart") for mail sent on a shop's behalf."""
+    `from_name` overrides the sender name ("ExiusCart") for mail sent on a shop's behalf.
+    Every attempt is written to the email monitor (EmailEvent). Addresses that bounced or
+    complained are not mailed again (except account mail such as sign-in codes), and a shop
+    whose marketing mail was paused (bounce/complaint rate) cannot send marketing."""
     if not _SMTP_ENABLED:
         logger.info(f"[EMAIL SKIPPED — SMTP disabled] To: {to} | Subject: {subject}")
         return False
 
     sender_addr = from_email or _FROM_NOREPLY
+    category = "shop" if shop_id is not None else "system"
+    log = dict(shop_id=shop_id, category=category, kind=kind, from_address=sender_addr, recipient=to, subject=subject)
+
+    try:
+        from app.core.email_domains import is_suppressed, marketing_paused
+        _db = SessionLocal()
+        try:
+            if not bypass_suppression and is_suppressed(_db, to):
+                _record_event(**log, status="suppressed", detail="This address bounced or reported spam before, so it is not mailed again.")
+                logger.info(f"[EMAIL SUPPRESSED] To: {to} | Subject: {subject}")
+                return False
+            if kind == "marketing" and marketing_paused(_db, shop_id):
+                _record_event(**log, status="blocked", detail="Marketing email for this store is paused.")
+                logger.info(f"[EMAIL BLOCKED — marketing paused] Shop: {shop_id} | To: {to}")
+                return False
+        finally:
+            _db.close()
+    except Exception as exc:
+        logger.warning(f"[EMAIL MONITOR] guard check skipped: {exc}")
+
+    import uuid as _uuid
+    event_uid = str(_uuid.uuid4())
     sender = formataddr((_display_name(from_name) or _FROM_NAME, sender_addr), charset="utf-8")
 
     msg = MIMEMultipart("alternative")
@@ -82,6 +128,11 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
     msg["To"]      = to
     if reply_to and _EMAIL_OK.match(reply_to.strip()):
         msg["Reply-To"] = reply_to.strip()
+    # Lets Amazon SES tag this message so its bounce/complaint/delivery reports find our record again.
+    msg["X-SES-MESSAGE-TAGS"] = f"event_uid={event_uid}"
+    _cfg = os.getenv("SES_CONFIGURATION_SET", "")
+    if _cfg:
+        msg["X-SES-CONFIGURATION-SET"] = _cfg
 
     if text_body:
         msg.attach(MIMEText(text_body, "plain", "utf-8"))
@@ -92,8 +143,11 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
             server.ehlo()
             server.starttls()
             server.login(_SMTP_USERNAME, _SMTP_PASSWORD)
-            server.sendmail(sender_addr, [to], msg.as_string())
+            refused = server.sendmail(sender_addr, [to], msg.as_string())
+        if refused:
+            raise RuntimeError(f"recipient refused: {refused}")
         logger.info(f"[EMAIL SENT] To: {to} | Subject: {subject}")
+        _record_event(**log, status="sent", event_uid=event_uid)
         # Log every sent email — count only grows, never decreases
         try:
             from app.models.email_log import EmailLog
@@ -110,6 +164,7 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
         return True
     except Exception as exc:
         logger.error(f"[EMAIL FAILED] To: {to} | {exc}")
+        _record_event(**log, status="failed", detail=str(exc)[:500], event_uid=event_uid)
         return False
 
 
@@ -217,6 +272,7 @@ def send_otp_email(to: str, full_name: str, otp_code: str) -> bool:
     return send_email(
         to=to,
         subject="Your ExiusCart verification code",
+        bypass_suppression=True,
         html_body=html,
         text_body=f"Hi {first}, your ExiusCart verification code is: {otp_code}\nThis code expires in 10 minutes.",
     )
@@ -384,6 +440,7 @@ def send_password_setup_email(to: str, full_name: str, setup_url: str) -> bool:
     return send_email(
         to=to,
         subject="Set your ExiusCart password",
+        bypass_suppression=True,
         html_body=_welcome_base(content),
         text_body=f"Hi {first}, set your ExiusCart password here: {setup_url} (expires in 48 hours)",
     )
@@ -406,6 +463,7 @@ def send_password_reset_email(to: str, full_name: str, reset_url: str) -> bool:
     return send_email(
         to=to,
         subject="Reset your ExiusCart password",
+        bypass_suppression=True,
         html_body=_welcome_base(content),
         text_body=f"Hi {first}, reset your ExiusCart password here: {reset_url} (expires in 1 hour, works once). If you didn't ask for this, ignore this email.",
     )
@@ -431,6 +489,7 @@ def send_staff_invite_email(to: str, full_name: str, shop_name: str, inviter_nam
     return send_email(
         to=to,
         subject=f"{who} invited you to join {shop_name} on ExiusCart",
+        bypass_suppression=True,
         html_body=_welcome_base(content),
         text_body=f"Hi {first}, {who} invited you to join {shop_name} on ExiusCart as {role_name}. Accept here: {accept_url} (expires in 7 days). If you weren't expecting this, ignore this email.",
     )
@@ -1539,6 +1598,7 @@ def send_digital_product_email(
     access_code: str,
     custom_subject: Optional[str] = None,
     custom_message: Optional[str] = None,
+    shop_id: Optional[int] = None,
 ) -> bool:
     """Sent the moment a digital product's order is marked paid — see
     create_digital_deliveries_for_order (app/api/v1/endpoints/digital_delivery.py).
@@ -1611,4 +1671,4 @@ def send_digital_product_email(
 </body>
 </html>"""
 
-    return send_email(to_email, subject, html, **_shop_sender(None, shop_name))
+    return send_email(to_email, subject, html, **_shop_sender(shop_id, shop_name))

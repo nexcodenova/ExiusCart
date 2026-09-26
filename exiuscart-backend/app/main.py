@@ -348,6 +348,16 @@ for _sql in _MIGRATIONS:
         logger.warning(f"[migration] skipped (already applied or harmless): {_e!r:.120}")
 
 
+# Email monitor rows older than 180 days are not needed; keep the table small.
+try:
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    from app.models.email_monitor import EmailEvent as _EE
+    with SessionLocal() as _s:
+        _s.query(_EE).filter(_EE.created_at < _dt.now(_tz.utc) - _td(days=180)).delete(synchronize_session=False)
+        _s.commit()
+except Exception as _e:
+    logger.warning(f"[email-monitor] purge skipped: {_e!r:.120}")
+
 from app.core.system_shops import purge_hidden_system_shops, purge_expired_free_trials
 purge_hidden_system_shops(engine, Base)
 purge_expired_free_trials(engine)

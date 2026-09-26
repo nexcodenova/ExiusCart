@@ -26,6 +26,8 @@ interface AuditEvent {
 // Each event type gets a distinct color + icon so the list scans quickly,
 // the way a Logs Explorer's severity colors do.
 const EVENT_STYLES: Record<string, { label: string; color: string; icon: typeof LogIn }> = {
+  email_auto_pause: { label: 'Email Auto-Paused', color: 'bg-red-500/10 text-red-700 border-red-500/20', icon: ShieldAlert },
+  email_admin_action: { label: 'Email Admin Action', color: 'bg-purple-500/10 text-purple-700 border-purple-500/20', icon: ShieldCheck },
   signup: { label: 'Signup', color: 'bg-green-500/10 text-green-700 border-green-500/20', icon: UserPlus },
   social_signup: { label: 'Social Signup', color: 'bg-green-500/10 text-green-700 border-green-500/20', icon: UserPlus },
   login: { label: 'Login', color: 'bg-blue-500/10 text-blue-700 border-blue-500/20', icon: LogIn },

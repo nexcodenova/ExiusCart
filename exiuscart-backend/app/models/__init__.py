@@ -63,3 +63,4 @@ from app.models.supplier_return import SupplierReturn
 from app.models.audit_log import AuditLog
 from app.models.shop_staff import ShopRole, ShopStaff
 from app.models.kdp_book import KdpBook
+from app.models.email_monitor import EmailDomain, EmailEvent, EmailSuppression, EmailShopControl

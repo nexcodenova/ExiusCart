@@ -914,12 +914,13 @@ async def send_invoice(
     plan = sub.plan_type if sub else None
     check_and_log_email(shop_id, "invoice", plan, recipient, order.id, db)
 
+    sender = _shop_sender(shop_id)
+    sender.setdefault("from_email", _FROM_BILLING)   # our billing address, unless the shop has its own verified domain
     sent = send_email(
         to=recipient,
         subject=f"Your Invoice — {order.order_number}",
         html_body=html,
-        from_email=_FROM_BILLING,
-        **_shop_sender(shop_id),
+        **sender,
     )
 
     return {

@@ -16,7 +16,7 @@ import {
   Percent, Gift, MapPinned, Undo2, Search, Palette, Layers, Image as ImageIcon, ImagePlus,
   LayoutTemplate, FolderOpen, Shapes, Bot, Wand2, FileEdit, LineChart, Workflow,
   History, Rocket, Users2, Network, Cable, Wrench, KeyRound, FileClock,
-  TrendingUp, Bell, Lock, ArrowRight,
+  TrendingUp, Bell, Lock, ArrowRight, MailCheck,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi, dropshipApi } from '@/lib/api';
 import { useAccess } from '@/components/providers/access-provider';
@@ -268,6 +268,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/staff',                        label: 'Team',                icon: Shield     },
       { href: '/dashboard/staff/roles',                  label: 'Roles & Permissions', icon: Shield     },
       { href: '/dashboard/billing',                      label: 'Billing',             icon: CreditCard },
+      { href: '/dashboard/email-domain',                 label: 'Email Domain',        icon: MailCheck  },
       { href: '/dashboard/settings?tab=notifications',  label: 'Notifications',       icon: Bell       },
       { href: '/dashboard/settings?tab=security',        label: 'Security',            icon: Shield     },
       { href: '/dashboard/customization',                label: 'Customization',       icon: Paintbrush },

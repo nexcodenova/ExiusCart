@@ -182,7 +182,7 @@ def process_drip_flows(db: Session):
                         body = body.replace("{cart_items}", f"<ul>{items_html}</ul>" if items else "")
                         body = body.replace("{cart_total}", f"{total:.2f}")
                     body = with_thedersi_footer(body, lead.shop_id)
-                    ok = _send_email(to=lead.email, subject=subj, html_body=body, **_shop_sender(lead.shop_id))
+                    ok = _send_email(to=lead.email, subject=subj, html_body=body, **_shop_sender(lead.shop_id, kind="marketing"))
                     if ok:
                         enrollment.emails_sent = (enrollment.emails_sent or 0) + 1
                 _set_next_step(enrollment, steps, now)
@@ -435,7 +435,7 @@ def send_email_campaign(shop_id: int, cid: int, current_user: User = Depends(get
     body_html = with_thedersi_footer(c.body_html or f"<p>{c.name}</p>", shop_id)
 
     sent_count = 0
-    sender_kwargs = _shop_sender(shop_id)   # the shop's name as sender, its email as Reply-To
+    sender_kwargs = _shop_sender(shop_id, kind="marketing")   # the shop's name as sender, its email as Reply-To
     for customer in to_send:
         ok = _send_email(to=customer.email, subject=c.subject, html_body=body_html, **sender_kwargs)
         if ok:

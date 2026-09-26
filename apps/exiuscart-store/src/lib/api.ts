@@ -1406,3 +1406,21 @@ export const searchApi = {
   suggestions: (shopId: string) =>
     api.get<{ best_sellers: SearchProduct[]; low_stock: SearchProduct[]; recent_orders: SearchOrder[]; recent_customers: SearchCustomer[] }>(`/shops/${shopId}/search/suggestions`),
 };
+
+// ── Custom email domain (Scale plan) ──
+export interface EmailDomainRecord { type: string; name: string; value: string; purpose: string }
+export interface EmailDomainInfo {
+  id: number; domain: string; from_local: string; from_address: string; status: 'pending' | 'verified' | 'failed' | 'suspended';
+  dkim_status: string | null; records: EmailDomainRecord[]; verified_at: string | null; last_checked_at: string | null; suspended_reason: string | null;
+}
+export interface EmailHealth { sent: number; delivered: number; bounced: number; hard_bounced: number; complained: number; blocked: number; bounce_rate: number; complaint_rate: number }
+export const emailDomainApi = {
+  get: (shopId: string) =>
+    api.get<{ eligible: boolean; available: boolean; domain: EmailDomainInfo | null; marketing_paused: boolean; marketing_paused_reason: string | null; shop_email: string | null; shop_name: string }>(`/shops/${shopId}/email-domain`),
+  add: (shopId: string, data: { domain: string; from_local: string }) => api.post<EmailDomainInfo>(`/shops/${shopId}/email-domain`, data),
+  check: (shopId: string) => api.post<EmailDomainInfo>(`/shops/${shopId}/email-domain/check`),
+  rename: (shopId: string, data: { domain: string; from_local: string }) => api.put<EmailDomainInfo>(`/shops/${shopId}/email-domain`, data),
+  remove: (shopId: string) => api.delete(`/shops/${shopId}/email-domain`),
+  activity: (shopId: string) =>
+    api.get<{ days: number; health: EmailHealth; problems: { id: number; recipient: string; subject: string; status: string; detail: string | null; bounce_type: string | null; created_at: string | null }[] }>(`/shops/${shopId}/email-domain/activity`),
+};

@@ -66,6 +66,7 @@ const AFFILIATE_CHILDREN = [
 const AUDIT_CHILDREN = [
   { href: '/dashboard/audit-log', match: '/dashboard/audit-log', label: 'Audit Log', exact: true },
   { href: '/dashboard/audit-log/stores', match: '/dashboard/audit-log/stores', label: 'Store Activity', exact: false },
+  { href: '/dashboard/audit-log/emails', match: '/dashboard/audit-log/emails', label: 'Email Monitor', exact: false },
 ];
 
 interface AdminSidebarProps {

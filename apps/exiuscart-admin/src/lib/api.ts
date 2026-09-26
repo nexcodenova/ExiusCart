@@ -132,6 +132,18 @@ export const adminApi = {
   auditLog: (params: { event_type?: string; shop_id?: number; q?: string; before_id?: number; limit?: number }) =>
     api.get('/admin/audit-log', { params }),
   auditLogEventTypes: () => api.get('/admin/audit-log/event-types'),
+  // Email monitor: every email sent, delivery outcomes, custom domains, do-not-mail list.
+  emailOverview: (days = 7) => api.get('/admin/email/overview', { params: { days } }),
+  emailEvents: (params: { status?: string; category?: string; shop_id?: number; problems?: boolean; q?: string; before_id?: number; limit?: number }) =>
+    api.get('/admin/email/events', { params }),
+  emailDomains: () => api.get('/admin/email/domains'),
+  emailSuspendDomain: (id: number, reason?: string) => api.post(`/admin/email/domains/${id}/suspend`, { reason }),
+  emailResumeDomain: (id: number) => api.post(`/admin/email/domains/${id}/resume`),
+  emailPauseShop: (shopId: number, reason?: string) => api.post(`/admin/email/shops/${shopId}/pause`, { reason }),
+  emailResumeShop: (shopId: number) => api.post(`/admin/email/shops/${shopId}/resume`),
+  emailPaused: () => api.get('/admin/email/paused'),
+  emailSuppressions: (q?: string) => api.get('/admin/email/suppressions', { params: { q: q || undefined } }),
+  emailRemoveSuppression: (id: number) => api.delete(`/admin/email/suppressions/${id}`),
   storeInsights: (search?: string) => api.get('/admin/store-insights', { params: { search: search || undefined } }),
   storeInsightDetail: (shopId: number) => api.get(`/admin/store-insights/${shopId}`),
 
