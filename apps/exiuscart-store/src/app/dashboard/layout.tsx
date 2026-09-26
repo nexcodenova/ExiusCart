@@ -102,7 +102,7 @@ function DashboardShell({
           if (!shopId) return;
         }
         subscriptionApi.getCurrent(shopId)
-          .then((res: any) => { if (!stopped) setTrialExpired(!!res.data?.plan?.is_expired); })
+          .then((res: any) => { if (!stopped) setTrialExpired(!!res.data?.plan?.is_expired || !!res.data?.awaiting_payment); })
           .catch(() => {});
       });
     };

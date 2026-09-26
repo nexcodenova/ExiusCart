@@ -21,7 +21,7 @@ class SubscriptionPayment(Base):
 
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(String(10), default="AED")
-    plan_type = Column(String(20), nullable=False)     # snapshot at time of payment
+    plan_type = Column(String(30), nullable=False)     # snapshot at time of payment (30: "thedersi_free_forever" is 21 chars)
     billing_type = Column(String(20), nullable=False)  # monthly | yearly, snapshot
 
     source = Column(String(20), nullable=False, default="manual")  # lemon_squeezy | manual

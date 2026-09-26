@@ -547,7 +547,8 @@ def get_shop_subscription(
             "status": s.status,
         })
 
-    return {"plan": plan_info, "history": history}
+    # No subscription at all = the seller has not made their first ($1) payment yet.
+    return {"plan": plan_info, "history": history, "awaiting_payment": sub is None}
 
 
 @router.get("/{shop_id}/subscription/usage")

@@ -239,6 +239,7 @@ export default function BillingPage() {
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [extraStaffCount, setExtraStaffCount] = useState(1);
   const [currentPlan, setCurrentPlan] = useState<any>(null);
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
@@ -257,6 +258,7 @@ export default function BillingPage() {
       subscriptionApi.getCurrent(shopId)
         .then((res) => {
           setCurrentPlan(res.data?.plan ?? null);
+          setAwaitingPayment(!!res.data?.awaiting_payment);
           setBillingHistory(res.data?.history ?? []);
         })
         .catch(() => {})
@@ -597,6 +599,19 @@ export default function BillingPage() {
         </div>
       </div>
 
+      {/* No subscription yet: locked until the first ($1) payment */}
+      {!loading && awaitingPayment && (
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
+          <Clock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-foreground">Finish your trial to unlock your store</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Your store is locked until your first payment. Growth and Scale start with a $1, 7-day trial. Choose a plan below to continue.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Pending upgrade notice */}
       {currentPlan?.status === 'pending' && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
@@ -630,7 +645,7 @@ export default function BillingPage() {
         </div>
       ) : !currentPlan ? (
         <Card className="p-6 text-center">
-          <p className="text-muted-foreground text-sm">No active subscription. Choose a plan below.</p>
+          <p className="text-muted-foreground text-sm">{awaitingPayment ? 'Your store is locked until your first payment. Choose a plan below.' : 'No active subscription. Choose a plan below.'}</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

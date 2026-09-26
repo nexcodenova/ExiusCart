@@ -258,6 +258,12 @@ _MIGRATIONS = [
     "UPDATE subscriptions SET plan_type = 'launch' WHERE plan_type = 'starter';",
     "UPDATE subscriptions SET plan_type = 'scale' WHERE plan_type = 'premium';",
     "UPDATE subscription_payments SET plan_type = 'launch' WHERE plan_type = 'starter';",
+    # plan_type was created as VARCHAR(20), but "thedersi_free_forever" is 21
+    # characters: the rename below failed silently at every startup (the two
+    # legacy rows kept "thedersi_basic") and saving a new Free Forever seller
+    # would have failed. Widen first; growing a varchar is instant in Postgres.
+    "ALTER TABLE subscriptions ALTER COLUMN plan_type TYPE VARCHAR(30);",
+    "ALTER TABLE subscription_payments ALTER COLUMN plan_type TYPE VARCHAR(30);",
     # 2026-09-17 TheDersi plan restructure: thedersi_basic → thedersi_free_forever
     # (own name, same limits), thedersi_pro → launch (Pro now shares Launch's
     # real plan_type/feature set, with Pro-specific restrictions layered on

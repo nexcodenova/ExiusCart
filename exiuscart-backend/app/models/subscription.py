@@ -64,7 +64,8 @@ LEGACY_PLAN_ALIASES = {
 
 
 class NormalizedPlanType(TypeDecorator):
-    impl = String(20)
+    # 30, not 20: "thedersi_free_forever" is 21 characters.
+    impl = String(30)
     cache_ok = True
 
     def process_result_value(self, value, dialect):

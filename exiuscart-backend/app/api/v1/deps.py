@@ -16,7 +16,9 @@ security = HTTPBearer()
 # would fail to even render. Matched as a substring against the request
 # path, so /subscription/ covers every /shops/{id}/subscription/... route
 # without hardcoding shop ids.
-_SUBSCRIPTION_GATE_EXEMPT_SUBSTRINGS = ("/subscription/", "/shops/me")
+# "/auth/" and "/users/me": identity calls right after signup (a Growth/Scale seller has no
+# subscription until the $1 checkout succeeds) must not be locked out.
+_SUBSCRIPTION_GATE_EXEMPT_SUBSTRINGS = ("/subscription/", "/shops/me", "/auth/", "/users/me")
 
 
 def _is_subscription_expired(shop_id: int, db: Session) -> bool:
@@ -36,7 +38,10 @@ def _is_subscription_expired(shop_id: int, db: Session) -> bool:
     if not sub:
         sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
     if not sub:
-        return False  # no subscription row at all — nothing to enforce yet (e.g. mid-signup)
+        # No subscription row at all: a Growth/Scale signup that has not paid its
+        # $1 yet (register() creates the shop but no subscription until the
+        # payment succeeds). Locked, exactly like an expired trial, until then.
+        return True
     if sub.status not in ("active", "trial", "trial_dollar"):
         return True
     if sub.expires_at is not None and sub.expires_at < datetime.now(timezone.utc):
@@ -109,13 +114,23 @@ async def get_current_user(
     # Subscription/billing routes stay reachable no matter what, so a locked
     # shop can still see its status and pay to unlock — otherwise this would
     # lock them out of the one flow that fixes it.
-    if not user.is_superuser and not any(s in request.url.path for s in _SUBSCRIPTION_GATE_EXEMPT_SUBSTRINGS):
+    # "/shops/{id}/subscription" itself (the Billing page's main call) has no trailing
+    # slash, so the substring list alone missed it and a locked shop could not even
+    # load its own billing status.
+    _path = request.url.path
+    _gate_exempt = _path.rstrip("/").endswith("/subscription") or any(s in _path for s in _SUBSCRIPTION_GATE_EXEMPT_SUBSTRINGS)
+    if not user.is_superuser and not _gate_exempt:
         from app.models.shop import Shop
+        from app.models.subscription import Subscription
         shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
         if shop and _is_subscription_expired(shop.id, db):
             raise HTTPException(status_code=402, detail={
                 "error": "subscription_required",
-                "message": "Your trial has ended. Upgrade your plan to keep using ExiusCart.",
+                "message": (
+                    "Your store is locked until your first payment. Growth and Scale start with a $1, 7-day trial."
+                    if not db.query(Subscription.id).filter(Subscription.shop_id == shop.id).first()
+                    else "Your trial has ended. Upgrade your plan to keep using ExiusCart."
+                ),
             })
         if not shop:
             # Store staff own no shop, so the check above never applied to
