@@ -16,7 +16,7 @@ import {
   Percent, Gift, MapPinned, Undo2, Search, Palette, Layers, Image as ImageIcon, ImagePlus,
   LayoutTemplate, FolderOpen, Shapes, Bot, Wand2, FileEdit, LineChart, Workflow,
   History, Rocket, Users2, Network, Cable, Wrench, KeyRound, FileClock,
-  TrendingUp, Bell, Lock, ArrowRight, MailCheck,
+  TrendingUp, Bell, Lock, ArrowRight, MailCheck, Scale,
 } from 'lucide-react';
 import { shopApi, subscriptionApi, channelsApi, dropshipApi } from '@/lib/api';
 import { useAccess } from '@/components/providers/access-provider';
@@ -129,6 +129,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/dropshipping/import', label: 'Import Products',  icon: ShoppingBag },
       { href: '/dashboard/product-research',    label: 'Product Research', icon: Search      },
       { href: '/dashboard/prodora-imports', label: 'Prodora', icon: ProdoraIcon },
+      { href: '/dashboard/price-coach',     label: 'Price Coach',  icon: Scale       },
     ],
   },
   {
@@ -303,6 +304,7 @@ function isPremiumGroup(groupId: string): boolean {
 // popup on click instead of navigating to a page that only then says no.
 function isTheDersiBlockedHref(href: string): boolean {
   return href.startsWith('/dashboard/dropshipping')
+    || href.startsWith('/dashboard/price-coach')
     || href === '/dashboard/wholesale'
     || href === '/dashboard/blog';
 }

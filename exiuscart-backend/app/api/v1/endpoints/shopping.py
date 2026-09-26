@@ -59,6 +59,13 @@ def _find_eligible_subscription(db: Session, user: User) -> Optional[Subscriptio
     )
     if not shop:
         return None
+    return eligible_subscription_for_shop(db, shop)
+
+
+def eligible_subscription_for_shop(db: Session, shop: Shop) -> Optional[Subscription]:
+    """The plan a shop may use Prodora features on right now, or None. Shared by the
+    Prodora site (which finds the shop from the user) and the store's Price Coach
+    (which already knows the shop)."""
 
     # TheDersi's Pro tier shares plan_type="launch" — the exact same value a
     # real, paying ExiusCart Launch customer has — so checking plan_type

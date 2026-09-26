@@ -162,8 +162,8 @@ function PlanHeader({ icon: Icon, iconBg, iconColor, name, nameColor, desc }: {
         <Icon className={`w-5 h-5 ${iconColor}`} />
       </span>
       <div>
-        <p className={`${poppins.className} text-lg ${nameColor}`}>{name}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+        <p className={`${poppins.className} text-xl leading-7 ${nameColor}`}>{name}</p>
+        <p className="text-sm text-black/65 mt-0.5">{desc}</p>
       </div>
     </div>
   );
@@ -179,7 +179,7 @@ function LimitBar({ label, percent, dark }: { label: string; percent: number; da
     <div className="mb-4">
       <div className="flex items-center gap-2 mb-1.5">
         <Check className={`w-4 h-4 shrink-0 ${dark ? 'text-blue-400' : 'text-blue-600'}`} strokeWidth={3} />
-        <p className={`text-xs ${dark ? 'text-gray-300' : 'text-gray-600'}`}><FeatureLine text={label} /></p>
+        <p className={`text-base leading-6 ${dark ? 'text-gray-300' : 'text-black/[.88]'}`}><FeatureLine text={label} /></p>
       </div>
       <div className={`h-1.5 rounded-full overflow-hidden ${dark ? 'bg-white/10' : 'bg-gray-100'}`}>
         <div className="h-full rounded-full bg-[#6B3FD9]" style={{ width: `${percent}%` }} />
@@ -194,7 +194,7 @@ function TickRow({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2 mb-4">
       <Check className="w-4 h-4 shrink-0 text-blue-600" strokeWidth={3} />
-      <p className="text-xs text-gray-600"><FeatureLine text={label} /></p>
+      <p className="text-base leading-6 text-black/[.88]"><FeatureLine text={label} /></p>
     </div>
   );
 }
@@ -443,18 +443,18 @@ export default function PricingPage() {
           height) — without a stacking context here, the next section's
           solid white cards paint over it since they come later in DOM
           order, even though the note visually sits "above" on screen. */}
-      <section className="relative z-10 pt-28 pb-12 px-6 text-center">
+      <section className="relative z-10 pt-28 pb-6 px-6 text-center">
         <div className="max-w-2xl mx-auto">
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#6B3FD9] bg-[#6B3FD9]/10 px-3 py-1.5 rounded-full mb-6">
+          <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#6B3FD9] bg-[#6B3FD9]/10 px-3 py-1.5 rounded-full mb-3">
             Transparent Pricing
           </span>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.05] tracking-tight mb-5">
+          <h1 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.05] tracking-tight mb-3">
             Plans and <span className="text-[#6B3FD9]">Pricing</span>
           </h1>
-          <p className="text-lg text-gray-500 max-w-xl mx-auto mb-6 leading-relaxed">
+          <p className="text-base text-gray-500 max-w-xl mx-auto mb-4 leading-relaxed">
             7-day free trial. 7-day money-back guarantee. Immediate access.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-gray-400 mb-8">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-gray-400 mb-5">
             {['Launch: 7 days free, no card', 'Growth & Scale: $1 for 7 days', 'Cancel anytime'].map((t) => (
               <span key={t} className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-[#6B3FD9]" /> {t}
@@ -531,19 +531,18 @@ export default function PricingPage() {
               <PlanHeader icon={Rocket} iconBg="bg-[#6B3FD9]/10" iconColor="text-[#6B3FD9]" name="Launch" nameColor="text-gray-900" desc="For small stores just getting started" />
 
               {launchOriginal && (
-                <div className="mt-5 flex items-center gap-2">
-                  <span className="text-sm text-gray-400 line-through">{currSym}{launchOriginal}{period}</span>
-                  <span className="animate-float text-xs font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-full">
-                    {Math.round((1 - Number(launchPrice) / launchOriginal) * 100)}% OFF
-                  </span>
-                </div>
+                <p className={`${poppins.className} mt-5 text-xl leading-7 text-black/65 line-through`}>{currSym}{launchOriginal}</p>
               )}
-              <div className="mt-2 mb-2 flex items-start gap-2">
-                <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
-                <span className={`${poppins.className} text-[3.8rem] font-semibold text-gray-900 tracking-tight leading-none`}>{launchPrice}</span>
-                <span className="text-gray-400 text-sm self-end mb-1">{period}</span>
+              <div className="mt-1 mb-2 flex items-end gap-1">
+                <span className={`${poppins.className} text-4xl leading-[52px] font-semibold text-black/[.88]`}>{currSym}{launchPrice}</span>
+                <span className="mb-3.5 text-sm text-black/65">{period}</span>
+                {launchOriginal && (
+                  <span className="ml-auto self-center rounded bg-[#A8071A] px-2 py-px text-xs leading-5 text-white">
+                    -{Math.round((1 - Number(launchPrice) / launchOriginal) * 100)}%
+                  </span>
+                )}
               </div>
-              {billing === 'yearly' && <p className="text-xs text-gray-400 mb-1">Billed as ${billedYearly.launch}/year</p>}
+              {billing === 'yearly' && <p className="text-sm text-black/65 mb-1">Billed as ${billedYearly.launch}/year</p>}
               <p className="text-sm text-gray-400 mb-7">For small stores. Most businesses fit here.</p>
 
               {/* No payment info at all — real 7-day free trial, card only
@@ -579,22 +578,21 @@ export default function PricingPage() {
                 Most Popular
               </div>
 
-              <PlanHeader icon={TrendingUp} iconBg="bg-[#6B3FD9]/10" iconColor="text-[#6B3FD9]" name="Growth" nameColor="text-gray-900" desc="More channels, more suppliers, more room to grow" />
+              <PlanHeader icon={TrendingUp} iconBg="bg-[#6B3FD9]/10" iconColor="text-[#6B3FD9]" name="Growth" nameColor="text-gray-900" desc="More channels, more suppliers" />
 
               {growthOriginal && (
-                <div className="mt-5 flex items-center gap-2">
-                  <span className="text-sm text-gray-400 line-through">{currSym}{growthOriginal}{period}</span>
-                  <span className="animate-float text-xs font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-full">
-                    {Math.round((1 - Number(growthPrice) / growthOriginal) * 100)}% OFF
-                  </span>
-                </div>
+                <p className={`${poppins.className} mt-5 text-xl leading-7 text-black/65 line-through`}>{currSym}{growthOriginal}</p>
               )}
-              <div className="mt-2 mb-2 flex items-start gap-2">
-                <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
-                <span className={`${poppins.className} text-[3.8rem] font-semibold text-gray-900 tracking-tight leading-none`}>{growthPrice}</span>
-                <span className="text-gray-400 text-sm self-end mb-1">{period}</span>
+              <div className="mt-1 mb-2 flex items-end gap-1">
+                <span className={`${poppins.className} text-4xl leading-[52px] font-semibold text-black/[.88]`}>{currSym}{growthPrice}</span>
+                <span className="mb-3.5 text-sm text-black/65">{period}</span>
+                {growthOriginal && (
+                  <span className="ml-auto self-center rounded bg-[#A8071A] px-2 py-px text-xs leading-5 text-white">
+                    -{Math.round((1 - Number(growthPrice) / growthOriginal) * 100)}%
+                  </span>
+                )}
               </div>
-              {billing === 'yearly' && <p className="text-xs text-gray-400 mb-1">Billed as ${billedYearly.growth}/year</p>}
+              {billing === 'yearly' && <p className="text-sm text-black/65 mb-1">Billed as ${billedYearly.growth}/year</p>}
               <p className="text-sm text-gray-400 mb-1">For stores ready to sell on more channels.</p>
               <p className="text-xs text-gray-400 mb-6">$1 for 7 days, then full price.</p>
 
@@ -626,19 +624,18 @@ export default function PricingPage() {
               <PlanHeader icon={Building2} iconBg="bg-gray-900" iconColor="text-white" name="Scale" nameColor="text-gray-900" desc="Unlimited everything, for growing teams" />
 
               {scaleOriginal && (
-                <div className="mt-5 flex items-center gap-2">
-                  <span className="text-sm text-gray-400 line-through">{currSym}{scaleOriginal}{period}</span>
-                  <span className="animate-float text-xs font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-full">
-                    {Math.round((1 - Number(scalePrice) / scaleOriginal) * 100)}% OFF
-                  </span>
-                </div>
+                <p className={`${poppins.className} mt-5 text-xl leading-7 text-black/65 line-through`}>{currSym}{scaleOriginal}</p>
               )}
-              <div className="mt-2 mb-2 flex items-start gap-2">
-                <span className="text-xl font-black text-gray-400 mt-3 leading-none">$</span>
-                <span className={`${poppins.className} text-[3.8rem] font-semibold text-gray-900 tracking-tight leading-none`}>{scalePrice}</span>
-                <span className="text-gray-400 text-sm self-end mb-1">{period}</span>
+              <div className="mt-1 mb-2 flex items-end gap-1">
+                <span className={`${poppins.className} text-4xl leading-[52px] font-semibold text-black/[.88]`}>{currSym}{scalePrice}</span>
+                <span className="mb-3.5 text-sm text-black/65">{period}</span>
+                {scaleOriginal && (
+                  <span className="ml-auto self-center rounded bg-[#A8071A] px-2 py-px text-xs leading-5 text-white">
+                    -{Math.round((1 - Number(scalePrice) / scaleOriginal) * 100)}%
+                  </span>
+                )}
               </div>
-              {billing === 'yearly' && <p className="text-xs text-gray-400 mb-1">Billed as ${billedYearly.scale}/year</p>}
+              {billing === 'yearly' && <p className="text-sm text-black/65 mb-1">Billed as ${billedYearly.scale}/year</p>}
               <p className="text-sm text-gray-400 mb-1">Unlimited everything. For growing businesses.</p>
               <p className="text-xs text-gray-400 mb-6">$1 for 7 days, then full price.</p>
 

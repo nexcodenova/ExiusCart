@@ -37,7 +37,7 @@ const ROUTE_AREAS: Array<[string, string]> = [
   ['/dashboard/recurring-invoices', 'orders'], ['/dashboard/quotations', 'orders'], ['/dashboard/notifications', 'orders'],
   // products
   ['/dashboard/products', 'products'], ['/dashboard/inventory', 'products'], ['/dashboard/suppliers', 'products'],
-  ['/dashboard/purchases', 'products'], ['/dashboard/discounts', 'products'],
+  ['/dashboard/purchases', 'products'], ['/dashboard/discounts', 'products'], ['/dashboard/price-coach', 'products'],
   // customers
   ['/dashboard/customers', 'customers'], ['/dashboard/customer-segments', 'customers'], ['/dashboard/leads', 'customers'],
   ['/dashboard/helpdesk', 'customers'], ['/dashboard/surveys', 'customers'],

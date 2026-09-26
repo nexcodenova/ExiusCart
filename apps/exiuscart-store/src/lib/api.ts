@@ -1366,6 +1366,46 @@ export const prodoraImportsApi = {
     api.get<{ imports: ProdoraImportRow[]; usage: { used: number; limit: number | null; resets_at: string } }>(`/shops/${shopId}/prodora-imports`),
 };
 
+// ── Price Coach (Growth and Scale): paste a supplier link, price it, launch a draft ──
+export type CoachVerdict = 'TEST' | 'WATCH' | 'AVOID';
+export type CoachStatus = 'importing' | 'imported' | 'checked' | 'launched' | 'failed';
+export interface CoachUsage { used: number; limit: number; remaining: number; resets_on: string }
+export interface CoachItem {
+  id: number; status: CoachStatus; error: string | null; supplier: 'cj' | 'aliexpress'; source_url: string;
+  verdict: CoachVerdict | null; confidence: 'high' | 'medium' | 'low' | null; margin_pct: number | null; competitor_count: number | null;
+  checked_at: string | null; launched_price: number | null; launched_at: string | null; created_at: string | null;
+  product: { id: number; name: string; original_name: string | null; image_url: string | null; cost: number | null; shipping: number | null; price: number | null; is_active: boolean } | null;
+}
+export interface CoachDemand {
+  direction: 'rising' | 'falling' | 'steady' | 'low_interest' | 'unknown'; yoy_change: number | null; summary: string | null;
+  sparkline: { date: string; value: number }[]; countries: { country: string; code: string | null; index: number }[]; fetched_at: string | null; source: string;
+}
+export interface CoachAnalysis {
+  verdict: CoachVerdict; headline: string; confidence: 'high' | 'medium' | 'low'; reasons_for: string[]; concerns: string[];
+  captured_at: string | null; stale: boolean; market: string; target_margin_pct: number | null; basis_price: number | null;
+  price: { market: { lowest: number; median: number; highest: number } | null; low: number | null; high: number | null; floor: number | null; note: string | null };
+  economics: { lines: { key: string; label: string; amount: number; kind: string }[]; profit: number | null; margin_pct: number | null; break_even_cac: number | null; break_even_roas: number | null;
+               assumptions: { label: string; value: number; unit: string }[]; advertising_included: boolean };
+  checked: { source: string; count: number }[]; competitor_count: number;
+  competitors: { marketplace: string; title: string; price: number; url: string | null }[];
+  not_measured: { key: string; label: string }[]; demand: CoachDemand | null;
+}
+export interface CoachDetail extends CoachItem {
+  analysis: CoachAnalysis | null; supplier_connected: boolean; usage: CoachUsage; charged?: boolean;
+  launch?: { product_id: number; price: number; ai_written: boolean; below_target: boolean; supplier_connected: boolean };
+}
+export type CoachHome =
+  | { locked: true; plan: string | null; required_plan: string; limits: Record<string, number> }
+  | { locked: false; plan: string; usage: CoachUsage; items: CoachItem[] };
+export const priceCoachApi = {
+  home: (shopId: string) => api.get<CoachHome>(`/shops/${shopId}/price-coach`),
+  add: (shopId: string, url: string) => api.post<{ existing: boolean; item: CoachDetail }>(`/shops/${shopId}/price-coach/links`, { url }),
+  get: (shopId: string, id: number | string) => api.get<CoachDetail>(`/shops/${shopId}/price-coach/${id}`),
+  check: (shopId: string, id: number | string, target_margin_pct = 30) => api.post<CoachDetail>(`/shops/${shopId}/price-coach/${id}/check`, { target_margin_pct }),
+  launch: (shopId: string, id: number | string, price?: number) => api.post<CoachDetail>(`/shops/${shopId}/price-coach/${id}/launch`, { price: price ?? null }),
+  discard: (shopId: string, id: number | string) => api.delete(`/shops/${shopId}/price-coach/${id}`),
+};
+
 // ── Amazon KDP (manual channel: no Amazon connection, a tracker plus print-ready files) ──
 export type KdpStatus = 'not_started' | 'files_ready' | 'submitted' | 'live';
 export interface KdpBook {

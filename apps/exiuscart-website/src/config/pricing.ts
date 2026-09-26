@@ -50,7 +50,7 @@ export const plans: Plan[] = [
   {
     id: 'growth',
     name: 'Growth',
-    description: 'More channels, more suppliers, more room to grow',
+    description: 'More channels, more suppliers',
     badge: 'Most Popular',
   },
   {

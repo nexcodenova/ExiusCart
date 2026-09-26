@@ -70,7 +70,7 @@ PATH_AREAS = {
     # products
     "products": "products", "fields": "products", "inventory": "products", "suppliers": "products",
     "purchases": "products", "next-sku": "products", "image-limit": "products",
-    "description-image-presign": "products", "storefront-categories": "products",
+    "description-image-presign": "products", "storefront-categories": "products", "price-coach": "products",
     "product-channel-categories": "products", "discounts": "products",
     # customers
     "customers": "customers", "customer-segments": "customers", "leads": "customers",
