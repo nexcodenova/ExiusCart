@@ -17,6 +17,23 @@ const VERDICT: Record<IntelAnalysis['verdict'], { label: string; box: string; ch
   WATCH: { label: 'Watch', box: 'border-amber-200 bg-amber-50 text-amber-900', chip: 'bg-amber-500 text-white' },
   AVOID: { label: 'Low margin', box: 'border-gray-200 bg-gray-50 text-gray-800', chip: 'bg-gray-500 text-white' },
 };
+const DIRECTION: Record<string, { label: string; cls: string }> = {
+  rising: { label: 'Rising', cls: 'bg-green-100 text-green-800' }, falling: { label: 'Falling', cls: 'bg-red-100 text-red-800' },
+  steady: { label: 'Steady', cls: 'bg-gray-100 text-gray-700' }, low_interest: { label: 'Very low interest', cls: 'bg-amber-100 text-amber-800' }, unknown: { label: 'Not enough data', cls: 'bg-gray-100 text-gray-600' },
+};
+
+function Sparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const max = Math.max(100, ...values), w = 240, h = 56;
+  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - (v / max) * (h - 4) - 2}`).join(' ');
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-14 w-full" preserveAspectRatio="none" role="img" aria-label="Search interest over the last 52 weeks">
+      <polygon points={`0,${h} ${pts} ${w},${h}`} fill="#2563EB" fillOpacity="0.12" />
+      <polyline points={pts} fill="none" stroke="#2563EB" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
 const CONF: Record<string, string> = { high: 'bg-green-100 text-green-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-gray-200 text-gray-700' };
 
 function ago(iso: string | null): string {
@@ -112,6 +129,36 @@ export default function CompetitionSection({ productId }: { productId: number })
       {a.stale && (
         <p className="mt-3 flex gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800"><Info className="mt-0.5 h-4 w-4 shrink-0" />
           These prices were checked {ago(a.captured_at)} and may have changed. Treat them as a guide.</p>
+      )}
+
+      {a.demand && (
+        <div className="mt-5 rounded-xl border border-[#E5E7EB] p-4">
+          <h3 className="mb-2 text-sm font-semibold text-[#111827]">Demand <span className="font-normal text-[#6B7280]">people searching on Google, not units sold</span></h3>
+          <div className="grid gap-4 md:grid-cols-[1.3fr_1fr]">
+            <div className="min-w-0">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className={`rounded px-2.5 py-1 text-sm font-bold ${DIRECTION[a.demand.direction]?.cls ?? DIRECTION.unknown.cls}`}>{DIRECTION[a.demand.direction]?.label ?? 'Not enough data'}</span>
+                <span className="text-sm text-[#374151]">{a.demand.summary}</span>
+              </div>
+              <Sparkline values={a.demand.sparkline.map((p) => p.value)} />
+              <p className="mt-1 text-xs text-[#6B7280]">Last 52 weeks. 100 is this search term&apos;s own peak.</p>
+            </div>
+            {a.demand.countries.length > 0 && (
+              <div className="min-w-0">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#6B7280]">Searched most in</p>
+                <ul className="space-y-1.5">
+                  {a.demand.countries.slice(0, 5).map((c) => (
+                    <li key={c.country} className="text-sm">
+                      <div className="flex justify-between gap-2"><span className="truncate text-[#111827]">{c.country}</span><span className="tabular-nums text-[#6B7280]">{c.index}</span></div>
+                      <div className="h-1.5 rounded-full bg-gray-100"><div className="h-full rounded-full bg-[#2563EB]" style={{ width: `${Math.min(100, c.index)}%` }} /></div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-[#9CA3AF]">Source: {a.demand.source}{a.demand.fetched_at ? `, ${ago(a.demand.fetched_at)}` : ''}.</p>
+        </div>
       )}
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">

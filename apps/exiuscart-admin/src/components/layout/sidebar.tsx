@@ -163,7 +163,8 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                 <div className={`flex items-stretch rounded-lg transition-all ${onProdora ? 'bg-white/70 text-gray-900' : 'text-gray-600 hover:bg-white/70 hover:text-gray-900'}`}>
                   {collapsed ? (
                     <Link href="/dashboard/shopping" title={item.label} className="flex flex-1 items-center gap-3 px-3 py-2.5">
-                      <Icon className="w-6 h-6 flex-shrink-0 mx-auto" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/prodora-logo.png" alt="" className="w-6 h-6 flex-shrink-0 mx-auto rounded-md" />
                     </Link>
                   ) : (
                     // Expanded: only opens or closes the dropdown, it does not change the page.
@@ -171,7 +172,8 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                       type="button" onClick={() => setProdoraOpen((v) => !v)} aria-expanded={prodoraOpen}
                       className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left"
                     >
-                      <Icon className="w-[22px] h-[22px] flex-shrink-0" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/prodora-logo.png" alt="" className="w-[22px] h-[22px] flex-shrink-0 rounded-md" />
                       <span className="font-medium text-sm">{item.label}</span>
                     </button>
                   )}

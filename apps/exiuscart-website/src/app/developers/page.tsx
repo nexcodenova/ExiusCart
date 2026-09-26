@@ -152,7 +152,7 @@ const sections: Section[] = [
   {
     id: 'payment',
     title: 'Payment',
-    description: 'PayHere, Stripe, and PayPal are all supported. The gateway is configured per-seller in their ExiusCart dashboard; checkout’s response tells you which one is active and what to do with it.',
+    description: 'Stripe, PayPal, and Whop are supported. The gateway is configured per-seller in their ExiusCart dashboard; checkout’s response tells you which one is active and what to do with it.',
     endpoints: [
       {
         method: 'POST', path: '/public/payment-webhook/{shop_slug}', auth: 'webhook',
@@ -413,7 +413,7 @@ export default function DevelopersPage() {
               <span className="font-semibold text-amber-700">Optional customer token</span> mean a JWT from Customer
               Auth below, sent as <code className="font-mono bg-slate-100 rounded px-1">Authorization: Bearer &lt;token&gt;</code>.{' '}
               <span className="font-semibold text-rose-700">Gateway webhook only</span> means your storefront should
-              never call it — it exists purely for PayHere/Stripe to call directly.
+              never call it — it exists purely for Stripe/PayPal/Whop to call directly.
             </p>
           </div>
 

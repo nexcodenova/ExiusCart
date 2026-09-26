@@ -15,7 +15,7 @@ from app.api.v1.endpoints.admin import require_superuser
 from app.core.admin_access import require_admin_perm
 from app.core.database import get_db
 from app.core.intel import record_event
-from app.intel import ai, engine
+from app.intel import ai, engine, trends
 from app.intel.marketplaces import SUPPORTED_MARKETS, adapter_by_name, all_adapters
 from app.models.intel import ProductIntelResult
 from app.models.product import Product
@@ -44,7 +44,8 @@ def intel_status(db: Session = Depends(get_db), _: User = Depends(require_admin_
         "ai_configured": ai._get_client() is not None,
         "markets": sorted(SUPPORTED_MARKETS),
         "sources": [{"source": a.name, "paid": a.paid, "configured": a.configured(), "hint": None if a.configured() else a.missing_hint()}
-                    for a in all_adapters()],
+                    for a in all_adapters()] + [{"source": "google_trends", "paid": False, "configured": trends.configured(),
+                                                  "hint": None if trends.configured() else trends.NOT_CONFIGURED_HINT}],
         "paid_usage": engine.paid_usage(db),
     }
 
@@ -56,6 +57,7 @@ class AnalyzeIn(BaseModel):
     ad_cost_per_order: Optional[float] = Field(default=None, ge=0, le=1000)
     use_paid: bool = False
     force: bool = False
+    use_trends: bool = False
 
 
 @router.post("/admin/intel/analyze")
@@ -66,7 +68,7 @@ def analyze_product(body: AnalyzeIn, db: Session = Depends(get_db), user: User =
     product = _catalogue_product(db, body.product_id)
     try:
         out = engine.analyze(db, product, market=market, target_margin_pct=body.target_margin_pct,
-                             ad_cost_per_order=body.ad_cost_per_order, use_paid=body.use_paid, force=body.force, user_id=user.id)
+                             ad_cost_per_order=body.ad_cost_per_order, use_paid=body.use_paid, force=body.force, user_id=user.id, use_trends=body.use_trends)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     out["paid_usage"] = engine.paid_usage(db)
@@ -90,6 +92,12 @@ class TestSourceIn(BaseModel):
 def test_source(body: TestSourceIn, db: Session = Depends(get_db), admin: User = Depends(require_superuser)):
     """Runs ONE real search against a source and reports plainly what happened.
     Owner-only: a paid source spends a lookup (and it is counted like any other)."""
+    if body.source == "google_trends":
+        out = trends.check()
+        if out.get("status") != "not_configured":
+            for _ in range(out.get("lookups", 0)):
+                record_event(db, engine.PAID_EVENT, user_id=admin.id, payload={"source": "google_trends", "keyword": "connection test"})
+        return out
     ad = adapter_by_name(body.source)
     if not ad:
         raise HTTPException(status_code=404, detail="Unknown source.")

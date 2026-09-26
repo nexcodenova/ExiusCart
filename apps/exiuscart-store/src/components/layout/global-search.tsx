@@ -20,6 +20,38 @@ const RECENT_MAX = 5;
 // Pages worth offering when the box is opened empty (only those this person can open).
 const QUICK_PAGES = ['/dashboard/orders', '/dashboard/products', '/dashboard/customers', '/dashboard/reports', '/dashboard/inventory'];
 
+// What the empty search box "types" to show what it can find. Plain text is shown instead
+// when the person has asked their device for reduced motion.
+const STATIC_PLACEHOLDER = 'Search products, orders, customers…';
+const TYPED_PHRASES = [
+  'Search by product name or SKU…',
+  'Find an order by its number…',
+  'Look up a customer by name or email…',
+  'Jump to Reports, Inventory, Orders…',
+];
+
+function useTypedPlaceholder(enabled: boolean) {
+  const [text, setText] = useState(STATIC_PLACEHOLDER);
+  useEffect(() => {
+    if (!enabled) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setText(STATIC_PLACEHOLDER); return; }
+    let phrase = 0, chars = 0, dir = 1;
+    let timer: ReturnType<typeof setTimeout>;
+    const step = () => {
+      const full = TYPED_PHRASES[phrase];
+      chars += dir;
+      setText(full.slice(0, chars) + '|');
+      let wait = dir === 1 ? 55 : 28;
+      if (dir === 1 && chars === full.length) { dir = -1; wait = 1600; }
+      else if (dir === -1 && chars === 0) { dir = 1; phrase = (phrase + 1) % TYPED_PHRASES.length; wait = 350; }
+      timer = setTimeout(step, wait);
+    };
+    timer = setTimeout(step, 400);
+    return () => clearTimeout(timer);
+  }, [enabled]);
+  return enabled ? text : STATIC_PLACEHOLDER;
+}
+
 function recentKey(shopId: string) { return `search_recent_${shopId}`; }
 function readRecent(shopId: string): string[] {
   try { return JSON.parse(localStorage.getItem(recentKey(shopId)) || '[]').slice(0, RECENT_MAX); } catch { return []; }
@@ -196,6 +228,8 @@ export function GlobalSearch() {
   const mobileInputRef = useRef<HTMLInputElement>(null);
   const close = useCallback(() => { setFocused(false); setMobileOpen(false); inputRef.current?.blur(); }, []);
   const s = useGlobalSearch(close);
+  const typedDesktop = useTypedPlaceholder(!s.q);
+  const typedMobile = useTypedPlaceholder(mobileOpen && !s.q);
 
   useEffect(() => { setIsMac(/Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent)); }, []);
 
@@ -229,7 +263,7 @@ export function GlobalSearch() {
         <div ref={wrapRef} className="group relative w-full">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-indigo-500 transition-colors" />
           <input ref={inputRef} type="text" value={s.q} onChange={(e) => s.setQ(e.target.value)} onFocus={() => setFocused(true)} onKeyDown={s.onKeyDown}
-            placeholder="Search products, orders, customers…" autoComplete="off" role="combobox" aria-expanded={focused} aria-label="Search your store"
+            placeholder={typedDesktop} autoComplete="off" role="combobox" aria-expanded={focused} aria-label="Search your store"
             className="w-full h-9 pl-11 pr-16 bg-muted/50 border border-border/60 rounded-md text-sm text-foreground placeholder:text-muted-foreground/80 outline-none transition-all focus:bg-background focus:border-indigo-400/70 focus:ring-4 focus:ring-indigo-500/10 focus:shadow-sm" />
           {s.q ? (
             <button type="button" aria-label="Clear search" onClick={() => { s.setQ(''); inputRef.current?.focus(); }}
@@ -258,7 +292,7 @@ export function GlobalSearch() {
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input ref={mobileInputRef} type="text" value={s.q} onChange={(e) => s.setQ(e.target.value)} onKeyDown={s.onKeyDown}
-                placeholder="Search products, orders, customers…" autoComplete="off"
+                placeholder={typedMobile} autoComplete="off" aria-label="Search your store"
                 className="h-10 w-full rounded-md border border-border bg-muted/50 pl-10 pr-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-indigo-500/30" />
             </div>
             <button type="button" onClick={close} className="px-2 text-sm font-medium text-muted-foreground">Cancel</button>

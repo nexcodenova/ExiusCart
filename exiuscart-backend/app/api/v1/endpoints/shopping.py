@@ -386,6 +386,16 @@ def get_related_shopping_products(
     return [_product_out(p) for p in rows]
 
 
+def _seller_demand(d: Optional[dict]) -> Optional[dict]:
+    """Google search interest, only when it was really measured. No keyword, no
+    lookup counts, no operator notes."""
+    if not d or d.get("status") != "ok":
+        return None
+    return {"direction": d.get("direction"), "yoy_change": d.get("yoy_change"), "recent_change": d.get("recent_change"), "level": d.get("level"),
+            "seasonal": d.get("seasonal"), "peak_month": d.get("peak_month"), "summary": d.get("summary"), "sparkline": d.get("sparkline") or [],
+            "countries": d.get("countries") or [], "fetched_at": d.get("fetched_at"), "source": "Google Trends", "geo": d.get("geo")}
+
+
 def _seller_intel_view(row: ProductIntelResult) -> dict:
     """What a Growth/Scale seller may see of an analysis: the verdict and its
     evidence, never the operator side (paid-usage counts, which keys are set up,
@@ -419,6 +429,7 @@ def _seller_intel_view(row: ProductIntelResult) -> dict:
         "competitors": [{"marketplace": l["marketplace"], "title": l["title"], "price": l["price"], "url": l.get("url"),
                          "rating": l.get("rating"), "review_count": l.get("review_count")} for l in listings[:15]],
         "not_measured": ev.get("not_measured") or [],
+        "demand": _seller_demand(snap.get("demand")),
     }
 
 

@@ -115,7 +115,7 @@ export default function CustomWebsiteIntegrationPage() {
   const [showPreConnectDocs, setShowPreConnectDocs] = useState(false);
 
   const [gateway, setGateway] = useState<{ configured: boolean; payment_gateway: string | null; merchant_id: string | null; webhook_url: string } | null>(null);
-  const [selectedGateway, setSelectedGateway] = useState('payhere');
+  const [selectedGateway, setSelectedGateway] = useState('stripe');
   const [merchantId, setMerchantId] = useState('');
   const [merchantSecret, setMerchantSecret] = useState('');
   const [savingGateway, setSavingGateway] = useState(false);
@@ -166,7 +166,6 @@ export default function CustomWebsiteIntegrationPage() {
   // Credentials are stored in the same two generic columns for every
   // gateway (see checkout.py) — what changes is what to call them.
   const GATEWAY_LABELS: Record<string, { name: string; bestFor: string; idLabel: string; idPlaceholder: string; secretLabel: string; secretPlaceholder: string; needsWebhookSecret?: boolean; note?: string }> = {
-    payhere: { name: 'PayHere', bestFor: 'Sri Lanka — settles in LKR', idLabel: 'Merchant ID', idPlaceholder: 'Your PayHere Merchant ID', secretLabel: 'Merchant Secret', secretPlaceholder: 'Your PayHere Merchant Secret' },
     stripe: { name: 'Stripe', bestFor: 'Global card payments — requires a registered business', idLabel: 'Secret Key', idPlaceholder: 'sk_live_...', secretLabel: 'Webhook Signing Secret', secretPlaceholder: 'whsec_...' },
     paypal: { name: 'PayPal', bestFor: 'Global reach — requires a registered business', idLabel: 'Client ID', idPlaceholder: 'Your PayPal Client ID', secretLabel: 'Client Secret', secretPlaceholder: 'Your PayPal Client Secret' },
     // No business registration needed to accept payment — Whop is
@@ -177,7 +176,7 @@ export default function CustomWebsiteIntegrationPage() {
       needsWebhookSecret: true, note: 'Whop is Merchant of Record — you can accept payment without a registered business.',
     },
   };
-  const gatewayLabels = GATEWAY_LABELS[selectedGateway] ?? GATEWAY_LABELS.payhere;
+  const gatewayLabels = GATEWAY_LABELS[selectedGateway] ?? GATEWAY_LABELS.stripe;
 
   // Purely a convenience default — the key is never validated against
   // anything, so this doesn't need to be cryptographically random, just

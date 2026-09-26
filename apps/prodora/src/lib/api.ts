@@ -141,6 +141,11 @@ export interface IntelAnalysis {
   by_marketplace: Record<string, number>;
   competitors: { marketplace: string; title: string; price: number; url?: string | null; rating?: number | null; review_count?: number | null }[];
   not_measured: { key: string; label: string; why: string }[];
+  demand: {
+    direction: 'rising' | 'falling' | 'steady' | 'low_interest' | 'unknown'; yoy_change: number | null; recent_change: number | null; level: number | null;
+    seasonal: boolean | null; peak_month: string | null; summary: string | null; sparkline: { date: string; value: number }[];
+    countries: { country: string; code: string | null; index: number }[]; fetched_at: string | null; source: string; geo: string | null;
+  } | null;
 }
 
 export type IntelResponse =

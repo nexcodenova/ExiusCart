@@ -10,6 +10,10 @@ import { useAdminAccess } from '@/components/access-provider';
 interface CatalogProduct { id: number; code?: string | null; name: string; price?: number; cost_price?: number | null; kind?: string; supplier_label?: string }
 interface Source { source: string; paid: boolean; configured: boolean; hint: string | null }
 interface Status { ai_configured: boolean; sources: Source[]; paid_usage: { today: number; month: number; daily_limit: number; monthly_limit: number } }
+interface Demand {
+  status: string; direction?: 'rising' | 'falling' | 'steady' | 'low_interest' | 'unknown'; yoy_change?: number | null; level?: number; seasonal?: boolean | null; peak_month?: string | null;
+  summary?: string; note?: string; sparkline?: { date: string; value: number }[]; countries?: { country: string; code: string | null; index: number }[]; fetched_at?: string; cached?: boolean;
+}
 interface Listing { marketplace: string; title: string; price: number; url?: string | null; match_score?: number | null; match_reason?: string | null; rating?: number | null; review_count?: number | null }
 interface EconLine { key: string; label: string; amount: number; kind: string }
 interface Result {
@@ -17,7 +21,7 @@ interface Result {
   snapshot: {
     captured_at: string; used_paid: boolean; fingerprint: { product_type: string; search_queries: string[]; method: string; attributes: Record<string, string> };
     sources: { source: string; status: string; count: number; note: string | null; paid: boolean }[];
-    candidates: number; match_method: string; rejected: number; outliers_dropped: number; listings: Listing[];
+    candidates: number; match_method: string; rejected: number; outliers_dropped: number; listings: Listing[]; demand?: Demand;
   };
   evaluation: {
     verdict: 'TEST' | 'WATCH' | 'AVOID'; headline: string; confidence: 'high' | 'medium' | 'low'; reasons_for: string[]; concerns: string[];
@@ -45,7 +49,23 @@ const VERDICT_STYLE = {
   AVOID: 'border-red-200 bg-red-50 text-red-800',
 };
 const CONF_STYLE = { high: 'bg-green-100 text-green-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-gray-200 text-gray-700' };
-const SOURCE_LABEL: Record<string, string> = { ebay: 'eBay', amazon: 'Amazon', walmart: 'Walmart' };
+const SOURCE_LABEL: Record<string, string> = { ebay: 'eBay', amazon: 'Amazon', walmart: 'Walmart', google_trends: 'Google Trends' };
+const DIRECTION: Record<string, { label: string; cls: string }> = {
+  rising: { label: 'Rising', cls: 'bg-green-100 text-green-800' }, falling: { label: 'Falling', cls: 'bg-red-100 text-red-800' },
+  steady: { label: 'Steady', cls: 'bg-gray-100 text-gray-700' }, low_interest: { label: 'Very low interest', cls: 'bg-amber-100 text-amber-800' }, unknown: { label: 'Not enough data', cls: 'bg-gray-100 text-gray-600' },
+};
+
+function Sparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const max = Math.max(100, ...values), w = 240, h = 56;
+  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - (v / max) * (h - 4) - 2}`).join(' ');
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-14 w-full" preserveAspectRatio="none" role="img" aria-label="Search interest over the last 52 weeks">
+      <polygon points={`0,${h} ${pts} ${w},${h}`} fill="#6B3FD9" fillOpacity="0.12" />
+      <polyline points={pts} fill="none" stroke="#6B3FD9" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
 const STATUS_TEXT: Record<string, string> = {
   ok: 'Answered', not_configured: 'Not connected', error: 'Error', skipped_budget: 'Paid limit reached', skipped_unpaid: 'Not requested', unsupported_market: 'Market not supported',
 };
@@ -60,6 +80,7 @@ export default function IntelligencePage() {
   const [margin, setMargin] = useState('30');
   const [ad, setAd] = useState('');
   const [usePaid, setUsePaid] = useState(false);
+  const [useTrends, setUseTrends] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Result | null>(null);
@@ -93,7 +114,7 @@ export default function IntelligencePage() {
     if (!selected) return;
     setBusy(true); setError('');
     try {
-      const r = await intelApi.analyze({ product_id: selected.id, target_margin_pct: Number(margin) || 30, ad_cost_per_order: ad.trim() === '' ? null : Number(ad), use_paid: usePaid, force });
+      const r = await intelApi.analyze({ product_id: selected.id, target_margin_pct: Number(margin) || 30, ad_cost_per_order: ad.trim() === '' ? null : Number(ad), use_paid: usePaid, force, use_trends: useTrends });
       setResult(r.data);
       if (r.data.paid_usage) setStatus((s) => (s ? { ...s, paid_usage: r.data.paid_usage } : s));
     } catch (e: any) { setError(errText(e, 'The analysis could not run.')); } finally { setBusy(false); }
@@ -119,7 +140,7 @@ export default function IntelligencePage() {
       </div>
 
       {status && (
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-5">
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">AI</p>
             <p className={`mt-1 flex items-center gap-1.5 text-sm font-medium ${status.ai_configured ? 'text-green-700' : 'text-amber-700'}`}>
@@ -186,6 +207,10 @@ export default function IntelligencePage() {
             <input type="checkbox" checked={usePaid} onChange={(e) => setUsePaid(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#6B3FD9]" />
             <span>Also check Amazon and Walmart<span className="block text-xs text-gray-500">Uses paid lookups from your monthly limit</span></span>
           </label>
+          <label className="flex cursor-pointer items-start gap-2 pt-6 text-sm text-gray-700 md:col-span-3">
+            <input type="checkbox" checked={useTrends} onChange={(e) => setUseTrends(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#6B3FD9]" />
+            <span>Also measure demand (Google Trends)<span className="block text-xs text-gray-500">Free. Saved for a week per search term, so similar products never look it up twice</span></span>
+          </label>
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -224,6 +249,40 @@ export default function IntelligencePage() {
                 {ev.concerns.length ? <ul className="space-y-1.5 text-sm">{ev.concerns.map((r) => <li key={r} className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{r}</li>)}</ul> : <p className="text-sm opacity-80">None found.</p>}
               </div>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-gray-900">Demand <span className="text-sm font-normal text-gray-500">Google search interest, not sales</span></h2>
+            {snap.demand?.status === 'ok' && snap.demand.direction ? (
+              <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
+                <div>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className={`rounded px-2.5 py-1 text-sm font-bold ${DIRECTION[snap.demand.direction]?.cls}`}>{DIRECTION[snap.demand.direction]?.label}</span>
+                    <span className="text-sm text-gray-700">{snap.demand.summary}</span>
+                  </div>
+                  <Sparkline values={(snap.demand.sparkline ?? []).map((p) => p.value)} />
+                  <p className="mt-1 text-xs text-gray-500">Last 52 weeks. 100 is this term's own peak. Latest level: {snap.demand.level}.</p>
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Where it is searched most</p>
+                  {(snap.demand.countries ?? []).length ? (
+                    <ul className="space-y-1.5">
+                      {(snap.demand.countries ?? []).slice(0, 5).map((c) => (
+                        <li key={c.country} className="text-sm">
+                          <div className="flex justify-between"><span className="text-gray-800">{c.country}</span><span className="tabular-nums text-gray-500">{c.index}</span></div>
+                          <div className="h-1.5 rounded-full bg-gray-100"><div className="h-full rounded-full bg-[#6B3FD9]" style={{ width: `${Math.min(100, c.index)}%` }} /></div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="text-sm text-gray-500">No country data.</p>}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600">
+                {snap.demand ? (snap.demand.note ?? 'Not measured.') : 'Not measured for this analysis. Tick "Also measure demand" and update.'}
+              </p>
+            )}
+            {snap.demand?.status === 'ok' && <p className="mt-3 text-xs text-gray-400">Source: Google Trends{snap.demand.cached ? ' (saved this week)' : ''}, {ago(snap.demand.fetched_at)}.</p>}
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">

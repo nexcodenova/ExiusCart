@@ -340,6 +340,31 @@ def retry(db: Session, item: IntakeItem) -> None:
     item.status, item.error = "queued", None
 
 
+def attach_demand(item_id: int) -> None:
+    """Run in the background right after approval: measure Google search interest for
+    this product (shared cache first, budget-checked). Never raises. It happens at
+    APPROVAL, not for every import, so paid lookups only go to products a person
+    has already accepted."""
+    db = SessionLocal()
+    try:
+        item = db.query(IntakeItem).filter(IntakeItem.id == item_id).first()
+        product = db.query(Product).filter(Product.id == item.product_id).first() if item and item.product_id else None
+        if not product:
+            return
+        from app.intel import engine
+        out = engine.analyze(db, product, market="US", target_margin_pct=30.0, use_paid=False, use_trends=True, user_id=item.reviewed_by_user_id)
+        _apply_verdict(item, out["evaluation"])
+        db.commit()
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[intake] demand skipped for item {item_id}: {_detail_of(e)}")
+        try:
+            db.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+    finally:
+        db.close()
+
+
 # ── Publishing ───────────────────────────────────────────────────────────────
 
 def published_today(db: Session, now: Optional[datetime] = None) -> int:

@@ -48,15 +48,15 @@ export const DASHBOARD_LINKS: Record<string, string> = {
 };
 
 // Per-brand accent so the supplier grid reads at a glance instead of every
-// card looking identical. CJ uses its real logo full-bleed (own background
-// baked in); HyperSKU uses a cropped icon-only mark (its source file is a
+// card looking identical. CJ uses its real app icon (transparent corners, same
+// 'contain' fit as AliExpress); HyperSKU uses a cropped icon-only mark (its source file is a
 // wide wordmark, cropped down to just the peak symbol) centered on our own
 // tint, same treatment as AliExpress's lucide-icon fallback.
 export const SUPPLIER_STYLE: Record<string, { icon: React.ElementType; color: string; bg: string; logo?: string; logoFit?: 'cover' | 'contain' }> = {
-  cj:         { icon: Package,     color: 'text-orange-500', bg: 'bg-orange-500/10', logo: '/dropshipping/cj_logo.png',       logoFit: 'cover'   },
-  hypersku:   { icon: Boxes,       color: 'text-teal-500',   bg: 'bg-teal-500/10',   logo: '/dropshipping/hypersku_icon.png', logoFit: 'contain' },
+  cj:         { icon: Package,     color: 'text-orange-500', bg: 'bg-orange-500/10', logo: '/dropship-supplier-logos/cj-icon.png',       logoFit: 'contain' },
+  hypersku:   { icon: Boxes,       color: 'text-teal-500',   bg: 'bg-teal-500/10',   logo: '/dropship-supplier-logos/hypersku_icon.png', logoFit: 'contain' },
   eprolo:     { icon: Truck,       color: 'text-sky-500',    bg: 'bg-sky-500/10'   },
-  aliexpress: { icon: ShoppingBag, color: 'text-red-500',    bg: 'bg-red-500/10', logo: '/dropship-supplier-logos/aliexpress.svg', logoFit: 'contain' },
+  aliexpress: { icon: ShoppingBag, color: 'text-red-500',    bg: 'bg-red-500/10', logo: '/dropship-supplier-logos/aliexpress-icon.svg', logoFit: 'contain' },
   '1688':     { icon: Globe,       color: 'text-orange-600', bg: 'bg-orange-600/10' },
   printful:   { icon: Shirt,       color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
   printify:   { icon: Palette,     color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },

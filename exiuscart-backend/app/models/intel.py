@@ -63,3 +63,17 @@ class ProductIntelResult(Base):
     confidence = Column(String(10), nullable=False)       # high | medium | low
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class KeywordTrend(Base):
+    """Google search-interest data for one keyword in one market, shared by everyone.
+    Keyed by the normalised KEYWORD, not by product or seller, so the same lookup is
+    never paid for twice within its time to live."""
+    __tablename__ = "keyword_trends"
+    __table_args__ = (Index("ix_keyword_trends_key", "keyword", "geo", unique=True),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    keyword = Column(String(120), nullable=False)
+    geo = Column(String(2), nullable=False, default="US", server_default="US")
+    payload = Column(JSONB, nullable=False)
+    fetched_at = Column(DateTime(timezone=True), server_default=func.now())

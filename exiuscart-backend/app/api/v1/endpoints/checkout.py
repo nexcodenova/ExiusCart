@@ -35,7 +35,7 @@ from app.core.rate_limit import limiter
 from app.core.activity import log_activity, log_low_stock_for_products
 from app.core.discounts import validate_and_compute_discount, record_discount_usage
 
-SUPPORTED_GATEWAYS = ("payhere", "stripe", "paypal", "whop")
+SUPPORTED_GATEWAYS = ("stripe", "paypal", "whop")
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -138,8 +138,6 @@ class CheckoutIn(BaseModel):
     discount_code: Optional[str] = None
     # Required for Stripe/PayPal — those redirect the shopper to a hosted
     # payment page and need to know where to send them back afterward.
-    # PayHere doesn't use these (it posts a form directly, no redirect URL
-    # needed from the storefront).
     return_url: Optional[str] = None
     cancel_url: Optional[str] = None
 
@@ -242,7 +240,7 @@ def public_store_checkout(
     # balance (never a guest email match, since anyone could type someone
     # else's email at guest checkout — see _get_optional_customer). Applied
     # before the gateway hash is computed, so what the shopper actually
-    # pays PayHere matches what they see after the discount.
+    # pays the gateway matches what they see after the discount.
     wallet_discount = Decimal("0")
     if auth_customer and data.use_wallet_amount and data.use_wallet_amount > 0:
         from app.api.v1.endpoints.wallet import debit_wallet_for_redemption
@@ -379,23 +377,10 @@ def public_checkout_started(
 
 
 def _build_payment_params(conn: ChannelConnection, shop: Shop, order: Order, total: Decimal, return_url: Optional[str], cancel_url: Optional[str]) -> dict:
-    """Each gateway hands the storefront a different shape — PayHere needs
-    a signed hash to build its own form/redirect; Stripe and PayPal are
-    hosted pages, so the storefront just needs one URL to send the
-    shopper to. Keeping this branching in one place is what lets checkout
+    """Each gateway hands the storefront a different shape — Stripe, PayPal
+    and Whop are hosted pages, so the storefront just needs one URL to
+    send the shopper to. Keeping this branching in one place is what lets checkout
     itself stay gateway-agnostic."""
-    if conn.payment_gateway == "payhere":
-        from app.core.payment_gateways import payhere_checkout_hash
-        amount = f"{total:.2f}"
-        return {
-            "gateway": "payhere",
-            "order_id": order.order_number,
-            "amount": amount,
-            "currency": "LKR",
-            "merchant_id": conn.gateway_merchant_id,
-            "hash": payhere_checkout_hash(conn.gateway_merchant_id, order.order_number, amount, "LKR", conn.gateway_merchant_secret),
-        }
-
     if conn.payment_gateway == "stripe":
         if not return_url or not cancel_url:
             raise HTTPException(status_code=422, detail="return_url and cancel_url are required for Stripe.")
@@ -530,20 +515,7 @@ async def payment_webhook(shop_slug: str, request: Request, db: Session = Depend
     if not conn or not conn.payment_gateway:
         raise HTTPException(status_code=400, detail="No payment gateway configured")
 
-    if conn.payment_gateway == "payhere":
-        from app.core.payment_gateways import payhere_verify_notification
-        form = await request.form()
-        order_number = form.get("order_id", "")
-        amount = form.get("payhere_amount", "")
-        currency = form.get("payhere_currency", "")
-        status_code = form.get("status_code", "")
-        md5sig = form.get("md5sig", "")
-        if not payhere_verify_notification(conn.gateway_merchant_id, order_number, amount, currency, status_code, conn.gateway_merchant_secret, md5sig):
-            logger.warning(f"[PAYMENT WEBHOOK] shop={shop.id} order={order_number} invalid signature — ignored")
-            raise HTTPException(status_code=400, detail="Invalid signature")
-        is_paid = status_code == "2"  # PayHere: 2 = success
-
-    elif conn.payment_gateway == "stripe":
+    if conn.payment_gateway == "stripe":
         from app.core.payment_gateways import stripe_verify_webhook_signature
         payload = await request.body()
         sig_header = request.headers.get("stripe-signature", "")

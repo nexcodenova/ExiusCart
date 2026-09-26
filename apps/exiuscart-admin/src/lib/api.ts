@@ -271,7 +271,7 @@ export const adminTeamApi = {
 // ── Prodora intelligence ──────────────────────────────
 export const intelApi = {
   status: () => api.get('/admin/intel/status'),
-  analyze: (data: { product_id: number; target_margin_pct: number; ad_cost_per_order?: number | null; use_paid: boolean; force: boolean }) =>
+  analyze: (data: { product_id: number; target_margin_pct: number; ad_cost_per_order?: number | null; use_paid: boolean; force: boolean; use_trends?: boolean }) =>
     api.post('/admin/intel/analyze', data),
   latest: (productId: number) => api.get(`/admin/intel/products/${productId}`),
   testSource: (source: string) => api.post('/admin/intel/test-source', { source }),
@@ -284,7 +284,7 @@ export const intakeApi = {
   addLinks: (text: string) => api.post('/admin/intake/links', { text }),
   addCjPids: (cj_pids: string[]) => api.post('/admin/intake/cj-pids', { cj_pids }),
   bulk: (ids: number[], action: 'approve' | 'reject' | 'retry' | 'delete', reason?: string) => api.post('/admin/intake/bulk', { ids, action, reason }),
-  reanalyze: (id: number, use_paid: boolean) => api.post(`/admin/intake/items/${id}/analyze`, { use_paid }),
+  reanalyze: (id: number, use_paid: boolean, use_trends = false) => api.post(`/admin/intake/items/${id}/analyze`, { use_paid, use_trends }),
   publishNow: (count?: number) => api.post('/admin/intake/publish-now', count ? { count } : {}),
   updateSettings: (data: { daily_publish_limit: number; publish_hour_utc: number; auto_publish_enabled: boolean; auto_analyze: boolean }) => api.put('/admin/intake/settings', data),
 };

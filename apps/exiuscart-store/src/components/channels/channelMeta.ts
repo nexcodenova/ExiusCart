@@ -17,7 +17,7 @@ export const CHANNEL_META: Record<string, {
   bigcommerce: { label: 'BigCommerce',    icon: Store, color: 'text-[#00C9A7]', bg: 'bg-[#00C9A7]/10', logo: '/channel-logos/bigcommerce.svg', wide: true },
   ebay:        { label: 'eBay',           icon: Tag, color: 'text-[#E53238]', bg: 'bg-[#E53238]/10', logo: '/channel-logos/ebay.svg', wide: true },
   kdp:         { label: 'Amazon KDP',     icon: BookOpen, color: 'text-orange-500', bg: 'bg-orange-500/10', logo: '/channel-logos/amazon.svg', wide: true },
-  amazon:      { label: 'Amazon',         icon: Package, color: 'text-orange-400', bg: 'bg-orange-400/10', logo: '/channel-logos/amazon.svg', wide: true },
+  amazon:      { label: 'Amazon',         icon: Package, color: 'text-orange-400', bg: 'bg-orange-400/10', logo: '/channel-logos/amazon-icon.svg' },
   walmart:     { label: 'Walmart',        icon: ShoppingCart, color: 'text-[#0071DC]', bg: 'bg-[#0071DC]/10', logo: '/channel-logos/walmart.svg', wide: true },
   wix:         { label: 'Wix',            icon: Globe, color: 'text-foreground', bg: 'bg-foreground/10', logo: '/channel-logos/wix.svg', wide: true },
   tiktok:      { label: 'TikTok Shop',    icon: Music2, color: 'text-foreground', bg: 'bg-foreground/10', logo: '/channel-logos/tiktok.svg' },

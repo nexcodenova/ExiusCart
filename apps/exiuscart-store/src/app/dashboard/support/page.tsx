@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowUpRight, Clock, HelpCircle, Mail, MessageCircle, Phone, ClipboardList, MessageSquarePlus, Globe } from 'lucide-react';
+import { ArrowUpRight, Clock, HelpCircle, Mail, MessageCircle, ClipboardList, MessageSquarePlus, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,11 +22,6 @@ const CHANNELS = [
     icon: Mail, tint: 'bg-primary/10 text-primary', title: 'Email', tag: null,
     detail: EMAIL, text: 'Best for billing, invoices, and longer problems where you want to send screenshots.',
     action: { label: 'Send an email', href: `mailto:${EMAIL}?subject=${encodeURIComponent('ExiusCart support')}` },
-  },
-  {
-    icon: Phone, tint: 'bg-primary/10 text-primary', title: 'Phone', tag: null,
-    detail: PHONE_DISPLAY, text: 'For something urgent that is stopping your store from selling.',
-    action: { label: 'Call us', href: `tel:+${WHATSAPP_NUMBER}` },
   },
 ];
 
@@ -74,7 +69,7 @@ export default function SupportPage() {
         <p className="text-sm text-muted-foreground">Talk to the ExiusCart team. Choose the way that suits you</p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         {CHANNELS.map((c) => (
           <Card key={c.title}>
             <CardContent className="flex h-full flex-col gap-4 p-5">

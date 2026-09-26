@@ -543,7 +543,7 @@ export function ShopSidebar() {
                               <SidebarMenuButton asChild isActive={active} tooltip={collapsed ? item.label : undefined}
                                 className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}>
                                 <Link href={item.href}>
-                                  <Icon className="w-5 h-5 flex-shrink-0" />
+                                  <Icon className="!w-[22px] !h-[22px] flex-shrink-0" />
                                   <span className="font-medium text-sm">{item.label}</span>
                                 </Link>
                               </SidebarMenuButton>
@@ -561,7 +561,7 @@ export function ShopSidebar() {
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-left hover:bg-sidebar-accent/40 ${
                           groupActive ? 'text-sidebar-foreground' : 'text-sidebar-muted-foreground hover:text-sidebar-foreground'
                         }`}>
-                        {group.icon && <group.icon className={`w-4 h-4 shrink-0 ${group.accent ?? ''}`} />}
+                        {group.icon && <group.icon className={`w-5 h-5 shrink-0 ${group.accent ?? ''}`} />}
                         <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
                         {locked && (isTheDersiRestricted ? (
                           // "PRO" would read as TheDersi's own Pro tier, which
@@ -614,7 +614,7 @@ export function ShopSidebar() {
                                   tooltip={collapsed ? item.label : undefined}
                                   className="text-sidebar-muted-foreground/50 hover:bg-sidebar-accent/50"
                                 >
-                                  <Icon className="w-4 h-4 flex-shrink-0" />
+                                  <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />
                                   {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
                                   {!collapsed && <Shield className="w-3 h-3 text-amber-400 flex-shrink-0" />}
                                 </SidebarMenuButton>
@@ -639,7 +639,7 @@ export function ShopSidebar() {
                                     isActive={active}
                                     className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}
                                   >
-                                    <Icon className="w-4 h-4 flex-shrink-0" />
+                                    <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />
                                     <span className="font-medium flex-1 text-left">{item.label}</span>
                                     {list.length > 0 && (
                                       <span className="text-[10px] text-sidebar-muted-foreground/70">{list.length}</span>
@@ -684,12 +684,12 @@ export function ShopSidebar() {
                                                     backdrop — on the navy sidebar that backdrop
                                                     read as a mismatched patch rather than a logo. */}
                                                 {style?.logo ? (
-                                                  <span className="w-5 h-5 rounded-md overflow-hidden shrink-0 flex items-center justify-center bg-white p-0.5 ring-1 ring-black/5">
-                                                    <Image src={style.logo} alt={s.name} width={20} height={20}
+                                                  <span className="w-6 h-6 rounded-md overflow-hidden shrink-0 flex items-center justify-center bg-white p-0.5 ring-1 ring-black/5">
+                                                    <Image src={style.logo} alt={s.name} width={24} height={24}
                                                       className="w-full h-full object-contain" />
                                                   </span>
                                                 ) : (
-                                                  <SupplierIcon className={`w-4 h-4 flex-shrink-0 ${style?.color ?? ''}`} />
+                                                  <SupplierIcon className={`!w-[18px] !h-[18px] flex-shrink-0 ${style?.color ?? ''}`} />
                                                 )}
                                                 <span className="font-medium">{s.name}</span>
                                               </Link>
@@ -708,7 +708,7 @@ export function ShopSidebar() {
                               <SidebarMenuButton asChild isActive={active} tooltip={collapsed ? item.label : undefined}
                                 className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}>
                                 <Link href={item.href}>
-                                  <Icon className="w-4 h-4 flex-shrink-0" />
+                                  <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />
                                   <span className="font-medium">{item.label}</span>
                                 </Link>
                               </SidebarMenuButton>

@@ -345,6 +345,8 @@ const compareGroups: { title: string; rows: CompareRow[] }[] = [
       barRow('Product imports / month', ['100', '500', 'Unlimited']),
       { label: 'Digital design bundles (via Whop)', values: [true, true, true] },
       { label: 'Standalone Product Research page', values: [true, true, true] },
+      { label: 'Competition & profit check (real market prices, profit per sale, a clear verdict)', values: [false, true, true] },
+      { label: 'Google search demand (rising or falling, seasonality, top countries)', values: [false, true, true] },
     ],
   },
   {
@@ -609,6 +611,8 @@ export default function PricingPage() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-4">
                 Everything in Launch, and
               </p>
+              <TickRow label="Competition & profit check on every product" />
+              <TickRow label="Google search demand: rising, falling, seasonal" />
               {FEATURE_CATEGORIES.map((c) => (
                 <LimitBar key={c.label} label={c.label} percent={c.percents[1]} />
               ))}

@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.core import economics
 from app.core.intel import Signal, record_event
 from app.intel import fingerprint as fp_mod
-from app.intel import matching, verdict as verdict_mod
+from app.intel import matching, trends, verdict as verdict_mod
 from app.intel.marketplaces import MarketplaceAdapter, all_adapters
 from app.intel.types import Fingerprint, Listing, ProductSource, SourceResult
 from app.models.intel import PlatformEvent, ProductIntelResult
@@ -130,6 +130,38 @@ def fetch_snapshot(db: Session, source: ProductSource, market: str, use_paid: bo
     }
 
 
+def trend_keyword(fp: dict) -> str:
+    """The short, plain phrase people would actually search for."""
+    words = (fp.get("product_type") or (fp.get("search_queries") or [""])[0] or "").split()
+    return trends.normalise(" ".join(words[:4]))
+
+
+def ensure_demand(db: Session, snapshot: dict, user_id: Optional[int] = None, product_id: Optional[int] = None) -> dict:
+    """Adds Google search-interest data to a snapshot (returns a NEW dict). Uses the
+    shared per-keyword cache first; otherwise asks Google Trends (free, not counted
+    against the paid budget). Never raises: the reason it is missing is stored in demand["status"]."""
+    keyword = trend_keyword(snapshot.get("fingerprint") or {})
+    geo = snapshot.get("market", "US")
+    out = dict(snapshot)
+    if not keyword:
+        out["demand"] = {"status": "insufficient", "note": "Could not work out what to search for."}
+        return out
+    hit = trends.cached(db, keyword, geo)
+    if hit:
+        out["demand"] = {**hit, "cached": True}
+        return out
+    if not trends.configured():
+        out["demand"] = {"status": "not_configured", "note": trends.NOT_CONFIGURED_HINT}
+        return out
+    d = trends.fetch(keyword, geo)
+    for _ in range(d.get("lookups", 0)):
+        record_event(db, PAID_EVENT, user_id=user_id, entity_type="product", entity_id=product_id, payload={"source": "google_trends", "keyword": keyword})
+    if d["status"] == "ok":
+        trends.store(db, keyword, geo, d)
+    out["demand"] = d
+    return out
+
+
 def evaluate(snapshot: dict, source: ProductSource, *, target_margin_pct: float = 30.0, ad_cost_per_order: Optional[float] = None) -> dict:
     """Economics + verdict from a snapshot. Free and instant."""
     if source.supplier_cost is None:
@@ -149,7 +181,7 @@ def evaluate(snapshot: dict, source: ProductSource, *, target_margin_pct: float 
     sources_ok = sum(1 for s in snapshot.get("sources", []) if s["status"] == "ok")
     v = verdict_mod.decide(economics=econ, price_range=price_range, competitor_count=len(prices),
                            target_margin_pct=target_margin_pct, sources_ok=sources_ok, method=snapshot.get("match_method", "none"),
-                           shipping_known=source.shipping_cost is not None)
+                           shipping_known=source.shipping_cost is not None, demand=snapshot.get("demand"))
 
     ok_names = [s["source"] for s in snapshot.get("sources", []) if s["status"] == "ok" and s["count"]]
     signals: List[Signal] = [
@@ -162,6 +194,10 @@ def evaluate(snapshot: dict, source: ProductSource, *, target_margin_pct: float 
         m = price_range["market"]
         signals.append(Signal("competitor_median_price", m["median"], price_range["confidence"], "+".join(ok_names) or "marketplaces",
                               evidence=[f"{len(prices)} same-product listings", f"lowest ${m['lowest']:.2f}, highest ${m['highest']:.2f}"]))
+    dem = snapshot.get("demand") or {}
+    if dem.get("status") == "ok" and dem.get("direction") not in (None, "unknown"):
+        signals.append(Signal("search_interest_yoy_change", dem.get("yoy_change"), "medium", "google_trends",
+                              evidence=[trends.summarise(dem), "Search interest, not sales"]))
     return {
         **v, "economics": econ, "price_range": price_range, "basis_price": basis, "target_margin_pct": target_margin_pct,
         "ad_cost_per_order": ad, "competitor_count": len(prices), "signals": [s.to_dict() for s in signals],
@@ -170,10 +206,14 @@ def evaluate(snapshot: dict, source: ProductSource, *, target_margin_pct: float 
 
 def analyze(db: Session, product: Product, *, market: str = "US", target_margin_pct: float = 30.0,
             ad_cost_per_order: Optional[float] = None, use_paid: bool = False, force: bool = False,
-            user_id: Optional[int] = None, adapters: Optional[List[MarketplaceAdapter]] = None) -> dict:
+            user_id: Optional[int] = None, adapters: Optional[List[MarketplaceAdapter]] = None, use_trends: bool = False) -> dict:
     source = source_from_product(product)
     cached = None if force else _fresh_snapshot(db, product.id, market, use_paid)
     snapshot = cached.snapshot if cached else fetch_snapshot(db, source, market, use_paid, adapters, user_id)
+    if use_trends and (snapshot.get("demand") or {}).get("status") != "ok":
+        snapshot = ensure_demand(db, snapshot, user_id, product.id)
+        if cached is not None:
+            cached.snapshot = snapshot                    # a new dict, so the change is saved
     evaluation = evaluate(snapshot, source, target_margin_pct=target_margin_pct, ad_cost_per_order=ad_cost_per_order)
     if cached is None:
         db.add(ProductIntelResult(product_id=product.id, market=market, snapshot=snapshot, evaluation=evaluation,

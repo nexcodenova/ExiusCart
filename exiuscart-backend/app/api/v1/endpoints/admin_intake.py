@@ -170,6 +170,9 @@ def bulk_action(body: BulkIn, db: Session = Depends(get_db), user: User = Depend
     db.commit()
     if requeued:
         intake.submit(requeued)
+    if body.action == "approve" and done:
+        for i in done:                        # measure demand for what was just approved
+            intake._pool.submit(intake.attach_demand, i)
     if not user.is_superuser and done:
         _audit(db, user, "admin_staff_action", f"Intake {body.action}: {len(done)} item(s)", {"action": body.action, "count": len(done)})
     return {"done": done, "skipped": skipped}
@@ -177,6 +180,7 @@ def bulk_action(body: BulkIn, db: Session = Depends(get_db), user: User = Depend
 
 class AnalyzeIn(BaseModel):
     use_paid: bool = False
+    use_trends: bool = False
 
 
 @router.post("/admin/intake/items/{item_id}/analyze")
@@ -188,7 +192,7 @@ def reanalyze(item_id: int, body: AnalyzeIn, db: Session = Depends(get_db), user
     if not it or not p:
         raise HTTPException(status_code=404, detail="That product is not in the queue any more.")
     try:
-        out = engine.analyze(db, p, market="US", target_margin_pct=30.0, use_paid=body.use_paid, force=body.use_paid, user_id=user.id)
+        out = engine.analyze(db, p, market="US", target_margin_pct=30.0, use_paid=body.use_paid, force=body.use_paid, user_id=user.id, use_trends=body.use_trends)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return {"verdict": out["evaluation"]["verdict"], "confidence": out["evaluation"]["confidence"], "paid_usage": engine.paid_usage(db)}

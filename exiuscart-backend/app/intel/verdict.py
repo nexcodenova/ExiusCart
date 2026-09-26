@@ -29,6 +29,11 @@ NOT_MEASURED = [
     {"key": "content_potential", "label": "Content potential", "why": "Not measured in this version"},
 ]
 
+
+def not_measured(demand_known: bool) -> list:
+    """Demand leaves the list once Google search interest has really been measured."""
+    return [n for n in NOT_MEASURED if not (demand_known and n["key"] == "demand")]
+
 _RANK = {"low": 0, "medium": 1, "high": 2}
 
 
@@ -37,7 +42,7 @@ def _worst(*levels: str) -> str:
 
 
 def decide(*, economics: dict, price_range: dict, competitor_count: int, target_margin_pct: float,
-           sources_ok: int, method: str, shipping_known: bool = True) -> dict:
+           sources_ok: int, method: str, shipping_known: bool = True, demand: Optional[dict] = None) -> dict:
     reasons_for: List[str] = []
     concerns: List[str] = []
     verdict = "TEST"
@@ -89,6 +94,22 @@ def decide(*, economics: dict, price_range: dict, competitor_count: int, target_
             verdict = "WATCH"
         concerns.append("Supplier shipping is not known yet, so the profit shown may be too high.")
 
+    demand_ok = bool(demand and demand.get("status") == "ok" and demand.get("direction") not in (None, "unknown"))
+    if demand_ok:
+        d, yoy = demand["direction"], demand.get("yoy_change")
+        if d == "rising":
+            reasons_for.append(f"Search interest is up {abs(yoy or 0) * 100:.0f}% on last year, so demand is growing.")
+        elif d == "falling":
+            concerns.append(f"Search interest is down {abs(yoy or 0) * 100:.0f}% on last year, so demand is shrinking.")
+            if verdict == "TEST" and (yoy or 0) <= -0.30:
+                verdict = "WATCH"
+        elif d == "low_interest":
+            concerns.append("Very few people search for this, so demand may be too small to build a business on.")
+            if verdict == "TEST":
+                verdict = "WATCH"
+        if demand.get("seasonal") and demand.get("peak_month"):
+            concerns.append(f"It is seasonal: interest peaks around {demand['peak_month']}. Time the launch for it.")
+
     evidence = "low" if competitor_count == 0 else ("medium" if competitor_count < MIN_COMPETITORS + 2 else "high")
     if method == "keyword":                       # crude matching: never claim high confidence
         evidence = _worst(evidence, "medium")
@@ -104,4 +125,4 @@ def decide(*, economics: dict, price_range: dict, competitor_count: int, target_
         "AVOID": "Not worth testing at this cost",
     }[verdict]
     return {"verdict": verdict, "headline": headline, "reasons_for": reasons_for, "concerns": concerns,
-            "confidence": confidence, "not_measured": NOT_MEASURED}
+            "confidence": confidence, "not_measured": not_measured(demand_ok)}

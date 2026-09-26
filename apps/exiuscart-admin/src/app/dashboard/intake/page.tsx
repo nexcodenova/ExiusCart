@@ -155,6 +155,15 @@ export default function IntakePage() {
     } catch (e: any) { setError(errText(e, 'That did not work.')); } finally { setBusy(null); }
   };
 
+  const comparePaid = async (targets: number[]) => {
+    setBusy('paid'); let ok = 0, failed = 0;
+    for (const id of targets) {
+      try { await intakeApi.reanalyze(id, true); ok++; } catch { failed++; }
+    }
+    flash(`Amazon and Walmart checked for ${ok} product${ok === 1 ? '' : 's'}${failed ? `, ${failed} could not be checked (limit reached or not set up)` : ''}.`);
+    setSelected(new Set()); await refreshAll(); setBusy(null);
+  };
+
   const publish = async (count?: number) => {
     setBusy('publish');
     try { const r = await intakeApi.publishNow(count); flash(`${r.data.published} published.`); await refreshAll(); }
@@ -321,6 +330,7 @@ export default function IntakePage() {
           <div className="flex flex-wrap items-center gap-2 border-b border-[#6B3FD9]/20 bg-[#6B3FD9]/5 px-4 py-2 text-sm">
             <span className="font-medium text-gray-800">{selected.size} selected</span>
             {canReview && selItems.some((i) => i.status === 'ready') && <button type="button" onClick={() => act(ids, 'approve')} disabled={!!busy} className="rounded-lg bg-green-600 px-3 py-1.5 font-semibold text-white hover:bg-green-700 disabled:opacity-50">Approve</button>}
+            {canAnalyze && selItems.some((i) => ['ready', 'approved'].includes(i.status)) && <button type="button" onClick={() => comparePaid(selItems.filter((i) => ['ready', 'approved'].includes(i.status)).map((i) => i.id))} disabled={!!busy} title="Uses paid lookups from your daily and monthly limit, only for the ticked products" className="rounded-lg border border-[#6B3FD9]/40 bg-white px-3 py-1.5 font-medium text-[#6B3FD9] hover:bg-[#6B3FD9]/5 disabled:opacity-50">{busy === 'paid' ? 'Checking…' : 'Also compare on Amazon + Walmart'}</button>}
             {canReview && selItems.some((i) => !['published', 'importing', 'analyzing'].includes(i.status)) && <button type="button" onClick={() => { setRejectReason(''); setRejectFor(ids); }} disabled={!!busy} className="rounded-lg border border-red-300 bg-white px-3 py-1.5 font-medium text-red-700 hover:bg-red-50 disabled:opacity-50">Reject</button>}
             {canAdd && selItems.some((i) => i.status === 'failed') && <button type="button" onClick={() => act(ids, 'retry')} disabled={!!busy} className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Retry</button>}
             {canReview && selItems.some((i) => ['failed', 'rejected'].includes(i.status)) && <button type="button" onClick={() => act(ids, 'delete')} disabled={!!busy} className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Clear</button>}

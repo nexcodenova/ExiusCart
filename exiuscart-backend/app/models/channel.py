@@ -58,7 +58,7 @@ class ChannelConnection(Base):
 
     # Payment gateway credentials — Custom Website channel only. Gateway-
     # agnostic on purpose: `payment_gateway` names which one is active
-    # (e.g. "payhere" today), `gateway_merchant_id`/`gateway_merchant_secret`
+    # (e.g. "stripe"), `gateway_merchant_id`/`gateway_merchant_secret`
     # hold whatever that gateway calls its credentials. Swapping to a
     # different gateway later is a new value + new checkout/webhook logic,
     # not a schema change. gateway_merchant_secret is used server-side only

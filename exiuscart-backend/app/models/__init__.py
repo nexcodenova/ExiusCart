@@ -65,5 +65,5 @@ from app.models.shop_staff import ShopRole, ShopStaff
 from app.models.kdp_book import KdpBook
 from app.models.email_monitor import EmailDomain, EmailEvent, EmailSuppression, EmailShopControl
 from app.models.admin_team import AdminRole, AdminStaff
-from app.models.intel import SupplierPriceSnapshot, PlatformEvent, ProductIntelResult
+from app.models.intel import SupplierPriceSnapshot, PlatformEvent, ProductIntelResult, KeywordTrend
 from app.models.intake import IntakeItem, IntakeSettings
