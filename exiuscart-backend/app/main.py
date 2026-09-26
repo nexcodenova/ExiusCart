@@ -262,6 +262,9 @@ _MIGRATIONS = [
     # characters: the rename below failed silently at every startup (the two
     # legacy rows kept "thedersi_basic") and saving a new Free Forever seller
     # would have failed. Widen first; growing a varchar is instant in Postgres.
+    # Store Profile page: these two were in the form and the schema but had no column, so they were never saved.
+    "ALTER TABLE shops ADD COLUMN IF NOT EXISTS website VARCHAR(300);",
+    "ALTER TABLE shops ADD COLUMN IF NOT EXISTS trade_license VARCHAR(100);",
     "ALTER TABLE subscriptions ALTER COLUMN plan_type TYPE VARCHAR(30);",
     "ALTER TABLE subscription_payments ALTER COLUMN plan_type TYPE VARCHAR(30);",
     # 2026-09-17 TheDersi plan restructure: thedersi_basic → thedersi_free_forever

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -55,10 +55,31 @@ class ShopUpdate(BaseModel):
     accent_color: Optional[str] = None
     font_family: Optional[str] = None
 
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError("The store name can't be empty.")
+        return v.strip() if v is not None else v
+
+    @field_validator("website")
+    @classmethod
+    def _website_url(cls, v):
+        v = (v or "").strip()
+        if not v:
+            return None
+        if not v.lower().startswith(("http://", "https://")):
+            v = "https://" + v
+        if " " in v or "." not in v.split("//", 1)[1]:
+            raise ValueError("Enter a valid website address, for example https://mystore.com")
+        return v[:300]
+
 
 class ShopResponse(ShopBase):
     id: int
     slug: str
+    website: Optional[str] = None
+    trade_license: Optional[str] = None
     base_currency: Optional[str] = None
     storefront_currency: Optional[str] = None
     logo_url: Optional[str] = None

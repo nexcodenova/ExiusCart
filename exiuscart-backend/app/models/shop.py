@@ -15,6 +15,8 @@ class Shop(Base):
     banner_url = Column(String(500), nullable=True)
     phone = Column(String(20), nullable=True)
     whatsapp = Column(String(20), nullable=True)
+    website = Column(String(300), nullable=True)
+    trade_license = Column(String(100), nullable=True)
     email = Column(String(255), nullable=True)
     address = Column(Text, nullable=True)
     city = Column(String(100), nullable=True)
