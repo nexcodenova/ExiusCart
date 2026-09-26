@@ -352,6 +352,8 @@ const compareGroups: { title: string; rows: CompareRow[] }[] = [
     rows: [
       tierBar('Email marketing', [30, 60, 100]),
       tierBar('WhatsApp marketing', [30, 60, 100]),
+      { label: 'Emails go out under your store name (customer replies reach your inbox)', values: [true, true, true] },
+      { label: 'Send all customer emails from your own domain (invoices, quotes and marketing campaigns)', values: [false, false, true] },
       { label: 'Lead management', values: [true, true, true] },
       barRow('Leads / month', ['500', '2,000', 'Unlimited']),
       { label: 'Abandoned cart automation', values: [true, true, true] },
