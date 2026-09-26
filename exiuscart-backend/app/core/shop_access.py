@@ -230,6 +230,12 @@ async def staff_gate(
             return
         raise HTTPException(status_code=403, detail="Only the store owner can do this.")
     if area is None:
+        # The dashboard search box is open to every active team member; the endpoint itself
+        # only returns the sections their role can view.
+        _rest = request.url.path.split(f"/shops/{shop_id}/", 1)[-1]
+        if _rest.split("/")[0] == "search" and request.method in _READ_METHODS:
+            _approved_shop.set(shop_id)
+            return
         raise HTTPException(status_code=403, detail="Only the store owner can do this.")
 
     write = request.method not in _READ_METHODS

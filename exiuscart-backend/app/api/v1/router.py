@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery, bigcommerce, ad_intelligence, testimonials, whop, gumroad, video_gen, storefront_insights, prodora_digital, social_posting, whatsapp_marketing, sms_marketing, discounts, cron, analytics, customer_segments, auth_account, team, prodora_imports, printify, kdp
+from app.api.v1.endpoints import auth, users, shops, products, orders, customers, product_fields, admin, shopping, webhooks, hr, marketing, recruitment, attendance, fleet, services, shopify_integration, ai_seo, public, partner, channels, reservations, affiliates, quotations, usage, bundles, expenses, wholesale, advanced_reports, dropshipping, reviews, popups, lemonsqueezy_webhook, daraz, noon, ebay, tiktok, woocommerce, etsy, signup_forms, checkout, wallet, custom_product_fields, blog, digital_delivery, bigcommerce, ad_intelligence, testimonials, whop, gumroad, video_gen, storefront_insights, prodora_digital, social_posting, whatsapp_marketing, sms_marketing, discounts, cron, analytics, customer_segments, auth_account, team, prodora_imports, printify, kdp, search
 from app.core.shop_access import staff_gate
 
 # staff_gate: store-team permission check for every /shops/{shop_id}/... request
@@ -12,6 +12,7 @@ api_router.include_router(team.router, prefix="", tags=["Store Team"])
 api_router.include_router(prodora_imports.router, prefix="", tags=["Prodora Imports"])
 api_router.include_router(printify.router, prefix="", tags=["Printify"])
 api_router.include_router(kdp.router, prefix="", tags=["Amazon KDP"])
+api_router.include_router(search.router, prefix="", tags=["Dashboard Search"])
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
 api_router.include_router(shops.router, prefix="/shops", tags=["Shops"])
 api_router.include_router(products.router, prefix="", tags=["Products"])

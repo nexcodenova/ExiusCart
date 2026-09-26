@@ -463,8 +463,10 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<CustomerStats | null>(null);
 
-  const [searchInput, setSearchInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  // Opened from the top-bar search with ?q=... : start with that customer filtered.
+  const initialQ = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') ?? '' : '';
+  const [searchInput, setSearchInput] = useState(initialQ);
+  const [searchQuery, setSearchQuery] = useState(initialQ);
   const [sourceFilter, setSourceFilter] = useState('');
   const [statusTab, setStatusTab] = useState<'all' | CustomerStatus>('all');
   const [sortBy, setSortBy] = useState('newest');
