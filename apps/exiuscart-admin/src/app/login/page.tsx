@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, EyeOff, Loader2, Shield } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { BorderBeam } from '@/components/ui/border-beam';
@@ -12,7 +12,9 @@ export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('reason') === 'no_access'
+      ? 'This account no longer has admin access.' : '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,14 +23,20 @@ export default function AdminLoginPage() {
     try {
       const { authApi } = await import('@/lib/api');
       const res = await authApi.login(email, password);
-      const { access_token, is_superuser } = res.data;
-      if (!is_superuser) {
+      const { access_token } = res.data;
+      // Owners and invited staff both sign in here; the server says which
+      // (and what they may do). Anyone else is turned away.
+      localStorage.setItem('admin_access_token', access_token);
+      localStorage.removeItem('admin_access_cache');
+      try {
+        const { adminAccessApi } = await import('@/lib/api');
+        const me = await adminAccessApi.me();
+        window.location.href = me.data.is_owner ? '/dashboard' : '/dashboard/shopping';
+      } catch {
+        localStorage.removeItem('admin_access_token');
         setError('This account does not have admin access.');
         setIsLoading(false);
-        return;
       }
-      localStorage.setItem('admin_access_token', access_token);
-      window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Invalid email or password.');
       setIsLoading(false);

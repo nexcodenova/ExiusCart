@@ -3,16 +3,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { menuItems } from './sidebar';
+import { menuItems, MENU_PERMS } from './sidebar';
+import { useAdminAccess } from '@/components/access-provider';
 import { MoreHorizontal, X, LogOut } from 'lucide-react';
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const [showMore, setShowMore] = useState(false);
+  const { isOwner, can } = useAdminAccess();
+  const items = menuItems.filter((i) => isOwner || (MENU_PERMS[i.href] !== undefined && can(MENU_PERMS[i.href])));
 
   // Show first 4 items in the bottom bar, rest in "More" menu
-  const mainItems = menuItems.slice(0, 4);
-  const moreItems = menuItems.slice(4);
+  const mainItems = items.slice(0, 4);
+  const moreItems = items.slice(4);
 
   return (
     <>
@@ -61,6 +64,8 @@ export function MobileBottomNav() {
             })}
             {/* Logout button */}
             <button
+              type="button"
+              onClick={() => { localStorage.removeItem('admin_access_token'); localStorage.removeItem('admin_access_cache'); window.location.href = '/login'; }}
               className="flex flex-col items-center gap-1 p-3 rounded-xl text-gray-500 hover:bg-red-500/10 hover:text-red-600 transition-all"
             >
               <LogOut className="w-5 h-5" />

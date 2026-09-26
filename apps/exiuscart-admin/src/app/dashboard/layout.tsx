@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AdminSidebar } from '@/components/layout/sidebar';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { SupportButton } from '@/components/layout/support-button';
+import { AccessProvider } from '@/components/access-provider';
 
 export default function AdminDashboardLayout({
   children,
@@ -28,6 +29,7 @@ export default function AdminDashboardLayout({
   if (!authed) return null;
 
   return (
+    <AccessProvider>
     <div className="min-h-screen bg-[#F3F5F9]">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
@@ -60,5 +62,6 @@ export default function AdminDashboardLayout({
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
     </div>
+    </AccessProvider>
   );
 }

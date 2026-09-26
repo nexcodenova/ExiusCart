@@ -23,6 +23,7 @@ from app.models.user import User
 from app.models.subscription import Subscription
 from app.models.dropship import DropshipConnection, DropshipProductLink
 from app.models.prodora import ProdoraImportLog
+from app.core.intel import record_event, record_supplier_snapshot
 from app.api.v1.endpoints.dropshipping import _cj_ensure_token, CJ_BASE
 
 router = APIRouter()
@@ -311,7 +312,7 @@ def list_shopping_products(
 def get_shopping_product(
     product_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_prodora_user),
+    user: User = Depends(get_prodora_user),
 ):
     product = (
         db.query(Product)
@@ -332,6 +333,7 @@ def get_shopping_product(
     # "Views" on the admin All Products list.
     product.view_count = (product.view_count or 0) + 1
     db.commit()
+    record_event(db, "prodora_product_viewed", user_id=user.id, entity_type="prodora_product", entity_id=product.id)
     return _product_out(product)
 
 
@@ -520,6 +522,14 @@ def import_shopping_product(
     db.add(ProdoraImportLog(shop_id=shop.id, product_id=new_product.id, source_product_id=source.id))
     db.commit()
     db.refresh(new_product)
+    # The event stream and supplier price history start filling from the very
+    # first import (both are best-effort and can never fail the import).
+    record_event(db, "prodora_product_imported", user_id=user.id, shop_id=shop.id, entity_type="prodora_product",
+                 entity_id=source.id, payload={"new_product_id": new_product.id, "supplier": source.supplier_name,
+                                               "linked_supplier": bool(source_link and seller_connection)})
+    if source_link:
+        record_supplier_snapshot(db, source_link.supplier_type, source_link.supplier_product_id, cost=source_link.cost_price,
+                                 shipping=source.shipping_cost, product_id=source.id, source="import")
     return {"product_id": new_product.id, "name": new_product.name, "shop_id": shop.id}
 
 

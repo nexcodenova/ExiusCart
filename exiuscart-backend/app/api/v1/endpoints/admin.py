@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from pydantic import BaseModel
 
+from app.core.admin_access import require_admin_perm
 from app.core.database import get_db, SessionLocal
 from app.api.v1.deps import get_current_user
 from app.core.encryption import encrypt
@@ -1969,7 +1970,7 @@ def admin_list_shopping_products(
     search: Optional[str] = None,
     shop_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.view")),
 ):
     query = (
         db.query(Product)
@@ -1989,7 +1990,7 @@ def admin_list_shopping_products(
 def admin_prodora_catalog(
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.view")),
 ):
     """Everything on Prodora in one list — supplier products and digital
     bundles — oldest first, each with its catalogue ID (CJ001, AL001, DG001)."""
@@ -2066,7 +2067,7 @@ def _get_or_create_category(db: Session, shop_id: int, name: str):
 @router.post("/admin/shopping/upload-image")
 async def admin_upload_shopping_image(
     file: UploadFile,
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.add")),
 ):
     """Upload a product image to R2 and return the public URL."""
     contents = await file.read()
@@ -2401,7 +2402,7 @@ async def admin_upload_website_blog_image(
 def admin_create_shopping_product(
     data: ShoppingProductCreate,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     shop = _CATALOGUE
 
@@ -2444,7 +2445,7 @@ def admin_update_shopping_product(
     product_id: int,
     data: ShoppingProductUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.edit")),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -2477,7 +2478,7 @@ def admin_update_shopping_product(
 def admin_delete_shopping_product(
     product_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.delete")),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -2533,7 +2534,7 @@ def admin_list_categories(
     shop_id: Optional[int] = None,
     prodora: bool = False,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.view")),
 ):
     query = db.query(Category)
     if shop_id:
@@ -2577,7 +2578,7 @@ def _category_out(c: Category, product_count: int = 0) -> dict:
 def admin_create_category(
     data: ShoppingCategoryIn,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.edit")),
 ):
     name = data.name.strip()
     if not name:
@@ -2598,7 +2599,7 @@ def admin_update_category(
     category_id: int,
     data: ShoppingCategoryIn,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.edit")),
 ):
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
@@ -2625,7 +2626,7 @@ def admin_update_category(
 def admin_delete_category(
     category_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.delete")),
 ):
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
@@ -2670,7 +2671,7 @@ def _get_system_cj_connection(db: Session, shop: Shop) -> DropshipConnection:
 @router.get("/admin/shopping/cj/status")
 def admin_cj_status(
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     shop = _CATALOGUE
     conn = db.query(DropshipConnection).filter(
@@ -2719,7 +2720,7 @@ async def admin_cj_search(
     q: str = "",
     page: int = 1,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
@@ -2754,7 +2755,7 @@ async def admin_cj_search(
 async def admin_cj_trending(
     page: int = 1,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     """CJ's own curated hot-products feed (searchType=2 on /product/list) —
     real data CJ maintains, not scraped. Verified against their live API docs."""
@@ -2790,7 +2791,7 @@ async def admin_cj_trending(
 @router.get("/admin/shopping/cj/categories")
 async def admin_cj_categories(
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     """CJ's real 3-level category tree (verified via /product/getCategory) —
     flattened to the leaf (3rd level) categories, since only those carry a
@@ -2823,7 +2824,7 @@ async def admin_cj_by_category(
     category_id: str,
     page: int = 1,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
@@ -2858,7 +2859,7 @@ async def admin_cj_by_category(
 async def admin_cj_my_products(
     page: int = 1,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     """The curated shortlist from CJ's own site (Product Sourcing -> My
     Product) — already vetted, so no search-relevance issues like /cj/search."""
@@ -2982,7 +2983,7 @@ async def admin_cj_import(
     body: CJImportAdminIn,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     shop = _CATALOGUE
     conn = _get_system_cj_connection(db, shop)
@@ -3008,7 +3009,7 @@ async def admin_cj_import_bulk(
     body: CJBulkImportIn,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     """Imports several CJ products in one call — for the Trending/My CJ
     Products tabs' multi-select. Each pid succeeds or fails independently
@@ -3050,7 +3051,7 @@ from app.api.v1.endpoints.dropshipping import (
 @router.get("/admin/shopping/aliexpress/status")
 def admin_aliexpress_status(
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     """Whether the platform's AliExpress account is connected. Connecting goes
     through GET /admin/shopping/aliexpress/authorize."""
@@ -3109,7 +3110,7 @@ async def admin_aliexpress_search(
     q: str = "",
     page: int = 1,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     """Real catalog search (aliexpress.ds.text.search), not the curated-feed
     system — that one needs business-team-granted feed names, this doesn't."""
@@ -3138,7 +3139,7 @@ async def admin_aliexpress_import(
     body: AliexpressImportAdminIn,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("prodora.add")),
 ):
     shop = _CATALOGUE
     conn = db.query(DropshipConnection).filter(
@@ -3236,7 +3237,7 @@ from app.core.meta_ad_library import search_meta_ad_library
 async def admin_meta_ads_search(
     q: str,
     country: str = "US",
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.add")),
 ):
     ads = await search_meta_ad_library(q, country)
     return {"ads": ads}
@@ -3282,7 +3283,7 @@ def admin_meta_ads_auto_attach(
     limit: int = 50,
     product_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("prodora.add")),
 ):
     """Queues a throttled background search for products missing a Facebook
     ad link — returns immediately so the admin isn't stuck waiting (a run

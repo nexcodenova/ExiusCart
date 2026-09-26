@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Suspense, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { BLOG_SITES, parseBlogSite } from '@/lib/blog-sites';
+import { useAdminAccess } from '@/components/access-provider';
 import {
   LayoutDashboard,
   Store,
@@ -25,6 +26,7 @@ import {
   Download,
   ChevronDown,
   ScrollText,
+  UsersRound,
 } from 'lucide-react';
 
 export const menuItems = [
@@ -42,8 +44,22 @@ export const menuItems = [
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
   { href: '/dashboard/audit-log', label: 'Audit', icon: ScrollText },
   { href: '/dashboard/client-codes', label: 'Client Codes', icon: Key },
+  { href: '/dashboard/team', label: 'Admin Team', icon: UsersRound },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
+
+// What each menu entry needs. Anything not listed here is OWNER-ONLY, so a new
+// page can never be shown to staff by accident.
+export const MENU_PERMS: Record<string, string> = {
+  '/dashboard/shopping': 'prodora.view',
+  '/dashboard/digital-bundles': 'prodora.digital',
+};
+const CHILD_PERMS: Record<string, string> = {
+  '/dashboard/shopping': 'prodora.view',
+  '/dashboard/shopping/add': 'prodora.add',
+  '/dashboard/digital-bundles': 'prodora.digital',
+  '/dashboard/shopping/categories': 'prodora.view',
+};
 
 // Sub-pages under Prodora — shown as a dropdown in this sidebar. menuItems
 // (above) stays flat because the mobile bottom nav reads it directly, so the
@@ -99,6 +115,12 @@ function BlogSiteLinks({ onBlogs }: { onBlogs: boolean }) {
 
 export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { isOwner, can, access } = useAdminAccess();
+  // Digital Products lives inside the Prodora group, so a staff member who can
+  // only manage digital bundles still gets the group.
+  const showProdoraGroup = isOwner || can('prodora.view') || can('prodora.digital');
+  const visibleMenu = menuItems.filter((item) =>
+    isOwner || (item.href === '/dashboard/shopping' ? showProdoraGroup : MENU_PERMS[item.href] !== undefined && can(MENU_PERMS[item.href])));
   const onProdora = pathname.startsWith('/dashboard/shopping') || PRODORA_CHILDREN.some((c) => pathname.startsWith(c.match));
   const [prodoraOpen, setProdoraOpen] = useState(onProdora);
   const onAffiliates = pathname.startsWith('/dashboard/affiliates');
@@ -129,7 +151,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
           (which used to sit on top via absolute positioning and covered
           the last couple of items on any laptop-height screen). */}
       <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
-        {menuItems.filter((item) => !IN_PRODORA_GROUP.includes(item.href)).map((item) => {
+        {visibleMenu.filter((item) => !IN_PRODORA_GROUP.includes(item.href)).map((item) => {
           const Icon = item.icon;
           if (item.href === '/dashboard/shopping') {
             return (
@@ -163,7 +185,7 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
                   // Text only, lined up with the "Prodora" label above: 12px padding
                   // + 20px icon + 12px gap = 44px.
                   <div className="mt-0.5 space-y-0.5">
-                    {PRODORA_CHILDREN.map((child) => {
+                    {PRODORA_CHILDREN.filter((c) => isOwner || can(CHILD_PERMS[c.href] ?? '')).map((child) => {
                       const active = child.exact ? pathname === child.match : pathname.startsWith(child.match);
                       return (
                         <Link
@@ -335,15 +357,17 @@ export function AdminSidebar({ collapsed, onCollapsedChange }: AdminSidebarProps
         {!collapsed && (
           <div className="flex items-center gap-3 mb-3 px-2">
             <div className="w-10 h-10 bg-[#6B3FD9] rounded-full flex items-center justify-center">
-              <span className="text-sm font-bold text-white">SA</span>
+              <span className="text-sm font-bold text-white">{(access?.full_name || access?.email || 'A').trim().split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'A'}</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">Super Admin</p>
-              <p className="text-xs text-gray-500 truncate">admin@exiuscart.com</p>
+              <p className="text-sm font-medium text-gray-900 truncate">{access ? (access.is_owner ? 'Super Admin' : (access.full_name || access.email)) : ' '}</p>
+              <p className="text-xs text-gray-500 truncate">{access ? (access.is_owner ? access.email : (access.role ?? 'Staff')) : ' '}</p>
             </div>
           </div>
         )}
         <button
+          type="button"
+          onClick={() => { localStorage.removeItem('admin_access_token'); localStorage.removeItem('admin_access_cache'); window.location.href = '/login'; }}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-red-500/10 hover:text-red-600 w-full transition ${
             collapsed ? 'justify-center' : ''
           }`}

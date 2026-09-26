@@ -32,6 +32,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
+from app.core.admin_access import require_admin_perm
 from app.core.database import get_db
 from app.models.user import User
 from app.models.shop import Shop
@@ -167,7 +168,7 @@ class BundleIn(BaseModel):
 
 
 @router.post("/admin/prodora-bundles/upload-file")
-async def admin_upload_bundle_file(file: UploadFile, _: User = Depends(require_superuser)):
+async def admin_upload_bundle_file(file: UploadFile, _: User = Depends(require_admin_perm("prodora.digital"))):
     """Generic upload for either the editable source file or the finished
     PDF — same R2 bucket every other admin/Prodora upload already uses."""
     contents = await file.read()
@@ -180,7 +181,7 @@ async def admin_upload_bundle_file(file: UploadFile, _: User = Depends(require_s
 
 
 @router.get("/admin/prodora-bundles")
-def admin_list_bundles(db: Session = Depends(get_db), _: User = Depends(require_superuser)):
+def admin_list_bundles(db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.digital"))):
     bundles = db.query(ProdoraDigitalBundle).order_by(ProdoraDigitalBundle.created_at.desc()).all()
     return {"bundles": [_bundle_out(b, purchased=False) | {
         "editable_file_url": b.editable_file_url, "pdf_file_url": b.pdf_file_url,
@@ -190,7 +191,7 @@ def admin_list_bundles(db: Session = Depends(get_db), _: User = Depends(require_
 
 
 @router.post("/admin/prodora-bundles", status_code=201)
-def admin_create_bundle(body: BundleIn, db: Session = Depends(get_db), _: User = Depends(require_superuser)):
+def admin_create_bundle(body: BundleIn, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.digital"))):
     bundle = ProdoraDigitalBundle(**body.model_dump())
     db.add(bundle)
     db.commit()
@@ -199,7 +200,7 @@ def admin_create_bundle(body: BundleIn, db: Session = Depends(get_db), _: User =
 
 
 @router.put("/admin/prodora-bundles/{bundle_id}")
-def admin_update_bundle(bundle_id: int, body: BundleIn, db: Session = Depends(get_db), _: User = Depends(require_superuser)):
+def admin_update_bundle(bundle_id: int, body: BundleIn, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.digital"))):
     bundle = db.query(ProdoraDigitalBundle).filter(ProdoraDigitalBundle.id == bundle_id).first()
     if not bundle:
         raise HTTPException(status_code=404, detail="Bundle not found")

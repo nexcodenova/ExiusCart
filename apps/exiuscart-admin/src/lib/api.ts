@@ -22,6 +22,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('admin_access_token');
+      localStorage.removeItem('admin_access_cache');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -236,4 +237,33 @@ export const adminApi = {
     rating: number; reviewer_name: string; is_approved: boolean; sort_order: number;
   }>) => api.put(`/admin/testimonials/${id}`, data),
   deleteTestimonial: (id: number) => api.delete(`/admin/testimonials/${id}`),
+};
+
+// ── Admin access + team ───────────────────────────────
+export interface AdminAccess {
+  email: string;
+  full_name: string | null;
+  is_owner: boolean;
+  role: string | null;
+  permissions: string[];
+}
+
+export const adminAccessApi = {
+  me: () => api.get<AdminAccess>('/admin/me'),
+};
+
+export const adminTeamApi = {
+  permissions: () => api.get('/admin/team/permissions'),
+  roles: () => api.get('/admin/team/roles'),
+  createRole: (data: { name: string; description?: string; permissions: string[] }) => api.post('/admin/team/roles', data),
+  updateRole: (id: number, data: { name: string; description?: string; permissions: string[] }) => api.put(`/admin/team/roles/${id}`, data),
+  deleteRole: (id: number) => api.delete(`/admin/team/roles/${id}`),
+  members: () => api.get('/admin/team/members'),
+  invite: (data: { email: string; full_name?: string; role_id: number }) => api.post('/admin/team/members', data),
+  resend: (id: number) => api.post(`/admin/team/members/${id}/resend`),
+  updateMember: (id: number, data: { role_id?: number; status?: 'active' | 'suspended' }) => api.put(`/admin/team/members/${id}`, data),
+  removeMember: (id: number) => api.delete(`/admin/team/members/${id}`),
+  activity: (beforeId?: number) => api.get('/admin/team/activity', { params: beforeId ? { before_id: beforeId } : {} }),
+  inviteInfo: (token: string) => api.get('/admin-team/invite-info', { params: { token } }),
+  acceptInvite: (data: { token: string; password: string; full_name?: string }) => api.post('/admin-team/accept-invite', data),
 };
