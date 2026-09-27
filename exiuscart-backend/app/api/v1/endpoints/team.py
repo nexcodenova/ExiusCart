@@ -41,6 +41,21 @@ MAX_ROLES_PER_SHOP = 20
 MAX_STAFF_PER_SHOP = 50
 
 
+def staff_allowance(db: Session, shop_id: int) -> dict:
+    """How many staff accounts this shop's plan includes (Launch 1, Growth 3, Scale 5) and how many are used.
+    Every row counts: a pending invite and a suspended person still hold a seat. TheDersi's own tiers are 1.
+    A shop that already has more people than its plan allows keeps them; it just cannot add more."""
+    from app.api.v1.endpoints.shops import PLAN_CATALOGUE
+    from app.core.thedersi import is_thedersi_restricted_shop
+    from app.models.subscription import Subscription
+    sub = db.query(Subscription).filter(Subscription.shop_id == shop_id).order_by(Subscription.id.desc()).first()
+    plan = sub.plan_type if sub else "free_trial"
+    entry = PLAN_CATALOGUE.get(plan, {})
+    limit = 1 if is_thedersi_restricted_shop(shop_id, db) else int(entry.get("staff") or 1)
+    used = db.query(func.count(ShopStaff.id)).filter(ShopStaff.shop_id == shop_id).scalar() or 0
+    return {"limit": limit, "used": used, "plan_name": entry.get("name") or plan.replace("_", " ").title()}
+
+
 def _owner_shop(shop_id: int, user: User, db: Session) -> Shop:
     """Owner only - deliberately NOT get_shop_for_member (that admits staff)."""
     shop = db.query(Shop).filter(Shop.id == shop_id, Shop.owner_id == user.id).first()
@@ -243,6 +258,7 @@ def list_members(shop_id: int, current_user: User = Depends(get_current_user), d
     return {
         "owner": {"email": owner.email if owner else None, "full_name": owner.full_name if owner else None},
         "members": [_member_out(m) for m in members],
+        "staff_allowance": staff_allowance(db, shop_id),
     }
 
 
@@ -264,7 +280,13 @@ def invite_member(shop_id: int, body: InviteIn, request: Request,
         raise HTTPException(status_code=400, detail="You're already the owner of this store.")
     if db.query(ShopStaff.id).filter(ShopStaff.shop_id == shop_id, func.lower(ShopStaff.email) == email).first():
         raise HTTPException(status_code=409, detail="That person is already on your team (or has a pending invite).")
-    if db.query(func.count(ShopStaff.id)).filter(ShopStaff.shop_id == shop_id).scalar() >= MAX_STAFF_PER_SHOP:
+    allowance = staff_allowance(db, shop_id)
+    if allowance["used"] >= allowance["limit"]:
+        n = allowance["limit"]
+        raise HTTPException(status_code=403, detail=(
+            f"Your {allowance['plan_name']} plan includes {n} staff account{'s' if n != 1 else ''}, and you are using "
+            f"{'it' if n == 1 else 'them all'}. Upgrade your plan to add more people."))
+    if allowance["used"] >= MAX_STAFF_PER_SHOP:
         raise HTTPException(status_code=400, detail=f"You can have up to {MAX_STAFF_PER_SHOP} team members.")
 
     member = ShopStaff(shop_id=shop_id, email=email, full_name=(body.full_name or "").strip() or None,

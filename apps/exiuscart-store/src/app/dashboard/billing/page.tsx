@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   CreditCard, Check, Crown, Zap, Users, BarChart3,
   MessageCircle, Shield, AlertTriangle, Download,
-  Receipt, Plus, Star, Loader2, Globe,
+  Receipt, Star, Loader2, Globe,
   Coins, Lock, ShoppingBag, ExternalLink, Package,
   GitBranch, Percent, Tag, Clock, HardDrive, Sparkles,
   TrendingUp, BadgeCheck, ArrowRight, Infinity,
@@ -41,7 +41,7 @@ const PRODUCT_CAP: Record<string, number | null> = { free_trial: 25, launch: 100
 
 // Mirrors apps/exiuscart-website/src/config/pricing.ts exactly — the one
 // real price Lemon Squeezy actually charges.
-const PLAN_PRICING = { launch: 14.99, growth: 24.99, scale: 39.99, extraStaff: 5 };
+const PLAN_PRICING = { launch: 14.99, growth: 24.99, scale: 39.99 };
 
 // Yearly price: 3 months free (pay for 9), matching exiuscart.com/pricing's
 // real "save 25% billing yearly" — 1 - 9/12 = exactly 25%.
@@ -95,7 +95,7 @@ const makePlans = (period: BillingPeriod) => {
       description: 'For growing stores ready to scale',
       badge: null,
       features: [
-        { text: '3 staff accounts',                            included: true  },
+        { text: '1 staff account',                              included: true  },
         { text: 'Up to 1,000 products',                        included: true  },
         { text: 'Up to 5,000 customers',                       included: true  },
         { text: '1,000 channel orders / month',                included: true  },
@@ -119,7 +119,7 @@ const makePlans = (period: BillingPeriod) => {
       description: 'More channels, more suppliers, more room to grow',
       badge: 'Most Popular',
       features: [
-        { text: '6 staff accounts',                            included: true  },
+        { text: '3 staff accounts',                             included: true  },
         { text: 'Up to 10,000 products',                       included: true  },
         { text: 'Up to 25,000 customers',                      included: true  },
         { text: '5,000 channel orders / month',                included: true  },
@@ -143,7 +143,7 @@ const makePlans = (period: BillingPeriod) => {
       description: 'Full power for serious operations',
       badge: null,
       features: [
-        { text: 'Unlimited staff accounts',                    included: true  },
+        { text: '5 staff accounts',                             included: true  },
         { text: 'Unlimited products & customers',              included: true  },
         { text: 'Unlimited channel orders',                    included: true  },
         { text: 'Unlimited sales channels',                    included: true  },
@@ -236,8 +236,6 @@ export default function BillingPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'card' | 'dkc'>('card');
-  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
-  const [extraStaffCount, setExtraStaffCount] = useState(1);
   const [currentPlan, setCurrentPlan] = useState<any>(null);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
@@ -705,9 +703,6 @@ export default function BillingPage() {
       {/* Actions */}
       {currentPlan && (
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" onClick={() => setShowAddStaffModal(true)}>
-            <Plus className="w-4 h-4" /> Add Staff
-          </Button>
           {!currentPlan.is_trial && (
             <Button variant="outline" onClick={handleManageBilling} disabled={portalLoading}
               title="Cancel, pause, or update your payment method on Lemon Squeezy">
@@ -880,9 +875,6 @@ export default function BillingPage() {
                 <span className="font-medium text-foreground">{staffUnlimited ? 'Unlimited' : `Up to ${currentPlan?.staffIncluded ?? 1}`}</span>
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border">
-              Extra staff accounts: {fmtPlanPrice(PLAN_PRICING.extraStaff)}/month each.
-            </p>
           </Card>
 
           <Card className="p-5">
@@ -946,48 +938,6 @@ export default function BillingPage() {
           </table>
         </div>
       </Card>
-
-      {/* Add Extra Staff Modal */}
-      {showAddStaffModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-xl border border-border w-full max-w-md">
-            <div className="p-4 border-b border-border">
-              <h2 className="text-lg font-semibold text-foreground">Add Extra Staff</h2>
-            </div>
-            <div className="p-4 space-y-4">
-              <div className="bg-muted/50 rounded-lg p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-1">Cost per extra staff</p>
-                <p className="text-3xl font-bold text-foreground">
-                  {fmtPlanPrice(PLAN_PRICING.extraStaff)}
-                  <span className="text-sm font-normal text-muted-foreground">/month</span>
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-2 block">Number of staff to add</label>
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={() => setExtraStaffCount(Math.max(1, extraStaffCount - 1))}
-                    className="w-10 h-10 flex items-center justify-center bg-muted rounded-lg text-foreground hover:bg-muted/80 transition">-</button>
-                  <span className="flex-1 text-center text-2xl font-bold text-foreground">{extraStaffCount}</span>
-                  <button type="button" onClick={() => setExtraStaffCount(extraStaffCount + 1)}
-                    className="w-10 h-10 flex items-center justify-center bg-muted rounded-lg text-foreground hover:bg-muted/80 transition">+</button>
-                </div>
-              </div>
-              <div className="bg-primary/5 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Monthly cost</span>
-                  <span className="text-xl font-bold text-primary">{fmtPlanPrice(extraStaffCount * PLAN_PRICING.extraStaff)}</span>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setShowAddStaffModal(false)}
-                  className="flex-1 py-3 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>
-                <button type="button" onClick={() => setShowAddStaffModal(false)}
-                  className="flex-1 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition">Add &amp; Pay</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Upgrade Modal */}
       {showUpgradeModal && selectedPlan && (() => {

@@ -1107,6 +1107,9 @@ export const dropshipApi = {
     api.get(`/shops/${shopId}/dropship/cj/product/${cjPid}`),
   cjImport: (shopId: string, cjPid: string, sellingPrice?: number) =>
     api.post(`/shops/${shopId}/dropship/cj/import`, { cj_pid: cjPid, selling_price: sellingPrice }),
+  cjPreview: (shopId: string, orderId: number | string) =>
+    api.post<{ sent: false; will_send: { orderNumber: string; shippingCustomerName: string; shippingAddress: string; shippingCity: string; shippingProvince: string; shippingZip: string; shippingCountry: string; fromCountryCode: string; logisticName: string; products: { vid?: string; sku?: string; quantity: number }[] };
+              shipping: { method: string; price: number; days: string | null }; from_country: string; pays_from_cj_balance: boolean; note: string }>(`/shops/${shopId}/dropship/orders/${orderId}/cj-preview`),
   cjShippingEstimate: (shopId: string, productId: number, countryCode: string) =>
     api.get(`/shops/${shopId}/dropship/cj/shipping-estimate`, { params: { product_id: productId, country_code: countryCode } }),
   printfulShippingEstimate: (shopId: string, productId: number, countryCode: string) =>

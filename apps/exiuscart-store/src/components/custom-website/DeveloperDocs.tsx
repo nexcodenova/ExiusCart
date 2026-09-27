@@ -44,7 +44,15 @@ const ORDER_WEBHOOK_EXAMPLE = `{
   "buyer_name": "Jane Doe",
   "buyer_email": "jane@example.com",
   "buyer_phone": "+94771234567",
-  "shipping_address": "123 Main St, Colombo, Sri Lanka",
+  "shipping_address": {
+    "name": "Jane Doe",
+    "phone": "+94771234567",
+    "address": "123 Main St",
+    "city": "Colombo",
+    "province": "Western",
+    "zip": "00100",
+    "country_code": "LK"
+  },
   "items": [
     { "product_id": 42, "quantity": 2, "unit_price": 24.99 }
   ],

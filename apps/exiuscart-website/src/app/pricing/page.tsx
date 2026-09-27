@@ -300,7 +300,7 @@ const compareGroups: { title: string; rows: CompareRow[] }[] = [
       { label: 'Quotations', values: [true, true, true] },
       { label: 'Reservations', values: [true, true, true] },
       { label: 'Multi-branch / multi-location', values: [true, true, true] },
-      barRow('Staff accounts', ['3', '6', 'Unlimited']),
+      barRow('Staff accounts', ['1', '3', '5']),
     ],
   },
   {

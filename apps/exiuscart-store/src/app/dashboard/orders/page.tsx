@@ -439,6 +439,19 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
   const [loadingEstimate, setLoadingEstimate] = useState(false);
   const [estimateError, setEstimateError] = useState('');
 
+  // "What will be sent": builds the exact CJ order and shows it, without sending anything.
+  const [preview, setPreview] = useState<Awaited<ReturnType<typeof dropshipApi.cjPreview>>['data'] | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const runPreview = async () => {
+    setPreviewing(true); setPreviewError(''); setPreview(null);
+    try { setPreview((await dropshipApi.cjPreview(shopId, order.id)).data); }
+    catch (e: any) {
+      const d = e?.response?.data?.detail;
+      setPreviewError(typeof d === 'string' ? d : (d && typeof d.message === 'string' ? d.message : 'Could not check this order with CJ. Try again in a moment.'));
+    } finally { setPreviewing(false); }
+  };
+
   useEffect(() => {
     if (selected !== 'cj') return;
     let countryCode = '';
@@ -480,7 +493,8 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
       setSuccess(true);
       setTimeout(() => { onFulfilled(); onClose(); }, 1800);
     } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Failed to send order to supplier. Please try again.');
+      const d = e?.response?.data?.detail;
+      setError(typeof d === 'string' ? d : (d && typeof d.message === 'string' ? d.message : 'Failed to send order to supplier. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -564,6 +578,24 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
                         </div>
                       ))}
                       <p className="text-[11px] text-muted-foreground/70 pt-1">Estimate only — the amount actually charged may differ slightly.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selected === 'cj' && (
+                <div className="space-y-2">
+                  <button type="button" onClick={runPreview} disabled={previewing}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-xs font-medium hover:bg-muted transition disabled:opacity-50">
+                    {previewing ? 'Checking with CJ…' : 'Preview what will be sent to CJ'}
+                  </button>
+                  {previewError && <p className="text-xs text-red-500 bg-red-500/10 rounded-lg px-3 py-2">{previewError}</p>}
+                  {preview && (
+                    <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 text-xs">
+                      <p className="font-medium text-foreground">Ships to</p>
+                      <p className="text-muted-foreground">{preview.will_send.shippingCustomerName}<br />{preview.will_send.shippingAddress}<br />{[preview.will_send.shippingCity, [preview.will_send.shippingProvince, preview.will_send.shippingZip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}<br />{preview.will_send.shippingCountry}</p>
+                      <div className="flex items-center justify-between pt-1"><span className="text-muted-foreground">Shipping: {preview.shipping.method}{preview.shipping.days ? ` · ~${preview.shipping.days} days` : ''} (from {preview.from_country})</span><span className="font-medium text-foreground">${preview.shipping.price.toFixed(2)}</span></div>
+                      <p className="text-[11px] text-muted-foreground/80 pt-1">{preview.pays_from_cj_balance ? 'When sent, CJ takes the product and shipping cost from your CJ balance. ' : 'Test mode: the order is created at CJ but not paid. '}Nothing has been sent yet.</p>
                     </div>
                   )}
                 </div>
@@ -749,7 +781,9 @@ export default function OrdersPage() {
       .catch(() => setHasShopify(false));
     dropshipApi.getConnections(shopId)
       .then((r) => {
-        const active = (r.data?.connections ?? []).filter((c: any) => c.is_active).map((c: any) => c.supplier_type as string);
+        // The API answers { suppliers: [{ supplier_type, connected, ... }] }. (This used to read a `connections`
+        // list that does not exist, so the Fulfill dialog always said no supplier was connected.)
+        const active = (r.data?.suppliers ?? []).filter((s: any) => s.connected).map((s: any) => s.supplier_type as string);
         setConnectedSuppliers(active);
       })
       .catch(() => {});

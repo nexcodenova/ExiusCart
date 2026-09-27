@@ -132,7 +132,7 @@ const sections: Section[] = [
       {
         method: 'POST', path: '/public/store/{shop_slug}/checkout', auth: 'optional',
         purpose: 'Create a pending order and get back the payment gateway’s request parameters. Works for a guest (just name/email) or a logged-in customer. Stock is validated here but not yet decremented — that happens once payment is confirmed.',
-        params: 'Body: items [{ product_id, quantity, variant_id? }], name, email, phone?, shipping_address?, use_wallet_amount? (logged-in only), return_url? / cancel_url? (Stripe & PayPal)',
+        params: 'Body: items [{ product_id, quantity, variant_id? }], name, email, phone?, shipping_address? (plain text, or an object { name, address, city, province, zip, country_code } — send the object if you want paid orders sent to your supplier automatically), use_wallet_amount? (logged-in only), return_url? / cancel_url? (Stripe & PayPal)',
         response: '{ order_number, total, payment: { gateway, order_id, ...gateway-specific fields — see Payment below } }',
       },
       {

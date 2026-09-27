@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ordersApi, shopApi } from '@/lib/api';
+import { addressText } from '@/lib/format-address';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 // TheDersi doesn't always populate channel_meta.delivery_fee accurately for
@@ -53,7 +54,7 @@ export default function PackingSlipPage() {
   const date = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   const isTheDersi = order.source === 'thedersi' || order.channel_meta?.channel_type === 'thedersi';
   const customer = order.customer;
-  const deliveryAddress = order.shipping_address || customer?.address || null;
+  const deliveryAddress = addressText(order.shipping_address) || customer?.address || null;
   // This slip is often printed and placed straight inside the package, so
   // it's exposed to the customer just like the emailed/downloaded invoice —
   // TheDersi's raw operational note (bank deposit account, exact commission

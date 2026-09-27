@@ -46,6 +46,7 @@ from app.models.supplier_return import SupplierReturn
 from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.channels import EXIUSCART_BASE
 from app.core.shop_access import get_shop_for_member
+from app.core import cj_fulfil
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -2618,6 +2619,107 @@ async def fulfill_order(
     return await _fulfill_order_core(shop_id, order_id, data.supplier_type, db)
 
 
+@router.post("/shops/{shop_id}/dropship/orders/{order_id}/cj-preview")
+async def preview_cj_order(
+    shop_id: int,
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Shows exactly what would be sent to CJ for this order (products, address, the shipping
+    method CJ quoted and its price), without sending anything. The safe first step before a seller
+    trusts automatic fulfilment with a real order."""
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    _check_supplier_allowed(plan, "cj", shop_id, db)
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found.")
+    conn = await _get_cj_conn_or_400(shop_id, db)
+    token = await _cj_ensure_token(conn, db)
+    prepared = await _cj_prepare_order(db, shop_id, order, token)
+    return {"sent": False, "will_send": prepared["payload"], "shipping": prepared["shipping"], "from_country": prepared["from_country"],
+            "pays_from_cj_balance": prepared["payload"]["payType"] == cj_fulfil.PAY_BALANCE,
+            "note": "Nothing was sent to CJ."}
+
+
+def _order_shipping(db: Session, order: Order):
+    """The order's destination as structured fields, for any supplier, plus the customer's email. Never guesses a
+    country or a recipient: a missing one is a clear error the seller can fix (see app/core/cj_fulfil.py)."""
+    from app.models.customer import Customer
+    customer = db.query(Customer).filter(Customer.id == order.customer_id).first() if order.customer_id else None
+    try:
+        ship = cj_fulfil.parse_shipping(order.shipping_address, (customer.name if customer else "") or "", (customer.phone if customer else "") or "")
+    except cj_fulfil.FulfilProblem as e:
+        raise HTTPException(status_code=400, detail={"error": e.code, "message": e.message})
+    return ship, ((customer.email if customer else None) or None)
+
+
+async def _cj_prepare_order(db: Session, shop_id: int, order: Order, token: str) -> dict:
+    """Everything needed to place this order at CJ, WITHOUT placing it: the products (the buyer's chosen
+    variant when there is one), the destination, the cheapest shipping method CJ itself quotes for that
+    route, and the finished request. Raises HTTPException with a message the seller can act on. Shared by the
+    real send and by the "preview" that lets a seller check an order safely first."""
+    from app.models.order import OrderItem
+    from app.models.customer import Customer
+    from app.models.product import Product
+    from app.models.product_variant import ProductVariant
+
+    items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+    if not items:
+        raise HTTPException(status_code=400, detail="Order has no items.")
+
+    lines, quote_products, origins = [], [], []
+    for item in items:
+        link = db.query(DropshipProductLink).filter(
+            DropshipProductLink.product_id == item.product_id,
+            DropshipProductLink.supplier_type == "cj",
+        ).first()
+        if not link or not link.supplier_sku:
+            raise HTTPException(status_code=400, detail={
+                "error": "no_supplier_link",
+                "message": f"Product '{item.product_name}' does not have a CJ supplier link. Go to the product and add one under the Suppliers tab.",
+            })
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        origins.append(product.warehouse_country if product else None)
+        variant = db.query(ProductVariant).filter(ProductVariant.id == item.variant_id).first() if item.variant_id else None
+        # The buyer's chosen variant goes by its CJ SKU; with no choice, the product's default variant.
+        line = {"sku": variant.sku} if (variant is not None and variant.sku) else {"vid": link.supplier_sku}
+        line["quantity"] = item.quantity
+        lines.append(line)
+        quote_products.append({"vid": link.supplier_sku, "quantity": item.quantity})
+
+    ship, _email = _order_shipping(db, order)
+    try:
+        from_country = cj_fulfil.origin_country(origins)
+    except cj_fulfil.FulfilProblem as e:
+        raise HTTPException(status_code=400, detail={"error": e.code, "message": e.message})
+
+    quote = {"startCountryCode": from_country, "endCountryCode": ship.country_code, "products": quote_products}
+    if ship.zip:
+        quote["zip"] = ship.zip
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            data = await _cj_request(client, "POST", f"{CJ_BASE}/logistic/freightCalculate", json=quote, headers={"CJ-Access-Token": token})
+    except Exception as e:
+        logger.error(f"[CJ ORDER] shop={shop_id} order={order.order_number} freight quote failed: {type(e).__name__}")
+        raise HTTPException(status_code=502, detail={"error": "cj_no_answer", "message": "CJ did not answer the shipping quote. Try again in a minute."})
+    if not data.get("result"):
+        raise HTTPException(status_code=400, detail={"error": "cj_quote_failed", "message": data.get("message") or "CJ could not quote shipping for this order."})
+    choice = cj_fulfil.pick_logistics(data.get("data") or [])
+    if not choice:
+        raise HTTPException(status_code=400, detail={
+            "error": "no_shipping_method",
+            "message": f"CJ has no shipping method from {from_country} to {ship.country} for these products. Fulfil this order by hand or with another supplier.",
+        })
+    payload = cj_fulfil.build_payload(order.order_number, ship, from_country, choice["logisticName"], lines)
+    return {
+        "payload": payload,
+        "shipping": {"method": choice["logisticName"], "price": float(choice.get("logisticPrice") or 0), "days": choice.get("logisticAging")},
+        "from_country": from_country,
+    }
+
+
 async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, db: Session) -> dict:
     """The actual supplier-order-creation call, shared by the seller's manual
     "Fulfill via ..." button (fulfill_order above, which does the plan/
@@ -2646,96 +2748,47 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
             raise HTTPException(status_code=400, detail="CJ Dropshipping is not connected. Go to Suppliers to connect.")
 
         token = await _cj_ensure_token(conn, db)
-
-        # Get product supplier links for items in this order
-        from app.models.order import OrderItem
-        items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
-        if not items:
-            raise HTTPException(status_code=400, detail="Order has no items.")
-
-        # Build CJ order payload
-        cj_products = []
-        for item in items:
-            link = db.query(DropshipProductLink).filter(
-                DropshipProductLink.product_id == item.product_id,
-                DropshipProductLink.supplier_type == "cj",
-            ).first()
-            if not link or not link.supplier_sku:
-                raise HTTPException(status_code=400, detail={
-                    "error": "no_supplier_link",
-                    "message": f"Product '{item.product_name}' does not have a CJ supplier link. Go to the product and add one under the Suppliers tab.",
-                })
-            cj_products.append({
-                "vid": link.supplier_sku,
-                "quantity": item.quantity,
-            })
-
-        # Parse shipping address from order
-        shipping = {}
-        if order.shipping_address:
-            import json
-            try:
-                shipping = json.loads(order.shipping_address)
-            except Exception:
-                shipping = {"address": order.shipping_address}
-
-        cj_payload = {
-            "orderNameEn": f"ExiusCart-{order.order_number}",
-            "shippingZip": shipping.get("zip", ""),
-            "shippingCountryCode": shipping.get("country_code", "AE"),
-            "shippingCountry": shipping.get("country", "United Arab Emirates"),
-            "shippingProvince": shipping.get("province", ""),
-            "shippingCity": shipping.get("city", ""),
-            "shippingAddress": shipping.get("address", ""),
-            "shippingCustomerName": shipping.get("name", order.notes or ""),
-            "shippingPhone": shipping.get("phone", ""),
-            "remark": f"ExiusCart order {order.order_number}",
-            "products": cj_products,
-        }
+        prepared = await _cj_prepare_order(db, shop_id, order, token)
+        cj_payload = prepared["payload"]
 
         try:
-            async with httpx.AsyncClient(timeout=20) as client:
-                r = await client.post(
-                    f"{CJ_BASE}/shopping/order/createOrderV2",
-                    json=cj_payload,
-                    headers={"CJ-Access-Token": token},
-                )
-            result = r.json()
+            async with httpx.AsyncClient(timeout=30) as client:
+                result = await _cj_request(client, "POST", f"{CJ_BASE}/shopping/order/createOrderV2",
+                                           json=cj_payload, headers={"CJ-Access-Token": token})
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"CJ API error: {str(e)}")
-
-        if not result.get("result"):
-            ds_order = DropshipOrder(
-                shop_id=shop_id,
-                order_id=order_id,
-                supplier_type="cj",
-                status="failed",
-                error_message=result.get("message", "Unknown CJ error"),
-            )
-            db.add(ds_order)
-            order.fulfillment_status = "failed"
-            db.commit()
-            raise HTTPException(status_code=400, detail={
-                "error": "cj_order_failed",
-                "message": result.get("message", "CJ rejected this order. Check product SKUs and shipping address."),
+            # We cannot tell whether CJ received it. Say so, and name the order number to look for,
+            # rather than risk sending it twice.
+            logger.error(f"[CJ ORDER] shop={shop_id} order={order.order_number} no answer: {type(e).__name__}")
+            raise HTTPException(status_code=502, detail={
+                "error": "cj_no_answer",
+                "message": f"CJ did not answer. Before sending this order again, check your CJ dashboard for order {cj_payload['orderNumber']}.",
             })
 
-        cj_order_id = result["data"].get("orderId", "")
-        # CJ's create-order response sometimes includes what it actually
-        # charged directly — field name unconfirmed from public docs, so try
-        # the common variants. If none are present, sync_cj_tracking_job
-        # picks it up later once CJ finalizes the order.
-        charged = (
-            result["data"].get("orderAmount") or result["data"].get("payAmount")
-            or result["data"].get("totalAmount")
-        )
+        data = result.get("data") if isinstance(result.get("data"), dict) else {}
+        cj_order_id = data.get("orderId")
+        if not result.get("result") or not cj_order_id:
+            if result.get("result"):
+                message = ("CJ did not accept these products. The product's CJ link may point to a variant CJ no longer sells. "
+                           "Re-import the product, or fulfil this order by hand.")
+            else:
+                message = result.get("message") or "CJ rejected this order. Check the products and the shipping address."
+            db.add(DropshipOrder(shop_id=shop_id, order_id=order_id, supplier_type="cj", status="failed", error_message=message[:1000]))
+            order.fulfillment_status = "failed"
+            db.commit()
+            raise HTTPException(status_code=400, detail={"error": "cj_order_failed", "message": message})
+
+        charged = data.get("actualPayment") or data.get("orderAmount") or data.get("payAmount") or data.get("totalAmount")
+        unpaid_note = None
+        if cj_payload["payType"] != cj_fulfil.PAY_BALANCE:
+            unpaid_note = "Created at CJ but NOT paid yet (test mode). Pay it in your CJ dashboard, or cancel it there."
         ds_order = DropshipOrder(
             shop_id=shop_id,
             order_id=order_id,
             supplier_type="cj",
-            supplier_order_id=cj_order_id,
+            supplier_order_id=str(cj_order_id),
             status="processing",
             cost_paid=float(charged) if charged else None,
+            error_message=unpaid_note,
         )
         db.add(ds_order)
         order.fulfillment_status = "sent"
@@ -2743,8 +2796,9 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
         return {
             "fulfilled": True,
             "supplier_type": "cj",
-            "supplier_order_id": cj_order_id,
-            "message": "Order sent to CJ Dropshipping. Tracking will appear here once CJ ships it.",
+            "supplier_order_id": str(cj_order_id),
+            "shipping_method": prepared["shipping"]["method"],
+            "message": unpaid_note or "Order sent to CJ Dropshipping. Tracking will appear here once CJ ships it.",
         }
 
     if supplier_type == "printful":
@@ -2782,28 +2836,22 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
                 "quantity": item.quantity,
             })
 
-        shipping = {}
-        if order.shipping_address:
-            import json
-            try:
-                shipping = json.loads(order.shipping_address)
-            except Exception:
-                shipping = {"address": order.shipping_address}
-
-        recipient = {
-            "name": shipping.get("name") or order.notes or "Customer",
-            "address1": shipping.get("address", ""),
-            "city": shipping.get("city", ""),
-            "state_code": shipping.get("province") or shipping.get("state"),
-            "country_code": shipping.get("country_code", "US"),
-            "zip": shipping.get("zip", ""),
-            "phone": shipping.get("phone"),
-            "email": shipping.get("email"),
-        }
+        ship, email = _order_shipping(db, order)
+        # Printful requires the state (or province) CODE for the US, Canada and Australia, and a postal code everywhere.
+        state = cj_fulfil.state_code(ship.country_code, ship.province)
+        if ship.country_code in cj_fulfil.STATE_REQUIRED and not state:
+            raise HTTPException(status_code=400, detail={"error": "incomplete_address", "message": f"Printful needs the state or province for {ship.country}. Add it to the order's address, then send it again."})
+        if not ship.zip:
+            raise HTTPException(status_code=400, detail={"error": "incomplete_address", "message": "Printful needs a postal code. Add it to the order's address, then send it again."})
+        recipient = {"name": ship.name, "address1": ship.address, "city": ship.city, "country_code": ship.country_code, "zip": ship.zip,
+                     "phone": ship.phone or None, "email": email}
+        if state:
+            recipient["state_code"] = state
 
         pf_payload = {
-            "external_id": order.order_number,
+            "external_id": re.sub(r"[^A-Za-z0-9_-]", "-", order.order_number)[:32],
             "recipient": recipient,
+            "shipping": "STANDARD",
             "items": pf_items,
         }
 
@@ -2895,13 +2943,7 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
                 "product_count": item.quantity,
             })
 
-        shipping = {}
-        if order.shipping_address:
-            import json
-            try:
-                shipping = json.loads(order.shipping_address)
-            except Exception:
-                shipping = {"address": order.shipping_address}
+        ship, _email = _order_shipping(db, order)
 
         # UNVERIFIED — aliexpress.trade.buy.placeorder's exact param shape
         # (product_items as a JSON string, logistics_address field names)
@@ -2916,13 +2958,13 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
             "param_place_order_request4_open_dto": _json.dumps({
                 "product_items": ae_items,
                 "logistics_address": {
-                    "address": shipping.get("address", ""),
-                    "city": shipping.get("city", ""),
-                    "country": shipping.get("country_code", "US"),
-                    "phone_number": shipping.get("phone", ""),
-                    "zip": shipping.get("zip", ""),
-                    "contact_person": shipping.get("name") or order.notes or "Customer",
-                    "province": shipping.get("province", ""),
+                    "address": ship.address,
+                    "city": ship.city,
+                    "country": ship.country_code,
+                    "phone_number": ship.phone,
+                    "zip": ship.zip,
+                    "contact_person": ship.name,
+                    "province": ship.province,
                 },
                 "out_order_id": order.order_number,
             }),
@@ -2980,14 +3022,8 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
                 })
             sku_items.append({"skuId": int(link.supplier_sku), "num": item.quantity})
 
-        shipping = {}
-        if order.shipping_address:
-            import json
-            try:
-                shipping = json.loads(order.shipping_address)
-            except Exception:
-                shipping = {"address": order.shipping_address}
-        country_code = (shipping.get("country_code") or "US").upper()
+        ship, _email = _order_shipping(db, order)
+        country_code = ship.country_code
 
         # HyperSKU requires picking a logistics option before placing the
         # order (same two-step shape as CJ's freightCalculate ->
@@ -3017,16 +3053,16 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
         hs_payload = {
             "logisticsId": logistics_id,
             "shippingAddress": {
-                "firstName": shipping.get("name", "").split(" ")[0] if shipping.get("name") else "",
-                "lastName": " ".join(shipping.get("name", "").split(" ")[1:]) if shipping.get("name") else "",
-                "address1": shipping.get("address", ""),
+                "firstName": ship.name.split(" ")[0],
+                "lastName": " ".join(ship.name.split(" ")[1:]),
+                "address1": ship.address,
                 "address2": "",
-                "city": shipping.get("city", ""),
-                "province": shipping.get("province", ""),
-                "zip": shipping.get("zip", ""),
-                "country": shipping.get("country", ""),
+                "city": ship.city,
+                "province": ship.province,
+                "zip": ship.zip,
+                "country": ship.country,
                 "countryCode": country_code,
-                "phone": shipping.get("phone", ""),
+                "phone": ship.phone,
             },
             "skuItems": sku_items,
             "thirdOrderId": order.id,
@@ -3093,6 +3129,10 @@ async def _bg_try_auto_fulfill(shop_id: int, order_id: int):
         order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
         if not order or order.fulfillment_status == "sent":
             return
+        if (order.payment_status or "").lower() != "paid":
+            return  # never spend the seller's supplier balance on an order the customer has not paid for
+        if db.query(DropshipOrder.id).filter(DropshipOrder.order_id == order_id).first():
+            return  # an attempt was already made for this order (sent, or recorded as failed): never try a second supplier
 
         conns = db.query(DropshipConnection).filter(
             DropshipConnection.shop_id == shop_id,
@@ -3110,6 +3150,12 @@ async def _bg_try_auto_fulfill(shop_id: int, order_id: int):
         ]
         if not item_product_ids:
             return
+
+        # One order goes to ONE supplier. A product can be linked to several (the "primary" link is the preferred one,
+        # the rest are alternatives), so try the supplier the seller marked primary first, and stop after the first
+        # attempt: never send the same order to a second supplier, and never fall through to one after a failure.
+        all_links = db.query(DropshipProductLink).filter(DropshipProductLink.product_id.in_(item_product_ids)).all()
+        conns = sorted(conns, key=lambda c: (-sum(1 for l in all_links if l.supplier_type == c.supplier_type and l.is_primary), c.id))
 
         for conn in conns:
             supplier_type = conn.supplier_type
@@ -3199,6 +3245,7 @@ async def _bg_try_auto_fulfill(shop_id: int, order_id: int):
             except Exception as e:
                 db.rollback()
                 logger.error(f"[AUTO-FULFILL] shop={shop_id} order={order_id} supplier={supplier_type} FAILED: {e}")
+            break  # the one attempt for this order has been made (sent, or recorded as failed for the seller to handle)
     finally:
         db.close()
 
@@ -3456,39 +3503,27 @@ def sync_cj_tracking_job(db_session_factory) -> None:
 
             try:
                 with httpx.Client(timeout=15) as client:
-                    # NOTE: exact request param name unconfirmed from public docs (orderNum vs
-                    # orderId) — sending both is harmless since CJ ignores unrecognized params.
+                    # CJ's documented way to follow an order: getOrderDetail by CJ order id. It returns the
+                    # tracking number, carrier, tracking link and the order's status in one answer.
                     r = client.get(
-                        f"{CJ_BASE}/logistic/trackInfo",
-                        params={"orderNum": ds_order.supplier_order_id, "orderId": ds_order.supplier_order_id},
+                        f"{CJ_BASE}/shopping/order/getOrderDetail",
+                        params={"orderId": ds_order.supplier_order_id},
                         headers={"CJ-Access-Token": token},
                     )
                 data = r.json()
 
-                if not data.get("result") or not data.get("data"):
+                if not data.get("result") or not isinstance(data.get("data"), dict):
                     continue
 
                 track = data["data"]
+                tracking_number = track.get("trackNumber") or None
+                carrier = track.get("logisticName") or None
+                tracking_url = track.get("trackingUrl") or None
+                cj_status = (track.get("orderStatus") or "").upper()
 
-                # CJ uses different field names across API versions — handle both
-                tracking_number = (
-                    track.get("trackNumber") or track.get("trackingNumber")
-                    or track.get("trackNum") or track.get("logisticTrackingNumber")
-                )
-                carrier = (
-                    track.get("carrierCode") or track.get("carrier")
-                    or track.get("logisticsName") or track.get("shippingName")
-                )
-                tracking_url = track.get("trackUrl") or track.get("trackingUrl")
-                cj_status = (track.get("orderStatus") or track.get("status") or "").lower()
-
-                # Backfill cost_paid if it wasn't available at order-creation
-                # time — same unconfirmed-field-name situation as above.
+                # What CJ actually charged, if we did not get it when the order was created.
                 if ds_order.cost_paid is None:
-                    charged = (
-                        track.get("orderAmount") or track.get("payAmount")
-                        or track.get("totalAmount") or track.get("productAmount")
-                    )
+                    charged = track.get("orderAmount") or track.get("productAmount")
                     if charged:
                         try:
                             ds_order.cost_paid = float(charged)
@@ -3502,15 +3537,27 @@ def sync_cj_tracking_job(db_session_factory) -> None:
                 if tracking_url:
                     ds_order.tracking_url = tracking_url
 
-                # Map CJ status → our status
-                if cj_status in ("delivered", "complete", "completed", "finish"):
+                waiting_note = "CJ is waiting for payment on this order. Top up your CJ balance and pay it in your CJ dashboard."
+                ds_note = ds_order.error_message or ""
+                if cj_status == "DELIVERED":
                     ds_order.status = "delivered"
                     if not ds_order.delivered_at:
                         ds_order.delivered_at = datetime.now(timezone.utc)
+                elif cj_status == "CANCELLED":
+                    ds_order.status = "failed"
+                    ds_order.error_message = "CJ cancelled this order. Check your CJ dashboard for the reason, then send it again or fulfil it by hand."
+                    from app.models.order import Order as ShopOrder
+                    cancelled = db.query(ShopOrder).filter(ShopOrder.id == ds_order.order_id).first()
+                    if cancelled:
+                        cancelled.fulfillment_status = "failed"
+                elif cj_status == "UNPAID":
+                    ds_order.error_message = waiting_note
                 elif tracking_number and ds_order.status in ("processing", "sent"):
                     ds_order.status = "shipped"
                     if not ds_order.shipped_at:
                         ds_order.shipped_at = datetime.now(timezone.utc)
+                if cj_status not in ("UNPAID", "CANCELLED") and (ds_note == waiting_note or ds_note.startswith("Created at CJ but NOT paid")):
+                    ds_order.error_message = None          # CJ moved on: the payment warning no longer applies
 
                 # Mirror tracking onto the main order row so sellers see it immediately
                 if tracking_number:

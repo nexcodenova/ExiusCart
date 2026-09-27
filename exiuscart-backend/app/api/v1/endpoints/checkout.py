@@ -16,9 +16,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -130,6 +130,13 @@ class CheckoutIn(BaseModel):
     email: str
     phone: Optional[str] = None
     shipping_address: Optional[str] = None
+
+    @field_validator("shipping_address", mode="before")
+    @classmethod
+    def _address_as_text(cls, v):
+        # Accepts plain text or a structured address object ({name, address, city, province, zip, country_code}).
+        from app.core.cj_fulfil import address_to_text
+        return address_to_text(v)
     # Not yet sent by the storefront checkout UI — accepted here so that
     # work is forward-compatible the moment a country field is added there;
     # until then this is always None and the customer's country stays unset.
@@ -453,7 +460,7 @@ def public_store_order_lookup(request: Request, shop_slug: str, order_number: st
     }
 
 
-def _mark_order_paid_or_failed(order: Order, is_paid: bool, db: Session):
+def _mark_order_paid_or_failed(order: Order, is_paid: bool, db: Session, background_tasks: Optional[BackgroundTasks] = None):
     """Shared by every gateway's confirmation path (webhook or
     capture-on-return) — marks the order, decrements stock (deferred from
     checkout, see module docstring), and credits the wallet. Idempotent:
@@ -487,6 +494,12 @@ def _mark_order_paid_or_failed(order: Order, is_paid: bool, db: Session):
 
         from app.api.v1.endpoints.digital_delivery import create_digital_deliveries_for_order
         create_digital_deliveries_for_order(order, db)
+
+        # A paid order goes to the seller's supplier on its own when they have auto-fulfilment on (the same
+        # step the channel order webhook already runs). Without this an ExiusCart-checkout order was never sent.
+        if background_tasks is not None:
+            from app.api.v1.endpoints.dropshipping import _bg_try_auto_fulfill
+            background_tasks.add_task(_bg_try_auto_fulfill, order.shop_id, order.id)
     elif not is_paid and order.payment_status not in ("paid", "failed"):
         order.payment_status = "failed"
         db.commit()
@@ -501,7 +514,7 @@ def _custom_conn_for_shop(shop: Shop, db: Session) -> Optional[ChannelConnection
 
 
 @router.post("/public/payment-webhook/{shop_slug}")
-async def payment_webhook(shop_slug: str, request: Request, db: Session = Depends(get_db)):
+async def payment_webhook(shop_slug: str, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Server-to-server payment confirmation — the gateway calls this
     directly (never through the storefront/ODTSI). Verifies the gateway's
     own signature before trusting anything. PayPal doesn't use this path
@@ -563,12 +576,12 @@ async def payment_webhook(shop_slug: str, request: Request, db: Session = Depend
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    _mark_order_paid_or_failed(order, is_paid, db)
+    _mark_order_paid_or_failed(order, is_paid, db, background_tasks)
     return {"status": "ok"}
 
 
 @router.get("/public/store/{shop_slug}/payment-return/paypal")
-def public_paypal_return(shop_slug: str, order_number: str, redirect_to: str, token: Optional[str] = None, db: Session = Depends(get_db)):
+def public_paypal_return(shop_slug: str, order_number: str, redirect_to: str, background_tasks: BackgroundTasks, token: Optional[str] = None, db: Session = Depends(get_db)):
     """Where PayPal sends the shopper back after they approve. `token` is
     the PayPal order id — capturing it here (not just reading redirect
     params) is what actually proves the payment: the capture call itself
@@ -595,7 +608,7 @@ def public_paypal_return(shop_slug: str, order_number: str, redirect_to: str, to
         logger.exception(f"[PAYPAL CAPTURE] shop={shop.id} order={order_number} capture call failed")
         is_paid = False
 
-    _mark_order_paid_or_failed(order, is_paid, db)
+    _mark_order_paid_or_failed(order, is_paid, db, background_tasks)
     return RedirectResponse(f"{redirect_to}?payment={'success' if is_paid else 'failed'}&order_number={order_number}")
 
 

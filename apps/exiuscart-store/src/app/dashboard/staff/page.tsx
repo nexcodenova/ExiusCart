@@ -36,6 +36,7 @@ export default function TeamPage() {
 
   const [owner, setOwner] = useState<{ email: string | null; full_name: string | null } | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [allowance, setAllowance] = useState<{ limit: number; used: number; plan_name: string } | null>(null);
   const [roles, setRoles] = useState<TeamRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -57,6 +58,7 @@ export default function TeamPage() {
       const [m, r] = await Promise.all([teamApi.listMembers(shopId), teamApi.listRoles(shopId)]);
       setOwner(m.data.owner);
       setMembers(m.data.members);
+      setAllowance(m.data.staff_allowance ?? null);
       setRoles(r.data.roles);
     } catch (e) {
       notify(errMsg(e, 'Could not load your team.'), 'error');
@@ -134,6 +136,8 @@ export default function TeamPage() {
     run(m.id, () => teamApi.remove(shopId, m.id), `${m.email} removed`);
   };
 
+  const atLimit = !!allowance && allowance.used >= allowance.limit;
+
   return (
     <div className="space-y-6">
       {toast && (
@@ -151,9 +155,18 @@ export default function TeamPage() {
         <div className="flex gap-2">
           <Button asChild variant="outline"><Link href="/dashboard/staff/activity"><Activity className="h-4 w-4" /> Activity</Link></Button>
           <Button asChild variant="outline"><Link href="/dashboard/staff/roles"><ShieldCheck className="h-4 w-4" /> Roles &amp; permissions</Link></Button>
-          <Button onClick={openInvite} disabled={loading}><UserPlus className="h-4 w-4" /> Invite member</Button>
+          <Button onClick={openInvite} disabled={loading || atLimit}><UserPlus className="h-4 w-4" /> Invite member</Button>
         </div>
       </div>
+
+      {allowance && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm">
+          <span className="text-muted-foreground">
+            <strong className="text-foreground">{allowance.used} of {allowance.limit}</strong> staff account{allowance.limit === 1 ? '' : 's'} used on your {allowance.plan_name} plan
+          </span>
+          {atLimit && <Link href="/dashboard/billing" className="font-medium text-primary hover:underline">Upgrade to add more</Link>}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[72px] w-full rounded-xl" />)}</div>

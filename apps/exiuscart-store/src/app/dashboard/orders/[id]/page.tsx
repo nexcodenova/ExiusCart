@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { ordersApi, creditNotesApi } from '@/lib/api';
+import { addressLines } from '@/lib/format-address';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 // TheDersi doesn't always populate channel_meta.delivery_fee accurately for
@@ -762,7 +763,7 @@ export default function OrderDetailsPage() {
           <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
             <Truck className="w-5 h-5 text-muted-foreground" /> Shipping
           </h2>
-          {order.shipping_address && <InfoRow label="Address" value={order.shipping_address} />}
+          {order.shipping_address && <InfoRow label="Address" value={addressLines(order.shipping_address).map((l, i) => <span key={i} className="block">{l}</span>)} />}
           {order.carrier && <InfoRow label="Carrier" value={order.carrier} />}
           {order.tracking_number && <InfoRow label="Tracking #" value={order.tracking_number} mono />}
           {order.shipped_at && <InfoRow label="Shipped" value={new Date(order.shipped_at).toLocaleDateString('en-AE')} />}

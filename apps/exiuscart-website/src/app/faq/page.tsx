@@ -39,11 +39,11 @@ const CATEGORIES = [
       },
       {
         q: 'What is included in the Launch plan?',
-        a: 'Launch includes 3 staff accounts, up to 1,000 products, 20 GB storage, full POS, 500 invoices/month with logo, advanced analytics, TheDersi order sync up to 1,000 orders/month, and priority email support.',
+        a: 'Launch includes 1 staff account, up to 1,000 products, 20 GB storage, full POS, 500 invoices/month with logo, advanced analytics, TheDersi order sync up to 1,000 orders/month, and priority email support.',
       },
       {
         q: 'What does Growth or Scale include that Launch does not?',
-        a: 'Growth adds more sales channels and dropshipping suppliers, higher limits across the board, and unlocks AI Commerce & Product Studio features. Scale adds unlimited staff, unlimited products, 75 GB storage, custom invoice branding, multiple branches/locations, unlimited TheDersi order sync, unlimited invoices, and a dedicated account manager with 24/7 priority support.',
+        a: 'Growth adds 3 staff accounts, more sales channels and dropshipping suppliers, higher limits across the board, and unlocks AI Commerce & Product Studio features. Scale adds 5 staff accounts, unlimited products, 75 GB storage, custom invoice branding, multiple branches/locations, unlimited TheDersi order sync, unlimited invoices, and a dedicated account manager with 24/7 priority support.',
       },
       {
         q: 'Can I upgrade or downgrade anytime?',

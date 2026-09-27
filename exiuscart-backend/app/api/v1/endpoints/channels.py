@@ -25,11 +25,12 @@ logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Header, Request
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.core.database import get_db, SessionLocal
 from app.core.thedersi import MONTHLY_ORDER_LIMITS, notify_thedersi, verify_thedersi_signature, is_thedersi_restricted_shop, is_thedersi_pro_shop, is_thedersi_daraz_eligible_shop
 from app.core.channel_limits import check_channel_slot
+from app.core.cj_fulfil import address_display
 from app.core.activity import log_activity, log_low_stock_for_products
 from app.api.v1.deps import get_current_user
 from app.models.user import User
@@ -109,6 +110,13 @@ class ChannelOrderWebhook(BaseModel):
     buyer_email: Optional[str] = None
     buyer_phone: Optional[str] = None
     shipping_address: Optional[str] = None
+
+    @field_validator("shipping_address", mode="before")
+    @classmethod
+    def _address_as_text(cls, v):
+        # Accepts plain text or a structured address object ({name, address, city, province, zip, country_code}).
+        from app.core.cj_fulfil import address_to_text
+        return address_to_text(v)
     items: List[OrderItemIn]
     subtotal: float
     total: float
@@ -1155,7 +1163,7 @@ async def receive_order_webhook(
             name=payload.buyer_name,
             email=payload.buyer_email,
             phone=payload.buyer_phone,
-            address=payload.shipping_address,
+            address=address_display(payload.shipping_address),
             country=buyer_country,
             # This one handler receives orders from every marketplace channel
             # (TheDersi/Daraz/eBay/Noon), differentiated by conn.channel_type

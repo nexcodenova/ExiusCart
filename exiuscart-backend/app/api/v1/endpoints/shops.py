@@ -40,16 +40,16 @@ PLAN_CATALOGUE = {
         "price": {"monthly": {"USD": 0}, "yearly": {"USD": 0}},
     },
     "launch": {
-        "name": "Launch", "staff": 3,
+        "name": "Launch", "staff": 1,
         # Yearly = 9x monthly (pay for 9 months, 3 free — 25% off).
         "price": {"monthly": {"USD": 14.99}, "yearly": {"USD": 134.91}},
     },
     "growth": {
-        "name": "Growth", "staff": 6,
+        "name": "Growth", "staff": 3,
         "price": {"monthly": {"USD": 24.99}, "yearly": {"USD": 224.91}},
     },
     "scale": {
-        "name": "Scale", "staff": 0,  # unlimited staff
+        "name": "Scale", "staff": 5,
         "price": {"monthly": {"USD": 39.99}, "yearly": {"USD": 359.91}},
     },
     # TheDersi partner plans (billed through TheDersi, not ExiusCart).
