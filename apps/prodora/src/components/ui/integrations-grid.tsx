@@ -91,17 +91,17 @@ const CARDS: IntegrationCard[] = [
   // the file lands. Mirrors exiuscart-website's copy of this same change.
   {
     id: 'bigcommerce', name: 'BigCommerce', status: 'live',
-    image: '/integration/bigcommerce.jpg', imageSize: '480×600',
+    image: '/integration/bigcommerce.webp', imageSize: '480×600',
     desc: 'Sync your BigCommerce store — products, orders and inventory managed directly from ExiusCart.',
   },
   {
     id: 'wix', name: 'Wix Stores', status: 'soon',
-    image: '/integration/wix.jpg', imageSize: '480×600',
+    image: '/integration/wixstores.webp', imageSize: '480×600',
     desc: 'Connect your Wix store — products, orders and inventory stay in sync automatically. Rolling out.',
   },
   {
     id: 'walmart', name: 'Walmart', status: 'soon',
-    image: '/integration/walmart.jpg', imageSize: '480×600',
+    image: '/integration/walmart.webp', imageSize: '480×600',
     desc: 'Reach US shoppers on Walmart Marketplace — list products and manage orders through ExiusCart. Rolling out.',
   },
   {
@@ -109,18 +109,30 @@ const CARDS: IntegrationCard[] = [
     // section, alongside TikTok Shop) — this card was just missing from
     // the marketing site's own marketplace line. Mirrors exiuscart-website.
     id: 'instagram', name: 'Instagram Shopping', status: 'soon',
-    image: '/integration/instagram.jpg', imageSize: '480×600',
+    image: '/integration/instagram-shopping.webp', imageSize: '480×600',
     desc: 'Tag products in your Instagram posts and stories — orders sync straight to ExiusCart. Rolling out.',
   },
   {
     id: 'jumia', name: 'Jumia', status: 'soon',
-    image: '/integration/jumia.jpg', imageSize: '480×600',
+    image: '/integration/jumia.webp', imageSize: '480×600',
     desc: "Africa's leading marketplace — list products and manage orders through ExiusCart. Rolling out.",
   },
   {
     id: 'trendyol', name: 'Trendyol', status: 'soon',
-    image: '/integration/trendyol.jpg', imageSize: '480×600',
+    image: '/integration/trendyol.webp', imageSize: '480×600',
     desc: "Turkey's largest online marketplace — list products and manage orders through ExiusCart. Rolling out.",
+  },
+  // Digital-product channels: no shipping or stock, and Whop/Gumroad handle payment and tax, so a seller needs no
+  // payment gateway or business registration to sell. Their own line, same as on exiuscart.com.
+  {
+    id: 'whop', name: 'Whop', status: 'rolling-out',
+    image: '/integration/whop.webp', imageSize: '480×600',
+    desc: 'Sell digital products with no business registration needed. Whop handles payment and tax compliance for you. Rolling out.',
+  },
+  {
+    id: 'gumroad', name: 'Gumroad', status: 'soon',
+    image: '/integration/gumroad.webp', imageSize: '480×600',
+    desc: 'List your digital products on Gumroad and manage orders from ExiusCart. Rolling out.',
   },
 ];
 
@@ -131,6 +143,7 @@ const CARDS: IntegrationCard[] = [
 // dashboard's Channels page.
 const OWN_STORE_IDS = ['shopify', 'custom-website', 'woocommerce', 'bigcommerce', 'wix'];
 const MARKETPLACE_IDS = ['etsy', 'ebay', 'noon', 'amazon', 'daraz', 'tiktok', 'walmart', 'instagram', 'jumia', 'trendyol', 'thedersi'];
+const DIGITAL_PRODUCT_IDS = ['whop', 'gumroad'];
 
 function Card({ card, className, square }: { card: IntegrationCard; className?: string; square?: boolean }) {
   return (
@@ -308,6 +321,9 @@ export function IntegrationsGrid() {
       {/* Line 2 — Marketplaces, TheDersi last. Independent stick-and-scroll
           section, same treatment as Line 1, pins and scrolls after it. */}
       <ScrollLine heading="Sell on Every Marketplace" kicker="Reach every shopper" ids={MARKETPLACE_IDS} />
+
+      {/* Line 3 — Digital products, its own line: a different kind of sale (no shipping, no stock). */}
+      <ScrollLine heading="Sell Digital Products" kicker="No business registration needed" ids={DIGITAL_PRODUCT_IDS} />
     </>
   );
 }

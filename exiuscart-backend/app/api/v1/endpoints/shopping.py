@@ -662,7 +662,7 @@ async def shopping_shipping_estimate(
         .first()
     )
     if not link or not link.supplier_sku:
-        raise HTTPException(status_code=404, detail="No live shipping estimate available for this product.")
+        raise HTTPException(status_code=404, detail="Live shipping is not set up for this product yet (it has no CJ variant on file).")
 
     conn = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id == link.shop_id,
@@ -670,7 +670,7 @@ async def shopping_shipping_estimate(
         DropshipConnection.is_active == True,
     ).first()
     if not conn:
-        raise HTTPException(status_code=404, detail="No live shipping estimate available for this product.")
+        raise HTTPException(status_code=404, detail="Live shipping is not available right now (the Prodora CJ account is not connected).")
 
     token = await _cj_ensure_token(conn, db)
     try:
@@ -695,6 +695,8 @@ async def shopping_shipping_estimate(
             "days": opt.get("logisticAging") or opt.get("aging") or None,
         })
 
+    if not options:
+        raise HTTPException(status_code=404, detail="CJ has no shipping method for this product to that country.")
     return {"country_code": country_code.upper(), "options": options}
 
 

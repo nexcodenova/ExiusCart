@@ -1,14 +1,12 @@
 'use client';
 
 import type { ComponentProps } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { prodoraAuth } from '@/lib/api';
 import { useLoginModal } from '@/components/providers/LoginModalProvider';
 
-// "Try Prodora AI": straight to the page when already signed in, otherwise the login step, which then lands on /ai.
+// "Try Prodora AI": always confirms the email first (pre-filled with the last one used, so it is one click), then lands on /ai.
+// It never skips the step because an old sign-in may still be in the browser but expired.
 export default function AiCtaButton({ children, ...props }: Omit<ComponentProps<typeof Button>, 'onClick'>) {
   const { open } = useLoginModal();
-  const router = useRouter();
-  return <Button {...props} onClick={() => (prodoraAuth.hasAccess() ? router.push('/ai') : open('/ai'))}>{children}</Button>;
+  return <Button {...props} onClick={() => open('/ai')}>{children}</Button>;
 }

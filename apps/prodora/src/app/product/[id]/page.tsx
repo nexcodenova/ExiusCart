@@ -17,6 +17,7 @@ import DOMPurify from 'dompurify';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectValue, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
+import { CountryFlag } from '@/components/CountryFlag';
 
 // Common dropship destinations — enough to cover the markets Prodora sellers
 // actually ship to; CJ's freight API accepts any ISO country code, this list
@@ -41,11 +42,6 @@ const SHIP_COUNTRIES: { code: string; name: string }[] = [
 
 function fmt(n: number) {
   return '$' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-}
-
-function flagEmoji(code?: string | null) {
-  if (!code || code.length !== 2) return '';
-  return code.toUpperCase().replace(/./g, (c) => String.fromCodePoint(c.charCodeAt(0) + 127397));
 }
 
 function TrendChart({ data, color = '#2563EB', gradientId = 'trendGrad' }: { data: { label: string; value: number }[]; color?: string; gradientId?: string }) {
@@ -150,6 +146,7 @@ function ProductDetailContent() {
   const [shipOptions, setShipOptions] = useState<ShippingOption[] | null>(null);
   const [shipLoading, setShipLoading] = useState(false);
   const [shipUnavailable, setShipUnavailable] = useState(false);
+  const [shipReason, setShipReason] = useState('');
 
   const productId = Number(params.id);
 
@@ -171,9 +168,15 @@ function ProductDetailContent() {
     if (!productId || isNaN(productId)) return;
     setShipLoading(true);
     setShipUnavailable(false);
+    setShipReason('');
     shoppingApi.getShippingEstimate(productId, shipCountry)
       .then((res) => setShipOptions(res.options))
-      .catch(() => { setShipOptions(null); setShipUnavailable(true); })
+      .catch((err) => {
+        setShipOptions(null);
+        setShipUnavailable(true);
+        const d = err?.response?.data?.detail;
+        setShipReason(typeof d === 'string' ? d : '');
+      })
       .finally(() => setShipLoading(false));
   }, [productId, shipCountry]);
 
@@ -519,12 +522,12 @@ function ProductDetailContent() {
                       <Truck className="w-3.5 h-3.5" /> Ship to
                     </label>
                     <Select value={shipCountry} onValueChange={setShipCountry}>
-                      <SelectTrigger className="h-9 w-40 text-sm">
+                      <SelectTrigger className="h-9 w-56 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {SHIP_COUNTRIES.map((c) => (
-                          <SelectItem key={c.code} value={c.code}>{flagEmoji(c.code)} {c.name}</SelectItem>
+                          <SelectItem key={c.code} value={c.code}><span className="inline-flex items-center gap-2"><CountryFlag code={c.code} />{c.name}</span></SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -541,9 +544,9 @@ function ProductDetailContent() {
                       ))}
                     </div>
                   ) : shipUnavailable && shipping_cost != null ? (
-                    <p className="text-xs text-[#6B7280]">Live rates unavailable for this product — using the estimated flat shipping cost below.</p>
+                    <p className="text-xs text-[#6B7280]">{shipReason ? `${shipReason} ` : 'Live rates are unavailable for this product. '}Showing the estimated flat shipping cost below.</p>
                   ) : shipUnavailable ? (
-                    <p className="text-xs text-[#6B7280]">No shipping estimate available for this product.</p>
+                    <p className="text-xs text-[#6B7280]">{shipReason || 'No shipping estimate is available for this product.'}</p>
                   ) : null}
                 </div>
 
@@ -615,7 +618,7 @@ function ProductDetailContent() {
                   {topCountries.map((c, i) => (
                     <div key={i}>
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-[#111827] font-medium">{flagEmoji(c.code)} {c.country}</span>
+                        <span className="inline-flex items-center gap-2 text-[#111827] font-medium"><CountryFlag code={c.code} />{c.country}</span>
                         <span className="text-[#6B7280]">{c.percent}%</span>
                       </div>
                       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
