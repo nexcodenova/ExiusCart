@@ -134,6 +134,8 @@ async def create_checkout(
                     # All plans live as variants of one Lemon Squeezy product, so without this the checkout page lists
                     # every plan and price. Enabling only the chosen variant shows just the plan being bought.
                     "enabled_variants": [int(variant_id)],
+                    **({"description": f"{plan_type.title()} plan: $1 for your first 7 days, then your normal monthly price. "
+                                       "Cancel any time before day 7 and you are not charged again."} if trial_dollar else {}),
                 },
             },
             "relationships": {

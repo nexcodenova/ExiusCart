@@ -95,12 +95,14 @@ const makePlans = (period: BillingPeriod) => {
       description: 'For growing stores ready to scale',
       badge: null,
       features: [
+        { text: 'Prodora AI product finder',                   included: false },
+        { text: 'Price Coach for your own prices',             included: false },
         { text: '1 staff account',                              included: true  },
         { text: 'Up to 1,000 products',                        included: true  },
         { text: 'Up to 5,000 customers',                       included: true  },
         { text: '1,000 channel orders / month',                included: true  },
         { text: '3 sales channels (1 store, 1 marketplace, 1 digital)', included: true },
-        { text: '1 dropship supplier (CJ, AliExpress or Printful)',     included: true },
+        { text: '1 dropship supplier',                                  included: true },
         { text: 'Full POS, inventory & invoicing',             included: true  },
         { text: '1,000 invoice emails / month',                included: true  },
         { text: '250 marketing emails + 250 SMS / month',      included: true  },
@@ -119,6 +121,8 @@ const makePlans = (period: BillingPeriod) => {
       description: 'More channels, more suppliers, more room to grow',
       badge: 'Most Popular',
       features: [
+        { text: 'Prodora AI: ask for products, get real scores', included: true },
+        { text: 'Price Coach: 20 price checks / month',        included: true  },
         { text: '3 staff accounts',                             included: true  },
         { text: 'Up to 10,000 products',                       included: true  },
         { text: 'Up to 25,000 customers',                      included: true  },
@@ -143,6 +147,8 @@ const makePlans = (period: BillingPeriod) => {
       description: 'Full power for serious operations',
       badge: null,
       features: [
+        { text: 'Prodora AI: ask for products, get real scores', included: true },
+        { text: 'Price Coach: 100 price checks / month',       included: true  },
         { text: '5 staff accounts',                             included: true  },
         { text: 'Unlimited products & customers',              included: true  },
         { text: 'Unlimited channel orders',                    included: true  },
@@ -809,7 +815,9 @@ export default function BillingPage() {
                   </Button>
                 ) : (
                   <Button onClick={() => handleUpgrade(plan.id)} variant={plan.popular ? 'default' : 'outline'} className="w-full">
-                    {plan.popular ? `Upgrade to ${plan.name}` : `Switch to ${plan.name}`}
+                    {awaitingPayment && !currentPlan
+                      ? (plan.id === 'launch' ? `Choose ${plan.name}` : `Start $1 trial`)
+                      : plan.popular ? `Upgrade to ${plan.name}` : `Switch to ${plan.name}`}
                   </Button>
                 )}
               </Card>
@@ -887,7 +895,7 @@ export default function BillingPage() {
                 <p className="text-xs text-muted-foreground">Our support team is here for you.</p>
               </div>
             </div>
-            <Link href="/dashboard/helpdesk" className="mt-3 inline-flex w-full">
+            <Link href="/dashboard/support" className="mt-3 inline-flex w-full">
               <Button variant="outline" className="w-full">Get Support</Button>
             </Link>
           </Card>
@@ -946,7 +954,7 @@ export default function BillingPage() {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-card rounded-xl border border-border w-full max-w-md">
               <div className="p-4 border-b border-border flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">{isDowngradeFlow ? 'Confirm Downgrade' : 'Confirm Upgrade'}</h2>
+                <h2 className="text-lg font-semibold text-foreground">{isDowngradeFlow ? 'Confirm Downgrade' : awaitingPayment && !currentPlan ? 'Confirm your plan' : 'Confirm Upgrade'}</h2>
                 <button type="button" onClick={() => setShowUpgradeModal(false)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">✕</button>
               </div>
 
@@ -963,12 +971,17 @@ export default function BillingPage() {
                 <div className="p-4 space-y-4">
                   <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground">{isDowngradeFlow ? 'Downgrading to' : 'Upgrading to'}</p>
+                      <p className="text-xs text-muted-foreground">{isDowngradeFlow ? 'Downgrading to' : awaitingPayment && !currentPlan ? 'Starting' : 'Upgrading to'}</p>
                       <p className="text-xl font-bold text-foreground">{plan.name} Plan</p>
                     </div>
                     <div className="text-right">
                       {plan.price === 0 ? (
                         <p className="text-2xl font-bold text-primary">Free</p>
+                      ) : !isDowngradeFlow && (plan.id === 'growth' || plan.id === 'scale') ? (
+                        <>
+                          <p className="text-2xl font-bold text-primary">$1 today</p>
+                          <p className="text-xs text-muted-foreground">then {plan.priceLabel}/{plan.period} after 7 days</p>
+                        </>
                       ) : (
                         <>
                           <p className="text-2xl font-bold text-primary">{plan.priceLabel}</p>

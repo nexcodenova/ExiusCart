@@ -19,6 +19,7 @@ export default function LoginModalProvider({ children }: { children: React.React
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [next, setNext] = useState('');
+  const [opening, setOpening] = useState(false);
 
   // Coming from the ExiusCart dashboard's Prodora link — the account email
   // is already known, so open straight into this step pre-filled instead of
@@ -31,11 +32,22 @@ export default function LoginModalProvider({ children }: { children: React.React
     const emailFromLink = params.get('email');
     const nextFromLink = params.get('next') || '';
     if (emailFromLink) {
+      const target = /^\/[a-z0-9/_-]*$/i.test(nextFromLink) ? nextFromLink : '';   // a page on Prodora only, never another site
       setEmail(emailFromLink);
-      if (/^\/[a-z0-9/_-]*$/i.test(nextFromLink)) setNext(nextFromLink);   // a page on Prodora only, never another site
-      setShow(true);
+      setNext(target);
       window.history.replaceState({}, '', window.location.pathname);
+      // The seller is already signed in to ExiusCart, so open Prodora straight away instead of asking them to
+      // confirm the same email again. The login box only appears if this fails.
+      setOpening(true);
+      prodoraAuth.requestAccess(emailFromLink)
+        .then(() => router.push(target || '/browse'))
+        .catch((err: any) => {
+          setError(err.response?.data?.detail || 'Something went wrong. Please try again.');
+          setOpening(false);
+          setShow(true);
+        });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,6 +68,12 @@ export default function LoginModalProvider({ children }: { children: React.React
   return (
     <LoginModalContext.Provider value={{ open: (n?: unknown) => { setNext(typeof n === 'string' && /^\/[a-z0-9/_-]*$/i.test(n) ? n : ''); setShow(true); } }}>
       {children}
+
+      {opening && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> Opening Prodora…</div>
+        </div>
+      )}
 
       {show && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
