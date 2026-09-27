@@ -23,7 +23,7 @@ from app.models.subscription_payment import SubscriptionPayment
 from app.models.affiliate import Affiliate, Commission
 from app.models.user import User
 from app.models.shop import Shop
-from app.core.email import send_dashboard_live_email, send_welcome_email, send_password_setup_email, send_new_signup_notification
+from app.core.email import send_dashboard_live_email, send_welcome_email, send_paid_signup_email, send_new_signup_notification
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -60,9 +60,32 @@ async def lemonsqueezy_webhook(request: Request, db: Session = Depends(get_db)):
         _handle_payment_failed(db, attrs)
     elif event_name == "subscription_payment_refunded":
         _handle_payment_refunded(db, resource)
+    elif event_name == "order_created" and _is_one_time_trial_order(custom_data, attrs):
+        # The $1 Trial variant in Lemon Squeezy is set up as a ONE-TIME purchase, not a subscription, so no
+        # subscription event ever arrives for it. Without this branch a customer who paid $1 got no account access
+        # and the admin saw no plan. They get their 7 days now; nothing renews automatically after that, so the
+        # variant should be changed to a subscription variant in Lemon Squeezy (see _is_one_time_trial_order).
+        logger.warning("[LemonSqueezy] $1 trial arrived as a one-time order (no subscription behind it): the trial variant "
+                       "should be a subscription variant in Lemon Squeezy so full price can start after day 7")
+        if custom_data.get("new_signup") == "true":
+            _handle_new_signup_payment(db, custom_data, resource, attrs, one_time=True)
+        else:
+            _handle_payment_success(db, custom_data, resource, attrs, one_time=True)
+    elif event_name == "order_refunded" and attrs.get("first_subscription_item") is None:
+        _handle_payment_refunded(db, resource)
 
     # Always 200 quickly — Lemon Squeezy retries on non-2xx
     return {"received": True}
+
+
+def _is_one_time_trial_order(custom_data: dict, attrs: dict) -> bool:
+    """A paid $1-trial checkout whose order has no subscription behind it (a subscription order carries a
+    first_subscription_item, and its money arrives as subscription_payment_success instead)."""
+    return (
+        custom_data.get("trial_dollar") == "true"
+        and attrs.get("first_subscription_item") is None
+        and attrs.get("status", "paid") == "paid"
+    )
 
 
 def _handle_payment_failed(db: Session, attrs: dict) -> None:
@@ -95,13 +118,13 @@ def _handle_payment_failed(db: Session, attrs: dict) -> None:
         logger.warning(f"[LemonSqueezy] first full-price payment failed — subscription {sub.id} set to expired")
 
 
-def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attrs: dict) -> None:
+def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attrs: dict, one_time: bool = False) -> None:
     ls_order_id = str(resource.get("id", ""))
-    ls_subscription_id = str(attrs.get("subscription_id", ""))
+    ls_subscription_id = "" if one_time else str(attrs.get("subscription_id", ""))
     amount = float(attrs.get("total", 0)) / 100  # Lemon Squeezy sends amounts in cents
     currency = attrs.get("currency", "USD")
 
-    if not ls_order_id or not ls_subscription_id:
+    if not ls_order_id or (not ls_subscription_id and not one_time):
         logger.error("[LemonSqueezy] payment_success event missing order/subscription id")
         return
 
@@ -110,7 +133,7 @@ def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attr
         logger.info(f"[LemonSqueezy] duplicate webhook for order={ls_order_id}, skipping")
         return
 
-    sub = db.query(Subscription).filter(Subscription.lemon_squeezy_subscription_id == ls_subscription_id).first()
+    sub = db.query(Subscription).filter(Subscription.lemon_squeezy_subscription_id == ls_subscription_id).first() if ls_subscription_id else None
 
     is_new_subscription = sub is None
     if is_new_subscription:
@@ -154,7 +177,7 @@ def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attr
     sub.amount_paid = amount
     sub.currency = currency
     sub.payment_source = "lemon_squeezy"
-    sub.lemon_squeezy_subscription_id = ls_subscription_id
+    sub.lemon_squeezy_subscription_id = ls_subscription_id or None
     if attrs.get("customer_id"):
         sub.lemon_squeezy_customer_id = str(attrs["customer_id"])
 
@@ -167,7 +190,7 @@ def _handle_payment_success(db: Session, custom_data: dict, resource: dict, attr
         billing_type=sub.billing_type,
         source="lemon_squeezy",
         lemon_squeezy_order_id=ls_order_id,
-        lemon_squeezy_subscription_id=ls_subscription_id,
+        lemon_squeezy_subscription_id=ls_subscription_id or None,
     )
     db.add(payment)
     db.flush()  # assign payment.id before linking a commission to it
@@ -204,7 +227,7 @@ def _slugify(text: str) -> str:
     return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
 
 
-def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, attrs: dict) -> None:
+def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, attrs: dict, one_time: bool = False) -> None:
     """
     Pre-signup checkout — no ExiusCart account existed at checkout time (marketing
     site "pay first" flow). The completed payment is treated as proof of a real,
@@ -217,7 +240,7 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
     step that no longer exists.
     """
     ls_order_id = str(resource.get("id", ""))
-    ls_subscription_id = str(attrs.get("subscription_id", ""))
+    ls_subscription_id = "" if one_time else str(attrs.get("subscription_id", ""))
     amount = float(attrs.get("total", 0)) / 100
     currency = attrs.get("currency", "USD")
     email = attrs.get("user_email", "")
@@ -226,7 +249,7 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
     plan_type = custom_data.get("plan_type")
     billing_type = custom_data.get("billing_type", "monthly")
 
-    if not ls_order_id or not ls_subscription_id or not email or not plan_type:
+    if not ls_order_id or (not ls_subscription_id and not one_time) or not email or not plan_type:
         logger.error(f"[LemonSqueezy] new_signup payment missing required data — order={ls_order_id} email={bool(email)} plan={plan_type}")
         return
 
@@ -237,7 +260,10 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
 
     existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
-        logger.error(f"[LemonSqueezy] new_signup payment for email={email} but a User already exists (id={existing_user.id}) — needs manual reconciliation, refusing to auto-link to avoid hijacking an unrelated account")
+        # Someone with this email already has an account. If their shop has no live plan (for example a signup that
+        # never finished paying), the payment belongs on that shop: they paid and must not be left locked out.
+        # If they already have a live plan, refuse to touch the account and leave it for manual reconciliation.
+        _attach_payment_to_existing_account(db, existing_user, custom_data, ls_order_id, ls_subscription_id, amount, currency, attrs, plan_type, billing_type)
         return
 
     from app.core.lemonsqueezy import TRIAL_DOLLAR_DAYS
@@ -281,7 +307,7 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
         amount_paid=amount,
         currency=currency,
         payment_source="lemon_squeezy",
-        lemon_squeezy_subscription_id=ls_subscription_id,
+        lemon_squeezy_subscription_id=ls_subscription_id or None,
         starts_at=now,
         expires_at=expires_at,
         trial_dollar_ends_at=trial_dollar_ends_at,
@@ -300,7 +326,7 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
         billing_type=billing_type,
         source="lemon_squeezy",
         lemon_squeezy_order_id=ls_order_id,
-        lemon_squeezy_subscription_id=ls_subscription_id,
+        lemon_squeezy_subscription_id=ls_subscription_id or None,
     )
     db.add(payment)
     db.flush()  # assign payment.id before linking a commission to it
@@ -323,11 +349,59 @@ def _handle_new_signup_payment(db: Session, custom_data: dict, resource: dict, a
     plan_label = plan_type.title()
 
     try:
-        send_password_setup_email(user.email, user.full_name or "", setup_url)
-        send_welcome_email(user.email, user.full_name or "", f"{plan_label} ($1 Trial)" if trial_dollar else plan_label)
+        # One plain email to the customer (what they bought + the password link) instead of three separate ones.
+        send_paid_signup_email(user.email, user.full_name or "", f"{plan_label} ($1 trial)" if trial_dollar else plan_label, setup_url)
         send_new_signup_notification(user.full_name or "", user.email, shop.name, f"{plan_label} (Paid)")
     except Exception as e:
         logger.error(f"[LemonSqueezy] new_signup confirmation emails failed for shop={shop.id}: {e}")
+
+
+def _attach_payment_to_existing_account(db: Session, user: User, custom_data: dict, ls_order_id: str, ls_subscription_id: str,
+                                        amount: float, currency: str, attrs: dict, plan_type: str, billing_type: str) -> None:
+    from app.core.lemonsqueezy import TRIAL_DOLLAR_DAYS
+    shop = db.query(Shop).filter(Shop.owner_id == user.id).order_by(Shop.id.asc()).first()
+    live = None
+    if shop:
+        live = db.query(Subscription).filter(
+            Subscription.shop_id == shop.id,
+            Subscription.status.in_(("active", "trial", "trial_dollar")),
+        ).first()
+    if not shop or live:
+        logger.error(f"[LemonSqueezy] new_signup payment for email={user.email} but a User already exists (id={user.id}) "
+                     f"{'with a live plan' if live else 'without a shop'} — needs manual reconciliation, not auto-linked")
+        return
+
+    trial_dollar = custom_data.get("trial_dollar") == "true"
+    now = datetime.now(timezone.utc)
+    if trial_dollar:
+        status, trial_ends, expires = "trial_dollar", now + timedelta(days=TRIAL_DOLLAR_DAYS), now + timedelta(days=TRIAL_DOLLAR_DAYS)
+    else:
+        status, trial_ends, expires = "active", None, now + timedelta(days=365 if billing_type == "yearly" else 30)
+    sub = Subscription(
+        shop_id=shop.id, plan_type=plan_type, billing_type=billing_type, status=status, amount_paid=amount, currency=currency,
+        payment_source="lemon_squeezy", lemon_squeezy_subscription_id=ls_subscription_id or None,
+        starts_at=now, expires_at=expires, trial_dollar_ends_at=trial_ends,
+    )
+    if attrs.get("customer_id"):
+        sub.lemon_squeezy_customer_id = str(attrs["customer_id"])
+    db.add(sub)
+    db.flush()
+    payment = SubscriptionPayment(
+        subscription_id=sub.id, shop_id=shop.id, amount=amount, currency=currency, plan_type=plan_type, billing_type=billing_type,
+        source="lemon_squeezy", lemon_squeezy_order_id=ls_order_id, lemon_squeezy_subscription_id=ls_subscription_id or None,
+    )
+    db.add(payment)
+    db.flush()
+    if not trial_dollar:
+        generate_commission_for_payment(db, sub, amount / 12 if billing_type == "yearly" else amount, payment.id)
+    db.commit()
+    logger.info(f"[LemonSqueezy] payment attached to existing account user={user.id} shop={shop.id} plan={plan_type} amount={amount} {currency}")
+    plan_label = plan_type.title()
+    try:
+        send_welcome_email(user.email, user.full_name or "", f"{plan_label} ($1 trial)" if trial_dollar else plan_label)
+        send_new_signup_notification(user.full_name or "", user.email, shop.name, f"{plan_label} (Paid, existing account)")
+    except Exception as e:
+        logger.error(f"[LemonSqueezy] confirmation emails failed for shop={shop.id}: {e}")
 
 
 ONE_TIME_COMMISSION_REVERSAL_WINDOW_DAYS = 45

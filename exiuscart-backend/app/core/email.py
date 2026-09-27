@@ -280,6 +280,24 @@ def send_otp_email(to: str, full_name: str, otp_code: str) -> bool:
 
 # ── Welcome email templates ───────────────────────────────────────────────────
 
+def _plain_base(content: str) -> str:
+    """Plain, light account mail: no coloured blocks, no big buttons, no dark banner. Mail that looks like
+    ordinary correspondence lands in the inbox; a heavily designed email is filed under Promotions."""
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#ffffff;">
+  <div style="max-width:560px;margin:0 auto;padding:24px 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#222222;">
+    {content}
+    <p style="margin:28px 0 0;color:#666666;font-size:13px;">ExiusCart<br>support@exiuscart.com</p>
+  </div>
+</body></html>"""
+
+
+def _plain_link(url: str, label: str) -> str:
+    return f'<a href="{url}" style="color:#1a56db;">{label}</a>'
+
+
 def _welcome_base(content: str) -> str:
     return f"""<!DOCTYPE html>
 <html>
@@ -307,22 +325,15 @@ def send_welcome_email(to: str, full_name: str, plan_label: str = "Free Trial",
                        login_url: str = "https://store.exiuscart.com/login") -> bool:
     first = (full_name or "there").split()[0]
     content = f"""
-      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Welcome to ExiusCart, {first}!</h2>
-      <p style="margin:0 0 20px;color:#94a3b8;line-height:1.7;">
-        Your ExiusCart store is live on the <strong style="color:#fff;">{plan_label}</strong> plan.
-        Manage products, orders, customers, and more — all in one place.
-      </p>
-      <a href="{login_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:600;font-size:14px;margin-bottom:20px;">
-        Open Dashboard →
-      </a>
-      <p style="margin:0;color:#64748b;font-size:12px;">
-        Questions? Reply to this email or visit <a href="https://exiuscart.com" style="color:#6B3FD9;">exiuscart.com</a>
-      </p>"""
+    <p>Hi {first},</p>
+    <p>Your ExiusCart account is ready on the {plan_label} plan. You can sign in here:</p>
+    <p>{_plain_link(login_url, login_url)}</p>
+    <p>If you need anything, reply to this email.</p>"""
     return send_email(
         to=to,
-        subject="Welcome to ExiusCart — Your store is ready!",
-        html_body=_welcome_base(content),
-        text_body=f"Welcome {first}! Your ExiusCart store ({plan_label}) is ready. Login at {login_url}",
+        subject="Your ExiusCart account",
+        html_body=_plain_base(content),
+        text_body=f"Hi {first},\n\nYour ExiusCart account is ready on the {plan_label} plan. Sign in here: {login_url}\n\nIf you need anything, reply to this email.\n\nExiusCart\nsupport@exiuscart.com",
     )
 
 
@@ -330,22 +341,15 @@ def send_thedersi_welcome_email(to: str, full_name: str,
                                 login_url: str = "https://store.exiuscart.com/login") -> bool:
     first = (full_name or "there").split()[0]
     content = f"""
-      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Welcome to ExiusCart, {first}!</h2>
-      <p style="margin:0 0 12px;color:#94a3b8;line-height:1.7;">
-        Your ExiusCart store is now active through <strong style="color:#fff;">TheDersi</strong>.
-        Orders from TheDersi sync automatically to your ExiusCart dashboard.
-      </p>
-      <a href="{login_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:600;font-size:14px;margin-bottom:20px;">
-        Open Dashboard →
-      </a>
-      <p style="margin:0;color:#64748b;font-size:12px;">
-        Need help? Email <a href="mailto:support@exiuscart.com" style="color:#6B3FD9;">support@exiuscart.com</a>
-      </p>"""
+    <p>Hi {first},</p>
+    <p>Your ExiusCart account is active through TheDersi. Orders from TheDersi sync to your ExiusCart dashboard. Sign in here:</p>
+    <p>{_plain_link(login_url, login_url)}</p>
+    <p>If you need anything, reply to this email.</p>"""
     return send_email(
         to=to,
-        subject="Your ExiusCart store is ready!",
-        html_body=_welcome_base(content),
-        text_body=f"Welcome {first}! Your ExiusCart store (via TheDersi) is active. Login at {login_url}",
+        subject="Your ExiusCart account",
+        html_body=_plain_base(content),
+        text_body=f"Hi {first},\n\nYour ExiusCart account is active through TheDersi. Sign in here: {login_url}\n\nIf you need anything, reply to this email.\n\nExiusCart\nsupport@exiuscart.com",
     )
 
 
@@ -354,67 +358,34 @@ def send_dashboard_live_email(to: str, full_name: str, shop_name: str,
                               is_trial: bool = True, plan_label: str = "") -> bool:
     first = (full_name or "there").split()[0]
     if is_trial:
-        approved_line = 'Your <strong style="color:#fff;">14-day free trial</strong> has started. You now have full access to manage products, inventory, orders, invoices, and more.'
-        info_box = """
-      <div style="background:#1a2540;border:1px solid #2a3a5c;border-radius:12px;padding:20px;margin:0 0 20px;">
-        <p style="margin:0 0 6px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Your trial period</p>
-        <p style="margin:0;font-size:18px;font-weight:700;color:#6B3FD9;">14 days free access</p>
-        <p style="margin:4px 0 0;font-size:13px;color:#94a3b8;">All features included. No credit card required during trial.</p>
-      </div>"""
-        subject = "Your ExiusCart dashboard is live — 14-day trial started!"
-        text_plan_line = "Your 14-day free trial has started."
+        line = "Your 14-day free trial has started. You have full access, and no card is needed during the trial."
     else:
-        approved_line = f'Your <strong style="color:#fff;">{plan_label or "paid"}</strong> subscription is now active. You now have full access to manage products, inventory, orders, invoices, and more.'
-        info_box = f"""
-      <div style="background:#1a2540;border:1px solid #2a3a5c;border-radius:12px;padding:20px;margin:0 0 20px;">
-        <p style="margin:0 0 6px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Your plan</p>
-        <p style="margin:0;font-size:18px;font-weight:700;color:#6B3FD9;">{plan_label or "Paid plan"}</p>
-        <p style="margin:4px 0 0;font-size:13px;color:#94a3b8;">Active now — thanks for subscribing.</p>
-      </div>"""
-        subject = "Your ExiusCart dashboard is live!"
-        text_plan_line = f"Your {plan_label or 'paid'} subscription is now active."
-
+        line = f"Your {plan_label or 'paid'} plan is active."
     content = f"""
-      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Your dashboard is live, {first}!</h2>
-      <p style="margin:0 0 12px;color:#94a3b8;line-height:1.7;">
-        Great news — your ExiusCart account for <strong style="color:#fff;">{shop_name}</strong> has been approved.
-        {approved_line}
-      </p>
-      {info_box}
-      <a href="{login_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:15px;margin-bottom:20px;">
-        Open Your Dashboard &rarr;
-      </a>
-      <p style="margin:0;color:#64748b;font-size:12px;">
-        Need help getting started? Email <a href="mailto:support@exiuscart.com" style="color:#6B3FD9;">support@exiuscart.com</a>
-        or visit <a href="https://exiuscart.com" style="color:#6B3FD9;">exiuscart.com</a>
-      </p>"""
+    <p>Hi {first},</p>
+    <p>Your ExiusCart account for {shop_name} is ready. {line}</p>
+    <p>Sign in here: {_plain_link(login_url, login_url)}</p>
+    <p>If you need anything, reply to this email.</p>"""
     return send_email(
         to=to,
-        subject=subject,
-        html_body=_welcome_base(content),
-        text_body=f"Hi {first}! Your ExiusCart account ({shop_name}) has been approved. {text_plan_line} Login at {login_url}",
+        subject="Your ExiusCart account is ready",
+        html_body=_plain_base(content),
+        text_body=f"Hi {first},\n\nYour ExiusCart account for {shop_name} is ready. {line}\n\nSign in here: {login_url}\n\nIf you need anything, reply to this email.\n\nExiusCart\nsupport@exiuscart.com",
     )
 
 
 def send_new_signup_notification(full_name: str, email: str, shop_name: str, plan: str) -> bool:
-    """FYI-only — the signup already has real, immediate access (no approval
-    gate); this just lets the team know a new account exists."""
+    """FYI-only: the signup already has real, immediate access (no approval gate); this just lets the team know
+    a new account exists."""
     admin_url = "https://admin.exiuscart.com/dashboard/subscriptions"
     content = f"""
-      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">New signup</h2>
-      <div style="background:#1a2540;border:1px solid #2a3a5c;border-radius:12px;padding:20px;margin:0 0 20px;">
-        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;">Name: <strong style="color:#fff;">{full_name}</strong></p>
-        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;">Email: <strong style="color:#fff;">{email}</strong></p>
-        <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;">Shop: <strong style="color:#fff;">{shop_name}</strong></p>
-        <p style="margin:0;font-size:13px;color:#94a3b8;">Plan: <strong style="color:#6B3FD9;">{plan}</strong></p>
-      </div>
-      <a href="{admin_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:15px;">
-        View in Dashboard &rarr;
-      </a>"""
+    <p>New signup.</p>
+    <p>Name: {full_name}<br>Email: {email}<br>Shop: {shop_name}<br>Plan: {plan}</p>
+    <p>{_plain_link(admin_url, admin_url)}</p>"""
     return send_email(
         to="support@exiuscart.com",
         subject=f"New signup: {full_name} ({shop_name})",
-        html_body=_welcome_base(content),
+        html_body=_plain_base(content),
         text_body=(
             f"New signup.\n\n"
             f"Name: {full_name}\nEmail: {email}\nShop: {shop_name}\nPlan: {plan}\n\n"
@@ -426,46 +397,54 @@ def send_new_signup_notification(full_name: str, email: str, shop_name: str, pla
 def send_password_setup_email(to: str, full_name: str, setup_url: str) -> bool:
     first = (full_name or "there").split()[0]
     content = f"""
-      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Set your password, {first}</h2>
-      <p style="margin:0 0 20px;color:#94a3b8;line-height:1.7;">
-        Click the button below to set your password and access your ExiusCart dashboard.
-        This link expires in <strong style="color:#fff;">48 hours</strong>.
-      </p>
-      <a href="{setup_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:600;font-size:14px;margin-bottom:20px;">
-        Set Password →
-      </a>
-      <p style="margin:0;color:#64748b;font-size:12px;">
-        If you didn't request this, ignore this email.
-      </p>"""
+    <p>Hi {first},</p>
+    <p>Set your ExiusCart password with this link. It expires in 48 hours:</p>
+    <p>{_plain_link(setup_url, setup_url)}</p>
+    <p>If you did not request this, you can ignore this email.</p>"""
     return send_email(
         to=to,
         subject="Set your ExiusCart password",
         bypass_suppression=True,
-        html_body=_welcome_base(content),
-        text_body=f"Hi {first}, set your ExiusCart password here: {setup_url} (expires in 48 hours)",
+        html_body=_plain_base(content),
+        text_body=f"Hi {first},\n\nSet your ExiusCart password here (link expires in 48 hours): {setup_url}\n\nIf you did not request this, ignore this email.\n\nExiusCart\nsupport@exiuscart.com",
+    )
+
+
+def send_paid_signup_email(to: str, full_name: str, plan_label: str, setup_url: str,
+                           login_url: str = "https://store.exiuscart.com/login") -> bool:
+    """One plain email for someone who just paid at checkout: what they bought and the link to set a password.
+    Replaces the three separate mails (setup, welcome, notice) that were sent together before."""
+    first = (full_name or "there").split()[0]
+    content = f"""
+    <p>Hi {first},</p>
+    <p>Thanks for your order. Your ExiusCart account is ready on the {plan_label} plan.</p>
+    <p>Set your password with this link (it expires in 48 hours):<br>{_plain_link(setup_url, setup_url)}</p>
+    <p>After that you can sign in at {_plain_link(login_url, login_url)}.</p>
+    <p>If you need anything, reply to this email.</p>"""
+    return send_email(
+        to=to,
+        subject="Your ExiusCart account is ready",
+        bypass_suppression=True,
+        html_body=_plain_base(content),
+        text_body=(f"Hi {first},\n\nThanks for your order. Your ExiusCart account is ready on the {plan_label} plan.\n\n"
+                   f"Set your password with this link (it expires in 48 hours):\n{setup_url}\n\n"
+                   f"After that you can sign in at {login_url}\n\nIf you need anything, reply to this email.\n\nExiusCart\nsupport@exiuscart.com"),
     )
 
 
 def send_password_reset_email(to: str, full_name: str, reset_url: str) -> bool:
     first = (full_name or "there").split()[0]
     content = f"""
-      <h2 style="margin:0 0 12px;font-size:20px;color:#fff;">Reset your password, {first}</h2>
-      <p style="margin:0 0 20px;color:#94a3b8;line-height:1.7;">
-        We got a request to reset your ExiusCart password. Click the button below to choose a new one.
-        This link expires in <strong style="color:#fff;">1 hour</strong> and works once.
-      </p>
-      <a href="{reset_url}" style="display:inline-block;background:#6B3FD9;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:600;font-size:14px;margin-bottom:20px;">
-        Reset Password →
-      </a>
-      <p style="margin:0;color:#64748b;font-size:12px;">
-        If you didn't ask for this, you can ignore this email — your password won't change.
-      </p>"""
+    <p>Hi {first},</p>
+    <p>We got a request to reset your ExiusCart password. Use this link to choose a new one. It expires in 1 hour and works once:</p>
+    <p>{_plain_link(reset_url, reset_url)}</p>
+    <p>If you did not ask for this, ignore this email and your password will not change.</p>"""
     return send_email(
         to=to,
         subject="Reset your ExiusCart password",
         bypass_suppression=True,
-        html_body=_welcome_base(content),
-        text_body=f"Hi {first}, reset your ExiusCart password here: {reset_url} (expires in 1 hour, works once). If you didn't ask for this, ignore this email.",
+        html_body=_plain_base(content),
+        text_body=f"Hi {first},\n\nReset your ExiusCart password here (expires in 1 hour, works once): {reset_url}\n\nIf you did not ask for this, ignore this email.\n\nExiusCart\nsupport@exiuscart.com",
     )
 
 

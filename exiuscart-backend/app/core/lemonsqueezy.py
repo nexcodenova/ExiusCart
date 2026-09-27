@@ -131,6 +131,9 @@ async def create_checkout(
                 },
                 "product_options": {
                     "redirect_url": redirect_url,
+                    # All plans live as variants of one Lemon Squeezy product, so without this the checkout page lists
+                    # every plan and price. Enabling only the chosen variant shows just the plan being bought.
+                    "enabled_variants": [int(variant_id)],
                 },
             },
             "relationships": {
