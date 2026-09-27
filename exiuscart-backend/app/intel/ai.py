@@ -13,6 +13,8 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 MODEL = "claude-haiku-4-5-20251001"  # same fast/cheap model the SEO tools use
+AI_EVENT = "intel_ai_call"
+SessionLocal = None      # the session factory used to log usage; the app's own unless a test replaces it
 
 
 def _get_client():
@@ -24,7 +26,23 @@ def _get_client():
     return anthropic.Anthropic(api_key=key, timeout=30.0)
 
 
-def ask_json(prompt: str, max_tokens: int = 1000) -> Optional[Any]:
+def _log_usage(purpose: str, msg: Any) -> None:
+    """One event per Claude call with the tokens it used, for the admin spend meter. Never raises."""
+    try:
+        usage = getattr(msg, "usage", None)
+        tin, tout = int(getattr(usage, "input_tokens", 0) or 0), int(getattr(usage, "output_tokens", 0) or 0)
+        from app.core import database
+        from app.core.intel import record_event
+        db = (SessionLocal or database.SessionLocal)()
+        try:
+            record_event(db, AI_EVENT, entity_type="ai", payload={"purpose": purpose, "in": tin, "out": tout, "model": MODEL})
+        finally:
+            db.close()
+    except Exception as e:  # noqa: BLE001 - logging must never break an analysis
+        logger.warning(f"[intel] could not log AI usage: {type(e).__name__}")
+
+
+def ask_json(prompt: str, max_tokens: int = 1000, purpose: str = "analysis") -> Optional[Any]:
     client = _get_client()
     if client is None:
         return None
@@ -34,6 +52,7 @@ def ask_json(prompt: str, max_tokens: int = 1000) -> Optional[Any]:
     except Exception as e:  # noqa: BLE001 - any AI failure means "fall back to plain code"
         logger.warning(f"[intel] AI call failed: {type(e).__name__}: {e}")
         return None
+    _log_usage(purpose, msg)
     return parse_json(raw)
 
 

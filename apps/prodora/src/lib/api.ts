@@ -153,6 +153,28 @@ export type IntelResponse =
   | { locked: false; available: false }
   | { locked: false; available: true; analysis: IntelAnalysis };
 
+// ── Prodora AI: plain-words search, real scores, one-click launch (Growth and Scale) ──
+export interface AiScore { value: number | null; measured: boolean; source: string | null; why: string | null; pct?: number | null; listings?: number | null; out_of_10?: number | null; direction?: string | null }
+export interface AiCard {
+  id: number; name: string; image_url: string | null; category: string | null; supplier: string | null;
+  selling_price: number | null; supplier_cost: number | null; shipping_cost: number | null;
+  verdict: 'TEST' | 'WATCH' | 'AVOID' | null; verdict_label: string | null; confidence: 'high' | 'medium' | 'low' | null; headline: string | null;
+  scores: { demand: AiScore; competition: AiScore; content: AiScore; margin: AiScore; shipping: AiScore; supplier: AiScore; tiktok: AiScore };
+  overall: number | null; measured: number; of: number; saturation: 'Low' | 'Medium' | 'High' | null; competitors: number | null; why: string;
+  checked: boolean; checked_at: string | null; stale: boolean; can_launch: boolean;
+}
+export type AiSearchResponse =
+  | { locked: true; plan: string | null; required_plan: string }
+  | { locked: false; understood: string[]; method: 'ai' | 'rules'; total: number; checked_count: number; results: AiCard[]; searches_left: number };
+export interface AiLaunchResult {
+  locked: boolean; product_id: number; coach_item_id: number; price: number; ai_written: boolean; below_target: boolean; supplier_connected: boolean;
+  name: string; edit_path: string; coach_path: string;
+}
+export const aiApi = {
+  search: async (query: string, limit = 12): Promise<AiSearchResponse> => (await apiClient.post('/shopping/ai/search', { query, limit })).data,
+  launch: async (id: number): Promise<AiLaunchResult> => (await apiClient.post(`/shopping/ai/launch/${id}`, {})).data,
+};
+
 export const shoppingApi = {
   getIntelligence: async (id: number): Promise<IntelResponse> => {
     const response = await apiClient.get(`/shopping/products/${id}/intelligence`);

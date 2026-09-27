@@ -31,9 +31,11 @@ import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
 } from '@/components/ui/accordion';
 import Navbar from '@/components/layout/Navbar';
-import HeroCTAButtons from '@/components/HeroCTAButtons';
+import HeroPaths from '@/components/HeroPaths';
 import OpenLoginButton from '@/components/OpenLoginButton';
 import { IntegrationsGrid } from '@/components/ui/integrations-grid';
+import AiHeroPreview from '@/components/AiHeroPreview';
+import ProdoraAiSection from '@/components/ProdoraAiSection';
 
 // The pictures live in /public/how-it-works. Step 3 has no picture: it shows
 // the real order flow instead (see ORDER_FLOW).
@@ -64,6 +66,11 @@ const ORDER_FLOW = [
 
 const FEATURES = [
   {
+    icon: Sparkles,
+    title: 'Prodora AI',
+    desc: 'Ask for products in plain words. Every result comes with real scores and a verdict, then launch it in a click. Growth and Scale.',
+  },
+  {
     icon: Flame,
     title: 'Trending Now',
     desc: 'See what’s actually gaining momentum right now, not last season’s picks.',
@@ -84,11 +91,6 @@ const FEATURES = [
     desc: 'No separate subscription — Prodora is bundled with your ExiusCart account.',
   },
   {
-    icon: Sparkles,
-    title: 'Fresh picks, regularly',
-    desc: 'The catalog keeps getting new product picks so you’re never stuck browsing stale listings.',
-  },
-  {
     icon: ShieldCheck,
     title: 'Profit shown up front',
     desc: 'Supplier cost, selling price and your profit on every product, before you import it.',
@@ -96,6 +98,18 @@ const FEATURES = [
 ];
 
 const FAQS = [
+  {
+    q: 'What is Prodora AI?',
+    a: 'Prodora AI is a product finder built for dropshipping. You describe what you want to sell in plain words, for example "kitchen gadgets under $25", and it returns matching products with real margin, competition and shipping scores and a clear verdict. Then Launch with ExiusCart brings the product into your store as a private draft, priced from the market, with a title and description written for it.',
+  },
+  {
+    q: 'Which plans include Prodora AI, and what does it cost?',
+    a: 'Prodora AI is included with the Growth and Scale plans, with no extra fee. Product research on Prodora itself is free with every ExiusCart plan.',
+  },
+  {
+    q: 'How is Prodora AI different from asking a general chatbot?',
+    a: 'A general chatbot can only talk. Prodora AI searches our catalogue of real products with real supplier costs, works out the scores from real market prices, and connects straight to your ExiusCart store. If we cannot measure something, such as TikTok potential, it says Not measured instead of inventing a number.',
+  },
   {
     q: 'What is Prodora?',
     a: 'Prodora is a winning-products discovery tool built into ExiusCart. It helps you find trending, ready-to-sell products, with the supplier cost and your profit shown up front, so you can import them into your own store in one click.',
@@ -119,46 +133,31 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      {/* ── Hero: leads with Prodora AI, with an honest EXAMPLE of what an answer looks like ── */}
       <section className="relative overflow-hidden">
-        <div className="container pt-14 pb-16 sm:pt-20 sm:pb-20">
-          {/* Was a 2-column grid with a floating-product-circle on the
-              right — removed 2026-08-31, it was placeholder art
-              (/figma-assets/hero-product-*.png, illustrative sample
-              prices) never swapped for anything real. Centered single
-              column now instead of leaving an empty half. */}
-          <div className="max-w-xl mx-auto text-center">
-            <Badge className="mb-6">Powered by ExiusCart</Badge>
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.12]">
-              Your #1 winning{' '}
-              <span className="relative whitespace-nowrap text-primary">
-                product
-                <svg
-                  className="absolute left-0 -bottom-1 w-full"
-                  height="8"
-                  viewBox="0 0 200 8"
-                  fill="none"
-                  preserveAspectRatio="none"
-                >
-                  <path d="M1 5.5C40 2 160 1 199 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </span>{' '}
-              research &amp; auto-fulfillment tool
-            </h1>
-            <p className="mt-6 text-lg text-muted-foreground">
-              Browse trending, ready-to-sell products with the supplier cost and your profit shown
-              up front, then import them straight into ExiusCart — and sell everywhere, from Shopify to Amazon to your
-              own website, all in one platform.
-            </p>
-            <div className="flex justify-center">
-              <HeroCTAButtons />
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[34rem] bg-gradient-to-b from-primary/[0.08] via-primary/[0.03] to-transparent" />
+        <div className="container pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20">
+          <div className="grid grid-cols-[minmax(0,1fr)] items-center gap-12 lg:grid-cols-[1.05fr_1fr] lg:gap-10">
+            <div className="min-w-0 text-center lg:text-left">
+              <Badge className="mb-6 gap-1.5"><Sparkles className="h-3.5 w-3.5" /> New: Prodora AI</Badge>
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.1]">
+                Your #1 winning <span className="text-primary">product research</span> &amp; auto-fulfillment tool
+              </h1>
+              <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground lg:mx-0">
+                Browse trending products with the supplier cost and your profit shown up front, or just ask Prodora AI
+                in plain words. Either way, launch it in your ExiusCart store in one click and sell everywhere.
+              </p>
+              <HeroPaths />
+              <p className="mt-5 text-sm text-muted-foreground">
+                Product research is free on every ExiusCart plan &middot; Prodora AI comes with Growth and Scale
+              </p>
             </div>
-            <p className="mt-5 text-sm text-muted-foreground">
-              Free for every ExiusCart seller &middot; No credit card required
-            </p>
+            <AiHeroPreview />
           </div>
         </div>
       </section>
+
+      <ProdoraAiSection />
 
       {/* ── How it works ─────────────────────────────────────────────── */}
       <section className="border-t border-border bg-card">

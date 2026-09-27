@@ -247,7 +247,7 @@ Rules:
 
 Reply with JSON only:
 {{"title": "...", "description": "...", "keywords": ["...", "..."]}}"""
-    data = ai.ask_json(prompt, max_tokens=900)
+    data = ai.ask_json(prompt, max_tokens=900, purpose="listing")
     if not isinstance(data, dict):
         return None
     title, desc, kws = data.get("title"), data.get("description"), data.get("keywords")

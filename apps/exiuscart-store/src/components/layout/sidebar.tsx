@@ -48,7 +48,6 @@ interface MenuGroup {
   id: string;
   label: string | null;
   icon?: React.ElementType;
-  accent?: string;
   items: MenuItem[];
 }
 
@@ -64,7 +63,6 @@ const GROUPS: MenuGroup[] = [
     id: 'sales',
     label: 'Sales',
     icon: ShoppingCart,
-    accent: 'text-blue-500',
     items: [
       { href: '/dashboard/pos',          label: 'Point of Sale', icon: ShoppingCart  },
       { href: '/dashboard/orders',       label: 'Orders',        icon: FileText      },
@@ -77,7 +75,6 @@ const GROUPS: MenuGroup[] = [
     id: 'commerce',
     label: 'Commerce',
     icon: Store,
-    accent: 'text-blue-400',
     items: [
       { href: '/dashboard/customers',   label: 'Customers',   icon: Users   },
       { href: '/dashboard/discounts',   label: 'Discounts',   icon: Percent },
@@ -89,7 +86,6 @@ const GROUPS: MenuGroup[] = [
     id: 'catalog',
     label: 'Catalog',
     icon: Boxes,
-    accent: 'text-green-500',
     items: [
       { href: '/dashboard/products',   label: 'Products',   icon: Package },
       { href: '/dashboard/inventory',  label: 'Inventory',  icon: Boxes   },
@@ -129,6 +125,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/dropshipping/import', label: 'Import Products',  icon: ShoppingBag },
       { href: '/dashboard/product-research',    label: 'Product Research', icon: Search      },
       { href: '/dashboard/prodora-imports', label: 'Prodora', icon: ProdoraIcon },
+      { href: '/dashboard/prodora-ai',      label: 'Prodora AI',   icon: Sparkles    },
       { href: '/dashboard/price-coach',     label: 'Price Coach',  icon: Scale       },
     ],
   },
@@ -164,7 +161,6 @@ const GROUPS: MenuGroup[] = [
     id: 'marketing',
     label: 'Marketing',
     icon: Megaphone,
-    accent: 'text-purple-500',
     items: [
       { href: '/dashboard/marketing',          label: 'Overview',          icon: Megaphone      },
       { href: '/dashboard/campaigns',          label: 'Campaigns',         icon: Rocket         },
@@ -191,7 +187,6 @@ const GROUPS: MenuGroup[] = [
     id: 'analytics',
     label: 'Analytics',
     icon: BarChart3,
-    accent: 'text-sky-500',
     items: [
       { href: '/dashboard/analytics',            label: 'Overview',    icon: BarChart3 },
       { href: '/dashboard/reports?tab=sales',     label: 'Sales',       icon: TrendingUp },
@@ -208,7 +203,6 @@ const GROUPS: MenuGroup[] = [
     id: 'finance',
     label: 'Finance',
     icon: DollarSign,
-    accent: 'text-orange-500',
     items: [
       { href: '/dashboard/accounting',   label: 'Accounting',   icon: BookOpen     },
       { href: '/dashboard/expenses',     label: 'Expenses',     icon: Wallet       },
@@ -238,7 +232,6 @@ const GROUPS: MenuGroup[] = [
     id: 'hr',
     label: 'Human Resources',
     icon: UserCheck,
-    accent: 'text-teal-500',
     items: [
       { href: '/dashboard/hr',          label: 'HR & Payroll', icon: UserCheck },
       { href: '/dashboard/recruitment', label: 'Recruitment',  icon: UserPlus  },
@@ -250,7 +243,6 @@ const GROUPS: MenuGroup[] = [
     id: 'services',
     label: 'Services',
     icon: Briefcase,
-    accent: 'text-indigo-500',
     items: [
       { href: '/dashboard/projects',     label: 'Projects',     icon: Kanban       },
       { href: '/dashboard/helpdesk',     label: 'Helpdesk',     icon: Headphones   },
@@ -261,7 +253,6 @@ const GROUPS: MenuGroup[] = [
     id: 'settings',
     label: 'Settings',
     icon: Settings,
-    accent: 'text-gray-400',
     items: [
       { href: '/dashboard/settings',                    label: 'Store Settings',      icon: Settings   },
       { href: '/dashboard/settings?tab=general',        label: 'Business',            icon: Store      },
@@ -305,6 +296,7 @@ function isPremiumGroup(groupId: string): boolean {
 function isTheDersiBlockedHref(href: string): boolean {
   return href.startsWith('/dashboard/dropshipping')
     || href.startsWith('/dashboard/price-coach')
+    || href.startsWith('/dashboard/prodora-ai')
     || href === '/dashboard/wholesale'
     || href === '/dashboard/blog';
 }
@@ -563,7 +555,7 @@ export function ShopSidebar() {
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-left hover:bg-sidebar-accent/40 ${
                           groupActive ? 'text-sidebar-foreground' : 'text-sidebar-muted-foreground hover:text-sidebar-foreground'
                         }`}>
-                        {group.icon && <group.icon className={`w-5 h-5 shrink-0 ${group.accent ?? ''}`} />}
+                        {group.icon && <group.icon className="w-5 h-5 shrink-0" />}
                         <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
                         {locked && (isTheDersiRestricted ? (
                           // "PRO" would read as TheDersi's own Pro tier, which

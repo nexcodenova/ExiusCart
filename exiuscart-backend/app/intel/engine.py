@@ -32,6 +32,7 @@ from app.models.product import Product
 
 SNAPSHOT_TTL = timedelta(hours=24)
 PAID_EVENT = "intel_paid_lookup"
+FREE_EVENT = "intel_free_lookup"
 QUERIES_FREE = 2      # free sources try the two best search phrases
 QUERIES_PAID = 1      # paid sources try only the best one
 
@@ -107,6 +108,8 @@ def fetch_snapshot(db: Session, source: ProductSource, market: str, use_paid: bo
                 combined.status, combined.note = "skipped_budget", "Paid lookup limit reached. It resets tomorrow (daily) or next month."
                 break
             r = ad.search(q, market)
+            if not ad.paid and r.lookups:
+                record_event(db, FREE_EVENT, user_id=user_id, entity_type="product", entity_id=source.product_id, payload={"source": ad.name})
             if ad.paid and r.lookups:
                 spent += r.lookups
                 record_event(db, PAID_EVENT, user_id=user_id, entity_type="product", entity_id=source.product_id,

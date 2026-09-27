@@ -6,7 +6,9 @@ import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { prodoraAuth } from '@/lib/api';
 
-const LoginModalContext = createContext<{ open: () => void }>({ open: () => {} });
+// open() shows the login step; open('/ai') makes it land on that Prodora page afterwards. It is also used directly as a click
+// handler, so anything that is not a plain path string (a click event) is ignored.
+const LoginModalContext = createContext<{ open: (next?: unknown) => void }>({ open: () => {} });
 
 export const useLoginModal = () => useContext(LoginModalContext);
 
@@ -16,6 +18,7 @@ export default function LoginModalProvider({ children }: { children: React.React
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [next, setNext] = useState('');
 
   // Coming from the ExiusCart dashboard's Prodora link — the account email
   // is already known, so open straight into this step pre-filled instead of
@@ -26,8 +29,10 @@ export default function LoginModalProvider({ children }: { children: React.React
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const emailFromLink = params.get('email');
+    const nextFromLink = params.get('next') || '';
     if (emailFromLink) {
       setEmail(emailFromLink);
+      if (/^\/[a-z0-9/_-]*$/i.test(nextFromLink)) setNext(nextFromLink);   // a page on Prodora only, never another site
       setShow(true);
       window.history.replaceState({}, '', window.location.pathname);
     }
@@ -40,7 +45,7 @@ export default function LoginModalProvider({ children }: { children: React.React
     try {
       await prodoraAuth.requestAccess(email);
       setShow(false);
-      router.push('/browse');
+      router.push(next || '/browse');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Something went wrong. Please try again.');
     } finally {
@@ -49,7 +54,7 @@ export default function LoginModalProvider({ children }: { children: React.React
   };
 
   return (
-    <LoginModalContext.Provider value={{ open: () => setShow(true) }}>
+    <LoginModalContext.Provider value={{ open: (n?: unknown) => { setNext(typeof n === 'string' && /^\/[a-z0-9/_-]*$/i.test(n) ? n : ''); setShow(true); } }}>
       {children}
 
       {show && (

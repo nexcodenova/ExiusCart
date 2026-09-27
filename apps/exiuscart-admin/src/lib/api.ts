@@ -277,6 +277,13 @@ export const intelApi = {
   testSource: (source: string) => api.post('/admin/intel/test-source', { source }),
 };
 
+// ── Scoreboard and data spend meter (owner only) ──
+export const scoreboardApi = {
+  get: () => api.get('/admin/scoreboard'),
+  spend: () => api.get('/admin/scoreboard/spend'),
+  setManual: (key: string, value: number, note: string) => api.put('/admin/scoreboard/manual', { key, value, note: note || null }),
+};
+
 // ── Prodora intake (bulk add, review queue, publishing) ──
 export const intakeApi = {
   summary: () => api.get('/admin/intake/summary'),

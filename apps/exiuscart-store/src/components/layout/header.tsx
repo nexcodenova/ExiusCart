@@ -135,14 +135,15 @@ export function Header({ onMenuClick }: HeaderProps) {
   const toggleTheme = () => setTheme(resolvedTheme === 'light' ? 'dark' : 'light');
   const initials = userName ? userName.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : '';
 
-  function openProdora() {
+  function openProdora(path?: string) {
     if (isTheDersiShop) { setShowProdoraBlocked('thedersi'); return; }
     if (planType === 'free_trial') { setShowProdoraBlocked('free_trial'); return; }
     // Pass the account email through so Prodora can open straight into its
     // "confirm to continue" login step pre-filled, same as the old sidebar link.
+    const next = path && /^\/[a-z0-9/_-]*$/i.test(path) ? `&next=${encodeURIComponent(path)}` : '';
     const url = userEmail
-      ? `https://prodora.exiuscart.com?email=${encodeURIComponent(userEmail)}`
-      : 'https://prodora.exiuscart.com';
+      ? `https://prodora.exiuscart.com?email=${encodeURIComponent(userEmail)}${next}`
+      : `https://prodora.exiuscart.com${path && next ? path : ''}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
@@ -151,7 +152,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const openProdoraRef = useRef(openProdora);
   openProdoraRef.current = openProdora;
   useEffect(() => {
-    const handler = () => openProdoraRef.current();
+    const handler = (e: Event) => openProdoraRef.current((e as CustomEvent<{ path?: string }>).detail?.path);
     window.addEventListener('open-prodora', handler);
     return () => window.removeEventListener('open-prodora', handler);
   }, []);

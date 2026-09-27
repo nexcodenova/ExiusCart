@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { ChevronDown, ExternalLink, ArrowRight, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, ArrowRight, PanelLeftClose, PanelLeftOpen, Sparkles, X } from 'lucide-react';
 import { WinningIcon, MarketplaceIcon, StoreIcon, AcademyIcon, InstructionsIcon } from '@/components/SidebarIcons';
 import { shoppingApi, Category } from '@/lib/api';
 import TopBar from '@/components/TopBar';
@@ -79,6 +79,7 @@ export default function Sidebar() {
   // The same navigation is used by the desktop rail and the mobile / tablet drawer.
   const renderNav = (rail: boolean) => (
     <nav className="flex-1 overflow-y-auto overflow-x-hidden pb-4">
+      <SingleItem href="/ai" label="Prodora AI" icon={Sparkles} active={pathname === '/ai'} collapsed={rail} isNew />
       <Group id="research" label="Research Hub" href="/browse" icon={WinningIcon} collapsed={rail} open={open.research} onToggle={toggle} onOpen={openGroup} highlight={researchActive}>
         <NavItem href="/browse" label="Picked Products" active={view === 'all' || isCategory || onProduct} />
         <NavItem href="/browse?view=bestsellers" label="Global Bestsellers" active={view === 'bestsellers'} />
@@ -101,16 +102,16 @@ export default function Sidebar() {
   );
 
   const promo = !promoDismissed && (
-    <div className="relative mx-4 mb-3 rounded-xl bg-white/5 p-3.5 ring-1 ring-white/10">
-      <button type="button" onClick={() => setConfirmClose(true)} aria-label="Dismiss" className="absolute right-2 top-2 text-white/40 hover:text-white">
-        <X className="h-4 w-4" />
+    <div className="relative mx-4 mb-2 rounded-lg bg-white/5 px-3.5 py-3 ring-1 ring-white/10">
+      <button type="button" onClick={() => setConfirmClose(true)} aria-label="Dismiss" className="absolute right-1.5 top-1.5 text-white/40 hover:text-white">
+        <X className="h-3.5 w-3.5" />
       </button>
-      <p className="pr-5 text-sm font-bold">Ready to sell?</p>
-      <p className="mt-0.5 text-xs text-white/60">Import a product and it is live on your ExiusCart store.</p>
+      <p className="pr-5 text-sm font-bold leading-tight">Ready to sell?</p>
+      <p className="mt-1 text-xs leading-snug text-white/60">Import a product and it is live on your ExiusCart store.</p>
       <a
         href="https://store.exiuscart.com/dashboard"
         target="_blank" rel="noopener noreferrer"
-        className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] py-2 text-xs font-semibold transition hover:bg-[#1E4FC2]"
+        className="mt-2.5 flex items-center justify-center gap-1.5 rounded-md bg-[#2563EB] py-2 text-xs font-semibold transition hover:bg-[#1E4FC2]"
       >
         Open my store <ArrowRight className="h-3.5 w-3.5" />
       </a>
@@ -127,12 +128,12 @@ export default function Sidebar() {
 
         {renderNav(collapsed)}
 
-        <div className="shrink-0 bg-[#06122A] pt-3">
+        <div className="shrink-0 bg-[#06122A] pt-2">
           {!collapsed && promo}
           <button
             type="button"
             onClick={toggleCollapsed}
-            className={`flex w-full items-center border-t border-white/10 py-4 text-sm text-white/70 transition hover:text-white ${collapsed ? 'justify-center' : 'gap-3 px-6'}`}
+            className={`flex w-full items-center border-t border-white/10 py-3 text-sm text-white/70 transition hover:text-white ${collapsed ? 'justify-center' : 'gap-3 px-6'}`}
           >
             {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             {!collapsed && 'Hide menu'}
@@ -230,9 +231,9 @@ function Group({
 }
 
 function SingleItem({
-  href, label, icon: Icon, active, collapsed, soon,
+  href, label, icon: Icon, active, collapsed, soon, isNew,
 }: {
-  href: string; label: string; icon: React.ElementType; active: boolean; collapsed: boolean; soon?: boolean;
+  href: string; label: string; icon: React.ElementType; active: boolean; collapsed: boolean; soon?: boolean; isNew?: boolean;
 }) {
   return (
     <Link
@@ -246,6 +247,7 @@ function SingleItem({
         <>
           <span className="flex-1">{label}</span>
           {soon && <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">Soon</span>}
+          {isNew && <span className="rounded bg-[#3B82F6] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">New</span>}
         </>
       )}
     </Link>

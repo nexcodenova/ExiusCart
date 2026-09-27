@@ -77,3 +77,16 @@ class KeywordTrend(Base):
     geo = Column(String(2), nullable=False, default="US", server_default="US")
     payload = Column(JSONB, nullable=False)
     fetched_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ScoreboardEntry(Base):
+    """A scoreboard number a person keeps by hand, because no system holds it: customer interviews done, case
+    studies written, and major features built without validation. The rest of the scoreboard is worked out from data."""
+    __tablename__ = "scoreboard_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(40), nullable=False, unique=True, index=True)
+    value = Column(Integer, nullable=False, default=0, server_default="0")
+    note = Column(String(500), nullable=True)
+    updated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
