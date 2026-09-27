@@ -2,10 +2,12 @@
 
 Owner-only: "email-domain" is not in shop_access.PATH_AREAS, so the staff gate keeps it
 owner-only. The domain itself is registered with Amazon SES (see app/core/email_domains.py)."""
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
@@ -128,4 +130,72 @@ def email_activity(shop_id: int, db: Session = Depends(get_db), user: User = Dep
             "id": r.id, "recipient": r.recipient, "subject": r.subject, "status": r.status, "detail": r.detail,
             "bounce_type": r.bounce_type, "created_at": r.created_at.isoformat() if r.created_at else None,
         } for r in rows],
+    }
+
+
+# ── Email monitor: the seller's own view of the mail sent for their store ─────────────────────────────
+# Open to every plan (TheDersi sellers included): it only ever shows this shop's own mail. Owner-only for staff,
+# because "email-monitor" is not in shop_access.PATH_AREAS.
+
+_PROBLEM_STATES = ("bounced", "complained", "failed", "rejected")
+
+
+def _like(term: str) -> str:
+    return "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+@router.get("/shops/{shop_id}/email-monitor")
+def email_monitor_overview(shop_id: int, days: int = 7, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    shop = _shop(db, shop_id, user)
+    days = min(max(days, 1), 90)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    health = ed.health(db, shop_id=shop.id, days=days)
+    by_status = dict(db.query(EmailEvent.status, func.count(EmailEvent.id))
+                     .filter(EmailEvent.shop_id == shop.id, EmailEvent.created_at >= cutoff).group_by(EmailEvent.status).all())
+    per_day: dict = {}
+    for d, status, n in (db.query(func.date(EmailEvent.created_at).label("d"), EmailEvent.status, func.count(EmailEvent.id))
+                         .filter(EmailEvent.shop_id == shop.id, EmailEvent.created_at >= cutoff).group_by("d", EmailEvent.status).all()):
+        row = per_day.setdefault(str(d), {"date": str(d), "sent": 0, "problems": 0})
+        if status in ("sent", "delayed", "delivered", "bounced", "complained"):
+            row["sent"] += n
+        if status in _PROBLEM_STATES:
+            row["problems"] += n
+    ctl = db.query(EmailShopControl).filter(EmailShopControl.shop_id == shop.id).first()
+    return {
+        "days": days,
+        "totals": {**health, "failed": by_status.get("failed", 0), "suppressed": by_status.get("suppressed", 0),
+                   "all": sum(by_status.values())},
+        "limits": {"bounce": ed.BOUNCE_LIMIT, "complaint": ed.COMPLAINT_LIMIT, "min_sample": ed.MIN_SAMPLE},
+        "per_day": sorted(per_day.values(), key=lambda r: r["date"]),
+        "marketing_paused": bool(ctl and ctl.paused),
+        "marketing_paused_reason": ctl.reason if ctl and ctl.paused else None,
+    }
+
+
+@router.get("/shops/{shop_id}/email-monitor/events")
+def email_monitor_events(shop_id: int, status: Optional[str] = None, problems: bool = False, q: Optional[str] = None,
+                         before_id: Optional[int] = None, limit: int = 30,
+                         db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    shop = _shop(db, shop_id, user)
+    limit = min(max(limit, 1), 100)
+    query = db.query(EmailEvent).filter(EmailEvent.shop_id == shop.id)
+    if status:
+        query = query.filter(EmailEvent.status == status)
+    if problems:
+        query = query.filter(EmailEvent.status.in_(_PROBLEM_STATES + ("suppressed", "blocked")))
+    if q and q.strip():
+        like = _like(q.strip()[:80])
+        query = query.filter(or_(EmailEvent.recipient.ilike(like, escape="\\"), EmailEvent.subject.ilike(like, escape="\\")))
+    if before_id:
+        query = query.filter(EmailEvent.id < before_id)
+    rows = query.order_by(EmailEvent.id.desc()).limit(limit + 1).all()
+    more = len(rows) > limit
+    rows = rows[:limit]
+    iso = lambda v: v.isoformat() if v else None  # noqa: E731
+    return {
+        "events": [{
+            "id": r.id, "created_at": iso(r.created_at), "status": r.status, "kind": r.kind, "from_address": r.from_address,
+            "recipient": r.recipient, "subject": r.subject, "bounce_type": r.bounce_type, "detail": r.detail,
+        } for r in rows],
+        "has_more": more, "next_before_id": rows[-1].id if rows and more else None,
     }

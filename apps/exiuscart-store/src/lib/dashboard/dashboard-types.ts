@@ -10,7 +10,7 @@ export interface DashboardStats {
   channelBreakdown?: { source: string; sales: number; orders: number }[];
   activityWindow?: string;
   activityBuckets?: { label: string; orders: number; sales: number }[];
-  topProducts?: { name: string; revenue: number; qty: number; image_url?: string | null }[];
+  topProducts?: { name: string; revenue: number; qty: number; views?: number; image_url?: string | null }[];
   avgOrderValue?: number; fulfillmentRate?: number; cancellationRate?: number;
   thisMonthRevenue?: number; lastMonthRevenue?: number; revenueMoM?: number;
   newCustomersMonth?: number;

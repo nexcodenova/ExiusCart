@@ -1233,12 +1233,24 @@ def get_dashboard_stats(
     top_product_images = {
         p.id: p.image_url for p in db.query(Product.id, Product.image_url).filter(Product.id.in_(top_product_ids)).all()
     } if top_product_ids else {}
+    # Real product-page loads (Product.view_count, all time), never guessed — shown next to the sales on one list.
+    top_product_views = {
+        p.id: int(p.view_count or 0) for p in db.query(Product.id, Product.view_count).filter(Product.id.in_(top_product_ids)).all()
+    } if top_product_ids else {}
     top_products = [
         {
             "name": r[1] or "Unknown", "revenue": float(r[2] or 0), "qty": int(r[3] or 0),
-            "image_url": top_product_images.get(r[0]),
+            "image_url": top_product_images.get(r[0]), "views": top_product_views.get(r[0], 0),
         }
         for r in top_products_rows
+    ]
+    # Products people look at a lot but have not sold in this period still belong on the list (0 sold, their views).
+    viewed_extra = db.query(Product).filter(Product.shop_id == shop_id, Product.view_count > 0)
+    if top_product_ids:
+        viewed_extra = viewed_extra.filter(~Product.id.in_(top_product_ids))
+    top_products += [
+        {"name": p.name, "revenue": 0.0, "qty": 0, "image_url": p.image_url, "views": int(p.view_count or 0)}
+        for p in viewed_extra.order_by(Product.view_count.desc(), Product.id.asc()).limit(3).all()
     ]
 
     # KPI: avg order value (last 30 days, non-cancelled)
@@ -1606,7 +1618,9 @@ def get_dashboard_stats(
         active_conns = db.query(ChannelConnection).filter(
             ChannelConnection.shop_id == shop_id, ChannelConnection.is_active == True,
         ).all()
-        last_sync = max((c.last_synced_at for c in active_conns if c.last_synced_at), default=None)
+        # A connection is stamped by a manual sync (last_synced_at) and by the automatic order sync
+        # (last_auto_synced_at); the real "last sync" is the newest of every stamp, not only the manual one.
+        last_sync = max((t for c in active_conns for t in (c.last_synced_at, c.last_auto_synced_at) if t), default=None)
         adv["storeHealth"] = {
             "channelsConnected": len(active_conns),
             "lastSyncedAt": last_sync.isoformat() if last_sync else None,

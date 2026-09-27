@@ -33,7 +33,7 @@ export function dateRangeLabel(v: DateRangeValue): string {
 // components/ui/calendar.tsx already existed, just never wired to an
 // actual date-picker UI anywhere in the app until this one) alongside the
 // same quick-preset shortcuts the reference design showed.
-export default function DateRangePicker({ value, onChange }: { value: DateRangeValue; onChange: (v: DateRangeValue) => void }) {
+export default function DateRangePicker({ value, onChange, compact = false }: { value: DateRangeValue; onChange: (v: DateRangeValue) => void; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const selectedRange: DateRange | undefined = value.preset === 'custom' && value.from
     ? { from: new Date(value.from), to: value.to ? new Date(value.to) : undefined }
@@ -42,7 +42,7 @@ export default function DateRangePicker({ value, onChange }: { value: DateRangeV
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="w-full h-10 px-3 flex items-center gap-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30">
+        <button className={`w-full ${compact ? 'h-9' : 'h-10'} px-3 flex items-center gap-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30`}>
           <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
           <span className="truncate">{dateRangeLabel(value)}</span>
         </button>

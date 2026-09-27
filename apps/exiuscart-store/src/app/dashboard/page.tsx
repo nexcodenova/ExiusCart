@@ -13,7 +13,6 @@ import { UsageBanner } from '@/components/usage-banner';
 import { OverviewCards } from '@/components/dashboard/overview-cards';
 import { RevenueTrend } from '@/components/dashboard/revenue-trend';
 import { RevenueByChannel } from '@/components/dashboard/revenue-by-channel';
-import { OrdersByStatus } from '@/components/dashboard/orders-by-status';
 import { PerformanceRow } from '@/components/dashboard/performance-row';
 import { BusinessHealth } from '@/components/dashboard/business-health';
 import { OrderActivityCharts } from '@/components/dashboard/order-activity-charts';
@@ -71,8 +70,7 @@ export default function DashboardPage() {
         <RevenueByChannel stats={stats} fmt={fmt} periodLabel={dateRangeLabel(dateRange)} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <OrdersByStatus stats={stats} />
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-3">
         <TopProductsPanel stats={stats} fmt={fmt} periodLabel={dateRangeLabel(dateRange)} />
         <CustomersByCountry stats={stats} />
       </div>

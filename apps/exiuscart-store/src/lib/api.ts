@@ -1457,6 +1457,13 @@ export interface EmailDomainInfo {
   dkim_status: string | null; records: EmailDomainRecord[]; verified_at: string | null; last_checked_at: string | null; suspended_reason: string | null;
 }
 export interface EmailHealth { sent: number; delivered: number; bounced: number; hard_bounced: number; complained: number; blocked: number; bounce_rate: number; complaint_rate: number }
+export interface EmailMonitorEvent { id: number; created_at: string | null; status: string; kind: string | null; from_address: string | null; recipient: string | null; subject: string | null; bounce_type: string | null; detail: string | null }
+export const emailMonitorApi = {
+  overview: (shopId: string, days: number) =>
+    api.get<{ days: number; totals: EmailHealth & { failed: number; suppressed: number; all: number }; limits: { bounce: number; complaint: number; min_sample: number }; per_day: { date: string; sent: number; problems: number }[]; marketing_paused: boolean; marketing_paused_reason: string | null }>(`/shops/${shopId}/email-monitor`, { params: { days } }),
+  events: (shopId: string, params: { status?: string; problems?: boolean; q?: string; before_id?: number; limit?: number }) =>
+    api.get<{ events: EmailMonitorEvent[]; has_more: boolean; next_before_id: number | null }>(`/shops/${shopId}/email-monitor/events`, { params }),
+};
 export const emailDomainApi = {
   get: (shopId: string) =>
     api.get<{ eligible: boolean; available: boolean; domain: EmailDomainInfo | null; marketing_paused: boolean; marketing_paused_reason: string | null; shop_email: string | null; shop_name: string }>(`/shops/${shopId}/email-domain`),
