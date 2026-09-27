@@ -337,6 +337,16 @@ _MIGRATIONS = [
             ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_shop_id_fkey FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE SET NULL;
         END IF;
     END $$;""",
+    # Branches (Store Settings > Branches) is retired — a single-location, all-in-one
+    # POS/ecommerce app has no use for it, and nothing else in the schema references it.
+    # Only drops the table if it is genuinely empty, so any seller who actually created a
+    # real branch keeps their data (and this stays a no-op harmless skip for them).
+    """DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'branches')
+           AND NOT EXISTS (SELECT 1 FROM branches LIMIT 1) THEN
+            DROP TABLE branches;
+        END IF;
+    END $$;""",
 ]
 
 for _sql in _MIGRATIONS:

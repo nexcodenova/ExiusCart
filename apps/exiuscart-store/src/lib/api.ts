@@ -1302,13 +1302,6 @@ export const loyaltyApi = {
   lookup: (shopId: string, phone: string) => api.post(`/shops/${shopId}/loyalty/accounts/lookup`, { phone }),
 };
 
-export const branchApi = {
-  getAll: (shopId: string) => api.get(`/shops/${shopId}/branches`),
-  create: (shopId: string, data: any) => api.post(`/shops/${shopId}/branches`, data),
-  update: (shopId: string, id: number, data: any) => api.patch(`/shops/${shopId}/branches/${id}`, data),
-  delete: (shopId: string, id: number) => api.delete(`/shops/${shopId}/branches/${id}`),
-  setMain: (shopId: string, id: number) => api.patch(`/shops/${shopId}/branches/${id}/set-main`, {}),
-};
 
 // ── Social Media Post Automation (Facebook/Instagram/TikTok) ─────────────
 export const socialPostingApi = {
@@ -1466,7 +1459,7 @@ export const emailMonitorApi = {
 };
 export const emailDomainApi = {
   get: (shopId: string) =>
-    api.get<{ eligible: boolean; available: boolean; domain: EmailDomainInfo | null; marketing_paused: boolean; marketing_paused_reason: string | null; shop_email: string | null; shop_name: string }>(`/shops/${shopId}/email-domain`),
+    api.get<{ eligible: boolean; blocked_by_thedersi: boolean; available: boolean; domain: EmailDomainInfo | null; marketing_paused: boolean; marketing_paused_reason: string | null; shop_email: string | null; shop_name: string }>(`/shops/${shopId}/email-domain`),
   add: (shopId: string, data: { domain: string; from_local: string }) => api.post<EmailDomainInfo>(`/shops/${shopId}/email-domain`, data),
   check: (shopId: string) => api.post<EmailDomainInfo>(`/shops/${shopId}/email-domain/check`),
   rename: (shopId: string, data: { domain: string; from_local: string }) => api.put<EmailDomainInfo>(`/shops/${shopId}/email-domain`, data),

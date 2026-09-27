@@ -66,6 +66,10 @@ def get_email_domain(shop_id: int, db: Session = Depends(get_db), user: User = D
     ctl = db.query(EmailShopControl).filter(EmailShopControl.shop_id == shop.id).first()
     return {
         "eligible": ed._is_scale(db, shop.id) and not is_thedersi_restricted_shop(shop.id, db),
+        # So the frontend can tell "not eligible, upgrade to Scale" apart from "not eligible, and never will be on
+        # any plan through TheDersi" instead of guessing from a different signal (like a connected channel, which
+        # is also true for TheDersi's own unrestricted Official tier).
+        "blocked_by_thedersi": is_thedersi_restricted_shop(shop.id, db),
         "available": ed.ses_configured(),
         "domain": _dom_out(dom),
         "marketing_paused": bool(ctl and ctl.paused),

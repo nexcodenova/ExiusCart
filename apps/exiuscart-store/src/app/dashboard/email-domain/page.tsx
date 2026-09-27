@@ -97,6 +97,7 @@ export default function EmailDomainPage() {
   };
   const saveLocal = () => act('rename', async () => { await emailDomainApi.rename(shopId, { domain: dom!.domain, from_local: editLocal || 'invoices' }); setEditLocal(null); }, 'Sender name updated.');
 
+  const isTheDersi = !!info?.blocked_by_thedersi;
   const shopName = info?.shop_name || 'Your store';
   const previewFrom = dom?.status === 'verified' ? dom.from_address : `noreply@exiuscart.com`;
   const step: 1 | 2 | 3 = !dom ? 1 : dom.status === 'verified' || dom.status === 'suspended' ? 3 : 2;
@@ -109,7 +110,7 @@ export default function EmailDomainPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Email Domain</h1>
-            <Badge variant="default"><Crown className="mr-1 h-3 w-3" />Scale</Badge>
+            {!isTheDersi && <Badge variant="default"><Crown className="mr-1 h-3 w-3" />Scale</Badge>}
           </div>
           <p className="text-sm text-muted-foreground">Send invoices and customer emails from your own address, like invoices@yourstore.com</p>
         </div>
@@ -134,7 +135,19 @@ export default function EmailDomainPage() {
         </CardContent>
       </Card>
 
-      {info && !info.eligible && (
+      {info && !info.eligible && isTheDersi && (
+        <Card>
+          <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-muted"><Mail className="h-6 w-6 text-muted-foreground" /></span>
+            <div className="flex-1">
+              <p className="text-base font-semibold text-foreground">Not available on TheDersi stores</p>
+              <p className="mt-1 text-sm text-muted-foreground">Your emails go out under your store name today. Sending from your own domain is a direct ExiusCart feature and isn't offered through TheDersi, on any plan.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {info && !info.eligible && !isTheDersi && (
         <Card>
           <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10"><Crown className="h-6 w-6 text-primary" /></span>

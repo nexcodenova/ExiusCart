@@ -34,7 +34,6 @@ from app.models.expense import Expense
 from app.models.credit_note import CreditNote
 from app.models.recurring_invoice import RecurringInvoice
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction
-from app.models.branch import Branch
 from app.models.wholesale import WholesaleProduct, WholesaleBuyer, WholesaleOrder
 from app.models.dropship import DropshipConnection, DropshipProductLink, DropshipOrder
 from app.models.blog import BlogPost

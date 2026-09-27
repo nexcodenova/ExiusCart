@@ -43,6 +43,9 @@ interface MenuItem {
   // list view. Collapsed (icon-only) sidebar mode ignores this and the item
   // behaves like a normal link — no room to show a second nested level there.
   nestedKey?: 'channels' | 'suppliers';
+  // A dropdown under this item (e.g. Team > Roles & Permissions, Activity Log). The collapsed (icon-only) sidebar shows
+  // just the item itself, which links to its own page.
+  children?: { href: string; label: string; icon: React.ElementType }[];
 }
 interface MenuGroup {
   id: string;
@@ -166,7 +169,12 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/campaigns',          label: 'Campaigns',         icon: Rocket         },
       { href: '/dashboard/leads',              label: 'Lead Management',   icon: Target         },
       { href: '/dashboard/customer-segments',  label: 'Customer Segments', icon: Users2         },
-      { href: '/dashboard/email-marketing',    label: 'Email Marketing',   icon: Mail           },
+      { href: '/dashboard/email-marketing',    label: 'Email Marketing',   icon: Mail,
+        children: [
+          { href: '/dashboard/email-marketing', label: 'Campaigns',     icon: Mail       },
+          { href: '/dashboard/email-domain',    label: 'Email Domain',  icon: MailCheck  },
+          { href: '/dashboard/email-monitor',   label: 'Email Monitor', icon: MailSearch },
+        ] },
       { href: '/dashboard/sms-marketing',      label: 'SMS Marketing',     icon: MessageSquare  },
       { href: '/dashboard/whatsapp-marketing', label: 'WhatsApp Marketing', icon: MessageCircle },
       { href: '/dashboard/drip-flows',         label: 'Abandoned Cart',    icon: Undo2          },
@@ -256,23 +264,22 @@ const GROUPS: MenuGroup[] = [
     items: [
       { href: '/dashboard/settings',                    label: 'Store Settings',      icon: Settings   },
       { href: '/dashboard/settings?tab=general',        label: 'Business',            icon: Store      },
-      { href: '/dashboard/branches',                    label: 'Branches',            icon: GitBranch  },
-      { href: '/dashboard/staff',                        label: 'Team',                icon: Shield     },
-      { href: '/dashboard/staff/roles',                  label: 'Roles & Permissions', icon: Shield     },
+      { href: '/dashboard/staff',                        label: 'Team',                icon: Shield,
+        children: [
+          { href: '/dashboard/staff',          label: 'Members',             icon: Users2   },
+          { href: '/dashboard/staff/roles',    label: 'Roles & Permissions', icon: KeyRound },
+          { href: '/dashboard/staff/activity', label: 'Activity Log',        icon: History  },
+        ] },
       { href: '/dashboard/billing',                      label: 'Billing',             icon: CreditCard },
-      { href: '/dashboard/email-domain',                 label: 'Email Domain',        icon: MailCheck  },
-      { href: '/dashboard/email-monitor',                label: 'Email Monitor',       icon: MailSearch },
-      { href: '/dashboard/settings?tab=notifications',  label: 'Notifications',       icon: Bell       },
       { href: '/dashboard/settings?tab=security',        label: 'Security',            icon: Shield     },
       { href: '/dashboard/customization',                label: 'Customization',       icon: Paintbrush },
-      { href: '/dashboard/settings/webhooks',            label: 'Developer',           icon: Wrench     },
     ],
   },
 ];
 
 // Flat list for mobile bottom nav / external use — untouched, MobileBottomNav
 // still reads these directly and keeps working exactly as before.
-export const menuItems = GROUPS.flatMap(g => g.items);
+export const menuItems: { href: string; label: string; icon: React.ElementType }[] = GROUPS.flatMap(g => g.items.flatMap(i => [i, ...(i.children ?? []).filter(c => c.href !== i.href)]));
 
 // Growth/Scale only. ai-commerce/product-studio/mcp aren't built yet (all
 // "Coming Soon" stubs) but are locked here anyway, so the access rule is
@@ -395,7 +402,12 @@ export function ShopSidebar() {
   const visibleGroups = useMemo(() => {
     if (access.isOwner) return GROUPS;
     return GROUPS
-      .map((g) => ({ ...g, items: g.items.filter((i) => access.canPath(i.href.split('?')[0])) }))
+      .map((g) => ({
+        ...g,
+        items: g.items
+          .map((i) => (i.children ? { ...i, children: i.children.filter((c) => access.canPath(c.href.split('?')[0])) } : i))
+          .filter((i) => access.canPath(i.href.split('?')[0]) || (i.children?.length ?? 0) > 0),
+      }))
       .filter((g) => g.items.length > 0);
   }, [access]);
   const [connectedChannels, setConnectedChannels] = useState<{ channel_type: string }[]>([]);
@@ -431,6 +443,13 @@ export function ShopSidebar() {
     }).catch(() => {});
   }, []);
 
+  // Open a dropdown by itself when you are on one of its pages.
+  useEffect(() => {
+    const parents = GROUPS.flatMap((g) => g.items).filter((i) => i.children && i.children.some((c) => { const base = c.href.split('?')[0]; return pathname === base || pathname.startsWith(base + '/'); }));
+    if (parents.length) setOpenNested((prev) => new Set([...Array.from(prev), ...parents.map((p) => p.href)]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   function toggleNested(href: string) {
     setOpenNested((prev) => {
       const next = new Set(prev);
@@ -453,7 +472,7 @@ export function ShopSidebar() {
   // matching also checks that every query param the item's href declares is
   // actually present in the current URL, and ties are broken toward the
   // more specific (longer path, then more query params) match.
-  function matchesItem(item: MenuItem) {
+  function matchesItem(item: { href: string }) {
     const [path, queryStr] = item.href.split('?');
     if (path === '/dashboard') return pathname === path;
     if (!(pathname === path || pathname.startsWith(path + '/'))) return false;
@@ -466,12 +485,12 @@ export function ShopSidebar() {
   }
 
   function isGroupActive(group: MenuGroup) {
-    return group.items.some(matchesItem);
+    return group.items.some((i) => matchesItem(i) || (i.children ?? []).some(matchesItem));
   }
 
-  function isItemActive(item: MenuItem) {
+  function isItemActive(item: { href: string }) {
     if (!matchesItem(item)) return false;
-    const candidates = GROUPS.flatMap(g => g.items).filter(matchesItem);
+    const candidates = menuItems.filter(matchesItem);
     const best = candidates.sort((a, b) => {
       const [aPath, aQuery] = a.href.split('?');
       const [bPath, bQuery] = b.href.split('?');
@@ -621,6 +640,44 @@ export function ShopSidebar() {
                                   </div>
                                 )}
                               </SidebarMenuItem>
+                            );
+                          }
+                          if (item.children && item.children.length > 0 && !collapsed) {
+                            const dropOpen = openNested.has(item.href);
+                            const anyChildActive = item.children.some((c) => isItemActive(c));
+                            return (
+                              <div key={item.href}>
+                                <SidebarMenuItem>
+                                  <SidebarMenuButton
+                                    onClick={() => toggleNested(item.href)}
+                                    isActive={anyChildActive}
+                                    className={anyChildActive ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}
+                                  >
+                                    <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />
+                                    <span className="font-medium flex-1 text-left">{item.label}</span>
+                                    <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${dropOpen ? '' : '-rotate-90'}`} />
+                                  </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                {dropOpen && (
+                                  <SidebarMenu className="mt-0.5 space-y-0.5 ml-4 pl-2 border-l border-sidebar-border/60">
+                                    {item.children.map((c) => {
+                                      const ChildIcon = c.icon;
+                                      const childActive = isItemActive(c);
+                                      return (
+                                        <SidebarMenuItem key={c.href}>
+                                          <SidebarMenuButton asChild isActive={childActive}
+                                            className={childActive ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}>
+                                            <Link href={c.href}>
+                                              <ChildIcon className="!w-[16px] !h-[16px] flex-shrink-0" />
+                                              <span className="font-medium">{c.label}</span>
+                                            </Link>
+                                          </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                      );
+                                    })}
+                                  </SidebarMenu>
+                                )}
+                              </div>
                             );
                           }
                           if (item.nestedKey && !collapsed) {
