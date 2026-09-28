@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, Index, func
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 
@@ -27,6 +28,11 @@ class IntakeItem(Base):
     status = Column(String(20), nullable=False, default="queued", server_default="queued")
     product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
     error = Column(Text, nullable=True)
+
+    # The category chosen by hand when the links were pasted (optional). When set, the importer puts the
+    # product straight in this category instead of the supplier's own free-text category name.
+    category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
+    category = relationship("Category")
 
     verdict = Column(String(10), nullable=True)                 # TEST | WATCH | AVOID
     confidence = Column(String(10), nullable=True)

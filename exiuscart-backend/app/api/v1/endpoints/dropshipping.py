@@ -27,12 +27,12 @@ import re
 import html
 import httpx
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import List, Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db, SessionLocal
@@ -2617,6 +2617,74 @@ async def fulfill_order(
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)
     return await _fulfill_order_core(shop_id, order_id, data.supplier_type, db)
+
+
+def _pick_supplier_for_order(shop_id: int, order_id: int, db: Session) -> Optional[str]:
+    """Which one connected supplier every item in this order is linked to, the same way automatic fulfillment
+    picks one (app/api/v1/endpoints/dropshipping.py: _bg_try_auto_fulfill) — the supplier the seller marked
+    primary first — or None if no single connected supplier covers every item. Used by the bulk-fulfill action
+    below, where the seller picks orders, not suppliers, so this has to work it out itself."""
+    from app.models.order import OrderItem
+    item_product_ids = [i.product_id for i in db.query(OrderItem).filter(OrderItem.order_id == order_id).all() if i.product_id]
+    if not item_product_ids:
+        return None
+    conns = db.query(DropshipConnection).filter(DropshipConnection.shop_id == shop_id, DropshipConnection.is_active == True).all()
+    if not conns:
+        return None
+    all_links = db.query(DropshipProductLink).filter(DropshipProductLink.product_id.in_(item_product_ids)).all()
+    conns = sorted(conns, key=lambda c: (-sum(1 for l in all_links if l.supplier_type == c.supplier_type and l.is_primary), c.id))
+    for conn in conns:
+        linked_ids = {row.product_id for row in all_links if row.supplier_type == conn.supplier_type}
+        if set(item_product_ids) <= linked_ids:
+            return conn.supplier_type
+    return None
+
+
+class BulkFulfillIn(BaseModel):
+    order_ids: List[int] = Field(min_length=1, max_length=100)
+
+
+@router.post("/shops/{shop_id}/dropship/orders/bulk-fulfill")
+async def bulk_fulfill_orders(
+    shop_id: int,
+    data: BulkFulfillIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Sends several orders to their suppliers in one action, instead of opening Fulfill Order on each one by
+    hand. The supplier for each order is worked out automatically (same logic as automatic fulfillment), so the
+    seller only picks which orders, never which supplier. One order's failure never stops the rest."""
+    _shop_or_404(shop_id, current_user, db)
+    plan = _get_plan(shop_id, db)
+    fulfilled, skipped, failed = [], [], []
+    for order_id in data.order_ids[:100]:
+        order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+        if not order:
+            skipped.append({"order_id": order_id, "order_number": None, "reason": "Order not found."})
+            continue
+        if order.fulfillment_status == "sent" or db.query(DropshipOrder.id).filter(DropshipOrder.order_id == order_id).first():
+            skipped.append({"order_id": order_id, "order_number": order.order_number, "reason": "Already sent to a supplier."})
+            continue
+        if (order.payment_status or "").lower() != "paid":
+            skipped.append({"order_id": order_id, "order_number": order.order_number, "reason": "Not paid yet."})
+            continue
+        supplier_type = _pick_supplier_for_order(shop_id, order_id, db)
+        if not supplier_type:
+            skipped.append({"order_id": order_id, "order_number": order.order_number, "reason": "No connected supplier covers every item in this order."})
+            continue
+        try:
+            _check_supplier_allowed(plan, supplier_type, shop_id, db)
+        except HTTPException as e:
+            skipped.append({"order_id": order_id, "order_number": order.order_number, "reason": e.detail if isinstance(e.detail, str) else "Not available on your plan."})
+            continue
+        try:
+            await _fulfill_order_core(shop_id, order_id, supplier_type, db)
+            fulfilled.append({"order_id": order_id, "order_number": order.order_number, "supplier_type": supplier_type})
+        except HTTPException as e:
+            db.rollback()
+            reason = e.detail if isinstance(e.detail, str) else (e.detail.get("message") if isinstance(e.detail, dict) else "Failed to send to the supplier.")
+            failed.append({"order_id": order_id, "order_number": order.order_number, "supplier_type": supplier_type, "reason": reason})
+    return {"fulfilled": fulfilled, "skipped": skipped, "failed": failed}
 
 
 @router.post("/shops/{shop_id}/dropship/orders/{order_id}/cj-preview")

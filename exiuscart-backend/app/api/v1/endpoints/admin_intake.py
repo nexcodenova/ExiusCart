@@ -21,7 +21,7 @@ from app.core.database import get_db
 from app.intel import engine, intake
 from app.models.dropship import DropshipProductLink
 from app.models.intake import IntakeItem
-from app.models.product import Product
+from app.models.product import Category, Product
 from app.models.user import User
 
 router = APIRouter()
@@ -35,6 +35,7 @@ def _item_out(it: IntakeItem, p: Optional[Product], link: Optional[DropshipProdu
         "id": it.id, "batch_id": it.batch_id, "status": it.status, "error": it.error, "source_url": it.source_url,
         "supplier": it.supplier_type, "verdict": it.verdict, "confidence": it.confidence, "margin_pct": it.margin_pct,
         "competitor_count": it.competitor_count, "reject_reason": it.reject_reason,
+        "category_id": it.category_id, "category_name": it.category.name if it.category else None,
         "created_at": it.created_at.isoformat() if it.created_at else None,
         "approved_at": it.approved_at.isoformat() if it.approved_at else None,
         "published_at": it.published_at.isoformat() if it.published_at else None,
@@ -101,8 +102,20 @@ def list_items(status: Optional[str] = None, verdict: Optional[str] = None, q: O
 
 # ── Adding ───────────────────────────────────────────────────────────────────
 
+def _valid_catalogue_category(db: Session, category_id: Optional[int]) -> Optional[int]:
+    """None, or a category_id that really is one of the catalogue's own categories — never trusted blind,
+    since it comes straight from the request body."""
+    if not category_id:
+        return None
+    cat = db.query(Category).filter(Category.id == category_id, Category.shop_id.is_(None)).first()
+    if not cat:
+        raise HTTPException(status_code=422, detail="That category was not found.")
+    return cat.id
+
+
 class LinksIn(BaseModel):
     text: str = Field(min_length=1, max_length=60000)
+    category_id: Optional[int] = None    # picked by hand for this whole paste; blank keeps the old auto-detect behaviour
 
 
 @router.post("/admin/intake/links", status_code=201)
@@ -110,19 +123,22 @@ def add_links(body: LinksIn, db: Session = Depends(get_db), user: User = Depends
     parsed = intake.parse_links(body.text)
     if not parsed:
         raise HTTPException(status_code=422, detail="Paste at least one product link.")
-    out = intake.create_items(db, parsed, user.id)
+    category_id = _valid_catalogue_category(db, body.category_id)
+    out = intake.create_items(db, parsed, user.id, category_id=category_id)
     intake.submit(out["item_ids"])
     return {"batch_id": out["batch_id"], "counts": out["counts"], "results": out["results"]}
 
 
 class PidsIn(BaseModel):
     cj_pids: List[str] = Field(min_length=1, max_length=100)
+    category_id: Optional[int] = None
 
 
 @router.post("/admin/intake/cj-pids", status_code=201)
 def add_cj_pids(body: PidsIn, db: Session = Depends(get_db), user: User = Depends(require_admin_perm("prodora.add"))):
     """From the CJ finder: queue the chosen CJ products."""
-    out = intake.create_items(db, intake.cj_links_from_pids(body.cj_pids), user.id)
+    category_id = _valid_catalogue_category(db, body.category_id)
+    out = intake.create_items(db, intake.cj_links_from_pids(body.cj_pids), user.id, category_id=category_id)
     intake.submit(out["item_ids"])
     return {"batch_id": out["batch_id"], "counts": out["counts"], "results": out["results"]}
 

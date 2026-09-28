@@ -1088,6 +1088,14 @@ export const dropshipApi = {
     api.delete(`/shops/${shopId}/products/${productId}/dropship-link/${supplierType}`),
   fulfillOrder: (shopId: string, orderId: string | number, supplierType: string) =>
     api.post(`/shops/${shopId}/orders/${orderId}/dropship-fulfill`, { supplier_type: supplierType }),
+  // Sends several orders to their suppliers in one action — each order's supplier is worked out automatically
+  // (same logic as auto-fulfill), so this only ever takes order ids, never a supplier choice.
+  bulkFulfillOrders: (shopId: string, orderIds: number[]) =>
+    api.post<{
+      fulfilled: { order_id: number; order_number: string | null; supplier_type: string }[];
+      skipped: { order_id: number; order_number: string | null; reason: string }[];
+      failed: { order_id: number; order_number: string | null; supplier_type: string; reason: string }[];
+    }>(`/shops/${shopId}/dropship/orders/bulk-fulfill`, { order_ids: orderIds }),
   getDropshipOrders: (shopId: string, params?: { status?: string; supplier_type?: string }) =>
     api.get(`/shops/${shopId}/dropship/orders`, { params }),
   getReturns: (shopId: string, status?: string) =>

@@ -347,6 +347,8 @@ _MIGRATIONS = [
             DROP TABLE branches;
         END IF;
     END $$;""",
+    # The category chosen by hand when a batch of supplier links is pasted into Intake.
+    "ALTER TABLE intake_items ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL;",
 ]
 
 for _sql in _MIGRATIONS:

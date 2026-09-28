@@ -141,8 +141,11 @@ def _duplicate_of(db: Session, kind: str, ref: str) -> Optional[str]:
     return None
 
 
-def create_items(db: Session, parsed: List[ParsedLink], user_id: Optional[int]) -> dict:
-    """Queue every importable link. Returns per-link results and the new item ids."""
+def create_items(db: Session, parsed: List[ParsedLink], user_id: Optional[int], category_id: Optional[int] = None) -> dict:
+    """Queue every importable link. Returns per-link results and the new item ids.
+
+    category_id: the category picked by hand for this whole batch (optional). When set, every item imported
+    from it is put straight in that category instead of the supplier's own free-text category name."""
     batch = str(uuid.uuid4())
     results, ids = [], []
     for p in parsed:
@@ -153,7 +156,7 @@ def create_items(db: Session, parsed: List[ParsedLink], user_id: Optional[int]) 
         if dup:
             results.append({"link": p.url, "status": "duplicate", "reason": dup})
             continue
-        it = IntakeItem(batch_id=batch, source_url=p.url, supplier_type=p.kind, supplier_ref=p.ref, status="queued", added_by_user_id=user_id)
+        it = IntakeItem(batch_id=batch, source_url=p.url, supplier_type=p.kind, supplier_ref=p.ref, status="queued", added_by_user_id=user_id, category_id=category_id)
         db.add(it)
         db.flush()
         ids.append(it.id)
@@ -191,6 +194,19 @@ async def _cj_us_shipping(token: str, vid: str) -> Optional[float]:
         return None
 
 
+def _apply_chosen_category(db: Session, item: IntakeItem, product: Product) -> None:
+    """If the batch this item came from had a category picked by hand, put the product straight in it —
+    overriding whatever the supplier's own free-text category name would otherwise have assigned. Re-checked
+    against the catalogue here (not trusted from whenever the item was queued) so a category deleted in the
+    meantime is silently skipped rather than crashing the import."""
+    if not item.category_id:
+        return
+    from app.models.product import Category
+    cat = db.query(Category).filter(Category.id == item.category_id, Category.shop_id.is_(None)).first()
+    if cat:
+        product.category_id = cat.id
+
+
 def _import_cj(db: Session, item: IntakeItem) -> Product:
     from app.api.v1.endpoints import admin as A
 
@@ -207,6 +223,7 @@ def _import_cj(db: Session, item: IntakeItem) -> Product:
         return product
 
     product = asyncio.run(run())
+    _apply_chosen_category(db, item, product)
     A._ensure_prodora_codes(db)
     db.commit()
     return product
@@ -222,6 +239,7 @@ def _import_aliexpress(db: Session, item: IntakeItem) -> Product:
         raise RuntimeError("AliExpress is not connected. Connect it from Add Products first.")
     token = asyncio.run(A._aliexpress_ensure_token(conn, db))
     product = A._aliexpress_import_one(db, A._CATALOGUE, token, item.source_url, None, None, active=False)
+    _apply_chosen_category(db, item, product)
     A._ensure_prodora_codes(db)
     db.commit()
     return product

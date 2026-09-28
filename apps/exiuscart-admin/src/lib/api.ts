@@ -95,6 +95,10 @@ export const adminApi = {
   createShoppingProduct: (data: any) => api.post('/admin/shopping/products', data),
   updateShoppingProduct: (id: number, data: any) => api.put(`/admin/shopping/products/${id}`, data),
   deleteShoppingProduct: (id: number) => api.delete(`/admin/shopping/products/${id}`),
+  // Re-asks CJ for a product's variant id when the import never got one, so its Ship-to box on Prodora can
+  // show a real live quote instead of the flat estimate.
+  refreshCjShipping: (productId: number) => api.post(`/admin/prodora/products/${productId}/refresh-shipping`),
+  refreshCjShippingBulk: (limit?: number) => api.post('/admin/prodora/products/refresh-shipping-bulk', null, { params: limit ? { limit } : undefined }),
   // Prodora Marketplace categories (tile image required to show up there)
   getProdoraCategories: () => api.get('/admin/shopping/categories', { params: { prodora: true } }),
   createProdoraCategory: (data: { name: string; image_url?: string | null }) => api.post('/admin/shopping/categories', data),
@@ -288,8 +292,8 @@ export const scoreboardApi = {
 export const intakeApi = {
   summary: () => api.get('/admin/intake/summary'),
   items: (params: { status?: string; verdict?: string; q?: string; offset?: number; limit?: number }) => api.get('/admin/intake/items', { params }),
-  addLinks: (text: string) => api.post('/admin/intake/links', { text }),
-  addCjPids: (cj_pids: string[]) => api.post('/admin/intake/cj-pids', { cj_pids }),
+  addLinks: (text: string, category_id?: number | null) => api.post('/admin/intake/links', { text, category_id: category_id || undefined }),
+  addCjPids: (cj_pids: string[], category_id?: number | null) => api.post('/admin/intake/cj-pids', { cj_pids, category_id: category_id || undefined }),
   bulk: (ids: number[], action: 'approve' | 'reject' | 'retry' | 'delete', reason?: string) => api.post('/admin/intake/bulk', { ids, action, reason }),
   reanalyze: (id: number, use_paid: boolean, use_trends = false) => api.post(`/admin/intake/items/${id}/analyze`, { use_paid, use_trends }),
   publishNow: (count?: number) => api.post('/admin/intake/publish-now', count ? { count } : {}),

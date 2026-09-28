@@ -77,6 +77,8 @@ export default function IntakePage() {
   const [cjPicked, setCjPicked] = useState<Set<string>>(new Set());
   const [cjBusy, setCjBusy] = useState(false);
   const [cjError, setCjError] = useState('');
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [addCategoryId, setAddCategoryId] = useState('');
 
   const [rejectFor, setRejectFor] = useState<number[] | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -104,6 +106,7 @@ export default function IntakePage() {
   }, [tab, verdict, q]);
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
+  useEffect(() => { adminApi.getProdoraCategories().then((r: any) => setCategories(r.data ?? [])).catch(() => {}); }, []);
   useEffect(() => { const h = setTimeout(() => { loadItems(); setSelected(new Set()); }, q ? 300 : 0); return () => clearTimeout(h); }, [loadItems, q]);
 
   // While anything is still importing, keep the numbers moving.
@@ -119,7 +122,7 @@ export default function IntakePage() {
   const submitLinks = async () => {
     setBusy('links'); setError(''); setLinkResults(null);
     try {
-      const r = await intakeApi.addLinks(links);
+      const r = await intakeApi.addLinks(links, addCategoryId ? Number(addCategoryId) : null);
       setLinkResults({ counts: r.data.counts, results: r.data.results });
       if (r.data.counts.queued) { setLinks(''); flash(`${r.data.counts.queued} product${r.data.counts.queued === 1 ? '' : 's'} added. They are being imported now.`); setTab('processing'); }
       await refreshAll();
@@ -137,7 +140,7 @@ export default function IntakePage() {
   const addCj = async () => {
     setBusy('cj');
     try {
-      const r = await intakeApi.addCjPids([...cjPicked]);
+      const r = await intakeApi.addCjPids([...cjPicked], addCategoryId ? Number(addCategoryId) : null);
       const c = r.data.counts;
       flash(`${c.queued} added${c.duplicate ? `, ${c.duplicate} already known` : ''}.`);
       setCjPicked(new Set()); setTab('processing'); await refreshAll();
@@ -242,6 +245,15 @@ export default function IntakePage() {
                 <Icon className="h-4 w-4" /> {label}
               </button>
             ))}
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor="add-category" className="mb-1 block text-sm font-medium text-gray-700">Category</label>
+            <select id="add-category" value={addCategoryId} onChange={(e) => setAddCategoryId(e.target.value)} className={`${inputCls} sm:max-w-xs`}>
+              <option value="">Let it auto-detect from the supplier</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">Applies to everything added below in this batch. Leave blank to keep the supplier&apos;s own category.</p>
           </div>
 
           {addTab === 'links' ? (

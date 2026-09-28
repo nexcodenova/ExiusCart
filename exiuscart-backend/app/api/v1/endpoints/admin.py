@@ -2028,12 +2028,25 @@ def admin_prodora_catalog(
     products = query.all()
 
     link_types: dict = {}
+    shipping_ok: dict = {}
     if products:
         rows = db.query(DropshipProductLink.product_id, DropshipProductLink.supplier_type).filter(
             DropshipProductLink.product_id.in_([p.id for p in products]),
             DropshipProductLink.is_primary == True,
         ).all()
         link_types = {pid: stype for pid, stype in rows}
+        # Whether the saved supplier link has what its live shipping lookup needs — without it the product's
+        # Ship-to box on Prodora can only show the flat estimate (see /shopping/products/{id}/shipping-estimate).
+        # CJ needs a variant sku; AliExpress needs both a sku and its own supplier_product_id.
+        ship_rows = db.query(
+            DropshipProductLink.product_id, DropshipProductLink.supplier_type,
+            DropshipProductLink.supplier_sku, DropshipProductLink.supplier_product_id,
+        ).filter(
+            DropshipProductLink.product_id.in_([p.id for p in products]),
+            DropshipProductLink.supplier_type.in_(("cj", "aliexpress")),
+        ).all()
+        for pid, stype, sku, supplier_pid in ship_rows:
+            shipping_ok[pid] = bool(sku) and (stype != "aliexpress" or bool(supplier_pid))
 
     from app.models.prodora import ProdoraImportLog
     import_counts = dict(
@@ -2049,6 +2062,8 @@ def admin_prodora_catalog(
         out.update({
             "kind": "product", "supplier_key": key, "supplier_label": _SUPPLIER_LABELS.get(key, key.title()),
             "views": p.view_count or 0, "imports": import_counts.get(p.id, 0),
+            # None = not applicable (this supplier has no live-shipping lookup at all); True/False for CJ and AliExpress.
+            "live_shipping": shipping_ok.get(p.id, False) if key in ("cj", "aliexpress") else None,
         })
         result.append(out)
     for b in bundle_query.all():
@@ -2058,7 +2073,7 @@ def admin_prodora_catalog(
             "currency": "USD", "image_url": b.cover_image_url, "images": [], "videos": [], "video_url": None,
             "source_url": None, "is_active": b.is_active, "is_featured": False, "is_trending": bool(b.is_trending), "is_bestseller": bool(b.is_bestseller),
             "sku": None, "category_name": None, "created_at": b.created_at, "variants": [],
-            "views": None, "imports": None,
+            "views": None, "imports": None, "live_shipping": None,
         })
 
     def created_key(row: dict) -> float:
@@ -2067,6 +2082,151 @@ def admin_prodora_catalog(
 
     result.sort(key=lambda r: (created_key(r), r["kind"] == "digital", r["id"]))
     return result
+
+
+_CJ_PID_IN_URL = re.compile(r"pid=([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})")
+
+
+async def _fetch_cj_variant_vid(token: str, cj_pid: str) -> Optional[str]:
+    """CJ's own variant id for a product, straight from CJ, or None if CJ still has no variant on file for it."""
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.get(f"{CJ_BASE}/product/query", params={"pid": cj_pid}, headers={"CJ-Access-Token": token})
+    cj = r.json()
+    if not cj.get("result"):
+        raise HTTPException(status_code=502, detail="CJ did not return this product. Try again later.")
+    variants = (cj.get("data") or {}).get("variants") or []
+    return (variants[0] if variants else {}).get("vid") or None
+
+
+def _save_cj_variant(db: Session, product: Product, cj_pid: str, variant_vid: str) -> None:
+    link = db.query(DropshipProductLink).filter(
+        DropshipProductLink.product_id == product.id, DropshipProductLink.supplier_type == "cj",
+    ).first()
+    if link:
+        link.supplier_sku = variant_vid
+    else:
+        db.add(DropshipProductLink(
+            shop_id=None, product_id=product.id, supplier_type="cj", supplier_product_id=cj_pid,
+            supplier_sku=variant_vid, supplier_product_name=product.name, cost_price=product.cost_price, is_primary=True,
+        ))
+
+
+async def _fetch_aliexpress_sku(token: str, ae_product_id: str) -> Optional[str]:
+    """AliExpress's own sku id for a product's first purchasable variant, straight from AliExpress, or None if
+    it genuinely has none (e.g. gone out of stock everywhere)."""
+    detail = _aliexpress_fetch_product(token, ae_product_id, "USD")
+    variants = detail.get("variants") or []
+    return str(variants[0]["sku_id"]) if variants and variants[0].get("sku_id") else None
+
+
+def _save_aliexpress_sku(db: Session, product: Product, ae_product_id: str, sku_id: str) -> None:
+    link = db.query(DropshipProductLink).filter(
+        DropshipProductLink.product_id == product.id, DropshipProductLink.supplier_type == "aliexpress",
+    ).first()
+    if link:
+        link.supplier_sku, link.supplier_product_id = sku_id, ae_product_id
+    else:
+        db.add(DropshipProductLink(
+            shop_id=None, product_id=product.id, supplier_type="aliexpress", supplier_product_id=ae_product_id,
+            supplier_product_url=product.source_url, supplier_sku=sku_id, supplier_product_name=product.name,
+            cost_price=product.cost_price, is_primary=True,
+        ))
+
+
+@router.post("/admin/prodora/products/{product_id}/refresh-shipping")
+async def admin_refresh_shipping(product_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.add"))):
+    """Re-asks the product's own supplier (CJ or AliExpress — the only two the catalogue imports from) for
+    whatever its live shipping lookup needs, for a product whose import never captured it the first time.
+    Saves it once the supplier actually has it, so the product's Ship-to box on Prodora can show a live quote
+    instead of only the flat estimate."""
+    product = db.query(Product).filter(Product.id == product_id, Product.shop_id.is_(None)).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+    url = product.source_url or ""
+    m = _CJ_PID_IN_URL.search(url)
+    if m:
+        conn = _get_system_cj_connection(db, _CATALOGUE)
+        token = await _cj_ensure_token(conn, db)
+        variant_vid = await _fetch_cj_variant_vid(token, m.group(1))
+        if not variant_vid:
+            return {"fixed": False, "message": "CJ still has no variant on file for this product. Nothing to save yet."}
+        _save_cj_variant(db, product, m.group(1), variant_vid)
+        db.commit()
+        return {"fixed": True}
+    ae_pid = _parse_aliexpress_product_id(url) if "aliexpress." in url.lower() else None
+    if ae_pid:
+        conn = db.query(DropshipConnection).filter(
+            DropshipConnection.shop_id.is_(None), DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
+        ).first()
+        if not conn:
+            raise HTTPException(status_code=404, detail="The Prodora AliExpress account is not connected.")
+        token = await _aliexpress_ensure_token(conn, db)
+        sku_id = await _fetch_aliexpress_sku(token, ae_pid)
+        if not sku_id:
+            return {"fixed": False, "message": "AliExpress still has no purchasable variant on file for this product. Nothing to save yet."}
+        _save_aliexpress_sku(db, product, ae_pid, sku_id)
+        db.commit()
+        return {"fixed": True}
+    raise HTTPException(status_code=422, detail="This product has no CJ or AliExpress id on file — it wasn't imported from either.")
+
+
+@router.post("/admin/prodora/products/refresh-shipping-bulk")
+async def admin_refresh_shipping_bulk(limit: int = 40, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.add"))):
+    """Runs the same fix over every CJ- or AliExpress-supplied catalogue product still missing what its live
+    shipping lookup needs, capped per call across both suppliers combined (gentle on their APIs and this
+    request's own time budget) — call again if `remaining` is still above 0."""
+    limit = min(max(limit, 1), 100)
+    has_sku = db.query(DropshipProductLink.product_id).filter(
+        DropshipProductLink.supplier_type.in_(("cj", "aliexpress")),
+        DropshipProductLink.supplier_sku.isnot(None), DropshipProductLink.supplier_sku != "",
+    ).subquery()
+    candidates = (
+        db.query(Product)
+        .filter(
+            Product.shop_id.is_(None), ~Product.id.in_(has_sku),
+            (Product.source_url.ilike("%cjdropshipping.com%")) | (Product.source_url.ilike("%aliexpress.%")),
+        )
+        .order_by(Product.id.asc())
+        .all()
+    )
+    total_missing = len(candidates)
+    batch = candidates[:limit]
+    fixed, still_missing, errors = 0, 0, 0
+    if batch:
+        cj_conn = _get_system_cj_connection(db, _CATALOGUE)
+        cj_token = await _cj_ensure_token(cj_conn, db)
+        ae_conn = db.query(DropshipConnection).filter(
+            DropshipConnection.shop_id.is_(None), DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
+        ).first()
+        ae_token = await _aliexpress_ensure_token(ae_conn, db) if ae_conn else None
+        for product in batch:
+            url = product.source_url or ""
+            m = _CJ_PID_IN_URL.search(url)
+            ae_pid = _parse_aliexpress_product_id(url) if not m and "aliexpress." in url.lower() else None
+            if not m and not ae_pid:
+                errors += 1
+                continue
+            if ae_pid and not ae_token:
+                errors += 1  # AliExpress candidate, but the catalogue's AliExpress account isn't connected
+                continue
+            try:
+                if m:
+                    found = await _fetch_cj_variant_vid(cj_token, m.group(1))
+                else:
+                    found = await _fetch_aliexpress_sku(ae_token, ae_pid)
+            except Exception:  # noqa: BLE001 - one product's failure must not stop the rest of the batch
+                errors += 1
+                continue
+            if found:
+                (_save_cj_variant(db, product, m.group(1), found) if m else _save_aliexpress_sku(db, product, ae_pid, found))
+                fixed += 1
+            else:
+                still_missing += 1
+        db.commit()
+    return {
+        "checked": len(batch), "fixed": fixed, "still_missing": still_missing, "errors": errors,
+        "remaining": max(0, total_missing - len(batch)),
+    }
 
 
 def _get_or_create_category(db: Session, shop_id: int, name: str):

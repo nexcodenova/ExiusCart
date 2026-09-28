@@ -641,6 +641,9 @@ export default function OrdersPage() {
   const [connectedChannelTypes, setConnectedChannelTypes] = useState<string[]>([]);
   const [hasShopify, setHasShopify] = useState(false);
   const [fulfillTarget, setFulfillTarget] = useState<Order | null>(null);
+  const [selectedForBulk, setSelectedForBulk] = useState<Set<number>>(new Set());
+  const [bulkFulfilling, setBulkFulfilling] = useState(false);
+  const [bulkResult, setBulkResult] = useState('');
   const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [refundedCount, setRefundedCount] = useState(0);
@@ -886,6 +889,39 @@ export default function OrdersPage() {
     && o.source !== 'thedersi'
     && o.source !== 'pos'
     && !['shipped', 'delivered', 'completed', 'cancelled'].includes(o.status);
+
+  // Orders on this page that a bulk fulfill could apply to — not already sent, same rule as the single button.
+  const bulkEligible = orders.filter((o) => canFulfillOrder(o) && !o.fulfillment_supplier);
+  const toggleBulkSelected = (id: number) => setSelectedForBulk((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const allEligibleSelected = bulkEligible.length > 0 && bulkEligible.every((o) => selectedForBulk.has(o.id));
+  const toggleSelectAllEligible = () => setSelectedForBulk(allEligibleSelected ? new Set() : new Set(bulkEligible.map((o) => o.id)));
+
+  const handleBulkFulfill = async () => {
+    if (!shopId || selectedForBulk.size === 0) return;
+    setBulkFulfilling(true);
+    setBulkResult('');
+    try {
+      const res = await dropshipApi.bulkFulfillOrders(shopId, [...selectedForBulk]);
+      const { fulfilled, skipped, failed } = res.data;
+      const bits = [
+        fulfilled.length ? `${fulfilled.length} sent to their supplier` : null,
+        failed.length ? `${failed.length} failed` : null,
+        skipped.length ? `${skipped.length} skipped` : null,
+      ].filter(Boolean);
+      setBulkResult(bits.length ? bits.join(', ') + '.' : 'Nothing to fulfill in that selection.');
+      setSelectedForBulk(new Set());
+      await fetchOrders();
+    } catch (e: any) {
+      setBulkResult(e?.response?.data?.detail || "Couldn't fulfill those orders. Try again.");
+    } finally {
+      setBulkFulfilling(false);
+      setTimeout(() => setBulkResult(''), 8000);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1160,10 +1196,31 @@ export default function OrdersPage() {
           </div>
         ) : (
           <>
+          {(selectedForBulk.size > 0 || bulkResult) && (
+            <div className="flex flex-wrap items-center gap-3 border-b border-border bg-primary/5 px-4 py-2.5">
+              {selectedForBulk.size > 0 ? (
+                <>
+                  <span className="text-sm font-medium text-foreground">{selectedForBulk.size} order{selectedForBulk.size !== 1 ? 's' : ''} selected</span>
+                  <button type="button" onClick={handleBulkFulfill} disabled={bulkFulfilling}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50">
+                    <Package className="h-3.5 w-3.5" /> {bulkFulfilling ? 'Sending…' : 'Fulfill Selected'}
+                  </button>
+                  <button type="button" onClick={() => setSelectedForBulk(new Set())} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>
+                </>
+              ) : null}
+              {bulkResult && <span className="text-xs text-muted-foreground">{bulkResult}</span>}
+            </div>
+          )}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="w-8 p-3">
+                    {bulkEligible.length > 0 && (
+                      <input type="checkbox" checked={allEligibleSelected} onChange={toggleSelectAllEligible}
+                        aria-label="Select all orders that can be fulfilled" className="h-4 w-4 rounded accent-primary" />
+                    )}
+                  </th>
                   <th className="text-left p-3 text-xs font-medium text-muted-foreground">Order</th>
                   <th className="text-left p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">Customer</th>
                   <th className="text-left p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">Items</th>
@@ -1179,6 +1236,12 @@ export default function OrdersPage() {
                 {orders.map((order) => (
                   <>
                     <tr key={order.id} className="hover:bg-muted/30 transition cursor-pointer" onClick={() => window.location.href = `/dashboard/orders/${order.id}`}>
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                        {canFulfillOrder(order) && !order.fulfillment_supplier && (
+                          <input type="checkbox" checked={selectedForBulk.has(order.id)} onChange={() => toggleBulkSelected(order.id)}
+                            aria-label={`Select order ${order.order_number}`} className="h-4 w-4 rounded accent-primary" />
+                        )}
+                      </td>
                       <td className="p-3">
                         <div className="flex items-center gap-2.5">
                           <div className="p-1.5 bg-muted rounded-lg">

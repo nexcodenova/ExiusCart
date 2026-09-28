@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   TrendingUp, Plus, Search, Pencil, Trash2, Loader2,
   Flame, Star, Eye, EyeOff, X, Check, Package, Upload, ImageIcon,
-  ExternalLink, Tag, AlertCircle, ShoppingBag, RefreshCw, ChevronDown, Download, Trophy, Megaphone,
+  ExternalLink, Tag, AlertCircle, ShoppingBag, RefreshCw, ChevronDown, Download, Trophy, Megaphone, Truck,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -39,6 +39,9 @@ interface ShoppingProduct {
   supplier_label?: string;
   views?: number | null;    // every open of the Prodora product page
   imports?: number | null;  // times sellers imported it into their store
+  // null = not applicable (this supplier has no live-shipping lookup at all, e.g. AliExpress/manual/digital);
+  // true/false only for CJ, meaning whether a real CJ variant id is saved so its Ship-to box can show a live quote.
+  live_shipping?: boolean | null;
   name: string;
   description: string | null;
   price: number;
@@ -1026,6 +1029,9 @@ export default function TrendingDropshippingPage() {
   const [backfillResult, setBackfillResult] = useState('');
   const [autoAttaching, setAutoAttaching] = useState(false);
   const [autoAttachResult, setAutoAttachResult] = useState('');
+  const [fixingShipping, setFixingShipping] = useState(false);
+  const [fixShippingResult, setFixShippingResult] = useState('');
+  const [fixingRowId, setFixingRowId] = useState<number | null>(null);
 
   useEffect(() => {
     adminApi.cjStatus().then((r: any) => setCjConnected(!!r.data?.connected)).catch(() => {});
@@ -1373,6 +1379,49 @@ export default function TrendingDropshippingPage() {
     }
   };
 
+  // Re-asks the product's own supplier (CJ or AliExpress) for whatever its live shipping lookup needs — for a
+  // product whose import never captured it (a supplier's own data can lack it at import time), so its Ship-to
+  // box on Prodora can show a live quote instead of only the flat estimate.
+  const handleFixShipping = async (p: ShoppingProduct) => {
+    setFixingRowId(p.id);
+    try {
+      const res = await adminApi.refreshCjShipping(p.id);
+      if (res.data?.fixed) {
+        setProducts((prev) => prev.map((row) => (row.id === p.id ? { ...row, live_shipping: true } : row)));
+      } else {
+        setFixShippingResult(res.data?.message || 'CJ still has no variant on file for this product.');
+        setTimeout(() => setFixShippingResult(''), 6000);
+      }
+    } catch (err: any) {
+      setFixShippingResult(err?.response?.data?.detail || "Couldn't reach CJ — try again.");
+      setTimeout(() => setFixShippingResult(''), 6000);
+    } finally {
+      setFixingRowId(null);
+    }
+  };
+
+  // Runs the same fix over every CJ product still missing a variant, up to 40 at a time.
+  const handleFixShippingBulk = async () => {
+    setFixingShipping(true);
+    setFixShippingResult('');
+    try {
+      const res = await adminApi.refreshCjShippingBulk();
+      const { fixed, still_missing, errors, remaining } = res.data ?? {};
+      const bits = [
+        fixed ? `${fixed} fixed` : null,
+        still_missing ? `${still_missing} still have no variant at CJ` : null,
+        errors ? `${errors} could not be checked` : null,
+      ].filter(Boolean);
+      setFixShippingResult(bits.length ? `${bits.join(', ')}.${remaining ? ` ${remaining} more left — click again to keep going.` : ''}` : 'Nothing to fix — every CJ product already has live shipping.');
+      if (fixed) await fetchProducts();
+    } catch (err: any) {
+      setFixShippingResult(err?.response?.data?.detail || "Couldn't reach CJ — try again.");
+    } finally {
+      setFixingShipping(false);
+      setTimeout(() => setFixShippingResult(''), 10000);
+    }
+  };
+
   // Looks for a real Meta ad for one product and attaches it (the same job the
   // bulk button runs, for a single row).
   const handleFindAd = async (p: ShoppingProduct) => {
@@ -1405,6 +1454,7 @@ export default function TrendingDropshippingPage() {
   const trending = products.filter((p) => p.is_trending).length;
   const featured = products.filter((p) => p.is_featured).length;
   const active = products.filter((p) => p.is_active).length;
+  const missingShipping = products.filter((p) => p.live_shipping === false).length;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -1424,6 +1474,7 @@ export default function TrendingDropshippingPage() {
         <div className="flex items-center gap-2">
           {backfillResult && <span className="text-xs text-gray-600 max-w-[180px]">{backfillResult}</span>}
           {autoAttachResult && <span className="text-xs text-gray-600 max-w-[180px]">{autoAttachResult}</span>}
+          {fixShippingResult && <span className="text-xs text-gray-600 max-w-[220px]">{fixShippingResult}</span>}
           <div className="relative w-full sm:w-72">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
             <input
@@ -1455,6 +1506,15 @@ export default function TrendingDropshippingPage() {
                 >
                   {autoAttaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4 text-gray-400" />}
                   Auto-attach Meta Ads
+                </button>
+                <button
+                  type="button" disabled={fixingShipping || missingShipping === 0}
+                  onClick={() => { setToolsOpen(false); handleFixShippingBulk(); }}
+                  title="Re-asks CJ or AliExpress for whatever every product still missing it needs, so its Ship-to box can show a live quote instead of the flat estimate."
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  {fixingShipping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4 text-gray-400" />}
+                  Fix missing shipping{missingShipping > 0 ? ` (${missingShipping})` : ''}
                 </button>
                 <a
                   href="https://prodora.exiuscart.com" target="_blank" rel="noreferrer"
@@ -1550,6 +1610,7 @@ export default function TrendingDropshippingPage() {
                     <th className="px-3 py-2.5 font-medium text-center leading-tight">Current<br />Trends</th>
                     <th className="px-3 py-2.5 font-medium text-center leading-tight">Global<br />Bestsellers</th>
                     <th className="whitespace-nowrap px-3 py-2.5 font-medium text-center">Status</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-medium text-center">Shipping</th>
                     <th className="whitespace-nowrap px-3 py-2.5 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1660,6 +1721,26 @@ export default function TrendingDropshippingPage() {
                           >
                             {p.is_active ? 'Active' : 'Hidden'}
                           </button>
+                          )}
+                        </td>
+
+                        {/* Shipping — only meaningful for CJ products; every other supplier shows a plain dash */}
+                        <td className="px-3 py-2 text-center">
+                          {p.live_shipping === true ? (
+                            <span title="Saved with the supplier — the Ship-to box on Prodora shows a live quote." className="inline-flex items-center gap-1 rounded-full border border-green-500/20 bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
+                              <Truck className="h-3 w-3" /> Live
+                            </span>
+                          ) : p.live_shipping === false ? (
+                            <button
+                              type="button" onClick={() => handleFixShipping(p)} disabled={fixingRowId === p.id}
+                              title="Not saved with the supplier yet — click to ask again."
+                              className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 hover:bg-amber-500/20 disabled:opacity-50"
+                            >
+                              {fixingRowId === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Truck className="h-3 w-3" />}
+                              {fixingRowId === p.id ? 'Checking…' : 'Fix'}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-300">—</span>
                           )}
                         </td>
 

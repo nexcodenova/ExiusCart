@@ -25,7 +25,7 @@ from app.models.dropship import DropshipConnection, DropshipProductLink
 from app.models.prodora import ProdoraImportLog
 from app.core.intel import record_event, record_supplier_snapshot
 from app.models.intel import ProductIntelResult
-from app.api.v1.endpoints.dropshipping import _cj_ensure_token, CJ_BASE
+from app.api.v1.endpoints.dropshipping import _cj_ensure_token, CJ_BASE, _aliexpress_ensure_token, _aliexpress_signed_request
 
 router = APIRouter()
 
@@ -636,38 +636,12 @@ def import_shopping_product(
     return {"product_id": new_product.id, "name": new_product.name, "shop_id": shop.id}
 
 
-@router.get("/shopping/products/{product_id}/shipping-estimate")
-async def shopping_shipping_estimate(
-    product_id: int,
-    country_code: str,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_prodora_user),
-):
-    """
-    Real per-country shipping cost for a Prodora catalog product, straight
-    from CJ's own freight-calculate API — same mechanism a connected
-    seller's own shop uses (dropshipping.py: cj_shipping_estimate), just
-    running on the system shop's CJ connection instead of a per-seller one.
-    404s (not a hard error) for products with no CJ link — imported before
-    this was captured, or not CJ-sourced at all — so the frontend can fall
-    back to the admin-entered flat shipping_cost for those.
-    """
-    link = (
-        db.query(DropshipProductLink)
-        .filter(
-            DropshipProductLink.product_id == product_id,
-            DropshipProductLink.supplier_type == "cj",
-            DropshipProductLink.shop_id.is_(None),  # a catalogue product's link
-        )
-        .first()
-    )
-    if not link or not link.supplier_sku:
+async def _cj_catalogue_shipping(db: Session, link: DropshipProductLink, country_code: str) -> dict:
+    """Straight from CJ's own freight-calculate API, on the system catalogue's own CJ connection."""
+    if not link.supplier_sku:
         raise HTTPException(status_code=404, detail="Live shipping is not set up for this product yet (it has no CJ variant on file).")
-
     conn = db.query(DropshipConnection).filter(
-        DropshipConnection.shop_id == link.shop_id,
-        DropshipConnection.supplier_type == "cj",
-        DropshipConnection.is_active == True,
+        DropshipConnection.shop_id.is_(None), DropshipConnection.supplier_type == "cj", DropshipConnection.is_active == True,
     ).first()
     if not conn:
         raise HTTPException(status_code=404, detail="Live shipping is not available right now (the Prodora CJ account is not connected).")
@@ -687,17 +661,86 @@ async def shopping_shipping_estimate(
     if not data.get("result"):
         raise HTTPException(status_code=502, detail=data.get("message", "CJ could not calculate shipping for this destination."))
 
-    options = []
-    for opt in (data.get("data") or []):
-        options.append({
+    options = [
+        {
             "logistic_name": opt.get("logisticName") or opt.get("logisticAging") or opt.get("name") or "Standard Shipping",
             "price": float(opt.get("logisticPrice") or opt.get("price") or 0),
             "days": opt.get("logisticAging") or opt.get("aging") or None,
-        })
-
+        }
+        for opt in (data.get("data") or [])
+    ]
     if not options:
         raise HTTPException(status_code=404, detail="CJ has no shipping method for this product to that country.")
     return {"country_code": country_code.upper(), "options": options}
+
+
+async def _aliexpress_catalogue_shipping(db: Session, link: DropshipProductLink, country_code: str) -> dict:
+    """Straight from AliExpress's own freight-query API (aliexpress.ds.freight.query), on the system catalogue's
+    own AliExpress connection — the same call a seller's own shop uses (dropshipping.py:
+    aliexpress_shipping_estimate), just running on the catalogue's account instead of a per-seller one."""
+    if not link.supplier_sku or not link.supplier_product_id:
+        raise HTTPException(status_code=404, detail="Live shipping is not set up for this product yet (it has no AliExpress SKU on file).")
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id.is_(None), DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=404, detail="Live shipping is not available right now (the Prodora AliExpress account is not connected).")
+
+    token = await _aliexpress_ensure_token(conn, db)
+    import json as _json
+    query = _json.dumps({
+        "quantity": "1", "shipToCountry": country_code.upper(), "productId": link.supplier_product_id,
+        "selectedSkuId": link.supplier_sku, "language": "en_US", "locale": "en_US", "currency": "USD",
+    })
+    data = _aliexpress_signed_request("/sync", {"method": "aliexpress.ds.freight.query", "queryDeliveryReq": query}, access_token=token, method="POST")
+    if not data:
+        raise HTTPException(status_code=502, detail="Could not reach AliExpress. Please try again.")
+
+    result = (data.get("aliexpress_ds_freight_query_response") or {}).get("result") or data.get("result") or {}
+    if not result.get("success"):
+        raise HTTPException(status_code=502, detail=result.get("msg") or "AliExpress could not calculate shipping for this destination.")
+
+    options = [
+        {
+            "logistic_name": opt.get("company") or opt.get("code") or "Standard Shipping",
+            "price": float(opt.get("shipping_fee_cent") or 0),
+            "days": opt.get("max_delivery_days"),
+        }
+        for opt in ((result.get("delivery_options") or {}).get("delivery_option_d_t_o") or [])
+    ]
+    if not options:
+        raise HTTPException(status_code=404, detail="AliExpress has no shipping method for this product to that country.")
+    return {"country_code": country_code.upper(), "options": options}
+
+
+@router.get("/shopping/products/{product_id}/shipping-estimate")
+async def shopping_shipping_estimate(
+    product_id: int,
+    country_code: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_prodora_user),
+):
+    """
+    Real per-country shipping cost for a Prodora catalog product, straight from whichever supplier it was
+    imported from (CJ or AliExpress — the only two the catalogue can import from today), on the system
+    catalogue's own connection for that supplier rather than a per-seller one.
+    404s (not a hard error) for products with no supplier link at all, or a link from a supplier with no live
+    lookup, so the frontend can fall back to the admin-entered flat shipping_cost for those.
+    """
+    link = (
+        db.query(DropshipProductLink)
+        .filter(
+            DropshipProductLink.product_id == product_id,
+            DropshipProductLink.shop_id.is_(None),  # a catalogue product's link
+            DropshipProductLink.supplier_type.in_(("cj", "aliexpress")),
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Live shipping is not set up for this product yet (it has no supplier link on file).")
+    if link.supplier_type == "cj":
+        return await _cj_catalogue_shipping(db, link, country_code)
+    return await _aliexpress_catalogue_shipping(db, link, country_code)
 
 
 @router.get("/shopping/categories")
