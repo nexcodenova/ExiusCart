@@ -95,8 +95,11 @@ export interface Product {
   ad_tiktok_url?: string | null;
   ad_instagram_url?: string | null;
   ad_pinterest_url?: string | null;
+  amazon_url?: string | null;
+  ebay_url?: string | null;
   specs_json?: string | null;
   tags?: string | null;
+  created_at?: string | null;
   // Only sent to Growth and Scale, and only when an analysis exists.
   intel_verdict?: 'TEST' | 'WATCH' | 'AVOID';
   intel_confidence?: 'high' | 'medium' | 'low';

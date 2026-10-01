@@ -149,6 +149,8 @@ class Product(Base):
     ad_tiktok_url = Column(String(1000), nullable=True)
     ad_instagram_url = Column(String(1000), nullable=True)
     ad_pinterest_url = Column(String(1000), nullable=True)
+    amazon_url = Column(String(1000), nullable=True)         # real Amazon listing for this product, admin-pasted
+    ebay_url = Column(String(1000), nullable=True)           # real eBay listing for this product, admin-pasted
     specs_json = Column(Text, nullable=True)                 # free-form key/value spec pairs, JSON-encoded
     tags = Column(String(500), nullable=True)                # comma-separated feature tags
     is_active = Column(Boolean, default=True)

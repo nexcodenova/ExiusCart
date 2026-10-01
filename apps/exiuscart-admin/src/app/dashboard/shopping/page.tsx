@@ -79,6 +79,8 @@ interface ShoppingProduct {
   ad_tiktok_url: string | null;
   ad_instagram_url: string | null;
   ad_pinterest_url: string | null;
+  amazon_url: string | null;
+  ebay_url: string | null;
   specs_json: string | null;
   tags: string | null;
 }
@@ -112,6 +114,8 @@ const emptyForm = {
   ad_tiktok_url: '',
   ad_instagram_url: '',
   ad_pinterest_url: '',
+  amazon_url: '',
+  ebay_url: '',
   tags: '',
 };
 
@@ -1166,6 +1170,8 @@ export default function TrendingDropshippingPage() {
       ad_tiktok_url: p.ad_tiktok_url || '',
       ad_instagram_url: p.ad_instagram_url || '',
       ad_pinterest_url: p.ad_pinterest_url || '',
+      amazon_url: p.amazon_url || '',
+      ebay_url: p.ebay_url || '',
       tags: p.tags || '',
     });
     setImageFile(null);
@@ -1268,6 +1274,8 @@ export default function TrendingDropshippingPage() {
         ad_tiktok_url: form.ad_tiktok_url.trim() || null,
         ad_instagram_url: form.ad_instagram_url.trim() || null,
         ad_pinterest_url: form.ad_pinterest_url.trim() || null,
+        amazon_url: form.amazon_url.trim() || null,
+        ebay_url: form.ebay_url.trim() || null,
         specs_json: Object.keys(specsObj).length ? JSON.stringify(specsObj) : null,
         tags: form.tags.trim() || null,
       };
@@ -2328,6 +2336,28 @@ export default function TrendingDropshippingPage() {
                   <input type="url" value={form.ad_pinterest_url}
                     onChange={(e) => setForm((f) => ({ ...f, ad_pinterest_url: e.target.value }))}
                     placeholder="https://..."
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                </div>
+              </div>
+
+              {/* Marketplace Links */}
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Marketplace Links</p>
+                <p className="text-xs text-gray-400 -mt-2">Optional — a real Amazon/eBay listing for this exact product. Shown as a compare-price button on the Prodora product page; hidden when left blank.</p>
+
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Amazon Listing URL</label>
+                  <input type="url" value={form.amazon_url}
+                    onChange={(e) => setForm((f) => ({ ...f, amazon_url: e.target.value }))}
+                    placeholder="https://www.amazon.com/dp/..."
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">eBay Listing URL</label>
+                  <input type="url" value={form.ebay_url}
+                    onChange={(e) => setForm((f) => ({ ...f, ebay_url: e.target.value }))}
+                    placeholder="https://www.ebay.com/itm/..."
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                 </div>
               </div>

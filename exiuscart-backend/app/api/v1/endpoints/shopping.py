@@ -5,6 +5,7 @@ Launch, Growth or Scale subscription (see POST /shopping/request-access).
 """
 from typing import Optional
 from datetime import timedelta, datetime, timezone
+import logging
 import uuid
 import httpx
 from slugify import slugify
@@ -28,6 +29,7 @@ from app.models.intel import ProductIntelResult
 from app.api.v1.endpoints.dropshipping import _cj_ensure_token, CJ_BASE, _aliexpress_ensure_token, _aliexpress_signed_request
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Plans that grant Prodora access. Free trial and TheDersi plans are
 # deliberately excluded — Prodora is a real, paid-plan perk, all three tiers.
@@ -249,8 +251,11 @@ def _product_out(p: Product) -> dict:
         "ad_tiktok_url": p.ad_tiktok_url,
         "ad_instagram_url": p.ad_instagram_url,
         "ad_pinterest_url": p.ad_pinterest_url,
+        "amazon_url": p.amazon_url,
+        "ebay_url": p.ebay_url,
         "specs_json": p.specs_json,
         "tags": p.tags,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
     }
 
 
@@ -639,12 +644,12 @@ def import_shopping_product(
 async def _cj_catalogue_shipping(db: Session, link: DropshipProductLink, country_code: str) -> dict:
     """Straight from CJ's own freight-calculate API, on the system catalogue's own CJ connection."""
     if not link.supplier_sku:
-        raise HTTPException(status_code=404, detail="Live shipping is not set up for this product yet (it has no CJ variant on file).")
+        raise HTTPException(status_code=404, detail="Live shipping is not set up for this product yet.")
     conn = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id.is_(None), DropshipConnection.supplier_type == "cj", DropshipConnection.is_active == True,
     ).first()
     if not conn:
-        raise HTTPException(status_code=404, detail="Live shipping is not available right now (the Prodora CJ account is not connected).")
+        raise HTTPException(status_code=404, detail="Live shipping is not available right now.")
 
     token = await _cj_ensure_token(conn, db)
     try:
@@ -656,10 +661,12 @@ async def _cj_catalogue_shipping(db: Session, link: DropshipProductLink, country
             }, headers={"CJ-Access-Token": token})
         data = r.json()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"CJ API error: {str(e)}")
+        logger.warning(f"[Prodora shipping] CJ request failed product_link={link.id}: {e}")
+        raise HTTPException(status_code=502, detail="Live shipping rates aren't available for this product right now.")
 
     if not data.get("result"):
-        raise HTTPException(status_code=502, detail=data.get("message", "CJ could not calculate shipping for this destination."))
+        logger.warning(f"[Prodora shipping] CJ returned an error for product_link={link.id}: {data.get('message')}")
+        raise HTTPException(status_code=502, detail="Live shipping rates aren't available for this product right now.")
 
     options = [
         {
@@ -670,7 +677,7 @@ async def _cj_catalogue_shipping(db: Session, link: DropshipProductLink, country
         for opt in (data.get("data") or [])
     ]
     if not options:
-        raise HTTPException(status_code=404, detail="CJ has no shipping method for this product to that country.")
+        raise HTTPException(status_code=404, detail="No shipping method is available for this product to that country.")
     return {"country_code": country_code.upper(), "options": options}
 
 
@@ -679,12 +686,12 @@ async def _aliexpress_catalogue_shipping(db: Session, link: DropshipProductLink,
     own AliExpress connection — the same call a seller's own shop uses (dropshipping.py:
     aliexpress_shipping_estimate), just running on the catalogue's account instead of a per-seller one."""
     if not link.supplier_sku or not link.supplier_product_id:
-        raise HTTPException(status_code=404, detail="Live shipping is not set up for this product yet (it has no AliExpress SKU on file).")
+        raise HTTPException(status_code=404, detail="Live shipping is not set up for this product yet.")
     conn = db.query(DropshipConnection).filter(
         DropshipConnection.shop_id.is_(None), DropshipConnection.supplier_type == "aliexpress", DropshipConnection.is_active == True,
     ).first()
     if not conn:
-        raise HTTPException(status_code=404, detail="Live shipping is not available right now (the Prodora AliExpress account is not connected).")
+        raise HTTPException(status_code=404, detail="Live shipping is not available right now.")
 
     token = await _aliexpress_ensure_token(conn, db)
     import json as _json
@@ -694,11 +701,12 @@ async def _aliexpress_catalogue_shipping(db: Session, link: DropshipProductLink,
     })
     data = _aliexpress_signed_request("/sync", {"method": "aliexpress.ds.freight.query", "queryDeliveryReq": query}, access_token=token, method="POST")
     if not data:
-        raise HTTPException(status_code=502, detail="Could not reach AliExpress. Please try again.")
+        raise HTTPException(status_code=502, detail="Live shipping rates aren't available for this product right now.")
 
     result = (data.get("aliexpress_ds_freight_query_response") or {}).get("result") or data.get("result") or {}
     if not result.get("success"):
-        raise HTTPException(status_code=502, detail=result.get("msg") or "AliExpress could not calculate shipping for this destination.")
+        logger.warning(f"[Prodora shipping] AliExpress returned an error for product_link={link.id}: {result.get('msg')}")
+        raise HTTPException(status_code=502, detail="Live shipping rates aren't available for this product right now.")
 
     options = [
         {
@@ -709,7 +717,7 @@ async def _aliexpress_catalogue_shipping(db: Session, link: DropshipProductLink,
         for opt in ((result.get("delivery_options") or {}).get("delivery_option_d_t_o") or [])
     ]
     if not options:
-        raise HTTPException(status_code=404, detail="AliExpress has no shipping method for this product to that country.")
+        raise HTTPException(status_code=404, detail="No shipping method is available for this product to that country.")
     return {"country_code": country_code.upper(), "options": options}
 
 

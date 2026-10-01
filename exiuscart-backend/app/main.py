@@ -349,6 +349,10 @@ _MIGRATIONS = [
     END $$;""",
     # The category chosen by hand when a batch of supplier links is pasted into Intake.
     "ALTER TABLE intake_items ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL;",
+    # Real per-product Amazon/eBay listing links, admin-pasted (same pattern as ad_facebook_url etc.) —
+    # shown on the Prodora product page instead of a generated search link.
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS amazon_url VARCHAR(1000);",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS ebay_url VARCHAR(1000);",
 ]
 
 for _sql in _MIGRATIONS:

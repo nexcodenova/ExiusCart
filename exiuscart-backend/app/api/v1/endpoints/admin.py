@@ -1894,6 +1894,8 @@ def _shopping_product_out(p: Product) -> dict:
         "ad_tiktok_url": p.ad_tiktok_url,
         "ad_instagram_url": p.ad_instagram_url,
         "ad_pinterest_url": p.ad_pinterest_url,
+        "amazon_url": p.amazon_url,
+        "ebay_url": p.ebay_url,
         "specs_json": p.specs_json,
         "tags": p.tags,
     }
@@ -1929,6 +1931,8 @@ class ShoppingProductExtras(BaseModel):
     ad_tiktok_url: Optional[str] = None
     ad_instagram_url: Optional[str] = None
     ad_pinterest_url: Optional[str] = None
+    amazon_url: Optional[str] = None
+    ebay_url: Optional[str] = None
     specs_json: Optional[str] = None
     tags: Optional[str] = None
 
@@ -2260,7 +2264,7 @@ SHOPPING_EXTRA_SCALAR_FIELDS = [
     "orders_count", "supplier_name", "supplier_rating", "fulfillment_rate",
     "processing_time", "shipping_time", "warehouse_country", "shipping_cost",
     "demand_trend_json", "orders_trend_json", "top_countries_json", "ad_facebook_url", "ad_tiktok_url",
-    "ad_instagram_url", "ad_pinterest_url", "specs_json", "tags",
+    "ad_instagram_url", "ad_pinterest_url", "amazon_url", "ebay_url", "specs_json", "tags",
 ]
 
 

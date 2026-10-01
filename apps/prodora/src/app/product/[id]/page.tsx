@@ -5,9 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  ArrowLeft, Package, Tag, Download, ExternalLink, Play, ShoppingCart, Copy, Check,
+  ArrowLeft, Package, Tag, Download, ExternalLink, Play, Check, Copy,
   Loader2, CheckCircle2, TrendingUp, Users, Swords, Gauge, Store, Facebook, Instagram,
   Music2, ChevronRight, ChevronLeft, Trophy, Globe2, Truck, GalleryHorizontal, X,
+  Wallet, Receipt, Coins, UserRound, MessageCircle, DollarSign, ShoppingCart,
 } from 'lucide-react';
 import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
@@ -79,6 +80,149 @@ function TrendChart({ data, color = '#2563EB', gradientId = 'trendGrad' }: { dat
   );
 }
 
+const SATURATION_POSITION: Record<string, number> = { Low: 0.18, Medium: 0.5, High: 0.82 };
+
+function SaturationGauge({ level }: { level: string }) {
+  const t = SATURATION_POSITION[level] ?? 0.5;
+  // Semi-circle gauge, 180°: angle 180 (left, green/low) to 0 (right, red/high).
+  const cx = 100, cy = 95, r = 80;
+  const angle = Math.PI - t * Math.PI;
+  const nx = cx + r * 0.78 * Math.cos(angle);
+  const ny = cy - r * 0.78 * Math.sin(angle);
+  const bands = [
+    { from: 180, to: 144, color: '#16A34A' },
+    { from: 144, to: 108, color: '#84CC16' },
+    { from: 108, to: 72, color: '#FACC15' },
+    { from: 72, to: 36, color: '#F97316' },
+    { from: 36, to: 0, color: '#DC2626' },
+  ];
+  const arcPoint = (deg: number) => {
+    const a = (deg * Math.PI) / 180;
+    return [cx + r * Math.cos(a), cy - r * Math.sin(a)] as const;
+  };
+  return (
+    <div className="flex flex-col items-center">
+      <svg viewBox="0 0 200 110" className="w-full max-w-[220px]">
+        {bands.map((b, i) => {
+          const [x1, y1] = arcPoint(b.from);
+          const [x2, y2] = arcPoint(b.to);
+          return <path key={i} d={`M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`} fill="none" stroke={b.color} strokeWidth="14" strokeLinecap="butt" />;
+        })}
+        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#111827" strokeWidth="3" strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r="5" fill="#111827" />
+      </svg>
+      <p className="text-sm font-semibold text-[#111827] -mt-2">{level}</p>
+    </div>
+  );
+}
+
+function ProfitCalculator({ sellingPrice, costPrice, shippingCost }: { sellingPrice: number; costPrice: number | null; shippingCost: number | null }) {
+  const defaults = {
+    price: sellingPrice,
+    sales: 100,
+    cost: costPrice ?? 0,
+    shipping: shippingCost ?? 0,
+    fees: Math.round(sellingPrice * 0.03 * 100) / 100, // a plain, disclosed estimate (payment-processing fees ~3%) — not pulled from any real transaction data
+    ad: 0,
+  };
+  const [price, setPrice] = useState(defaults.price);
+  const [sales, setSales] = useState(defaults.sales);
+  const [cost, setCost] = useState(defaults.cost);
+  const [shipping, setShipping] = useState(defaults.shipping);
+  const [fees, setFees] = useState(defaults.fees);
+  const [ad, setAd] = useState(defaults.ad);
+
+  const reset = () => { setPrice(defaults.price); setSales(defaults.sales); setCost(defaults.cost); setShipping(defaults.shipping); setFees(defaults.fees); setAd(defaults.ad); };
+
+  const preAdCost = cost + shipping + fees;
+  const netProfit = price - preAdCost - ad;
+  const potentialProfit = netProfit * sales;
+  const marginPct = price > 0 ? (netProfit / price) * 100 : 0;
+  const pcRatio = cost > 0 ? price / cost : null;
+  const preAdProfit = price - preAdCost;
+  const breakEvenRoas = preAdProfit > 0 ? price / preAdProfit : null;
+  const targetRoas = ad > 0 ? price / ad : null;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-[#111827]">Profit Calculator</h2>
+        <button type="button" onClick={reset} className="text-sm font-medium text-[#2563EB] hover:underline">Reset</button>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-5 mb-5">
+        <div>
+          <label className="text-sm text-[#6B7280] mb-1.5 block">Selling Price</label>
+          <div className="flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 mb-2">
+            <span className="w-6 h-6 rounded-md bg-gray-100 text-[#6B7280] flex items-center justify-center shrink-0"><DollarSign className="w-3.5 h-3.5" /></span>
+            <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full text-[#111827] font-medium outline-none" />
+          </div>
+          <input type="range" min="0" max="500" step="0.5" value={price} onChange={(e) => setPrice(parseFloat(e.target.value))} className="w-full accent-[#2563EB]" />
+        </div>
+        <div>
+          <label className="text-sm text-[#6B7280] mb-1.5 block">Number of Sales</label>
+          <div className="flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 mb-2">
+            <span className="w-6 h-6 rounded-md bg-gray-100 text-[#6B7280] flex items-center justify-center shrink-0"><ShoppingCart className="w-3.5 h-3.5" /></span>
+            <input type="number" step="1" min="0" value={sales} onChange={(e) => setSales(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-full text-[#111827] font-medium outline-none" />
+          </div>
+          <input type="range" min="0" max="5000" step="10" value={sales} onChange={(e) => setSales(parseInt(e.target.value))} className="w-full accent-[#2563EB]" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="rounded-xl bg-gray-50 p-3">
+          <p className="text-xs text-[#6B7280]">Net Profit per Sale</p>
+          <p className={`text-lg font-bold mt-0.5 ${netProfit >= 0 ? 'text-[#111827]' : 'text-red-500'}`}>{fmt(netProfit)}</p>
+        </div>
+        <div className="rounded-xl bg-blue-50 p-3">
+          <p className="text-xs text-[#6B7280]">Potential Profit</p>
+          <p className={`text-lg font-bold mt-0.5 ${potentialProfit >= 0 ? 'text-[#2563EB]' : 'text-red-500'}`}>{fmt(potentialProfit)}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: 'Product Cost', value: cost, set: setCost },
+          { label: 'Shipping Cost', value: shipping, set: setShipping },
+          { label: 'Est. Other Fees', value: fees, set: setFees },
+          { label: 'Ad Spend (AS)', value: ad, set: setAd },
+        ].map((f) => (
+          <div key={f.label}>
+            <label className="text-xs text-[#6B7280] mb-1 block">{f.label}</label>
+            <div className="flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-2 py-1.5">
+              <span className="w-5 h-5 rounded bg-gray-100 text-[#6B7280] flex items-center justify-center shrink-0"><DollarSign className="w-3 h-3" /></span>
+              <input type="number" step="0.01" min="0" value={f.value} onChange={(e) => f.set(Math.max(0, parseFloat(e.target.value) || 0))}
+                className="w-full text-sm text-[#111827] outline-none min-w-0" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <div className="rounded-xl border border-[#E5E7EB] p-2.5">
+          <p className="text-xs text-[#6B7280]">Profit Margin</p>
+          <p className="text-sm font-bold text-[#111827] mt-0.5">{marginPct.toFixed(0)}%</p>
+        </div>
+        <div className="rounded-xl border border-[#E5E7EB] p-2.5">
+          <p className="text-xs text-[#6B7280]">P/C Ratio</p>
+          <p className="text-sm font-bold text-[#111827] mt-0.5">{pcRatio != null ? `${pcRatio.toFixed(0)}X` : '—'}</p>
+        </div>
+        <div className="rounded-xl border border-[#E5E7EB] p-2.5">
+          <p className="text-xs text-[#6B7280]">Break-Even ROAS</p>
+          <p className="text-sm font-bold text-[#111827] mt-0.5">{breakEvenRoas != null ? breakEvenRoas.toFixed(2) : '—'}</p>
+        </div>
+        <div className="rounded-xl border border-[#E5E7EB] p-2.5">
+          <p className="text-xs text-[#6B7280]">Target ROAS</p>
+          <p className="text-sm font-bold text-[#111827] mt-0.5">{targetRoas != null ? targetRoas.toFixed(2) : '—'}</p>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-[#9CA3AF]">Est. Other Fees is a plain 3% estimate, not a measured figure. Everything here is editable.</p>
+    </div>
+  );
+}
+
 function RelatedProductCard({ product }: { product: Product }) {
   const profit = product.cost_price != null ? product.price - product.cost_price : null;
   const [importing, setImporting] = useState(false);
@@ -131,6 +275,7 @@ function ProductDetailContent() {
   const [activeImg, setActiveImg] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [supportPhotoFailed, setSupportPhotoFailed] = useState(false);
   // Facebook/Instagram ad URLs are real Meta Ad Library snapshot pages —
   // embeddable in an iframe (that's how ad-research tools show them) — so
   // these play inline instead of opening Meta's site in a new tab. TikTok/
@@ -186,9 +331,9 @@ function ProductDetailContent() {
 
   const handleCopyLink = async () => {
     try {
-      // Copies the real, publicly-viewable CJ product page — not our own
-      // Prodora URL, which requires being logged into Prodora to open.
-      await navigator.clipboard.writeText(product?.source_url || window.location.href);
+      // Always this Prodora page's own URL — never the supplier's source link,
+      // which would expose who we source from.
+      await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}
@@ -249,7 +394,7 @@ function ProductDetailContent() {
     winning_score, trend_percent, competition_level, saturation_level, orders_count,
     supplier_name, supplier_rating, fulfillment_rate, processing_time, shipping_time,
     warehouse_country, shipping_cost, demand_trend_json, orders_trend_json, top_countries_json,
-    ad_facebook_url, ad_tiktok_url, ad_instagram_url, ad_pinterest_url, specs_json, tags } = product;
+    ad_facebook_url, ad_tiktok_url, ad_instagram_url, ad_pinterest_url, amazon_url, ebay_url, specs_json, tags, created_at } = product;
 
   const gallery = images && images.length > 0 ? images : (image_url ? [image_url] : []);
   const activeImage = gallery[activeImg] || gallery[0];
@@ -271,7 +416,9 @@ function ProductDetailContent() {
   const profit = totalCost != null ? price - totalCost : null;
   const marginPct = profit != null && price > 0 ? Math.round((profit / price) * 100) : null;
 
+  const hasVideo = (videos && videos.length > 0) || !!video_url;
   const hasWinningAnalytics = winning_score != null || trend_percent != null || competition_level || saturation_level || orders_count != null;
+  const hasSidebarContent = topCountries.length > 0 || tagList.length > 0;
   const adPlatforms = [
     { key: 'facebook', label: 'Facebook Ads Library', url: ad_facebook_url, icon: Facebook },
     { key: 'instagram', label: 'Instagram', url: ad_instagram_url, icon: Instagram },
@@ -294,17 +441,23 @@ function ProductDetailContent() {
           {category_name && <><span className="hidden md:inline">/</span><span className="hidden md:inline text-gray-400">{category_name}</span></>}
           <span>/</span>
           <span className="min-w-0 flex-1 truncate text-[#111827] sm:max-w-[200px] sm:flex-none">{name}</span>
+          {created_at && (
+            <span className="hidden sm:inline-flex ml-auto shrink-0 items-center px-2.5 py-1 rounded-full bg-gray-50 border border-[#E5E7EB] text-xs text-[#6B7280]">
+              Added to Prodora: {new Date(created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+          )}
         </div>
       </div>
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
-        <div className="grid lg:grid-cols-3 gap-5 items-start">
+        <div className={`grid gap-5 items-start ${hasSidebarContent ? 'lg:grid-cols-3' : ''}`}>
 
           {/* ── Left: main content ── */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className={`space-y-4 ${hasSidebarContent ? 'lg:col-span-2' : ''}`}>
             {/* Gallery + basic info */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
-              <div className="p-4 md:p-5">
+              <div className="p-4 md:p-5 grid lg:grid-cols-2 gap-5 items-start">
+                <div className="space-y-3">
                 <div className="flex gap-3">
                   <div className="relative bg-gray-50 group rounded-xl overflow-hidden flex-1" style={{ minHeight: '340px' }}>
                     {activeImage ? (
@@ -364,28 +517,13 @@ function ProductDetailContent() {
                     </div>
                   )}
                 </div>
-              </div>
-
-              <div className="px-5 pb-5 space-y-3">
-                {category_name && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                    <Tag className="w-3 h-3" /> {category_name}
-                  </span>
-                )}
-                <h1 className="text-[28px] sm:text-[32px] font-bold text-[#111827] leading-tight">{name}</h1>
-
-                {winning_score != null && (
-                  <div className="inline-flex items-center gap-2 w-fit px-3 py-1.5 rounded-full bg-[#16A34A]/10 text-[#16A34A] text-sm font-semibold">
-                    <Trophy className="w-4 h-4" /> Winning Score {winning_score}/100
-                  </div>
-                )}
 
                 {variants && variants.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-[#6B7280] mb-1.5">Variants</p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 max-h-[76px] overflow-y-auto pr-1">
                       {variants.map((v, i) => (
-                        <span key={i} className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#111827]">
+                        <span key={i} className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#111827] shrink-0">
                           {v.color_hex && <span className="w-3 h-3 rounded-full border border-[#E5E7EB]" style={{ background: v.color_hex }} />}
                           {v.color}
                         </span>
@@ -393,8 +531,219 @@ function ProductDetailContent() {
                     </div>
                   </div>
                 )}
+                </div>
+
+              <div className="space-y-3">
+                {category_name && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                    <Tag className="w-3 h-3" /> {category_name}
+                  </span>
+                )}
+                <h1 className="text-xl sm:text-2xl font-bold text-[#111827] leading-tight">{name}</h1>
+
+                {winning_score != null && (
+                  <div className="inline-flex items-center gap-2 w-fit px-3 py-1.5 rounded-full bg-[#16A34A]/10 text-[#16A34A] text-sm font-semibold">
+                    <Trophy className="w-4 h-4" /> Winning Score {winning_score}/100
+                  </div>
+                )}
+
+                {/* Cost / Price / Profit — no supplier name or outbound links here, just the real numbers */}
+                <div className="grid grid-cols-3 gap-3 pt-1">
+                  <div className="rounded-xl border border-[#E5E7EB] p-3">
+                    <p className="text-xs text-[#6B7280] flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0"><Wallet className="w-3 h-3" /></span> Product Cost</p>
+                    <p className="text-lg font-bold text-[#111827] mt-1">{cost_price != null ? fmt(cost_price) : '—'}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#E5E7EB] p-3">
+                    <p className="text-xs text-[#6B7280] flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-sky-500/10 text-sky-600 flex items-center justify-center shrink-0"><Receipt className="w-3 h-3" /></span> Selling Price</p>
+                    <p className="text-lg font-bold text-[#111827] mt-1">{fmt(price)}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#16A34A]/20 bg-[#16A34A]/5 p-3">
+                    <p className="text-xs text-[#6B7280] flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-[#16A34A]/10 text-[#16A34A] flex items-center justify-center shrink-0"><Coins className="w-3 h-3" /></span> Profit per Sale</p>
+                    <p className={`text-lg font-bold mt-1 ${profit != null && profit >= 0 ? 'text-[#16A34A]' : 'text-red-500'}`}>{profit != null ? fmt(profit) : '—'}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  {imported ? (
+                    <a href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-sm bg-[#16A34A] text-white active:scale-95 transition">
+                      <CheckCircle2 className="w-4 h-4" /> Added — Open
+                    </a>
+                  ) : (
+                    <button type="button" onClick={handleImport} disabled={importing}
+                      className="inline-flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-sm bg-[#2563EB] text-white hover:bg-[#1E4FC2] active:scale-95 transition disabled:opacity-60">
+                      {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Image src="/exiuscart-logo.png" alt="" width={15} height={15} className="rounded" />}
+                      {importing ? 'Adding…' : 'Import to ExiusCart'}
+                    </button>
+                  )}
+                  {hasVideo && (
+                    <a href="#video"
+                      className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:border-gray-300 transition">
+                      <Play className="w-4 h-4" /> Product Video
+                    </a>
+                  )}
+                </div>
+                {importError && <p className="text-xs text-red-500">{importError}</p>}
+
+                {/* Compare prices on the open marketplaces. Amazon/eBay only show when an admin has pasted a
+                    real listing URL for this exact product (never fabricated); Facebook Ads is always a live
+                    search by product name, since Meta's Ad Library needs no per-product data to search. */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {amazon_url && (
+                    <a href={amazon_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
+                      <Image src="/marketplace-icons/amazon.svg" alt="" width={16} height={16} className="shrink-0" />
+                      <span className="flex-1 text-left">Amazon</span>
+                      <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
+                    </a>
+                  )}
+                  {ebay_url && (
+                    <a href={ebay_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
+                      <Image src="/marketplace-icons/ebay.svg" alt="" width={16} height={16} className="shrink-0" />
+                      <span className="flex-1 text-left">eBay</span>
+                      <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
+                    </a>
+                  )}
+                  <a href={`https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&q=${encodeURIComponent(name)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
+                    <Image src="/marketplace-icons/facebook.svg" alt="" width={16} height={16} className="shrink-0" />
+                    <span className="flex-1 text-left">Facebook Ads</span>
+                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
+                  </a>
+                </div>
+              </div>
               </div>
             </div>
+
+            {/* Need help? — same real WhatsApp support card as the researcher-help banner on the Prodora AI page
+                (src/components/PageIntro.tsx): same photo, same number, same fallback if the photo fails to load. */}
+            <a
+              href={`https://wa.me/971562393573?text=${encodeURIComponent(`Hi, I'd like help deciding on this Prodora product: ${name}`)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5 hover:border-[#2563EB]/40 transition"
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-blue-600">
+                {supportPhotoFailed ? (
+                  <UserRound className="h-5 w-5" />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src="/support/support_2.jpg" alt="" className="h-full w-full object-cover" onError={() => setSupportPhotoFailed(true)} />
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-[#111827]">Need help choosing products?</p>
+                <p className="text-sm text-[#6B7280] flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" /> Contact our ecommerce researcher</p>
+              </div>
+              <span className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2563EB] text-white text-sm font-semibold">
+                Chat now
+              </span>
+            </a>
+
+            {/* Description — moved out of the hero so it doesn't compete with the buy decision; text on the
+                left, gallery photos on the right */}
+            {description && (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+                <h2 className="text-xl font-semibold text-[#111827] mb-3">Description</h2>
+                <div className={`grid gap-4 ${gallery.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                  <div>
+                    <div
+                      className={`text-[#6B7280] text-[15px] leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 ${showFullDescription ? '' : 'line-clamp-6'}`}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
+                    />
+                    <button type="button" onClick={() => setShowFullDescription((v) => !v)}
+                      className="mt-2 text-sm font-medium text-[#2563EB] hover:underline">
+                      {showFullDescription ? 'Show less' : 'View more'}
+                    </button>
+                  </div>
+                  {gallery.length > 1 && (
+                    <div className="flex flex-col gap-3">
+                      {gallery.slice(0, showFullDescription ? gallery.length : 1).map((img, i) => (
+                        <button key={i} type="button" onClick={() => { setActiveImg(i); setShowLightbox(true); }}
+                          className="relative w-full aspect-[4/3] rounded-lg overflow-hidden border border-[#E5E7EB] hover:border-[#2563EB] transition bg-gray-50">
+                          <Image src={img} alt="" fill className="object-contain" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Supplier & Shipping — kept out of the hero on purpose; this is the one place supplier identity shows */}
+            {(supplier_name || effectiveShippingCost != null) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+                <h2 className="text-xl font-semibold text-[#111827] mb-4 flex items-center gap-2">
+                  <Store className="w-4 h-4 text-[#2563EB]" /> Supplier &amp; Shipping
+                </h2>
+
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <label className="text-xs font-medium text-[#6B7280] flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5" /> Ship to
+                  </label>
+                  <Select value={shipCountry} onValueChange={setShipCountry}>
+                    <SelectTrigger className="h-9 w-56 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHIP_COUNTRIES.map((c) => (
+                        <SelectItem key={c.code} value={c.code}><span className="inline-flex items-center gap-2"><CountryFlag code={c.code} />{c.name}</span></SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {shipLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-[#6B7280] py-1 mb-3"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Getting live shipping rates…</div>
+                ) : shipOptions && shipOptions.length > 0 ? (
+                  <div className="space-y-1 rounded-lg bg-gray-50 border border-[#E5E7EB] p-2.5 mb-3">
+                    {shipOptions.map((opt, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <span className="text-[#111827]">{opt.logistic_name}{opt.days ? ` · ${opt.days}` : ''}</span>
+                        <span className={cheapestShipOption === opt ? 'font-semibold text-[#16A34A]' : 'text-[#6B7280]'}>{fmt(opt.price)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : shipUnavailable && shipping_cost != null ? (
+                  <p className="text-xs text-[#6B7280] mb-3">{shipReason ? `${shipReason} ` : 'Live rates are unavailable for this product. '}Showing the estimated flat shipping cost below.</p>
+                ) : shipUnavailable ? (
+                  <p className="text-xs text-[#6B7280] mb-3">{shipReason || 'No shipping estimate is available for this product.'}</p>
+                ) : null}
+
+                {totalCost != null && (
+                  <div className="flex justify-between text-sm font-semibold border-t border-b border-[#E5E7EB] py-2 mb-4">
+                    <span className="text-[#111827]">Total Cost (product + shipping)</span><span className="text-[#111827]">{fmt(totalCost)}</span>
+                  </div>
+                )}
+
+                {supplier_name && (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm mb-4">
+                      <div><p className="text-xs text-[#6B7280]">Supplier</p><p className="text-[#111827] font-medium mt-0.5">{supplier_name}</p></div>
+                      {supplier_rating != null && <div><p className="text-xs text-[#6B7280]">Rating</p><p className="text-[#111827] font-medium mt-0.5">⭐ {supplier_rating}</p></div>}
+                      {fulfillment_rate != null && <div><p className="text-xs text-[#6B7280]">Fulfillment Rate</p><p className="text-[#111827] font-medium mt-0.5">{fulfillment_rate}%</p></div>}
+                      {processing_time && <div><p className="text-xs text-[#6B7280]">Processing Time</p><p className="text-[#111827] font-medium mt-0.5">{processing_time}</p></div>}
+                      {shipping_time && <div><p className="text-xs text-[#6B7280]">Shipping Time</p><p className="text-[#111827] font-medium mt-0.5">{shipping_time}</p></div>}
+                      {warehouse_country && <div><p className="text-xs text-[#6B7280]">Warehouse</p><p className="text-[#111827] font-medium mt-0.5">{warehouse_country}</p></div>}
+                      {sku && <div><p className="text-xs text-[#6B7280]">SKU</p><p className="text-[#111827] font-medium mt-0.5">{sku}</p></div>}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {source_url && (
+                        <a href={source_url} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#2563EB] border border-[#2563EB]/30 rounded-lg px-3 py-2 hover:bg-[#2563EB]/5 transition">
+                          <Store className="w-4 h-4" /> View Supplier Store
+                        </a>
+                      )}
+                      <button type="button" onClick={handleCopyLink}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#6B7280] border border-[#E5E7EB] rounded-lg px-3 py-2 hover:text-[#111827] hover:border-gray-300 transition">
+                        {copied ? <Check className="w-4 h-4 text-[#16A34A]" /> : <Copy className="w-4 h-4" />}
+                        {copied ? 'Link copied!' : 'Product Link'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Videos */}
             {videos && videos.length > 0 ? (
@@ -473,6 +822,18 @@ function ProductDetailContent() {
               </div>
             )}
 
+            {/* Market Saturation gauge — same admin-entered Low/Medium/High as the tile above, as a visual */}
+            {saturation_level && (
+              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+                <h2 className="text-xl font-semibold text-[#111827] mb-2">Market Saturation</h2>
+                <p className="text-sm text-[#6B7280] mb-3">How many stores already sell something like this, judged by our team — not a measured count.</p>
+                <SaturationGauge level={saturation_level} />
+              </div>
+            )}
+
+            {/* Profit Calculator — plain math, editable, defaults to this listing's real numbers */}
+            <ProfitCalculator sellingPrice={price} costPrice={cost_price ?? null} shippingCost={effectiveShippingCost ?? null} />
+
             {/* Competition: real market prices, true profit and a verdict (Growth and Scale) */}
             <CompetitionSection productId={productId} />
 
@@ -499,117 +860,6 @@ function ProductDetailContent() {
 
           {/* ── Right: sticky sidebar — accompanies just the hero + analytics above; the rest of the page runs full width below ── */}
           <div className="space-y-4 lg:sticky lg:top-20">
-            {/* Product Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Product Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {winning_score != null && (
-                  <div className="flex items-center gap-3 bg-[#16A34A]/5 border border-[#16A34A]/20 rounded-xl p-3">
-                    <div className="w-11 h-11 rounded-full bg-[#16A34A] text-white flex items-center justify-center shrink-0"><Trophy className="w-5 h-5" /></div>
-                    <div>
-                      <p className="text-xs text-[#6B7280]">Winning Score</p>
-                      <p className="text-lg font-bold text-[#16A34A] leading-none">{winning_score}<span className="text-xs font-normal text-[#6B7280]">/100</span></p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Live per-country shipping */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-medium text-[#6B7280] flex items-center gap-1.5">
-                      <Truck className="w-3.5 h-3.5" /> Ship to
-                    </label>
-                    <Select value={shipCountry} onValueChange={setShipCountry}>
-                      <SelectTrigger className="h-9 w-56 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SHIP_COUNTRIES.map((c) => (
-                          <SelectItem key={c.code} value={c.code}><span className="inline-flex items-center gap-2"><CountryFlag code={c.code} />{c.name}</span></SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {shipLoading ? (
-                    <div className="flex items-center gap-2 text-xs text-[#6B7280] py-1"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Getting live shipping rates…</div>
-                  ) : shipOptions && shipOptions.length > 0 ? (
-                    <div className="space-y-1 rounded-lg bg-gray-50 border border-[#E5E7EB] p-2.5">
-                      {shipOptions.map((opt, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-[#111827]">{opt.logistic_name}{opt.days ? ` · ${opt.days}` : ''}</span>
-                          <span className={cheapestShipOption === opt ? 'font-semibold text-[#16A34A]' : 'text-[#6B7280]'}>{fmt(opt.price)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : shipUnavailable && shipping_cost != null ? (
-                    <p className="text-xs text-[#6B7280]">{shipReason ? `${shipReason} ` : 'Live rates are unavailable for this product. '}Showing the estimated flat shipping cost below.</p>
-                  ) : shipUnavailable ? (
-                    <p className="text-xs text-[#6B7280]">{shipReason || 'No shipping estimate is available for this product.'}</p>
-                  ) : null}
-                </div>
-
-                <Separator />
-
-                <div className="space-y-1.5 text-sm">
-                  {cost_price != null && (
-                    <div className="flex justify-between"><span className="text-[#6B7280]">Product Cost</span><span className="text-[#111827] font-medium">{fmt(cost_price)}</span></div>
-                  )}
-                  {effectiveShippingCost != null && (
-                    <div className="flex justify-between">
-                      <span className="text-[#6B7280]">Shipping Cost{cheapestShipOption && <span className="ml-1 text-[10px] text-[#16A34A]">live</span>}</span>
-                      <span className="text-[#111827] font-medium">{fmt(effectiveShippingCost)}</span>
-                    </div>
-                  )}
-                  {totalCost != null && (
-                    <div className="flex justify-between font-semibold border-t border-[#E5E7EB] pt-1.5"><span className="text-[#111827]">Total Cost</span><span className="text-[#111827]">{fmt(totalCost)}</span></div>
-                  )}
-                  <div className="flex justify-between pt-1"><span className="text-[#6B7280]">Selling Price</span><span className="text-[#111827] font-medium">{fmt(price)}</span></div>
-                  {profit != null && (
-                    <div className="flex justify-between"><span className="text-[#6B7280]">Estimated Profit</span><span className={profit >= 0 ? 'text-[#16A34A] font-semibold' : 'text-red-500 font-semibold'}>{fmt(profit)}</span></div>
-                  )}
-                  {marginPct != null && (
-                    <div className="flex justify-between"><span className="text-[#6B7280]">Profit Margin</span><span className="text-[#111827] font-medium">{marginPct}%</span></div>
-                  )}
-                </div>
-
-                {(supplier_name || warehouse_country || processing_time || shipping_time) && (
-                  <>
-                    <Separator />
-                    <div className="space-y-1.5 text-sm">
-                      {supplier_name && <div className="flex justify-between"><span className="text-[#6B7280]">Supplier</span><span className="text-[#111827] font-medium">{supplier_name}</span></div>}
-                      {warehouse_country && <div className="flex justify-between"><span className="text-[#6B7280]">Warehouse</span><span className="text-[#111827] font-medium">{warehouse_country}</span></div>}
-                      {processing_time && <div className="flex justify-between"><span className="text-[#6B7280]">Processing Time</span><span className="text-[#111827] font-medium">{processing_time}</span></div>}
-                      {shipping_time && <div className="flex justify-between"><span className="text-[#6B7280]">Shipping Time</span><span className="text-[#111827] font-medium">{shipping_time}</span></div>}
-                      {sku && <div className="flex justify-between"><span className="text-[#6B7280]">SKU</span><span className="text-[#111827] font-medium">{sku}</span></div>}
-                    </div>
-                  </>
-                )}
-
-                <div className="space-y-2 pt-1">
-                  {imported ? (
-                    <a href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm bg-[#16A34A] text-white active:scale-95 transition w-full">
-                      <CheckCircle2 className="w-4 h-4" /> Added — Open in ExiusCart
-                    </a>
-                  ) : (
-                    <button type="button" onClick={handleImport} disabled={importing}
-                      className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm bg-[#2563EB] text-white hover:bg-[#1E4FC2] active:scale-95 transition w-full disabled:opacity-60">
-                      {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
-                      {importing ? 'Adding to your store…' : 'Import Product'}
-                    </button>
-                  )}
-                  <button type="button" onClick={handleCopyLink}
-                    className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:border-gray-300 transition w-full">
-                    {copied ? <Check className="w-4 h-4 text-[#16A34A]" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Link copied!' : product?.source_url ? 'Copy CJ Product Link' : 'Copy Product Link'}
-                  </button>
-                  {importError && <p className="text-xs text-red-500 text-center">{importError}</p>}
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Top Countries */}
             {topCountries.length > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
@@ -646,35 +896,6 @@ function ProductDetailContent() {
 
         {/* ── Below: full-width content, no sidebar constraint ── */}
         <div className="space-y-4 mt-4">
-            {/* Description — text on the left, gallery photos on the right */}
-            {description && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
-                <h2 className="text-xl font-semibold text-[#111827] mb-3">Description</h2>
-                <div className={`grid gap-4 ${gallery.length > 1 ? 'sm:grid-cols-2' : ''}`}>
-                  <div>
-                    <div
-                      className={`text-[#6B7280] text-[15px] leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 ${showFullDescription ? '' : 'line-clamp-6'}`}
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
-                    />
-                    <button type="button" onClick={() => setShowFullDescription((v) => !v)}
-                      className="mt-2 text-sm font-medium text-[#2563EB] hover:underline">
-                      {showFullDescription ? 'Show less' : 'View all'}
-                    </button>
-                  </div>
-                  {gallery.length > 1 && (
-                    <div className="flex flex-col gap-3">
-                      {gallery.slice(0, showFullDescription ? gallery.length : 1).map((img, i) => (
-                        <button key={i} type="button" onClick={() => { setActiveImg(i); setShowLightbox(true); }}
-                          className="relative w-full aspect-[4/3] rounded-lg overflow-hidden border border-[#E5E7EB] hover:border-[#2563EB] transition bg-gray-50">
-                          <Image src={img} alt="" fill className="object-contain" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* Features / Specifications */}
             {(tagList.length > 0 || specs.length > 0) && (
               <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5 space-y-5">
@@ -748,28 +969,6 @@ function ProductDetailContent() {
                     </div>
                   );
                 })()}
-              </div>
-            )}
-
-            {/* Supplier Information */}
-            {supplier_name && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
-                <h2 className="text-xl font-semibold text-[#111827] mb-4 flex items-center gap-2">
-                  <Store className="w-4 h-4 text-[#2563EB]" /> Supplier Information
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm mb-4">
-                  <div><p className="text-xs text-[#6B7280]">Supplier</p><p className="text-[#111827] font-medium mt-0.5">{supplier_name}</p></div>
-                  {supplier_rating != null && <div><p className="text-xs text-[#6B7280]">Rating</p><p className="text-[#111827] font-medium mt-0.5">⭐ {supplier_rating}</p></div>}
-                  {fulfillment_rate != null && <div><p className="text-xs text-[#6B7280]">Fulfillment Rate</p><p className="text-[#111827] font-medium mt-0.5">{fulfillment_rate}%</p></div>}
-                  {processing_time && <div><p className="text-xs text-[#6B7280]">Processing Time</p><p className="text-[#111827] font-medium mt-0.5">{processing_time}</p></div>}
-                  {shipping_time && <div><p className="text-xs text-[#6B7280]">Shipping Time</p><p className="text-[#111827] font-medium mt-0.5">{shipping_time}</p></div>}
-                </div>
-                {source_url && (
-                  <a href={source_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#2563EB] border border-[#2563EB]/30 rounded-lg px-3 py-2 hover:bg-[#2563EB]/5 transition">
-                    <Store className="w-4 h-4" /> View Supplier Store
-                  </a>
-                )}
               </div>
             )}
 
