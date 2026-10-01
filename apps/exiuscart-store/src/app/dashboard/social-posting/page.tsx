@@ -123,6 +123,15 @@ export default function SocialPostingPage() {
   const [creatorInfo, setCreatorInfo] = useState<TikTokCreatorInfo | null>(null);
   const [creatorInfoLoading, setCreatorInfoLoading] = useState(false);
   const [creatorInfoError, setCreatorInfoError] = useState('');
+  // Set only when TikTok itself says this account is over its posting cap or banned (HTTP 429) —
+  // distinct from a generic fetch failure, since TikTok's guidelines require stopping the publish
+  // attempt entirely here, not just showing an error the user might retry past.
+  const [creatorInfoBlocked, setCreatorInfoBlocked] = useState(false);
+  // Guards the fetch effect below from retrying forever: without this, a failed fetch leaves
+  // creatorInfo null, which re-satisfies the effect's own "not fetched yet" condition the instant
+  // creatorInfoLoading flips back to false, hammering TikTok's API in a tight loop on any error
+  // (confirmed live: hundreds of requests/sec against a rate-limited account).
+  const creatorInfoAttempted = useRef(false);
   const [tiktokPrivacy, setTiktokPrivacy] = useState('');
   const [tiktokAllowComment, setTiktokAllowComment] = useState(false);
   const [tiktokAllowDuet, setTiktokAllowDuet] = useState(false);
@@ -235,12 +244,18 @@ export default function SocialPostingPage() {
   // comment/duet/stitch checkboxes must reflect THIS account's real options,
   // not a hardcoded guess (see TikTok's Content Sharing Guidelines).
   useEffect(() => {
-    if (!shopId || !selectedPlatforms.has('tiktok') || creatorInfo || creatorInfoLoading) return;
+    if (!shopId || !selectedPlatforms.has('tiktok')) { creatorInfoAttempted.current = false; return; }
+    if (creatorInfo || creatorInfoLoading || creatorInfoAttempted.current) return;
+    creatorInfoAttempted.current = true;
     setCreatorInfoLoading(true);
     setCreatorInfoError('');
+    setCreatorInfoBlocked(false);
     socialPostingApi.tiktokCreatorInfo(shopId)
       .then((r) => setCreatorInfo(r.data))
-      .catch((e) => setCreatorInfoError(e?.response?.data?.detail ?? 'Could not load your TikTok account info.'))
+      .catch((e) => {
+        setCreatorInfoBlocked(e?.response?.status === 429);
+        setCreatorInfoError(e?.response?.data?.detail ?? 'Could not load your TikTok account info.');
+      })
       .finally(() => setCreatorInfoLoading(false));
   }, [shopId, selectedPlatforms, creatorInfo, creatorInfoLoading]);
 
@@ -285,6 +300,11 @@ export default function SocialPostingPage() {
 
     let platformOptions: Record<string, unknown> | undefined;
     if (selectedPlatforms.has('tiktok')) {
+      if (creatorInfoBlocked) {
+        setPostError(creatorInfoError || "This TikTok account can't post right now. Please try again later.");
+        setComposeTab('platforms');
+        return;
+      }
       if (!tiktokPrivacy) { setPostError('Choose who can view this video on TikTok before posting.'); setComposeTab('platforms'); return; }
       if (videoDurationSec != null && creatorInfo?.max_video_post_duration_sec != null && videoDurationSec > creatorInfo.max_video_post_duration_sec) {
         setPostError(`This video is too long for TikTok (max ${creatorInfo.max_video_post_duration_sec}s for this account).`);
@@ -293,6 +313,11 @@ export default function SocialPostingPage() {
       }
       if (tiktokDisclose && !tiktokYourBrand && !tiktokBrandedContent) {
         setPostError('Choose whether your TikTok video promotes yourself, a third party, or both.');
+        setComposeTab('platforms');
+        return;
+      }
+      if (tiktokDisclose && tiktokBrandedContent && tiktokPrivacy === 'SELF_ONLY') {
+        setPostError("Branded content can't be posted as private on TikTok. Choose a public/friends visibility, or turn off Branded Content.");
         setComposeTab('platforms');
         return;
       }
@@ -628,9 +653,16 @@ export default function SocialPostingPage() {
                             <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading your TikTok account…
                           </div>
                         )}
-                        {creatorInfoError && (
+                        {creatorInfoError && creatorInfoBlocked && (
+                          <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-500/10 rounded-lg px-3 py-2">
+                            <Clock3 className="w-3.5 h-3.5 shrink-0" /> <span className="flex-1">{creatorInfoError}</span>
+                            <button type="button" className="underline shrink-0" onClick={() => { creatorInfoAttempted.current = false; setCreatorInfoError(''); }}>Check again</button>
+                          </div>
+                        )}
+                        {creatorInfoError && !creatorInfoBlocked && (
                           <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {creatorInfoError}
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> <span className="flex-1">{creatorInfoError}</span>
+                            <button type="button" className="underline shrink-0" onClick={() => { creatorInfoAttempted.current = false; setCreatorInfoError(''); }}>Retry</button>
                           </div>
                         )}
 
@@ -661,7 +693,13 @@ export default function SocialPostingPage() {
 
                               <div>
                                 <label className="text-xs font-medium text-foreground mb-1.5 block">Who can view this video *</label>
-                                <select value={tiktokPrivacy} onChange={(e) => setTiktokPrivacy(e.target.value)}
+                                <select value={tiktokPrivacy} onChange={(e) => {
+                                    setTiktokPrivacy(e.target.value);
+                                    // Branded content can never be private — if it was already checked and the
+                                    // user switches to "Only me" afterward, uncheck it instead of leaving a
+                                    // stale combination the submit button would otherwise have to catch.
+                                    if (e.target.value === 'SELF_ONLY' && tiktokBrandedContent) setTiktokBrandedContent(false);
+                                  }}
                                   className="w-full h-10 px-3 rounded-lg border border-border bg-muted text-sm text-foreground outline-none focus:ring-2 focus:ring-ring">
                                   <option value="" disabled>Choose who can view this video</option>
                                   {privacyOptions.map((opt) => (
@@ -836,7 +874,13 @@ export default function SocialPostingPage() {
 
               {/* Actions */}
               <Card>
-                <CardContent className="p-4 flex gap-3">
+                <CardContent className="p-4 space-y-3">
+                  {selectedPlatforms.has('tiktok') && (
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <Clock3 className="w-3 h-3 shrink-0" /> TikTok processes posts after upload — it can take a few minutes to appear on the account's profile.
+                    </p>
+                  )}
+                  <div className="flex gap-3">
                   <Button variant="outline" className="flex-1" disabled={posting} onClick={() => submit(false)}>
                     {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     Post now
@@ -846,6 +890,7 @@ export default function SocialPostingPage() {
                     Schedule post
                     <ChevronDown className="w-3.5 h-3.5 opacity-70" />
                   </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>

@@ -91,6 +91,20 @@ TIKTOK_AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/"
 TIKTOK_TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/"
 TIKTOK_API_BASE = "https://open.tiktokapis.com/v2"
 
+# TikTok's Content Sharing Guidelines require stopping the publish attempt and telling the user to try
+# later when the creator has hit their posting cap or is banned from posting. TikTok's own creator_info
+# schema has no dedicated boolean for this — these two error codes are how it's actually signaled, on
+# creator_info and on the publish call alike. Always use our own clear wording here rather than whatever
+# terse text TikTok's error.message happens to contain for these specific, known codes.
+_TIKTOK_POSTING_BLOCKED_CODES = ("spam_risk_too_many_posts", "spam_risk_user_banned_from_posting")
+
+
+def _tiktok_blocked_message(err_code: str) -> str:
+    if err_code == "spam_risk_user_banned_from_posting":
+        return "This TikTok account is currently banned from posting. Check the account's TikTok app for details."
+    return "This TikTok account has reached its posting limit for now. Please try again later."
+
+
 STOREFRONT_BASE = os.getenv("STOREFRONT_BASE_URL", "https://store.exiuscart.com")
 
 
@@ -501,7 +515,15 @@ def tiktok_creator_info(shop_id: int, db: Session = Depends(get_db), current_use
             )
         data = resp.json()
         err = (data.get("error") or {})
-        if resp.status_code >= 300 or err.get("code") not in (None, "ok"):
+        err_code = err.get("code")
+        if resp.status_code >= 300 or err_code not in (None, "ok"):
+            # TikTok's Content Sharing Guidelines require stopping the publish attempt and telling the
+            # user to try later when the creator has hit their posting cap or is banned from posting —
+            # these two error codes are how creator_info signals that (TikTok's own schema has no
+            # dedicated boolean for it). 429, not 502, so the frontend can tell "try again later" apart
+            # from "something broke" and show the right message instead of a generic fetch error.
+            if err_code in _TIKTOK_POSTING_BLOCKED_CODES:
+                raise HTTPException(status_code=429, detail=_tiktok_blocked_message(err_code))
             raise HTTPException(status_code=502, detail=err.get("message") or "Could not load your TikTok account info.")
         result = data.get("data") or {}
         # Surface the same flag _publish_to_tiktok enforces, so the UI
@@ -748,6 +770,11 @@ def _publish_to_tiktok(conn: SocialAccountConnection, post: SocialPost) -> tuple
     if not TIKTOK_CONTENT_AUDITED:
         privacy_level = "SELF_ONLY"
 
+    # TikTok's guidelines: Branded Content can never be posted as private — reject here too, not just in
+    # the UI, so a stale/tampered request can't slip a private branded post through.
+    if opts.get("brand_content_toggle") and privacy_level == "SELF_ONLY":
+        return False, "Branded content can't be posted as private on TikTok. Choose a public/friends visibility, or turn off the Branded Content disclosure."
+
     post_info = {
         "title": (post.caption or "")[:2200],
         "privacy_level": privacy_level,
@@ -771,8 +798,12 @@ def _publish_to_tiktok(conn: SocialAccountConnection, post: SocialPost) -> tuple
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
             )
         data = resp.json()
-        if resp.status_code >= 300 or (data.get("error") or {}).get("code") not in (None, "ok"):
-            return False, resp.text[:500]
+        err = data.get("error") or {}
+        err_code = err.get("code")
+        if resp.status_code >= 300 or err_code not in (None, "ok"):
+            if err_code in _TIKTOK_POSTING_BLOCKED_CODES:
+                return False, _tiktok_blocked_message(err_code)
+            return False, (err.get("message") or resp.text[:500])
         return True, (data.get("data") or {}).get("publish_id", "")
     except Exception as e:
         return False, str(e)[:500]
