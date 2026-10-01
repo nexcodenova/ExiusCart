@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, Landmark, BarChart2, RefreshCw, Lock, ChevronRight, MessageCircle, Globe, Calendar as CalendarIcon, Sparkles, Filter, Loader2 } from 'lucide-react';
+import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, BarChart2, RefreshCw, Lock, ChevronRight, MessageCircle, Globe, Calendar as CalendarIcon, Sparkles, Filter, Loader2, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ordersApi, subscriptionApi, dropshipApi, channelsApi, shopifyApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { UsageBanner } from '@/components/usage-banner';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { channelMeta } from '@/components/channels/channelMeta';
 import ChannelLogo from '@/components/channels/ChannelLogo';
-import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import DateRangePicker, { DateRangeValue } from '@/components/channels/listings/DateRangePicker';
 
 // Same real calendar range picker as the Channel Orders page — an arbitrary
@@ -130,37 +131,6 @@ function ChannelPill({ order }: { order: Order }) {
   );
 }
 
-// Horizontal channel switcher — real connected channels only, each with its
-// real logo and a real count. Counts come from a dedicated fetch that
-// ignores the channel filter itself (status/month/search only), so every
-// pill keeps showing its true count no matter which one is currently
-// selected — computing counts from the already-channel-filtered order list
-// would make every other pill read 0 the moment you picked one.
-function ChannelPillsRow({ options, counts, total, value, onChange }: {
-  options: { key: string; label: string; icon: React.ReactNode }[];
-  counts: Record<string, number>;
-  total: number;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const visible = options.filter((o) => (counts[o.key] ?? 0) > 0);
-  return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
-      <button onClick={() => onChange('all')}
-        className={`flex h-10 shrink-0 items-center gap-2 rounded-xl border px-4 text-xs font-semibold transition-all ${value === 'all' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}>
-        All Channels
-        <span className={`rounded-full px-2 py-0.5 text-[10px] ${value === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{total}</span>
-      </button>
-      {visible.map((o) => (
-        <button key={o.key} onClick={() => onChange(o.key)}
-          className={`flex h-10 shrink-0 items-center gap-2 rounded-xl border px-4 text-xs font-semibold transition-all ${value === o.key ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}>
-          {o.icon} {o.label}
-          <span className={`rounded-full px-2 py-0.5 text-[10px] ${value === o.key ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{counts[o.key]}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // Real Order.status values only (see backend's _VALID_STATUSES) — no
 // fabricated "On Hold" tab. "Refunded" isn't a status at all, it's
@@ -681,7 +651,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [channelFilter, setChannelFilter] = useState('all');
   const [dateRange, setDateRange] = useState<DateRangeValue>({ preset: 'all' });
-  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(true);
   const [shipTarget, setShipTarget] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [shopId, setShopId] = useState('');
@@ -736,42 +706,22 @@ export default function OrdersPage() {
     [orders]
   );
 
-  const channelBreakdown = useMemo(() => {
-    const map: Record<string, { orders: number; revenue: number; cash: number; card: number; bankTransfer: number; split: number }> = {};
-    for (const o of paidSalesOrders) {
-      // Bucket by the real channel (eBay, Daraz, Custom Website, ...) when
-      // there is one — every connected channel otherwise collapsed into one
-      // meaningless "channel" bucket, since that's the literal value of
-      // Order.source for all of them.
-      const src = o.channel_type || o.source || 'other';
-      if (!map[src]) map[src] = { orders: 0, revenue: 0, cash: 0, card: 0, bankTransfer: 0, split: 0 };
-      map[src].orders += 1;
-      map[src].revenue += Number(o.total);
-      if (src === 'pos') {
-        const n = o.notes || '';
-        if (n.includes('Payment: split')) map[src].split += 1;
-        else if (n.includes('Payment: card')) map[src].card += 1;
-        else if (n.includes('Payment: bank_transfer')) map[src].bankTransfer += 1;
-        else map[src].cash += 1;
-      }
-    }
-    return Object.entries(map).sort((a, b) => b[1].revenue - a[1].revenue);
-  }, [paidSalesOrders]);
-
   // Real daily buckets from the orders actually loaded (respects whatever
   // channel/status/month/search filters are active) — powers the KPI
   // sparklines and the order-volume chart below. No historical backend
   // series needed since the full period's orders are already in memory.
   const dailySeries = useMemo(() => {
-    const map: Record<string, { revenue: number; paidRevenue: number; paidOrders: number; orders: number; collected: number; pending: number }> = {};
+    const map: Record<string, { revenue: number; paidRevenue: number; paidOrders: number; notPaidAmount: number; orders: number; collected: number; pending: number }> = {};
     for (const o of salesOrders) {
       const day = new Date(o.created_at).toISOString().slice(0, 10);
-      if (!map[day]) map[day] = { revenue: 0, paidRevenue: 0, paidOrders: 0, orders: 0, collected: 0, pending: 0 };
+      if (!map[day]) map[day] = { revenue: 0, paidRevenue: 0, paidOrders: 0, notPaidAmount: 0, orders: 0, collected: 0, pending: 0 };
       map[day].revenue += Number(o.total);
       map[day].orders += 1;
       if (o.payment_status === 'paid') {
         map[day].paidRevenue += Number(o.total);
         map[day].paidOrders += 1;
+      } else {
+        map[day].notPaidAmount += Number(o.total);
       }
       if (['delivered', 'completed'].includes(o.status)) map[day].collected += Number(o.total);
       if (o.status === 'pending') map[day].pending += 1;
@@ -781,10 +731,12 @@ export default function OrdersPage() {
       .map(([day, v]) => ({ day, ...v, aov: v.paidOrders ? v.paidRevenue / v.paidOrders : 0 }));
   }, [salesOrders]);
 
-  const highestSalesDay = useMemo(() => {
-    if (dailySeries.length === 0) return null;
-    return dailySeries.reduce((best, d) => (d.orders > best.orders ? d : best), dailySeries[0]);
-  }, [dailySeries]);
+  // The amount sitting in orders that aren't paid yet — shown in its own
+  // card so it's never mistaken for real revenue, but still visible.
+  const notPaidAmount = useMemo(
+    () => salesOrders.filter((o) => o.payment_status !== 'paid').reduce((s, o) => s + Number(o.total), 0),
+    [salesOrders]
+  );
 
   // Native order-taking methods are always offered; real sales channels only
   // once actually connected.
@@ -1039,7 +991,7 @@ export default function OrdersPage() {
       <UsageBanner shopId={shopId} show={['invoice_emails', 'orders']} />
 
       {/* ── Revenue Overview ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Total Revenue — hero card */}
         <div className="relative overflow-hidden col-span-2 lg:col-span-1 rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-indigo-600/10 p-3 flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/15 z-10">
@@ -1073,6 +1025,22 @@ export default function OrdersPage() {
           <MiniSparkline data={dailySeries} dataKey="collected" color="#22c55e" />
         </div>
 
+        {/* Not Paid — the flip side of Total Revenue: what's sitting in
+            orders that haven't actually been paid for yet, so it's never
+            silently folded into "sales" but still visible somewhere. */}
+        <div className={`relative overflow-hidden rounded-xl border bg-card p-3 flex items-center gap-3 ${notPaidAmount > 0 ? 'border-orange-500/30' : 'border-border'}`}>
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg z-10 ${notPaidAmount > 0 ? 'bg-orange-500/10' : 'bg-muted'}`}>
+            <Clock className={`h-4 w-4 ${notPaidAmount > 0 ? 'text-orange-500' : 'text-foreground/60'}`} />
+          </div>
+          <div className="min-w-0 z-10">
+            <p className="text-xs text-muted-foreground truncate">Not Paid</p>
+            <p className={`text-lg font-bold leading-tight tracking-tight tabular-nums ${notPaidAmount > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-foreground'}`}>
+              {loading ? '—' : fmt(notPaidAmount)}
+            </p>
+          </div>
+          <MiniSparkline data={dailySeries} dataKey="notPaidAmount" color="#f97316" />
+        </div>
+
         <div className={`relative overflow-hidden rounded-xl border bg-card p-3 flex items-center gap-3 ${pendingCount > 0 ? 'border-yellow-500/30' : 'border-border'}`}>
           <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg z-10 ${pendingCount > 0 ? 'bg-yellow-500/10' : 'bg-muted'}`}>
             <Package className={`h-4 w-4 ${pendingCount > 0 ? 'text-yellow-500' : 'text-foreground/60'}`} />
@@ -1087,113 +1055,6 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* ── Channel switcher + compact order-volume chart sharing one row —
-          the pills alone left a wide empty strip on wider screens, so the
-          chart (moved up from the section below) fills it instead of
-          leaving that space blank. ── */}
-      <div className="rounded-xl border border-border bg-card p-3 flex flex-col lg:flex-row lg:items-center gap-4">
-        <ChannelPillsRow
-          options={channelFilterOptions}
-          counts={channelCounts}
-          total={Object.values(channelCounts).reduce((s, n) => s + n, 0)}
-          value={channelFilter}
-          onChange={setChannelFilter}
-        />
-        {dailySeries.length > 1 && (
-          <div className="flex-1 min-w-0 flex items-center gap-3 lg:border-l lg:border-border lg:pl-4">
-            <div className="h-12 flex-1 min-w-[100px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailySeries}>
-                  <Tooltip
-                    formatter={(value: number) => [`${value} order${value === 1 ? '' : 's'}`, 'Orders']}
-                    labelFormatter={(d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                    contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                    cursor={false}
-                  />
-                  <Bar dataKey="orders" fill="#6366f1" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            {highestSalesDay && (
-              <div className="shrink-0 text-right">
-                <p className="text-[10px] text-muted-foreground whitespace-nowrap">Highest sales day</p>
-                <p className="text-xs font-semibold text-foreground whitespace-nowrap">
-                  {new Date(highestSalesDay.day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {highestSalesDay.orders} order{highestSalesDay.orders !== 1 ? 's' : ''}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Revenue by Channel ── */}
-      {!loading && channelBreakdown.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-5">
-          {channelBreakdown.length > 0 && (
-            <>
-              <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-sm font-semibold text-foreground">Revenue by Channel</h2>
-                <span className="text-xs text-muted-foreground">({channelBreakdown.length} active)</span>
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {channelBreakdown.map(([channel, stats]) => {
-                  const v = channelVisual(channel);
-                  const pct = totalRevenue > 0 ? (stats.revenue / totalRevenue) * 100 : 0;
-                  return (
-                    <div key={channel} className="rounded-xl border border-border p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {v.icon}
-                          <p className="text-xs font-semibold text-foreground">{v.label}</p>
-                        </div>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${v.className}`}>
-                          {pct.toFixed(0)}%
-                        </span>
-                      </div>
-                      <p className="text-lg font-bold text-foreground tabular-nums">{fmt(stats.revenue)}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{stats.orders} order{stats.orders !== 1 ? 's' : ''}</p>
-
-                      {/* POS payment breakdown */}
-                      {channel === 'pos' && stats.orders > 0 && (
-                        <div className="mt-2 pt-2 border-t border-border flex gap-3 text-xs text-muted-foreground">
-                          {stats.cash > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Banknote className="w-3 h-3" /> {stats.cash}
-                            </span>
-                          )}
-                          {stats.card > 0 && (
-                            <span className="flex items-center gap-1">
-                              <CreditCard className="w-3 h-3" /> {stats.card}
-                            </span>
-                          )}
-                          {stats.bankTransfer > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Landmark className="w-3 h-3" /> {stats.bankTransfer}
-                            </span>
-                          )}
-                          {stats.split > 0 && (
-                            <span className="flex items-center gap-1">
-                              <ArrowLeftRight className="w-3 h-3" /> {stats.split}
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Revenue bar — one consistent fill colour across every
-                          channel now that real logos (not per-channel dot
-                          colours) are what tells channels apart */}
-                      <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
       {/* Filters — collapsible, same pattern as Channel Orders' own panel */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <button onClick={() => setFiltersCollapsed((c) => !c)} className="w-full flex items-center justify-between px-4 py-3">
@@ -1201,8 +1062,8 @@ export default function OrdersPage() {
             <Filter className="w-4 h-4" /> Filters
           </span>
           <div className="flex items-center gap-3">
-            {(searchQuery || dateRange.preset !== 'all') && (
-              <span onClick={(e) => { e.stopPropagation(); setSearchQuery(''); setDateRange({ preset: 'all' }); }}
+            {(searchQuery || dateRange.preset !== 'all' || channelFilter !== 'all') && (
+              <span onClick={(e) => { e.stopPropagation(); setSearchQuery(''); setDateRange({ preset: 'all' }); setChannelFilter('all'); }}
                 className="text-xs font-semibold text-primary hover:opacity-80">Clear all</span>
             )}
             <ChevronDown className={`w-4 h-4 text-muted-foreground transition ${filtersCollapsed ? '' : 'rotate-180'}`} />
@@ -1219,6 +1080,23 @@ export default function OrdersPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground placeholder:text-muted-foreground"
               />
+            </div>
+            <div className="sm:w-56 shrink-0">
+              <Select value={channelFilter} onValueChange={setChannelFilter}>
+                <SelectTrigger className="h-[38px] bg-muted">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <span className="flex items-center gap-2"><Globe className="w-3.5 h-3.5 text-muted-foreground" /> All channels</span>
+                  </SelectItem>
+                  {channelFilterOptions.map((o) => (
+                    <SelectItem key={o.key} value={o.key}>
+                      <span className="flex items-center gap-2">{o.icon} {o.label} ({channelCounts[o.key] ?? 0})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="sm:w-64 shrink-0">
               <DateRangePicker value={dateRange} onChange={setDateRange} />
