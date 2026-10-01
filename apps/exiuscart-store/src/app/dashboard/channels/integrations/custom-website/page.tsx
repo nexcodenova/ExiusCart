@@ -152,6 +152,9 @@ export default function CustomWebsiteIntegrationPage() {
       paymentGatewayApi.get(shopId).then((r) => {
         setGateway(r.data);
         if (r.data?.payment_gateway) setSelectedGateway(r.data.payment_gateway);
+        // merchant_id isn't a secret (returned in plain text by this endpoint), so pre-fill it —
+        // re-saving (e.g. just to rotate the webhook secret) shouldn't require retyping it.
+        if (r.data?.merchant_id) setMerchantId(r.data.merchant_id);
       }).catch(() => {}),
       shopApi.getMyShop().then((r) => {
         setShopSlug(r.data?.slug ?? '');
@@ -208,11 +211,19 @@ export default function CustomWebsiteIntegrationPage() {
 
   const saveGateway = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!merchantId.trim() || !merchantSecret.trim()) return;
-    setSavingGateway(true); setGatewayError(''); setGatewaySaved(false);
+    setGatewayError(''); setGatewaySaved(false);
+    // merchant_secret is never pre-filled (it's write-only — see get_payment_gateway_settings), so
+    // leaving it blank is valid on a re-save of the SAME already-configured gateway: it means "keep
+    // the secret already on file". It's only actually required on first setup or when switching to
+    // a different gateway. Was previously a silent no-op here with no error shown at all.
+    const alreadyConfigured = !!gateway?.configured && gateway?.payment_gateway === selectedGateway;
+    if (!merchantId.trim()) { setGatewayError(`${gatewayLabels.idLabel} is required.`); return; }
+    if (!merchantSecret.trim() && !alreadyConfigured) { setGatewayError(`${gatewayLabels.secretLabel} is required.`); return; }
+    setSavingGateway(true);
     try {
       await paymentGatewayApi.set(shopId, {
-        payment_gateway: selectedGateway, merchant_id: merchantId.trim(), merchant_secret: merchantSecret.trim(),
+        payment_gateway: selectedGateway, merchant_id: merchantId.trim(),
+        ...(merchantSecret.trim() ? { merchant_secret: merchantSecret.trim() } : {}),
         ...(selectedGateway === 'whop' && webhookSigningSecret.trim() ? { webhook_signing_secret: webhookSigningSecret.trim() } : {}),
       });
       setMerchantSecret('');

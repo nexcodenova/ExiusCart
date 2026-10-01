@@ -617,7 +617,11 @@ def public_paypal_return(shop_slug: str, order_number: str, redirect_to: str, ba
 class PaymentGatewayIn(BaseModel):
     payment_gateway: str
     merchant_id: str
-    merchant_secret: str
+    # Optional on a re-save of the SAME gateway: never echoed back by GET (see
+    # get_payment_gateway_settings), so the seller can't retype a value they can't see. Blank here
+    # means "keep the secret already on file" — required only on first setup or when switching to
+    # a different gateway, enforced in set_payment_gateway_settings below.
+    merchant_secret: Optional[str] = None
     # Whop-only: the webhook signing secret shown once when the seller
     # registers this shop's webhook URL in their Whop dashboard. Ignored
     # for every other gateway.
@@ -674,9 +678,18 @@ def set_payment_gateway_settings(
         raise HTTPException(status_code=400, detail=f"Unsupported payment gateway. Supported: {', '.join(SUPPORTED_GATEWAYS)}")
 
     conn = _custom_channel_connection(shop_id, db)
+    secret = (payload.merchant_secret or "").strip()
+    switching_gateway = conn.payment_gateway != payload.payment_gateway
+    # A secret is required on first setup, or when switching to a different gateway (the old
+    # gateway's secret is meaningless for the new one) — otherwise a blank secret means "keep what's
+    # already on file", since the field is intentionally never pre-filled for the seller to re-paste.
+    if not secret and (not conn.gateway_merchant_secret or switching_gateway):
+        raise HTTPException(status_code=400, detail="Merchant secret is required.")
+
     conn.payment_gateway = payload.payment_gateway
     conn.gateway_merchant_id = payload.merchant_id.strip()
-    conn.gateway_merchant_secret = payload.merchant_secret.strip()
+    if secret:
+        conn.gateway_merchant_secret = secret
     if payload.payment_gateway == "whop" and payload.webhook_signing_secret:
         conn.channel_api_url = payload.webhook_signing_secret.strip()  # repurposed field, see payment_gateways.py
     db.commit()
