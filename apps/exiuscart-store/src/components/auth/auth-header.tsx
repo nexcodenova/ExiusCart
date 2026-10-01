@@ -9,9 +9,9 @@ const SUPPORT_WHATSAPP = 'https://wa.me/971562393573';
 
 // Minimal top bar for the sign-in / sign-up screens: centred logo, the
 // support contact on the right — same photo-avatar treatment Prodora uses.
-// On tablet/laptop it sits here AND as a fuller card lower on the page
-// (SupportCard); on a phone-width screen there isn't room for both, so it
-// shows only down on the page, not up here. No product navigation —
+// Shown only on mobile, where the fuller SupportCard lower on the page is
+// easy to miss without scrolling; on tablet/laptop the SupportCard alone
+// is enough, so this stays out of the navbar there. No product navigation —
 // nothing to lead the visitor away from finishing the form.
 export function AuthHeader({ homeHref = 'https://exiuscart.com' }: { homeHref?: string }) {
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -28,7 +28,7 @@ export function AuthHeader({ homeHref = 'https://exiuscart.com' }: { homeHref?: 
         <a
           href={SUPPORT_WHATSAPP}
           target="_blank" rel="noopener noreferrer"
-          className="absolute right-4 hidden items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-50 sm:flex"
+          className="absolute right-4 flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-50 sm:hidden"
         >
           <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#6B3FD9]/10 text-[#6B3FD9]">
             {photoFailed ? (
