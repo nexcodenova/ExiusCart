@@ -148,10 +148,20 @@ def paypal_capture_order(client_id: str, client_secret: str, paypal_order_id: st
 def whop_create_checkout_configuration(api_key: str, company_id: str, order_number: str, amount: float, currency: str = "usd", redirect_url: str | None = None) -> dict:
     """order_number is stored in `metadata` so the webhook can match the
     payment back to the right ExiusCart order — same role Stripe's
-    client_reference_id plays above."""
+    client_reference_id plays above.
+
+    Fixed against Whop's real API reference (docs.whop.com, confirmed
+    2026-10-01) — this call was 500ing on every real attempt. Three real
+    bugs: the endpoint is `/checkout_configurations` (underscore, not the
+    hyphen this used), the top-level `mode: "payment"` field is required
+    and was missing entirely, and `company_id` belongs inside `plan`, not
+    at the top level. Whop was returning 404 for the wrong path, and
+    raise_for_status() turned that into an uncaught exception — a real
+    500 from this endpoint, not a validation error."""
     body = {
-        "company_id": company_id,
+        "mode": "payment",
         "plan": {
+            "company_id": company_id,
             "plan_type": "one_time",
             "initial_price": amount,
             "currency": currency,
@@ -161,7 +171,7 @@ def whop_create_checkout_configuration(api_key: str, company_id: str, order_numb
     if redirect_url:
         body["redirect_url"] = redirect_url
     resp = httpx.post(
-        f"{WHOP_API_BASE}/checkout-configurations",
+        f"{WHOP_API_BASE}/checkout_configurations",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         json=body,
         timeout=15,
