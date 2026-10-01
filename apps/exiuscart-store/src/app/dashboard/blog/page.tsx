@@ -58,7 +58,7 @@ export default function BlogListPage() {
 
   if (checking) {
     return (
-      <div className="p-6 max-w-6xl mx-auto flex items-center justify-center py-24 text-muted-foreground gap-2">
+      <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
         <Loader2 className="w-5 h-5 animate-spin" /> Loading…
       </div>
     );
@@ -66,7 +66,7 @@ export default function BlogListPage() {
 
   if (isTheDersiUser) {
     return (
-      <div className="p-6 max-w-5xl mx-auto space-y-8">
+      <div className="space-y-8">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Blog</h1>
         </div>
@@ -84,7 +84,7 @@ export default function BlogListPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Blog</h1>

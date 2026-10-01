@@ -57,7 +57,7 @@ export default function DropshipOrdersPage() {
   orders.forEach((o) => { counts[o.status] = (counts[o.status] ?? 0) + 1; });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/dashboard/dropshipping" className="text-sm text-muted-foreground hover:text-foreground">← Suppliers</Link>
         <div>

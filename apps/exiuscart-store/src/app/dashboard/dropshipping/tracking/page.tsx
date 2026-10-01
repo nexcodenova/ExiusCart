@@ -98,7 +98,7 @@ export default function SupplierTrackingPage() {
     : buckets.awaiting;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/dashboard/dropshipping" className="text-sm text-muted-foreground hover:text-foreground">← Suppliers</Link>
         <div>

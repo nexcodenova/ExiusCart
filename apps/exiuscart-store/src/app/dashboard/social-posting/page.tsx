@@ -6,7 +6,7 @@ import {
   Share2, Loader2, Upload, X, Calendar, AlertCircle,
   CheckCircle2, XCircle, Clock, Trash2, ExternalLink, Lock, Eye, Link2,
   MoreHorizontal, ThumbsUp, MessageCircle, Sparkles, Image as ImageIcon,
-  Globe2, Rocket, Send, Clock3, ChevronDown,
+  Globe2, Rocket, Send, Clock3, ChevronDown, Pencil,
 } from 'lucide-react';
 import { socialPostingApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -365,13 +365,34 @@ export default function SocialPostingPage() {
     loadPosts(shopId);
   };
 
+  const [editTarget, setEditTarget] = useState<Post | null>(null);
+  const [editCaption, setEditCaption] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const openEdit = (post: Post) => { setEditTarget(post); setEditCaption(post.caption || ''); setEditError(''); };
+  const saveEdit = async () => {
+    if (!editTarget) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await socialPostingApi.editPost(shopId, editTarget.id, editCaption);
+      setEditTarget(null);
+      loadPosts(shopId);
+    } catch (e: any) {
+      setEditError(e?.response?.data?.detail || 'Could not update this post on Facebook.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const scheduledPosts = posts.filter((p) => p.status === 'scheduled' || p.status === 'publishing');
   const publishedPosts = posts.filter((p) => p.status === 'published' || p.status === 'partial' || p.status === 'failed' || p.status === 'canceled');
   const previewPlatform = (Array.from(selectedPlatforms)[0] as keyof typeof PLATFORM_META) || 'facebook';
   const connectedCount = connections.length;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Hero */}
       <section className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-7 py-7">
         <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
@@ -904,7 +925,7 @@ export default function SocialPostingPage() {
 
         {/* Published */}
         <TabsContent value="published" className="mt-5">
-          <PostList loading={loadingPosts} posts={publishedPosts} emptyText="No published posts yet." />
+          <PostList loading={loadingPosts} posts={publishedPosts} emptyText="No published posts yet." onEdit={openEdit} onDelete={cancelPost} />
         </TabsContent>
 
         {/* Content Library — no backend support yet */}
@@ -941,11 +962,31 @@ export default function SocialPostingPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit a live Facebook post's caption — real Graph API edit, not just a local change */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit post on Facebook</DialogTitle>
+          </DialogHeader>
+          <div className="p-5 pt-0 space-y-3">
+            <Textarea value={editCaption} onChange={(e) => setEditCaption(e.target.value)} rows={5}
+              placeholder="Caption" />
+            {editError && <p className="text-sm text-destructive">{editError}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditTarget(null)} disabled={editSaving}>Cancel</Button>
+              <Button onClick={saveEdit} disabled={editSaving}>
+                {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Save to Facebook
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function PostList({ loading, posts, emptyText, onCancel }: { loading: boolean; posts: Post[]; emptyText: string; onCancel?: (id: number) => void }) {
+function PostList({ loading, posts, emptyText, onCancel, onEdit, onDelete }: { loading: boolean; posts: Post[]; emptyText: string; onCancel?: (id: number) => void; onEdit?: (post: Post) => void; onDelete?: (id: number) => void }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
@@ -1000,6 +1041,22 @@ function PostList({ loading, posts, emptyText, onCancel }: { loading: boolean; p
                 <button onClick={() => onCancel(p.id)} className="text-muted-foreground hover:text-destructive self-start" title="Cancel">
                   <Trash2 className="w-4 h-4" />
                 </button>
+              )}
+              {/* Facebook only — real edit/delete of the live post (Instagram/TikTok have no
+                  edit-or-delete-after-publish API, so those posts get no buttons here) */}
+              {(p.status === 'published' || p.status === 'partial') && p.results?.facebook?.success && (
+                <div className="flex flex-col gap-1.5 self-start shrink-0">
+                  {onEdit && (
+                    <button onClick={() => onEdit(p)} className="text-muted-foreground hover:text-foreground" title="Edit on Facebook">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button onClick={() => onDelete(p.id)} className="text-muted-foreground hover:text-destructive" title="Delete from Facebook">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>

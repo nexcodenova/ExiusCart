@@ -199,7 +199,7 @@ export default function ProductVideosPage() {
 
   if (checking) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
+      <div>
         <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm">Loading…</span>
@@ -251,7 +251,7 @@ export default function ProductVideosPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Sparkles className="w-5 h-5 text-primary" />
         <div>

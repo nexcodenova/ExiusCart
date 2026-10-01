@@ -140,7 +140,7 @@ export default function StorefrontInsightsPage() {
   const contentGaps = terms.filter((t) => t.search_count >= 2 && t.matching_products <= 1);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Storefront Insights</h1>
         <p className="text-sm text-muted-foreground mt-0.5">

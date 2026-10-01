@@ -107,7 +107,7 @@ export default function DropshippingPage() {
   // supplier cards / "How it works" before we know if the user is a TheDersi seller.
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto">
+      <div>
         <div className="flex items-center justify-center py-24 text-muted-foreground gap-2">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm">Loading…</span>
@@ -119,7 +119,7 @@ export default function DropshippingPage() {
   // TheDersi sellers don't get dropshipping — their fulfilment is handled by TheDersi
   if (isTheDersiUser) {
     return (
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="space-y-8">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Suppliers</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -144,7 +144,7 @@ export default function DropshippingPage() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>

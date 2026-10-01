@@ -103,7 +103,7 @@ export default function SupplierReturnsPage() {
   returns.forEach((r) => { counts[r.status] = (counts[r.status] ?? 0) + 1; });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/dropshipping" className="text-sm text-muted-foreground hover:text-foreground">← Suppliers</Link>

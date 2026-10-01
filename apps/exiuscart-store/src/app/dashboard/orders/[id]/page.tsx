@@ -281,7 +281,7 @@ export default function OrderDetailsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto space-y-4 py-4">
+      <div className="space-y-4">
         <div className="h-8 bg-muted rounded-lg w-48 animate-pulse" />
         {[1,2,3].map(i => <div key={i} className="h-32 bg-muted rounded-xl animate-pulse" />)}
       </div>
@@ -309,7 +309,7 @@ export default function OrderDetailsPage() {
   const isTheDersi = order.source === 'thedersi' || order.channel_meta?.channel_type === 'thedersi';
 
   return (
-    <div className="max-w-6xl mx-auto space-y-5 py-4">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => router.back()} className="p-2 hover:bg-muted rounded-lg transition">

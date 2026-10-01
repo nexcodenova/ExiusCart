@@ -638,7 +638,7 @@ export default function PayoutPage() {
   const darazConns = connections.filter((c) => c.channel_type === 'daraz');
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8">
+    <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Earnings</h1>
         <p className="text-sm text-muted-foreground mt-1">
