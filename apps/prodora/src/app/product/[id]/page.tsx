@@ -8,7 +8,7 @@ import {
   ArrowLeft, Package, Tag, Download, ExternalLink, Play, Check, Copy,
   Loader2, CheckCircle2, TrendingUp, Users, Swords, Gauge, Store, Facebook, Instagram,
   Music2, ChevronRight, ChevronLeft, Trophy, Globe2, Truck, GalleryHorizontal, X,
-  Wallet, Receipt, Coins, UserRound, MessageCircle, DollarSign, ShoppingCart,
+  Wallet, Receipt, Coins, UserRound, MessageCircle, DollarSign, ShoppingCart, HelpCircle,
 } from 'lucide-react';
 import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
@@ -152,7 +152,7 @@ function ProfitCalculator({ sellingPrice, costPrice, shippingCost }: { sellingPr
 
       <div className="grid sm:grid-cols-2 gap-5 mb-5">
         <div>
-          <label className="text-sm text-[#6B7280] mb-1.5 block">Selling Price</label>
+          <label className="text-sm text-[#6B7280] mb-1.5 flex items-center gap-1">Selling Price <span title="What this product sells for"><HelpCircle className="w-3.5 h-3.5 text-[#9CA3AF]" /></span></label>
           <div className="flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 mb-2">
             <span className="w-6 h-6 rounded-md bg-gray-100 text-[#6B7280] flex items-center justify-center shrink-0"><DollarSign className="w-3.5 h-3.5" /></span>
             <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(Math.max(0, parseFloat(e.target.value) || 0))}
@@ -161,7 +161,7 @@ function ProfitCalculator({ sellingPrice, costPrice, shippingCost }: { sellingPr
           <input type="range" min="0" max="500" step="0.5" value={price} onChange={(e) => setPrice(parseFloat(e.target.value))} className="w-full accent-[#2563EB]" />
         </div>
         <div>
-          <label className="text-sm text-[#6B7280] mb-1.5 block">Number of Sales</label>
+          <label className="text-sm text-[#6B7280] mb-1.5 flex items-center gap-1">Number of Sales <span title="How many units sold, to project total profit"><HelpCircle className="w-3.5 h-3.5 text-[#9CA3AF]" /></span></label>
           <div className="flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 mb-2">
             <span className="w-6 h-6 rounded-md bg-gray-100 text-[#6B7280] flex items-center justify-center shrink-0"><ShoppingCart className="w-3.5 h-3.5" /></span>
             <input type="number" step="1" min="0" value={sales} onChange={(e) => setSales(Math.max(0, parseInt(e.target.value) || 0))}
@@ -184,13 +184,13 @@ function ProfitCalculator({ sellingPrice, costPrice, shippingCost }: { sellingPr
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Product Cost', value: cost, set: setCost },
-          { label: 'Shipping Cost', value: shipping, set: setShipping },
-          { label: 'Est. Other Fees', value: fees, set: setFees },
-          { label: 'Ad Spend (AS)', value: ad, set: setAd },
+          { label: 'Product Cost', value: cost, set: setCost, hint: 'What you pay the supplier per unit' },
+          { label: 'Shipping Cost', value: shipping, set: setShipping, hint: 'Shipping cost per unit' },
+          { label: 'Est. Other Fees', value: fees, set: setFees, hint: 'Payment processing, packaging, etc.' },
+          { label: 'Ad Spend (AS)', value: ad, set: setAd, hint: 'Ad cost per sale, if any' },
         ].map((f) => (
           <div key={f.label}>
-            <label className="text-xs text-[#6B7280] mb-1 block">{f.label}</label>
+            <label className="text-xs text-[#6B7280] mb-1 flex items-center gap-1">{f.label} <span title={f.hint}><HelpCircle className="w-3 h-3 text-[#9CA3AF]" /></span></label>
             <div className="flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-2 py-1.5">
               <span className="w-5 h-5 rounded bg-gray-100 text-[#6B7280] flex items-center justify-center shrink-0"><DollarSign className="w-3 h-3" /></span>
               <input type="number" step="0.01" min="0" value={f.value} onChange={(e) => f.set(Math.max(0, parseFloat(e.target.value) || 0))}
@@ -201,22 +201,17 @@ function ProfitCalculator({ sellingPrice, costPrice, shippingCost }: { sellingPr
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-        <div className="rounded-xl border border-[#E5E7EB] p-2.5">
-          <p className="text-xs text-[#6B7280]">Profit Margin</p>
-          <p className="text-sm font-bold text-[#111827] mt-0.5">{marginPct.toFixed(0)}%</p>
-        </div>
-        <div className="rounded-xl border border-[#E5E7EB] p-2.5">
-          <p className="text-xs text-[#6B7280]">P/C Ratio</p>
-          <p className="text-sm font-bold text-[#111827] mt-0.5">{pcRatio != null ? `${pcRatio.toFixed(0)}X` : '—'}</p>
-        </div>
-        <div className="rounded-xl border border-[#E5E7EB] p-2.5">
-          <p className="text-xs text-[#6B7280]">Break-Even ROAS</p>
-          <p className="text-sm font-bold text-[#111827] mt-0.5">{breakEvenRoas != null ? breakEvenRoas.toFixed(2) : '—'}</p>
-        </div>
-        <div className="rounded-xl border border-[#E5E7EB] p-2.5">
-          <p className="text-xs text-[#6B7280]">Target ROAS</p>
-          <p className="text-sm font-bold text-[#111827] mt-0.5">{targetRoas != null ? targetRoas.toFixed(2) : '—'}</p>
-        </div>
+        {[
+          { label: 'Profit Margin', value: `${marginPct.toFixed(0)}%`, hint: 'Net profit as a share of selling price' },
+          { label: 'P/C Ratio', value: pcRatio != null ? `${pcRatio.toFixed(0)}X` : '—', hint: 'Selling price divided by product cost' },
+          { label: 'Break-Even ROAS', value: breakEvenRoas != null ? breakEvenRoas.toFixed(2) : '—', hint: 'Minimum ad return needed before ad spend erases the profit' },
+          { label: 'Target ROAS', value: targetRoas != null ? targetRoas.toFixed(2) : '—', hint: 'Selling price divided by Ad Spend — set Ad Spend above to see it' },
+        ].map((r) => (
+          <div key={r.label} className="rounded-xl border border-[#E5E7EB] p-2.5">
+            <p className="text-xs text-[#6B7280] flex items-center justify-center gap-1">{r.label} <span title={r.hint}><HelpCircle className="w-3 h-3 text-[#9CA3AF]" /></span></p>
+            <p className="text-sm font-bold text-[#111827] mt-0.5">{r.value}</p>
+          </div>
+        ))}
       </div>
       <p className="mt-3 text-xs text-[#9CA3AF]">Est. Other Fees is a plain 3% estimate, not a measured figure. Everything here is editable.</p>
     </div>
@@ -449,14 +444,20 @@ function ProductDetailContent() {
         </div>
       </div>
 
+      {importError && (
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-3">
+          <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{importError}</p>
+        </div>
+      )}
+
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className={`grid gap-5 items-start ${hasSidebarContent ? 'lg:grid-cols-3' : ''}`}>
 
           {/* ── Left: main content ── */}
           <div className={`space-y-4 ${hasSidebarContent ? 'lg:col-span-2' : ''}`}>
             {/* Gallery + basic info */}
-            <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
-              <div className="p-4 md:p-5 grid lg:grid-cols-2 gap-5 items-start">
+            <div className="relative bg-white rounded-2xl shadow-sm border border-[#E5E7EB] overflow-hidden">
+              <div className="p-4 md:p-5 pb-16 sm:pb-5 grid lg:grid-cols-2 gap-5 items-start">
                 <div className="space-y-3">
                 <div className="flex gap-3">
                   <div className="relative bg-gray-50 group rounded-xl overflow-hidden flex-1" style={{ minHeight: '340px' }}>
@@ -541,6 +542,13 @@ function ProductDetailContent() {
                 )}
                 <h1 className="text-xl sm:text-2xl font-bold text-[#111827] leading-tight">{name}</h1>
 
+                {description && (
+                  <p className="text-sm text-[#6B7280] line-clamp-2">
+                    {description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}{' '}
+                    <a href="#description" className="font-medium text-[#2563EB] hover:underline whitespace-nowrap">View more</a>
+                  </p>
+                )}
+
                 {winning_score != null && (
                   <div className="inline-flex items-center gap-2 w-fit px-3 py-1.5 rounded-full bg-[#16A34A]/10 text-[#16A34A] text-sm font-semibold">
                     <Trophy className="w-4 h-4" /> Winning Score {winning_score}/100
@@ -563,31 +571,9 @@ function ProductDetailContent() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {imported ? (
-                    <a href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-sm bg-[#16A34A] text-white active:scale-95 transition">
-                      <CheckCircle2 className="w-4 h-4" /> Added — Open
-                    </a>
-                  ) : (
-                    <button type="button" onClick={handleImport} disabled={importing}
-                      className="inline-flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-sm bg-[#2563EB] text-white hover:bg-[#1E4FC2] active:scale-95 transition disabled:opacity-60">
-                      {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Image src="/exiuscart-logo.png" alt="" width={15} height={15} className="rounded" />}
-                      {importing ? 'Adding…' : 'Import to ExiusCart'}
-                    </button>
-                  )}
-                  {hasVideo && (
-                    <a href="#video"
-                      className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:border-gray-300 transition">
-                      <Play className="w-4 h-4" /> Product Video
-                    </a>
-                  )}
-                </div>
-                {importError && <p className="text-xs text-red-500">{importError}</p>}
-
-                {/* Compare prices on the open marketplaces. Amazon/eBay only show when an admin has pasted a
-                    real listing URL for this exact product (never fabricated); Facebook Ads is always a live
-                    search by product name, since Meta's Ad Library needs no per-product data to search. */}
+                {/* Compare prices / ads. Row 1: Amazon, eBay — real per-product links an admin pasted (never
+                    fabricated); hidden until set. Row 2: Facebook Ads (always, a live Ad Library search — needs
+                    no per-product data) and Product Video (only when this product actually has one). */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   {amazon_url && (
                     <a href={amazon_url} target="_blank" rel="noopener noreferrer"
@@ -612,9 +598,34 @@ function ProductDetailContent() {
                     <span className="flex-1 text-left">Facebook Ads</span>
                     <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
                   </a>
+                  {hasVideo && (
+                    <a href="#video"
+                      className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
+                      <Play className="w-4 h-4 shrink-0 text-[#6B7280]" />
+                      <span className="flex-1 text-left">Product Video</span>
+                    </a>
+                  )}
                 </div>
               </div>
               </div>
+
+              {/* Import CTA — pinned to the bottom-right corner of the hero section itself, light pill with the
+                  logo in its own white badge (same pattern as a "Continue with Google/Facebook" button) */}
+              {imported ? (
+                <a href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`} target="_blank" rel="noopener noreferrer"
+                  className="absolute bottom-3 right-3 shrink-0 inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full bg-[#16A34A]/10 border border-[#16A34A]/20 text-[#15803D] text-sm font-semibold hover:bg-[#16A34A]/15 transition shadow-sm">
+                  <span className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0"><CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" /></span>
+                  Added — Open
+                </a>
+              ) : (
+                <button type="button" onClick={handleImport} disabled={importing}
+                  className="absolute bottom-3 right-3 shrink-0 inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-[#111827] text-sm font-semibold hover:bg-blue-100 transition disabled:opacity-60 shadow-sm">
+                  <span className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+                    {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Image src="/exiuscart-logo.png" alt="" width={16} height={16} />}
+                  </span>
+                  {importing ? 'Adding…' : 'Import to ExiusCart'}
+                </button>
+              )}
             </div>
 
             {/* Need help? — same real WhatsApp support card as the researcher-help banner on the Prodora AI page
@@ -644,7 +655,7 @@ function ProductDetailContent() {
             {/* Description — moved out of the hero so it doesn't compete with the buy decision; text on the
                 left, gallery photos on the right */}
             {description && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+              <div id="description" className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5 scroll-mt-20">
                 <h2 className="text-xl font-semibold text-[#111827] mb-3">Description</h2>
                 <div className={`grid gap-4 ${gallery.length > 1 ? 'sm:grid-cols-2' : ''}`}>
                   <div>
