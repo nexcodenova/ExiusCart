@@ -18,6 +18,7 @@ import json
 import time
 
 import httpx
+from fastapi import HTTPException
 
 STRIPE_API_BASE = "https://api.stripe.com/v1"
 PAYPAL_API_BASE = "https://api-m.paypal.com"
@@ -151,13 +152,19 @@ def whop_create_checkout_configuration(api_key: str, company_id: str, order_numb
     client_reference_id plays above.
 
     Fixed against Whop's real API reference (docs.whop.com, confirmed
-    2026-10-01) — this call was 500ing on every real attempt. Three real
-    bugs: the endpoint is `/checkout_configurations` (underscore, not the
-    hyphen this used), the top-level `mode: "payment"` field is required
-    and was missing entirely, and `company_id` belongs inside `plan`, not
-    at the top level. Whop was returning 404 for the wrong path, and
-    raise_for_status() turned that into an uncaught exception — a real
-    500 from this endpoint, not a validation error."""
+    2026-10-01) — this call was 500ing on every real attempt. Four real
+    bugs found across two passes: the endpoint is `/checkout_configurations`
+    (underscore, not the hyphen this used), the top-level `mode: "payment"`
+    field is required and was missing entirely, `company_id` belongs
+    inside `plan` not at the top level, and — found on the second pass,
+    after the first three were already fixed and still 500ing — a plan
+    with none of plan_id / product_id / an inline `product` object is
+    invalid; Whop requires one of the three when creating a fresh plan.
+    Every real ExiusCart order is a one-off dynamic amount, never a
+    reusable Whop product, so an inline `product` object (not a
+    plan_id/product_id, which would imply a real pre-existing Whop
+    product) is the correct real choice here — order_number as
+    external_identifier is already guaranteed unique per order."""
     body = {
         "mode": "payment",
         "plan": {
@@ -165,6 +172,10 @@ def whop_create_checkout_configuration(api_key: str, company_id: str, order_numb
             "plan_type": "one_time",
             "initial_price": amount,
             "currency": currency,
+            "product": {
+                "external_identifier": order_number,
+                "title": f"Order {order_number}",
+            },
         },
         "metadata": {"exiuscart_order_number": order_number},
     }
@@ -176,7 +187,16 @@ def whop_create_checkout_configuration(api_key: str, company_id: str, order_numb
         json=body,
         timeout=15,
     )
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        # Surfaces Whop's own real rejection reason instead of a bare,
+        # uncaught 500 — this is exactly what made the first three bugs
+        # here so slow to diagnose: every real Whop rejection looked
+        # identical (a generic Internal Server Error) from the storefront
+        # side, with no way to see why without server log access.
+        raise HTTPException(
+            status_code=502,
+            detail=f"Whop rejected the checkout request ({resp.status_code}): {resp.text}",
+        )
     return resp.json()
 
 
