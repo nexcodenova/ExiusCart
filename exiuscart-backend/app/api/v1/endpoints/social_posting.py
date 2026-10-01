@@ -106,6 +106,7 @@ def _tiktok_blocked_message(err_code: str) -> str:
 
 
 STOREFRONT_BASE = os.getenv("STOREFRONT_BASE_URL", "https://store.exiuscart.com")
+API_PUBLIC_BASE = os.getenv("API_PUBLIC_BASE_URL", "https://api.exiuscart.com")
 
 
 def _shop_or_404(shop_id: int, user: User, db: Session) -> Shop:
@@ -787,9 +788,16 @@ def _publish_to_tiktok(conn: SocialAccountConnection, post: SocialPost) -> tuple
     if opts.get("brand_content_toggle"):
         post_info["brand_content_toggle"] = True
 
+    # TikTok's PULL_FROM_URL requires the source domain to be verified through their "Manage URL
+    # properties" tool, which needs a Cloudflare-zone domain — the raw R2 URL doesn't qualify.
+    # Point TikTok at our own verified api.exiuscart.com instead; /media redirects to the real file.
+    from app.core.storage import key_from_public_url
+    tiktok_key = key_from_public_url(post.media_url)
+    tiktok_video_url = f"{API_PUBLIC_BASE}/media/{tiktok_key}" if tiktok_key else post.media_url
+
     body = {
         "post_info": post_info,
-        "source_info": {"source": "PULL_FROM_URL", "video_url": post.media_url},
+        "source_info": {"source": "PULL_FROM_URL", "video_url": tiktok_video_url},
     }
     try:
         with httpx.Client(timeout=60) as client:

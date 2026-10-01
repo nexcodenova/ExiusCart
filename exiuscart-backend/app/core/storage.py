@@ -273,16 +273,33 @@ def generate_storefront_category_presigned_url(shop_id: int, ext: str, content_t
     return {"presigned_url": presigned_url, "public_url": public_url}
 
 
+def public_url_for_key(key: str) -> str:
+    """Same URL-building rule every upload_* function already uses, exposed standalone for the
+    /media redirect route in main.py (that route exists so TikTok's PULL_FROM_URL can be pointed at
+    a domain we actually control — api.exiuscart.com — instead of the raw R2 URL, which TikTok's
+    domain-verification tool can't verify since it's not a Cloudflare zone on this account)."""
+    return f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+
+
+def key_from_public_url(url: str) -> str | None:
+    """Reverses public_url_for_key — the R2 key a public URL points at, or None if the URL isn't
+    one of ours. Shared by delete_image and the /media redirect route's TikTok URL rewriting."""
+    if not url:
+        return None
+    if _R2_PUBLIC_URL and url.startswith(_R2_PUBLIC_URL):
+        return url[len(_R2_PUBLIC_URL):].lstrip("/")
+    if ".r2.dev/" in url:
+        return url.split(".r2.dev/", 1)[-1]
+    return None
+
+
 def delete_image(url: str) -> None:
     """Delete image from Cloudflare R2 by its public URL."""
     if not url or not _R2_ACCOUNT_ID:
         return
 
-    if _R2_PUBLIC_URL and url.startswith(_R2_PUBLIC_URL):
-        key = url[len(_R2_PUBLIC_URL):].lstrip("/")
-    elif ".r2.dev/" in url:
-        key = url.split(".r2.dev/", 1)[-1]
-    else:
+    key = key_from_public_url(url)
+    if not key:
         logger.warning(f"[R2 DELETE] Unrecognised URL format, skipping: {url}")
         return
 

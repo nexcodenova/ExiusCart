@@ -731,3 +731,16 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/media/{key:path}")
+async def media_redirect(key: str):
+    """Serves R2 media through our own domain instead of the raw R2 URL. Built specifically so
+    TikTok's Content Posting API (PULL_FROM_URL) can be given a video_url on a domain we can
+    actually verify through TikTok's "Manage URL properties" tool — exiuscart.com's DNS is on
+    Namecheap, not a Cloudflare zone, so R2's own custom-domain feature isn't available without a
+    paid Cloudflare plan. The R2 bucket is already fully public with unguessable UUID filenames
+    (see storage.py), so redirecting any key here exposes nothing that wasn't already public."""
+    from fastapi.responses import RedirectResponse
+    from app.core.storage import public_url_for_key
+    return RedirectResponse(public_url_for_key(key), status_code=302)
