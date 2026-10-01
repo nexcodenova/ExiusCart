@@ -2640,6 +2640,20 @@ def _pick_supplier_for_order(shop_id: int, order_id: int, db: Session) -> Option
     return None
 
 
+@router.get("/shops/{shop_id}/orders/{order_id}/suggested-supplier")
+def suggested_supplier_for_order(
+    shop_id: int,
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Which one connected supplier this order's items all link to, so the seller's Fulfill button can skip
+    asking "which supplier" when there's only one sensible answer — same logic bulk-fulfill already uses.
+    null means genuinely ambiguous (no supplier, or more than one would need picking by hand)."""
+    _shop_or_404(shop_id, current_user, db)
+    return {"supplier_type": _pick_supplier_for_order(shop_id, order_id, db)}
+
+
 class BulkFulfillIn(BaseModel):
     order_ids: List[int] = Field(min_length=1, max_length=100)
 
@@ -3015,15 +3029,14 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
 
         # UNVERIFIED — aliexpress.trade.buy.placeorder's exact param shape
         # (product_items as a JSON string, logistics_address field names)
-        # is my best understanding from AliExpress's documented Dropshipper
-        # order API, not yet tested against a real placed order. If this
-        # fails, check the raw AliExpress error message in the exception
-        # below first — TOP-family APIs generally return a specific,
-        # readable error_response.msg rather than a bare HTTP failure.
+        # Real parameter name confirmed 2026-09-28 against a live order: AliExpress rejected the
+        # first attempt ("param_place_order_request4_open_dto") with "The input parameter
+        # \"param_place_order_request4_open_api_d_t_o\" that is mandatory ... is not supplied" —
+        # the earlier name was my best reading of the docs, not yet tested; this is the real one.
         import json as _json
         result = _aliexpress_signed_request("/sync", {
             "method": "aliexpress.trade.buy.placeorder",
-            "param_place_order_request4_open_dto": _json.dumps({
+            "param_place_order_request4_open_api_d_t_o": _json.dumps({
                 "product_items": ae_items,
                 "logistics_address": {
                     "address": ship.address,
@@ -3473,6 +3486,7 @@ def update_supplier_return(
     ret = db.query(SupplierReturn).filter(SupplierReturn.id == return_id, SupplierReturn.shop_id == shop_id).first()
     if not ret:
         raise HTTPException(status_code=404, detail="Return not found")
+    was_refunded = ret.status == "refunded"
     if data.status is not None:
         if data.status not in _RETURN_STATUSES:
             raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_RETURN_STATUSES)}")
@@ -3484,6 +3498,27 @@ def update_supplier_return(
     db.commit()
     db.refresh(ret)
     order = db.query(Order).filter(Order.id == ret.order_id).first()
+
+    # The supplier refunding us is the trigger: cascade it into the customer-facing
+    # order automatically (same bookkeeping as the seller clicking "Refund" by hand)
+    # instead of leaving this return as an isolated log entry. Only fires on the
+    # actual transition into "refunded", and only if the order hasn't already been
+    # refunded some other way.
+    if ret.status == "refunded" and not was_refunded and order and order.payment_status == "paid":
+        try:
+            from app.api.v1.endpoints.orders import refund_order_core
+            if ret.refund_amount is None:
+                ret.refund_amount = order.total
+            refund_order_core(order, shop_id, db)
+            if ret.dropship_order_id:
+                ds_order = db.query(DropshipOrder).filter(DropshipOrder.id == ret.dropship_order_id).first()
+                if ds_order:
+                    ds_order.status = "refunded"
+            db.commit()
+            db.refresh(ret)
+        except Exception as e:
+            logger.error(f"[Supplier Return] auto-refund cascade failed return={ret.id} order={order.id}: {e}")
+
     return _supplier_return_out(ret, order.order_number if order else None)
 
 

@@ -1088,6 +1088,10 @@ export const dropshipApi = {
     api.delete(`/shops/${shopId}/products/${productId}/dropship-link/${supplierType}`),
   fulfillOrder: (shopId: string, orderId: string | number, supplierType: string) =>
     api.post(`/shops/${shopId}/orders/${orderId}/dropship-fulfill`, { supplier_type: supplierType }),
+  // The one connected supplier this order's items all link to, so the Fulfill dialog can skip asking "which
+  // supplier" when there's only one sensible answer. null means genuinely ambiguous — show the picker as before.
+  suggestedSupplier: (shopId: string, orderId: string | number) =>
+    api.get<{ supplier_type: string | null }>(`/shops/${shopId}/orders/${orderId}/suggested-supplier`),
   // Sends several orders to their suppliers in one action — each order's supplier is worked out automatically
   // (same logic as auto-fulfill), so this only ever takes order ids, never a supplier choice.
   bulkFulfillOrders: (shopId: string, orderIds: number[]) =>

@@ -931,6 +931,41 @@ async def send_invoice(
     }
 
 
+def refund_order_core(order: Order, shop_id: int, db: Session) -> None:
+    """Shared refund bookkeeping: restore stock, mark cancelled/refunded, expire any
+    digital delivery, push restored stock to TheDersi. Used by the manual refund
+    endpoint below and by the automatic supplier-refund cascade in dropshipping.py
+    (when a seller logs that a supplier refunded them, this runs the same way it
+    would if the seller had refunded the order themselves)."""
+    for item in order.items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        if product:
+            product.quantity = (product.quantity or 0) + item.quantity
+
+    order.status = "cancelled"
+    order.payment_status = "refunded"
+
+    # A refunded digital purchase shouldn't still be downloadable — expires
+    # the gate immediately rather than leaving it valid until its normal
+    # 30-day window runs out.
+    from app.models.digital_delivery import DigitalDelivery
+    from datetime import datetime, timezone
+    db.query(DigitalDelivery).filter(DigitalDelivery.order_id == order.id).update(
+        {"expires_at": datetime.now(timezone.utc)}
+    )
+
+    db.commit()
+    db.refresh(order)
+
+    # Sync restored stock to TheDersi for POS orders
+    from app.api.v1.endpoints.channels import _bg_push_stock
+    for item in order.items:
+        try:
+            _bg_push_stock(item.product_id, shop_id)
+        except Exception:
+            pass
+
+
 @router.post("/shops/{shop_id}/orders/{order_id}/refund", response_model=OrderResponse)
 async def refund_order(
     order_id: int,
@@ -947,35 +982,7 @@ async def refund_order(
     if order.payment_status != "paid":
         raise HTTPException(status_code=400, detail="Only paid orders can be refunded")
 
-    # Restore stock
-    for item in order.items:
-        product = db.query(Product).filter(Product.id == item.product_id).first()
-        if product:
-            product.quantity = (product.quantity or 0) + item.quantity
-
-    order.status = "cancelled"
-    order.payment_status = "refunded"
-
-    # A refunded digital purchase shouldn't still be downloadable — expires
-    # the gate immediately rather than leaving it valid until its normal
-    # 30-day window runs out.
-    from app.models.digital_delivery import DigitalDelivery
-    from datetime import datetime, timezone, timedelta
-    db.query(DigitalDelivery).filter(DigitalDelivery.order_id == order.id).update(
-        {"expires_at": datetime.now(timezone.utc)}
-    )
-
-    db.commit()
-    db.refresh(order)
-
-    # Sync restored stock to TheDersi for POS orders
-    from app.api.v1.endpoints.channels import _bg_push_stock
-    for item in order.items:
-        try:
-            _bg_push_stock(item.product_id, shop_id)
-        except Exception:
-            pass
-
+    refund_order_core(order, shop_id, db)
     return order
 
 

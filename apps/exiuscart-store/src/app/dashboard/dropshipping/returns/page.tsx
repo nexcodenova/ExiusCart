@@ -43,6 +43,8 @@ export default function SupplierReturnsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SupplierReturn | null>(null);
+  const [refundTarget, setRefundTarget] = useState<SupplierReturn | null>(null);
+  const [refunding, setRefunding] = useState(false);
   const { fmt } = useCurrency();
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
@@ -61,10 +63,24 @@ export default function SupplierReturnsPage() {
   const handleAdvance = async (r: SupplierReturn) => {
     const idx = STATUS_FLOW.indexOf(r.status);
     if (idx === -1 || idx === STATUS_FLOW.length - 1) return;
+    const next = STATUS_FLOW[idx + 1];
+    if (next === 'refunded') { setRefundTarget(r); return; }
     try {
-      await dropshipApi.updateReturn(shopId, r.id, { status: STATUS_FLOW[idx + 1] });
+      await dropshipApi.updateReturn(shopId, r.id, { status: next });
       fetchReturns();
     } catch {}
+  };
+
+  const handleConfirmRefund = async () => {
+    if (!refundTarget) return;
+    setRefunding(true);
+    try {
+      await dropshipApi.updateReturn(shopId, refundTarget.id, { status: 'refunded' });
+      setRefundTarget(null);
+      fetchReturns();
+    } catch {} finally {
+      setRefunding(false);
+    }
   };
 
   const handleReject = async (r: SupplierReturn) => {
@@ -103,7 +119,7 @@ export default function SupplierReturnsPage() {
       </div>
 
       <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
-        None of your connected suppliers (CJ, HyperSKU, Printful, AliExpress) expose an automated returns API yet — this is a manual log to track a return through to refund, not a submission sent to the supplier automatically.
+        None of your connected suppliers (CJ, HyperSKU, Printful, AliExpress) expose an automated returns API yet, so you track the return with them by hand. But marking one <strong>Refunded</strong> here isn&apos;t just a log entry: it automatically refunds the order on your side too — cancels it, marks it refunded, and restores the stock — the same as clicking Refund on the order itself.
       </div>
 
       {/* Status summary */}
@@ -202,6 +218,24 @@ export default function SupplierReturnsPage() {
             <div className="flex gap-3">
               <button onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>
               <button onClick={handleDelete} className="flex-1 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {refundTarget && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-xl border border-border p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Refund order {refundTarget.order_number ?? `#${refundTarget.order_id}`}?</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              This marks the return Refunded <strong>and</strong> refunds the order on your side right now: it will be cancelled, marked refunded, and its stock restored. Only confirm once the supplier has actually refunded you.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setRefundTarget(null)} className="flex-1 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition">Cancel</button>
+              <button onClick={handleConfirmRefund} disabled={refunding}
+                className="flex-1 px-4 py-2 bg-foreground text-background rounded-lg hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {refunding && <Loader2 className="w-4 h-4 animate-spin" />} Confirm refund
+              </button>
             </div>
           </div>
         </div>

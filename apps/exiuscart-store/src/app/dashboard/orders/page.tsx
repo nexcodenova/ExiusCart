@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, Landmark, BarChart2, RefreshCw, Lock, ChevronRight, MessageCircle, Globe, Calendar as CalendarIcon, Sparkles, Filter } from 'lucide-react';
+import { Search, FileText, ChevronDown, Package, ShoppingCart, Truck, X, ExternalLink, CheckCircle2, PackageCheck, XCircle, Copy, Check, Download, AlertCircle, TrendingUp, Banknote, CreditCard, ArrowLeftRight, Landmark, BarChart2, RefreshCw, Lock, ChevronRight, MessageCircle, Globe, Calendar as CalendarIcon, Sparkles, Filter, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ordersApi, subscriptionApi, dropshipApi, channelsApi, shopifyApi } from '@/lib/api';
@@ -78,7 +78,11 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
 
-const CARRIERS = ['Lanka Speed Couriers', 'Kapruka', 'Pronto', 'DHL', 'FedEx', 'Aramex', 'Emirates Post', 'Smsa', 'Other'];
+// International couriers, for every store. The three Sri Lanka-only local couriers (below) were previously
+// mixed into this same list and shown to every seller regardless of country — a UAE or US store had no reason
+// to see "Kapruka" in its own carrier dropdown. Now they only show for TheDersi orders (Sri Lanka only).
+const CARRIERS = ['DHL', 'FedEx', 'Aramex', 'Emirates Post', 'Smsa', 'Other'];
+const THEDERSI_CARRIERS = ['Lanka Speed Couriers', 'Kapruka', 'Pronto', ...CARRIERS];
 
 interface ShipModalProps {
   order: Order;
@@ -299,7 +303,7 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
               className="w-full px-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
             >
               <option value="">Select carrier</option>
-              {CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
+              {(isTheDersi ? THEDERSI_CARRIERS : CARRIERS).map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
@@ -432,6 +436,27 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // The one connected supplier this order's items all belong to, worked out the same way the bulk Fulfill
+  // Selected action already does — so a seller is never asked "which supplier" when there's only one real
+  // answer. Falls back to the full picker below when it's genuinely ambiguous (no match, or no suggestion).
+  const [suggested, setSuggested] = useState<string | null>(null);
+  const [suggestLoaded, setSuggestLoaded] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    dropshipApi.suggestedSupplier(shopId, order.id)
+      .then((res) => {
+        if (cancelled) return;
+        const s = res.data?.supplier_type ?? null;
+        setSuggested(s);
+        if (s) setSelected(s);
+      })
+      .catch(() => { if (!cancelled) setSuggested(null); })
+      .finally(() => { if (!cancelled) setSuggestLoaded(true); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.id, shopId]);
+
   // CJ shipping estimate — shown before confirming, so the seller can see
   // roughly what CJ will charge instead of finding out after the fact.
   // Unverified against a real CJ account — shown as an estimate, not a promise.
@@ -535,22 +560,45 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
             </div>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground">Select a supplier to forward this order. Tracking updates will sync automatically.</p>
-              <div className="space-y-2">
-                {availableSuppliers.map((s) => (
-                  <button key={s} onClick={() => setSelected(s)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition text-left ${selected === s ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}>
-                    <span className="text-sm font-medium text-foreground">{SUPPLIER_LABELS[s] ?? s}</span>
-                    {selected === s && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
-                  </button>
-                ))}
-                {isLaunch && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 pt-1">
-                    <Lock className="w-3 h-3 shrink-0" />
-                    <span>Upgrade to Growth or Scale to use HyperSKU</span>
+              {!showPicker && suggested && availableSuppliers.includes(suggested) ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+                    <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">This order will be sent to {SUPPLIER_LABELS[suggested] ?? suggested}</p>
+                      <p className="text-xs text-muted-foreground">Every item in it is linked to that supplier.</p>
+                    </div>
                   </div>
-                )}
-              </div>
+                  <button type="button" onClick={() => setShowPicker(true)} className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline">
+                    Not right? Choose a different supplier
+                  </button>
+                </div>
+              ) : !suggestLoaded ? (
+                <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Checking which supplier this belongs to…
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    {suggested ? 'More than one connected supplier could take this order — pick which one.' : 'Select a supplier to forward this order.'} Tracking updates will sync automatically.
+                  </p>
+                  <div className="space-y-2">
+                    {availableSuppliers.map((s) => (
+                      <button key={s} onClick={() => setSelected(s)}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition text-left ${selected === s ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}>
+                        <span className="text-sm font-medium text-foreground">{SUPPLIER_LABELS[s] ?? s}</span>
+                        {selected === s && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
+                      </button>
+                    ))}
+                    {isLaunch && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 pt-1">
+                        <Lock className="w-3 h-3 shrink-0" />
+                        <span>Upgrade to Growth or Scale to use HyperSKU</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               {selected === 'cj' && (
                 <div className="bg-muted/50 rounded-xl p-3 space-y-2">
