@@ -1294,7 +1294,9 @@ export const customProductFieldsApi = {
 
 export const paymentGatewayApi = {
   get: (shopId: string) => api.get(`/shops/${shopId}/channels/custom/payment-gateway`),
-  set: (shopId: string, data: { payment_gateway: string; merchant_id: string; merchant_secret: string; webhook_signing_secret?: string }) =>
+  // merchant_secret is optional on a re-save of the same gateway — omitting it keeps the secret
+  // already on file (it's write-only and never echoed back by `get`, so there's nothing to re-send).
+  set: (shopId: string, data: { payment_gateway: string; merchant_id: string; merchant_secret?: string; webhook_signing_secret?: string }) =>
     api.put(`/shops/${shopId}/channels/custom/payment-gateway`, data),
   getStats: (shopId: string) => api.get(`/shops/${shopId}/channels/custom/stats`),
   getSalesSeries: (shopId: string, days = 7) => api.get(`/shops/${shopId}/channels/custom/sales-series`, { params: { days } }),
@@ -1338,6 +1340,13 @@ export const socialPostingApi = {
   },
   listPosts: (shopId: string) => api.get(`/shops/${shopId}/social/posts`),
   cancelPost: (shopId: string, postId: number) => api.delete(`/shops/${shopId}/social/posts/${postId}`),
+  // Edits the caption of a post already published to Facebook — a real Graph API edit, and only
+  // works for Facebook (Instagram/TikTok have no edit-after-publish API).
+  editPost: (shopId: string, postId: number, caption: string) => {
+    const form = new FormData();
+    form.append('caption', caption);
+    return api.patch(`/shops/${shopId}/social/posts/${postId}`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── WhatsApp Marketing (BYOK — seller's own WhatsApp Business Account) ────

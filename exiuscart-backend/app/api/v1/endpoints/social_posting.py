@@ -683,17 +683,99 @@ def list_social_posts(shop_id: int, db: Session = Depends(get_db), current_user:
     return {"posts": [_post_out(p) for p in posts]}
 
 
+def _facebook_result(post: SocialPost) -> tuple[str, str] | None:
+    """The live Facebook post_id for this post, and the connection's access token — or None if
+    this post was never actually published to Facebook. Shared by edit/delete below, both of
+    which Meta's App Review for pages_manage_posts requires demonstrating (create alone isn't
+    enough — see the permission's own screencast requirements)."""
+    if not post.results_json:
+        return None
+    fb_result = (json.loads(post.results_json) or {}).get("facebook") or {}
+    fb_post_id = fb_result.get("post_id") if fb_result.get("success") else None
+    if not fb_post_id:
+        return None
+    return fb_post_id
+
+
+@router.patch("/shops/{shop_id}/social/posts/{post_id}")
+def edit_social_post(
+    shop_id: int, post_id: int, caption: str = Form(...),
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user),
+):
+    """Edits the caption of a post already published to Facebook — real Graph API call, not just
+    a local field update. Instagram's Content Publishing API has no edit endpoint (only
+    instagram_manage_comments covers comments, nothing covers the caption), so this only applies
+    to Facebook; TikTok posts are likewise not editable once published."""
+    _shop_or_404(shop_id, current_user, db)
+    post = db.query(SocialPost).filter(SocialPost.id == post_id, SocialPost.shop_id == shop_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    fb_post_id = _facebook_result(post)
+    if not fb_post_id:
+        raise HTTPException(status_code=400, detail="Only a post that was published to Facebook can be edited here.")
+
+    conn = db.query(SocialAccountConnection).filter(
+        SocialAccountConnection.shop_id == shop_id, SocialAccountConnection.platform == "facebook",
+        SocialAccountConnection.is_active == True,
+    ).first()
+    if not conn:
+        raise HTTPException(status_code=400, detail="Facebook isn't connected anymore.")
+
+    token = decrypt(conn.access_token)
+    try:
+        with httpx.Client(timeout=30) as client:
+            resp = client.post(f"{META_GRAPH_BASE}/{fb_post_id}", data={"access_token": token, "message": caption})
+        if resp.status_code >= 300:
+            raise HTTPException(status_code=502, detail=f"Facebook rejected the edit: {resp.text[:300]}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not reach Facebook: {str(e)[:300]}")
+
+    post.caption = caption
+    db.commit()
+    db.refresh(post)
+    return _post_out(post)
+
+
 @router.delete("/shops/{shop_id}/social/posts/{post_id}")
 def cancel_social_post(shop_id: int, post_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _shop_or_404(shop_id, current_user, db)
     post = db.query(SocialPost).filter(SocialPost.id == post_id, SocialPost.shop_id == shop_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    if post.status not in ("scheduled",):
-        raise HTTPException(status_code=400, detail=f"Can't cancel a post that's already {post.status}.")
-    post.status = "canceled"
-    db.commit()
-    return {"message": "Canceled"}
+
+    if post.status == "scheduled":
+        post.status = "canceled"
+        db.commit()
+        return {"message": "Canceled"}
+
+    # A published Facebook post can be deleted for real (Meta's App Review for pages_manage_posts
+    # requires this be demonstrable); Instagram/TikTok posts can't be removed via their APIs once
+    # live, so those are left alone rather than faking a delete that doesn't touch the real post.
+    fb_post_id = _facebook_result(post)
+    if post.status in ("published", "partial") and fb_post_id:
+        conn = db.query(SocialAccountConnection).filter(
+            SocialAccountConnection.shop_id == shop_id, SocialAccountConnection.platform == "facebook",
+            SocialAccountConnection.is_active == True,
+        ).first()
+        if not conn:
+            raise HTTPException(status_code=400, detail="Facebook isn't connected anymore.")
+        token = decrypt(conn.access_token)
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.delete(f"{META_GRAPH_BASE}/{fb_post_id}", params={"access_token": token})
+            if resp.status_code >= 300:
+                raise HTTPException(status_code=502, detail=f"Facebook rejected the delete: {resp.text[:300]}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Could not reach Facebook: {str(e)[:300]}")
+        post.status = "canceled"
+        db.commit()
+        return {"message": "Deleted from Facebook"}
+
+    raise HTTPException(status_code=400, detail=f"Can't delete a post that's already {post.status}.")
 
 
 # ── Publishing ───────────────────────────────────────────────────────────────
