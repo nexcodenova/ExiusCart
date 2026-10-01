@@ -737,13 +737,14 @@ def get_custom_website_stats(
     orders_q = db.query(Order).filter(Order.shop_id == shop_id, Order.notes == "Custom Website order")
     order_count = orders_q.count()
     revenue = db.query(func.coalesce(func.sum(Order.total), 0)).filter(
-        Order.shop_id == shop_id, Order.notes == "Custom Website order",
+        Order.shop_id == shop_id, Order.notes == "Custom Website order", Order.payment_status == "paid",
     ).scalar() or 0
 
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     today_orders = orders_q.filter(Order.created_at >= today_start).count()
     today_revenue = db.query(func.coalesce(func.sum(Order.total), 0)).filter(
-        Order.shop_id == shop_id, Order.notes == "Custom Website order", Order.created_at >= today_start,
+        Order.shop_id == shop_id, Order.notes == "Custom Website order", Order.payment_status == "paid",
+        Order.created_at >= today_start,
     ).scalar() or 0
 
     # "Orders per 100 views" — NOT a session-based conversion rate (there's

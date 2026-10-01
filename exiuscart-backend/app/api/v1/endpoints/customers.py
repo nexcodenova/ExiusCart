@@ -152,7 +152,7 @@ async def get_customers(
         )
         .filter(
             Order.customer_id.in_(customer_ids),
-            Order.status != "cancelled",
+            Order.payment_status == "paid",
         )
         .group_by(Order.customer_id)
         .all()
@@ -224,7 +224,7 @@ async def get_customer_stats(
 
     order_rows = (
         db.query(Order.customer_id, Order.total, Order.created_at)
-        .filter(Order.customer_id.in_(customer_ids), Order.status != "cancelled")
+        .filter(Order.customer_id.in_(customer_ids), Order.payment_status == "paid")
         .all()
     )
 

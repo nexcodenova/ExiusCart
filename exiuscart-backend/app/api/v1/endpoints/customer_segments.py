@@ -65,14 +65,14 @@ class SegmentIn(BaseModel):
 
 def _customer_stats(shop_id: int, db: Session) -> dict[int, dict]:
     """{customer_id: {"order_count": int, "ltv": float}} for every customer
-    in this shop with at least one non-cancelled order. Customers with zero
+    in this shop with at least one paid order. Customers with zero paid
     orders are absent — a min_orders/min_ltv filter correctly excludes them,
     and callers wanting "0 orders" would need a dedicated rule this simple
     shape doesn't offer yet."""
     rows = db.query(
         Order.customer_id, func.count(Order.id), func.coalesce(func.sum(Order.total), 0),
     ).filter(
-        Order.shop_id == shop_id, Order.status != "cancelled", Order.customer_id.isnot(None),
+        Order.shop_id == shop_id, Order.payment_status == "paid", Order.customer_id.isnot(None),
     ).group_by(Order.customer_id).all()
     return {cid: {"order_count": int(cnt), "ltv": float(ltv or 0)} for cid, cnt, ltv in rows}
 

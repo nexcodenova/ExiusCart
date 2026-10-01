@@ -3817,21 +3817,32 @@ def _store_metrics(db: Session, shop_ids: List[int]) -> dict:
     from app.models.audit_log import AuditLog
 
     since_30d = datetime.now(timezone.utc) - timedelta(days=30)
-    out = {sid: {} for sid in shop_ids}
+    # Revenue is now queried separately from order_count/orders_30d (paid-only
+    # vs. all live orders) — a shop with live orders but none paid yet would
+    # otherwise be missing the revenue keys entirely instead of showing 0.
+    out = {sid: {"order_count": 0, "revenue": 0.0, "last_order_at": None, "orders_30d": 0, "revenue_30d": 0.0} for sid in shop_ids}
     if not shop_ids:
         return out
 
-    for sid, cnt, revenue, last_at in db.query(
-        Order.shop_id, func.count(Order.id),
-        func.coalesce(func.sum(Order.total), 0), func.max(Order.created_at),
+    for sid, cnt, last_at in db.query(
+        Order.shop_id, func.count(Order.id), func.max(Order.created_at),
     ).filter(Order.shop_id.in_(shop_ids), Order.status.notin_(_LIVE_ORDER_STATUSES_EXCLUDED)).group_by(Order.shop_id).all():
-        out[sid].update(order_count=cnt, revenue=float(revenue or 0), last_order_at=last_at.isoformat() if last_at else None)
+        out[sid].update(order_count=cnt, last_order_at=last_at.isoformat() if last_at else None)
+    for sid, revenue in db.query(
+        Order.shop_id, func.coalesce(func.sum(Order.total), 0),
+    ).filter(Order.shop_id.in_(shop_ids), Order.payment_status == "paid").group_by(Order.shop_id).all():
+        out[sid].update(revenue=float(revenue or 0))
 
-    for sid, cnt, revenue in db.query(
-        Order.shop_id, func.count(Order.id), func.coalesce(func.sum(Order.total), 0),
+    for sid, cnt in db.query(
+        Order.shop_id, func.count(Order.id),
     ).filter(Order.shop_id.in_(shop_ids), Order.created_at >= since_30d,
              Order.status.notin_(_LIVE_ORDER_STATUSES_EXCLUDED)).group_by(Order.shop_id).all():
-        out[sid].update(orders_30d=cnt, revenue_30d=float(revenue or 0))
+        out[sid].update(orders_30d=cnt)
+    for sid, revenue in db.query(
+        Order.shop_id, func.coalesce(func.sum(Order.total), 0),
+    ).filter(Order.shop_id.in_(shop_ids), Order.created_at >= since_30d,
+             Order.payment_status == "paid").group_by(Order.shop_id).all():
+        out[sid].update(revenue_30d=float(revenue or 0))
 
     for sid, cnt in db.query(Product.shop_id, func.count(Product.id)).filter(Product.shop_id.in_(shop_ids)).group_by(Product.shop_id).all():
         out[sid]["product_count"] = cnt
@@ -3921,7 +3932,7 @@ def store_insight_detail(shop_id: int, db: Session = Depends(get_db), _: User = 
     by_source = [
         {"source": src, "count": cnt, "total": float(tot or 0)}
         for src, cnt, tot in db.query(Order.source, func.count(Order.id), func.sum(Order.total))
-        .filter(Order.shop_id == shop_id, Order.status.notin_(_LIVE_ORDER_STATUSES_EXCLUDED))
+        .filter(Order.shop_id == shop_id, Order.payment_status == "paid")
         .group_by(Order.source).order_by(func.count(Order.id).desc()).all()
     ]
     recent_orders = [
@@ -3933,7 +3944,7 @@ def store_insight_detail(shop_id: int, db: Session = Depends(get_db), _: User = 
         {"name": name, "sold": int(qty or 0), "revenue": float(rev or 0)}
         for name, qty, rev in db.query(OrderItem.product_name, func.sum(OrderItem.quantity), func.sum(OrderItem.total_price))
         .join(Order, OrderItem.order_id == Order.id)
-        .filter(Order.shop_id == shop_id, Order.status.notin_(_LIVE_ORDER_STATUSES_EXCLUDED))
+        .filter(Order.shop_id == shop_id, Order.payment_status == "paid")
         .group_by(OrderItem.product_name).order_by(func.sum(OrderItem.quantity).desc()).limit(5).all()
     ]
     team = [

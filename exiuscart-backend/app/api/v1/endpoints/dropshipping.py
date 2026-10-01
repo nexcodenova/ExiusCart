@@ -2614,6 +2614,11 @@ async def fulfill_order(
     current_user: User = Depends(get_current_user),
 ):
     _shop_or_404(shop_id, current_user, db)
+    order = db.query(Order).filter(Order.id == order_id, Order.shop_id == shop_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found.")
+    if (order.payment_status or "").lower() != "paid":
+        raise HTTPException(status_code=400, detail="This order hasn't been paid yet — fulfil it once payment is confirmed.")
     plan = _get_plan(shop_id, db)
     _check_supplier_allowed(plan, data.supplier_type, shop_id, db)
     return await _fulfill_order_core(shop_id, order_id, data.supplier_type, db)

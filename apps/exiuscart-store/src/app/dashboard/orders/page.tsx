@@ -546,6 +546,12 @@ function FulfillModal({ order, plan, connectedSuppliers, shopId, onClose, onFulf
               <p className="font-semibold text-foreground">Order sent to supplier!</p>
               <p className="text-sm text-muted-foreground">Track shipment in <Link href="/dashboard/dropshipping" className="text-primary hover:underline">Dropshipping → Orders</Link>.</p>
             </div>
+          ) : order.payment_status !== 'paid' ? (
+            <div className="text-center py-6 space-y-3">
+              <div className="p-3 bg-yellow-500/10 rounded-full w-fit mx-auto"><Package className="w-6 h-6 text-yellow-600 dark:text-yellow-400" /></div>
+              <p className="text-sm font-medium text-foreground">Payment not confirmed yet</p>
+              <p className="text-sm text-muted-foreground">This order's payment is still "{order.payment_status}". Fulfil it once payment is confirmed — otherwise your supplier gets charged for an order the customer may never actually pay for.</p>
+            </div>
           ) : availableSuppliers.length === 0 ? (
             <div className="text-center py-6 space-y-3">
               <div className="p-3 bg-muted rounded-full w-fit mx-auto"><Package className="w-6 h-6 text-muted-foreground" /></div>
@@ -718,8 +724,12 @@ export default function OrdersPage() {
 
   // ── Analytics derived from the currently-filtered orders ──────────────────
   const salesOrders = useMemo(() => orders.filter(o => o.source !== 'pos_return'), [orders]);
-  const totalRevenue = useMemo(() => salesOrders.reduce((s, o) => s + Number(o.total), 0), [salesOrders]);
-  const avgOrderValue = useMemo(() => salesOrders.length > 0 ? totalRevenue / salesOrders.length : 0, [salesOrders, totalRevenue]);
+  // Only orders actually paid for count as sales — a pending-payment order
+  // showing up in "Total Revenue" overstates real sales before the customer
+  // has actually paid.
+  const paidSalesOrders = useMemo(() => salesOrders.filter(o => o.payment_status === 'paid'), [salesOrders]);
+  const totalRevenue = useMemo(() => paidSalesOrders.reduce((s, o) => s + Number(o.total), 0), [paidSalesOrders]);
+  const avgOrderValue = useMemo(() => paidSalesOrders.length > 0 ? totalRevenue / paidSalesOrders.length : 0, [paidSalesOrders, totalRevenue]);
   const pendingCount = useMemo(() => orders.filter(o => o.status === 'pending').length, [orders]);
   const completedRevenue = useMemo(() =>
     orders.filter(o => ['delivered', 'completed'].includes(o.status)).reduce((s, o) => s + Number(o.total), 0),
@@ -728,7 +738,7 @@ export default function OrdersPage() {
 
   const channelBreakdown = useMemo(() => {
     const map: Record<string, { orders: number; revenue: number; cash: number; card: number; bankTransfer: number; split: number }> = {};
-    for (const o of salesOrders) {
+    for (const o of paidSalesOrders) {
       // Bucket by the real channel (eBay, Daraz, Custom Website, ...) when
       // there is one — every connected channel otherwise collapsed into one
       // meaningless "channel" bucket, since that's the literal value of
@@ -746,25 +756,29 @@ export default function OrdersPage() {
       }
     }
     return Object.entries(map).sort((a, b) => b[1].revenue - a[1].revenue);
-  }, [salesOrders]);
+  }, [paidSalesOrders]);
 
   // Real daily buckets from the orders actually loaded (respects whatever
   // channel/status/month/search filters are active) — powers the KPI
   // sparklines and the order-volume chart below. No historical backend
   // series needed since the full period's orders are already in memory.
   const dailySeries = useMemo(() => {
-    const map: Record<string, { revenue: number; orders: number; collected: number; pending: number }> = {};
+    const map: Record<string, { revenue: number; paidRevenue: number; paidOrders: number; orders: number; collected: number; pending: number }> = {};
     for (const o of salesOrders) {
       const day = new Date(o.created_at).toISOString().slice(0, 10);
-      if (!map[day]) map[day] = { revenue: 0, orders: 0, collected: 0, pending: 0 };
+      if (!map[day]) map[day] = { revenue: 0, paidRevenue: 0, paidOrders: 0, orders: 0, collected: 0, pending: 0 };
       map[day].revenue += Number(o.total);
       map[day].orders += 1;
+      if (o.payment_status === 'paid') {
+        map[day].paidRevenue += Number(o.total);
+        map[day].paidOrders += 1;
+      }
       if (['delivered', 'completed'].includes(o.status)) map[day].collected += Number(o.total);
       if (o.status === 'pending') map[day].pending += 1;
     }
     return Object.entries(map)
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([day, v]) => ({ day, ...v, aov: v.orders ? v.revenue / v.orders : 0 }));
+      .map(([day, v]) => ({ day, ...v, aov: v.paidOrders ? v.paidRevenue / v.paidOrders : 0 }));
   }, [salesOrders]);
 
   const highestSalesDay = useMemo(() => {
@@ -1036,9 +1050,9 @@ export default function OrdersPage() {
             <p className="text-lg font-bold leading-tight tracking-tight text-indigo-600 dark:text-indigo-400 tabular-nums">
               {loading ? '—' : fmt(totalRevenue)}
             </p>
-            <p className="text-[11px] text-muted-foreground truncate">{salesOrders.length} order{salesOrders.length !== 1 ? 's' : ''} · {dateRange.preset !== 'all' ? 'this period' : 'all time'}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{paidSalesOrders.length} order{paidSalesOrders.length !== 1 ? 's' : ''} · {dateRange.preset !== 'all' ? 'this period' : 'all time'}</p>
           </div>
-          <MiniSparkline data={dailySeries} dataKey="revenue" color="#6366f1" />
+          <MiniSparkline data={dailySeries} dataKey="paidRevenue" color="#6366f1" />
         </div>
 
         <div className="relative overflow-hidden rounded-xl border border-border bg-card p-3 flex items-center gap-3">

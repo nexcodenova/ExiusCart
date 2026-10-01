@@ -734,7 +734,7 @@ def get_sales_report(
         cast(Order.created_at, Date).label("day"),
         func.sum(Order.total).label("sales"),
         func.count(Order.id).label("orders"),
-    ).filter(Order.shop_id == shop_id, Order.status != "cancelled")
+    ).filter(Order.shop_id == shop_id, Order.payment_status == "paid")
 
     if from_date:
         query = query.filter(Order.created_at >= from_date)
@@ -764,7 +764,7 @@ def get_top_products(
         )
         .join(OrderItem, OrderItem.product_id == Product.id)
         .join(Order, Order.id == OrderItem.order_id)
-        .filter(Product.shop_id == shop_id, Order.status != "cancelled")
+        .filter(Product.shop_id == shop_id, Order.payment_status == "paid")
         .group_by(Product.id, Product.name)
         .order_by(func.sum(OrderItem.quantity).desc())
         .limit(limit)
@@ -789,7 +789,7 @@ def get_channel_revenue(
         Order.source,
         func.sum(Order.total).label("revenue"),
         func.count(Order.id).label("orders"),
-    ).filter(Order.shop_id == shop_id, Order.status != "cancelled")
+    ).filter(Order.shop_id == shop_id, Order.payment_status == "paid")
 
     if from_date:
         query = query.filter(Order.created_at >= from_date)
@@ -824,10 +824,10 @@ def get_financial_summary(
 
     base = lambda: apply_dates(db.query(Order).filter(Order.shop_id == shop_id))
 
-    pos_revenue   = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.source == "pos",  Order.status != "cancelled")))
-    pos_orders    = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.source == "pos",  Order.status != "cancelled")).scalar() or 0
-    chan_revenue  = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.source != "pos",  Order.status != "cancelled")))
-    chan_orders   = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.source != "pos",  Order.status != "cancelled")).scalar() or 0
+    pos_revenue   = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.source == "pos",  Order.payment_status == "paid")))
+    pos_orders    = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.source == "pos",  Order.payment_status == "paid")).scalar() or 0
+    chan_revenue  = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.source != "pos",  Order.payment_status == "paid")))
+    chan_orders   = apply_dates(db.query(func.count(Order.id)).filter(Order.shop_id == shop_id, Order.source != "pos",  Order.payment_status == "paid")).scalar() or 0
     refund_q              = apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.status == "cancelled", Order.payment_status.in_(["paid", "refunded"])))
     refund_amount         = scalar(refund_q)
     pos_refund_amount     = scalar(apply_dates(db.query(func.sum(Order.total)).filter(Order.shop_id == shop_id, Order.status == "cancelled", Order.payment_status.in_(["paid", "refunded"]), Order.source == "pos")))
@@ -894,7 +894,7 @@ def get_vat_report(
         # Output VAT: from sales (orders)
         sales_total = db.query(func.sum(Order.total)).filter(
             Order.shop_id == shop_id,
-            Order.status != "cancelled",
+            Order.payment_status == "paid",
             Order.created_at >= period_start,
             Order.created_at < period_end,
         ).scalar() or 0
@@ -915,7 +915,7 @@ def get_vat_report(
             Order, Order.id == OrderItem.order_id
         ).filter(
             Product.shop_id == shop_id,
-            Order.status != "cancelled",
+            Order.payment_status == "paid",
             Order.created_at >= period_start,
             Order.created_at < period_end,
         ).scalar() or 0
@@ -1084,10 +1084,11 @@ def get_dashboard_stats(
 
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Today's sales
+    # Today's sales — only orders actually paid for count as sales; a
+    # payment-pending order isn't real revenue until it's confirmed.
     today_sales = db.query(func.sum(Ord.total)).filter(
         Ord.shop_id == shop_id,
-        Ord.status != "cancelled",
+        Ord.payment_status == "paid",
         Ord.created_at >= today_start,
     ).scalar() or 0
 
@@ -1101,7 +1102,7 @@ def get_dashboard_stats(
     yesterday_start = today_start - timedelta(days=1)
     yesterday_sales = db.query(func.sum(Ord.total)).filter(
         Ord.shop_id == shop_id,
-        Ord.status != "cancelled",
+        Ord.payment_status == "paid",
         Ord.created_at >= yesterday_start,
         Ord.created_at < today_start,
     ).scalar() or 0
@@ -1163,13 +1164,16 @@ def get_dashboard_stats(
         period_start = _resolve_period_start(period, shop.created_at)
         period_end = _now_for_range
     thirty_ago = period_start  # kept as an alias below where "30 days" was the literal filter
+    # Paid only — this feeds the "Revenue by channel" breakdown, so both the
+    # dollar figure and the order count next to it must mean the same thing
+    # (confirmed, paid orders), not gross value of orders that may never close.
     channel_rows = db.query(
         Ord.source,
         func.sum(Ord.total).label("sales"),
         func.count(Ord.id).label("orders"),
     ).filter(
         Ord.shop_id == shop_id,
-        Ord.status != "cancelled",
+        Ord.payment_status == "paid",
         Ord.created_at >= period_start,
         Ord.created_at <= period_end,
     ).group_by(Ord.source).all()
@@ -1190,7 +1194,7 @@ def get_dashboard_stats(
         activity_window = "24h"
     activity_now = datetime.now(timezone.utc)
     activity_start = activity_now - timedelta(hours=bucket_hours * num_buckets)
-    activity_rows = db.query(Ord.created_at, Ord.total).filter(
+    activity_rows = db.query(Ord.created_at, Ord.total, Ord.payment_status).filter(
         Ord.shop_id == shop_id, Ord.created_at >= activity_start,
     ).all()
     activity_buckets = []
@@ -1207,7 +1211,7 @@ def get_dashboard_stats(
         activity_buckets.append({
             "label": label,
             "orders": len(in_bucket),
-            "sales": round(sum(float(r.total or 0) for r in in_bucket), 2),
+            "sales": round(sum(float(r.total or 0) for r in in_bucket if r.payment_status == "paid"), 2),
         })
 
     # Top 5 products by revenue (last 30 days) — grouped by product_id (not
@@ -1222,7 +1226,7 @@ def get_dashboard_stats(
         func.sum(OrdItemModel.quantity).label("qty"),
     ).join(Ord, Ord.id == OrdItemModel.order_id).filter(
         Ord.shop_id == shop_id,
-        Ord.status != "cancelled",
+        Ord.payment_status == "paid",
         Ord.created_at >= thirty_ago,
         Ord.created_at <= period_end,
     ).group_by(OrdItemModel.product_id, OrdItemModel.product_name).order_by(
@@ -1255,7 +1259,7 @@ def get_dashboard_stats(
     # KPI: avg order value (last 30 days, non-cancelled)
     aov_row = db.query(func.avg(Ord.total)).filter(
         Ord.shop_id == shop_id,
-        Ord.status != "cancelled",
+        Ord.payment_status == "paid",
         Ord.created_at >= thirty_ago,
     ).scalar()
     avg_order_value = float(aov_row or 0)
@@ -1286,10 +1290,10 @@ def get_dashboard_stats(
     month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     last_month_start = (month_start - timedelta(days=1)).replace(day=1)
     this_month_rev = float(db.query(func.sum(Ord.total)).filter(
-        Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= month_start,
+        Ord.shop_id == shop_id, Ord.payment_status == "paid", Ord.created_at >= month_start,
     ).scalar() or 0)
     last_month_rev = float(db.query(func.sum(Ord.total)).filter(
-        Ord.shop_id == shop_id, Ord.status != "cancelled",
+        Ord.shop_id == shop_id, Ord.payment_status == "paid",
         Ord.created_at >= last_month_start, Ord.created_at < month_start,
     ).scalar() or 0)
     revenue_mom = round(((this_month_rev - last_month_rev) / last_month_rev * 100), 1) if last_month_rev > 0 else 0
@@ -1308,6 +1312,7 @@ def get_dashboard_stats(
         func.sum(Ord.total).label("sales"),
     ).filter(
         Ord.shop_id == shop_id,
+        Ord.payment_status == "paid",
         Ord.created_at >= thirty_ago,
     ).group_by(extract("dow", Ord.created_at)).order_by(extract("dow", Ord.created_at)).all()
     dow_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -1331,25 +1336,25 @@ def get_dashboard_stats(
     }
     try:
         adv["allTimeRevenue"] = float(db.query(func.sum(Ord.total)).filter(
-            Ord.shop_id == shop_id, Ord.status != "cancelled").scalar() or 0)
+            Ord.shop_id == shop_id, Ord.payment_status == "paid").scalar() or 0)
         adv["allTimeOrders"] = db.query(func.count(Ord.id)).filter(
             Ord.shop_id == shop_id, Ord.status != "cancelled").scalar() or 0
         adv["memberSince"] = shop.created_at.strftime("%b %Y") if shop.created_at else "N/A"
 
         week_start = today_start - timedelta(days=today_start.weekday())
         adv["thisWeekRevenue"] = float(db.query(func.sum(Ord.total)).filter(
-            Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= week_start).scalar() or 0)
+            Ord.shop_id == shop_id, Ord.payment_status == "paid", Ord.created_at >= week_start).scalar() or 0)
         adv["thisWeekOrders"] = db.query(func.count(Ord.id)).filter(
             Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= week_start).scalar() or 0
 
         year_start = today_start.replace(month=1, day=1)
         adv["thisYearRevenue"] = float(db.query(func.sum(Ord.total)).filter(
-            Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= year_start).scalar() or 0)
+            Ord.shop_id == shop_id, Ord.payment_status == "paid", Ord.created_at >= year_start).scalar() or 0)
         adv["thisYearOrders"] = db.query(func.count(Ord.id)).filter(
             Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= year_start).scalar() or 0
 
         adv["todayAvgOrder"] = float(db.query(func.avg(Ord.total)).filter(
-            Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= today_start).scalar() or 0)
+            Ord.shop_id == shop_id, Ord.payment_status == "paid", Ord.created_at >= today_start).scalar() or 0)
 
         # 12-month monthly breakdown
         monthly_revenue_12m = []
@@ -1360,7 +1365,7 @@ def get_dashboard_stats(
                 ref = (ref - timedelta(days=1)).replace(day=1)
             m_end = (ref + timedelta(days=32)).replace(day=1)
             m_rev = float(db.query(func.sum(Ord.total)).filter(
-                Ord.shop_id == shop_id, Ord.status != "cancelled",
+                Ord.shop_id == shop_id, Ord.payment_status == "paid",
                 Ord.created_at >= ref, Ord.created_at < m_end).scalar() or 0)
             m_orders = db.query(func.count(Ord.id)).filter(
                 Ord.shop_id == shop_id, Ord.status != "cancelled",
@@ -1385,14 +1390,14 @@ def get_dashboard_stats(
         prior_end = period_start
 
         period_revenue = float(db.query(func.coalesce(func.sum(Ord.total), 0)).filter(
-            Ord.shop_id == shop_id, Ord.status != "cancelled",
+            Ord.shop_id == shop_id, Ord.payment_status == "paid",
             Ord.created_at >= period_start, Ord.created_at <= period_end,
         ).scalar() or 0)
         period_orders = db.query(func.count(Ord.id)).filter(
             Ord.shop_id == shop_id, Ord.created_at >= period_start, Ord.created_at <= period_end,
         ).scalar() or 0
         prior_revenue = float(db.query(func.coalesce(func.sum(Ord.total), 0)).filter(
-            Ord.shop_id == shop_id, Ord.status != "cancelled",
+            Ord.shop_id == shop_id, Ord.payment_status == "paid",
             Ord.created_at >= prior_start, Ord.created_at < prior_end,
         ).scalar() or 0)
         prior_orders = db.query(func.count(Ord.id)).filter(
@@ -1449,7 +1454,7 @@ def get_dashboard_stats(
                 extract("year", Ord.created_at).label("y"), extract("month", Ord.created_at).label("mo"),
                 func.coalesce(func.sum(Ord.total), 0).label("rev"), func.count(Ord.id).label("cnt"),
             ).filter(
-                Ord.shop_id == shop_id, Ord.status != "cancelled",
+                Ord.shop_id == shop_id, Ord.payment_status == "paid",
                 Ord.created_at >= period_start, Ord.created_at <= period_end,
             ).group_by(extract("year", Ord.created_at), extract("month", Ord.created_at)).all()
             month_map = {(int(r.y), int(r.mo)): {"revenue": float(r.rev or 0), "orders": int(r.cnt)} for r in month_rows}
@@ -1465,7 +1470,7 @@ def get_dashboard_stats(
                 func.coalesce(func.sum(Ord.total), 0).label("rev"),
                 func.count(Ord.id).label("cnt"),
             ).filter(
-                Ord.shop_id == shop_id, Ord.status != "cancelled",
+                Ord.shop_id == shop_id, Ord.payment_status == "paid",
                 Ord.created_at >= period_start, Ord.created_at <= period_end,
             ).group_by(func.date(Ord.created_at)).all()
             daily_map = {r.d.isoformat(): {"revenue": float(r.rev or 0), "orders": int(r.cnt)} for r in daily_rows}
@@ -1504,7 +1509,7 @@ def get_dashboard_stats(
         top_cust_rows = (
             db.query(Cust.id, Cust.name, func.count(Ord.id).label("orders"), func.sum(Ord.total).label("revenue"))
             .join(Ord, Ord.customer_id == Cust.id)
-            .filter(Ord.shop_id == shop_id, Ord.status != "cancelled", Ord.created_at >= month_start)
+            .filter(Ord.shop_id == shop_id, Ord.payment_status == "paid", Ord.created_at >= month_start)
             .group_by(Cust.id, Cust.name).order_by(func.sum(Ord.total).desc()).limit(5).all()
         )
         adv["topCustomers"] = [{"id": r[0], "name": r[1] or "Unknown", "orders": int(r[2]), "revenue": float(r[3] or 0)} for r in top_cust_rows]
@@ -1599,7 +1604,7 @@ def get_dashboard_stats(
             row[0]: (int(row[1]), float(row[2]))
             for row in (
                 db.query(Ord.customer_id, func.count(Ord.id), func.coalesce(func.sum(Ord.total), 0))
-                .filter(Ord.customer_id.in_(recent_cust_ids), Ord.status != "cancelled")
+                .filter(Ord.customer_id.in_(recent_cust_ids), Ord.payment_status == "paid")
                 .group_by(Ord.customer_id).all()
             )
         } if recent_cust_ids else {}

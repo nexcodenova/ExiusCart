@@ -3032,7 +3032,8 @@ def get_channel_orders_stats(
     # off the same filtered query, not a separate approximation.
     day_col = sql_func.date(Order.created_at)
     daily_rows = (
-        q.with_entities(day_col.label("day"), sql_func.count(Order.id), sql_func.coalesce(sql_func.sum(Order.total), 0))
+        q.filter(Order.payment_status == "paid")
+        .with_entities(day_col.label("day"), sql_func.count(Order.id), sql_func.coalesce(sql_func.sum(Order.total), 0))
         .group_by(day_col).order_by(day_col).all()
     )
     daily = [{"day": str(d), "orders": c, "revenue": float(r)} for d, c, r in daily_rows]
@@ -3085,7 +3086,8 @@ def get_channel_dashboard(
     )
     day_col = sql_func.date(Order.created_at)
     daily_rows = (
-        q.with_entities(day_col.label("day"), sql_func.count(Order.id), sql_func.coalesce(sql_func.sum(Order.total), 0))
+        q.filter(Order.payment_status == "paid")
+        .with_entities(day_col.label("day"), sql_func.count(Order.id), sql_func.coalesce(sql_func.sum(Order.total), 0))
         .group_by(day_col).order_by(day_col).all()
     )
     daily = [{"day": str(d), "orders": c, "revenue": float(r)} for d, c, r in daily_rows]

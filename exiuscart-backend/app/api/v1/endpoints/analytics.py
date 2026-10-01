@@ -85,7 +85,7 @@ def analytics_overview(shop_id: int, db: Session = Depends(get_db), current_user
         row = db.query(
             func.coalesce(func.sum(Order.total), 0), func.count(Order.id),
         ).filter(
-            Order.shop_id == shop_id, Order.status != "cancelled",
+            Order.shop_id == shop_id, Order.payment_status == "paid",
             Order.created_at >= start, Order.created_at < end,
         ).first()
         return float(row[0] or 0), int(row[1] or 0)
@@ -108,7 +108,7 @@ def analytics_overview(shop_id: int, db: Session = Depends(get_db), current_user
     channel_rows = db.query(
         Order.source, func.coalesce(func.sum(Order.total), 0), func.count(Order.id),
     ).filter(
-        Order.shop_id == shop_id, Order.status != "cancelled", Order.created_at >= thirty_ago,
+        Order.shop_id == shop_id, Order.payment_status == "paid", Order.created_at >= thirty_ago,
     ).group_by(Order.source).all()
     by_channel = [{"channel": (r[0] or "pos").title(), "revenue": float(r[1] or 0), "orders": int(r[2])} for r in channel_rows]
 
@@ -143,7 +143,7 @@ def analytics_products(shop_id: int, db: Session = Depends(get_db), current_user
         func.sum(OrderItem.quantity).label("units"),
         func.sum(OrderItem.total_price).label("revenue"),
     ).join(Order, Order.id == OrderItem.order_id).filter(
-        Order.shop_id == shop_id, Order.status != "cancelled", Order.created_at >= thirty_ago,
+        Order.shop_id == shop_id, Order.payment_status == "paid", Order.created_at >= thirty_ago,
     ).group_by(OrderItem.product_id, OrderItem.product_name).order_by(func.sum(OrderItem.total_price).desc()).limit(10).all()
 
     product_ids = [r[0] for r in best_seller_rows if r[0]]
@@ -201,7 +201,7 @@ def analytics_channels(shop_id: int, db: Session = Depends(get_db), current_user
         rows = db.query(
             Order.source, func.coalesce(func.sum(Order.total), 0), func.count(Order.id),
         ).filter(
-            Order.shop_id == shop_id, Order.status != "cancelled",
+            Order.shop_id == shop_id, Order.payment_status == "paid",
             Order.created_at >= start, Order.created_at < end,
         ).group_by(Order.source).all()
         return {(r[0] or "pos"): {"revenue": float(r[1] or 0), "orders": int(r[2])} for r in rows}
@@ -248,7 +248,7 @@ def analytics_customers(shop_id: int, db: Session = Depends(get_db), current_use
     order_counts = db.query(
         Order.customer_id, func.count(Order.id).label("order_count"), func.sum(Order.total).label("ltv"),
     ).filter(
-        Order.shop_id == shop_id, Order.status != "cancelled", Order.customer_id.isnot(None),
+        Order.shop_id == shop_id, Order.payment_status == "paid", Order.customer_id.isnot(None),
     ).group_by(Order.customer_id).all()
 
     total_with_orders = len(order_counts)
