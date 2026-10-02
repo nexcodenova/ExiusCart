@@ -88,13 +88,13 @@ export function WorldMap({
               const intensity = count ? 0.55 + (count / maxCustomers) * 0.4 + (isHovered || isSelected ? 0.1 : 0) : isHovered ? 0.2 : 0;
               // react-simple-maps v5's Geography is a plain <path> that spreads props straight onto the element,
               // so fill/stroke are real top-level props here (the old {default,hover,pressed} style shape is ignored).
-              const fill = count ? `rgba(59, 130, 246, ${intensity})` : `rgba(148, 163, 184, ${0.3 + (isHovered ? 0.15 : 0)})`;
+              const fill = count ? `rgba(79, 70, 229, ${intensity})` : `rgba(148, 163, 184, ${0.22 + (isHovered ? 0.15 : 0)})`;
               paths.push(
                 <Geography
                   key={`${geo.rsmKey}-${i}`}
                   geography={geo}
                   fill={fill}
-                  stroke={isSelected ? 'rgba(37, 99, 235, 0.9)' : 'rgba(148, 163, 184, 0.5)'}
+                  stroke={isSelected ? 'rgba(67, 56, 202, 0.95)' : 'rgba(148, 163, 184, 0.35)'}
                   strokeWidth={isSelected ? 1.1 : 0.4}
                   onMouseEnter={() => setHoveredId(id)}
                   onMouseLeave={() => setHoveredId(null)}
@@ -114,7 +114,7 @@ export function WorldMap({
               const r = 2.5 + (row.customers / maxCustomers) * 3.5;
               markers.push(
                 <Marker key={`s-${row.code}`} coordinates={fallback} style={{ pointerEvents: 'none' }}>
-                  <circle r={r} fill="rgb(37, 99, 235)" stroke="white" strokeWidth={1} />
+                  <circle r={r} fill="rgb(79, 70, 229)" stroke="white" strokeWidth={1} />
                 </Marker>
               );
             }

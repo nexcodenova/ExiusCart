@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import StatCard from '@/components/channels/directory/StatCard';
 import ChannelCard, { ChannelDef, ChannelStat } from '@/components/channels/directory/ChannelCard';
+import SectionBanner from '@/components/directory/SectionBanner';
 import ConnectChannelModal from '@/components/channels/directory/ConnectChannelModal';
 import FlowDiagram from '@/components/channels/directory/FlowDiagram';
 import HowItWorks from '@/components/channels/directory/HowItWorks';
@@ -432,6 +433,22 @@ export default function ChannelsPage() {
 
   const categories = ['All', 'Your Own Store', 'Global Marketplaces', 'Middle East', 'Asia', 'Africa', 'Social Commerce', 'Sell Digital Products', 'TheDersi'];
 
+  // Section titles and one-line hints for the category sections (Apify-store style)
+  const CATEGORY_TITLES: Record<string, string> = {
+    'Your Own Store': 'Sell on your own website', 'Global Marketplaces': 'Reach buyers on global marketplaces', 'Middle East': 'Grow across the Middle East',
+    'Asia': 'Sell into Asia', 'Africa': 'Open up Africa', 'Social Commerce': 'Sell where your buyers scroll', 'Sell Digital Products': 'Sell digital products', 'TheDersi': "Sri Lanka's fashion marketplace",
+  };
+  const CATEGORY_HINTS: Record<string, string> = {
+    'Your Own Store': 'Shopify, WooCommerce, BigCommerce or your own custom site. Products, stock and orders stay in sync with ExiusCart.',
+    'Global Marketplaces': 'List once and sell on Amazon, eBay, Etsy and more, with every order landing in one place.',
+    'Middle East': 'Noon and the biggest marketplaces in the UAE, Saudi Arabia and the GCC.',
+    'Asia': 'Daraz and the leading marketplaces across South Asia.',
+    'Africa': 'Jumia and the marketplaces where Africa shops online.',
+    'Social Commerce': 'TikTok Shop and Instagram: turn views into orders without leaving the app.',
+    'Sell Digital Products': 'E-books, courses, templates and downloads, with payment and delivery handled for you.',
+    'TheDersi': "List on Sri Lanka's #1 fashion marketplace. Orders sync straight to your dashboard.",
+  };
+
   const filteredChannels = useMemo(() => {
     return availableChannels.filter((c) => {
       const searchMatch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.category.toLowerCase().includes(search.toLowerCase());
@@ -528,75 +545,66 @@ export default function ChannelsPage() {
               heading above sits full-width outside the grid so "Your
               connections stay secure" lines up exactly with the search/
               status-filter row instead of the heading, per feedback. */}
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6">
-            {/* Channels grid */}
-            <div className="min-w-0 space-y-4">
-              <div className="flex flex-col lg:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search channels..."
-                    className="w-full h-10 pl-10 pr-3 bg-muted border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-                <div className="flex rounded-xl bg-muted p-1 shrink-0">
-                  {STATUS_FILTERS.map((f) => (
-                    <button key={f} onClick={() => setStatusFilter(f)}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${statusFilter === f ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                      {f}
-                    </button>
-                  ))}
-                </div>
+          {/* Search + status at the top, then one titled section per category (Apify-store style), full width */}
+          <div className="space-y-10">
+            <div className="flex flex-col gap-3 lg:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search channels..."
+                  className="h-10 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30"
+                />
               </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {categories.map((cat) => (
-                  <button key={cat} onClick={() => setCategoryFilter(cat)}
-                    className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${
-                      categoryFilter === cat ? 'bg-primary/10 text-primary ring-1 ring-primary/20' : 'bg-muted text-muted-foreground hover:bg-muted/70'
-                    }`}>
-                    {cat}
+              <div className="flex shrink-0 rounded-xl border border-border bg-background p-1">
+                {STATUS_FILTERS.map((f) => (
+                  <button key={f} onClick={() => setStatusFilter(f)}
+                    className={`rounded-lg px-4 py-1.5 text-xs font-medium transition ${statusFilter === f ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                    {f}
                   </button>
                 ))}
               </div>
-
-              {filteredChannels.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border py-16 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-                    <Search className="w-5 h-5" />
-                  </div>
-                  <h3 className="mt-4 font-semibold text-foreground">No channels found</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Try another search or filter.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
-                  {filteredChannels.map((c) => (
-                    <ChannelCard key={c.id} channel={c} stat={c.channelType ? stats?.channels[c.channelType] : undefined} />
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground">
-                <span>Showing <span className="font-semibold text-foreground">{filteredChannels.length}</span> channels</span>
-                <button onClick={() => { setSearch(''); setStatusFilter('All'); setCategoryFilter('All'); }}
-                  className="font-semibold text-primary hover:opacity-80">
-                  Reset filters
-                </button>
-              </div>
             </div>
 
-            {/* Right rail */}
-            <div className="space-y-5">
+            {filteredChannels.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border py-16 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                  <Search className="h-5 w-5" />
+                </div>
+                <h3 className="mt-4 font-semibold text-foreground">No channels found</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Try another search or filter.</p>
+                <button onClick={() => { setSearch(''); setStatusFilter('All'); setCategoryFilter('All'); }}
+                  className="mt-3 text-sm font-medium text-primary hover:opacity-80">Reset filters</button>
+              </div>
+            ) : (
+              categories.filter((cat) => cat !== 'All').map((cat, idx) => {
+                const inCat = filteredChannels.filter((c) => c.category === cat);
+                if (inCat.length === 0) return null;
+                return (
+                  <section key={cat} id={`cat-${cat.toLowerCase().replace(/\s+/g, '-')}`} className="space-y-4">
+                    <SectionBanner title={CATEGORY_TITLES[cat] ?? cat} description={CATEGORY_HINTS[cat]} variant={idx}
+                      count={inCat.length} actionLabel="Connect a channel" onAction={() => setConnectModalOpen(true)} />
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {inCat.map((c) => (
+                        <ChannelCard key={c.id} channel={c} stat={c.channelType ? stats?.channels[c.channelType] : undefined} />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })
+            )}
+
+            {/* Was the right rail; now a row under the directory so the cards get the full width */}
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
               <HowItWorks />
               <SecurityPanel />
               <SyncCenter channels={syncedChannels} onRefresh={() => loadStats(shopId)} refreshing={refreshingStats} />
             </div>
           </div>
 
-          {/* Empty / new-user CTA */}
-          <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/[0.06] via-card to-blue-500/[0.05] p-6">
+          {/* Empty / new-user CTA: only until the first channel is connected */}
+          {connectedChannelsCount === 0 && <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/[0.06] via-card to-blue-500/[0.05] p-6">
             <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-start gap-4">
                 <div className="w-11 h-11 rounded-2xl bg-card shadow-sm text-primary flex items-center justify-center shrink-0">
@@ -611,7 +619,7 @@ export default function ChannelsPage() {
                 Connect your first channel →
               </Button>
             </div>
-          </div>
+          </div>}
 
           {/* Flow diagram — full-width at the end of the page */}
           <FlowDiagram />

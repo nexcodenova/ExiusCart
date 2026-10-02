@@ -45,81 +45,106 @@ export default function NotificationsPage() {
   const unreadCount = events.filter((e) => !e.is_read).length;
   const visible = filter === 'unread' ? events.filter((e) => !e.is_read) : events;
 
+  // Group by day (Today / Yesterday / date), newest first, like the Apify console's lists
+  const groups: { label: string; items: ActivityEvent[] }[] = [];
+  for (const e of visible) {
+    const label = dayLabel(e.created_at);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(e); else groups.push({ label, items: [e] });
+  }
+
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Notifications</h1>
-          <p className="text-sm text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread` : 'You’re all caught up'}
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Notifications</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Orders, payments and stock activity from your store.{' '}
+            {unreadCount > 0 ? `${unreadCount} unread.` : 'You’re all caught up.'}
           </p>
         </div>
         {unreadCount > 0 && (
           <button type="button" onClick={markAllRead}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted">
-            <CheckCheck className="h-4 w-4" /> Mark all read
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition hover:bg-muted">
+            <CheckCheck className="h-4 w-4 text-muted-foreground" /> Mark all as read
           </button>
         )}
       </div>
 
-      <div className="inline-flex rounded-lg bg-muted/50 p-0.5 text-xs font-medium">
+      {/* Underlined tabs, Apify-style */}
+      <div className="flex gap-6 border-b border-border text-sm">
         {(['all', 'unread'] as Filter[]).map((f) => (
           <button key={f} type="button" onClick={() => setFilter(f)}
-            className={`rounded-md px-3 py-1.5 capitalize transition ${
-              filter === f ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            className={`-mb-px border-b-2 pb-2.5 font-medium capitalize transition ${
+              filter === f ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}>
-            {f}{f === 'unread' && unreadCount > 0 ? ` (${unreadCount})` : ''}
+            {f}
+            {f === 'unread' && unreadCount > 0 && (
+              <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-foreground">{unreadCount}</span>
+            )}
           </button>
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        {loading ? (
-          <div className="px-4 py-16 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : visible.length === 0 ? (
-          <div className="px-4 py-16 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium text-foreground">
-              {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
-            </p>
-            <p className="text-xs text-muted-foreground">Order, payment and stock activity will show up here.</p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-border">
-            {visible.map((e) => {
-              const meta = ACTIVITY_EVENT_META[e.event_type] ?? DEFAULT_ACTIVITY_EVENT_META;
-              const Icon = meta.icon;
-              return (
-                <li key={e.id}>
-                  <button type="button" onClick={() => !e.is_read && markRead(e.id)}
-                    className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-muted/40 ${e.is_read ? 'opacity-60' : ''}`}>
-                    <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${meta.className}`}>
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-foreground">{e.title}</span>
-                      {e.description && <span className="block text-xs text-muted-foreground">{e.description}</span>}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2 pt-0.5 text-xs text-muted-foreground">
-                      {!e.is_read && <span className="h-2 w-2 rounded-full bg-indigo-500" />}
-                      {activityTimeAgo(e.created_at)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+      {loading ? (
+        <div className="rounded-xl border border-border px-4 py-16 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : visible.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border px-4 py-16 text-center">
+          <Bell className="mx-auto mb-3 h-7 w-7 text-muted-foreground/60" />
+          <p className="text-sm font-medium text-foreground">
+            {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Order, payment and stock activity will show up here.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {groups.map((g) => (
+            <section key={g.label} className="space-y-2">
+              <h2 className="text-xs font-medium text-muted-foreground">{g.label}</h2>
+              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                {g.items.map((e) => {
+                  const meta = ACTIVITY_EVENT_META[e.event_type] ?? DEFAULT_ACTIVITY_EVENT_META;
+                  const Icon = meta.icon;
+                  return (
+                    <li key={e.id}>
+                      <button type="button" onClick={() => !e.is_read && markRead(e.id)}
+                        className="flex w-full items-center gap-4 px-5 py-3.5 text-left transition hover:bg-muted/40">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className={`block truncate text-sm ${e.is_read ? 'text-muted-foreground' : 'font-medium text-foreground'}`}>{e.title}</span>
+                          {e.description && <span className="block truncate font-mono text-xs text-muted-foreground">{e.description}</span>}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{activityTimeAgo(e.created_at)}</span>
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${e.is_read ? 'bg-transparent' : 'bg-indigo-500'}`} />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
 
       {events.length >= PAGE_LIMIT && (
-        <p className="text-center text-xs text-muted-foreground">Showing your {PAGE_LIMIT} most recent notifications.</p>
+        <p className="text-xs text-muted-foreground">Showing your {PAGE_LIMIT} most recent notifications.</p>
       )}
-      <p className="text-center text-xs text-muted-foreground">
-        Order details live on the <Link href="/dashboard/orders" className="text-indigo-600 hover:underline dark:text-indigo-400">Orders page</Link>.
+      <p className="text-xs text-muted-foreground">
+        Order details live on the <Link href="/dashboard/orders" className="font-medium text-foreground underline-offset-2 hover:underline">Orders page</Link>.
       </p>
     </div>
   );
+}
+
+function dayLabel(iso: string | null): string {
+  if (!iso) return 'Earlier';
+  const d = new Date(iso);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const day = new Date(d); day.setHours(0, 0, 0, 0);
+  const diff = Math.round((today.getTime() - day.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 }

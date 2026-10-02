@@ -67,53 +67,59 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
     return () => cancelAnimationFrame(raf);
   }, [metric, stats]);
 
+  const top = allRows.find((r) => r.code !== 'Unknown');
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 lg:col-span-2 lg:only:col-span-3">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Globe2 className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">{METRIC_LABEL[metric]} by country</h2>
+    <div className="overflow-hidden rounded-xl border border-border bg-card lg:col-span-2 lg:only:col-span-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
+        <div>
+          <h2 className="font-semibold text-foreground">Where your {METRIC_LABEL[metric].toLowerCase()} come from</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">Click a country on the map to focus on it.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-lg bg-muted/50 p-0.5 text-xs font-medium">
+          {/* Underlined tabs, Apify-style */}
+          <div className="flex gap-4 text-xs">
             {(['views', 'customers', 'orders'] as Metric[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => { setMetric(m); setSelectedCode(null); }}
-                className={`rounded-md px-2.5 py-1 transition ${
-                  metric === m ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
+              <button key={m} type="button" onClick={() => { setMetric(m); setSelectedCode(null); }}
+                className={`border-b-2 pb-1 font-medium transition ${metric === m ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
                 {METRIC_LABEL[m]}
               </button>
             ))}
           </div>
-          <Link href="/dashboard/customers" className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">View all →</Link>
+          <Link href="/dashboard/customers" className="text-xs font-medium text-muted-foreground hover:text-foreground">View all →</Link>
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        {/* Map always renders, even with zero rows — an empty map still confirms the widget works, instead of
-            silently disappearing whenever a metric has no country data yet. */}
-        <div className="h-64 w-full overflow-hidden rounded-xl bg-gradient-to-b from-muted/40 to-muted/20 sm:h-80">
+      <div className="mt-3 grid border-t border-border lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        {/* Map always renders, even with zero rows — an empty map still confirms the widget works. */}
+        <div className="relative h-64 w-full overflow-hidden bg-muted/30 sm:h-80 lg:h-full lg:min-h-[340px] lg:border-r lg:border-border">
           <WorldMap data={mappable} metricLabel={METRIC_LABEL[metric]} selectedCode={selectedCode} onSelectCountry={setSelectedCode} />
+          {/* Colour key */}
+          <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-2 rounded-md border border-border bg-background/90 px-2.5 py-1.5 text-[10px] text-muted-foreground backdrop-blur">
+            <span>Less</span>
+            <span className="h-1.5 w-20 rounded-full bg-gradient-to-r from-indigo-200 to-indigo-600" />
+            <span>More</span>
+          </div>
         </div>
 
-        <div className="flex min-w-0 flex-col">
-          <div className="mb-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tabular-nums text-foreground">{shownTotal}</span>
-            <span className="text-sm text-muted-foreground">{METRIC_LABEL[metric].toLowerCase()} in {allRows.length} {allRows.length === 1 ? 'place' : 'places'}</span>
+        <div className="flex min-w-0 flex-col p-5">
+          {/* Compact summary line: total and the top country */}
+          <div className="flex items-center justify-between gap-3 rounded-md bg-muted/50 px-3 py-2 text-xs">
+            <span className="text-muted-foreground">Total <span className="ml-1 text-sm font-semibold tabular-nums text-foreground">{shownTotal.toLocaleString()}</span></span>
+            {top && (
+              <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                Top <CountryFlag code={top.code} className="h-3 w-4" />
+                <span className="truncate font-medium text-foreground">{top.country}</span>
+                <span>{top.percentage}%</span>
+              </span>
+            )}
           </div>
           {selectedCode && (
-            <button
-              type="button"
-              onClick={() => setSelectedCode(null)}
-              className="mb-3 flex w-fit items-center gap-1.5 rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400"
-            >
+            <button type="button" onClick={() => setSelectedCode(null)}
+              className="mt-3 flex w-fit items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-foreground hover:bg-muted">
               <CountryFlag code={selectedCode} className="h-3 w-4" />
               {selectedName ?? selectedCode}
-              <X className="h-3 w-3" />
+              <X className="h-3 w-3 text-muted-foreground" />
             </button>
           )}
           {total === 0 ? (
@@ -121,36 +127,37 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
               No {metric} data yet
             </div>
           ) : (
-            <div className="space-y-3">
-              {rows.map((r) => (
-                <div key={r.code}>
-                  <div className="flex items-center gap-2">
+            <ol className="mt-4 space-y-3">
+              {rows.map((r, i) => (
+                <li key={r.code}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-4 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{selectedCode ? '' : i + 1}</span>
                     {r.code === 'Unknown' ? (
                       <Globe2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                     ) : (
                       <CountryFlag code={r.code} />
                     )}
                     <span className="min-w-0 flex-1 truncate text-sm text-foreground">{r.country}</span>
-                    <span className="text-sm font-semibold tabular-nums text-foreground">{r.customers}</span>
-                    <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{r.percentage}%</span>
+                    <span className="text-sm font-medium tabular-nums text-foreground">{r.customers}</span>
+                    <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{r.percentage}%</span>
                   </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className="ml-[26px] mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-[width] duration-700 ease-out"
+                      className="h-full rounded-full bg-indigo-500 transition-[width] duration-700 ease-out"
                       style={{ width: barsIn ? `${Math.max(4, Math.round((r.customers / maxRow) * 100))}%` : '0%' }}
                     />
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ol>
           )}
           {!selectedCode && allRows.some((r) => r.code === 'Unknown') && (
-            <p className="mt-4 border-t border-border pt-2 text-[10px] text-muted-foreground">
+            <p className="mt-auto border-t border-border pt-2 text-[10px] text-muted-foreground">
               {metric === 'orders'
-                ? '"Other" = orders from a customer added before country tracking, or from a source that doesn\'t report it yet.'
+                ? '"Other" = orders from a customer added before country tracking, or from a source that does not report it yet.'
                 : metric === 'views'
                   ? '"Other" = views recorded before visitor countries were tracked, or where the lookup failed. Views cover your Custom Website storefront only.'
-                  : '"Other" = customers added before country tracking, or from a source that doesn\'t report it yet.'}
+                  : '"Other" = customers added before country tracking, or from a source that does not report it yet.'}
             </p>
           )}
         </div>

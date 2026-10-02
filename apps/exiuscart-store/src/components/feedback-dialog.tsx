@@ -63,7 +63,7 @@ export function FeedbackPopover() {
     <div ref={ref} className="hidden md:block">
       <button
         type="button" onClick={() => (open ? close() : setOpen(true))} aria-expanded={open} aria-label="Send feedback"
-        className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-muted/50 px-3.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+        className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground transition hover:bg-muted"
       >
         <MessageSquareText className="h-4 w-4 text-muted-foreground" />
         <span className="hidden xl:inline">Feedback</span>

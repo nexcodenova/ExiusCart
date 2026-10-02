@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, ShoppingCart, FileText, Users, Package, Boxes,
-  Truck, Store, ClipboardList, BookOpen, Wallet, BarChart3,
+  Truck, Store, Building2, ClipboardList, BookOpen, Wallet, BarChart3,
   Settings, PanelLeftClose, PanelLeftOpen, CreditCard,
   UserCheck, Paintbrush, GitBranch, Shield, ChevronDown,
   Megaphone, Mail, MessageSquare, Calendar, ClipboardCheck,
@@ -63,22 +63,24 @@ const GROUPS: MenuGroup[] = [
     ],
   },
   {
-    id: 'sales',
-    label: 'Sales',
-    icon: ShoppingCart,
+    // In-person selling: the till and the counter-side workflows, kept apart from online orders
+    id: 'physical-shop',
+    label: 'Physical Shop',
+    icon: Building2,
     items: [
       { href: '/dashboard/pos',          label: 'Point of Sale', icon: ShoppingCart  },
-      { href: '/dashboard/orders',       label: 'Orders',        icon: FileText      },
       { href: '/dashboard/wholesale',    label: 'Wholesale',     icon: Boxes         },
       { href: '/dashboard/quotations',   label: 'Quotations',    icon: ClipboardList },
       { href: '/dashboard/reservations', label: 'Reservations',  icon: BookmarkCheck },
     ],
   },
   {
-    id: 'commerce',
-    label: 'Commerce',
-    icon: Store,
+    // Orders and everything around the buyer (was split between Sales and Commerce)
+    id: 'sales',
+    label: 'Sales',
+    icon: ShoppingCart,
     items: [
+      { href: '/dashboard/orders',      label: 'Orders',      icon: FileText },
       { href: '/dashboard/customers',   label: 'Customers',   icon: Users   },
       { href: '/dashboard/discounts',   label: 'Discounts',   icon: Percent },
       { href: '/dashboard/gift-cards',  label: 'Gift Cards & Items',  icon: Gift    },
@@ -504,18 +506,13 @@ export function ShopSidebar() {
   return (
     <>
       <Sidebar collapsible="icon">
-        {/* Logo only — hiding/showing the menu lives in the footer ("Hide
-            menu"), same as Prodora. */}
-        <SidebarHeader className={`h-14 flex-row flex items-center border-b border-sidebar-border ${collapsed ? 'justify-center' : 'px-4'}`}>
-          <Link href="/dashboard" className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center' : ''}`}>
-            <Image src="/logo-ec.png" alt="ExiusCart" width={35} height={28} className="flex-shrink-0" />
-            {!collapsed && (
-              <span className="text-xl font-bold tracking-tight">
-                <span className="text-indigo-400">Exius</span><span className="text-sidebar-foreground">Cart</span>
-              </span>
-            )}
-          </Link>
-        </SidebarHeader>
+        {/* No header while open: the menu starts with Dashboard and the ExiusCart logo sits in the footer.
+            With the menu hidden (icons only) the footer has no room, so the EC mark shows here at the top. */}
+        {collapsed && (
+          <SidebarHeader className="h-14 flex-row flex items-center justify-center border-b border-sidebar-border">
+            <Link href="/dashboard" title="ExiusCart"><Image src="/logo-ec.png" alt="ExiusCart" width={28} height={22} /></Link>
+          </SidebarHeader>
+        )}
 
         <SidebarContent>
           <SidebarGroup className="p-2 space-y-0.5">
@@ -556,7 +553,7 @@ export function ShopSidebar() {
                           return (
                             <SidebarMenuItem key={item.href}>
                               <SidebarMenuButton asChild isActive={active} tooltip={collapsed ? item.label : undefined}
-                                className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}>
+                                className={active ? 'bg-sidebar-accent text-sidebar-foreground font-medium hover:bg-sidebar-accent hover:text-sidebar-foreground' : 'text-sidebar-muted-foreground'}>
                                 <Link href={item.href}>
                                   <Icon className="!w-[22px] !h-[22px] flex-shrink-0" />
                                   <span className="font-medium text-sm">{item.label}</span>
@@ -576,8 +573,8 @@ export function ShopSidebar() {
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-left hover:bg-sidebar-accent/40 ${
                           groupActive ? 'text-sidebar-foreground' : 'text-sidebar-muted-foreground hover:text-sidebar-foreground'
                         }`}>
-                        {group.icon && <group.icon className="w-5 h-5 shrink-0" />}
-                        <span className="flex-1 text-xs font-semibold uppercase tracking-wider">{group.label}</span>
+                        {group.icon && <group.icon className="w-[18px] h-[18px] shrink-0" />}
+                        <span className="flex-1 text-sm font-medium">{group.label}</span>
                         {locked && (isTheDersiRestricted ? (
                           // "PRO" would read as TheDersi's own Pro tier, which
                           // doesn't get these either — say what it actually is.
@@ -629,7 +626,7 @@ export function ShopSidebar() {
                                   tooltip={collapsed ? item.label : undefined}
                                   className="text-sidebar-muted-foreground/50 hover:bg-sidebar-accent/50"
                                 >
-                                  <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />
+                                  {collapsed && <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />}
                                   {!collapsed && <span className="font-medium flex-1">{item.label}</span>}
                                   {!collapsed && <Shield className="w-3 h-3 text-amber-400 flex-shrink-0" />}
                                 </SidebarMenuButton>
@@ -652,9 +649,8 @@ export function ShopSidebar() {
                                   <SidebarMenuButton
                                     onClick={() => toggleNested(item.href)}
                                     isActive={anyChildActive}
-                                    className={anyChildActive ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}
+                                    className={anyChildActive ? 'bg-sidebar-accent text-sidebar-foreground font-medium hover:bg-sidebar-accent hover:text-sidebar-foreground' : 'text-sidebar-muted-foreground'}
                                   >
-                                    <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />
                                     <span className="font-medium flex-1 text-left">{item.label}</span>
                                     <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${dropOpen ? '' : '-rotate-90'}`} />
                                   </SidebarMenuButton>
@@ -662,14 +658,12 @@ export function ShopSidebar() {
                                 {dropOpen && (
                                   <SidebarMenu className="mt-0.5 space-y-0.5 ml-4 pl-2 border-l border-sidebar-border/60">
                                     {item.children.map((c) => {
-                                      const ChildIcon = c.icon;
                                       const childActive = isItemActive(c);
                                       return (
                                         <SidebarMenuItem key={c.href}>
                                           <SidebarMenuButton asChild isActive={childActive}
-                                            className={childActive ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}>
+                                            className={childActive ? 'bg-sidebar-accent text-sidebar-foreground font-medium hover:bg-sidebar-accent hover:text-sidebar-foreground' : 'text-sidebar-muted-foreground'}>
                                             <Link href={c.href}>
-                                              <ChildIcon className="!w-[16px] !h-[16px] flex-shrink-0" />
                                               <span className="font-medium">{c.label}</span>
                                             </Link>
                                           </SidebarMenuButton>
@@ -690,9 +684,8 @@ export function ShopSidebar() {
                                   <SidebarMenuButton
                                     onClick={() => toggleNested(item.href)}
                                     isActive={active}
-                                    className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}
+                                    className={active ? 'bg-sidebar-accent text-sidebar-foreground font-medium hover:bg-sidebar-accent hover:text-sidebar-foreground' : 'text-sidebar-muted-foreground'}
                                   >
-                                    <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />
                                     <span className="font-medium flex-1 text-left">{item.label}</span>
                                     {list.length > 0 && (
                                       <span className="text-[10px] text-sidebar-muted-foreground/70">{list.length}</span>
@@ -759,9 +752,10 @@ export function ShopSidebar() {
                           return (
                             <SidebarMenuItem key={item.href}>
                               <SidebarMenuButton asChild isActive={active} tooltip={collapsed ? item.label : undefined}
-                                className={active ? 'bg-indigo-500/10 text-indigo-400 font-semibold hover:bg-indigo-500/10 hover:text-indigo-400' : 'text-sidebar-muted-foreground'}>
+                                className={active ? 'bg-sidebar-accent text-sidebar-foreground font-medium hover:bg-sidebar-accent hover:text-sidebar-foreground' : 'text-sidebar-muted-foreground'}>
                                 <Link href={item.href}>
-                                  <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />
+                                  {/* Sub-items read as plain text (Apify-style); the icon only shows in the hidden-menu (icons only) mode */}
+                                  {collapsed && <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />}
                                   <span className="font-medium">{item.label}</span>
                                 </Link>
                               </SidebarMenuButton>
@@ -799,7 +793,15 @@ export function ShopSidebar() {
           )}
           {/* Icon only, on the right - the menu itself reads from the left, so the
               collapse control sits opposite it. Centered once collapsed (no room). */}
-          <div className={`flex ${collapsed ? 'justify-center' : 'justify-end'}`}>
+          <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
+            {!collapsed && (
+              <Link href="/dashboard" className="flex items-center gap-1.5 rounded-md px-1 py-1 transition hover:opacity-80" title="ExiusCart">
+                <Image src="/logo-ec.png" alt="" width={22} height={18} className="flex-shrink-0" />
+                <span className="text-sm font-bold tracking-tight">
+                  <span className="text-indigo-500">Exius</span><span className="text-sidebar-foreground">Cart</span>
+                </span>
+              </Link>
+            )}
             <button
               type="button"
               onClick={toggleSidebar}

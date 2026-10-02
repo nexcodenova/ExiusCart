@@ -1,9 +1,7 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Lock, Package, ShoppingCart, Clock3 } from 'lucide-react';
+import { ArrowRight, Lock, Package, ShoppingCart, Clock3 } from 'lucide-react';
 import { channelMeta } from '@/components/channels/channelMeta';
 import ChannelLogo from '@/components/channels/ChannelLogo';
+import { cn } from '@/lib/utils';
 
 export interface ChannelDef {
   id: string;
@@ -35,103 +33,80 @@ function timeAgo(iso: string | null): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-const badgeVariant: Record<ChannelDef['badge'], 'success' | 'default' | 'muted'> = {
-  live: 'success',
-  connect: 'default',
-  soon: 'muted',
-  locked: 'muted',
-};
 const badgeLabels: Record<string, string> = {
   live: 'Connected',
   connect: 'Available',
-  soon: 'Coming Soon',
+  soon: 'Coming soon',
   locked: 'Not on your plan',
 };
 
-// Same real Card/Badge/Button primitives the previous ChannelTile used —
-// this redesign adds the stat row (real products/orders/last-synced, from
-// channels.py's /channels/stats, never fabricated) and a denser, more
-// premium layout, but keeps every gating state (live/connect/soon/locked)
-// and its exact copy untouched.
+const dot: Record<ChannelDef['badge'], string> = {
+  live: 'bg-emerald-500',
+  connect: 'bg-primary',
+  soon: 'bg-muted-foreground/40',
+  locked: 'bg-amber-500',
+};
+
+// Directory card in the calm "store" style (Apify-like): the whole card is the
+// action, a plain body (logo, name, category, description) and a grey footer
+// strip with the status on the left and real stats or the next step on the
+// right. Every gating state (live/connect/soon/locked) and its copy is kept;
+// stats are real numbers from /channels/stats, never made up.
 export default function ChannelCard({ channel, stat }: { channel: ChannelDef; stat?: ChannelStat }) {
+  const clickable = !!channel.onAction;
+  const meta = channel.channelType ? channelMeta(channel.channelType) : null;
+  // Wordmark logos (Walmart, Trendyol, Jumia...) need a wider box than square icons, or they get cut off
+  const wideLogo = !!(meta?.logo && meta.wide);
+  const status = channel.badgeLabel ?? badgeLabels[channel.badge];
+  const action = channel.badge === 'live' ? (channel.actionLabel ?? 'Manage')
+    : channel.badge === 'locked' ? (channel.actionLabel ?? 'Upgrade')
+    : channel.badge === 'soon' ? 'Learn more'
+    : (channel.actionLabel ?? 'Connect');
+
   return (
-    <Card className={`group relative overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-black/[0.03] hover:-translate-y-0.5 ${
-      channel.badge === 'live' ? 'border-green-500/25 bg-gradient-to-br from-green-500/[0.04] to-transparent' : 'hover:border-primary/30'
-    }`}>
-      <CardContent className="p-5 flex flex-col gap-3.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-muted/70 ring-1 ring-border flex items-center justify-center shrink-0 overflow-hidden group-hover:scale-105 group-hover:ring-primary/20 transition-all duration-200">
-            {channel.channelType && channelMeta(channel.channelType).logo
-              ? <ChannelLogo channelType={channel.channelType} size={26} />
+    <button
+      type="button"
+      onClick={channel.onAction}
+      disabled={!clickable}
+      className={cn(
+        'group flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition',
+        clickable && 'hover:border-foreground/20 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      )}
+    >
+      <div className="flex flex-1 flex-col gap-3 p-5">
+        <div className="flex items-center gap-3">
+          <div className={cn('flex h-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background', wideLogo ? 'max-w-[104px] px-2.5' : 'w-11')}>
+            {channel.channelType && meta?.logo
+              ? <ChannelLogo channelType={channel.channelType} size={wideLogo ? 18 : 24} />
               : channel.icon}
           </div>
-          <Badge variant={badgeVariant[channel.badge]} className="shrink-0 gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              channel.badge === 'live' ? 'bg-green-500' : channel.badge === 'connect' ? 'bg-primary' : 'bg-muted-foreground/40'
-            }`} />
-            {channel.badgeLabel ?? badgeLabels[channel.badge]}
-          </Badge>
-        </div>
-
-        <div>
-          <div className="flex items-center gap-2">
-            <p className="font-semibold text-foreground text-sm">{channel.name}</p>
-            <span className="text-[10px] text-muted-foreground">{channel.category}</span>
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-semibold text-foreground">{channel.name}</p>
+            <p className="truncate font-mono text-xs text-muted-foreground">{channel.category.toLowerCase().replace(/\s+/g, '-')}/{channel.id.replace(/_/g, '-')}</p>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{channel.description}</p>
         </div>
+        <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">{channel.description}</p>
+      </div>
 
+      <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-5 py-2.5 text-xs">
+        <span className="flex min-w-0 items-center gap-1.5 text-foreground">
+          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dot[channel.badge])} />
+          <span className="truncate">{status}</span>
+        </span>
         {channel.badge === 'live' && stat ? (
-          <div className="grid grid-cols-2 gap-2 border-t border-border pt-3.5">
-            <div>
-              <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                <Package className="w-3 h-3" /> Products
-              </div>
-              <p className="text-sm font-bold text-foreground mt-0.5">{stat.products_synced.toLocaleString()}</p>
-            </div>
-            <div>
-              <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                <ShoppingCart className="w-3 h-3" /> Orders
-              </div>
-              <p className="text-sm font-bold text-foreground mt-0.5">{stat.orders_synced.toLocaleString()}</p>
-            </div>
-            {stat.last_synced_at && (
-              <p className="col-span-2 flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
-                <Clock3 className="w-3 h-3" /> Last synced {timeAgo(stat.last_synced_at)}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="border-t border-border pt-3.5 text-[10px] text-muted-foreground">
-            {channel.badge === 'soon' ? 'Not yet available' : 'Secure OAuth or API-key connection'}
-          </div>
-        )}
-
-        {channel.onAction && channel.badge === 'live' && (
-          <Button variant="success" className="w-full" onClick={channel.onAction}>
-            {channel.actionLabel ?? 'Manage'} <ExternalLink className="w-3.5 h-3.5" />
-          </Button>
-        )}
-        {channel.onAction && channel.badge === 'connect' && (
-          <Button className="w-full" onClick={channel.onAction}>
-            {channel.actionLabel ?? 'Connect'} <ExternalLink className="w-3.5 h-3.5" />
-          </Button>
-        )}
-        {channel.onAction && channel.badge === 'locked' && (
-          <Button variant="outline" className="w-full" onClick={channel.onAction}>
-            <Lock className="w-3.5 h-3.5" /> {channel.actionLabel ?? 'Upgrade to Premium'}
-          </Button>
-        )}
-        {channel.onAction && channel.badge === 'soon' && (
-          <Button variant="outline" className="w-full" onClick={channel.onAction}>
-            Learn more
-          </Button>
-        )}
-      </CardContent>
-
-      {channel.badge === 'live' && (
-        <div className="absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r from-emerald-400 via-primary to-blue-500 opacity-0 transition group-hover:opacity-100" />
-      )}
-    </Card>
+          <span className="flex shrink-0 items-center gap-3 text-muted-foreground">
+            <span className="flex items-center gap-1" title="Products synced"><Package className="h-3.5 w-3.5" /> {stat.products_synced.toLocaleString()}</span>
+            <span className="flex items-center gap-1" title="Orders synced"><ShoppingCart className="h-3.5 w-3.5" /> {stat.orders_synced.toLocaleString()}</span>
+            {stat.last_synced_at && <span className="hidden items-center gap-1 sm:flex" title="Last synced"><Clock3 className="h-3.5 w-3.5" /> {timeAgo(stat.last_synced_at)}</span>}
+          </span>
+        ) : clickable ? (
+          <span className="flex shrink-0 items-center gap-1 font-medium text-foreground transition group-hover:text-primary">
+            {channel.badge === 'locked' && <Lock className="h-3.5 w-3.5" />}
+            {action}
+            {channel.badge !== 'locked' && <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />}
+          </span>
+        ) : null}
+      </div>
+    </button>
   );
 }

@@ -1479,6 +1479,29 @@ def get_dashboard_stats(
                 d = (period_start.date() + timedelta(days=i))
                 entry = daily_map.get(d.isoformat(), {"revenue": 0.0, "orders": 0})
                 period_trend.append({"label": d.strftime("%b %d"), "revenue": round(entry["revenue"], 2), "orders": entry["orders"]})
+        # Storefront views per trend bucket (same Custom Website view events as
+        # storefrontViews above), so the chart can show traffic next to revenue.
+        if use_monthly_view and period in ("12m", "all") and not date_from:
+            views_from = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            for _ in range(11):
+                views_from = (views_from - timedelta(days=1)).replace(day=1)
+            views_to = now_utc
+        else:
+            views_from, views_to = period_start, period_end
+        view_day_rows = db.query(
+            func.date(StorefrontEvent.created_at).label("d"), func.count(StorefrontEvent.id).label("cnt"),
+        ).filter(
+            StorefrontEvent.shop_id == shop_id, StorefrontEvent.event_type == "view",
+            StorefrontEvent.created_at >= views_from, StorefrontEvent.created_at <= views_to,
+        ).group_by(func.date(StorefrontEvent.created_at)).all()
+        views_by_label: dict[str, int] = {}
+        for r in view_day_rows:
+            d = r.d if hasattr(r.d, "strftime") else datetime.fromisoformat(str(r.d))
+            label = d.strftime("%b '%y") if use_monthly_view else d.strftime("%b %d")
+            views_by_label[label] = views_by_label.get(label, 0) + int(r.cnt)
+        for entry in period_trend:
+            entry["views"] = views_by_label.get(entry["label"], 0)
+
         for idx in range(len(period_trend)):
             if idx == 0:
                 period_trend[idx]["growth"] = 0

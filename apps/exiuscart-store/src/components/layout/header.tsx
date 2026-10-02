@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   Bell, Search, User, Sun, Moon, ChevronDown, Crown,
-  Settings, CreditCard, LogOut, UserCircle, LifeBuoy,
+  Settings, CreditCard, LogOut, UserCircle, LifeBuoy, Check, CheckCheck, ArrowRight,
 } from 'lucide-react';
 import { useTheme } from '@/components/providers/theme-provider';
 import { useCurrency, type Currency } from '@/components/providers/currency-provider';
@@ -43,6 +43,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [notifEvents, setNotifEvents] = useState<ActivityEvent[]>([]);
   const [notifLoaded, setNotifLoaded] = useState(false);
   const unreadNotifCount = notifEvents.filter((e) => !e.is_read).length;
+  const [notifTab, setNotifTab] = useState<'all' | 'unread'>('all');
+  const notifShown = notifTab === 'unread' ? notifEvents.filter((e) => !e.is_read) : notifEvents;
   const [showProfile, setShowProfile] = useState(false);
   const [storeLogo, setStoreLogo] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
@@ -186,42 +188,42 @@ export function Header({ onMenuClick }: HeaderProps) {
         {(planLabel || daysLeft != null) && (
           <Link href="/dashboard/billing"
             title={activeBranchName ? `Branch: ${activeBranchName}` : undefined}
-            className="hidden xl:flex h-9 items-center gap-2 px-3.5 bg-indigo-50 text-indigo-600 border border-indigo-200 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400 rounded-md text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition">
+            className="hidden xl:flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground">
             {planLabel && (
-              <span className="inline-flex items-center gap-1 font-semibold">
-                <Crown className="w-3.5 h-3.5" /> {planLabel}
+              <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                <Crown className="h-3.5 w-3.5 text-indigo-500" /> {planLabel}
               </span>
             )}
             {daysLeft != null && (
               <>
-                {planLabel && <span className="opacity-30">·</span>}
-                <span className="opacity-75 whitespace-nowrap">{daysLeft}d left</span>
+                {planLabel && <span className="h-3 w-px bg-border" />}
+                <span className="whitespace-nowrap">{daysLeft} days left</span>
               </>
             )}
           </Link>
         )}
 
-        {/* Currency — plain text, no boxed pill */}
+        {/* Currency — quiet text button, Apify-style */}
         <div ref={currencyRef} className="relative">
           <button type="button" onClick={() => !isTheDersiShop && setShowCurrencyDrop(v => !v)}
             title={isTheDersiShop ? 'LKR — TheDersi marketplace' : 'Change currency'}
-            className="hidden sm:flex h-9 items-center gap-1.5 px-3.5 rounded-md border border-border/60 bg-muted/50 text-xs font-semibold text-foreground hover:bg-muted transition">
+            className={`hidden sm:flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground transition hover:bg-muted ${showCurrencyDrop ? 'bg-muted' : ''}`}>
             <span>{currency}</span>
             {!isTheDersiShop && <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showCurrencyDrop ? 'rotate-180' : ''}`} />}
           </button>
           {showCurrencyDrop && !isTheDersiShop && (
-            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 w-32 max-h-80 overflow-y-auto">
-              <div className="sticky top-0 bg-card px-3 py-2 border-b border-border">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Currency</p>
+            <div className="absolute right-0 top-full z-50 mt-2 w-40 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+              <p className="border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">Currency</p>
+              <div className="max-h-72 overflow-y-auto p-1">
+                {CURRENCIES.map(c => (
+                  <button key={c} type="button"
+                    onClick={() => { setCurrency(c); setShowCurrencyDrop(false); }}
+                    className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition hover:bg-muted ${currency === c ? 'bg-muted font-medium text-foreground' : 'text-foreground'}`}>
+                    <span>{c}</span>
+                    {currency === c && <Check className="h-3.5 w-3.5 text-muted-foreground" />}
+                  </button>
+                ))}
               </div>
-              {CURRENCIES.map(c => (
-                <button key={c} type="button"
-                  onClick={() => { setCurrency(c); setShowCurrencyDrop(false); }}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-muted transition text-left ${currency === c ? 'text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-500/10' : 'text-foreground'}`}>
-                  <span>{c}</span>
-                  {currency === c && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
-                </button>
-              ))}
             </div>
           )}
         </div>
@@ -229,65 +231,69 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Notifications */}
         <div ref={notifRef} className="relative">
           <button type="button" onClick={() => setShowNotif(v => !v)} aria-label="Notifications"
-            className="relative flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition">
-            <Bell className="w-5 h-5" />
+            className={`relative flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground ${showNotif ? 'bg-muted text-foreground' : ''}`}>
+            <Bell className="h-[18px] w-[18px]" />
             {unreadNotifCount > 0 && (
-              <span className="absolute top-2 right-2 flex h-2 w-2 rounded-full bg-indigo-500" />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-background" />
             )}
           </button>
           {showNotif && (
-            <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card shadow-xl z-50 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <p className="font-semibold text-foreground">Notifications</p>
+            <div className="absolute right-0 top-full z-50 mt-2 w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+              <div className="flex items-center justify-between px-4 pb-2 pt-3">
+                <p className="text-sm font-semibold text-foreground">Notifications</p>
                 {unreadNotifCount > 0 && (
-                  <button type="button" onClick={markAllNotifRead} className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">
-                    Mark all read
+                  <button type="button" onClick={markAllNotifRead}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                    <CheckCheck className="h-3.5 w-3.5" /> Mark all as read
                   </button>
                 )}
               </div>
-              <div className="max-h-80 overflow-y-auto">
+              {/* All / Unread tabs, underlined like the Apify console */}
+              <div className="flex gap-4 border-b border-border px-4 text-xs">
+                {(['all', 'unread'] as const).map((t) => (
+                  <button key={t} type="button" onClick={() => setNotifTab(t)}
+                    className={`-mb-px border-b-2 pb-2 font-medium capitalize transition ${notifTab === t ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+                    {t}{t === 'unread' && unreadNotifCount > 0 ? ` (${unreadNotifCount})` : ''}
+                  </button>
+                ))}
+              </div>
+              <div className="max-h-96 overflow-y-auto">
                 {!notifLoaded ? (
                   <div className="px-4 py-12 text-center text-sm text-muted-foreground">Loading…</div>
-                ) : notifEvents.length === 0 ? (
+                ) : notifShown.length === 0 ? (
                   <div className="px-4 py-12 text-center">
-                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                      <Bell className="h-5 w-5 text-muted-foreground" />
-                    </div>
+                    <Bell className="mx-auto mb-3 h-6 w-6 text-muted-foreground/60" />
                     <p className="text-sm font-medium text-foreground">You&apos;re all caught up</p>
-                    <p className="text-xs text-muted-foreground">No new notifications</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{notifTab === 'unread' ? 'No unread notifications' : 'No notifications yet'}</p>
                   </div>
                 ) : (
-                  <div className="py-1">
-                    {notifEvents.map((e) => {
+                  <ul className="divide-y divide-border">
+                    {notifShown.map((e) => {
                       const meta = ACTIVITY_EVENT_META[e.event_type] ?? DEFAULT_ACTIVITY_EVENT_META;
                       const Icon = meta.icon;
                       return (
-                        <button
-                          key={e.id}
-                          type="button"
-                          onClick={() => !e.is_read && markNotifRead(e.id)}
-                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-muted/50 ${e.is_read ? 'opacity-60' : ''}`}
-                        >
-                          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${meta.className}`}>
-                            <Icon className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-xs font-medium text-foreground">{e.title}</span>
-                            {e.description && <span className="block truncate text-[10px] text-muted-foreground">{e.description}</span>}
-                          </span>
-                          <span className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground">
-                            {!e.is_read && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />}
-                            {activityTimeAgo(e.created_at)}
-                          </span>
-                        </button>
+                        <li key={e.id}>
+                          <button type="button" onClick={() => !e.is_read && markNotifRead(e.id)}
+                            className="flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-muted/50">
+                            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className={`block truncate text-sm ${e.is_read ? 'text-muted-foreground' : 'font-medium text-foreground'}`}>{e.title}</span>
+                              {e.description && <span className="block truncate text-xs text-muted-foreground">{e.description}</span>}
+                              <span className="mt-1 block text-[11px] text-muted-foreground/80">{activityTimeAgo(e.created_at)}</span>
+                            </span>
+                            {!e.is_read && <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-indigo-500" />}
+                          </button>
+                        </li>
                       );
                     })}
-                  </div>
+                  </ul>
                 )}
               </div>
               <Link href="/dashboard/notifications" onClick={() => setShowNotif(false)}
-                className="block border-t border-border px-4 py-2.5 text-center text-xs font-medium text-indigo-600 transition hover:bg-muted/50 dark:text-indigo-400">
-                View all notifications →
+                className="flex items-center justify-center gap-1 border-t border-border bg-muted/40 px-4 py-2.5 text-xs font-medium text-foreground transition hover:bg-muted">
+                View all notifications <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           )}
@@ -296,35 +302,47 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Profile */}
         <div ref={profileRef} className="relative">
           <button type="button" onClick={() => setShowProfile(v => !v)} aria-label="Account menu"
-            className="flex items-center rounded-md transition hover:ring-2 hover:ring-indigo-500/30">
-            <div className="w-9 h-9 bg-indigo-600 rounded-md flex items-center justify-center text-xs font-semibold text-white overflow-hidden">
-              {storeLogo
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={storeLogo} alt="" className="h-full w-full object-cover" onError={() => setStoreLogo(null)} />
-                : (initials || <User className="w-4 h-4" />)}
-            </div>
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background transition hover:bg-muted">
+            <Avatar storeLogo={storeLogo} initials={initials} onError={() => setStoreLogo(null)} className="h-7 w-7" />
           </button>
           {showProfile && (
-            <div className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-card shadow-xl z-50 overflow-hidden">
-              <div className="px-4 py-3 border-b border-border">
-                <p className="truncate text-sm font-medium text-foreground">{userName || 'Account'}</p>
-                {userEmail && <p className="truncate text-xs text-muted-foreground">{userEmail}</p>}
+            <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+              <div className="flex items-center gap-3 px-4 py-3">
+                <Avatar storeLogo={storeLogo} initials={initials} onError={() => setStoreLogo(null)} className="h-10 w-10" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{userName || 'Account'}</p>
+                  {userEmail && <p className="truncate text-xs text-muted-foreground">{userEmail}</p>}
+                </div>
               </div>
-              <div className="py-1">
-                <MenuLink href="/dashboard/profile" icon={UserCircle} label="Store Profile" onClick={() => setShowProfile(false)} />
+              {planLabel && (
+                <Link href="/dashboard/billing" onClick={() => setShowProfile(false)}
+                  className="mx-3 mb-2 flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-xs transition hover:bg-muted">
+                  <span className="flex items-center gap-1.5 font-medium text-foreground"><Crown className="h-3.5 w-3.5 text-indigo-500" /> {planLabel} plan</span>
+                  {daysLeft != null && <span className="text-muted-foreground">{daysLeft} days left</span>}
+                </Link>
+              )}
+              <div className="border-t border-border p-1">
+                <MenuLink href="/dashboard/profile" icon={UserCircle} label="Store profile" onClick={() => setShowProfile(false)} />
                 <MenuLink href="/dashboard/settings" icon={Settings} label="Settings" onClick={() => setShowProfile(false)} />
-                <MenuLink href="/dashboard/billing" icon={CreditCard} label="Billing & Subscription" onClick={() => setShowProfile(false)} />
+                <MenuLink href="/dashboard/billing" icon={CreditCard} label="Billing & subscription" onClick={() => setShowProfile(false)} />
                 <MenuLink href="/dashboard/support" icon={LifeBuoy} label="Support" onClick={() => setShowProfile(false)} />
-                <button type="button" onClick={toggleTheme}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition">
-                  {resolvedTheme === 'light' ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
-                  {resolvedTheme === 'light' ? 'Dark mode' : 'Light mode'}
-                </button>
               </div>
-              <div className="border-t border-border py-1">
+              {/* Theme as a two-way switch, so the current mode is visible at a glance */}
+              <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
+                <span className="text-sm text-foreground">Theme</span>
+                <div className="flex rounded-md border border-border p-0.5">
+                  {(['light', 'dark'] as const).map((m) => (
+                    <button key={m} type="button" onClick={() => resolvedTheme !== m && toggleTheme()} aria-label={`${m} mode`}
+                      className={`flex h-6 w-7 items-center justify-center rounded transition ${resolvedTheme === m ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                      {m === 'light' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="border-t border-border p-1">
                 <button type="button" onClick={logout}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition">
-                  <LogOut className="h-4 w-4" /> Log out
+                  className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-foreground transition hover:bg-muted">
+                  <LogOut className="h-4 w-4 text-muted-foreground" /> Log out
                 </button>
               </div>
             </div>
@@ -372,10 +390,22 @@ export function Header({ onMenuClick }: HeaderProps) {
   );
 }
 
+// Round avatar: the store logo when there is one, otherwise the owner's initials.
+function Avatar({ storeLogo, initials, onError, className }: { storeLogo: string | null; initials: string; onError: () => void; className?: string }) {
+  return (
+    <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-600 text-xs font-semibold text-white ${className ?? ''}`}>
+      {storeLogo
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img src={storeLogo} alt="" className="h-full w-full object-cover" onError={onError} />
+        : (initials || <User className="h-4 w-4" />)}
+    </div>
+  );
+}
+
 function MenuLink({ href, icon: Icon, label, onClick }: { href: string; icon: React.ElementType; label: string; onClick: () => void }) {
   return (
     <Link href={href} onClick={onClick}
-      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition">
+      className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-foreground transition hover:bg-muted">
       <Icon className="h-4 w-4 text-muted-foreground" /> {label}
     </Link>
   );

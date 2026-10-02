@@ -36,20 +36,20 @@ export function KpiCard({
   return (
     <Link
       href={href}
-      className="group rounded-2xl border border-border bg-card p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+      className="group rounded-xl border border-border bg-card px-3.5 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${ICON_BG[color]}`}>
-            <Icon className="h-4 w-4" />
+          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${ICON_BG[color]}`}>
+            <Icon className="h-3.5 w-3.5" />
           </div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
         </div>
         <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-1 group-hover:text-muted-foreground" />
       </div>
 
-      <div className="mt-2">
-        <p className="text-2xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
+      <div className="mt-1.5">
+        <p className="text-xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
         <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
           {change !== undefined && change !== null && change !== 0 && (
             <span className={`flex items-center font-semibold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
@@ -62,21 +62,17 @@ export function KpiCard({
       </div>
 
       {trend.length > 1 && (
-        <div className="mt-2 flex h-6 items-end gap-[3px]">
+        <div className="mt-1.5 flex h-4 items-end gap-[3px]">
           {trend.map((v, i) => (
             <span
               key={i}
               className={`flex-1 rounded-sm transition-all group-hover:opacity-80 ${BAR_BG[color]}`}
-              style={{ height: `${Math.max(3, (v / max) * 22)}px` }}
+              style={{ height: `${Math.max(2, (v / max) * 16)}px` }}
             />
           ))}
         </div>
       )}
 
-      <div className="mt-2 flex items-center text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
-        View details
-        <ArrowRight className="ml-1 h-3 w-3" />
-      </div>
     </Link>
   );
 }

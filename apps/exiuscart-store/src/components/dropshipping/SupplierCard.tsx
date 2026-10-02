@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   CheckCircle2, Loader2, ExternalLink, Package, Lock, ToggleLeft, ToggleRight, Eye, EyeOff,
-  Boxes, ShoppingBag, Shirt, Palette, Printer, Globe, Truck, Clock3, MapPin,
+  Boxes, ShoppingBag, Shirt, Palette, Printer, Globe, Truck, Clock3, MapPin, ArrowRight,
 } from 'lucide-react';
 import { dropshipApi } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -442,118 +442,89 @@ export default function SupplierCard({ supplier, shopId, plan, onRefresh, stat }
 
   return (
     <>
-      <Card className={
-        supplier.locked ? 'opacity-60' :
-        supplier.connected ? 'border-green-500/30 bg-green-500/[0.04]' :
-        ''
-      }>
-        <CardContent className="p-5 flex flex-col gap-4">
-          {/* Header: avatar + name + badge */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ${
-                supplier.locked ? 'bg-muted' : style.logo ? '' : 'bg-gradient-to-br from-slate-800 to-slate-600'
-              }`}>
-                {style.logo && !supplier.locked ? (
-                  <Image src={style.logo} alt={supplier.name} width={44} height={44}
-                    className={style.logoFit === 'contain' ? 'w-2/3 h-2/3 object-contain' : 'w-full h-full object-cover'} />
-                ) : supplier.locked ? (
-                  <SupplierIcon className="w-5 h-5 text-muted-foreground" />
-                ) : (
-                  <span className="text-xs font-bold text-white">{initials}</span>
-                )}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="font-bold text-foreground text-sm truncate">{supplier.name}</p>
-                  {supplier.connected && <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />}
-                </div>
-                {meta && <p className="text-[11px] text-muted-foreground truncate">{meta.country} · {meta.categoryLabel}</p>}
-              </div>
+      {/* Apify-store style card: calm body (logo, name, origin, description, facts) and a grey footer
+          strip with the status on the left and the actions on the right. */}
+      <div className={`flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card transition hover:border-foreground/20 hover:shadow-sm ${supplier.locked ? 'opacity-70' : ''}`}>
+        <div className="flex flex-1 flex-col gap-3 p-5">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border ${style.logo && !supplier.locked ? 'bg-background' : 'bg-muted'}`}>
+              {style.logo && !supplier.locked ? (
+                <Image src={style.logo} alt={supplier.name} width={44} height={44}
+                  className={style.logoFit === 'contain' ? 'h-2/3 w-2/3 object-contain' : 'h-full w-full object-cover'} />
+              ) : supplier.locked ? (
+                <SupplierIcon className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <span className="text-xs font-bold text-foreground">{initials}</span>
+              )}
             </div>
-            <Badge variant={supplier.locked ? 'muted' : supplier.connected ? 'success' : 'default'} className="shrink-0">
-              {supplier.locked ? 'Premium only' : supplier.connected ? 'Connected' : 'Available'}
-            </Badge>
+            <div className="min-w-0">
+              <p className="truncate text-[15px] font-semibold text-foreground">{supplier.name}</p>
+              <p className="truncate font-mono text-xs text-muted-foreground">
+                {(meta ? `${meta.country}/${meta.categoryLabel}` : supplier.category).toLowerCase().replace(/\s*&\s*/g, '-').replace(/\s+/g, '-')}
+              </p>
+            </div>
           </div>
 
-          <p className="text-xs text-muted-foreground leading-relaxed">{supplier.description}</p>
-
-          {/* Stat block — real per-shop counts once connected, informational catalog facts otherwise */}
-          {meta && (
-            <div className="grid grid-cols-2 gap-3 border-y border-border py-3.5">
-              <div>
-                <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                  <Package className="w-3 h-3" /> {supplier.connected ? 'Your products' : 'Catalog'}
-                </div>
-                <p className="mt-0.5 text-xs font-bold text-foreground">
-                  {supplier.connected && stat ? stat.products.toLocaleString() : meta.catalogSize}
-                </p>
-              </div>
-              <div>
-                <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                  <Clock3 className="w-3 h-3" /> Processing
-                </div>
-                <p className="mt-0.5 text-xs font-bold text-foreground">{meta.processingTime}</p>
-              </div>
-            </div>
-          )}
+          <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">{supplier.description}</p>
 
           {meta && (
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <MapPin className="w-3 h-3 shrink-0" /> Ships to {meta.shipsTo}
+            <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><Package className="h-3.5 w-3.5" /> {supplier.connected && stat ? `${stat.products.toLocaleString()} your products` : `${meta.catalogSize} products`}</span>
+              <span className="flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" /> {meta.processingTime}</span>
+              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {meta.shipsTo}</span>
             </div>
           )}
 
           {/* Auto-fulfill toggle — Growth/Scale + connected only */}
           {supplier.connected && (plan === 'growth' || plan === 'scale') && (
-            <div className="flex items-center justify-between py-3 px-3 bg-muted/50 rounded-lg">
-              <div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-foreground">Auto-fulfill orders</p>
-                <p className="text-xs text-muted-foreground">Send new orders to {supplier.name} automatically</p>
+                <p className="truncate text-xs text-muted-foreground">Send new orders to {supplier.name} automatically</p>
               </div>
-              <button onClick={toggleAuto} disabled={togglingAuto} className="text-primary transition shrink-0">
-                {togglingAuto ? <Loader2 className="w-5 h-5 animate-spin" /> :
+              <button onClick={toggleAuto} disabled={togglingAuto} className="shrink-0 text-primary transition" aria-label="Auto-fulfill orders">
+                {togglingAuto ? <Loader2 className="h-5 w-5 animate-spin" /> :
                   supplier.auto_fulfill_enabled
-                    ? <ToggleRight className="w-8 h-8" />
-                    : <ToggleLeft className="w-8 h-8 text-muted-foreground" />
-                }
+                    ? <ToggleRight className="h-8 w-8" />
+                    : <ToggleLeft className="h-8 w-8 text-muted-foreground" />}
               </button>
             </div>
           )}
+          {aliexpressError && <p className="text-xs text-destructive">{aliexpressError}</p>}
+        </div>
 
-          {/* Action buttons */}
+        <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-5 py-2.5 text-xs">
+          <span className="flex min-w-0 items-center gap-1.5 text-foreground">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${supplier.locked ? 'bg-amber-500' : supplier.connected ? 'bg-emerald-500' : 'bg-primary'}`} />
+            <span className="truncate">{supplier.locked ? 'Premium only' : supplier.connected ? 'Connected' : 'Available'}</span>
+          </span>
           {supplier.locked ? (
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/dashboard/billing">
-                <Lock className="w-3.5 h-3.5" /> Upgrade to Premium
-              </Link>
-            </Button>
+            <Link href="/dashboard/billing" className="flex shrink-0 items-center gap-1 font-medium text-foreground hover:text-primary">
+              <Lock className="h-3.5 w-3.5" /> Upgrade
+            </Link>
           ) : supplier.connected ? (
-            <div className="flex gap-2">
-              <Button asChild className="flex-1">
-                <a href={DASHBOARD_LINKS[supplier.supplier_type] ?? supplier.signup_url} target="_blank" rel="noopener noreferrer">
-                  Open {supplier.name} <ExternalLink className="w-3 h-3" />
-                </a>
-              </Button>
-              <Button variant="outline" size="sm" onClick={disconnect} disabled={disconnecting} className="text-destructive hover:text-destructive">
-                {disconnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Disconnect'}
-              </Button>
-            </div>
+            <span className="flex shrink-0 items-center gap-3">
+              <a href={DASHBOARD_LINKS[supplier.supplier_type] ?? supplier.signup_url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 font-medium text-foreground hover:text-primary">
+                Open <ExternalLink className="h-3 w-3" />
+              </a>
+              <button type="button" onClick={disconnect} disabled={disconnecting} className="font-medium text-muted-foreground hover:text-destructive">
+                {disconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Disconnect'}
+              </button>
+            </span>
           ) : supplier.supplier_type === 'aliexpress' ? (
-            <div className="space-y-1.5">
-              <Button className="w-full" onClick={connectAliexpress} disabled={connectingAliexpress}>
-                {connectingAliexpress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                {connectingAliexpress ? 'Redirecting…' : `Connect ${supplier.name}`}
-              </Button>
-              {aliexpressError && <p className="text-xs text-destructive">{aliexpressError}</p>}
-            </div>
+            <button type="button" onClick={connectAliexpress} disabled={connectingAliexpress}
+              className="group flex shrink-0 items-center gap-1 font-medium text-foreground hover:text-primary">
+              {connectingAliexpress ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Redirecting…</> : <>Connect {supplier.name} <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" /></>}
+            </button>
           ) : (
-            <Button className="w-full" onClick={() => setShowModal(true)}>
-              Connect {supplier.name}
-            </Button>
+            <button type="button" onClick={() => setShowModal(true)}
+              className="group flex shrink-0 items-center gap-1 font-medium text-foreground hover:text-primary">
+              Connect {supplier.name} <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+            </button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {showModal && supplier.supplier_type === 'cj' && (
         <CJConnectModal shopId={shopId}

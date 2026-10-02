@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { CheckCircle2, Loader2, Package, Lock, Globe, Truck, Search, Plus, ArrowDownToLine, FileText } from 'lucide-react';
+import { CheckCircle2, Loader2, Package, Lock, Globe, Truck, Search, Plus, ArrowDownToLine, FileText, ArrowRight } from 'lucide-react';
 import { dropshipApi, channelsApi } from '@/lib/api';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -13,6 +13,7 @@ import RecentProducts, { RecentProduct } from '@/components/dropshipping/RecentP
 import ConnectedSuppliersTable, { ConnectedSupplierRow } from '@/components/dropshipping/ConnectedSuppliersTable';
 import TrustPanel from '@/components/dropshipping/TrustPanel';
 import SupplierCard, { Supplier, SUPPLIER_STYLE, DASHBOARD_LINKS } from '@/components/dropshipping/SupplierCard';
+import SectionBanner from '@/components/directory/SectionBanner';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -216,13 +217,13 @@ export default function DropshippingPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search suppliers..."
-                  className="w-full h-10 pl-10 pr-3 bg-muted border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full h-10 pl-10 pr-3 bg-background border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
-              <div className="flex rounded-xl bg-muted p-1 shrink-0">
+              <div className="flex rounded-xl border border-border bg-background p-1 shrink-0">
                 {CATEGORY_FILTERS.map((f) => (
                   <button key={f} onClick={() => setCategoryFilter(f)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${categoryFilter === f ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                    className={`px-4 py-1.5 rounded-lg text-xs font-medium transition ${categoryFilter === f ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                     {f}
                   </button>
                 ))}
@@ -245,11 +246,58 @@ export default function DropshippingPage() {
                 <p className="mt-1 text-sm text-muted-foreground">Try another search or filter.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-                {filteredSuppliers.map((s) => (
-                  <SupplierCard key={s.supplier_type} supplier={s} shopId={shopId} plan={plan} onRefresh={load}
-                    stat={stats?.by_supplier[s.supplier_type]} />
-                ))}
+              <div className="space-y-10">
+                {/* Our own sourcing first: Prodora, then the outside suppliers below */}
+                {categoryFilter !== 'Print-on-Demand' && (!search.trim() || 'prodora'.includes(search.trim().toLowerCase())) && (
+                  <section className="space-y-4">
+                    <SectionBanner title="ExiusCart dropshipping" description="Our own product sourcing. Find winning products with AI, check the trends and the competition, then add them to your store." variant={0} count={1} />
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-prodora'))}
+                        className="group flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition hover:border-foreground/20 hover:shadow-sm">
+                        <div className="flex flex-1 flex-col gap-3 p-5">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background">
+                              <img src="/prodora-logo.png" alt="Prodora" className="h-full w-full object-cover" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-[15px] font-semibold text-foreground">Prodora</p>
+                              <p className="truncate font-mono text-xs text-muted-foreground">exiuscart/ai-product-sourcing</p>
+                            </div>
+                          </div>
+                          <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                            Built by ExiusCart. AI product research with trends, competitor prices and who to target, so you pick products that sell.
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-5 py-2.5 text-xs">
+                          <span className="flex items-center gap-1.5 text-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" /> By ExiusCart
+                          </span>
+                          <span className="flex items-center gap-1 font-medium text-foreground transition group-hover:text-primary">
+                            Explore Prodora <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  </section>
+                )}
+                {([
+                  { key: 'dropship', title: 'Dropshipping suppliers', text: 'Millions of ready-made products. You sell, the supplier packs and ships each order straight to your customer.', action: 'Import products', href: '/dashboard/dropshipping/import' },
+                  { key: 'pod', title: 'Print on demand', text: 'Put your own designs on t-shirts, hoodies, mugs and more. Each item is printed only when someone orders it.', action: 'Open Design Studio', href: '/dashboard/design-studio' },
+                ] as const).map((sec, i) => {
+                  const list = filteredSuppliers.filter((x) => x.category === sec.key);
+                  if (list.length === 0) return null;
+                  return (
+                    <section key={sec.key} className="space-y-4">
+                      <SectionBanner title={sec.title} description={sec.text} actionLabel={sec.action} href={sec.href} count={list.length} variant={i + 1} />
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {list.map((s) => (
+                          <SupplierCard key={s.supplier_type} supplier={s} shopId={shopId} plan={plan} onRefresh={load}
+                            stat={stats?.by_supplier[s.supplier_type]} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             )}
           </div>

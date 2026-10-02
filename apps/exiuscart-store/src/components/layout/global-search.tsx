@@ -259,7 +259,7 @@ export function GlobalSearch() {
   return (
     <>
       {/* Desktop */}
-      <div className="hidden md:flex items-center flex-1 min-w-0 max-w-xl ml-4">
+      <div className="hidden md:flex items-center flex-1 min-w-0 max-w-sm ml-4">
         <div ref={wrapRef} className="group relative w-full">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-indigo-500 transition-colors" />
           <input ref={inputRef} type="text" value={s.q} onChange={(e) => s.setQ(e.target.value)} onFocus={() => setFocused(true)} onKeyDown={s.onKeyDown}
