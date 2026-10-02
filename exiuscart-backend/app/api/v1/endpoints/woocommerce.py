@@ -54,6 +54,7 @@ from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.channel import ChannelConnection
 from app.api.v1.endpoints.channels import _shop_or_404
+from app.core.channel_orders import match_sku, address_json, join_name, should_auto_fulfill, queue_auto_fulfill, parse_time, take_paid_stock
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -347,6 +348,7 @@ def sync_woocommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
         ).all()
     }
     created = 0
+    to_fulfil = []
 
     for woo_order in orders_data:
         woo_order_id = str(woo_order.get("id"))
@@ -358,10 +360,7 @@ def sync_woocommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
         items_detail = []
         for line_item in woo_order.get("line_items", []):
             sku = line_item.get("sku")
-            product = db.query(Product).filter(Product.shop_id == shop.id, Product.sku == sku).first() if sku else None
-            if not product:
-                variant = db.query(ProductVariant).filter(ProductVariant.sku == sku).first() if sku else None
-                product = db.query(Product).filter(Product.id == variant.product_id).first() if variant else None
+            product, variant = match_sku(db, shop.id, sku)
             if not product:
                 logger.warning(f"[WOOCOMMERCE ORDERS] shop={shop.id} order_id={woo_order_id} — no product matches SKU {sku!r}, skipping item")
                 continue
@@ -370,7 +369,7 @@ def sync_woocommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
             item_total = float(line_item.get("total") or 0)
             subtotal += item_total
             order_items_to_add.append(OrderItem(
-                product_id=product.id, product_name=product.name,
+                product_id=product.id, variant_id=variant.id if variant else None, product_name=product.name,
                 quantity=qty, unit_price=(item_total / qty if qty else item_total), total_price=item_total,
             ))
             items_detail.append({"sku": sku, "line_item_id": line_item.get("id"), "quantity": qty})
@@ -379,10 +378,21 @@ def sync_woocommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
             logger.warning(f"[WOOCOMMERCE ORDERS] shop={shop.id} order_id={woo_order_id} — no items matched any product, order not created")
             continue
 
+        # "processing" = paid and waiting to ship; "on-hold" (bank transfer) and "pending" are not paid yet
+        woo_status = woo_order.get("status")
+        woo_paid = bool(woo_order.get("date_paid")) or woo_status in ("processing", "completed")
+        ship, bill = woo_order.get("shipping") or {}, woo_order.get("billing") or {}
         order = Order(
             order_number=f"WOO-{woo_order_id}-{str(_uuid.uuid4())[:4].upper()}",
             source="channel", subtotal=subtotal, total=subtotal,
             shop_id=shop.id, notes=f"WooCommerce Order #{woo_order_id}",
+            payment_status="paid" if woo_paid else "pending",
+            shipping_address=address_json(
+                name=join_name(ship.get("first_name"), ship.get("last_name")) or join_name(bill.get("first_name"), bill.get("last_name")),
+                address1=ship.get("address_1"), address2=ship.get("address_2"), city=ship.get("city"),
+                province=ship.get("state"), zip=ship.get("postcode"), country_code=ship.get("country"),
+                phone=ship.get("phone") or bill.get("phone"), email=bill.get("email"),
+            ),
         )
         db.add(order)
         db.flush()
@@ -391,11 +401,18 @@ def sync_woocommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
             db.add(oi)
         db.add(ChannelOrderMeta(order_id=order.id, channel_type="woocommerce", channel_order_id=woo_order_id, items_detail=items_detail))
         created += 1
+        if woo_paid:
+            db.flush()
+            take_paid_stock(db, order.id)
+        if woo_paid and woo_status == "processing" and should_auto_fulfill(
+                db, shop.id, parse_time(woo_order.get("date_created_gmt") or woo_order.get("date_created"))):
+            to_fulfil.append(order.id)
 
     if created:
         from datetime import datetime, timezone
         conn.last_synced_at = datetime.now(timezone.utc)
         db.commit()
+        queue_auto_fulfill(shop.id, to_fulfil)
     return created
 
 

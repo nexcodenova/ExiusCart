@@ -101,6 +101,9 @@ class Product(Base):
     # the actual meta title/description and schema.org Product data, which
     # is where keyword targeting still matters for search and AI crawlers.
     seo_keywords = Column(JSON, nullable=True)
+    # The Google result's own title and snippet; empty = the storefront builds them from name/description
+    seo_title = Column(String(80), nullable=True)
+    meta_description = Column(String(200), nullable=True)
 
     # Short per-product highlight facts shown under the price — [{icon,
     # label}, ...], e.g. {"icon": "calendar", "label": "1 Year Access"} or

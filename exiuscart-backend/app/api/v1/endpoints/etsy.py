@@ -60,6 +60,7 @@ from app.models.user import User
 from app.models.channel import ChannelConnection
 from app.models.subscription import Subscription
 from app.api.v1.endpoints.channels import _shop_or_404, EXIUSCART_BASE
+from app.core.channel_orders import match_sku, address_json, join_name, should_auto_fulfill, queue_auto_fulfill, parse_time, take_paid_stock
 
 logger = logging.getLogger(__name__)
 
@@ -516,6 +517,7 @@ def sync_etsy_orders(conn: ChannelConnection, shop, db: Session, days: int = 7) 
         ).all()
     }
     created = 0
+    to_fulfil = []
 
     for receipt in receipts_data:
         receipt_id = str(receipt.get("receipt_id"))
@@ -527,10 +529,7 @@ def sync_etsy_orders(conn: ChannelConnection, shop, db: Session, days: int = 7) 
         items_detail = []
         for txn in receipt.get("transactions", []):
             sku = txn.get("sku")
-            product = db.query(Product).filter(Product.shop_id == shop.id, Product.sku == sku).first() if sku else None
-            if not product:
-                variant = db.query(ProductVariant).filter(ProductVariant.sku == sku).first() if sku else None
-                product = db.query(Product).filter(Product.id == variant.product_id).first() if variant else None
+            product, variant = match_sku(db, shop.id, sku)
             if not product:
                 logger.warning(f"[ETSY ORDERS] shop={shop.id} receipt_id={receipt_id} — no product matches SKU {sku!r}, skipping item")
                 continue
@@ -541,7 +540,7 @@ def sync_etsy_orders(conn: ChannelConnection, shop, db: Session, days: int = 7) 
             item_total = unit_price * qty
             subtotal += item_total
             order_items_to_add.append(OrderItem(
-                product_id=product.id, product_name=product.name,
+                product_id=product.id, variant_id=variant.id if variant else None, product_name=product.name,
                 quantity=qty, unit_price=unit_price, total_price=item_total,
             ))
             items_detail.append({"sku": sku, "transaction_id": txn.get("transaction_id"), "quantity": qty})
@@ -550,10 +549,17 @@ def sync_etsy_orders(conn: ChannelConnection, shop, db: Session, days: int = 7) 
             logger.warning(f"[ETSY ORDERS] shop={shop.id} receipt_id={receipt_id} — no items matched any product, order not created")
             continue
 
+        etsy_paid = bool(receipt.get("is_paid"))
         order = Order(
             order_number=f"ETSY-{receipt_id}-{str(_uuid.uuid4())[:4].upper()}",
             source="channel", subtotal=subtotal, total=subtotal,
             shop_id=shop.id, notes=f"Etsy Receipt #{receipt_id}",
+            payment_status="paid" if etsy_paid else "pending",
+            shipping_address=address_json(
+                name=receipt.get("name"), address1=receipt.get("first_line"), address2=receipt.get("second_line"),
+                city=receipt.get("city"), province=receipt.get("state"), zip=receipt.get("zip"),
+                country_code=receipt.get("country_iso"), email=receipt.get("buyer_email"),
+            ),
         )
         db.add(order)
         db.flush()
@@ -562,10 +568,17 @@ def sync_etsy_orders(conn: ChannelConnection, shop, db: Session, days: int = 7) 
             db.add(oi)
         db.add(ChannelOrderMeta(order_id=order.id, channel_type="etsy", channel_order_id=receipt_id, items_detail=items_detail))
         created += 1
+        if etsy_paid:
+            db.flush()
+            take_paid_stock(db, order.id)
+        if etsy_paid and not receipt.get("is_shipped") and should_auto_fulfill(
+                db, shop.id, parse_time(receipt.get("created_timestamp") or receipt.get("create_timestamp"))):
+            to_fulfil.append(order.id)
 
     if created:
         conn.last_synced_at = datetime.now(timezone.utc)
         db.commit()
+        queue_auto_fulfill(shop.id, to_fulfil)
     return created
 
 

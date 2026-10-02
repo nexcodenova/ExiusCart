@@ -69,6 +69,8 @@ class ProductBase(BaseModel):
     shipping_note: Optional[str] = None
     shipping_steps: Optional[List[str]] = None  # ["Order confirmed", "Packed", ...]
     seo_keywords: Optional[List[str]] = None
+    seo_title: Optional[str] = None
+    meta_description: Optional[str] = None
     highlights: Optional[List[Dict[str, str]]] = None  # [{icon, label}, ...] — icon from PRODUCT_HIGHLIGHT_ICONS
 
 
@@ -111,6 +113,8 @@ class ProductUpdate(BaseModel):
     shipping_note: Optional[str] = None
     shipping_steps: Optional[List[str]] = None
     seo_keywords: Optional[List[str]] = None
+    seo_title: Optional[str] = None
+    meta_description: Optional[str] = None
     highlights: Optional[List[Dict[str, str]]] = None
 
 
@@ -142,6 +146,9 @@ class ProductResponse(ProductBase):
     dropship_supplier: Optional[str] = None
     # 'prodora' when this product was imported from the Prodora catalogue
     imported_from: Optional[str] = None
+    # Meta Ad Library links carried over from the Prodora product on import
+    ad_facebook_url: Optional[str] = None
+    ad_instagram_url: Optional[str] = None
 
     @property
     def discount_percent(self) -> Optional[int]:

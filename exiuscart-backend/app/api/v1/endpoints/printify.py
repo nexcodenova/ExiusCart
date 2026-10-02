@@ -265,7 +265,9 @@ async def place_printify_order(shop_id: int, order_id: int, order: Order, db: Se
                 "error": "no_supplier_link",
                 "message": f"Product '{item.product_name}' does not have a Printify supplier link. Re-import it from Printify.",
             })
-        line_items.append({"product_id": link.supplier_product_id, "variant_id": int(link.supplier_sku), "quantity": item.quantity})
+        from app.api.v1.endpoints.dropshipping import _chosen_variant_sku
+        chosen = _chosen_variant_sku(db, item)  # the buyer's size/colour (Printify variant id), else the default
+        line_items.append({"product_id": link.supplier_product_id, "variant_id": int(chosen or link.supplier_sku), "quantity": item.quantity})
 
     payload = {
         "external_id": order.order_number, "label": order.order_number, "line_items": line_items,

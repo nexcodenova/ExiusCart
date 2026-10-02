@@ -353,6 +353,11 @@ _MIGRATIONS = [
     # shown on the Prodora product page instead of a generated search link.
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS amazon_url VARCHAR(1000);",
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS ebay_url VARCHAR(1000);",
+    # When auto-fulfil was switched on: marketplace syncs only auto-send orders placed after it.
+    "ALTER TABLE dropship_connections ADD COLUMN IF NOT EXISTS auto_fulfill_enabled_at TIMESTAMPTZ;",
+    # AI Studio: a product's own Google title and meta description.
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title VARCHAR(80);",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS meta_description VARCHAR(200);",
 ]
 
 for _sql in _MIGRATIONS:

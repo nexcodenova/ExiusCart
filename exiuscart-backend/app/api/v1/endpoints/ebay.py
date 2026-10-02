@@ -56,6 +56,7 @@ from app.models.product import Product
 from app.models.channel_product_status import ChannelProductStatus
 from app.models.subscription import Subscription
 from app.api.v1.endpoints.channels import _shop_or_404, EXIUSCART_BASE
+from app.core.channel_orders import match_sku, address_json, join_name, should_auto_fulfill, queue_auto_fulfill, parse_time, take_paid_stock
 
 logger = logging.getLogger(__name__)
 
@@ -1090,6 +1091,7 @@ def sync_ebay_orders(conn: ChannelConnection, shop: Shop, db: Session, start_iso
         ).all()
     }
     created = 0
+    to_fulfil = []
 
     for ebay_order in orders_data:
         ebay_order_id = ebay_order.get("orderId")
@@ -1101,10 +1103,7 @@ def sync_ebay_orders(conn: ChannelConnection, shop: Shop, db: Session, start_iso
         items_detail = []
         for line_item in ebay_order.get("lineItems", []):
             sku = line_item.get("sku")
-            product = db.query(Product).filter(Product.shop_id == shop.id, Product.sku == sku).first() if sku else None
-            if not product:
-                variant = db.query(ProductVariant).filter(ProductVariant.sku == sku).first() if sku else None
-                product = db.query(Product).filter(Product.id == variant.product_id).first() if variant else None
+            product, variant = match_sku(db, shop.id, sku)
             if not product:
                 logger.warning(f"[EBAY ORDERS] shop={shop.id} order_id={ebay_order_id} — no product matches SKU {sku!r}, skipping item")
                 continue
@@ -1114,7 +1113,7 @@ def sync_ebay_orders(conn: ChannelConnection, shop: Shop, db: Session, start_iso
             item_total = unit_price * qty
             subtotal += item_total
             order_items_to_add.append(OrderItem(
-                product_id=product.id,
+                product_id=product.id, variant_id=variant.id if variant else None,
                 product_name=product.name,
                 quantity=qty,
                 unit_price=unit_price,
@@ -1126,6 +1125,9 @@ def sync_ebay_orders(conn: ChannelConnection, shop: Shop, db: Session, start_iso
             logger.warning(f"[EBAY ORDERS] shop={shop.id} order_id={ebay_order_id} — no items matched any product, order not created")
             continue
 
+        ebay_paid = ebay_order.get("orderPaymentStatus") == "PAID"
+        ship_to = (((ebay_order.get("fulfillmentStartInstructions") or [{}])[0].get("shippingStep") or {}).get("shipTo") or {})
+        addr = ship_to.get("contactAddress") or {}
         order = Order(
             order_number=f"EBAY-{ebay_order_id}-{str(_uuid.uuid4())[:4].upper()}",
             source="channel",
@@ -1133,6 +1135,13 @@ def sync_ebay_orders(conn: ChannelConnection, shop: Shop, db: Session, start_iso
             total=subtotal,
             shop_id=shop.id,
             notes=f"eBay Order #{ebay_order_id}",
+            payment_status="paid" if ebay_paid else "pending",
+            shipping_address=address_json(
+                name=ship_to.get("fullName"), address1=addr.get("addressLine1"), address2=addr.get("addressLine2"),
+                city=addr.get("city"), province=addr.get("stateOrProvince"), zip=addr.get("postalCode"),
+                country_code=addr.get("countryCode"), phone=(ship_to.get("primaryPhone") or {}).get("phoneNumber"),
+                email=ship_to.get("email"),
+            ),
         )
         db.add(order)
         db.flush()
@@ -1146,9 +1155,16 @@ def sync_ebay_orders(conn: ChannelConnection, shop: Shop, db: Session, start_iso
             items_detail=items_detail,
         ))
         created += 1
+        if ebay_paid:
+            db.flush()
+            take_paid_stock(db, order.id)
+        if ebay_paid and ebay_order.get("orderFulfillmentStatus") == "NOT_STARTED" and should_auto_fulfill(
+                db, shop.id, parse_time(ebay_order.get("creationDate"))):
+            to_fulfil.append(order.id)
 
     if created:
         db.commit()
+        queue_auto_fulfill(shop.id, to_fulfil)
     return created
 
 

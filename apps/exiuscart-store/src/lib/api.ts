@@ -997,6 +997,17 @@ export const gumroadApi = {
 // check whether a product is already being advertised before committing
 // to list it. Same shared backend core the admin Prodora curation flow
 // uses (app/core/meta_ad_library.py), shop-scoped auth instead of admin.
+// AI Studio: better product copy + AI product images (backend app/core/ai_studio.py)
+export const aiStudioApi = {
+  usage: (shopId: string) => api.get(`/shops/${shopId}/ai-studio/usage`),
+  improve: (shopId: string, productId: string | number) =>
+    api.post(`/shops/${shopId}/ai-studio/products/${productId}/improve`, null, { timeout: 120000 }),
+  image: (shopId: string, productId: string | number, data: { mode: string; reference_url: string; extra?: string; model_look?: string }) =>
+    api.post(`/shops/${shopId}/ai-studio/products/${productId}/image`, data, { timeout: 240000 }),
+  addImage: (shopId: string, productId: string | number, url: string, makePrimary = false) =>
+    api.post(`/shops/${shopId}/ai-studio/products/${productId}/image/add`, { url, make_primary: makePrimary }),
+};
+
 export const adIntelligenceApi = {
   searchMetaAds: (shopId: string, q: string, country: string = 'US') =>
     api.get(`/shops/${shopId}/meta-ads/search`, { params: { q, country } }),

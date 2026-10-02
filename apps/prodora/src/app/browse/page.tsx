@@ -10,6 +10,7 @@ import ProductCard from '@/components/ProductCard';
 import Sidebar from '@/components/Sidebar';
 import PageIntro from '@/components/PageIntro';
 import FilterDrawer, { EMPTY_FILTERS, type FilterState } from '@/components/FilterDrawer';
+import { isAdLibrarySearchLink } from '@/lib/adLibrary';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
@@ -50,7 +51,8 @@ function buildChips(products: Product[]): string[] {
 function matchesChip(p: Product, chip: string): boolean {
   if (chip === TEST_CHIP) return p.intel_verdict === 'TEST';
   if (chip === 'Has video') return !!(p.video_url || (p.videos && p.videos.length));
-  if (chip === 'Has Meta ad') return !!(p.ad_facebook_url || p.ad_instagram_url);
+  // A hand-picked ad, not the automatic Ad Library search every product gets
+  if (chip === 'Has Meta ad') return [p.ad_facebook_url, p.ad_instagram_url].some((u) => !!u && !isAdLibrarySearchLink(u));
   return tagsOf(p).some((t) => t.toLowerCase() === chip.toLowerCase());
 }
 

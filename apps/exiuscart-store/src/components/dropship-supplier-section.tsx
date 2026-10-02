@@ -210,7 +210,9 @@ export function DropshipSupplierSection({ shopId, productId }: Props) {
   if (!productId) return null;
 
   const save = async () => {
-    if (!supplierType || !sku.trim()) { setError('Supplier and SKU are required.'); return; }
+    if (!supplierType || !sku.trim()) { setError(isGelato ? 'Gelato product UID is required.' : 'Supplier and SKU are required.'); return; }
+    // Gelato prints the design at this URL, so without it no order can be sent
+    if (isGelato && !/^https?:\/\//.test(productUrl.trim())) { setError('Gelato needs the print file URL (your design).'); return; }
     setSaving(true); setError('');
     try {
       await dropshipApi.saveProductLink(shopId, String(productId), {
@@ -237,6 +239,8 @@ export function DropshipSupplierSection({ shopId, productId }: Props) {
   };
 
   const availableToAdd = connectedSuppliers.filter((s) => !links.some((l) => l.supplier_type === s));
+  // Gelato (print on demand) needs the product to print and the design file, not a SKU and a product page
+  const isGelato = supplierType === 'gelato';
 
   return (
     <div className="space-y-3">
@@ -308,15 +312,15 @@ export function DropshipSupplierSection({ shopId, productId }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Supplier SKU / Variant ID *</label>
-                  <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="e.g. CJ variant ID"
+                  <label className="text-xs text-muted-foreground mb-1 block">{isGelato ? 'Gelato product UID *' : 'Supplier SKU / Variant ID *'}</label>
+                  <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder={isGelato ? 'e.g. apparel_product_gca_t-shirt_...' : 'e.g. CJ variant ID'}
                     className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground outline-none" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Product URL (optional)</label>
-                  <input value={productUrl} onChange={(e) => setProductUrl(e.target.value)} placeholder="https://cjdropshipping.com/product/..."
+                  <label className="text-xs text-muted-foreground mb-1 block">{isGelato ? 'Print file URL *' : 'Product URL (optional)'}</label>
+                  <input value={productUrl} onChange={(e) => setProductUrl(e.target.value)} placeholder={isGelato ? 'https://.../design.png' : 'https://cjdropshipping.com/product/...'}
                     className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground outline-none" />
                 </div>
                 <div>

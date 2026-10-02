@@ -33,6 +33,7 @@ class DropshipConnection(Base):
     oauth_state = Column(String(100), nullable=True)            # CSRF token for the in-flight authorize request
     is_active = Column(Boolean, default=True)
     auto_fulfill_enabled = Column(Boolean, default=False)       # Premium: auto-send orders to supplier
+    auto_fulfill_enabled_at = Column(DateTime(timezone=True), nullable=True)  # only orders placed after this are auto-sent
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     shop = relationship("Shop")

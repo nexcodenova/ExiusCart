@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { adLibraryKeyword, adLibrarySearchUrl } from '@/lib/adLibrary';
 import FindSupplierMenu, { type CJMatch } from '@/components/dropshipping/FindSupplierMenu';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
@@ -144,7 +145,7 @@ interface MetaAd { id: string; page_name: string; snapshot_url: string; body: st
 
 function MetaAdCheck({ shopId, defaultQuery }: { shopId: string; defaultQuery: string }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState(defaultQuery);
+  const [query, setQuery] = useState(adLibraryKeyword(defaultQuery));
   const [ads, setAds] = useState<MetaAd[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -157,7 +158,10 @@ function MetaAdCheck({ shopId, defaultQuery }: { shopId: string; defaultQuery: s
       const r = await adIntelligenceApi.searchMetaAds(shopId, query.trim());
       setAds(r.data?.ads ?? []);
     } catch (e: any) {
-      setError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Meta Ad Library search failed.');
+      const detail = e?.response?.data?.detail;
+      setError(detail?.error === 'meta_not_configured'
+        ? 'In-app results aren’t available yet. Use "Open Ad Library" to see every running ad.'
+        : detail?.message ?? detail ?? 'Meta Ad Library search failed.');
     } finally { setLoading(false); }
   };
 
@@ -186,6 +190,10 @@ function MetaAdCheck({ shopId, defaultQuery }: { shopId: string; defaultQuery: s
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             </button>
           </div>
+          <a href={adLibrarySearchUrl(query.trim())} target="_blank" rel="noopener noreferrer"
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 border border-border bg-background hover:bg-muted rounded-lg text-xs font-medium text-foreground transition ${!query.trim() ? 'pointer-events-none opacity-50' : ''}`}>
+            <ExternalLink className="w-3.5 h-3.5" /> Open Ad Library — every running ad for &ldquo;{query.trim()}&rdquo;
+          </a>
           {error && (
             <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}

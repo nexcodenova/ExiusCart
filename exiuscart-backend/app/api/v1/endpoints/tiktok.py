@@ -69,6 +69,7 @@ from app.models.user import User
 from app.models.channel import ChannelConnection
 from app.models.subscription import Subscription
 from app.api.v1.endpoints.channels import _shop_or_404
+from app.core.channel_orders import match_sku, address_json, join_name, should_auto_fulfill, queue_auto_fulfill, parse_time, take_paid_stock
 
 logger = logging.getLogger(__name__)
 
@@ -542,6 +543,7 @@ def sync_tiktok_orders(conn: ChannelConnection, shop, db: Session, days: int = 7
         ).all()
     }
     created = 0
+    to_fulfil = []
 
     for tt_order in orders_data:
         tt_order_id = tt_order.get("id")
@@ -553,10 +555,7 @@ def sync_tiktok_orders(conn: ChannelConnection, shop, db: Session, days: int = 7
         items_detail = []
         for line_item in tt_order.get("line_items", []):
             sku = line_item.get("seller_sku")
-            product = db.query(Product).filter(Product.shop_id == shop.id, Product.sku == sku).first() if sku else None
-            if not product:
-                variant = db.query(ProductVariant).filter(ProductVariant.sku == sku).first() if sku else None
-                product = db.query(Product).filter(Product.id == variant.product_id).first() if variant else None
+            product, variant = match_sku(db, shop.id, sku)
             if not product:
                 logger.warning(f"[TIKTOK ORDERS] shop={shop.id} order_id={tt_order_id} — no product matches SKU {sku!r}, skipping item")
                 continue
@@ -566,7 +565,7 @@ def sync_tiktok_orders(conn: ChannelConnection, shop, db: Session, days: int = 7
             item_total = unit_price * qty
             subtotal += item_total
             order_items_to_add.append(OrderItem(
-                product_id=product.id, product_name=product.name,
+                product_id=product.id, variant_id=variant.id if variant else None, product_name=product.name,
                 quantity=qty, unit_price=unit_price, total_price=item_total,
             ))
             items_detail.append({"sku": sku, "line_item_id": line_item.get("id"), "quantity": qty})
@@ -575,10 +574,25 @@ def sync_tiktok_orders(conn: ChannelConnection, shop, db: Session, days: int = 7
             logger.warning(f"[TIKTOK ORDERS] shop={shop.id} order_id={tt_order_id} — no items matched any product, order not created")
             continue
 
+        # TikTok order statuses: UNPAID / ON_HOLD (paid, but inside the buyer's cancel window, must not ship yet) /
+        # AWAITING_SHIPMENT (ship now) / ... / CANCELLED
+        tt_status = tt_order.get("status")
+        tt_paid = tt_status not in (None, "UNPAID", "CANCELLED")
+        rcpt = tt_order.get("recipient_address") or {}
+        levels = {(d.get("address_level_name") or "").lower(): d.get("address_name") for d in (rcpt.get("district_info") or [])}
         order = Order(
             order_number=f"TT-{tt_order_id}-{str(_uuid.uuid4())[:4].upper()}",
             source="channel", subtotal=subtotal, total=subtotal,
             shop_id=shop.id, notes=f"TikTok Shop Order #{tt_order_id}",
+            payment_status="paid" if tt_paid else "pending",
+            shipping_address=address_json(
+                name=rcpt.get("name") or join_name(rcpt.get("first_name"), rcpt.get("last_name")),
+                address1=rcpt.get("address_line1") or rcpt.get("address_detail"), address2=rcpt.get("address_line2"),
+                city=levels.get("city") or levels.get("district") or levels.get("county"),
+                province=levels.get("state") or levels.get("province") or levels.get("region"),
+                zip=rcpt.get("postal_code"), country_code=rcpt.get("region_code"), phone=rcpt.get("phone_number"),
+                email=tt_order.get("buyer_email"),
+            ),
         )
         db.add(order)
         db.flush()
@@ -587,10 +601,16 @@ def sync_tiktok_orders(conn: ChannelConnection, shop, db: Session, days: int = 7
             db.add(oi)
         db.add(ChannelOrderMeta(order_id=order.id, channel_type="tiktok", channel_order_id=tt_order_id, items_detail=items_detail))
         created += 1
+        if tt_paid:
+            db.flush()
+            take_paid_stock(db, order.id)
+        if tt_status == "AWAITING_SHIPMENT" and should_auto_fulfill(db, shop.id, parse_time(tt_order.get("create_time"))):
+            to_fulfil.append(order.id)
 
     if created:
         conn.last_synced_at = datetime.now(timezone.utc)
         db.commit()
+        queue_auto_fulfill(shop.id, to_fulfil)
     return created
 
 

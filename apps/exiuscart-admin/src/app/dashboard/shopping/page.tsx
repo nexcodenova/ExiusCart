@@ -9,6 +9,7 @@ import {
   ExternalLink, Tag, AlertCircle, ShoppingBag, RefreshCw, ChevronDown, Download, Trophy, Megaphone, Truck,
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
+import { adLibraryKeyword, adLibrarySearchUrl, normalizeAdLink } from '@/lib/adLibrary';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { SupplierLogo } from '@/components/supplier-logo';
 import { CountrySelect } from '@/components/country-select';
@@ -201,33 +202,49 @@ function QuickToggle({
 }
 
 // ── Meta Ad Library search panel ──────────────────────────────────────────────
-// Real ads pulled live from Meta's public Ad Library API (ads_archive) —
-// see admin_meta_ads_search in admin.py. Requires META_AD_LIBRARY_TOKEN to
-// be configured server-side; shows a clear "not connected" message otherwise.
+// Always offers the public Ad Library page for the keyword (no token needed):
+// open it to pick one ad, or save the search itself as the link. The in-panel
+// results list is the API path (admin_meta_ads_search in admin.py) and only
+// fills in once META_AD_LIBRARY_TOKEN is set server-side.
 
-function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, onSearch, onPick, onClose }: {
+function MetaAdSearchPanel({ platform, query, setQuery, ads, loading, error, hasSearched, onSearch, onPick, onClose }: {
+  platform: 'facebook' | 'instagram';
   query: string; setQuery: (v: string) => void;
   ads: { id: string; page_name: string; snapshot_url: string; body: string | null }[];
   loading: boolean; error: string; hasSearched: boolean;
   onSearch: () => void; onPick: (url: string) => void; onClose: () => void;
 }) {
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const searchUrl = adLibrarySearchUrl(query.trim(), 'ALL', platform);
   return (
     <div className="mt-2 p-3 bg-gray-50 border border-gray-300 rounded-lg space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-gray-600">Search real ads on Meta Ad Library</p>
+        <p className="text-xs font-medium text-gray-600">Find real {platform === 'instagram' ? 'Instagram' : 'Facebook'} ads on Meta Ad Library</p>
         <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-900"><X className="w-3.5 h-3.5" /></button>
       </div>
-      <div className="flex gap-2">
-        <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
-          placeholder="Search by product or brand name…"
-          className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
-        <button type="button" onClick={onSearch} disabled={loading}
-          className="px-3 py-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center gap-1.5">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+      <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+        placeholder="Keyword, e.g. posture corrector"
+        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+      <div className="grid grid-cols-2 gap-2">
+        <a href={query.trim() ? searchUrl : undefined} target="_blank" rel="noopener noreferrer"
+          aria-disabled={!query.trim()}
+          className={`flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-300 bg-white hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-900 ${!query.trim() ? 'pointer-events-none opacity-50' : ''}`}>
+          <ExternalLink className="w-3.5 h-3.5" /> Open Ad Library
+        </a>
+        <button type="button" onClick={() => onPick(searchUrl)} disabled={!query.trim()}
+          className="px-3 py-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium disabled:opacity-50">
+          Save all ads as link
         </button>
       </div>
+      <p className="text-xs text-gray-500 leading-relaxed">
+        <strong>Save all ads as link</strong> shows Prodora users every running ad for this keyword.
+        For one specific ad instead: Open Ad Library → &ldquo;See ad details&rdquo; → copy the link (or just the Library ID) and paste it in the box above.
+      </p>
+      <button type="button" onClick={onSearch} disabled={loading || !query.trim()}
+        className="w-full pt-2 border-t border-gray-200 text-xs text-gray-500 hover:text-[#6B3FD9] disabled:opacity-50 flex items-center justify-center gap-1.5">
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />} Show results here (needs Meta API)
+      </button>
+
       {error && (
         <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2">
           <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}
@@ -267,6 +284,169 @@ function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, 
       {!loading && !error && ads.length === 0 && hasSearched && (
         <p className="text-xs text-gray-500">No ads found for &ldquo;{query}&rdquo;. Try a different keyword.</p>
       )}
+    </div>
+  );
+}
+
+// ── AI Studio (admin) ─────────────────────────────────────────────────────────
+// Same engine as the seller's AI Studio (app/core/ai_studio.py). "Use
+// selected" puts the name/description/keywords into this form (its Save keeps
+// them) and saves the fields this form doesn't have (Google title and
+// description, highlights, FAQ) straight away. Images go into Additional
+// Images, saved with the product.
+
+type AiSuggest = { title?: string; seo_title?: string; meta_description?: string; description_html?: string; benefits?: string[]; faq?: { question: string; answer: string }[]; keywords?: string[] };
+const AI_FIELDS: { key: keyof AiSuggest; label: string }[] = [
+  { key: 'title', label: 'Product name' }, { key: 'seo_title', label: 'Google title' }, { key: 'meta_description', label: 'Google description' },
+  { key: 'description_html', label: 'Description' }, { key: 'benefits', label: 'Highlights' }, { key: 'faq', label: 'FAQ' }, { key: 'keywords', label: 'SEO keywords (also tags)' },
+];
+const AI_MODES = [
+  { key: 'studio', label: 'Studio photo' }, { key: 'lifestyle', label: 'Lifestyle' },
+  { key: 'model', label: 'On a model' }, { key: 'ad', label: 'Ad image' },
+];
+
+function aiShow(v: unknown): string {
+  if (v == null || v === '') return '—';
+  if (Array.isArray(v)) return v.map((x) => (typeof x === 'object' && x ? `${(x as any).question} — ${(x as any).answer}` : String(x))).join(' • ');
+  return String(v).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function AiStudioAdminPanel({ productId, photos, onFillForm, onAddImage }: {
+  productId: number | null;
+  photos: string[];
+  onFillForm: (s: { name?: string; description?: string; tags?: string }) => void;
+  onAddImage: (url: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [cur, setCur] = useState<AiSuggest | null>(null);
+  const [sug, setSug] = useState<AiSuggest | null>(null);
+  const [picked, setPicked] = useState<Set<keyof AiSuggest>>(new Set());
+  const [done, setDone] = useState('');
+  const [mode, setMode] = useState('studio');
+  const [ref, setRef] = useState('');
+  const [look, setLook] = useState('');
+  const [imgBusy, setImgBusy] = useState(false);
+  const [imgErr, setImgErr] = useState('');
+  const [result, setResult] = useState('');
+
+  useEffect(() => { if (!ref && photos[0]) setRef(photos[0]); }, [photos, ref]);
+
+  if (!productId) return <p className="text-xs text-gray-500">Save the product first, then reopen it to use AI Studio.</p>;
+
+  const msg = (e: any, fb: string) => { const d = e?.response?.data?.detail; return (typeof d === 'object' ? d?.message : d) || fb; };
+
+  const improve = async () => {
+    setBusy(true); setErr(''); setDone('');
+    try {
+      const r = await adminApi.aiStudioImprove(productId);
+      setCur(r.data.current); setSug(r.data.suggested);
+      setPicked(new Set(AI_FIELDS.map((f) => f.key).filter((k) => { const v = r.data.suggested[k]; return v && !(Array.isArray(v) && !v.length); })));
+    } catch (e: any) { setErr(msg(e, 'AI could not improve this product right now.')); } finally { setBusy(false); }
+  };
+
+  const useSelected = async () => {
+    if (!sug) return;
+    const has = (k: keyof AiSuggest) => picked.has(k);
+    onFillForm({
+      name: has('title') ? sug.title : undefined,
+      description: has('description_html') ? sug.description_html : undefined,
+      tags: has('keywords') ? (sug.keywords || []).join(', ') : undefined,
+    });
+    const extra: Record<string, unknown> = {};
+    if (has('seo_title')) extra.seo_title = sug.seo_title;
+    if (has('meta_description')) extra.meta_description = sug.meta_description;
+    if (has('benefits')) extra.benefits = sug.benefits;
+    if (has('faq')) extra.faq = sug.faq;
+    if (has('keywords')) extra.keywords = sug.keywords;
+    try {
+      if (Object.keys(extra).length) await adminApi.aiStudioApply(productId, extra);
+      setDone('Name, description and tags are in the form — click Save. Google title/description, highlights and FAQ are already saved.');
+    } catch (e: any) { setErr(msg(e, 'Could not save the extra fields.')); }
+  };
+
+  const makeImage = async () => {
+    setImgBusy(true); setImgErr(''); setResult('');
+    try {
+      const r = await adminApi.aiStudioImage(productId, { mode, reference_url: ref, model_look: mode === 'model' ? look || undefined : undefined });
+      setResult(r.data.url);
+    } catch (e: any) { setImgErr(msg(e, 'AI could not make this image right now.')); } finally { setImgBusy(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <button type="button" onClick={improve} disabled={busy}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white rounded-lg text-sm font-medium disabled:opacity-60">
+          {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Researching keywords and writing…</> : <>✨ {sug ? 'Write again' : 'Improve copy & SEO with AI'}</>}
+        </button>
+        {err && <p className="text-xs text-amber-700 bg-amber-500/10 rounded-lg px-3 py-2">{err}</p>}
+        {sug && cur && (
+          <div className="space-y-2">
+            {AI_FIELDS.map(({ key, label }) => (
+              <label key={key} className={`block rounded-lg border p-2.5 cursor-pointer ${picked.has(key) ? 'border-[#6B3FD9]/50 bg-[#6B3FD9]/5' : 'border-gray-200 bg-white'}`}>
+                <span className="flex items-center gap-2 text-xs font-medium text-gray-900">
+                  <input type="checkbox" checked={picked.has(key)}
+                    onChange={(e) => setPicked((p) => { const n = new Set(p); if (e.target.checked) n.add(key); else n.delete(key); return n; })} />
+                  {label}
+                </span>
+                <span className="mt-1 grid grid-cols-2 gap-2 text-[11px]">
+                  <span className="text-gray-500 line-clamp-4">Now: {aiShow(cur[key])}</span>
+                  <span className="text-gray-900 line-clamp-4">AI: {aiShow(sug[key])}</span>
+                </span>
+              </label>
+            ))}
+            <button type="button" onClick={useSelected} disabled={!picked.size}
+              className="w-full px-3 py-2 border border-[#6B3FD9] text-[#6B3FD9] rounded-lg text-sm font-medium hover:bg-[#6B3FD9]/5 disabled:opacity-50">
+              Use {picked.size} selected
+            </button>
+            {done && <p className="text-xs text-emerald-700">{done}</p>}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2 border-t border-gray-200 pt-3">
+        <p className="text-xs font-medium text-gray-600">AI images (from one of this product&apos;s photos)</p>
+        {photos.length === 0 ? <p className="text-xs text-gray-500">Add a photo first.</p> : (
+          <>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {photos.slice(0, 10).map((u) => (
+                <button key={u} type="button" onClick={() => setRef(u)}
+                  className={`h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 ${ref === u ? 'border-[#6B3FD9]' : 'border-gray-200'}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={u} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {AI_MODES.map((m) => (
+                <button key={m.key} type="button" onClick={() => setMode(m.key)}
+                  className={`px-2 py-1.5 rounded-lg border text-xs ${mode === m.key ? 'border-[#6B3FD9] bg-[#6B3FD9]/5 text-[#6B3FD9]' : 'border-gray-200 text-gray-700'}`}>{m.label}</button>
+              ))}
+            </div>
+            {mode === 'model' && (
+              <input value={look} onChange={(e) => setLook(e.target.value)} placeholder="Model (optional), e.g. man, 30s, smart casual"
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:border-[#6B3FD9] focus:outline-none" />
+            )}
+            <button type="button" onClick={makeImage} disabled={imgBusy || !ref}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-60">
+              {imgBusy ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating image…</> : 'Create image'}
+            </button>
+            {imgErr && <p className="text-xs text-amber-700 bg-amber-500/10 rounded-lg px-3 py-2">{imgErr}</p>}
+            {result && (
+              <div className="space-y-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={result} alt="AI result" className="w-full rounded-lg border border-gray-200" />
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => { onAddImage(result); setResult(''); }}
+                    className="px-3 py-2 bg-[#6B3FD9] text-white rounded-lg text-xs font-medium">Add to images</button>
+                  <button type="button" onClick={makeImage} disabled={imgBusy} className="px-3 py-2 border border-gray-300 rounded-lg text-xs">Try again</button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -1270,9 +1450,9 @@ export default function TrendingDropshippingPage() {
         demand_trend_json: demandTrendArr.length ? JSON.stringify(demandTrendArr) : null,
         orders_trend_json: ordersTrendArr.length ? JSON.stringify(ordersTrendArr) : null,
         top_countries_json: topCountriesArr.length ? JSON.stringify(topCountriesArr) : null,
-        ad_facebook_url: form.ad_facebook_url.trim() || null,
+        ad_facebook_url: normalizeAdLink(form.ad_facebook_url) || null,
         ad_tiktok_url: form.ad_tiktok_url.trim() || null,
-        ad_instagram_url: form.ad_instagram_url.trim() || null,
+        ad_instagram_url: normalizeAdLink(form.ad_instagram_url) || null,
         ad_pinterest_url: form.ad_pinterest_url.trim() || null,
         amazon_url: form.amazon_url.trim() || null,
         ebay_url: form.ebay_url.trim() || null,
@@ -1308,7 +1488,10 @@ export default function TrendingDropshippingPage() {
       const res = await adminApi.metaAdsSearch(metaQuery.trim());
       setMetaAds(res.data?.ads ?? []);
     } catch (err: any) {
-      setMetaError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Meta Ad Library search failed.');
+      const detail = err?.response?.data?.detail;
+      setMetaError(detail?.error === 'meta_not_configured'
+        ? 'In-app results need the Meta API, which isn’t set up yet. Use "Open Ad Library" or "Save all ads as link" above.'
+        : detail?.message ?? detail ?? 'Meta Ad Library search failed.');
     } finally {
       setMetaLoading(false);
     }
@@ -1371,13 +1554,19 @@ export default function TrendingDropshippingPage() {
   };
 
   const handleAutoAttachAds = async () => {
-    if (!confirm('Search Meta Ad Library for up to 100 products missing a Facebook ad link, and attach the best match to each? This runs in the background and can take a while.')) return;
+    if (!confirm('Attach Meta ads to every Prodora product that has no Facebook/Instagram ad link yet? Links you added by hand are never changed.')) return;
     setAutoAttaching(true);
     setAutoAttachResult('');
     try {
       const res = await adminApi.metaAdsAutoAttach(100);
       const queued = res.data?.queued ?? 0;
-      setAutoAttachResult(queued > 0 ? `Queued ${queued} products — check back in a bit and refresh to see attached ads.` : 'Every product already has a Facebook ad link.');
+      if (res.data?.mode === 'search_link') {
+        const linked = res.data?.linked ?? 0;
+        setAutoAttachResult(linked > 0 ? `Added a Meta Ad Library link to ${linked} products.` : 'Every product already has a Facebook ad link.');
+        if (linked > 0) await fetchProducts();
+      } else {
+        setAutoAttachResult(queued > 0 ? `Queued ${queued} products — check back in a bit and refresh to see attached ads.` : 'Every product already has a Facebook ad link.');
+      }
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       setAutoAttachResult(typeof detail === 'object' && detail?.message ? detail.message : "Couldn't start the auto-attach job — try again.");
@@ -1436,7 +1625,12 @@ export default function TrendingDropshippingPage() {
     setAutoAttachResult('');
     try {
       const res = await adminApi.metaAdsAutoAttach(1, p.id);
-      setAutoAttachResult(res.data?.queued > 0 ? `Searching Meta ads for "${p.name.slice(0, 30)}". Refresh in a minute to see it.` : 'This product already has a Facebook ad link.');
+      if (res.data?.mode === 'search_link') {
+        setAutoAttachResult(res.data?.linked > 0 ? `Added a Meta Ad Library link to "${p.name.slice(0, 30)}".` : 'This product already has a Facebook ad link.');
+        if (res.data?.linked > 0) await fetchProducts();
+      } else {
+        setAutoAttachResult(res.data?.queued > 0 ? `Searching Meta ads for "${p.name.slice(0, 30)}". Refresh in a minute to see it.` : 'This product already has a Facebook ad link.');
+      }
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       setAutoAttachResult(typeof detail === 'object' && detail?.message ? detail.message : "Couldn't search Meta ads — try again.");
@@ -1509,7 +1703,7 @@ export default function TrendingDropshippingPage() {
                 <button
                   type="button" disabled={autoAttaching}
                   onClick={() => { setToolsOpen(false); handleAutoAttachAds(); }}
-                  title="Searches Meta Ad Library for products missing a Facebook ad link and attaches the best match. Runs in the background."
+                  title="Gives every product without a Facebook/Instagram ad link a Meta Ad Library link for its name. Never changes links added by hand."
                   className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
                 >
                   {autoAttaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4 text-gray-400" />}
@@ -2286,23 +2480,39 @@ export default function TrendingDropshippingPage() {
                 </div>
               </div>
 
+              {/* AI Studio */}
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">AI Studio</p>
+                <AiStudioAdminPanel
+                  productId={editProduct?.id ?? null}
+                  photos={[imagePreview, ...extraImages].filter((u): u is string => !!u && u.startsWith('http'))}
+                  onFillForm={(f) => setForm((prev) => ({
+                    ...prev,
+                    ...(f.name ? { name: f.name } : {}),
+                    ...(f.description ? { description: f.description } : {}),
+                    ...(f.tags !== undefined ? { tags: f.tags } : {}),
+                  }))}
+                  onAddImage={(url) => setExtraImages((arr) => [...arr, url])}
+                />
+              </div>
+
               {/* Social Proof Links */}
               <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Social Proof Links</p>
-                <p className="text-xs text-gray-400 -mt-2">Optional — link to a real running ad per platform. Facebook/Instagram can be searched live from Meta&apos;s Ad Library.</p>
+                <p className="text-xs text-gray-400 -mt-2">Optional — link to real running ads per platform. Left empty, Facebook/Instagram are filled automatically with a Meta Ad Library search for the product name when you save.</p>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs text-gray-500">Facebook Ad URL</label>
-                    <button type="button" onClick={() => { setShowMetaSearch('facebook'); setMetaAds([]); setMetaError(''); setMetaHasSearched(false); }}
+                    <button type="button" onClick={() => { setShowMetaSearch('facebook'); setMetaQuery(metaQuery || adLibraryKeyword(form.name)); setMetaAds([]); setMetaError(''); setMetaHasSearched(false); }}
                       className="text-xs text-[#6B3FD9] hover:underline">Search Meta Ads</button>
                   </div>
                   <input type="url" value={form.ad_facebook_url}
                     onChange={(e) => setForm((f) => ({ ...f, ad_facebook_url: e.target.value }))}
-                    placeholder="https://www.facebook.com/ads/library/?id=..."
+                    placeholder="Ad Library link or Library ID"
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   {showMetaSearch === 'facebook' && (
-                    <MetaAdSearchPanel query={metaQuery} setQuery={handleMetaQueryChange} ads={metaAds} loading={metaLoading}
+                    <MetaAdSearchPanel platform="facebook" query={metaQuery} setQuery={handleMetaQueryChange} ads={metaAds} loading={metaLoading}
                       error={metaError} hasSearched={metaHasSearched} onSearch={runMetaSearch} onPick={pickMetaAd} onClose={() => setShowMetaSearch(null)} />
                   )}
                 </div>
@@ -2310,15 +2520,15 @@ export default function TrendingDropshippingPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs text-gray-500">Instagram Ad URL</label>
-                    <button type="button" onClick={() => { setShowMetaSearch('instagram'); setMetaAds([]); setMetaError(''); setMetaHasSearched(false); }}
+                    <button type="button" onClick={() => { setShowMetaSearch('instagram'); setMetaQuery(metaQuery || adLibraryKeyword(form.name)); setMetaAds([]); setMetaError(''); setMetaHasSearched(false); }}
                       className="text-xs text-[#6B3FD9] hover:underline">Search Meta Ads</button>
                   </div>
                   <input type="url" value={form.ad_instagram_url}
                     onChange={(e) => setForm((f) => ({ ...f, ad_instagram_url: e.target.value }))}
-                    placeholder="https://www.facebook.com/ads/library/?id=..."
+                    placeholder="Ad Library link or Library ID"
                     className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-600 text-sm focus:border-[#6B3FD9] focus:outline-none" />
                   {showMetaSearch === 'instagram' && (
-                    <MetaAdSearchPanel query={metaQuery} setQuery={handleMetaQueryChange} ads={metaAds} loading={metaLoading}
+                    <MetaAdSearchPanel platform="instagram" query={metaQuery} setQuery={handleMetaQueryChange} ads={metaAds} loading={metaLoading}
                       error={metaError} hasSearched={metaHasSearched} onSearch={runMetaSearch} onPick={pickMetaAd} onClose={() => setShowMetaSearch(null)} />
                   )}
                 </div>

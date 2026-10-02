@@ -24,6 +24,7 @@ from app.models.user import User
 from app.models.subscription import Subscription
 from app.models.dropship import DropshipConnection, DropshipProductLink
 from app.models.prodora import ProdoraImportLog
+from app.models.product_variant import ProductVariant
 from app.core.intel import record_event, record_supplier_snapshot
 from app.models.intel import ProductIntelResult
 from app.api.v1.endpoints.dropshipping import _cj_ensure_token, CJ_BASE, _aliexpress_ensure_token, _aliexpress_signed_request
@@ -473,6 +474,58 @@ def get_shopping_product_intelligence(
     return {"locked": False, "available": True, "analysis": _seller_intel_view(row)}
 
 
+def _link_prodora_copy(db: Session, shop_id: int, product: Product, source_link: DropshipProductLink) -> None:
+    """Ties a seller's copy of a Prodora product to the same supplier item, on the
+    seller's own connection, and marks it (and its variants) always available:
+    the supplier fulfils per order, so 0 in stock would wrongly block sales."""
+    db.add(DropshipProductLink(
+        shop_id=shop_id,
+        product_id=product.id,
+        supplier_type=source_link.supplier_type,
+        supplier_product_id=source_link.supplier_product_id,
+        supplier_product_url=source_link.supplier_product_url,
+        supplier_sku=source_link.supplier_sku,
+        supplier_product_name=source_link.supplier_product_name,
+        cost_price=source_link.cost_price,
+        shipping_estimate_days=source_link.shipping_estimate_days,
+        warehouse=source_link.warehouse,
+        is_primary=True,
+    ))
+    product.quantity = 999999
+    product.low_stock_threshold = 0
+    for v in db.query(ProductVariant).filter(ProductVariant.product_id == product.id).all():
+        if not v.quantity:
+            v.quantity = 999999
+
+
+def relink_prodora_imports(db: Session, shop_id: int, supplier_type: str) -> int:
+    """A seller who imported Prodora products BEFORE connecting the supplier gets
+    those products linked the moment they connect it, so their orders can be
+    auto-fulfilled. Never touches a product that already has a link for it."""
+    linked = 0
+    for log in db.query(ProdoraImportLog).filter(ProdoraImportLog.shop_id == shop_id).all():
+        if not log.product_id or not log.source_product_id:
+            continue
+        product = db.query(Product).filter(Product.id == log.product_id, Product.shop_id == shop_id).first()
+        if not product:
+            continue  # the seller deleted their copy
+        if db.query(DropshipProductLink.id).filter(
+            DropshipProductLink.product_id == product.id, DropshipProductLink.supplier_type == supplier_type,
+        ).first():
+            continue
+        source_link = db.query(DropshipProductLink).filter(
+            DropshipProductLink.product_id == log.source_product_id,
+            DropshipProductLink.supplier_type == supplier_type,
+            DropshipProductLink.is_primary == True,
+        ).first()
+        if source_link:
+            _link_prodora_copy(db, shop_id, product, source_link)
+            linked += 1
+    if linked:
+        db.commit()
+    return linked
+
+
 @router.post("/shopping/products/{product_id}/import")
 def import_shopping_product(
     product_id: int,
@@ -555,6 +608,15 @@ def import_shopping_product(
         image_url=source.image_url,
         video_url=source.video_url,
         source_url=source.source_url,
+        # The ad proof the seller saw on Prodora comes with the product
+        ad_facebook_url=source.ad_facebook_url,
+        ad_instagram_url=source.ad_instagram_url,
+        # ...and the SEO + selling copy written for it (AI Studio or by hand)
+        seo_title=source.seo_title,
+        meta_description=source.meta_description,
+        seo_keywords=source.seo_keywords,
+        faq=source.faq,
+        highlights=source.highlights,
     )
     db.add(new_product)
     db.flush()
@@ -588,6 +650,16 @@ def import_shopping_product(
     # nothing to link to yet — auto-ordering has to be billed to their own
     # supplier account, not admin's, so this can't wire itself up before
     # they connect one).
+    # Sizes/colours come across WITH their supplier SKU, so the buyer can choose one and the supplier
+    # receives exactly that variant (without them every order went out as the default variant).
+    for v in source.variants or []:
+        db.add(ProductVariant(
+            product_id=new_product.id, size=v.size, color=v.color, color_hex=v.color_hex, sku=v.sku,
+            price=v.price, cost_price=v.cost_price, image_url=v.image_url, quantity=0,
+        ))
+    db.flush()
+
+    seller_connection = None
     source_link = (
         db.query(DropshipProductLink)
         .filter(DropshipProductLink.product_id == source.id, DropshipProductLink.is_primary == True)
@@ -604,28 +676,7 @@ def import_shopping_product(
             .first()
         )
         if seller_connection:
-            db.add(DropshipProductLink(
-                shop_id=shop.id,
-                product_id=new_product.id,
-                supplier_type=source_link.supplier_type,
-                supplier_product_id=source_link.supplier_product_id,
-                supplier_product_url=source_link.supplier_product_url,
-                supplier_sku=source_link.supplier_sku,
-                supplier_product_name=source_link.supplier_product_name,
-                cost_price=source_link.cost_price,
-                shipping_estimate_days=source_link.shipping_estimate_days,
-                warehouse=source_link.warehouse,
-                is_primary=True,
-            ))
-            # quantity=0 above only made sense when there was no supplier
-            # to fulfill from — a product that's actually linked to a real,
-            # connected supplier shouldn't show as out-of-stock the moment
-            # it's imported. Same "always available, supplier fulfills per
-            # order" sentinel used for Printful/other dropship products
-            # elsewhere in this file — not a live stock check against the
-            # source_link, which isn't guaranteed fresh at this point.
-            new_product.quantity = 999999
-            new_product.low_stock_threshold = 0
+            _link_prodora_copy(db, shop.id, new_product, source_link)
 
     db.add(ProdoraImportLog(shop_id=shop.id, product_id=new_product.id, source_product_id=source.id))
     db.commit()

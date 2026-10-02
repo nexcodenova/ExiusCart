@@ -53,6 +53,7 @@ from app.models.product import Product
 from app.models.channel_product_status import ChannelProductStatus
 from app.models.subscription import Subscription
 from app.api.v1.endpoints.channels import _shop_or_404, EXIUSCART_BASE
+from app.core.channel_orders import match_sku, address_json, join_name, should_auto_fulfill, queue_auto_fulfill, parse_time, take_paid_stock
 
 logger = logging.getLogger(__name__)
 
@@ -792,6 +793,7 @@ def sync_daraz_orders(conn, shop, db: Session, start_time: str, end_time: str) -
     }
     new_ids = order_ids - already_known
     created = 0
+    to_fulfil = []
 
     for daraz_order_id in new_ids:
         order_data = fetch_daraz_order(conn.access_token, shop.country, daraz_order_id)
@@ -804,9 +806,7 @@ def sync_daraz_orders(conn, shop, db: Session, start_time: str, end_time: str) -
         order_items_to_add = []
         for item in items_data:
             seller_sku = item.get("sku") or item.get("SellerSku")
-            product = db.query(Product).filter(
-                Product.shop_id == shop.id, Product.sku == seller_sku,
-            ).first() if seller_sku else None
+            product, variant = match_sku(db, shop.id, seller_sku)
             if not product:
                 logger.warning(f"[DARAZ ORDERS] shop={shop.id} order_id={daraz_order_id} — no product matches SKU {seller_sku!r}, skipping item")
                 continue
@@ -814,6 +814,7 @@ def sync_daraz_orders(conn, shop, db: Session, start_time: str, end_time: str) -
             subtotal += item_price
             order_items_to_add.append(OrderItem(
                 product_id=product.id,
+                variant_id=variant.id if variant else None,
                 product_name=product.name,
                 quantity=1,  # Daraz returns one line per unit, not a quantity field
                 unit_price=item_price,
@@ -824,6 +825,11 @@ def sync_daraz_orders(conn, shop, db: Session, start_time: str, end_time: str) -
             logger.warning(f"[DARAZ ORDERS] shop={shop.id} order_id={daraz_order_id} — no items matched any product, order not created")
             continue
 
+        # Cash on delivery isn't paid until the parcel arrives, so it never auto-sends to a supplier;
+        # the seller can still mark it paid (which then sends it) or fulfil it by hand.
+        drz_paid = (order_data.get("payment_method") or "").upper() not in ("COD", "CASH_ON_DELIVERY", "")
+        drz_statuses = [str(st).lower() for st in (order_data.get("statuses") or [])]
+        ship = order_data.get("address_shipping") or {}
         order = Order(
             order_number=f"DRZ-{daraz_order_id}-{str(_uuid.uuid4())[:4].upper()}",
             source="channel",
@@ -831,6 +837,13 @@ def sync_daraz_orders(conn, shop, db: Session, start_time: str, end_time: str) -
             total=subtotal,
             shop_id=shop.id,
             notes=f"Daraz Order #{daraz_order_id}",
+            payment_status="paid" if drz_paid else "pending",
+            shipping_address=address_json(
+                name=join_name(ship.get("first_name"), ship.get("last_name")),
+                address1=ship.get("address1"), address2=ship.get("address2"), city=ship.get("city"),
+                province=ship.get("address3"), zip=ship.get("post_code"), country=ship.get("country"),
+                phone=ship.get("phone"),
+            ),
         )
         db.add(order)
         db.flush()
@@ -843,9 +856,15 @@ def sync_daraz_orders(conn, shop, db: Session, start_time: str, end_time: str) -
             channel_order_id=daraz_order_id,
         ))
         created += 1
+        if drz_paid:
+            db.flush()
+            take_paid_stock(db, order.id)
+        if drz_paid and "pending" in drz_statuses and should_auto_fulfill(db, shop.id, parse_time(order_data.get("created_at"))):
+            to_fulfil.append(order.id)
 
     if created:
         db.commit()
+        queue_auto_fulfill(shop.id, to_fulfil)
     return created
 
 

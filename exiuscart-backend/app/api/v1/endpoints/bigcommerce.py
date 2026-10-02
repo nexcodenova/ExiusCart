@@ -54,6 +54,7 @@ from app.api.v1.deps import get_current_user
 from app.models.user import User
 from app.models.channel import ChannelConnection
 from app.api.v1.endpoints.channels import _shop_or_404
+from app.core.channel_orders import match_sku, address_json, join_name, should_auto_fulfill, queue_auto_fulfill, parse_time, take_paid_stock
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -322,6 +323,7 @@ def sync_bigcommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
         ).all()
     }
     created = 0
+    to_fulfil = []
 
     for bc_order in orders_data:
         bc_order_id = str(bc_order.get("id"))
@@ -339,10 +341,7 @@ def sync_bigcommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
         items_detail = []
         for line_item in line_items:
             sku = line_item.get("sku")
-            product = db.query(Product).filter(Product.shop_id == shop.id, Product.sku == sku).first() if sku else None
-            if not product:
-                variant = db.query(ProductVariant).filter(ProductVariant.sku == sku).first() if sku else None
-                product = db.query(Product).filter(Product.id == variant.product_id).first() if variant else None
+            product, variant = match_sku(db, shop.id, sku)
             if not product:
                 logger.warning(f"[BIGCOMMERCE ORDERS] shop={shop.id} order_id={bc_order_id} — no product matches SKU {sku!r}, skipping item")
                 continue
@@ -351,7 +350,7 @@ def sync_bigcommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
             item_total = float(line_item.get("total_inc_tax") or line_item.get("total_ex_tax") or 0)
             subtotal += item_total
             order_items_to_add.append(OrderItem(
-                product_id=product.id, product_name=product.name,
+                product_id=product.id, variant_id=variant.id if variant else None, product_name=product.name,
                 quantity=qty, unit_price=(item_total / qty if qty else item_total), total_price=item_total,
             ))
             items_detail.append({"sku": sku, "line_item_id": line_item.get("id"), "quantity": qty})
@@ -360,10 +359,26 @@ def sync_bigcommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
             logger.warning(f"[BIGCOMMERCE ORDERS] shop={shop.id} order_id={bc_order_id} — no items matched any product, order not created")
             continue
 
+        # BigCommerce v2 status_id: 11 Awaiting Fulfillment (paid, ship now), 9 Awaiting Shipment,
+        # 2 Shipped, 3 Partially Shipped, 10 Completed — all paid; anything else is not (yet).
+        bc_status = int(bc_order.get("status_id") or 0)
+        bc_paid = bc_status in (2, 3, 9, 10, 11)
+        ship = {}
+        ship_resp = _bc_request(store_hash, access_token, "GET", "v2", f"/orders/{bc_order_id}/shipping_addresses")
+        if ship_resp.status_code < 300 and ship_resp.status_code != 204:
+            ship = (ship_resp.json() or [{}])[0] or {}
+        ship = ship or bc_order.get("billing_address") or {}
         order = Order(
             order_number=f"BC-{bc_order_id}-{str(_uuid.uuid4())[:4].upper()}",
             source="channel", subtotal=subtotal, total=subtotal,
             shop_id=shop.id, notes=f"BigCommerce Order #{bc_order_id}",
+            payment_status="paid" if bc_paid else "pending",
+            shipping_address=address_json(
+                name=join_name(ship.get("first_name"), ship.get("last_name")),
+                address1=ship.get("street_1"), address2=ship.get("street_2"), city=ship.get("city"),
+                province=ship.get("state"), zip=ship.get("zip"), country_code=ship.get("country_iso2"),
+                country=ship.get("country"), phone=ship.get("phone"), email=ship.get("email"),
+            ),
         )
         db.add(order)
         db.flush()
@@ -372,11 +387,17 @@ def sync_bigcommerce_orders(conn: ChannelConnection, shop, db: Session, days: in
             db.add(oi)
         db.add(ChannelOrderMeta(order_id=order.id, channel_type="bigcommerce", channel_order_id=bc_order_id, items_detail=items_detail))
         created += 1
+        if bc_paid:
+            db.flush()
+            take_paid_stock(db, order.id)
+        if bc_status == 11 and should_auto_fulfill(db, shop.id, parse_time(bc_order.get("date_created"))):
+            to_fulfil.append(order.id)
 
     if created:
         from datetime import datetime, timezone
         conn.last_synced_at = datetime.now(timezone.utc)
         db.commit()
+        queue_auto_fulfill(shop.id, to_fulfil)
     return created
 
 

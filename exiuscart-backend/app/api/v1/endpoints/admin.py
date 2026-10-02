@@ -11,7 +11,7 @@ from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from pydantic import BaseModel
 
 from app.core.admin_access import require_admin_perm
@@ -2309,11 +2309,27 @@ def _apply_shopping_extras(db: Session, product: Product, payload: dict) -> None
             sort_order += 1
 
     if payload.get("variants") is not None:
-        db.query(ProductVariant).filter(ProductVariant.product_id == product.id).delete()
+        # The admin form only edits the label and swatch. Variants it keeps stay the same rows, so their
+        # supplier SKU (what the supplier is told to ship), size and price survive a save; only the ones
+        # removed in the form are deleted.
+        existing = {}
+        for row in db.query(ProductVariant).filter(ProductVariant.product_id == product.id).all():
+            existing.setdefault(row.color or "", []).append(row)
+        kept = set()
         for v in payload["variants"]:
             color = v.get("color") if isinstance(v, dict) else None
-            if color:
+            if not color:
+                continue
+            match = next((r for r in existing.get(color, []) if r.id not in kept), None)
+            if match:
+                match.color_hex = v.get("color_hex")
+                kept.add(match.id)
+            else:
                 db.add(ProductVariant(product_id=product.id, color=color, color_hex=v.get("color_hex")))
+        for rows in existing.values():
+            for row in rows:
+                if row.id not in kept:
+                    db.delete(row)
 
 
 _DESCRIPTION_IMG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
@@ -2578,6 +2594,20 @@ async def admin_upload_website_blog_image(
     return {"url": url}
 
 
+def _fill_ad_library_links_if_empty(product: Product) -> None:
+    """Until the Meta API token exists, an empty Facebook/Instagram ad field
+    gets the public Ad Library search for the product's name, so every
+    Prodora product shows its running ads. A link the admin typed wins."""
+    from app.core import meta_ad_library as _mal
+    if _mal.META_AD_LIBRARY_TOKEN:
+        return  # the API job attaches a real ad instead
+    keyword = _mal.ad_library_keyword(product.name)
+    if not product.ad_facebook_url:
+        product.ad_facebook_url = _mal.ad_library_search_url(keyword, "ALL", "facebook")
+    if not product.ad_instagram_url:
+        product.ad_instagram_url = _mal.ad_library_search_url(keyword, "ALL", "instagram")
+
+
 @router.post("/admin/shopping/products", status_code=201)
 def admin_create_shopping_product(
     data: ShoppingProductCreate,
@@ -2613,6 +2643,7 @@ def admin_create_shopping_product(
     _apply_shopping_extras(db, product, data.model_dump(exclude_unset=True))
     _preserve_unique_description_images(db, product, data.description, set(data.images or []))
     _ensure_prodora_codes(db)
+    _fill_ad_library_links_if_empty(product)
     db.commit()
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
@@ -2647,6 +2678,7 @@ def admin_update_shopping_product(
     _apply_shopping_extras(db, product, payload)
     if raw_description is not None:
         _preserve_unique_description_images(db, product, raw_description, set(payload.get("images") or []))
+    _fill_ad_library_links_if_empty(product)
     db.commit()
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
@@ -3431,6 +3463,19 @@ async def admin_meta_ads_search(
     return {"ads": ads}
 
 
+def _attach_ad_library_search_links(db: Session, product_ids: list[int]) -> int:
+    """No-token fallback: points each product's empty Facebook/Instagram ad
+    fields at the public Ad Library search for its name, so Prodora shows
+    every running ad for it. Never overwrites a link the admin set by hand."""
+    attached = 0
+    for product in db.query(Product).filter(Product.id.in_(product_ids)).all():
+        had_link = bool(product.ad_facebook_url)
+        _fill_ad_library_links_if_empty(product)
+        attached += not had_link
+    db.commit()
+    return attached
+
+
 async def _run_meta_ads_auto_attach(product_ids: list[int]):
     """Runs after the request already returned — searches Meta Ad Library
     once per product, throttled, and attaches the first match's snapshot
@@ -3442,14 +3487,20 @@ async def _run_meta_ads_auto_attach(product_ids: list[int]):
     import asyncio
     from app.core import meta_ad_library as _mal
     if not _mal.META_AD_LIBRARY_TOKEN:
-        logger.info("[Meta Ads auto-attach] skipped: META_AD_LIBRARY_TOKEN is not set")
+        db = SessionLocal()
+        try:
+            attached = _attach_ad_library_search_links(db, product_ids)
+            logger.info(f"[Meta Ads auto-attach] no token, attached {attached} Ad Library search links")
+        finally:
+            db.close()
         return
     db = SessionLocal()
     attached = 0
     try:
         for product_id in product_ids:
             product = db.query(Product).filter(Product.id == product_id).first()
-            if not product or product.ad_facebook_url:
+            # A no-token search link is a placeholder — the API swaps it for a real ad
+            if not product or (product.ad_facebook_url and "search_type=" not in product.ad_facebook_url):
                 continue
             try:
                 ads = await search_meta_ad_library(product.name, "US", limit=1)
@@ -3477,18 +3528,21 @@ def admin_meta_ads_auto_attach(
     ad link — returns immediately so the admin isn't stuck waiting (a run
     of, say, 1000 products takes ~30+ minutes at the throttled rate)."""
     from app.core import meta_ad_library as _mal
-    if not _mal.META_AD_LIBRARY_TOKEN:
-        raise HTTPException(status_code=400, detail={
-            "error": "meta_not_configured",
-            "message": "Meta Ad Library isn't connected yet, so no ads can be searched. It needs META_AD_LIBRARY_TOKEN from a verified Meta developer account.",
-        })
-    query = db.query(Product).filter(Product.shop_id.is_(None), Product.ad_facebook_url.is_(None))
+    query = db.query(Product).filter(Product.shop_id.is_(None))
     if product_id is not None:
         query = query.filter(Product.id == product_id)
+    if not _mal.META_AD_LIBRARY_TOKEN:
+        # No API: build the public Ad Library search link for each product
+        # right now — no network calls, so no throttling or background job,
+        # and no limit needed (it's one UPDATE per product).
+        product_ids = [p.id for p in query.filter(or_(Product.ad_facebook_url.is_(None), Product.ad_instagram_url.is_(None))).all()]
+        attached = _attach_ad_library_search_links(db, product_ids)
+        return {"queued": 0, "linked": attached, "mode": "search_link"}
+    query = query.filter(or_(Product.ad_facebook_url.is_(None), Product.ad_facebook_url.like("%search_type=%")))
     products = query.order_by(Product.created_at.desc()).limit(limit).all()
     product_ids = [p.id for p in products]
     background_tasks.add_task(_run_meta_ads_auto_attach, product_ids)
-    return {"queued": len(product_ids)}
+    return {"queued": len(product_ids), "mode": "api"}
 
 
 # ── NexCode Nova — One-time Client Codes ─────────────────────────────────────

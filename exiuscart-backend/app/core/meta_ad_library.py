@@ -22,12 +22,54 @@ CONFIRMED live against Meta's own Graph API reference this session:
     mistake to make).
 """
 import os
+import re
+from typing import Optional
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import HTTPException
 
 META_AD_LIBRARY_TOKEN = os.getenv("META_AD_LIBRARY_TOKEN", "")
 META_GRAPH_BASE = "https://graph.facebook.com/v21.0"
+META_AD_LIBRARY_WEB = "https://www.facebook.com/ads/library/"
+
+# Words supplier titles are padded with that never appear in a real ad's
+# copy — left in, Meta's keyword search matches nothing ("2024 New Hot Sale
+# Adjustable Posture Corrector For Women" finds 0 ads, "Posture Corrector"
+# finds thousands).
+_TITLE_NOISE = {
+    "new", "hot", "sale", "best", "top", "quality", "high", "free", "shipping",
+    "fashion", "style", "arrival", "arrivals", "selling", "seller", "premium",
+    "for", "with", "and", "the", "a", "an", "of", "in", "to", "on", "by", "set",
+    "pcs", "pc", "piece", "pieces", "women", "womens", "men", "mens", "kids",
+    "unisex", "portable", "mini", "upgraded", "original", "wholesale",
+}
+
+
+def ad_library_keyword(name: str, max_words: int = 3) -> str:
+    """Short, searchable keyword from a (often long, supplier-written)
+    product title — the admin can still overwrite it."""
+    words = re.sub(r"[\(\[\{].*?[\)\]\}]|[^\w\s-]", " ", name or "").split()
+    kept = [w for w in words if w.lower() not in _TITLE_NOISE and not any(c.isdigit() for c in w)]
+    return " ".join(kept[:max_words]) or (name or "").strip()
+
+
+def ad_library_search_url(query: str, country: str = "US", platform: Optional[str] = None) -> str:
+    """Public Meta Ad Library page listing every active ad matching `query`.
+    A plain facebook.com link anyone can open — no token, no developer
+    account, no login — the fallback for everything above while
+    META_AD_LIBRARY_TOKEN isn't available."""
+    params = {
+        "active_status": "active",
+        "ad_type": "all",
+        "country": country or "ALL",
+        "q": query,
+        "search_type": "keyword_unordered",
+        "media_type": "all",
+    }
+    if platform:
+        params["publisher_platforms[0]"] = platform
+    return f"{META_AD_LIBRARY_WEB}?{urlencode(params)}"
 
 
 async def search_meta_ad_library(query: str, country: str = "US", limit: int = 20) -> list[dict]:

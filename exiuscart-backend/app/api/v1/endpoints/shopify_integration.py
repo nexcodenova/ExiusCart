@@ -16,6 +16,8 @@ from app.api.v1.deps import get_current_user
 from app.core.thedersi import is_thedersi_restricted_shop
 from app.core.channel_limits import check_channel_slot
 import os
+import json
+from app.core.channel_orders import match_sku, address_json, join_name, should_auto_fulfill, queue_auto_fulfill, parse_time, take_paid_stock
 
 
 def _shopify_order_number() -> str:
@@ -276,6 +278,50 @@ async def sync_products_to_shopify(
 
 # ── Order Sync: Shopify → ExiusCart ───────────────────────────────────────────
 
+def _shopify_hmac_ok(raw: bytes, header: str) -> bool:
+    """Shopify signs each webhook: base64(HMAC-SHA256(app secret, raw body))."""
+    if not SHOPIFY_CLIENT_SECRET or not header:
+        return False
+    import base64, hashlib, hmac as _hmac
+    digest = base64.b64encode(_hmac.new(SHOPIFY_CLIENT_SECRET.encode(), raw, hashlib.sha256).digest()).decode()
+    return _hmac.compare_digest(digest, header)
+
+
+def _shopify_address(so: dict):
+    a = so.get("shipping_address") or {}
+    return address_json(
+        name=a.get("name") or join_name(a.get("first_name"), a.get("last_name")),
+        address1=a.get("address1"), address2=a.get("address2"), city=a.get("city"),
+        province=a.get("province_code") or a.get("province"), zip=a.get("zip"),
+        country_code=a.get("country_code"), country=a.get("country"),
+        phone=a.get("phone") or so.get("phone"), email=so.get("email"),
+    )
+
+
+def _shopify_items(db, shop_id: int, order_id: int, so: dict) -> None:
+    """Line items tied to the seller's real product (and variant) by SKU, so stock,
+    reports and auto-fulfilment know what was sold. Unmatched lines keep their title."""
+    for item in so.get("line_items", []):
+        qty = item.get("quantity", 1)
+        price = float(item.get("price", 0))
+        product, variant = match_sku(db, shop_id, item.get("sku"))
+        db.add(OrderItem(
+            order_id=order_id,
+            product_id=product.id if product else None,
+            variant_id=variant.id if variant else None,
+            product_name=item.get("title", ""),
+            quantity=qty,
+            unit_price=price,
+            total_price=price * qty,
+        ))
+
+
+def _shopify_queue_if_ready(db, shop_id: int, order, so: dict) -> bool:
+    """Paid, not yet fulfilled on Shopify, placed after auto-fulfil was switched on."""
+    return (order.payment_status == "paid" and not so.get("fulfillment_status")
+            and should_auto_fulfill(db, shop_id, parse_time(so.get("created_at"))))
+
+
 async def _pull_orders(store: ShopifyStore, db: Session, shop_id: int):
     log = ShopifySyncLog(
         shopify_store_id=store.id, sync_type="orders",
@@ -283,6 +329,7 @@ async def _pull_orders(store: ShopifyStore, db: Session, shop_id: int):
     )
     db.add(log); db.commit(); db.refresh(log)
     processed = 0; failed = 0
+    to_fulfil = []
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(
@@ -316,6 +363,12 @@ async def _pull_orders(store: ShopifyStore, db: Session, shop_id: int):
                 ref = f"SHOPIFY-{so['id']}"
                 existing = db.query(Order).filter(Order.reference == ref, Order.shop_id == shop_id).first()
                 if existing:
+                    # Paid on Shopify since we first saw it (e.g. a manual/bank payment captured later)
+                    if so.get("financial_status") == "paid" and existing.payment_status != "paid":
+                        existing.payment_status = "paid"
+                        take_paid_stock(db, existing.id)
+                        if _shopify_queue_if_ready(db, shop_id, existing, so):
+                            to_fulfil.append(existing.id)
                     continue
 
                 total = float(so.get("total_price", 0))
@@ -329,26 +382,22 @@ async def _pull_orders(store: ShopifyStore, db: Session, shop_id: int):
                     payment_status="paid" if so.get("financial_status") == "paid" else "pending",
                     subtotal=total,
                     total=total,
+                    shipping_address=_shopify_address(so),
                     notes=f"Imported from Shopify #{so.get('order_number')}",
                 )
                 db.add(order); db.flush()
-
-                for item in so.get("line_items", []):
-                    qty = item.get("quantity", 1)
-                    price = float(item.get("price", 0))
-                    oi = OrderItem(
-                        order_id=order.id,
-                        product_name=item.get("title", ""),
-                        quantity=qty,
-                        unit_price=price,
-                        total_price=price * qty,
-                    )
-                    db.add(oi)
+                _shopify_items(db, shop_id, order.id, so)
+                db.flush()
+                if order.payment_status == "paid":
+                    take_paid_stock(db, order.id)
+                if _shopify_queue_if_ready(db, shop_id, order, so):
+                    to_fulfil.append(order.id)
                 processed += 1
             except Exception:
                 failed += 1
 
         db.commit()
+        queue_auto_fulfill(shop_id, to_fulfil)
     except Exception as e:
         log.status = "failed"; log.error_details = str(e)
         log.completed_at = datetime.now(timezone.utc); db.commit(); return
@@ -439,13 +488,18 @@ async def sync_inventory_to_shopify(
 async def receive_shopify_webhook(shop_id: int, request: Request, db: Session = Depends(get_db)):
     """Receive real-time events from Shopify (orders/create, inventory_levels/update, etc.)"""
     topic = request.headers.get("X-Shopify-Topic", "")
-    body = await request.json()
+    raw = await request.body()
+    body = json.loads(raw or b"{}")
+    # Only a request signed by Shopify may send an order to the seller's supplier (which spends their
+    # supplier balance). Unsigned ones are still recorded, but auto-fulfilment for them is left to the
+    # regular order sync, which reads Shopify with the seller's own token.
+    verified = _shopify_hmac_ok(raw, request.headers.get("X-Shopify-Hmac-Sha256", ""))
 
     store = db.query(ShopifyStore).filter(ShopifyStore.shop_id == shop_id, ShopifyStore.is_connected == True).first()
     if not store:
         return {"ok": False}
 
-    if topic == "orders/create":
+    if topic in ("orders/create", "orders/paid", "orders/updated"):
         # Lightweight inline order import
         so = body
         try:
@@ -462,7 +516,15 @@ async def receive_shopify_webhook(shop_id: int, request: Request, db: Session = 
                 )
                 db.add(customer); db.flush()
             ref = f"SHOPIFY-{so['id']}"
-            if not db.query(Order).filter(Order.reference == ref, Order.shop_id == shop_id).first():
+            existing = db.query(Order).filter(Order.reference == ref, Order.shop_id == shop_id).first()
+            if existing and so.get("financial_status") == "paid" and existing.payment_status != "paid":
+                # orders/paid or orders/updated for an order we already have
+                existing.payment_status = "paid"
+                take_paid_stock(db, existing.id)
+                db.commit()
+                if verified and _shopify_queue_if_ready(db, shop_id, existing, so):
+                    queue_auto_fulfill(shop_id, [existing.id])
+            if not existing:
                 total = float(so.get("total_price", 0))
                 order = Order(
                     shop_id=shop_id,
@@ -474,14 +536,17 @@ async def receive_shopify_webhook(shop_id: int, request: Request, db: Session = 
                     payment_status="paid" if so.get("financial_status") == "paid" else "pending",
                     subtotal=total,
                     total=total,
+                    shipping_address=_shopify_address(so),
                     notes=f"Shopify #{so.get('order_number')}",
                 )
                 db.add(order); db.flush()
-                for item in so.get("line_items", []):
-                    qty = item.get("quantity", 1)
-                    price = float(item.get("price", 0))
-                    db.add(OrderItem(order_id=order.id, product_name=item.get("title", ""), quantity=qty, unit_price=price, total_price=price * qty))
+                _shopify_items(db, shop_id, order.id, so)
+                db.flush()
+                if order.payment_status == "paid":
+                    take_paid_stock(db, order.id)
                 db.commit()
+                if verified and _shopify_queue_if_ready(db, shop_id, order, so):
+                    queue_auto_fulfill(shop_id, [order.id])
         except Exception:
             pass
 

@@ -249,6 +249,8 @@ async def connect_hypersku(
             access_token=token,
         ))
     db.commit()
+    from app.api.v1.endpoints.shopping import relink_prodora_imports
+    relink_prodora_imports(db, shop_id, "hypersku")
     return {"connected": True, "supplier_type": "hypersku", "message": "HyperSKU connected successfully."}
 
 
@@ -414,6 +416,8 @@ async def hypersku_import_product(
 # step instead. Kept as a separate set purely so the UI can group them under
 # their own "Print-on-Demand" section instead of listing all eight the same way.
 POD_SUPPLIERS = {"printful", "printify", "gelato"}
+# Suppliers that can't take single customer orders: 1688 is a bulk sourcing market, EPROLO's order API is private.
+NO_ORDER_SUPPLIERS = {"1688", "eprolo"}
 
 # Suppliers that actually auto-fulfill orders today: CJ, Printful, HyperSKU
 # fully; AliExpress pending their own API approval for order placement
@@ -1596,6 +1600,8 @@ def aliexpress_callback(
     conn.is_active = True
     conn.oauth_state = None
     db.commit()
+    from app.api.v1.endpoints.shopping import relink_prodora_imports
+    relink_prodora_imports(db, conn.shop_id, "aliexpress")
     return RedirectResponse(f"{return_base}?aliexpress=connected")
 
 
@@ -2293,6 +2299,8 @@ async def connect_cj(
         )
         db.add(conn)
     db.commit()
+    from app.api.v1.endpoints.shopping import relink_prodora_imports
+    relink_prodora_imports(db, shop_id, "cj")
     return {"connected": True, "supplier_type": "cj", "message": "CJ Dropshipping connected successfully."}
 
 
@@ -2361,6 +2369,8 @@ async def connect_printful(
     else:
         db.add(DropshipConnection(shop_id=shop_id, supplier_type="printful", api_key=enc_key, access_token=str(store_id)))
     db.commit()
+    from app.api.v1.endpoints.shopping import relink_prodora_imports
+    relink_prodora_imports(db, shop_id, "printful")
     return {
         "connected": True,
         "supplier_type": "printful",
@@ -2453,6 +2463,8 @@ async def connect_apikey(
         )
         db.add(conn)
     db.commit()
+    from app.api.v1.endpoints.shopping import relink_prodora_imports
+    relink_prodora_imports(db, shop_id, data.supplier_type)
     verified = verdict == "valid"
     return {
         "connected": True, "supplier_type": data.supplier_type, "verified": verified,
@@ -2500,7 +2512,10 @@ def toggle_auto_fulfill(
     ).all()
     if not conns:
         raise HTTPException(status_code=400, detail="Connect at least one supplier first.")
+    now = datetime.now(timezone.utc)
     for conn in conns:
+        if data.enabled and not conn.auto_fulfill_enabled:
+            conn.auto_fulfill_enabled_at = now
         conn.auto_fulfill_enabled = data.enabled
     db.commit()
     return {"auto_fulfill_enabled": data.enabled}
@@ -2807,6 +2822,103 @@ async def _cj_prepare_order(db: Session, shop_id: int, order: Order, token: str)
     }
 
 
+GELATO_ORDERS_URL = "https://order.gelatoapis.com/v4/orders"
+
+
+async def _place_gelato_order(db: Session, shop_id: int, order: Order) -> dict:
+    """Sends one order to Gelato (print on demand).
+
+    UNVERIFIED against a live Gelato account: the request follows Gelato's
+    documented v4 create-order shape (orderType/orderReferenceId/currency/items
+    with productUid + print files/shippingAddress, X-API-KEY header) but has
+    never placed a real order. Each product's Gelato link holds the Gelato
+    productUid (supplier_product_id, or the SKU box of the manual link form)
+    and the print file URL in supplier_product_url; a size/colour variant can carry its own productUid
+    as its SKU (Gelato encodes size and colour in the productUid)."""
+    from app.models.order import OrderItem
+    conn = db.query(DropshipConnection).filter(
+        DropshipConnection.shop_id == shop_id, DropshipConnection.supplier_type == "gelato", DropshipConnection.is_active == True,
+    ).first()
+    if not conn or not conn.api_key:
+        raise HTTPException(status_code=400, detail="Gelato is not connected. Go to Suppliers to connect.")
+
+    items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+    if not items:
+        raise HTTPException(status_code=400, detail="Order has no items.")
+    g_items = []
+    for item in items:
+        link = db.query(DropshipProductLink).filter(
+            DropshipProductLink.product_id == item.product_id, DropshipProductLink.supplier_type == "gelato",
+        ).first()
+        product_uid = _chosen_variant_sku(db, item) or (link and (link.supplier_product_id or link.supplier_sku))
+        print_file = link.supplier_product_url if link else None
+        if not link or not product_uid or not (print_file or "").startswith("http"):
+            raise HTTPException(status_code=400, detail={
+                "error": "no_supplier_link",
+                "message": f"Product '{item.product_name}' needs a Gelato link with its Gelato product UID and the print file URL "
+                           f"(the design to print). Add them under the product's Suppliers tab.",
+            })
+        g_items.append({
+            "itemReferenceId": f"{order.order_number}-{item.id}"[:64],
+            "productUid": product_uid,
+            "files": [{"type": "default", "url": print_file}],
+            "quantity": item.quantity,
+        })
+
+    ship, email = _order_shipping(db, order)
+    first, _, last = ship.name.partition(" ")
+    state = cj_fulfil.state_code(ship.country_code, ship.province)
+    if ship.country_code in cj_fulfil.STATE_REQUIRED and not state:
+        raise HTTPException(status_code=400, detail={"error": "incomplete_address", "message": f"Gelato needs the state or province for {ship.country}. Add it to the order's address, then send it again."})
+    if not ship.zip:
+        raise HTTPException(status_code=400, detail={"error": "incomplete_address", "message": "Gelato needs a postal code. Add it to the order's address, then send it again."})
+    from app.models.shop import Shop
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    payload = {
+        "orderType": "order",
+        "orderReferenceId": order.order_number,
+        "customerReferenceId": f"shop-{shop_id}",
+        "currency": ((shop.currency if shop else None) or "USD").upper(),
+        "items": g_items,
+        "shippingAddress": {
+            "firstName": first or ship.name, "lastName": last or "-",
+            "addressLine1": ship.address, "city": ship.city, "postCode": ship.zip,
+            "state": state or ship.province, "country": ship.country_code,
+            "email": email or "", "phone": ship.phone or "",
+        },
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(GELATO_ORDERS_URL, json=payload, headers={"X-API-KEY": decrypt(conn.api_key), "Content-Type": "application/json"})
+        result = r.json() if r.content else {}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gelato API error: {str(e)}")
+
+    if r.status_code not in (200, 201) or not result.get("id"):
+        error_msg = result.get("message") or result.get("error") or f"HTTP {r.status_code}"
+        db.add(DropshipOrder(shop_id=shop_id, order_id=order.id, supplier_type="gelato", status="failed", error_message=str(error_msg)[:2000]))
+        order.fulfillment_status = "failed"
+        db.commit()
+        raise HTTPException(status_code=400, detail={"error": "gelato_order_failed", "message": f"Gelato rejected this order: {error_msg}"})
+
+    g_order_id = str(result["id"])
+    db.add(DropshipOrder(shop_id=shop_id, order_id=order.id, supplier_type="gelato", supplier_order_id=g_order_id, status="processing"))
+    order.fulfillment_status = "sent"
+    db.commit()
+    return {"fulfilled": True, "supplier_type": "gelato", "supplier_order_id": g_order_id,
+            "message": "Order sent to Gelato. Tracking will appear here once it ships."}
+
+
+def _chosen_variant_sku(db: Session, item) -> Optional[str]:
+    """The supplier's id for the variant the buyer picked (stored as the variant's
+    SKU by every supplier import), or None when no variant was chosen."""
+    if not item.variant_id:
+        return None
+    from app.models.product_variant import ProductVariant
+    v = db.query(ProductVariant).filter(ProductVariant.id == item.variant_id).first()
+    return (v.sku or None) if v else None
+
+
 async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, db: Session) -> dict:
     """The actual supplier-order-creation call, shared by the seller's manual
     "Fulfill via ..." button (fulfill_order above, which does the plan/
@@ -2913,13 +3025,11 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
                     "error": "no_supplier_link",
                     "message": f"Product '{item.product_name}' does not have a Printful supplier link. Re-import it from Printful, or link it manually under the product's Suppliers tab.",
                 })
-            # supplier_sku holds the *default* sync_variant_id set at import
-            # time — there's no per-order-item variant selection on OrderItem
-            # today, so every unit of this line item fulfills as that one
-            # variant regardless of which size/color the buyer actually
-            # picked at checkout. Same simplification CJ's import makes.
+            # The buyer's chosen size/colour: its variant carries the Printful sync_variant_id (set at
+            # import); with no choice, the default one in supplier_sku.
+            pf_variant_id = _chosen_variant_sku(db, item) or link.supplier_sku
             pf_items.append({
-                "sync_variant_id": int(link.supplier_sku),
+                "sync_variant_id": int(pf_variant_id),
                 "quantity": item.quantity,
             })
 
@@ -2998,6 +3108,9 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
         from app.api.v1.endpoints.printify import place_printify_order
         return await place_printify_order(shop_id, order_id, order, db)
 
+    if supplier_type == "gelato":
+        return await _place_gelato_order(db, shop_id, order)
+
     if supplier_type == "aliexpress":
         conn = db.query(DropshipConnection).filter(
             DropshipConnection.shop_id == shop_id,
@@ -3026,7 +3139,7 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
                 })
             ae_items.append({
                 "product_id": link.supplier_product_id,
-                "sku_id": link.supplier_sku,
+                "sku_id": _chosen_variant_sku(db, item) or link.supplier_sku,  # the buyer's variant (its sku_id), else default
                 "product_count": item.quantity,
             })
 
@@ -3194,8 +3307,11 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
             "message": "Order sent to HyperSKU. Tracking will appear here once it ships.",
         }
 
-    # Other suppliers — placeholder for their APIs
-    raise HTTPException(status_code=501, detail=f"{supplier_type.title()} order forwarding coming soon.")
+    if supplier_type == "1688":
+        # 1688 is China's wholesale market (bulk quantities, sellers inside China): a sourcing source only.
+        raise HTTPException(status_code=400, detail="1688 is for sourcing products in bulk, not for sending single customer orders. Order this one from another supplier or by hand.")
+    # EPROLO: its order API is only documented privately to approved partners, so nothing can be sent yet.
+    raise HTTPException(status_code=501, detail=f"{supplier_type.title()} order forwarding isn't available yet.")
 
 
 async def _bg_try_auto_fulfill(shop_id: int, order_id: int):
@@ -3224,6 +3340,7 @@ async def _bg_try_auto_fulfill(shop_id: int, order_id: int):
             DropshipConnection.shop_id == shop_id,
             DropshipConnection.is_active == True,
             DropshipConnection.auto_fulfill_enabled == True,
+            DropshipConnection.supplier_type.notin_(NO_ORDER_SUPPLIERS),
         ).all()
         if not conns:
             return
@@ -3241,7 +3358,14 @@ async def _bg_try_auto_fulfill(shop_id: int, order_id: int):
         # the rest are alternatives), so try the supplier the seller marked primary first, and stop after the first
         # attempt: never send the same order to a second supplier, and never fall through to one after a failure.
         all_links = db.query(DropshipProductLink).filter(DropshipProductLink.product_id.in_(item_product_ids)).all()
-        conns = sorted(conns, key=lambda c: (-sum(1 for l in all_links if l.supplier_type == c.supplier_type and l.is_primary), c.id))
+        wanted = set(item_product_ids)
+
+        def _covers_all(c):
+            return wanted <= {l.product_id for l in all_links if l.supplier_type == c.supplier_type}
+
+        # A supplier linked to EVERY item first (so a partly-linked primary can't block one that can take the
+        # whole order), then the one marked primary for the most items.
+        conns = sorted(conns, key=lambda c: (not _covers_all(c), -sum(1 for l in all_links if l.supplier_type == c.supplier_type and l.is_primary), c.id))
 
         for conn in conns:
             supplier_type = conn.supplier_type
@@ -3284,7 +3408,7 @@ async def _bg_try_auto_fulfill(shop_id: int, order_id: int):
                 ))
                 db.commit()
                 logger.info(f"[AUTO-FULFILL] shop={shop_id} order={order_id} supplier={supplier_type} skipped — {unlinked_count} unlinked item(s)")
-                continue
+                break  # sorted above: no supplier covers the whole order, so this one recorded skip is the answer
 
             monthly_limit = AUTO_FULFILL_MONTHLY_LIMITS.get(plan)
             if monthly_limit is not None:
@@ -3306,7 +3430,7 @@ async def _bg_try_auto_fulfill(shop_id: int, order_id: int):
                     ))
                     db.commit()
                     logger.info(f"[AUTO-FULFILL] shop={shop_id} order={order_id} plan={plan} monthly cap ({monthly_limit}) reached — left for manual fulfillment")
-                    continue
+                    break  # the cap counts every supplier, so trying another would only record the same skip
 
             try:
                 await _fulfill_order_core(shop_id, order_id, supplier_type, db)

@@ -132,6 +132,11 @@ export const adminApi = {
     api.get('/admin/shopping/meta-ads/search', { params: { q, country } }),
   metaAdsAutoAttach: (limit = 50, productId?: number) =>
     api.post('/admin/shopping/meta-ads/auto-attach', null, { params: { limit, product_id: productId } }),
+  // AI Studio (app/api/v1/endpoints/ai_studio.py)
+  aiStudioImprove: (productId: number) => api.post(`/admin/ai-studio/products/${productId}/improve`, null, { timeout: 120000 }),
+  aiStudioApply: (productId: number, data: Record<string, unknown>) => api.post(`/admin/ai-studio/products/${productId}/apply`, data),
+  aiStudioImage: (productId: number, data: { mode: string; reference_url: string; extra?: string; model_look?: string }) =>
+    api.post(`/admin/ai-studio/products/${productId}/image`, data, { timeout: 240000 }),
 
   // Platform-wide audit log — signups, logins, staff/admin actions.
   auditLog: (params: { event_type?: string; shop_id?: number; q?: string; before_id?: number; limit?: number }) =>

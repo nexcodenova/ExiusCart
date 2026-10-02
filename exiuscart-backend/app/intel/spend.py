@@ -85,12 +85,29 @@ def report(db: Session, now: Optional[datetime] = None) -> dict:
             if when >= day_start:
                 today["free"] += 1
 
+    # AI Studio (product copy + images, app/core/ai_studio.py): each call logged with its own estimated cost
+    from app.core.ai_studio import STUDIO_EVENT
+    studio_rows = (db.query(PlatformEvent.payload, PlatformEvent.created_at)
+                   .filter(PlatformEvent.event_type == STUDIO_EVENT, PlatformEvent.created_at >= since).all())
+    studio = {"images": 0, "texts": 0, "cost": 0.0, "today": 0}
+    for payload, created in studio_rows:
+        payload, when = payload or {}, _aware(created)
+        cost = float(payload.get("cost") or 0)
+        day = when.date().isoformat()
+        if day in daily:
+            daily[day]["ai"] += cost
+        if when >= month_start:
+            studio["images" if payload.get("kind") == "image" else "texts"] += 1
+            studio["cost"] += cost
+        if when >= day_start:
+            studio["today"] += 1
+
     trends_month = db.query(KeywordTrend).filter(KeywordTrend.fetched_at >= month_start).count()
     analyses_month = db.query(ProductIntelResult).filter(ProductIntelResult.created_at >= month_start).count()
 
     claude_cost = ai_cost(month["tok_in"], month["tok_out"])
     paid_cost = month["paid"] * p["paid_lookup"]
-    total = claude_cost + paid_cost
+    total = claude_cost + paid_cost + studio["cost"]
     days_in_month = calendar.monthrange(now.year, now.month)[1]
     projected = total / max(now.day, 1) * days_in_month
     limits = engine.paid_usage(db)
@@ -103,6 +120,9 @@ def report(db: Session, now: Optional[datetime] = None) -> dict:
              "by_purpose": dict(by_purpose)},
             {"key": "paid", "label": "Amazon and Walmart lookups (paid)", "uses": month["paid"], "unit": "lookups", "cost": round(paid_cost, 4),
              "detail": f"limit {limits['monthly_limit']} a month, {limits['daily_limit']} a day", "today": today["paid"], "free": False},
+            {"key": "ai_studio", "label": "AI Studio (product images and copy, GPT/Gemini/Claude)", "uses": studio["images"] + studio["texts"],
+             "unit": "calls", "cost": round(studio["cost"], 4), "detail": f"{studio['images']} images, {studio['texts']} copy calls",
+             "today": studio["today"], "free": False},
             {"key": "ebay", "label": "eBay lookups", "uses": month["free"], "unit": "lookups", "cost": 0.0, "detail": "free, official API", "today": today["free"], "free": True},
             {"key": "trends", "label": "Google Trends", "uses": trends_month, "unit": "keywords", "cost": 0.0, "detail": "free, saved for a week per keyword", "today": None, "free": True},
         ],

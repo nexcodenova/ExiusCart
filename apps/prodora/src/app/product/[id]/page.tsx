@@ -8,7 +8,7 @@ import {
   ArrowLeft, Package, Tag, Download, ExternalLink, Play, Check, Copy,
   Loader2, CheckCircle2, TrendingUp, Users, Swords, Gauge, Store, Facebook, Instagram,
   Music2, ChevronRight, ChevronLeft, Trophy, Globe2, Truck, GalleryHorizontal, X,
-  Wallet, Receipt, Coins, UserRound, MessageCircle, DollarSign, ShoppingCart, HelpCircle,
+  Wallet, Receipt, Coins, UserRound, MessageCircle, DollarSign, ShoppingCart, HelpCircle, Search,
 } from 'lucide-react';
 import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
@@ -19,6 +19,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectValue, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
 import { CountryFlag } from '@/components/CountryFlag';
+import { adLibraryKeyword, adLibrarySearchUrl, isAdLibrarySearchLink } from '@/lib/adLibrary';
 
 // Common dropship destinations — enough to cover the markets Prodora sellers
 // actually ship to; CJ's freight API accepts any ISO country code, this list
@@ -415,8 +416,8 @@ function ProductDetailContent() {
   const hasWinningAnalytics = winning_score != null || trend_percent != null || competition_level || saturation_level || orders_count != null;
   const hasSidebarContent = topCountries.length > 0 || tagList.length > 0;
   const adPlatforms = [
-    { key: 'facebook', label: 'Facebook Ads Library', url: ad_facebook_url, icon: Facebook },
-    { key: 'instagram', label: 'Instagram', url: ad_instagram_url, icon: Instagram },
+    { key: 'facebook', label: isAdLibrarySearchLink(ad_facebook_url) ? 'All Facebook ads' : 'Facebook ad', url: ad_facebook_url, icon: Facebook },
+    { key: 'instagram', label: isAdLibrarySearchLink(ad_instagram_url) ? 'All Instagram ads' : 'Instagram ad', url: ad_instagram_url, icon: Instagram },
     { key: 'tiktok', label: 'TikTok Videos', url: ad_tiktok_url, icon: Music2 },
     { key: 'pinterest', label: 'Pinterest Pins', url: ad_pinterest_url, icon: Tag },
   ].filter((p) => p.url);
@@ -939,49 +940,66 @@ function ProductDetailContent() {
             )}
 
             {/* Social proof */}
-            {adPlatforms.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
-                <h2 className="text-xl font-semibold text-[#111827] mb-3">See it in real ads</h2>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {adPlatforms.map((p) => {
-                    const embeddable = p.key === 'facebook' || p.key === 'instagram';
-                    const isOpen = expandedAd === p.key;
-                    if (embeddable) {
-                      return (
-                        <button key={p.key} type="button" onClick={() => setExpandedAd(isOpen ? null : p.key)}
-                          className="flex items-center gap-3 border border-[#E5E7EB] rounded-xl p-3 hover:border-[#2563EB]/40 transition text-left">
-                          <div className="w-9 h-9 rounded-lg bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0"><p.icon className="w-4 h-4" /></div>
-                          <span className="text-sm font-medium text-[#111827] flex-1">{p.label}</span>
-                          <Play className="w-4 h-4 text-[#6B7280]" />
-                        </button>
-                      );
-                    }
+            {/* Always shown: the Ad Library search below works for every product */}
+            <div className="bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
+              <h2 className="text-xl font-semibold text-[#111827] mb-3">See it in real ads</h2>
+              {adPlatforms.length > 0 && <div className="grid sm:grid-cols-2 gap-3">
+                {adPlatforms.map((p) => {
+                  // Only the Meta API's ad snapshot can be shown inside the page;
+                  // facebook.com refuses to load in an iframe, so Ad Library
+                  // links open in a new tab.
+                  const embeddable = !!p.url && p.url.includes('/ads/archive/render_ad');
+                  const isOpen = expandedAd === p.key;
+                  if (embeddable) {
                     return (
-                      <a key={p.key} href={p.url!} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-3 border border-[#E5E7EB] rounded-xl p-3 hover:border-[#2563EB]/40 transition">
+                      <button key={p.key} type="button" onClick={() => setExpandedAd(isOpen ? null : p.key)}
+                        className="flex items-center gap-3 border border-[#E5E7EB] rounded-xl p-3 hover:border-[#2563EB]/40 transition text-left">
                         <div className="w-9 h-9 rounded-lg bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0"><p.icon className="w-4 h-4" /></div>
                         <span className="text-sm font-medium text-[#111827] flex-1">{p.label}</span>
-                        <ExternalLink className="w-4 h-4 text-[#6B7280]" />
-                      </a>
+                        <Play className="w-4 h-4 text-[#6B7280]" />
+                      </button>
                     );
-                  })}
-                </div>
-
-                {expandedAd && (() => {
-                  const active = adPlatforms.find((p) => p.key === expandedAd);
-                  if (!active) return null;
+                  }
                   return (
-                    <div className="mt-4 rounded-xl border border-[#E5E7EB] overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-2 bg-[#F8FAFC] border-b border-[#E5E7EB]">
-                        <p className="text-xs font-medium text-[#6B7280]">{active.label} — live from Meta</p>
-                        <button onClick={() => setExpandedAd(null)} className="text-[#6B7280] hover:text-[#111827]"><X className="w-4 h-4" /></button>
-                      </div>
-                      <iframe src={active.url!} className="w-full h-[600px]" title={`${active.label} preview`} />
-                    </div>
+                    <a key={p.key} href={p.url!} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 border border-[#E5E7EB] rounded-xl p-3 hover:border-[#2563EB]/40 transition">
+                      <div className="w-9 h-9 rounded-lg bg-[#2563EB]/10 text-[#2563EB] flex items-center justify-center shrink-0"><p.icon className="w-4 h-4" /></div>
+                      <span className="text-sm font-medium text-[#111827] flex-1">{p.label}</span>
+                      <ExternalLink className="w-4 h-4 text-[#6B7280]" />
+                    </a>
                   );
-                })()}
+                })}
+              </div>}
+
+              {expandedAd && (() => {
+                const active = adPlatforms.find((p) => p.key === expandedAd);
+                if (!active) return null;
+                return (
+                  <div className="mt-4 rounded-xl border border-[#E5E7EB] overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-[#F8FAFC] border-b border-[#E5E7EB]">
+                      <p className="text-xs font-medium text-[#6B7280]">{active.label} — live from Meta</p>
+                      <button onClick={() => setExpandedAd(null)} className="text-[#6B7280] hover:text-[#111827]"><X className="w-4 h-4" /></button>
+                    </div>
+                    <iframe src={active.url!} className="w-full h-[600px]" title={`${active.label} preview`} />
+                  </div>
+                );
+              })()}
+
+              <a href={adLibrarySearchUrl(adLibraryKeyword(name))} target="_blank" rel="noopener noreferrer"
+                className={`${adPlatforms.length > 0 ? 'mt-3' : ''} flex items-center justify-center gap-2 rounded-xl border border-dashed border-[#2563EB]/40 bg-[#2563EB]/5 px-3 py-2.5 text-sm font-medium text-[#2563EB] hover:bg-[#2563EB]/10 transition`}>
+                <Search className="w-4 h-4" /> Find more ads for &ldquo;{adLibraryKeyword(name)}&rdquo; on Meta Ad Library
+              </a>
+
+              <div className="mt-4 rounded-xl bg-[#F8FAFC] border border-[#E5E7EB] p-4">
+                <p className="text-sm font-semibold text-[#111827] mb-2">How to read the ads</p>
+                <ul className="space-y-1.5 text-sm text-[#4B5563]">
+                  <li><span className="font-medium text-[#111827]">&ldquo;Started running on&rdquo; 1–3+ months ago</span> — the ad is still paying for itself, a strong sign.</li>
+                  <li><span className="font-medium text-[#111827]">Many different stores</span> selling it — demand is proven.</li>
+                  <li><span className="font-medium text-[#111827]">&ldquo;Multiple versions&rdquo;</span> — the seller is testing and scaling it.</li>
+                  <li><span className="font-medium text-[#111827]">Only 1–2 ads, all started this week</span> — not proven yet, test carefully.</li>
+                </ul>
               </div>
-            )}
+            </div>
 
             {/* How to sell this guide */}
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">

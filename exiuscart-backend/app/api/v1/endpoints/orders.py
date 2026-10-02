@@ -503,11 +503,24 @@ async def update_order(
         raise HTTPException(status_code=404, detail="Order not found")
 
     update_data = order_data.model_dump(exclude_unset=True)
+    was_paid = (order.payment_status or "").lower() == "paid"
     for field, value in update_data.items():
         setattr(order, field, value)
+    just_paid = not was_paid and (order.payment_status or "").lower() == "paid"
+    if just_paid and order.source == "channel":
+        # Channel orders take stock only once paid (cancelling restores it on that basis)
+        from app.core.channel_orders import take_paid_stock
+        take_paid_stock(db, order.id)
 
     db.commit()
     db.refresh(order)
+
+    # Marked paid by hand (cash on delivery, bank transfer...): send it to the supplier
+    # the same way a paid checkout order goes, when auto-fulfil is on.
+    if just_paid:
+        from app.core.channel_orders import should_auto_fulfill, queue_auto_fulfill
+        if should_auto_fulfill(db, shop_id, order.created_at):
+            queue_auto_fulfill(shop_id, [order.id])
     return order
 
 

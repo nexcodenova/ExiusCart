@@ -152,6 +152,8 @@ def _product_out(p: Product, category_id: str | None = None, category_slug: str 
         # <meta name="keywords"> dump, meant for the storefront to build
         # the actual meta title/description and schema.org Product data.
         "seo_keywords": p.seo_keywords or [],
+        "seo_title": p.seo_title,
+        "meta_description": p.meta_description,
         # Short highlight facts shown under the price — [{icon, label}, ...].
         # `icon` is one of PRODUCT_HIGHLIGHT_ICONS (schemas/product.py) — a
         # fixed key set, not arbitrary seller text, so the storefront can

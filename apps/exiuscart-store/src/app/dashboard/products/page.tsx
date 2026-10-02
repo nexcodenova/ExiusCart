@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Plus, Search, Edit, Trash2, Package, X, ChevronDown,
+  Plus, Search, Edit, Trash2, Package, X, ChevronDown, Sparkles,
   Star, Upload, ImageIcon, ToggleLeft, ToggleRight, Loader2,
   FileSpreadsheet, Download, CheckCircle, AlertCircle, Barcode,
   Printer, Lock, Flame, TrendingUp, Snowflake, ArrowUpDown, RefreshCw,
@@ -51,6 +51,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectValue, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { adLibraryKeyword, adLibrarySearchUrl } from '@/lib/adLibrary';
+import AiStudioPanel, { AiCopy } from '@/components/ai-studio/AiStudioPanel';
 
 function channelLabel(channelType: string): string {
   return channelMeta(channelType).label;
@@ -112,39 +115,58 @@ function countWords(html: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-// ── Meta Ad Library search panel ────────────────────────────────────────────
-// Real ads pulled live from Meta's public Ad Library API — same shared
-// backend core the admin Prodora curation flow uses. View-only here (no
-// field to save into on this side, unlike admin's ad_facebook_url) — this
-// is a "is this product actually being advertised" research check before
-// a seller commits to listing it, not a permanent record.
+// ── Meta Ad Library panel ───────────────────────────────────────────────────
+// "Is this product actually being advertised?" check before committing to it.
+// Ads imported with a Prodora product open first; any keyword opens Meta's
+// public Ad Library (no token needed). The in-panel results list is the API
+// path and only works once META_AD_LIBRARY_TOKEN is set on the server.
 interface MetaAd { id: string; page_name: string; snapshot_url: string; body: string | null }
 
-function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, onSearch }: {
+function MetaAdSearchPanel({ query, setQuery, savedFacebook, savedInstagram, ads, loading, error, hasSearched, onSearch }: {
   query: string; setQuery: (v: string) => void;
+  savedFacebook?: string | null; savedInstagram?: string | null;
   ads: MetaAd[]; loading: boolean; error: string; hasSearched: boolean;
   onSearch: () => void;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3 rounded-lg border border-border p-3">
+      {(savedFacebook || savedInstagram) && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-foreground">Ads saved with this product</p>
+          <div className="flex flex-wrap gap-2">
+            {savedFacebook && (
+              <Button asChild variant="outline" size="sm">
+                <a href={savedFacebook} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5" /> Facebook ads</a>
+              </Button>
+            )}
+            {savedInstagram && (
+              <Button asChild variant="outline" size="sm">
+                <a href={savedInstagram} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5" /> Instagram ads</a>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
       <div className="flex gap-2">
-        <input
-          type="text"
+        <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
-          placeholder="Search by product or brand name…"
-          className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground text-sm focus:ring-2 focus:ring-primary outline-none"
+          placeholder="Keyword, e.g. posture corrector"
+          className="flex-1"
         />
-        <button
-          type="button"
-          onClick={onSearch}
-          disabled={loading || !query.trim()}
-          className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center gap-1.5"
-        >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-        </button>
+        <Button asChild size="sm" className={!query.trim() ? 'pointer-events-none opacity-50' : ''}>
+          <a href={adLibrarySearchUrl(query.trim())} target="_blank" rel="noopener noreferrer">
+            <Search className="w-3.5 h-3.5" /> Open Ad Library
+          </a>
+        </Button>
       </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Good signs: ads that started 1–3+ months ago, many different stores selling it, &ldquo;multiple versions&rdquo;.
+        Only 1–2 ads that started this week means it&apos;s not proven yet.
+      </p>
+      <Button type="button" variant="ghost" size="sm" onClick={onSearch} disabled={loading || !query.trim()} className="w-full text-muted-foreground">
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />} Show results here (needs Meta API)
+      </Button>
       {error && (
         <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
           <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}
@@ -165,9 +187,6 @@ function MetaAdSearchPanel({ query, setQuery, ads, loading, error, hasSearched, 
             </a>
           ))}
         </div>
-      )}
-      {!loading && !error && ads.length === 0 && !hasSearched && (
-        <p className="text-xs text-muted-foreground">Type a product or brand name to see if it's already being advertised on Meta.</p>
       )}
       {!loading && !error && ads.length === 0 && hasSearched && (
         <p className="text-xs text-muted-foreground">No ads found for "{query}". Try a different keyword.</p>
@@ -193,6 +212,8 @@ interface Product {
   is_dropship_imported?: boolean;
   dropship_supplier?: string | null;
   imported_from?: string | null;
+  ad_facebook_url?: string | null;
+  ad_instagram_url?: string | null;
 }
 
 interface ShopField {
@@ -1402,6 +1423,21 @@ function ProductModal({
     Array.isArray(p?.seo_keywords) ? p.seo_keywords.filter((s: any) => typeof s === 'string') : []
   );
   const [seoKeywordInput, setSeoKeywordInput] = useState('');
+  // The Google result's own title + snippet (empty = built from name/description)
+  const [seoTitle, setSeoTitle] = useState<string>(p?.seo_title ?? '');
+  const [metaDescription, setMetaDescription] = useState<string>(p?.meta_description ?? '');
+
+  // AI Studio "Use selected" fills the form; the normal Save keeps it
+  const applyAiCopy = (c: AiCopy) => {
+    if (c.title || c.description_html) {
+      setFormData((f) => ({ ...f, ...(c.title ? { name: c.title } : {}), ...(c.description_html ? { description: c.description_html } : {}) }));
+    }
+    if (c.seo_title !== undefined) setSeoTitle(c.seo_title);
+    if (c.meta_description !== undefined) setMetaDescription(c.meta_description);
+    if (c.benefits) setHighlights(c.benefits.map((label) => ({ icon: 'check-circle', label })));
+    if (c.faq) setFaqItems(c.faq);
+    if (c.keywords) setSeoKeywords(c.keywords);
+  };
 
   // Suggested keyword chips — plain word-split off the product's own name
   // and category, no AI call. Just speeds up entry; the seller can ignore
@@ -1434,7 +1470,12 @@ function ProductModal({
     setMetaLoading(true); setMetaError(''); setMetaHasSearched(true);
     adIntelligenceApi.searchMetaAds(shopId, metaQuery.trim())
       .then((r) => setMetaAds(r.data?.ads ?? []))
-      .catch((err: any) => setMetaError(err?.response?.data?.detail?.message ?? err?.response?.data?.detail ?? 'Meta Ad Library search failed.'))
+      .catch((err: any) => {
+        const detail = err?.response?.data?.detail;
+        setMetaError(detail?.error === 'meta_not_configured'
+          ? 'In-app results aren’t available yet. Use "Open Ad Library" above to see every ad.'
+          : detail?.message ?? detail ?? 'Meta Ad Library search failed.');
+      })
       .finally(() => setMetaLoading(false));
   };
 
@@ -2190,6 +2231,8 @@ function ProductModal({
           return valid.length > 0 ? valid : null;
         })() : null,
         seo_keywords: seoKeywords.length > 0 ? seoKeywords : null,
+        seo_title: seoTitle.trim() || null,
+        meta_description: metaDescription.trim() || null,
         highlights: (!isAffiliate) ? (() => {
           const valid = highlights
             .map((h) => ({ icon: h.icon, label: h.label.trim() }))
@@ -3325,8 +3368,38 @@ function ProductModal({
                         ))}
                       </div>
                     )}
+                    <div className="grid gap-3 mt-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <Label className="text-xs text-muted-foreground">Google title</Label>
+                          <span className={`text-[11px] ${seoTitle.length > 60 ? 'text-destructive' : 'text-muted-foreground/70'}`}>{seoTitle.length}/60</span>
+                        </div>
+                        <Input value={seoTitle} onChange={(e) => setSeoTitle(e.target.value.slice(0, 80))} placeholder="Shown as the blue link in Google. Empty = the product name." />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <Label className="text-xs text-muted-foreground">Google description</Label>
+                          <span className={`text-[11px] ${metaDescription.length > 155 ? 'text-destructive' : 'text-muted-foreground/70'}`}>{metaDescription.length}/155</span>
+                        </div>
+                        <Textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value.slice(0, 200))} rows={2}
+                          placeholder="The short text under the link in Google. Empty = the start of the description." />
+                      </div>
+                    </div>
                   </>
                 )}
+              </div>
+
+              {/* ── AI Studio: better copy + SEO, AI product images ── */}
+              <div className="border-t border-border -mx-6 px-6 pt-6">
+                <Label className="font-medium text-foreground mb-1.5 flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-primary" /> AI Studio</Label>
+                <AiStudioPanel
+                  shopId={shopId}
+                  productId={product?.id}
+                  productName={formData.name}
+                  photos={savedImages.map((img) => img.url)}
+                  onApply={applyAiCopy}
+                  onImageAdded={() => { if (product?.id) imagesApi.getAll(shopId, product.id).then((res) => setSavedImages(res.data ?? [])).catch(() => {}); }}
+                />
               </div>
 
               {/* ── Ad Research — is this product already being advertised
@@ -3340,7 +3413,7 @@ function ProductModal({
                   {!showMetaSearch && (
                     <button
                       type="button"
-                      onClick={() => { setShowMetaSearch(true); setMetaQuery(formData.name); }}
+                      onClick={() => { setShowMetaSearch(true); setMetaQuery(adLibraryKeyword(formData.name)); }}
                       className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition"
                     >
                       <Search className="w-3.5 h-3.5" /> Check Meta Ads
@@ -3354,6 +3427,8 @@ function ProductModal({
                   <MetaAdSearchPanel
                     query={metaQuery}
                     setQuery={setMetaQuery}
+                    savedFacebook={product?.ad_facebook_url}
+                    savedInstagram={product?.ad_instagram_url}
                     ads={metaAds}
                     loading={metaLoading}
                     error={metaError}
