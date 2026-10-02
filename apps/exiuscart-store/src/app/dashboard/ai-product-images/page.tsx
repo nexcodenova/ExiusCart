@@ -1,16 +1,21 @@
 'use client';
 
 import { Image } from 'lucide-react';
-import ComingSoon from '@/components/layout/ComingSoon';
+import ImageStudioPage from '@/components/ai-studio/ImageStudioPage';
 
 export default function Page() {
   return (
-    <ComingSoon
+    <ImageStudioPage
       icon={Image}
-      group="Product Studio"
       title="AI Product Images"
-      description="Generate studio-quality product photography with AI. Not built yet."
-      accentClass="bg-violet-500/10 text-violet-600 dark:text-violet-400"
+      subtitle="Turn any product photo into a clean studio shot or a ready-to-post ad image."
+      modes={['studio', 'ad']}
+      tips={[
+        'Start from your clearest photo, with the whole product in view.',
+        'Studio photo gives a pure white background, which marketplaces like Amazon and eBay prefer.',
+        'Ad image adds a short headline. Use "Extra direction" to say what it should say.',
+        'Always check logos and text look right before adding the image.',
+      ]}
     />
   );
 }

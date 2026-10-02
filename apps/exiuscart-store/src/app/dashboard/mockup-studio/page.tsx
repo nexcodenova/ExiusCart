@@ -1,16 +1,21 @@
 'use client';
 
 import { Layers } from 'lucide-react';
-import ComingSoon from '@/components/layout/ComingSoon';
+import ImageStudioPage from '@/components/ai-studio/ImageStudioPage';
 
 export default function Page() {
   return (
-    <ComingSoon
+    <ImageStudioPage
       icon={Layers}
-      group="Product Studio"
       title="Mockup Studio"
-      description="Generate realistic product mockups on apparel, packaging and more. Not built yet."
-      accentClass="bg-violet-500/10 text-violet-600 dark:text-violet-400"
+      subtitle="Put your t-shirts, hoodies and other clothing on a real-looking model, from a flat product photo."
+      modes={['model']}
+      tips={[
+        'Start from a flat, front-facing photo of the garment with the print clearly visible.',
+        'Describe the model you want: "man, 30s, smart casual", "woman, 20s, street style".',
+        'Check the print and logo match your real product before using the photo.',
+        'Make a few with different models to show who it is for.',
+      ]}
     />
   );
 }

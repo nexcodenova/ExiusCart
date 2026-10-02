@@ -1,16 +1,21 @@
 'use client';
 
 import { ImagePlus } from 'lucide-react';
-import ComingSoon from '@/components/layout/ComingSoon';
+import ImageStudioPage from '@/components/ai-studio/ImageStudioPage';
 
 export default function Page() {
   return (
-    <ComingSoon
+    <ImageStudioPage
       icon={ImagePlus}
-      group="Product Studio"
       title="Lifestyle Images"
-      description="Place your products into AI-generated lifestyle scenes. Not built yet."
-      accentClass="bg-violet-500/10 text-violet-600 dark:text-violet-400"
+      subtitle="Show your product in a real setting, the kind of photo that sells on social media."
+      modes={['lifestyle']}
+      tips={[
+        'Say where it should be: "modern kitchen", "beach at sunset", "office desk".',
+        'Pick a setting your buyer lives in, not just a pretty one.',
+        'A plain product photo works best as the starting point.',
+        'Make two or three and keep the one that looks most real.',
+      ]}
     />
   );
 }

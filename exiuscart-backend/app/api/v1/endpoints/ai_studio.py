@@ -137,6 +137,37 @@ def studio_improve(shop_id: int, product_id: int, db: Session = Depends(get_db),
     return _improve(db, product, shop_id)
 
 
+class WriteIn(BaseModel):
+    name: str                       # what the product is, in the seller's words
+    details: Optional[str] = None   # anything they know: material, sizes, use...
+    category: Optional[str] = None
+    price: Optional[float] = None
+
+
+@router.post("/shops/{shop_id}/ai-studio/write")
+def studio_write(shop_id: int, data: WriteIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """AI Product Creator: a full listing from a few words, before the product exists.
+    The seller reviews it; the page then creates the product the normal way (plan limits apply)."""
+    from app.core.shop_access import get_shop_for_member
+    if not get_shop_for_member(db, shop_id, current_user):
+        raise HTTPException(status_code=404, detail="Shop not found")
+    if not data.name.strip():
+        raise HTTPException(status_code=400, detail={"error": "bad_request", "message": "Say what the product is."})
+    brief = {"name": data.name.strip()[:200], "description": (data.details or "").strip()[:3000],
+             "category": (data.category or "").strip()[:100] or None, "price": data.price}
+    try:
+        studio.check_text_allowance(db, shop_id)
+        keywords, kw_provider = studio.seo_keywords(brief, _shop_country(db, shop_id))
+        studio.log_call(db, shop_id, "text", kw_provider, "seo_keywords")
+        copy, copy_provider = studio.improve_copy(brief, keywords)
+        studio.log_call(db, shop_id, "text", copy_provider, "product_create")
+    except studio.StudioError as e:
+        _raise(e)
+    empty = {"title": brief["name"], "seo_title": None, "meta_description": None, "description_html": brief["description"] or None,
+             "benefits": [], "faq": [], "keywords": []}
+    return {"current": empty, "suggested": {**copy, "keywords": keywords}, "providers": {"keywords": kw_provider, "copy": copy_provider}}
+
+
 @router.post("/shops/{shop_id}/ai-studio/products/{product_id}/apply")
 def studio_apply(shop_id: int, product_id: int, data: ApplyIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Saves only the parts the seller ticked."""

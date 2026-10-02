@@ -1004,6 +1004,10 @@ export const aiStudioApi = {
     api.post(`/shops/${shopId}/ai-studio/products/${productId}/improve`, null, { timeout: 120000 }),
   image: (shopId: string, productId: string | number, data: { mode: string; reference_url: string; extra?: string; model_look?: string }) =>
     api.post(`/shops/${shopId}/ai-studio/products/${productId}/image`, data, { timeout: 240000 }),
+  write: (shopId: string, data: { name: string; details?: string; category?: string; price?: number }) =>
+    api.post(`/shops/${shopId}/ai-studio/write`, data, { timeout: 120000 }),
+  apply: (shopId: string, productId: string | number, data: object) =>
+    api.post(`/shops/${shopId}/ai-studio/products/${productId}/apply`, data),
   addImage: (shopId: string, productId: string | number, url: string, makePrimary = false) =>
     api.post(`/shops/${shopId}/ai-studio/products/${productId}/image/add`, { url, make_primary: makePrimary }),
 };

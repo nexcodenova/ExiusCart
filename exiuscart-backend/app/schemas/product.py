@@ -75,7 +75,7 @@ class ProductBase(BaseModel):
 
 
 class ProductCreate(ProductBase):
-    pass
+    is_active: bool = True  # False = created as a hidden draft (AI Product Creator)
 
 
 class ProductUpdate(BaseModel):
