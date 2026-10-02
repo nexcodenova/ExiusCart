@@ -55,6 +55,12 @@ export const menuItems = [
 export const MENU_PERMS: Record<string, string> = {
   '/dashboard/shopping': 'prodora.view',
   '/dashboard/digital-bundles': 'prodora.digital',
+  '/dashboard/blogs': 'content.blog_write',
+  '/dashboard/reviews': 'content.reviews',
+  '/dashboard/leads': 'support.leads_view',
+  '/dashboard/shops': 'support.stores_view',
+  '/dashboard/users': 'support.users_view',
+  '/dashboard/reports': 'reports.view',
 };
 const CHILD_PERMS: Record<string, string> = {
   '/dashboard/shopping': 'prodora.view',

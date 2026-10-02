@@ -14,6 +14,7 @@ import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import CompetitionSection from '@/components/CompetitionSection';
 import AudienceSection from '@/components/AudienceSection';
+import TrendsSection from '@/components/TrendsSection';
 import LoadingImage from '@/components/LoadingImage';
 import DOMPurify from 'dompurify';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -573,26 +574,22 @@ function ProductDetailContent() {
                   </div>
                 </div>
 
-                {/* Compare prices / ads: Amazon, eBay (real per-product links an admin pasted, hidden until set),
-                    then Google Trends, TikTok and Facebook Ads (always: live searches for the product's short
-                    keyword, no per-product data needed) and Product Video (only when there is one). */}
+                {/* Research buttons, always shown: Amazon and eBay (the admin's exact listing when pasted, else a
+                    live search for the product's short keyword), Google Trends, TikTok, Facebook Ads, and
+                    Product videos (this product's own video, else real videos of it on YouTube). */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  {amazon_url && (
-                    <a href={amazon_url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
-                      <Image src="/marketplace-icons/amazon.svg" alt="" width={16} height={16} className="shrink-0" />
-                      <span className="flex-1 text-left">Amazon</span>
-                      <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
-                    </a>
-                  )}
-                  {ebay_url && (
-                    <a href={ebay_url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
-                      <Image src="/marketplace-icons/ebay.svg" alt="" width={16} height={16} className="shrink-0" />
-                      <span className="flex-1 text-left">eBay</span>
-                      <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
-                    </a>
-                  )}
+                  <a href={amazon_url || `https://www.amazon.com/s?k=${encodeURIComponent(adLibraryKeyword(name))}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
+                    <Image src="/marketplace-icons/amazon.svg" alt="" width={16} height={16} className="shrink-0" />
+                    <span className="flex-1 text-left">Amazon</span>
+                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
+                  </a>
+                  <a href={ebay_url || `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(adLibraryKeyword(name))}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
+                    <Image src="/marketplace-icons/ebay.svg" alt="" width={16} height={16} className="shrink-0" />
+                    <span className="flex-1 text-left">eBay</span>
+                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
+                  </a>
                   <a href={`https://trends.google.com/trends/explore?date=today%205-y&q=${encodeURIComponent(adLibraryKeyword(name))}`}
                     target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
@@ -614,11 +611,18 @@ function ProductDetailContent() {
                     <span className="flex-1 text-left">Facebook Ads</span>
                     <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
                   </a>
-                  {hasVideo && (
+                  {hasVideo ? (
                     <a href="#video"
                       className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
                       <Play className="w-4 h-4 shrink-0 text-[#6B7280]" />
-                      <span className="flex-1 text-left">Product Video</span>
+                      <span className="flex-1 text-left">Product videos</span>
+                    </a>
+                  ) : (
+                    <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(adLibraryKeyword(name) + ' review')}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
+                      <Play className="w-4 h-4 shrink-0 text-[#DC2626]" />
+                      <span className="flex-1 text-left">Product videos</span>
+                      <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
                     </a>
                   )}
                 </div>
@@ -667,6 +671,10 @@ function ProductDetailContent() {
                 Chat now
               </span>
             </a>
+
+            {/* Google Trends results on the page (no click needed) and who to target with ads */}
+            <TrendsSection productId={productId} />
+            <AudienceSection productId={productId} />
 
             {/* Description — moved out of the hero so it doesn't compete with the buy decision; text on the
                 left, gallery photos on the right */}
@@ -863,7 +871,6 @@ function ProductDetailContent() {
 
             {/* Competition: real market prices, true profit and a verdict (Growth and Scale) */}
             <CompetitionSection productId={productId} />
-            <AudienceSection productId={productId} />
 
             {/* Trends — Demand on the left, Orders (social proof) on the right */}
             {(demandTrend.length >= 2 || ordersTrend.length >= 2) && (

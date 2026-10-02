@@ -135,6 +135,15 @@ def _seasonality(pts: List[Tuple[int, float]]) -> Tuple[Optional[bool], Optional
     return False, None, round(strength, 2)
 
 
+def monthly(points: List[Tuple[int, float]]) -> List[dict]:
+    """The whole (5-year) series as monthly averages, for a bigger chart than the 52-week sparkline."""
+    buckets: Dict[str, List[float]] = {}
+    for t, v in sorted(points):
+        key = datetime.fromtimestamp(int(t), tz=timezone.utc).strftime("%Y-%m")
+        buckets.setdefault(key, []).append(float(v))
+    return [{"month": k, "value": round(mean(vs))} for k, vs in buckets.items()]
+
+
 def summarise(d: dict) -> str:
     """One plain-English line for the screen and the verdict."""
     if d.get("direction") in (None, "unknown"):
@@ -167,7 +176,7 @@ def _google_query(keyword: str, geo: str) -> Tuple[List[Tuple[int, float]], List
     if not os.getenv("GOOGLE_TRENDS_API_KEY", "") and _apify_on():
         from app.intel import apify
         try:
-            return apify.trends_series(keyword, geo)
+            return apify.trends_series(keyword, geo)       # (series, countries, related)
         except apify.ApifyError as e:
             raise RuntimeError(str(e))
     raise NotImplementedError("Google Trends API connection is waiting for alpha documentation.")
@@ -176,11 +185,13 @@ def _google_query(keyword: str, geo: str) -> Tuple[List[Tuple[int, float]], List
 def fetch(keyword: str, geo: str = "US") -> dict:
     """One live lookup through Google's API. Returns a demand dict; never raises."""
     try:
-        series, countries = _google_query(keyword, geo)
+        res = _google_query(keyword, geo)
+        series, countries = res[0], res[1]
+        related = res[2] if len(res) > 2 else {}
         analysis = analyze_series(series)
         out = {"status": "insufficient" if analysis.get("direction") == "unknown" else "ok", "keyword": keyword, "geo": geo,
                "source": "Google Trends" if os.getenv("GOOGLE_TRENDS_API_KEY", "") else "Google Trends (via Apify)", "fetched_at": datetime.now(timezone.utc).isoformat(), "lookups": LOOKUPS_PER_FETCH,
-               "countries": countries[:8], **analysis}
+               "countries": countries[:8], "related": related, "monthly": monthly(series), **analysis}
         out["summary"] = summarise(out)
         return out
     except NotImplementedError:

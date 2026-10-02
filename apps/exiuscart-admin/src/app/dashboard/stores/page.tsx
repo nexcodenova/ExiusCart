@@ -8,6 +8,7 @@ import {
 import { adminApi } from '@/lib/api';
 import { StatusChip, PlanDates, fmtDate } from '@/lib/subscription-ui';
 
+import { useAdminAccess } from '@/components/access-provider';
 interface ShopRow {
   id: number;
   name: string;
@@ -39,6 +40,7 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 export default function StoresPage() {
+  const { isOwner } = useAdminAccess();
   const [shops, setShops] = useState<ShopRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -197,7 +199,7 @@ export default function StoresPage() {
                         type="button"
                         onClick={() => setPlanDropdown(planDropdown === shop.id ? null : shop.id)}
                         className={`flex items-center gap-1 text-sm font-medium capitalize hover:opacity-80 transition ${PLAN_COLORS[shop.plan] ?? 'text-gray-600'}`}
-                        title="Click to change plan"
+                        title={isOwner ? 'Click to change plan' : undefined}
                       >
                         {changingPlan === shop.id ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -205,7 +207,7 @@ export default function StoresPage() {
                         {shop.plan === 'free_trial' ? 'Free Trial' : shop.plan || '—'}
                         <ChevronDown className="w-3 h-3" />
                       </button>
-                      {planDropdown === shop.id && (
+                      {isOwner && planDropdown === shop.id && (
                         <div className="absolute z-50 left-0 top-7 w-48 bg-gray-50 border border-gray-300 rounded-xl shadow-xl overflow-hidden">
                           <p className="px-3 pt-2 pb-1 text-xs text-gray-500 font-medium">Change plan</p>
                           {PLAN_OPTIONS.map((opt) => (
@@ -244,23 +246,27 @@ export default function StoresPage() {
                   <td className="px-5 py-4 text-xs text-gray-600">{fmtDate(shop.created_at)}</td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        title={shop.is_active ? 'Suspend store' : 'Activate store'}
-                        onClick={() => toggleStatus(shop)}
-                        disabled={togglingId === shop.id}
-                        className={`p-1.5 rounded-lg transition ${shop.is_active ? 'text-orange-600 hover:bg-orange-500/10' : 'text-green-600 hover:bg-green-500/10'}`}
-                      >
-                        {togglingId === shop.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                      </button>
-                      <button
-                        type="button"
-                        title="Delete store"
-                        onClick={() => setConfirmDelete(shop)}
-                        className="p-1.5 rounded-lg text-red-600 hover:bg-red-500/10 transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {isOwner && (
+                        <button
+                          type="button"
+                          title={shop.is_active ? 'Suspend store' : 'Activate store'}
+                          onClick={() => toggleStatus(shop)}
+                          disabled={togglingId === shop.id}
+                          className={`p-1.5 rounded-lg transition ${shop.is_active ? 'text-orange-600 hover:bg-orange-500/10' : 'text-green-600 hover:bg-green-500/10'}`}
+                        >
+                          {togglingId === shop.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                        </button>
+                      )}
+                      {isOwner && (
+                        <button
+                          type="button"
+                          title="Delete store"
+                          onClick={() => setConfirmDelete(shop)}
+                          className="p-1.5 rounded-lg text-red-600 hover:bg-red-500/10 transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

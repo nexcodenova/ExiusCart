@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
+import { useAdminAccess } from '@/components/access-provider';
 interface Lead {
   id: number;
   name: string;
@@ -33,6 +34,8 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function LeadsPage() {
+  const { can } = useAdminAccess();
+  const canManage = can('support.leads_manage');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,13 +75,15 @@ export default function LeadsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
           <p className="text-gray-600 text-sm mt-1">Track potential customers</p>
         </div>
-        <button
-          type="button"
-          onClick={() => { setEditingLead(null); setShowModal(true); }}
-          className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-4 py-2.5 rounded-lg transition"
-        >
-          <Plus className="w-5 h-5" /> Add Lead
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => { setEditingLead(null); setShowModal(true); }}
+            className="inline-flex items-center justify-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-4 py-2.5 rounded-lg transition"
+          >
+            <Plus className="w-5 h-5" /> Add Lead
+          </button>
+        )}
       </div>
 
       {/* Stats */}
@@ -128,13 +133,15 @@ export default function LeadsPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
           <UserPlus className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600 mb-4">No leads yet</p>
-          <button
-            type="button"
-            onClick={() => { setEditingLead(null); setShowModal(true); }}
-            className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-4 py-2 rounded-lg transition text-sm"
-          >
-            <Plus className="w-4 h-4" /> Add First Lead
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => { setEditingLead(null); setShowModal(true); }}
+              className="inline-flex items-center gap-2 bg-[#6B3FD9] hover:bg-[#5A2EC9] text-white font-semibold px-4 py-2 rounded-lg transition text-sm"
+            >
+              <Plus className="w-4 h-4" /> Add First Lead
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -165,20 +172,24 @@ export default function LeadsPage() {
                     {lead.status}
                   </span>
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => { setEditingLead(lead); setShowModal(true); }}
-                      className="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirm(lead.id)}
-                      className="p-1.5 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-500/10 transition"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => { setEditingLead(lead); setShowModal(true); }}
+                        className="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                    )}
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm(lead.id)}
+                        className="p-1.5 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-500/10 transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

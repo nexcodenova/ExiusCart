@@ -39,9 +39,39 @@ ADMIN_PERMISSION_AREAS = [
             {"key": "prodora.review", "label": "Review and approve", "hint": "Approve or reject products waiting in the intake queue."},
             {"key": "prodora.publish", "label": "Publish and schedule", "hint": "Publish approved products and change the daily schedule."},
             {"key": "prodora.analyze", "label": "Run product analysis", "hint": "Check competitors and get a verdict. Can use paid lookups, so give it only to people you trust with that."},
+            {"key": "prodora.ai", "label": "Use AI Studio", "hint": "AI writing and AI images for Prodora products. Each use costs money (shown on the spend meter)."},
+        ],
+    },
+    {
+        "area": "content",
+        "label": "Website content",
+        "permissions": [
+            {"key": "content.blog_write", "label": "Write blog posts", "hint": "Create and edit exiuscart.com blog posts as drafts."},
+            {"key": "content.blog_publish", "label": "Publish blog posts", "hint": "Publish, unpublish and delete posts. Includes writing."},
+            {"key": "content.reviews", "label": "Website reviews", "hint": "Add, edit and remove the customer reviews shown on the website."},
+        ],
+    },
+    {
+        "area": "support",
+        "label": "Customer support",
+        "permissions": [
+            {"key": "support.leads_view", "label": "View leads", "hint": "See people who asked about ExiusCart."},
+            {"key": "support.leads_manage", "label": "Manage leads", "hint": "Add leads, change their status and notes, remove them. Includes viewing."},
+            {"key": "support.stores_view", "label": "View stores", "hint": "See every seller's store and its plan. Read only: cannot change plans or suspend."},
+            {"key": "support.users_view", "label": "View users", "hint": "See user accounts and their emails. Read only."},
+        ],
+    },
+    {
+        "area": "reports",
+        "label": "Reports",
+        "permissions": [
+            {"key": "reports.view", "label": "View reports", "hint": "Revenue, signups and growth numbers. Read only."},
         ],
     },
 ]
+
+# A stronger permission includes the weaker one in the same area
+IMPLIES = {"content.blog_publish": "content.blog_write", "support.leads_manage": "support.leads_view"}
 
 ALL_PERMISSIONS = {p["key"] for area in ADMIN_PERMISSION_AREAS for p in area["permissions"]}
 
@@ -54,10 +84,13 @@ def clean_permissions(perms: Optional[Iterable[str]]) -> List[str]:
 
 def expand(perms: Iterable[str]) -> set:
     """Any prodora.* permission implies prodora.view, so a role that can add
-    products can also open the list it adds to."""
+    products can also open the list it adds to; see IMPLIES for the other areas."""
     out = set(perms or [])
     if any(p.startswith("prodora.") for p in out):
         out.add("prodora.view")
+    for strong, weak in IMPLIES.items():
+        if strong in out:
+            out.add(weak)
     return out & ALL_PERMISSIONS
 
 
@@ -106,3 +139,11 @@ def require_admin_perm(permission: str):
         return current_user
 
     return _dep
+
+
+def has_admin_perm(db: Session, user: User, perm: str) -> bool:
+    """For checks inside an endpoint (e.g. "editing a LIVE post needs publish rights")."""
+    if user.is_superuser:
+        return True
+    rec = staff_record(db, user)
+    return bool(rec and perm in expand(rec.role.permissions if rec.role else []))

@@ -8,9 +8,12 @@ import { adminApi } from '@/lib/api';
 import { useBlogSite } from '@/lib/blog-sites';
 import { RichTextEditor } from '@/components/rich-text-editor';
 
+import { useAdminAccess } from '@/components/access-provider';
 const IMAGE_LIMIT = 15;
 
 export function AdminBlogEditor({ postId }: { postId?: number }) {
+  const { can } = useAdminAccess();
+  const canPublish = can('content.blog_publish');
   const site = useBlogSite();
   const router = useRouter();
   const [loading, setLoading] = useState(!!postId);
@@ -130,13 +133,15 @@ export function AdminBlogEditor({ postId }: { postId?: number }) {
               <CheckCircle2 className="w-3 h-3" /> Published
             </span>
           )}
-          <button onClick={save} disabled={saving || publishing}
+          <button onClick={save} disabled={saving || publishing || (status === 'published' && !canPublish)}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-800 hover:bg-gray-100 transition disabled:opacity-60 flex items-center gap-2">
             {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {saved && !saving && <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />}
             {saving ? 'Saving…' : saved ? 'Saved' : 'Save Draft'}
           </button>
-          {status === 'published' ? (
+          {!canPublish ? (
+            <span className="text-xs text-gray-500">{status === 'published' ? 'Live post: only someone who can publish may change it.' : 'Saved as a draft. Someone who can publish will put it live.'}</span>
+          ) : status === 'published' ? (
             <button onClick={() => publish(false)} disabled={saving || publishing}
               className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg text-sm font-medium hover:bg-gray-200 transition disabled:opacity-60">
               Unpublish

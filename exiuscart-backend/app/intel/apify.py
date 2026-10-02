@@ -163,11 +163,16 @@ def amazon_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
 
 def trends_series(keyword: str, geo: str = "US"):
     """(series, countries) in the shape app/intel/trends.py expects:
-    series [(unix_ts, 0-100)] weekly over 5 years; countries [{country, code, index}]."""
-    rows = run("trends", {"searchTerms": [keyword], "timeRange": "today 5-y", "geo": "" if geo in ("", "WW") else geo,
+    series [(unix_ts, 0-100)] weekly over 5 years; countries [{country, code, index}];
+    related {"rising": [{query, value}], "top": [{query, value}]} - what else people search for."""
+    rows = run("trends", {"searchTerms": [keyword], "timeRange": "today 5-y", "geo": "" if geo in ("", "WW", "ALL") else geo,
                           "isMultiple": False, "isPublic": False, "skipDebugScreen": True, "maxItems": 1}, max_items=3)
-    series, countries = [], []
+    series, countries, related = [], [], {"rising": [], "top": []}
     for it in rows:
+        for kind in ("rising", "top"):
+            for q in (_first(it, f"relatedQueries_{kind}") or [])[:10]:
+                if isinstance(q, dict) and q.get("query"):
+                    related[kind].append({"query": str(q["query"])[:80], "value": q.get("formattedValue") or q.get("value")})
         timeline = _first(it, "interestOverTime_timelineData", "interestOverTime.timelineData", "timelineData", "interestOverTime") or []
         for p in timeline if isinstance(timeline, list) else []:
             t = num(_first(p, "time", "timestamp"))
@@ -175,7 +180,7 @@ def trends_series(keyword: str, geo: str = "US"):
             v = num(val[0] if isinstance(val, list) and val else val)
             if t is not None and v is not None:
                 series.append((int(t), v))
-        regions = _first(it, "interestByCountry", "interestByRegion", "interestBySubregion", "geoMapData") or []
+        regions = _first(it, "interestBy", "interestByCountry", "interestByRegion", "interestBySubregion", "geoMapData") or []
         for g in regions if isinstance(regions, list) else []:
             val = g.get("value")
             v = num(val[0] if isinstance(val, list) and val else val)
@@ -185,7 +190,7 @@ def trends_series(keyword: str, geo: str = "US"):
         if series:
             break
     countries.sort(key=lambda c: c["index"], reverse=True)
-    return sorted(series), countries
+    return sorted(series), countries, related
 
 
 # ── TikTok ───────────────────────────────────────────────────────────────────

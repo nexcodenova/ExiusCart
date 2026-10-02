@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 
+import { useAdminAccess } from '@/components/access-provider';
 interface Shop {
   id: number;
   name: string;
@@ -179,6 +180,7 @@ function DetailModal({ shop, onClose, onApprove }: { shop: Shop; onClose: () => 
 }
 
 export default function ShopsPage() {
+  const { isOwner } = useAdminAccess();
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -352,7 +354,7 @@ export default function ShopsPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          {shop.subscription_status === 'pending_approval' && shop.subscription_id && (
+                          {isOwner && shop.subscription_status === 'pending_approval' && shop.subscription_id && (
                             <button
                               type="button"
                               title="Approve account"
@@ -362,14 +364,16 @@ export default function ShopsPage() {
                               <CheckCircle className="w-4 h-4" />
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => toggleStatus(shop)}
-                            title={shop.is_active ? 'Suspend store' : 'Activate store'}
-                            className={`p-1.5 rounded-lg transition ${shop.is_active ? 'text-red-600 hover:bg-red-500/10' : 'text-green-600 hover:bg-green-500/10'}`}
-                          >
-                            {shop.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                          </button>
+                          {isOwner && (
+                            <button
+                              type="button"
+                              onClick={() => toggleStatus(shop)}
+                              title={shop.is_active ? 'Suspend store' : 'Activate store'}
+                              className={`p-1.5 rounded-lg transition ${shop.is_active ? 'text-red-600 hover:bg-red-500/10' : 'text-green-600 hover:bg-green-500/10'}`}
+                            >
+                              {shop.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -421,7 +425,7 @@ export default function ShopsPage() {
                   >
                     <Eye className="w-3.5 h-3.5" /> View
                   </button>
-                  {shop.subscription_status === 'pending_approval' && shop.subscription_id && (
+                  {isOwner && shop.subscription_status === 'pending_approval' && shop.subscription_id && (
                     <button
                       type="button"
                       onClick={() => handleApprove(shop.subscription_id!)}
@@ -430,13 +434,15 @@ export default function ShopsPage() {
                       <CheckCircle className="w-3.5 h-3.5" /> Approve
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => toggleStatus(shop)}
-                    className={`flex-1 text-xs py-1.5 rounded-lg transition ${shop.is_active ? 'bg-red-500/10 text-red-600' : 'bg-green-500/10 text-green-600'}`}
-                  >
-                    {shop.is_active ? 'Suspend' : 'Activate'}
-                  </button>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => toggleStatus(shop)}
+                      className={`flex-1 text-xs py-1.5 rounded-lg transition ${shop.is_active ? 'bg-red-500/10 text-red-600' : 'bg-green-500/10 text-green-600'}`}
+                    >
+                      {shop.is_active ? 'Suspend' : 'Activate'}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

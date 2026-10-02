@@ -165,6 +165,14 @@ export interface Audience {
   tiktok_proof: { hashtag: string; videos: number; median_views: number } | null;
   based_on: string[]; generated_at: string;
 }
+export interface TrendsData {
+  direction: 'rising' | 'falling' | 'steady' | 'low_interest' | 'unknown' | null; summary: string | null; yoy_change: number | null; level: number | null;
+  seasonal: boolean | null; peak_month: string | null; monthly: { month: string; value: number }[]; sparkline: { date: string; value: number }[];
+  countries: { country: string; code: string | null; index: number }[];
+  related: { rising: { query: string; value: string | number | null }[]; top: { query: string; value: string | number | null }[] };
+  fetched_at: string | null; source: string | null;
+}
+export interface TrendsResponse { keyword: string | null; status?: string; trends?: TrendsData | null }
 export type AudienceResponse =
   | { locked: true; plan: string | null; required_plan: string }
   | { locked: false; available: boolean; audience: Audience | null };
@@ -197,6 +205,7 @@ export const aiApi = {
 };
 
 export const shoppingApi = {
+  getTrends: async (id: number): Promise<TrendsResponse> => (await apiClient.get(`/shopping/products/${id}/trends`, { timeout: 120000 })).data,
   getAudience: async (id: number): Promise<AudienceResponse> => (await apiClient.get(`/shopping/products/${id}/audience`, { timeout: 90000 })).data,
   getIntelligence: async (id: number): Promise<IntelResponse> => {
     const response = await apiClient.get(`/shopping/products/${id}/intelligence`);

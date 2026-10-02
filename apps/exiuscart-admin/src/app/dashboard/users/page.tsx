@@ -5,6 +5,7 @@ import { Search, Filter, User, Store, CheckCircle, Ban, Loader2, Tag, Eye, X, Ma
 import { adminApi } from '@/lib/api';
 import { PlanChip, StatusChip, PlanDates, fmtDate, daysLeftText } from '@/lib/subscription-ui';
 
+import { useAdminAccess } from '@/components/access-provider';
 interface AdminUser {
   id: number;
   full_name: string;
@@ -40,6 +41,7 @@ const PLAN_COLOR: Record<string, string> = {
 };
 
 export default function UsersPage() {
+  const { isOwner } = useAdminAccess();
   const [users, setUsers]         = useState<AdminUser[]>([]);
   const [loading, setLoading]     = useState(true);
   const [searchQuery, setSearch]  = useState('');
@@ -211,12 +213,14 @@ export default function UsersPage() {
                               className="p-2 rounded-lg text-[#6B3FD9] hover:bg-[#6B3FD9]/10 transition">
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button type="button" onClick={() => toggleStatus(user)}
-                              title={user.is_active ? 'Suspend user' : 'Activate user'}
-                              aria-label={user.is_active ? `Suspend ${user.full_name}` : `Activate ${user.full_name}`}
-                              className={`p-2 rounded-lg transition ${user.is_active ? 'text-red-600 hover:bg-red-500/10' : 'text-green-600 hover:bg-green-500/10'}`}>
-                              {user.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                            </button>
+                            {isOwner && (
+                              <button type="button" onClick={() => toggleStatus(user)}
+                                title={user.is_active ? 'Suspend user' : 'Activate user'}
+                                aria-label={user.is_active ? `Suspend ${user.full_name}` : `Activate ${user.full_name}`}
+                                className={`p-2 rounded-lg transition ${user.is_active ? 'text-red-600 hover:bg-red-500/10' : 'text-green-600 hover:bg-green-500/10'}`}>
+                                {user.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -271,10 +275,12 @@ export default function UsersPage() {
                     className="mr-2 text-xs px-3 py-1.5 rounded-lg bg-[#6B3FD9]/10 text-[#6B3FD9] transition">
                     View details
                   </button>
-                  <button type="button" onClick={() => toggleStatus(user)}
-                    className={`text-xs px-3 py-1.5 rounded-lg transition ${user.is_active ? 'bg-red-500/10 text-red-600' : 'bg-green-500/10 text-green-600'}`}>
-                    {user.is_active ? 'Suspend User' : 'Activate User'}
-                  </button>
+                  {isOwner && (
+                    <button type="button" onClick={() => toggleStatus(user)}
+                      className={`text-xs px-3 py-1.5 rounded-lg transition ${user.is_active ? 'bg-red-500/10 text-red-600' : 'bg-green-500/10 text-green-600'}`}>
+                      {user.is_active ? 'Suspend User' : 'Activate User'}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

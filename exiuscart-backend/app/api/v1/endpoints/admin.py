@@ -198,7 +198,7 @@ def list_shops(
     search: Optional[str] = None,
     status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("support.stores_view")),
 ):
     query = db.query(Shop).options(
         joinedload(Shop.owner),
@@ -321,7 +321,7 @@ def delete_shop(
 def list_users(
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("support.users_view")),
 ):
     query = db.query(User).filter(User.is_superuser == False).options(joinedload(User.shops))
     if search:
@@ -861,7 +861,7 @@ def expiring_subscriptions(
 @router.get("/admin/recent-shops")
 def recent_shops(
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("support.stores_view")),
 ):
     """Last 10 registered shops for the dashboard."""
     shops = db.query(Shop).options(
@@ -890,7 +890,7 @@ def list_leads(
     search: Optional[str] = None,
     status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("support.leads_view")),
 ):
     query = db.query(Lead)
     if search:
@@ -908,7 +908,7 @@ def list_leads(
 def create_lead(
     data: LeadCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("support.leads_manage")),
 ):
     lead = Lead(**data.model_dump())
     db.add(lead)
@@ -922,7 +922,7 @@ def update_lead(
     lead_id: int,
     data: LeadUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("support.leads_manage")),
 ):
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if not lead:
@@ -938,7 +938,7 @@ def update_lead(
 def delete_lead(
     lead_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("support.leads_manage")),
 ):
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if not lead:
@@ -953,7 +953,7 @@ def delete_lead(
 def get_admin_reports(
     date_range: Optional[str] = "last_30_days",
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("reports.view")),
 ):
     now = datetime.now(timezone.utc)
 
@@ -1188,7 +1188,7 @@ def admin_reports_advanced(
     end: str,
     compare: bool = True,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("reports.view")),
 ):
     """Reports for an inclusive date range (UTC days), optionally compared with the
     same-length period right before it."""
@@ -2453,7 +2453,7 @@ def admin_list_website_blog_posts(
     status_filter: Optional[str] = None,
     site: str = "exiuscart",
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("content.blog_write")),
 ):
     _check_blog_site(site)
     q = db.query(BlogPost).filter(BlogPost.site == site)
@@ -2469,7 +2469,7 @@ def admin_get_website_blog_post(
     post_id: int,
     site: str = "exiuscart",
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("content.blog_write")),
 ):
     _check_blog_site(site)
     post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.site == site).first()
@@ -2484,7 +2484,7 @@ def admin_create_website_blog_post(
     data: WebsiteBlogPostIn,
     site: str = "exiuscart",
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("content.blog_write")),
 ):
     _check_blog_site(site)
     if not data.title.strip():
@@ -2514,12 +2514,15 @@ def admin_update_website_blog_post(
     data: WebsiteBlogPostIn,
     site: str = "exiuscart",
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("content.blog_write")),
 ):
     _check_blog_site(site)
     post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.site == site).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+    from app.core.admin_access import has_admin_perm
+    if post.status == "published" and not has_admin_perm(db, current_admin, "content.blog_publish"):
+        raise HTTPException(status_code=403, detail="This post is live. Editing a published post needs the Publish blog posts permission.")
 
     post.title = data.title.strip() or post.title
     post.excerpt = data.excerpt
@@ -2539,7 +2542,7 @@ def admin_delete_website_blog_post(
     post_id: int,
     site: str = "exiuscart",
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("content.blog_publish")),
 ):
     _check_blog_site(site)
     post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.site == site).first()
@@ -2560,7 +2563,7 @@ def admin_publish_website_blog_post(
     data: WebsiteBlogPublishIn,
     site: str = "exiuscart",
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_superuser),
+    current_admin: User = Depends(require_admin_perm("content.blog_publish")),
 ):
     _check_blog_site(site)
     post = db.query(BlogPost).filter(BlogPost.id == post_id, BlogPost.site == site).first()
@@ -2583,7 +2586,7 @@ def admin_publish_website_blog_post(
 @router.post("/admin/website-blog/upload-image")
 async def admin_upload_website_blog_image(
     file: UploadFile,
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("content.blog_write")),
 ):
     contents = await file.read()
     if len(contents) > 10 * 1024 * 1024:

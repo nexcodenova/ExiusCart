@@ -42,18 +42,32 @@ def _log_usage(purpose: str, msg: Any) -> None:
         logger.warning(f"[intel] could not log AI usage: {type(e).__name__}")
 
 
+def configured() -> bool:
+    """Any AI at all: Claude, or the GPT / Gemini keys AI Studio uses."""
+    import os
+    return _get_client() is not None or bool(os.getenv("OPENAI_API_KEY", "").strip()) or bool(os.getenv("GEMINI_API_KEY", "").strip())
+
+
 def ask_json(prompt: str, max_tokens: int = 1000, purpose: str = "analysis") -> Optional[Any]:
+    """Claude first; without it (or if it fails), GPT, then Gemini. None = fall back to plain code."""
     client = _get_client()
-    if client is None:
-        return None
-    try:
-        msg = client.messages.create(model=MODEL, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}])
-        raw = "".join(getattr(b, "text", "") for b in msg.content).strip()
-    except Exception as e:  # noqa: BLE001 - any AI failure means "fall back to plain code"
-        logger.warning(f"[intel] AI call failed: {type(e).__name__}: {e}")
-        return None
-    _log_usage(purpose, msg)
-    return parse_json(raw)
+    if client is not None:
+        try:
+            msg = client.messages.create(model=MODEL, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}])
+            raw = "".join(getattr(b, "text", "") for b in msg.content).strip()
+            _log_usage(purpose, msg)
+            return parse_json(raw)
+        except Exception as e:  # noqa: BLE001 - any AI failure means "try the next one"
+            logger.warning(f"[intel] Claude call failed: {type(e).__name__}: {e}")
+    from app.core import ai_studio
+    for name, fn in (("openai", ai_studio._openai_text), ("gemini", lambda p: ai_studio._gemini_text(p))):
+        try:
+            out = fn(prompt)
+            if out is not None:
+                return out
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[intel] {name} call failed: {type(e).__name__}")
+    return None
 
 
 def parse_json(raw: str) -> Optional[Any]:

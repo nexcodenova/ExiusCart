@@ -14,6 +14,13 @@ export const ROUTE_PERMS: { prefix: string; perm: string }[] = [
   { prefix: '/dashboard/intelligence', perm: 'prodora.view' },
   { prefix: '/dashboard/intake', perm: 'prodora.view' },
   { prefix: '/dashboard/digital-bundles', perm: 'prodora.digital' },
+  { prefix: '/dashboard/blogs', perm: 'content.blog_write' },
+  { prefix: '/dashboard/reviews', perm: 'content.reviews' },
+  { prefix: '/dashboard/leads', perm: 'support.leads_view' },
+  { prefix: '/dashboard/shops', perm: 'support.stores_view' },
+  { prefix: '/dashboard/stores', perm: 'support.stores_view' },
+  { prefix: '/dashboard/users', perm: 'support.users_view' },
+  { prefix: '/dashboard/reports', perm: 'reports.view' },
 ];
 
 interface Ctx {

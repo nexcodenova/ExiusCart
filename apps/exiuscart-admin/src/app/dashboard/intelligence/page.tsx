@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Sparkles, Loader2, Search, CheckCircle2, AlertTriangle, ExternalLink, Info, RefreshCw, PlugZap, CircleDashed,
 } from 'lucide-react';
-import { adminApi, intelApi } from '@/lib/api';
+import { adminApi, intelApi, intakeApi } from '@/lib/api';
 import { useAdminAccess } from '@/components/access-provider';
 
-interface CatalogProduct { id: number; code?: string | null; name: string; price?: number; cost_price?: number | null; kind?: string; supplier_label?: string }
+interface CatalogProduct { id: number; code?: string | null; name: string; price?: number; cost_price?: number | null; kind?: string; supplier_label?: string; image_url?: string | null }
 interface Source { source: string; paid: boolean; configured: boolean; hint: string | null }
 interface Status { ai_configured: boolean; sources: Source[]; paid_usage: { today: number; month: number; daily_limit: number; monthly_limit: number } }
 interface Demand {
@@ -86,6 +86,10 @@ export default function IntelligencePage() {
   const [result, setResult] = useState<Result | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [testMsg, setTestMsg] = useState<Record<string, string>>({});
+  // Pick from the catalogue, or paste a CJ / AliExpress link (imported through Intake, then analysed)
+  const [mode, setMode] = useState<'pick' | 'paste'>('pick');
+  const [link, setLink] = useState('');
+  const [pasteState, setPasteState] = useState<{ busy: boolean; msg: string; error: boolean }>({ busy: false, msg: '', error: false });
 
   const loadStatus = useCallback(() => intelApi.status().then((r) => setStatus(r.data)).catch(() => {}), []);
 
@@ -102,12 +106,44 @@ export default function IntelligencePage() {
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return products.filter((p) => !q || p.name.toLowerCase().includes(q) || (p.code ?? '').toLowerCase().includes(q)).slice(0, 8);
+    return products.filter((p) => !q || p.name.toLowerCase().includes(q) || (p.code ?? '').toLowerCase().includes(q)).slice(0, 24);
   }, [products, query]);
 
   const pick = async (p: CatalogProduct) => {
     setSelected(p); setQuery(''); setError(''); setResult(null);
     try { const r = await intelApi.latest(p.id); if (r.data.result) setResult(r.data.result); } catch { /* none yet */ }
+  };
+
+  // Paste a link: Intake imports it as a hidden draft and analyses it; we follow its batch until it is ready
+  const pasteLink = async () => {
+    const text = link.trim();
+    if (!text) return;
+    setPasteState({ busy: true, msg: 'Adding the link…', error: false }); setResult(null); setSelected(null);
+    try {
+      const r = await intakeApi.addLinks(text);
+      const bad = (r.data.results ?? []).find((x: any) => x.status !== 'queued');  // unsupported, invalid or duplicate (already in Prodora)
+      if (!r.data.batch_id || bad) {
+        setPasteState({ busy: false, msg: bad?.reason ?? bad?.error ?? 'That link could not be added. Use a CJ or AliExpress product link.', error: true });
+        return;
+      }
+      const started = Date.now();
+      const poll = async (): Promise<void> => {
+        const res = await intakeApi.items({ status: 'all', limit: 5, batch_id: r.data.batch_id });
+        const it = (res.data.items ?? [])[0];
+        if (it?.status === 'failed') { setPasteState({ busy: false, msg: it.error || 'The import failed.', error: true }); return; }
+        if (it?.product && !['queued', 'importing', 'analyzing'].includes(it.status)) {
+          setPasteState({ busy: false, msg: `Imported as ${it.product.code ?? 'a draft'} (hidden until approved in Intake).`, error: false });
+          setLink('');
+          await pick({ id: it.product.id, code: it.product.code, name: it.product.name, cost_price: it.product.cost_price, image_url: it.product.image_url });
+          return;
+        }
+        if (Date.now() - started > 180000) { setPasteState({ busy: false, msg: 'Still importing. It will appear in Intake shortly.', error: false }); return; }
+        setPasteState({ busy: true, msg: it?.status === 'analyzing' ? 'Imported. Checking the market…' : 'Importing the product from the supplier…', error: false });
+        await new Promise((ok) => setTimeout(ok, 3000));
+        return poll();
+      };
+      await poll();
+    } catch (e: any) { setPasteState({ busy: false, msg: errText(e, 'That link could not be added.'), error: true }); }
   };
 
   const run = async (force: boolean) => {
@@ -178,17 +214,46 @@ export default function IntelligencePage() {
             <button type="button" onClick={() => { setSelected(null); setResult(null); }} className="text-xs font-medium text-[#6B3FD9] hover:underline">Change</button>
           </div>
         ) : (
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input id="pick" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search the Prodora catalogue by name or ID" className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-[#6B3FD9] focus:outline-none focus:ring-2 focus:ring-[#6B3FD9]/20" />
-            {query && (
-              <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
-                {shown.length === 0 ? <p className="px-3 py-2 text-sm text-gray-500">No products found.</p> : shown.map((p) => (
-                  <button key={p.id} type="button" onClick={() => pick(p)} className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-gray-50">
-                    <span className="truncate">{p.code ? `${p.code} · ` : ''}{p.name}</span>
-                    <span className="shrink-0 text-xs text-gray-500">{p.cost_price != null ? `cost ${money(p.cost_price)}` : 'no cost yet'}</span>
+          <div>
+            <div className="mb-3 inline-flex rounded-lg border border-gray-200 p-0.5 text-sm">
+              <button type="button" onClick={() => setMode('pick')} className={`rounded-md px-3 py-1.5 font-medium ${mode === 'pick' ? 'bg-[#6B3FD9] text-white' : 'text-gray-600 hover:text-gray-900'}`}>Pick a product</button>
+              {can('prodora.add') && <button type="button" onClick={() => setMode('paste')} className={`rounded-md px-3 py-1.5 font-medium ${mode === 'paste' ? 'bg-[#6B3FD9] text-white' : 'text-gray-600 hover:text-gray-900'}`}>Paste a supplier link</button>}
+            </div>
+            {mode === 'pick' ? (
+              <>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input id="pick" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter the Prodora catalogue by name or ID" className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-[#6B3FD9] focus:outline-none focus:ring-2 focus:ring-[#6B3FD9]/20" />
+                </div>
+                <div className="mt-3 grid max-h-96 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                  {shown.length === 0 ? <p className="col-span-full py-6 text-center text-sm text-gray-500">No products found.</p> : shown.map((p) => (
+                    <button key={p.id} type="button" onClick={() => pick(p)} className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white text-left transition hover:border-[#6B3FD9]/50 hover:shadow-sm">
+                      <div className="aspect-square w-full bg-gray-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {p.image_url && <img src={p.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />}
+                      </div>
+                      <div className="p-2">
+                        <p className="line-clamp-2 text-xs font-medium text-gray-900">{p.name}</p>
+                        <p className="mt-0.5 text-[11px] text-gray-500">{p.code ?? ''}{p.cost_price != null ? ` · cost ${money(p.cost_price)}` : ' · no cost yet'}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">{products.length} products in the catalogue{shown.length < products.length ? `, ${shown.length} shown. Type to filter.` : '.'}</p>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input value={link} onChange={(e) => setLink(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') pasteLink(); }}
+                    placeholder="https://cjdropshipping.com/product/…  or  https://www.aliexpress.com/item/…"
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#6B3FD9] focus:outline-none focus:ring-2 focus:ring-[#6B3FD9]/20" />
+                  <button type="button" onClick={pasteLink} disabled={!link.trim() || pasteState.busy}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#6B3FD9] px-4 py-2 text-sm font-semibold text-white hover:bg-[#5A2EC9] disabled:opacity-50">
+                    {pasteState.busy && <Loader2 className="h-4 w-4 animate-spin" />} Import &amp; analyse
                   </button>
-                ))}
+                </div>
+                <p className="text-xs text-gray-500">A CJ or AliExpress product link. It is imported as a hidden draft (it shows in Intake for approval) and its market check runs straight away.</p>
+                {pasteState.msg && <p className={`text-sm ${pasteState.error ? 'text-red-700' : 'text-gray-700'}`}>{pasteState.msg}</p>}
               </div>
             )}
           </div>
@@ -205,7 +270,7 @@ export default function IntelligencePage() {
           </div>
           <label className="flex cursor-pointer items-start gap-2 pt-6 text-sm text-gray-700">
             <input type="checkbox" checked={usePaid} onChange={(e) => setUsePaid(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#6B3FD9]" />
-            <span>Also check Amazon and Walmart<span className="block text-xs text-gray-500">Uses paid lookups from your monthly limit</span></span>
+            <span>Also check Amazon and TikTok<span className="block text-xs text-gray-500">Uses paid lookups from your monthly limit</span></span>
           </label>
           <label className="flex cursor-pointer items-start gap-2 pt-6 text-sm text-gray-700 md:col-span-3">
             <input type="checkbox" checked={useTrends} onChange={(e) => setUseTrends(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#6B3FD9]" />

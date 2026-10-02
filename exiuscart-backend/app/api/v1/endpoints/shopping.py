@@ -479,6 +479,38 @@ def ensure_audience(db: Session, product: Product, force: bool = False) -> Optio
     return out or cur
 
 
+@router.get("/shopping/products/{product_id}/trends")
+def get_shopping_product_trends(product_id: int, db: Session = Depends(get_db), user: User = Depends(get_prodora_user)):
+    """Google Trends for a Prodora product page, worldwide: 5 years of interest, top countries,
+    rising/top related searches. Shared weekly cache per keyword, so a keyword is looked up
+    (about $0.0003 through Apify) at most once a week for everyone. Always 200."""
+    from app.core.meta_ad_library import ad_library_keyword
+    from app.intel import audience, trends
+    product = db.query(Product).filter(Product.id == product_id, Product.is_active == True, Product.shop_id.is_(None)).first()  # noqa: E712
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    snap = audience.latest_snapshot(db, product.id) or {}
+    keyword = trends.normalise((snap.get("fingerprint") or {}).get("product_type") or ad_library_keyword(product.name))
+    if not keyword:
+        return {"keyword": None, "status": "insufficient"}
+    hit = trends.cached(db, keyword, "WW")
+    if hit:
+        return {"keyword": keyword, "status": hit.get("status", "ok"), "trends": _public_trends(hit)}
+    if not trends.configured():
+        return {"keyword": keyword, "status": "not_configured"}
+    d = trends.fetch(keyword, "WW")
+    if d["status"] == "ok":
+        trends.store(db, keyword, "WW", d)
+    return {"keyword": keyword, "status": d["status"], "trends": _public_trends(d) if d["status"] == "ok" else None}
+
+
+def _public_trends(d: dict) -> dict:
+    return {"direction": d.get("direction"), "summary": d.get("summary"), "yoy_change": d.get("yoy_change"), "level": d.get("level"),
+            "seasonal": d.get("seasonal"), "peak_month": d.get("peak_month"), "monthly": d.get("monthly") or [],
+            "sparkline": d.get("sparkline") or [], "countries": (d.get("countries") or [])[:10],
+            "related": d.get("related") or {"rising": [], "top": []}, "fetched_at": d.get("fetched_at"), "source": d.get("source")}
+
+
 @router.get("/shopping/products/{product_id}/audience")
 def get_shopping_product_audience(product_id: int, db: Session = Depends(get_db), user: User = Depends(get_prodora_user)):
     """"Who to target" on a Prodora product page. Growth/Scale, like Competition; always 200 (see above)."""

@@ -12,8 +12,8 @@ import { Badge } from '@/components/ui/badge';
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-w-0 max-w-full [contain:inline-size] bg-white rounded-2xl shadow-sm border border-[#E5E7EB] p-5">
-      <h2 className="text-xl font-semibold text-[#111827] mb-1 flex items-center gap-2"><Target className="w-5 h-5 text-[#2563EB]" /> Who to target</h2>
-      <p className="mb-4 text-xs text-[#6B7280]">Use this to set up Facebook, Instagram and TikTok ads.</p>
+      <h2 className="text-xl font-semibold text-[#111827] mb-1 flex items-center gap-2"><Target className="w-5 h-5 text-[#2563EB]" /> Targeting on Social Media</h2>
+      <p className="mb-4 text-xs text-[#6B7280]">Who to show your Facebook, Instagram and TikTok ads to.</p>
       {children}
     </div>
   );
@@ -58,10 +58,30 @@ export default function AudienceSection({ productId }: { productId: number }) {
   return (
     <Shell>
       <p className="text-sm text-[#111827]">{a.summary}</p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg bg-gray-50 p-3"><p className="text-[11px] text-[#6B7280]">Age</p><p className="text-sm font-bold">{a.age_range ?? '—'}</p></div>
-        <div className="rounded-lg bg-gray-50 p-3"><p className="text-[11px] text-[#6B7280]">Gender</p><p className="text-sm font-bold capitalize">{a.gender ?? '—'}</p></div>
-        <div className="rounded-lg bg-blue-50 p-3"><p className="text-[11px] text-[#6B7280]">Start with</p><p className="text-sm font-bold text-[#2563EB]">{a.platforms[0]?.name ?? '—'}</p></div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1.4fr_1fr]">
+        <div className="rounded-xl border border-[#E5E7EB] p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-medium text-[#2563EB]">Interest groups</p>
+            <button type="button" onClick={copyInterests} className="flex items-center gap-1 text-xs text-[#2563EB] hover:underline">
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {copied ? 'Copied' : 'Copy all'}
+            </button>
+          </div>
+          <div className="mb-1 flex justify-between border-b border-[#F3F4F6] pb-1.5 text-xs font-semibold text-[#374151]"><span>Interest</span><span>Use in</span></div>
+          <ul className="max-h-56 divide-y divide-[#F3F4F6] overflow-y-auto">
+            {a.interests.map((x) => (
+              <li key={x} className="flex items-center justify-between gap-3 py-1.5 text-sm text-[#111827]">
+                <span className="min-w-0 truncate">{x}</span>
+                <span className="shrink-0 text-xs text-[#6B7280]">{a.platforms.slice(0, 2).map((p) => p.name).join(' · ') || 'Meta'}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="grid grid-cols-2 content-start gap-3">
+          <div className="rounded-xl border border-[#E5E7EB] p-4"><p className="text-xs text-[#6B7280]">Gender</p><p className="mt-1 text-xl font-bold capitalize text-[#111827]">{a.gender ?? '—'}</p></div>
+          <div className="rounded-xl border border-[#E5E7EB] p-4"><p className="text-xs text-[#6B7280]">Age</p><p className="mt-1 text-xl font-bold text-[#111827]">{a.age_range ?? '—'}</p></div>
+          <div className="col-span-2 rounded-xl border border-[#2563EB]/20 bg-blue-50 p-4"><p className="text-xs text-[#6B7280]">Best platform to start</p><p className="mt-1 text-xl font-bold text-[#2563EB]">{a.platforms[0]?.name ?? '—'}</p>
+            {a.platforms[0]?.why && <p className="mt-1 text-xs text-[#374151]">{a.platforms[0].why}</p>}</div>
+        </div>
       </div>
 
       {a.personas.length > 0 && (
@@ -76,21 +96,10 @@ export default function AudienceSection({ productId }: { productId: number }) {
         </div>
       )}
 
-      <div className="mt-5 grid gap-5 md:grid-cols-2">
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-[#111827]">Interests to target</h3>
-            <button type="button" onClick={copyInterests} className="flex items-center gap-1 text-xs text-[#2563EB] hover:underline">
-              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {copied ? 'Copied' : 'Copy'}
-            </button>
-          </div>
-          <Chips items={a.interests} />
-        </div>
-        <div>
-          <h3 className="mb-2 text-sm font-semibold text-[#111827]">Countries to start with</h3>
-          <Chips items={a.countries} />
-          {a.search_regions.length > 0 && <p className="mt-2 text-xs text-[#6B7280]">Google searches come most from: {a.search_regions.join(', ')} (real data).</p>}
-        </div>
+      <div className="mt-5">
+        <h3 className="mb-2 text-sm font-semibold text-[#111827]">Countries to start with</h3>
+        <Chips items={a.countries} />
+        {a.search_regions.length > 0 && <p className="mt-2 text-xs text-[#6B7280]">Google searches come most from: {a.search_regions.join(', ')} (real data).</p>}
       </div>
 
       {a.platforms.length > 0 && (

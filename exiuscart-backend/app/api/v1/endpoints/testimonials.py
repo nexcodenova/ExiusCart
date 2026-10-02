@@ -24,6 +24,8 @@ from app.api.v1.deps import get_current_user
 from app.api.v1.endpoints.admin import require_superuser
 
 logger = logging.getLogger(__name__)
+from app.core.admin_access import require_admin_perm
+
 router = APIRouter()
 
 
@@ -131,7 +133,7 @@ def submit_feedback(
 @router.get("/admin/testimonials")
 def admin_list_testimonials(
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("content.reviews")),
 ):
     rows = db.query(Testimonial).order_by(Testimonial.is_approved.asc(), Testimonial.created_at.desc()).all()
     return {"testimonials": [_testimonial_out(t) for t in rows]}
@@ -150,7 +152,7 @@ class TestimonialAdminIn(BaseModel):
 def admin_create_testimonial(
     data: TestimonialAdminIn,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("content.reviews")),
 ):
     # Admin-added rows go live immediately — no approval step needed for
     # something the admin is typing in directly.
@@ -185,7 +187,7 @@ def admin_update_testimonial(
     testimonial_id: int,
     data: TestimonialUpdateIn,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("content.reviews")),
 ):
     t = db.query(Testimonial).filter(Testimonial.id == testimonial_id).first()
     if not t:
@@ -202,7 +204,7 @@ def admin_update_testimonial(
 def admin_delete_testimonial(
     testimonial_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_superuser),
+    _: User = Depends(require_admin_perm("content.reviews")),
 ):
     t = db.query(Testimonial).filter(Testimonial.id == testimonial_id).first()
     if not t:

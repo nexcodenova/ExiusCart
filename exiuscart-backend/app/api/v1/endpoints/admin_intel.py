@@ -46,7 +46,7 @@ def intel_status(db: Session = Depends(get_db), _: User = Depends(require_admin_
     """Which data sources are connected and how much of the paid budget is used.
     Never returns any key."""
     return {
-        "ai_configured": ai._get_client() is not None,
+        "ai_configured": ai.configured(),
         "markets": sorted(SUPPORTED_MARKETS),
         "sources": [{"source": a.name, "paid": a.paid, "configured": a.configured(), "hint": None if a.configured() else a.missing_hint()}
                     for a in all_adapters()] + [{"source": "google_trends", "paid": False, "configured": trends.configured(),

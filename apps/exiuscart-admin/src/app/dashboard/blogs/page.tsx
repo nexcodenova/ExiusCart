@@ -7,6 +7,7 @@ import { Plus, Loader2, Eye, Pencil, Trash2, FileText } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { BLOG_SITES, useBlogSite } from '@/lib/blog-sites';
 
+import { useAdminAccess } from '@/components/access-provider';
 interface BlogPostRow {
   id: number;
   title: string;
@@ -24,6 +25,7 @@ export default function AdminBlogListPage() {
 }
 
 function BlogList() {
+  const { can } = useAdminAccess();
   const site = useBlogSite();
   const meta = BLOG_SITES.find((s) => s.key === site)!;
   const [posts, setPosts] = useState<BlogPostRow[]>([]);
@@ -117,10 +119,12 @@ function BlogList() {
                     className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-800 hover:bg-gray-100 transition">
                     <Pencil className="w-3.5 h-3.5" /> Edit
                   </Link>
-                  <button onClick={() => remove(p.id)} disabled={deletingId === p.id}
-                    className="p-1.5 rounded-lg border border-gray-300 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 transition disabled:opacity-50">
-                    {deletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  </button>
+                  {can('content.blog_publish') && (
+                    <button onClick={() => remove(p.id)} disabled={deletingId === p.id}
+                      className="p-1.5 rounded-lg border border-gray-300 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 transition disabled:opacity-50">
+                      {deletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

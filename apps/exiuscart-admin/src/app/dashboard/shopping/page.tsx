@@ -14,6 +14,7 @@ import { RichTextEditor } from '@/components/rich-text-editor';
 import { SupplierLogo } from '@/components/supplier-logo';
 import { CountrySelect } from '@/components/country-select';
 
+import { useAdminAccess } from '@/components/access-provider';
 // Prodora catalog products aren't shop-scoped to any one seller, so there's
 // no real sequential counter to draw from (unlike a seller's own products —
 // see exiuscart-store's /next-sku) — a readable name-prefixed random code is
@@ -1200,6 +1201,7 @@ function AliexpressImportModal({ connected, onClose, onImported }: {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function TrendingDropshippingPage() {
+  const { can } = useAdminAccess();
   const [products, setProducts] = useState<ShoppingProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -2481,7 +2483,7 @@ export default function TrendingDropshippingPage() {
               </div>
 
               {/* AI Studio */}
-              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
+              {can('prodora.ai') && <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">AI Studio</p>
                 <AiStudioAdminPanel
                   productId={editProduct?.id ?? null}
@@ -2494,7 +2496,7 @@ export default function TrendingDropshippingPage() {
                   }))}
                   onAddImage={(url) => setExtraImages((arr) => [...arr, url])}
                 />
-              </div>
+              </div>}
 
               {/* Social Proof Links */}
               <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">

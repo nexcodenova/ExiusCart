@@ -247,12 +247,12 @@ def _catalogue_product(db: Session, product_id: int) -> Product:
 
 
 @router.post("/admin/ai-studio/products/{product_id}/improve")
-def admin_studio_improve(product_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.edit"))):
+def admin_studio_improve(product_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.ai"))):
     return _improve(db, _catalogue_product(db, product_id), None)
 
 
 @router.post("/admin/ai-studio/products/{product_id}/apply")
-def admin_studio_apply(product_id: int, data: ApplyIn, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.edit"))):
+def admin_studio_apply(product_id: int, data: ApplyIn, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.ai"))):
     """Saves the fields the admin form doesn't have (Google title/description, highlights, FAQ,
     keywords); the form itself fills in the name and description, so its Save can't undo them."""
     product = _catalogue_product(db, product_id)
@@ -262,6 +262,6 @@ def admin_studio_apply(product_id: int, data: ApplyIn, db: Session = Depends(get
 
 
 @router.post("/admin/ai-studio/products/{product_id}/image")
-def admin_studio_image(product_id: int, data: ImageIn, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.edit"))):
+def admin_studio_image(product_id: int, data: ImageIn, db: Session = Depends(get_db), _: User = Depends(require_admin_perm("prodora.ai"))):
     """Returns the new image's URL; the admin form adds it to the product's photos."""
     return _make_image(db, _catalogue_product(db, product_id), None, data)

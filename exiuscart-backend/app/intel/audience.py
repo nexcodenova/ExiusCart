@@ -63,20 +63,10 @@ def prompt(product: dict, signals: dict) -> str:
 
 
 def _ask(p: str) -> Optional[dict]:
-    """Claude first (already on the spend meter), then GPT, then Gemini."""
+    """Claude, then GPT, then Gemini (app/intel/ai.py ask_json)."""
     from app.intel import ai
     out = ai.ask_json(p, max_tokens=1500, purpose="audience")
-    if isinstance(out, dict) and out:
-        return out
-    from app.core import ai_studio
-    for fn in (ai_studio._openai_text, ai_studio._gemini_text):
-        try:
-            r = fn(p)
-            if isinstance(r, dict) and r:
-                return r
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"[audience] provider failed: {type(e).__name__}")
-    return None
+    return out if isinstance(out, dict) and out else None
 
 
 def _clean_list(v: Any, n: int, maxlen: int = 80) -> List[str]:

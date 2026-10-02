@@ -296,7 +296,7 @@ export const scoreboardApi = {
 // ── Prodora intake (bulk add, review queue, publishing) ──
 export const intakeApi = {
   summary: () => api.get('/admin/intake/summary'),
-  items: (params: { status?: string; verdict?: string; q?: string; offset?: number; limit?: number }) => api.get('/admin/intake/items', { params }),
+  items: (params: { status?: string; verdict?: string; q?: string; offset?: number; limit?: number; batch_id?: string }) => api.get('/admin/intake/items', { params }),
   addLinks: (text: string, category_id?: number | null) => api.post('/admin/intake/links', { text, category_id: category_id || undefined }),
   addCjPids: (cj_pids: string[], category_id?: number | null) => api.post('/admin/intake/cj-pids', { cj_pids, category_id: category_id || undefined }),
   bulk: (ids: number[], action: 'approve' | 'reject' | 'retry' | 'delete', reason?: string) => api.post('/admin/intake/bulk', { ids, action, reason }),
