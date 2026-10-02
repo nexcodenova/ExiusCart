@@ -44,7 +44,7 @@ export function RevenueTrend({
   const show = (m: Metric, n: number) => (m === 'revenue' ? fmt(n, 0) : n.toLocaleString());
 
   return (
-    <div className="lg:col-span-3 overflow-hidden rounded-xl border border-border bg-card">
+    <div className="lg:col-span-3 lg:only:col-span-5 overflow-hidden rounded-xl border border-border bg-card">
       {/* Title, then a small legend that also turns each line on or off */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
         <div>

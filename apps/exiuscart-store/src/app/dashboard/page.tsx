@@ -65,13 +65,21 @@ export default function DashboardPage() {
 
       <OverviewCards stats={stats} loading={loading} fmt={fmt} />
 
+      {/* Top products sits next to the trend; Revenue by channel next to the map.
+          Wrapper divs carry the grid spans so each panel fills its cell's height. */}
       <div className="grid gap-4 lg:grid-cols-5">
         <RevenueTrend stats={stats} loading={loading} fmt={fmt} />
-        <RevenueByChannel stats={stats} fmt={fmt} periodLabel={dateRangeLabel(dateRange)} />
+        {(stats?.topProducts?.length ?? 0) > 0 && (
+          <div className="flex flex-col lg:col-span-2 [&>*]:flex-1">
+            <TopProductsPanel stats={stats} fmt={fmt} periodLabel={dateRangeLabel(dateRange)} />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-3">
-        <TopProductsPanel stats={stats} fmt={fmt} periodLabel={dateRangeLabel(dateRange)} />
+        <div className="flex flex-col [&>*]:flex-1">
+          <RevenueByChannel stats={stats} fmt={fmt} periodLabel={dateRangeLabel(dateRange)} />
+        </div>
         <CustomersByCountry stats={stats} />
       </div>
 

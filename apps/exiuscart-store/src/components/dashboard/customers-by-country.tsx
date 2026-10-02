@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Globe2, X } from 'lucide-react';
+import { Globe2, X, MapPin } from 'lucide-react';
 import { CountryFlag } from '@/components/country-flag';
-import { WorldMap } from './world-map';
+import { WorldMap, REGION_FOCUS } from './world-map';
 import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
 type Metric = 'customers' | 'orders' | 'views';
@@ -45,8 +45,21 @@ function useCountUp(target: number, ms = 700): number {
 }
 
 export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) {
-  const [metric, setMetric] = useState<Metric>('views');
+  const viewsTotal = (stats?.viewsByCountry ?? []).reduce((s, r) => s + r.customers, 0);
+  // Open on Views only when there are views (Custom Website); otherwise Orders,
+  // e.g. TheDersi shops, which get no storefront views from us.
+  const [metric, setMetric] = useState<Metric>(viewsTotal > 0 ? 'views' : 'orders');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const home = stats?.homeCountry ?? null;
+  const canZoom = !!home && !!REGION_FOCUS[home];
+  // Zoomed onto the home country by default when most orders are local (TheDersi, POS shops).
+  const homeShare = (stats?.ordersByCountry ?? []).find((r) => r.code === home)?.percentage ?? 0;
+  const [zoomed, setZoomed] = useState<boolean>(canZoom && homeShare >= 50);
+  useEffect(() => { if (viewsTotal === 0 && metric === 'views') setMetric('orders'); }, [viewsTotal]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setZoomed(canZoom && homeShare >= 50); }, [canZoom, homeShare]);
+  const cities = stats?.ordersByCity ?? [];
+  const showCities = zoomed && cities.length > 0;
+  const maxCity = Math.max(...cities.map((c) => c.orders), 1);
   const [barsIn, setBarsIn] = useState(false);
   const source = metric === 'orders' ? stats?.ordersByCountry : metric === 'views' ? stats?.viewsByCountry : stats?.customersByCountry;
   // Real countries first (biggest first), the "Other" bucket last.
@@ -65,7 +78,7 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
     setBarsIn(false);
     const raf = requestAnimationFrame(() => requestAnimationFrame(() => setBarsIn(true)));
     return () => cancelAnimationFrame(raf);
-  }, [metric, stats]);
+  }, [metric, stats, zoomed]);
 
   const top = allRows.find((r) => r.code !== 'Unknown');
 
@@ -74,7 +87,9 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
         <div>
           <h2 className="font-semibold text-foreground">Where your {METRIC_LABEL[metric].toLowerCase()} come from</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Click a country on the map to focus on it.</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {zoomed && home ? `Zoomed on ${countryName(home, home)}. Switch to World to see every country.` : 'Click a country on the map to focus on it.'}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {/* Underlined tabs, Apify-style */}
@@ -93,7 +108,18 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
       <div className="mt-3 grid border-t border-border lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         {/* Map always renders, even with zero rows — an empty map still confirms the widget works. */}
         <div className="relative h-64 w-full overflow-hidden bg-muted/30 sm:h-80 lg:h-full lg:min-h-[340px] lg:border-r lg:border-border">
-          <WorldMap data={mappable} metricLabel={METRIC_LABEL[metric]} selectedCode={selectedCode} onSelectCountry={setSelectedCode} />
+          <WorldMap data={mappable} metricLabel={METRIC_LABEL[metric]} selectedCode={selectedCode} onSelectCountry={setSelectedCode} focusCode={zoomed ? home : null} />
+          {/* World / home-country switch */}
+          {canZoom && home && (
+            <div className="absolute right-3 top-3 flex rounded-md border border-border bg-background/90 p-0.5 text-[11px] backdrop-blur">
+              {([false, true] as const).map((z) => (
+                <button key={String(z)} type="button" onClick={() => setZoomed(z)}
+                  className={`flex items-center gap-1 rounded px-2 py-1 transition ${zoomed === z ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {z ? <><CountryFlag code={home} className="h-2.5 w-3.5" />{countryName(home, home)}</> : <><Globe2 className="h-3 w-3" />World</>}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Colour key */}
           <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-2 rounded-md border border-border bg-background/90 px-2.5 py-1.5 text-[10px] text-muted-foreground backdrop-blur">
             <span>Less</span>
@@ -122,9 +148,32 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
               <X className="h-3 w-3 text-muted-foreground" />
             </button>
           )}
-          {total === 0 ? (
-            <div className="flex flex-1 items-center justify-center py-8 text-sm text-muted-foreground">
+          {showCities ? (
+            <div className="mt-4">
+              <p className="mb-2.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                <MapPin className="h-3 w-3" /> Top cities by orders in {countryName(home!, home!)}
+              </p>
+              <ol className="space-y-2.5">
+                {cities.map((c, i) => (
+                  <li key={c.city}>
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-4 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{c.city === 'Not given' ? '' : i + 1}</span>
+                      <span className={`min-w-0 flex-1 truncate text-[13px] ${c.city === 'Not given' ? 'text-muted-foreground' : 'text-foreground'}`}>{c.city}</span>
+                      <span className="text-[13px] tabular-nums text-foreground">{c.orders}</span>
+                      <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{c.percentage}%</span>
+                    </div>
+                    <div className="ml-[26px] mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-700 ease-out"
+                        style={{ width: barsIn ? `${Math.max(4, Math.round((c.orders / maxCity) * 100))}%` : '0%' }} />
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : total === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-1 py-8 text-center text-sm text-muted-foreground">
               No {metric} data yet
+              {metric === 'views' && <span className="text-[11px]">Views come from your own Custom Website storefront only.</span>}
             </div>
           ) : (
             <ol className="mt-4 space-y-2.5">
@@ -151,7 +200,7 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
               ))}
             </ol>
           )}
-          {!selectedCode && allRows.some((r) => r.code === 'Unknown') && (
+          {!selectedCode && !showCities && allRows.some((r) => r.code === 'Unknown') && (
             <p className="mt-auto border-t border-border pt-2 text-[10px] text-muted-foreground">
               {metric === 'orders'
                 ? '"Other" = orders from a customer added before country tracking, or from a source that does not report it yet.'

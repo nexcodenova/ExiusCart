@@ -1,6 +1,8 @@
 'use client';
 
+import { useId } from 'react';
 import Link from 'next/link';
+import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from 'lucide-react';
 
 const ICON_BG: Record<string, string> = {
@@ -10,16 +12,17 @@ const ICON_BG: Record<string, string> = {
   amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
 };
-const BAR_BG: Record<string, string> = {
-  indigo: 'bg-indigo-300 dark:bg-indigo-500/50',
-  violet: 'bg-violet-300 dark:bg-violet-500/50',
-  emerald: 'bg-emerald-300 dark:bg-emerald-500/50',
-  amber: 'bg-amber-300 dark:bg-amber-500/50',
-  rose: 'bg-rose-300 dark:bg-rose-500/50',
+const STROKE: Record<string, string> = {
+  indigo: '#6366f1', violet: '#8b5cf6', emerald: '#10b981', amber: '#f59e0b', rose: '#f43f5e',
 };
 
+type Color = 'indigo' | 'violet' | 'emerald' | 'amber' | 'rose';
+
+// Every card ends in the same 40px chart area so they line up: a smooth
+// mini line chart over the period when there is a trend, or a split bar
+// (e.g. in stock vs out of stock) when the number is a share, not a trend.
 export function KpiCard({
-  icon: Icon, label, value, change, comparison, href, trend, color,
+  icon: Icon, label, value, change, comparison, href, trend, trendLabels, formatPoint, color, split,
 }: {
   icon: React.ElementType;
   label: string;
@@ -28,15 +31,22 @@ export function KpiCard({
   comparison: string;
   href: string;
   trend: number[];
-  color: 'indigo' | 'violet' | 'emerald' | 'amber' | 'rose';
+  trendLabels?: string[];
+  formatPoint?: (n: number) => string;
+  color: Color;
+  split?: { parts: { label: string; value: number; className: string }[] };
 }) {
   const isPositive = (change ?? 0) > 0;
-  const max = Math.max(...trend, 1);
+  const gid = useId().replace(/:/g, '');
+  const stroke = STROKE[color];
+  const hasTrend = trend.length > 1 && trend.some((v) => v > 0);
+  const data = trend.map((v, i) => ({ v, label: trendLabels?.[i] ?? '' }));
+  const splitTotal = split ? split.parts.reduce((s, p) => s + p.value, 0) : 0;
 
   return (
     <Link
       href={href}
-      className="group rounded-xl border border-border bg-card px-3.5 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+      className="group flex flex-col rounded-xl border border-border bg-card px-3.5 pt-3 transition-all duration-200 hover:border-foreground/20 hover:shadow-md"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -50,7 +60,7 @@ export function KpiCard({
 
       <div className="mt-1.5">
         <p className="text-xl font-bold tracking-tight tabular-nums text-foreground">{value}</p>
-        <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+        <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
           {change !== undefined && change !== null && change !== 0 && (
             <span className={`flex items-center font-semibold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
               {isPositive ? <ArrowUpRight className="mr-0.5 h-3.5 w-3.5" /> : <ArrowDownRight className="mr-0.5 h-3.5 w-3.5" />}
@@ -61,18 +71,51 @@ export function KpiCard({
         </p>
       </div>
 
-      {trend.length > 1 && (
-        <div className="mt-1.5 flex h-4 items-end gap-[3px]">
-          {trend.map((v, i) => (
-            <span
-              key={i}
-              className={`flex-1 rounded-sm transition-all group-hover:opacity-80 ${BAR_BG[color]}`}
-              style={{ height: `${Math.max(2, (v / max) * 16)}px` }}
-            />
-          ))}
-        </div>
-      )}
-
+      <div className="-mx-3.5 mt-2 h-10">
+        {hasTrend ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id={`kpi-${gid}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={stroke} stopOpacity={0.28} />
+                  <stop offset="100%" stopColor={stroke} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Tooltip
+                cursor={{ stroke, strokeOpacity: 0.3 }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload as { v: number; label: string };
+                  return (
+                    <div className="rounded-md border border-border bg-popover px-2 py-1 text-[11px] shadow-md">
+                      <span className="text-muted-foreground">{d.label}</span>{' '}
+                      <span className="font-medium tabular-nums text-foreground">{formatPoint ? formatPoint(d.v) : d.v.toLocaleString()}</span>
+                    </div>
+                  );
+                }}
+              />
+              <Area type="monotone" dataKey="v" stroke={stroke} strokeWidth={1.75} fill={`url(#kpi-${gid})`}
+                dot={false} activeDot={{ r: 3, fill: stroke, strokeWidth: 0 }} isAnimationActive animationDuration={600} />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : split && splitTotal > 0 ? (
+          <div className="flex h-full flex-col justify-center gap-1.5 px-3.5">
+            <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
+              {split.parts.map((p) => (
+                <span key={p.label} className={p.className} style={{ width: `${(p.value / splitTotal) * 100}%` }} />
+              ))}
+            </div>
+            <div className="flex gap-3 text-[10px] text-muted-foreground">
+              {split.parts.map((p) => (
+                <span key={p.label} className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${p.className}`} />{p.label} {p.value.toLocaleString()}</span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          // Flat baseline when there is nothing to chart yet, so every card keeps the same height
+          <div className="mx-3.5 mt-6 border-t border-dashed border-border" />
+        )}
+      </div>
     </Link>
   );
 }

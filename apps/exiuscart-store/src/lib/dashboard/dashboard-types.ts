@@ -31,6 +31,9 @@ export interface DashboardStats {
   ordersByCountry?: { code: string; country: string; customers: number; percentage: number }[];
   // Real storefront product views by visitor country (Custom Website channel only).
   viewsByCountry?: { code: string; country: string; customers: number; percentage: number }[];
+  // The shop's own country (ISO-2) and its top cities by orders, for the zoomed-in map.
+  homeCountry?: string | null;
+  ordersByCity?: { city: string; orders: number; percentage: number }[];
   recentCustomers?: { id: number; name: string; orders: number; total: number; date: string | null }[];
   storeHealth?: { channelsConnected: number; lastSyncedAt: string | null };
   // Real, period-filtered numbers driven by the date-range selector —
@@ -40,7 +43,7 @@ export interface DashboardStats {
   periodOrders?: number;
   periodRevenueChange?: number | null;
   periodOrdersChange?: number | null;
-  periodTrend?: { label: string; revenue: number; orders: number; growth: number; views?: number }[];
+  periodTrend?: { label: string; revenue: number; orders: number; growth: number; views?: number; newCustomers?: number }[];
   // Real conversion rate — Custom Website channel only (StorefrontEvent
   // tracking can't see Shopify/eBay/etc.'s own frontend). null when there
   // simply aren't any tracked views yet, not a fabricated 0%.

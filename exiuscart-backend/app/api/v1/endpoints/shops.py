@@ -1357,6 +1357,7 @@ def get_dashboard_stats(
         "repeatCustomerRate": 0.0, "inventoryValue": 0.0,
         "outOfStockCount": 0, "topCustomers": [],
         "customersByCountry": [], "ordersByCountry": [], "viewsByCountry": [], "recentCustomers": [],
+        "homeCountry": None, "ordersByCity": [],
         "storeHealth": {"channelsConnected": 0, "lastSyncedAt": None},
         "periodRevenue": 0.0, "periodOrders": 0,
         "periodRevenueChange": None, "periodOrdersChange": None,
@@ -1502,7 +1503,7 @@ def get_dashboard_stats(
                 Ord.shop_id == shop_id, Ord.payment_status == "paid",
                 Ord.created_at >= period_start, Ord.created_at <= period_end,
             ).group_by(func.date(Ord.created_at)).all()
-            daily_map = {r.d.isoformat(): {"revenue": float(r.rev or 0), "orders": int(r.cnt)} for r in daily_rows}
+            daily_map = {(r.d.isoformat() if hasattr(r.d, "isoformat") else str(r.d)[:10]): {"revenue": float(r.rev or 0), "orders": int(r.cnt)} for r in daily_rows}
             period_trend = []
             for i in range(span_days):
                 d = (period_start.date() + timedelta(days=i))
@@ -1530,6 +1531,20 @@ def get_dashboard_stats(
             views_by_label[label] = views_by_label.get(label, 0) + int(r.cnt)
         for entry in period_trend:
             entry["views"] = views_by_label.get(entry["label"], 0)
+
+        # New customers per bucket, same buckets, for the Customers card's chart.
+        new_cust_rows = db.query(
+            func.date(Cust.created_at).label("d"), func.count(Cust.id).label("cnt"),
+        ).filter(
+            Cust.shop_id == shop_id, Cust.created_at >= views_from, Cust.created_at <= views_to,
+        ).group_by(func.date(Cust.created_at)).all()
+        new_by_label: dict[str, int] = {}
+        for r in new_cust_rows:
+            d = r.d if hasattr(r.d, "strftime") else datetime.fromisoformat(str(r.d))
+            label = d.strftime("%b '%y") if use_monthly_view else d.strftime("%b %d")
+            new_by_label[label] = new_by_label.get(label, 0) + int(r.cnt)
+        for entry in period_trend:
+            entry["newCustomers"] = new_by_label.get(entry["label"], 0)
 
         for idx in range(len(period_trend)):
             if idx == 0:
@@ -1578,10 +1593,20 @@ def get_dashboard_stats(
             "GB": "United Kingdom", "CA": "Canada", "IN": "India", "PK": "Pakistan",
             "BD": "Bangladesh", "NP": "Nepal", "MM": "Myanmar",
         }
+        # Shop's own country. Sales made in person (POS), added by hand, or on
+        # TheDersi (Sri Lanka only) are local by nature, so when the customer has
+        # no country saved they count for the shop's country instead of "Unknown".
+        from sqlalchemy import case
+        from app.core.country_utils import shop_country_iso
+        home_iso = shop_country_iso(shop.country)
+        if home_iso:
+            iso_to_name.setdefault(home_iso, home_iso)
+        _LOCAL_SOURCES = ("pos", "manual", "thedersi")
+        cust_country = func.coalesce(Cust.country, case((Cust.source.in_(_LOCAL_SOURCES), home_iso), else_=None)) if home_iso else Cust.country
         country_rows = (
-            db.query(Cust.country, func.count(Cust.id).label("cnt"))
+            db.query(cust_country.label("c"), func.count(Cust.id).label("cnt"))
             .filter(Cust.shop_id == shop_id)
-            .group_by(Cust.country).order_by(func.count(Cust.id).desc()).limit(8).all()
+            .group_by(cust_country).order_by(func.count(Cust.id).desc()).limit(8).all()
         )
         total_customers_for_pct = sum(int(r[1]) for r in country_rows) or 1
         adv["customersByCountry"] = [
@@ -1605,14 +1630,54 @@ def get_dashboard_stats(
         # instead of bucketing them into "Unknown" like customersByCountry
         # already does. Same outer-join pattern already used for this exact
         # reason in the admin order search (channels.py's dropship search).
+        order_country = func.coalesce(
+            Cust.country, case((Ord.source.in_(_LOCAL_SOURCES), home_iso), else_=None),
+        ) if home_iso else Cust.country
         order_country_rows = (
-            db.query(Cust.country, func.count(Ord.id).label("cnt"))
+            db.query(order_country.label("c"), func.count(Ord.id).label("cnt"))
             .select_from(Ord)
             .outerjoin(Cust, Ord.customer_id == Cust.id)
             .filter(Ord.shop_id == shop_id, Ord.status != "cancelled",
                     Ord.created_at >= period_start, Ord.created_at <= period_end)
-            .group_by(Cust.country).order_by(func.count(Ord.id).desc()).limit(8).all()
+            .group_by(order_country).order_by(func.count(Ord.id).desc()).limit(8).all()
         )
+
+        # Top cities inside the shop's own country, for the zoomed-in map view.
+        # City comes from the customer record, else the order's structured
+        # shipping address (city, then province) — never guessed from free text.
+        adv["homeCountry"] = home_iso
+        if home_iso:
+            import json as _json
+            city_rows = (
+                db.query(Cust.city, Ord.shipping_address)
+                .select_from(Ord)
+                .outerjoin(Cust, Ord.customer_id == Cust.id)
+                .filter(Ord.shop_id == shop_id, Ord.status != "cancelled",
+                        Ord.created_at >= period_start, Ord.created_at <= period_end,
+                        order_country == home_iso)
+                .order_by(Ord.id.desc()).limit(5000).all()
+            )
+            city_counts: dict[str, int] = {}
+            for cust_city, ship in city_rows:
+                city = (cust_city or "").strip()
+                if not city and ship:
+                    try:
+                        d = _json.loads(ship)
+                        if isinstance(d, dict):
+                            city = str(d.get("city") or d.get("province") or d.get("state") or "").strip()
+                    except (ValueError, TypeError):
+                        pass
+                key = city.title() if city else "Not given"
+                city_counts[key] = city_counts.get(key, 0) + 1
+            total_city = sum(city_counts.values()) or 1
+            named = sorted(((k, v) for k, v in city_counts.items() if k != "Not given"), key=lambda kv: -kv[1])[:8]
+            if "Not given" in city_counts:
+                named.append(("Not given", city_counts["Not given"]))
+            adv["ordersByCity"] = [
+                {"city": k, "orders": v, "percentage": round(v / total_city * 100, 1)} for k, v in named
+            ]
+        else:
+            adv["ordersByCity"] = []
         total_orders_for_pct = sum(int(r[1]) for r in order_country_rows) or 1
         adv["ordersByCountry"] = [
             {

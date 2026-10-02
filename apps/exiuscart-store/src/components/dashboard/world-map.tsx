@@ -40,14 +40,38 @@ const SMALL_COUNTRY_POINTS: Record<string, [number, number]> = {
   TV: [179.2, -8.5], XK: [20.9, 42.6],
 };
 
+// Zoomed views for a shop's home country: the country itself plus its
+// neighbours (Sri Lanka shows with southern India), in the map's own
+// 800x400 Mercator frame. Countries not listed just keep the world view.
+export const REGION_FOCUS: Record<string, { center: [number, number]; scale: number }> = {
+  LK: { center: [80.4, 8.2], scale: 2400 },
+  IN: { center: [80, 22], scale: 650 },
+  AE: { center: [54, 24.5], scale: 2600 },
+  SA: { center: [45, 24], scale: 900 },
+  PK: { center: [69.5, 30], scale: 950 },
+  BD: { center: [90.3, 23.7], scale: 2800 },
+  NP: { center: [84, 28.3], scale: 2800 },
+  GB: { center: [-3, 54.5], scale: 1500 },
+  US: { center: [-97, 39], scale: 420 },
+  CA: { center: [-96, 58], scale: 330 },
+  MY: { center: [109, 4], scale: 900 },
+  SG: { center: [103.8, 1.35], scale: 9000 },
+  QA: { center: [51.2, 25.3], scale: 6000 },
+  KW: { center: [47.6, 29.3], scale: 6000 },
+  OM: { center: [57, 21], scale: 1600 },
+  BH: { center: [50.55, 26.05], scale: 14000 },
+};
+
 export function WorldMap({
-  data, metricLabel = 'Customers', selectedCode, onSelectCountry,
+  data, metricLabel = 'Customers', selectedCode, onSelectCountry, focusCode,
 }: {
   data: CountryRow[];
   metricLabel?: string;
   selectedCode?: string | null;
   onSelectCountry?: (code: string | null) => void;
+  focusCode?: string | null;
 }) {
+  const focus = focusCode ? REGION_FOCUS[focusCode] : undefined;
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [ready, setReady] = useState(false);
@@ -66,7 +90,7 @@ export function WorldMap({
         setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
       }}
     >
-      <ComposableMap projection="geoMercator" projectionConfig={{ scale: 125, center: [12, 28] }} width={800} height={400} style={{ width: '100%', height: '100%' }}>
+      <ComposableMap key={focusCode ?? 'world'} projection="geoMercator" projectionConfig={focus ?? { scale: 125, center: [12, 28] }} width={800} height={400} style={{ width: '100%', height: '100%' }}>
         <Geographies geography={GEO_URL}>
           {({ geographies }) => {
             const paths: React.ReactNode[] = [];
@@ -95,7 +119,7 @@ export function WorldMap({
                   geography={geo}
                   fill={fill}
                   stroke={isSelected ? 'rgba(67, 56, 202, 0.95)' : 'rgba(148, 163, 184, 0.35)'}
-                  strokeWidth={isSelected ? 1.1 : 0.4}
+                  strokeWidth={isSelected ? 1.1 : focus ? 0.8 : 0.4}
                   onMouseEnter={() => setHoveredId(id)}
                   onMouseLeave={() => setHoveredId(null)}
                   onClick={() => {
