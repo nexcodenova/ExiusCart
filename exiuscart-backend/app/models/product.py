@@ -104,6 +104,8 @@ class Product(Base):
     # The Google result's own title and snippet; empty = the storefront builds them from name/description
     seo_title = Column(String(80), nullable=True)
     meta_description = Column(String(200), nullable=True)
+    # "Who to target" (app/intel/audience.py): AI suggestion on top of real market data, cached here
+    audience_json = Column(JSON, nullable=True)
 
     # Short per-product highlight facts shown under the price — [{icon,
     # label}, ...], e.g. {"icon": "calendar", "label": "1 Year Access"} or

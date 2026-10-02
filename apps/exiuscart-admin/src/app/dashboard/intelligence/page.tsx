@@ -49,7 +49,7 @@ const VERDICT_STYLE = {
   AVOID: 'border-red-200 bg-red-50 text-red-800',
 };
 const CONF_STYLE = { high: 'bg-green-100 text-green-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-gray-200 text-gray-700' };
-const SOURCE_LABEL: Record<string, string> = { ebay: 'eBay', amazon: 'Amazon', walmart: 'Walmart', google_trends: 'Google Trends' };
+const SOURCE_LABEL: Record<string, string> = { ebay: 'eBay', amazon: 'Amazon', walmart: 'Walmart', google_trends: 'Google Trends', tiktok: 'TikTok' };
 const DIRECTION: Record<string, { label: string; cls: string }> = {
   rising: { label: 'Rising', cls: 'bg-green-100 text-green-800' }, falling: { label: 'Falling', cls: 'bg-red-100 text-red-800' },
   steady: { label: 'Steady', cls: 'bg-gray-100 text-gray-700' }, low_interest: { label: 'Very low interest', cls: 'bg-amber-100 text-amber-800' }, unknown: { label: 'Not enough data', cls: 'bg-gray-100 text-gray-600' },

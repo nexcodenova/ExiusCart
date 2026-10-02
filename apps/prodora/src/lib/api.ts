@@ -149,7 +149,25 @@ export interface IntelAnalysis {
     seasonal: boolean | null; peak_month: string | null; summary: string | null; sparkline: { date: string; value: number }[];
     countries: { country: string; code: string | null; index: number }[]; fetched_at: string | null; source: string; geo: string | null;
   } | null;
+  tiktok: {
+    hashtag: string; videos_found: number; total_views: number; median_views: number; recent_videos: number; summary: string;
+    top: { url: string | null; views: number; likes: number; author: string | null; text: string | null; cover: string | null }[];
+    fetched_at: string | null;
+  } | null;
 }
+
+// "Who to target": an AI suggestion built on the product's real market data
+export interface Audience {
+  summary: string; age_range: string | null; gender: string | null;
+  personas: { name: string; who: string; why_they_buy: string }[];
+  interests: string[]; countries: string[]; search_regions: string[];
+  platforms: { name: string; why: string }[]; ad_angles: string[]; hashtags: string[];
+  tiktok_proof: { hashtag: string; videos: number; median_views: number } | null;
+  based_on: string[]; generated_at: string;
+}
+export type AudienceResponse =
+  | { locked: true; plan: string | null; required_plan: string }
+  | { locked: false; available: boolean; audience: Audience | null };
 
 export type IntelResponse =
   | { locked: true; plan: string | null; required_plan: string; available: boolean }
@@ -179,6 +197,7 @@ export const aiApi = {
 };
 
 export const shoppingApi = {
+  getAudience: async (id: number): Promise<AudienceResponse> => (await apiClient.get(`/shopping/products/${id}/audience`, { timeout: 90000 })).data,
   getIntelligence: async (id: number): Promise<IntelResponse> => {
     const response = await apiClient.get(`/shopping/products/${id}/intelligence`);
     return response.data;

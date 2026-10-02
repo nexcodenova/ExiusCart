@@ -51,7 +51,9 @@ def report(db: Session, now: Optional[datetime] = None) -> dict:
     events = (db.query(PlatformEvent.event_type, PlatformEvent.payload, PlatformEvent.created_at)
               .filter(PlatformEvent.event_type.in_([ai.AI_EVENT, engine.PAID_EVENT, engine.FREE_EVENT]), PlatformEvent.created_at >= since).all())
 
-    month = {"ai_calls": 0, "tok_in": 0, "tok_out": 0, "paid": 0, "free": 0}
+    month = {"ai_calls": 0, "tok_in": 0, "tok_out": 0, "paid": 0, "paid_costed": 0, "free": 0}
+    from app.intel import apify as _apify
+    apify_on = _apify.configured()
     today = {"ai_calls": 0, "paid": 0, "free": 0}
     by_purpose: Dict[str, int] = defaultdict(int)
     daily: Dict[str, Dict[str, float]] = {(series_start + timedelta(days=i)).date().isoformat(): {"ai": 0.0, "paid": 0.0} for i in range(DAYS_SHOWN)}
@@ -73,17 +75,40 @@ def report(db: Session, now: Optional[datetime] = None) -> dict:
             if day in daily:
                 daily[day]["ai"] += ai_cost(tin, tout)
         elif etype == engine.PAID_EVENT:
+            # Counted for the caps either way; costed here only when it did NOT go through Apify
+            # (Apify runs carry their own real cost, added below, so they are not charged twice).
+            via_apify = apify_on and str(payload.get("source") or "") in ("amazon", "tiktok")
             if when >= month_start:
                 month["paid"] += 1
+                if not via_apify:
+                    month["paid_costed"] += 1
             if when >= day_start:
                 today["paid"] += 1
-            if day in daily:
+            if day in daily and not via_apify:
                 daily[day]["paid"] += p["paid_lookup"]
         else:
             if when >= month_start:
                 month["free"] += 1
             if when >= day_start:
                 today["free"] += 1
+
+    # Apify (Amazon, Google Trends, TikTok): each run logged with its own estimated cost
+    from app.intel.apify import RUN_EVENT as APIFY_EVENT
+    apify_rows = (db.query(PlatformEvent.payload, PlatformEvent.created_at)
+                  .filter(PlatformEvent.event_type == APIFY_EVENT, PlatformEvent.created_at >= since).all())
+    apify_m = {"runs": 0, "cost": 0.0, "today": 0, "by_kind": defaultdict(int)}
+    for payload, created in apify_rows:
+        payload, when = payload or {}, _aware(created)
+        cost = float(payload.get("cost") or 0)
+        day = when.date().isoformat()
+        if day in daily:
+            daily[day]["paid"] += cost
+        if when >= month_start:
+            apify_m["runs"] += 1
+            apify_m["cost"] += cost
+            apify_m["by_kind"][str(payload.get("kind") or "other")] += 1
+        if when >= day_start:
+            apify_m["today"] += 1
 
     # AI Studio (product copy + images, app/core/ai_studio.py): each call logged with its own estimated cost
     from app.core.ai_studio import STUDIO_EVENT
@@ -106,8 +131,8 @@ def report(db: Session, now: Optional[datetime] = None) -> dict:
     analyses_month = db.query(ProductIntelResult).filter(ProductIntelResult.created_at >= month_start).count()
 
     claude_cost = ai_cost(month["tok_in"], month["tok_out"])
-    paid_cost = month["paid"] * p["paid_lookup"]
-    total = claude_cost + paid_cost + studio["cost"]
+    paid_cost = month["paid_costed"] * p["paid_lookup"]
+    total = claude_cost + paid_cost + studio["cost"] + apify_m["cost"]
     days_in_month = calendar.monthrange(now.year, now.month)[1]
     projected = total / max(now.day, 1) * days_in_month
     limits = engine.paid_usage(db)
@@ -120,6 +145,9 @@ def report(db: Session, now: Optional[datetime] = None) -> dict:
              "by_purpose": dict(by_purpose)},
             {"key": "paid", "label": "Amazon and Walmart lookups (paid)", "uses": month["paid"], "unit": "lookups", "cost": round(paid_cost, 4),
              "detail": f"limit {limits['monthly_limit']} a month, {limits['daily_limit']} a day", "today": today["paid"], "free": False},
+            {"key": "apify", "label": "Apify (Amazon, Google Trends, TikTok)", "uses": apify_m["runs"], "unit": "runs",
+             "cost": round(apify_m["cost"], 4), "detail": ", ".join(f"{n} {k}" for k, n in apify_m["by_kind"].items()) or "no runs yet",
+             "today": apify_m["today"], "free": False},
             {"key": "ai_studio", "label": "AI Studio (product images and copy, GPT/Gemini/Claude)", "uses": studio["images"] + studio["texts"],
              "unit": "calls", "cost": round(studio["cost"], 4), "detail": f"{studio['images']} images, {studio['texts']} copy calls",
              "today": studio["today"], "free": False},

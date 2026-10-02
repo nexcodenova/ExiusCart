@@ -14,7 +14,7 @@ import {
   DollarSign, Target, Sparkles, Link2, BookmarkCheck, Receipt, RefreshCw, ListChecks,
   Star, MapPin, ShoppingBag, LayoutGrid, FormInput, Coins, Share2, MessageCircle, CheckCircle2,
   Percent, Gift, MapPinned, Undo2, Search, Palette, Layers, Image as ImageIcon, ImagePlus,
-  LayoutTemplate, FolderOpen, Shapes, Bot, Wand2, FileEdit, LineChart, Workflow,
+  LayoutTemplate, FolderOpen, Shapes, Bot, Wand2, FileEdit, LineChart, Workflow, Lightbulb,
   History, Rocket, Users2, Network, Cable, Wrench, KeyRound, FileClock,
   TrendingUp, Bell, Lock, ArrowRight, MailCheck, MailSearch, Scale,
 } from 'lucide-react';
@@ -154,6 +154,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/ai-assistant',         label: 'AI Assistant',         icon: Bot       },
       { href: '/dashboard/ai-product-creator',   label: 'AI Product Creator',   icon: Wand2     },
       { href: '/dashboard/ai-listing-generator', label: 'AI Listing Generator', icon: FileEdit  },
+      { href: '/dashboard/product-insights',     label: 'Product Insights',     icon: Lightbulb },
       { href: '/dashboard/ai-marketing',         label: 'AI Marketing',         icon: Megaphone },
       { href: '/dashboard/ai-analytics',         label: 'AI Analytics',         icon: LineChart },
       { href: '/dashboard/ai-automations',       label: 'AI Automations',       icon: Workflow  },

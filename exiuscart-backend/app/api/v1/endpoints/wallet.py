@@ -210,6 +210,24 @@ def manual_debit(shop_id: int, account_id: int, data: ManualAdjustIn, db: Sessio
 
 # ── Customer-facing (storefront) ─────────────────────────────────────────────
 
+@router.get("/public/store/{shop_slug}/wallet-settings")
+@limiter.limit("60/minute")
+def public_wallet_settings(request: Request, shop_slug: str, db: Session = Depends(get_db)):
+    """No-auth — the real cashback % a storefront shows on product pages
+    (e.g. "3.5% back") must come from the seller's own WalletSettings row,
+    not a hardcoded guess. Deliberately separate from /wallet above: that
+    one requires a logged-in customer (it's a balance), this one is public
+    (it's just the shop's advertised rate)."""
+    from app.models.shop import Shop
+    shop = db.query(Shop).filter(Shop.slug == shop_slug, Shop.is_active == True).first()
+    if not shop:
+        raise HTTPException(status_code=404, detail="Store not found")
+    settings = db.query(WalletSettings).filter(WalletSettings.shop_id == shop.id).first()
+    if not settings or not settings.is_enabled:
+        return {"is_enabled": False, "cashback_percent": 0.0}
+    return {"is_enabled": True, "cashback_percent": float(settings.cashback_percent)}
+
+
 @router.get("/public/store/{shop_slug}/wallet")
 @limiter.limit("30/minute")
 def public_wallet_balance(request: Request, shop_slug: str, db: Session = Depends(get_db), customer: Customer = Depends(get_current_customer)):

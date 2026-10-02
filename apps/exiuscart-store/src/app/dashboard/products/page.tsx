@@ -54,6 +54,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { adLibraryKeyword, adLibrarySearchUrl } from '@/lib/adLibrary';
 import AiStudioPanel, { AiCopy } from '@/components/ai-studio/AiStudioPanel';
+import ProductInsightsPanel from '@/components/ai-studio/ProductInsightsPanel';
 
 function channelLabel(channelType: string): string {
   return channelMeta(channelType).label;
@@ -3388,6 +3389,17 @@ function ProductModal({
                   </>
                 )}
               </div>
+
+              {/* ── Market insights: research links, Prodora market check, who to target ── */}
+              {product?.id && (
+                <div className="border-t border-border -mx-6 px-6 pt-6">
+                  <div className="mb-2 flex items-center justify-between">
+                    <Label className="font-medium text-foreground">Market insights</Label>
+                    <a href={`/dashboard/product-insights?product=${product.id}`} className="text-xs font-medium text-primary hover:underline">Open full view</a>
+                  </div>
+                  <ProductInsightsPanel shopId={shopId} productId={product.id} compact />
+                </div>
+              )}
 
               {/* ── AI Studio: better copy + SEO, AI product images ── */}
               <div className="border-t border-border -mx-6 px-6 pt-6">

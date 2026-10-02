@@ -443,7 +443,54 @@ def _seller_intel_view(row: ProductIntelResult) -> dict:
                          "rating": l.get("rating"), "review_count": l.get("review_count")} for l in listings[:15]],
         "not_measured": ev.get("not_measured") or [],
         "demand": _seller_demand(snap.get("demand")),
+        "tiktok": _seller_tiktok(snap.get("tiktok")),
     }
+
+
+def _seller_tiktok(t: Optional[dict]) -> Optional[dict]:
+    """TikTok hashtag proof, only when really measured."""
+    if not t or t.get("status") != "ok":
+        return None
+    return {"hashtag": t.get("hashtag"), "videos_found": t.get("videos_found"), "total_views": t.get("total_views"),
+            "median_views": t.get("median_views"), "recent_videos": t.get("recent_videos"), "summary": t.get("summary"),
+            "top": [{"url": v.get("url"), "views": v.get("views"), "likes": v.get("likes"), "author": v.get("author"),
+                     "text": v.get("text"), "cover": v.get("cover")} for v in (t.get("top") or [])[:3]],
+            "fetched_at": t.get("fetched_at")}
+
+
+AUDIENCE_TTL_DAYS = 30
+
+
+def ensure_audience(db: Session, product: Product, force: bool = False) -> Optional[dict]:
+    """The product's cached "Who to target", made (once) when missing or a month old."""
+    from app.intel import audience
+    cur = product.audience_json
+    if cur and not force:
+        try:
+            age = datetime.now(timezone.utc) - datetime.fromisoformat(cur.get("generated_at"))
+            if age.days < AUDIENCE_TTL_DAYS:
+                return cur
+        except (TypeError, ValueError):
+            return cur
+    out = audience.build(audience.product_brief(product), audience.latest_snapshot(db, product.id))
+    if out:
+        product.audience_json = out
+        db.commit()
+    return out or cur
+
+
+@router.get("/shopping/products/{product_id}/audience")
+def get_shopping_product_audience(product_id: int, db: Session = Depends(get_db), user: User = Depends(get_prodora_user)):
+    """"Who to target" on a Prodora product page. Growth/Scale, like Competition; always 200 (see above)."""
+    product = db.query(Product).filter(Product.id == product_id, Product.is_active == True, Product.shop_id.is_(None)).first()  # noqa: E712
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    sub = _find_eligible_subscription(db, user)
+    plan = sub.plan_type if sub else None
+    if plan not in INTEL_PLANS:
+        return {"locked": True, "plan": plan, "required_plan": "growth"}
+    a = ensure_audience(db, product)
+    return {"locked": False, "available": a is not None, "audience": a}
 
 
 @router.get("/shopping/products/{product_id}/intelligence")
@@ -617,6 +664,7 @@ def import_shopping_product(
         seo_keywords=source.seo_keywords,
         faq=source.faq,
         highlights=source.highlights,
+        audience_json=source.audience_json,
     )
     db.add(new_product)
     db.flush()

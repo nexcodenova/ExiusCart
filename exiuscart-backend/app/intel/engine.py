@@ -165,6 +165,32 @@ def ensure_demand(db: Session, snapshot: dict, user_id: Optional[int] = None, pr
     return out
 
 
+def ensure_tiktok(db: Session, snapshot: dict, user_id: Optional[int] = None, product_id: Optional[int] = None) -> dict:
+    """Adds TikTok hashtag data to a snapshot (returns a NEW dict). Shared weekly cache first;
+    a live lookup is a PAID lookup, so it respects the same daily/monthly caps as Amazon."""
+    from app.intel import tiktok
+    keyword = trend_keyword(snapshot.get("fingerprint") or {})
+    out = dict(snapshot)
+    if not keyword:
+        out["tiktok"] = {"status": "insufficient", "note": "Could not work out what to search for."}
+        return out
+    hit = tiktok.cached(db, keyword)
+    if hit:
+        out["tiktok"] = {**hit, "cached": True}
+        return out
+    usage = paid_usage(db)
+    if usage["today"] >= usage["daily_limit"] or usage["month"] >= usage["monthly_limit"]:
+        out["tiktok"] = {"status": "skipped_budget", "note": "Paid lookup limit reached. It resets tomorrow (daily) or next month."}
+        return out
+    t = tiktok.fetch(keyword)
+    if t["status"] in ("ok", "error") and t.get("note") != "Add APIFY_TOKEN on the server.":
+        record_event(db, PAID_EVENT, user_id=user_id, entity_type="product", entity_id=product_id, payload={"source": "tiktok", "keyword": keyword})
+    if t["status"] == "ok":
+        tiktok.store(db, keyword, t)
+    out["tiktok"] = t
+    return out
+
+
 def evaluate(snapshot: dict, source: ProductSource, *, target_margin_pct: float = 30.0, ad_cost_per_order: Optional[float] = None) -> dict:
     """Economics + verdict from a snapshot. Free and instant."""
     if source.supplier_cost is None:
@@ -217,6 +243,10 @@ def analyze(db: Session, product: Product, *, market: str = "US", target_margin_
         snapshot = ensure_demand(db, snapshot, user_id, product.id)
         if cached is not None:
             cached.snapshot = snapshot                    # a new dict, so the change is saved
+    if use_paid and (snapshot.get("tiktok") or {}).get("status") != "ok":
+        snapshot = ensure_tiktok(db, snapshot, user_id, product.id)
+        if cached is not None:
+            cached.snapshot = snapshot
     evaluation = evaluate(snapshot, source, target_margin_pct=target_margin_pct, ad_cost_per_order=ad_cost_per_order)
     if cached is None:
         db.add(ProductIntelResult(product_id=product.id, market=market, snapshot=snapshot, evaluation=evaluation,

@@ -13,6 +13,7 @@ import {
 import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import CompetitionSection from '@/components/CompetitionSection';
+import AudienceSection from '@/components/AudienceSection';
 import LoadingImage from '@/components/LoadingImage';
 import DOMPurify from 'dompurify';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -572,9 +573,9 @@ function ProductDetailContent() {
                   </div>
                 </div>
 
-                {/* Compare prices / ads. Row 1: Amazon, eBay — real per-product links an admin pasted (never
-                    fabricated); hidden until set. Row 2: Facebook Ads (always, a live Ad Library search — needs
-                    no per-product data) and Product Video (only when this product actually has one). */}
+                {/* Compare prices / ads: Amazon, eBay (real per-product links an admin pasted, hidden until set),
+                    then Google Trends, TikTok and Facebook Ads (always: live searches for the product's short
+                    keyword, no per-product data needed) and Product Video (only when there is one). */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   {amazon_url && (
                     <a href={amazon_url} target="_blank" rel="noopener noreferrer"
@@ -592,7 +593,21 @@ function ProductDetailContent() {
                       <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
                     </a>
                   )}
-                  <a href={`https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=ALL&q=${encodeURIComponent(name)}`}
+                  <a href={`https://trends.google.com/trends/explore?date=today%205-y&q=${encodeURIComponent(adLibraryKeyword(name))}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
+                    <TrendingUp className="w-4 h-4 shrink-0 text-[#2563EB]" />
+                    <span className="flex-1 text-left">Google Trends</span>
+                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
+                  </a>
+                  <a href={`https://www.tiktok.com/search?q=${encodeURIComponent(adLibraryKeyword(name))}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
+                    <Music2 className="w-4 h-4 shrink-0 text-[#111827]" />
+                    <span className="flex-1 text-left">TikTok videos</span>
+                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
+                  </a>
+                  <a href={adLibrarySearchUrl(adLibraryKeyword(name))}
                     target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
                     <Image src="/marketplace-icons/facebook.svg" alt="" width={16} height={16} className="shrink-0" />
@@ -848,6 +863,7 @@ function ProductDetailContent() {
 
             {/* Competition: real market prices, true profit and a verdict (Growth and Scale) */}
             <CompetitionSection productId={productId} />
+            <AudienceSection productId={productId} />
 
             {/* Trends — Demand on the left, Orders (social proof) on the right */}
             {(demandTrend.length >= 2 || ordersTrend.length >= 2) && (

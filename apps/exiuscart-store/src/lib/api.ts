@@ -1056,6 +1056,13 @@ export const podApi = {
     api.post(`/shops/${shopId}/studio/assets/${assetId}/gelato`, data, { timeout: 120000 }),
 };
 
+// Product Insights (AI Commerce): research links, Prodora market check, "Who to target" (backend insights.py)
+export const insightsApi = {
+  get: (shopId: string, productId: number | string) => api.get(`/shops/${shopId}/products/${productId}/insights`),
+  makeAudience: (shopId: string, productId: number | string) =>
+    api.post(`/shops/${shopId}/products/${productId}/insights/audience`, null, { timeout: 120000 }),
+};
+
 export const adIntelligenceApi = {
   searchMetaAds: (shopId: string, q: string, country: string = 'US') =>
     api.get(`/shops/${shopId}/meta-ads/search`, { params: { q, country } }),

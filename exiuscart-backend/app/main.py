@@ -358,6 +358,8 @@ _MIGRATIONS = [
     # AI Studio: a product's own Google title and meta description.
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title VARCHAR(80);",
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS meta_description VARCHAR(200);",
+    # "Who to target" audience suggestion, cached per product (app/intel/audience.py).
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS audience_json JSON;",
 ]
 
 for _sql in _MIGRATIONS:

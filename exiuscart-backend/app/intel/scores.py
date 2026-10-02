@@ -12,7 +12,7 @@ Nothing here touches the network or the database, so every formula is tested on 
   shipping      0 to 10: how little the shipping eats of the selling price
   supplier      the supplier's rating and fulfilment rate as entered on the product (our team's entry)
   content       not measured in this version
-  tiktok        not measured in this version (needs real TikTok data)
+  tiktok        hashtag videos and views from TikTok (via Apify), after a full market check
 
 The overall Prodora score blends only what was measured, and says how much that was. It is only given once the
 product has had a real market check (competition measured); before that a card shows the parts, not a total.
@@ -32,7 +32,7 @@ NOT_MEASURED_WHY = {
     "content": "Not measured in this version.",
     "shipping": "No shipping cost or time is recorded for this product.",
     "supplier": "No supplier rating is recorded for this product.",
-    "tiktok": "Needs real TikTok data, which we do not have yet.",
+    "tiktok": "Not checked yet. It is part of a full market check.",
     "margin": "No supplier cost is recorded for this product.",
 }
 
@@ -148,8 +148,15 @@ def compute(product: dict, analysis: Optional[dict] = None) -> Dict[str, Any]:
     supplier = _score(sup_raw, "supplier rating as entered by our team" if sup_raw is not None else None,
                       None if sup_raw is not None else NOT_MEASURED_WHY["supplier"])
 
+    from app.intel.tiktok import score as tiktok_score_fn
+    tt = snap.get("tiktok") or {}
+    t_raw = tiktok_score_fn(tt)
+    tiktok = _score(t_raw, f"#{tt.get('hashtag')} on TikTok: {tt.get('videos_found', 0)} recent videos" if t_raw is not None else None,
+                    None if t_raw is not None else (tt.get("note") or NOT_MEASURED_WHY["tiktok"]),
+                    median_views=tt.get("median_views") if t_raw is not None else None)
+
     scores = {"demand": demand, "competition": competition, "content": _score(None, None, NOT_MEASURED_WHY["content"]),
-              "margin": margin, "shipping": shipping, "supplier": supplier, "tiktok": _score(None, None, NOT_MEASURED_WHY["tiktok"])}
+              "margin": margin, "shipping": shipping, "supplier": supplier, "tiktok": tiktok}
 
     # overall: only what was measured, with competition turned round so that "less crowded" scores higher
     parts = {"margin": margin["value"], "demand": demand["value"], "shipping": shipping["value"], "supplier": supplier["value"],

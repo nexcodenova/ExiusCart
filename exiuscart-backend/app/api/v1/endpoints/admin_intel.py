@@ -24,6 +24,11 @@ from app.models.user import User
 router = APIRouter()
 
 
+def _apify_on() -> bool:
+    from app.intel import apify
+    return apify.configured()
+
+
 def _catalogue_product(db: Session, product_id: int) -> Product:
     p = db.query(Product).filter(Product.id == product_id, Product.shop_id.is_(None)).first()
     if not p:
@@ -45,7 +50,9 @@ def intel_status(db: Session = Depends(get_db), _: User = Depends(require_admin_
         "markets": sorted(SUPPORTED_MARKETS),
         "sources": [{"source": a.name, "paid": a.paid, "configured": a.configured(), "hint": None if a.configured() else a.missing_hint()}
                     for a in all_adapters()] + [{"source": "google_trends", "paid": False, "configured": trends.configured(),
-                                                  "hint": None if trends.configured() else trends.NOT_CONFIGURED_HINT}],
+                                                  "hint": None if trends.configured() else trends.NOT_CONFIGURED_HINT},
+                                                 {"source": "tiktok", "paid": True, "configured": _apify_on(),
+                                                  "hint": None if _apify_on() else "Add APIFY_TOKEN on the server."}],
         "paid_usage": engine.paid_usage(db),
     }
 
@@ -98,6 +105,13 @@ def test_source(body: TestSourceIn, db: Session = Depends(get_db), admin: User =
             for _ in range(out.get("lookups", 0)):
                 record_event(db, engine.PAID_EVENT, user_id=admin.id, payload={"source": "google_trends", "keyword": "connection test"})
         return out
+    if body.source == "tiktok":
+        from app.intel import tiktok
+        t = tiktok.fetch("phone case")
+        if t["status"] != "not_configured":
+            record_event(db, engine.PAID_EVENT, user_id=admin.id, payload={"source": "tiktok", "keyword": "connection test"})
+        return {"source": "tiktok", "ok": t["status"] == "ok" and t.get("videos_found", 0) > 0, "status": t["status"],
+                "detail": t.get("summary") or t.get("note"), "sample": [v.get("url") for v in (t.get("top") or [])[:2]]}
     ad = adapter_by_name(body.source)
     if not ad:
         raise HTTPException(status_code=404, detail="Unknown source.")

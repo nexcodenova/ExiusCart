@@ -161,6 +161,29 @@ export default function CompetitionSection({ productId }: { productId: number })
         </div>
       )}
 
+      {a.tiktok && (
+        <div className="mt-5 rounded-xl border border-[#E5E7EB] p-4">
+          <h3 className="mb-2 text-sm font-semibold text-[#111827]">TikTok <span className="font-normal text-[#6B7280]">recent videos for #{a.tiktok.hashtag}</span></h3>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg bg-gray-50 p-2.5"><p className="text-[11px] text-[#6B7280]">Videos found</p><p className="text-sm font-bold">{a.tiktok.videos_found}</p></div>
+            <div className="rounded-lg bg-blue-50 p-2.5"><p className="text-[11px] text-[#6B7280]">Median views</p><p className="text-sm font-bold text-[#2563EB]">{a.tiktok.median_views.toLocaleString()}</p></div>
+            <div className="rounded-lg bg-gray-50 p-2.5"><p className="text-[11px] text-[#6B7280]">Posted in last 30 days</p><p className="text-sm font-bold">{a.tiktok.recent_videos}</p></div>
+          </div>
+          {a.tiktok.top.length > 0 && (
+            <ul className="mt-3 space-y-1.5">
+              {a.tiktok.top.map((v, i) => (
+                <li key={i} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="min-w-0 truncate text-[#374151]">{v.text || (v.author ? `@${v.author}` : 'TikTok video')}</span>
+                  {v.url ? <a href={v.url} target="_blank" rel="noopener noreferrer" className="flex shrink-0 items-center gap-1 text-xs font-semibold text-[#2563EB] hover:underline">{v.views.toLocaleString()} views <ExternalLink className="h-3 w-3" /></a>
+                    : <span className="shrink-0 text-xs text-[#6B7280]">{v.views.toLocaleString()} views</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-[#9CA3AF]">Source: TikTok{a.tiktok.fetched_at ? `, ${ago(a.tiktok.fetched_at)}` : ''}. Views on videos, not sales.</p>
+        </div>
+      )}
+
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <div>
           <h3 className="mb-2 text-sm font-semibold text-[#111827]">Market prices ({a.competitor_count} listings)</h3>

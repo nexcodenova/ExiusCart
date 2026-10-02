@@ -209,9 +209,40 @@ class WalmartSerpAdapter(_SerpAdapter):
         return out
 
 
+class AmazonApifyAdapter(MarketplaceAdapter):
+    """Amazon.com search results through Apify (app/intel/apify.py). Paid per result,
+    so it only runs for shortlisted products, inside the paid-lookup caps."""
+    name = "amazon"
+    paid = True
+
+    def configured(self) -> bool:
+        from app.intel import apify
+        return apify.configured()
+
+    def missing_hint(self) -> str:
+        return "Add APIFY_TOKEN on the server."
+
+    def search(self, query: str, market: str = "US", limit: int = 10) -> SourceResult:
+        from app.intel import apify
+        if market not in SUPPORTED_MARKETS:
+            return SourceResult(self.name, "unsupported_market", paid=True, note=f"Only the US market is supported so far (asked for {market}).")
+        if not self.configured():
+            return SourceResult(self.name, "not_configured", paid=True, note=self.missing_hint())
+        try:
+            rows = apify.amazon_search(query, limit=min(limit, 10))
+        except apify.ApifyError as e:
+            return SourceResult(self.name, "error", paid=True, note=str(e), lookups=1)
+        listings = [Listing(marketplace="amazon", listing_id=str(r.get("asin") or r.get("url") or r["title"]), title=r["title"], price=r["price"],
+                            currency=str(r.get("currency") or "USD"), url=r.get("url"), image_url=r.get("image"), seller=r.get("brand"),
+                            rating=r.get("rating"), review_count=r.get("reviews")) for r in rows]
+        return SourceResult(self.name, "ok", listings=listings, paid=True, lookups=1)
+
+
 def all_adapters() -> List[MarketplaceAdapter]:
-    """Free first, then paid."""
-    return [EbayAdapter(), AmazonSerpAdapter(), WalmartSerpAdapter()]
+    """Free first, then paid. Amazon goes through Apify when APIFY_TOKEN is set (founder's choice
+    2026-10-02), else SerpApi. Walmart is left out on purpose (dropped from the plan)."""
+    from app.intel import apify
+    return [EbayAdapter(), AmazonApifyAdapter() if apify.configured() else AmazonSerpAdapter()]
 
 
 def adapter_by_name(name: str) -> Optional[MarketplaceAdapter]:

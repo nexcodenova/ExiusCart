@@ -43,11 +43,16 @@ LOW_INTEREST = 5               # average interest below this = hardly anyone sea
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 
-NOT_CONFIGURED_HINT = "Waiting for Google Trends API alpha access. Once Google approves it, add GOOGLE_TRENDS_API_KEY on the server."
+NOT_CONFIGURED_HINT = "Add APIFY_TOKEN on the server (or GOOGLE_TRENDS_API_KEY once Google's own Trends API alpha is approved)."
+
+
+def _apify_on() -> bool:
+    from app.intel import apify
+    return apify.configured()
 
 
 def configured() -> bool:
-    return bool(os.getenv("GOOGLE_TRENDS_API_KEY", ""))
+    return bool(os.getenv("GOOGLE_TRENDS_API_KEY", "")) or _apify_on()
 
 
 def normalise(keyword: str) -> str:
@@ -156,7 +161,15 @@ def _google_query(keyword: str, geo: str) -> Tuple[List[Tuple[int, float]], List
     Not written yet on purpose: Google's alpha request format, sign-in method and
     response fields are only given to approved testers, and guessing them would ship
     a connection that fails silently. Fill this in from Google's private alpha
-    documentation; nothing else in the demand feature needs to change."""
+    documentation; nothing else in the demand feature needs to change.
+
+    Until then, Apify's Google Trends scraper supplies the same numbers (app/intel/apify.py)."""
+    if not os.getenv("GOOGLE_TRENDS_API_KEY", "") and _apify_on():
+        from app.intel import apify
+        try:
+            return apify.trends_series(keyword, geo)
+        except apify.ApifyError as e:
+            raise RuntimeError(str(e))
     raise NotImplementedError("Google Trends API connection is waiting for alpha documentation.")
 
 
@@ -166,7 +179,7 @@ def fetch(keyword: str, geo: str = "US") -> dict:
         series, countries = _google_query(keyword, geo)
         analysis = analyze_series(series)
         out = {"status": "insufficient" if analysis.get("direction") == "unknown" else "ok", "keyword": keyword, "geo": geo,
-               "source": "Google Trends", "fetched_at": datetime.now(timezone.utc).isoformat(), "lookups": LOOKUPS_PER_FETCH,
+               "source": "Google Trends" if os.getenv("GOOGLE_TRENDS_API_KEY", "") else "Google Trends (via Apify)", "fetched_at": datetime.now(timezone.utc).isoformat(), "lookups": LOOKUPS_PER_FETCH,
                "countries": countries[:8], **analysis}
         out["summary"] = summarise(out)
         return out
