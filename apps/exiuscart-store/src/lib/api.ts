@@ -1012,6 +1012,50 @@ export const aiStudioApi = {
     api.post(`/shops/${shopId}/ai-studio/products/${productId}/image/add`, { url, make_primary: makePrimary }),
 };
 
+// Product Studio: print-on-demand designs, mockups, Brand Assets library (backend endpoints/studio.py)
+export interface StudioAsset {
+  id: number; kind: 'design' | 'mockup' | 'image' | 'upload'; source: string; title: string | null;
+  url: string; product_id: number | null; meta: Record<string, any>; created_at: string | null;
+}
+export const studioApi = {
+  assets: (shopId: string, kind?: string, offset = 0) =>
+    api.get(`/shops/${shopId}/studio/assets`, { params: { kind, offset, limit: 120 } }),
+  upload: (shopId: string, file: File, kind: 'design' | 'upload' = 'upload') => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('kind', kind);
+    return api.post(`/shops/${shopId}/studio/assets/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  importProduct: (shopId: string, productId: number) =>
+    api.post(`/shops/${shopId}/studio/assets/import-product`, { product_id: productId }),
+  remove: (shopId: string, assetId: number) => api.delete(`/shops/${shopId}/studio/assets/${assetId}`),
+  addToProduct: (shopId: string, assetId: number, productId: number, makePrimary = false) =>
+    api.post(`/shops/${shopId}/studio/assets/${assetId}/add-to-product`, { product_id: productId, make_primary: makePrimary }),
+  design: (shopId: string, data: { idea: string; style?: string; text?: string }) =>
+    api.post(`/shops/${shopId}/studio/design`, data, { timeout: 240000 }),
+  mockup: (shopId: string, data: { design_asset_id: number; garment: string; color: string; style: string; model_look?: string; extra?: string }) =>
+    api.post(`/shops/${shopId}/studio/mockup`, data, { timeout: 240000 }),
+  printifyBlueprints: (shopId: string, q: string) => api.get(`/shops/${shopId}/printify/blueprints`, { params: { q } }),
+  printifyProviders: (shopId: string, blueprintId: number) => api.get(`/shops/${shopId}/printify/blueprints/${blueprintId}/providers`),
+  printifyVariants: (shopId: string, blueprintId: number, providerId: number) =>
+    api.get(`/shops/${shopId}/printify/blueprints/${blueprintId}/providers/${providerId}/variants`),
+  sendToPrintify: (shopId: string, assetId: number, data: Record<string, unknown>) =>
+    api.post(`/shops/${shopId}/studio/assets/${assetId}/printify`, data, { timeout: 180000 }),
+};
+
+// Print on demand: design -> Printful / Gelato product, Printful mockups (backend pod_push.py)
+export const podApi = {
+  printfulCatalog: (shopId: string, q: string) => api.get(`/shops/${shopId}/printful/catalog`, { params: { q } }),
+  printfulOptions: (shopId: string, catalogProductId: number) => api.get(`/shops/${shopId}/printful/catalog/${catalogProductId}`),
+  printfulMockups: (shopId: string, assetId: number, data: Record<string, unknown>) =>
+    api.post(`/shops/${shopId}/studio/assets/${assetId}/printful-mockups`, data, { timeout: 120000 }),
+  sendToPrintful: (shopId: string, assetId: number, data: Record<string, unknown>) =>
+    api.post(`/shops/${shopId}/studio/assets/${assetId}/printful`, data, { timeout: 180000 }),
+  gelatoTemplate: (shopId: string, templateId: string) => api.get(`/shops/${shopId}/gelato/templates/${encodeURIComponent(templateId)}`),
+  sendToGelato: (shopId: string, assetId: number, data: Record<string, unknown>) =>
+    api.post(`/shops/${shopId}/studio/assets/${assetId}/gelato`, data, { timeout: 120000 }),
+};
+
 export const adIntelligenceApi = {
   searchMetaAds: (shopId: string, q: string, country: string = 'US') =>
     api.get(`/shops/${shopId}/meta-ads/search`, { params: { q, country } }),

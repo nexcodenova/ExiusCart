@@ -273,6 +273,18 @@ def generate_storefront_category_presigned_url(shop_id: int, ext: str, content_t
     return {"presigned_url": presigned_url, "public_url": public_url}
 
 
+def upload_studio_asset(contents: bytes, shop_id: int, ext: str, content_type: str = "image/png") -> str:
+    """A Brand Assets file (design, mockup, upload) under studio/{shop_id}/."""
+    if not _R2_ACCOUNT_ID or not _R2_ACCESS_KEY_ID or not _R2_SECRET_ACCESS_KEY:
+        raise RuntimeError("R2 credentials not configured.")
+    key = f"studio/{shop_id}/{uuid.uuid4()}.{ext}"
+    _get_r2_client().put_object(Bucket=_R2_BUCKET, Key=key, Body=contents, ContentType=content_type,
+                                CacheControl="public, max-age=31536000")
+    url = f"{_R2_PUBLIC_URL}/{key}" if _R2_PUBLIC_URL else f"https://{_R2_BUCKET}.r2.dev/{key}"
+    logger.info(f"[R2 UPLOAD studio] {url}")
+    return url
+
+
 def public_url_for_key(key: str) -> str:
     """Same URL-building rule every upload_* function already uses, exposed standalone for the
     /media redirect route in main.py (that route exists so TikTok's PULL_FROM_URL can be pointed at

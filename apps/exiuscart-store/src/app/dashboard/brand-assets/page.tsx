@@ -1,16 +1,22 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Shapes } from 'lucide-react';
-import ComingSoon from '@/components/layout/ComingSoon';
+import AssetLibrary from '@/components/ai-studio/AssetLibrary';
 
 export default function Page() {
+  const [shopId, setShopId] = useState('');
+  useEffect(() => { setShopId(localStorage.getItem('shop_id') || ''); }, []);
   return (
-    <ComingSoon
-      icon={Shapes}
-      group="Product Studio"
-      title="Brand Assets"
-      description="Store your logo, colors and brand guidelines for reuse across tools. Not built yet."
-      accentClass="bg-violet-500/10 text-violet-600 dark:text-violet-400"
-    />
+    <div className="space-y-6">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Shapes className="h-5 w-5" /></div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Brand Assets</h1>
+          <p className="text-sm text-muted-foreground">Every design, mockup, AI image and upload in one place. Reuse them on products, Printify or Etsy.</p>
+        </div>
+      </div>
+      {shopId && <AssetLibrary shopId={shopId} />}
+    </div>
   );
 }

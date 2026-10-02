@@ -67,3 +67,4 @@ from app.models.admin_team import AdminRole, AdminStaff
 from app.models.intel import SupplierPriceSnapshot, PlatformEvent, ProductIntelResult, KeywordTrend, ScoreboardEntry
 from app.models.intake import IntakeItem, IntakeSettings
 from app.models.coach import CoachItem
+from app.models.studio import StudioAsset

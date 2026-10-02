@@ -72,6 +72,7 @@ PATH_AREAS = {
     "purchases": "products", "next-sku": "products", "image-limit": "products",
     "description-image-presign": "products", "storefront-categories": "products", "price-coach": "products",
     "product-channel-categories": "products", "discounts": "products",
+    "ai-studio": "products", "studio": "products", "printify": "products", "printful": "products", "gelato": "products",  # AI Studio, Product Studio, Printify catalogue
     # customers
     "customers": "customers", "customer-segments": "customers", "leads": "customers",
     "helpdesk": "customers", "surveys": "customers", "captured-submissions": "customers",

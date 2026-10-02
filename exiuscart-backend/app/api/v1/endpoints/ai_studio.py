@@ -114,6 +114,10 @@ def _make_image(db: Session, product: Product, shop_id: Optional[int], data: Ima
         _raise(e)
     url = upload_image(content, shop_id or 0, product.id, "png", "image/png")
     studio.log_call(db, shop_id, "image", provider, f"image_{data.mode}")
+    if shop_id:  # every seller AI image also lands in their Brand Assets library
+        from app.api.v1.endpoints.studio import save_asset
+        save_asset(db, shop_id, "image", url, f"{product.name[:100]} · {data.mode}", product_id=product.id,
+                   meta={"mode": data.mode, "provider": provider})
     return {"url": url, "provider": provider}
 
 

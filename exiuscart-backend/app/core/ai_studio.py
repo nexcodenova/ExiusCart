@@ -272,7 +272,7 @@ def _gemini_image(prompt: str, ref: Optional[Tuple[bytes, str]]) -> Optional[byt
     raise StudioError("Gemini returned no image (it may have declined this photo).")
 
 
-def _openai_image(prompt: str, ref: Optional[Tuple[bytes, str]]) -> Optional[bytes]:
+def _openai_image(prompt: str, ref: Optional[Tuple[bytes, str]], transparent: bool = False) -> Optional[bytes]:
     key = _env("OPENAI_API_KEY")
     if not key:
         return None
@@ -284,8 +284,10 @@ def _openai_image(prompt: str, ref: Optional[Tuple[bytes, str]]) -> Optional[byt
                        data={"model": model, "prompt": prompt, "size": "1024x1024", "quality": "medium"},
                        files={"image[]": (f"ref.{ext}", ref[0], ref[1])})
     else:
-        r = httpx.post("https://api.openai.com/v1/images/generations", headers=headers, timeout=180,
-                       json={"model": model, "prompt": prompt, "size": "1024x1024", "quality": "medium"})
+        body = {"model": model, "prompt": prompt, "size": "1024x1024", "quality": "medium"}
+        if transparent:
+            body.update({"background": "transparent", "output_format": "png"})  # a print file needs no background
+        r = httpx.post("https://api.openai.com/v1/images/generations", headers=headers, timeout=180, json=body)
     if r.status_code >= 300:
         raise StudioError(f"OpenAI image: {r.text[:200]}")
     b64 = ((r.json().get("data") or [{}])[0]).get("b64_json")
@@ -312,6 +314,84 @@ def generate_image(mode: str, product_name: str, reference_url: str, extra: str 
     ref = fetch_reference(reference_url)
     prompt = image_prompt(mode, product_name, extra.strip()[:300], model_look.strip()[:120])
     order = [("openai", _openai_image), ("gemini", _gemini_image)] if mode == "ad" else [("gemini", _gemini_image), ("openai", _openai_image)]
+    return _run_image(order, prompt, ref)
+
+
+# ── print on demand: designs + mockups ───────────────────────────────────────
+
+DESIGN_STYLES = {
+    "vintage": "vintage distressed retro print, faded textures, 70s/80s feel",
+    "minimal": "minimal clean line art, few colours, lots of breathing room",
+    "typography": "bold typography-led design, the words are the design",
+    "retro_sunset": "retro sunset with stripes and bold outlines",
+    "cartoon": "fun cartoon illustration with thick outlines",
+    "streetwear": "edgy streetwear graphic, high contrast",
+    "floral": "hand-drawn floral illustration",
+    "badge": "circular badge/emblem style, like a vintage patch",
+}
+
+GARMENTS = {
+    "tshirt": "crew-neck t-shirt", "oversized_tshirt": "oversized drop-shoulder t-shirt", "hoodie": "pullover hoodie",
+    "sweatshirt": "crew-neck sweatshirt", "tank": "tank top", "kids_tshirt": "kids t-shirt", "tote": "canvas tote bag",
+    "mug": "11oz ceramic mug", "cap": "baseball cap", "poster": "framed poster", "phone_case": "phone case",
+}
+
+MOCKUP_STYLES = {
+    "model": "worn by a realistic model, natural pose, the print clearly visible on the chest",
+    "flat_lay": "flat lay on a clean surface, styled with a few simple props, shot from above",
+    "hanging": "hanging on a wooden hanger against a plain wall",
+    "folded": "neatly folded, styled product shot",
+    "bundle": "a grid of several of these products in different garment colours, Etsy bundle listing style, all with the same print",
+    "lifestyle": "in a real lifestyle scene where the buyer would use it",
+}
+
+
+def design_prompt(idea: str, style: str = "", text: str = "") -> str:
+    parts = [
+        "A print-ready graphic design for a t-shirt / print-on-demand product.",
+        f"Idea: {idea.strip()[:400]}.",
+    ]
+    if style in DESIGN_STYLES:
+        parts.append(f"Style: {DESIGN_STYLES[style]}.")
+    if text.strip():
+        parts.append(f'Include exactly this text, spelled correctly: "{text.strip()[:80]}".')
+    parts.append("Only the artwork itself, centred, isolated, no t-shirt, no mockup, no background scene, no watermark. "
+                 "Crisp edges and a limited colour palette that prints well. Do not copy any brand, logo or copyrighted character.")
+    return " ".join(parts)
+
+
+def mockup_prompt(garment: str, color: str, style: str, model_look: str = "", extra: str = "") -> str:
+    g = GARMENTS.get(garment, "t-shirt")
+    st = MOCKUP_STYLES.get(style, MOCKUP_STYLES["model"])
+    p = (f"Photorealistic product mockup of a {color or 'white'} {g}, {st}. "
+         "Print the reference artwork on it exactly as given: same design, colours, text and proportions, "
+         "placed and scaled like a real screen print, following the fabric's folds. Do not change or redraw the artwork. "
+         "Professional ecommerce photo, soft natural light, sharp focus.")
+    if model_look and style in ("model", "lifestyle"):
+        p += f" Model: {model_look.strip()[:120]}."
+    if extra:
+        p += f" Extra direction: {extra.strip()[:300]}"
+    return p
+
+
+def generate_design(idea: str, style: str = "", text: str = "") -> Tuple[bytes, str]:
+    """GPT first: it handles text in images best and can return a transparent PNG."""
+    if not idea.strip():
+        raise StudioError("Describe the design you want.", "bad_request")
+    prompt = design_prompt(idea, style, text)
+    order = [("openai", lambda p, r: _openai_image(p, r, transparent=True)), ("gemini", _gemini_image)]
+    return _run_image(order, prompt, None)
+
+
+def generate_mockup(design_url: str, garment: str, color: str, style: str, model_look: str = "", extra: str = "") -> Tuple[bytes, str]:
+    if garment not in GARMENTS or style not in MOCKUP_STYLES:
+        raise StudioError("Unknown product or mockup style.", "bad_request")
+    ref = fetch_reference(design_url)
+    prompt = mockup_prompt(garment, color.strip()[:40], style, model_look, extra)
+    return _run_image([("gemini", _gemini_image), ("openai", _openai_image)], prompt, ref)
+
+
+def _run_image(order, prompt: str, ref) -> Tuple[bytes, str]:
     last_error = None
     for name, fn in order:
         try:

@@ -368,3 +368,156 @@ def sync_printify_tracking_job(db_session_factory) -> None:
         logger.error(f"[Printify Tracking] Job error: {e}")
     finally:
         db.close()
+
+
+# ── Design → Printify product (Product Studio) ───────────────────────────────
+# A Brand Assets design becomes a real Printify product in the seller's own
+# Printify account: upload the artwork, pick a product (blueprint), print
+# provider, colours/sizes and price, create it, optionally publish it to the
+# sales channel connected in Printify (Etsy, Shopify...) and/or import it into
+# the ExiusCart store (linked, so its orders auto-send to Printify).
+# UNVERIFIED against a live account: built from Printify's public API docs
+# (uploads/images, catalog blueprints/print_providers/variants, products,
+# publish), checked with mocked HTTP only.
+
+import time as _time
+
+_BLUEPRINT_CACHE: dict = {"at": 0.0, "items": []}
+BLUEPRINT_TTL = 24 * 3600
+MAX_VARIANTS = 100
+
+
+async def _pf_get(conn: DropshipConnection, path: str):
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(f"{PRINTIFY_BASE}{path}", headers=printify_headers(conn))
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Could not reach Printify: {e}")
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Printify said: {r.status_code} {r.text[:200]}")
+    return r.json()
+
+
+def _printify_for_shop(shop_id: int, user: User, db: Session) -> DropshipConnection:
+    from app.api.v1.endpoints.dropshipping import _check_supplier_allowed
+    _shop_or_404(shop_id, user, db)
+    _check_supplier_allowed(_get_plan(shop_id, db), "printify", shop_id, db)
+    return get_printify_conn_or_400(shop_id, db)
+
+
+@router.get("/shops/{shop_id}/printify/blueprints")
+async def printify_blueprints(shop_id: int, q: str = "", db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Printify's product catalogue (t-shirts, hoodies, mugs...), searchable. Cached for a day."""
+    conn = _printify_for_shop(shop_id, current_user, db)
+    if not _BLUEPRINT_CACHE["items"] or _time.time() - _BLUEPRINT_CACHE["at"] > BLUEPRINT_TTL:
+        data = await _pf_get(conn, "/catalog/blueprints.json")
+        _BLUEPRINT_CACHE["items"] = [{"id": b.get("id"), "title": b.get("title"), "brand": b.get("brand"), "model": b.get("model"),
+                                      "image": (b.get("images") or [None])[0]} for b in (data or []) if b.get("id")]
+        _BLUEPRINT_CACHE["at"] = _time.time()
+    words = [w for w in q.lower().split() if w]
+    items = [b for b in _BLUEPRINT_CACHE["items"]
+             if all(w in f"{b['title']} {b['brand']} {b['model']}".lower() for w in words)] if words else _BLUEPRINT_CACHE["items"]
+    return {"blueprints": items[:40], "total": len(items)}
+
+
+@router.get("/shops/{shop_id}/printify/blueprints/{blueprint_id}/providers")
+async def printify_providers(shop_id: int, blueprint_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    conn = _printify_for_shop(shop_id, current_user, db)
+    data = await _pf_get(conn, f"/catalog/blueprints/{blueprint_id}/print_providers.json")
+    return {"providers": [{"id": p.get("id"), "title": p.get("title"), "location": (p.get("location") or {}).get("country")} for p in (data or [])]}
+
+
+@router.get("/shops/{shop_id}/printify/blueprints/{blueprint_id}/providers/{provider_id}/variants")
+async def printify_variants(shop_id: int, blueprint_id: int, provider_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    conn = _printify_for_shop(shop_id, current_user, db)
+    data = await _pf_get(conn, f"/catalog/blueprints/{blueprint_id}/print_providers/{provider_id}/variants.json")
+    rows = data.get("variants") if isinstance(data, dict) else data
+    variants, positions = [], []
+    for v in rows or []:
+        opts = v.get("options") or {}
+        variants.append({"id": v.get("id"), "title": v.get("title"), "color": opts.get("color"), "size": opts.get("size")})
+        for ph in v.get("placeholders") or []:
+            if ph.get("position") and ph["position"] not in positions:
+                positions.append(ph["position"])
+    colors = list(dict.fromkeys(v["color"] for v in variants if v["color"]))
+    sizes = list(dict.fromkeys(v["size"] for v in variants if v["size"]))
+    return {"variants": variants, "colors": colors, "sizes": sizes, "positions": positions or ["front"]}
+
+
+class SendToPrintifyIn(BaseModel):
+    blueprint_id: int
+    print_provider_id: int
+    variant_ids: list
+    price: float                 # retail price in the Printify shop's currency
+    title: str
+    description: Optional[str] = None
+    tags: Optional[list] = None
+    position: str = "front"
+    scale: float = 1.0           # 1 = design as wide as the print area
+    publish: bool = False        # push to the sales channel connected in Printify (Etsy, Shopify...)
+    import_to_store: bool = False
+    store_price: Optional[float] = None
+
+
+@router.post("/shops/{shop_id}/studio/assets/{asset_id}/printify")
+async def send_design_to_printify(shop_id: int, asset_id: int, body: SendToPrintifyIn,
+                                  db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.models.studio import StudioAsset
+    conn = _printify_for_shop(shop_id, current_user, db)
+    asset = db.query(StudioAsset).filter(StudioAsset.id == asset_id, StudioAsset.shop_id == shop_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Design not found")
+    ids = [int(v) for v in body.variant_ids if str(v).isdigit()][:MAX_VARIANTS]
+    if not ids:
+        raise HTTPException(status_code=400, detail="Pick at least one colour and size.")
+    if body.price <= 0 or not body.title.strip():
+        raise HTTPException(status_code=400, detail="A title and a price are needed.")
+    headers = printify_headers(conn)
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        # 1. the artwork into the seller's Printify media library (Printify fetches it from our CDN)
+        up = await client.post(f"{PRINTIFY_BASE}/uploads/images.json", headers=headers,
+                               json={"file_name": f"exiuscart-design-{asset.id}.png", "url": asset.url})
+        if up.status_code not in (200, 201) or not up.json().get("id"):
+            raise HTTPException(status_code=502, detail=f"Printify could not take the design: {up.status_code} {up.text[:200]}")
+        image_id = up.json()["id"]
+
+        # 2. the product
+        payload = {
+            "title": body.title.strip()[:200],
+            "description": (body.description or body.title).strip()[:5000],
+            "blueprint_id": body.blueprint_id,
+            "print_provider_id": body.print_provider_id,
+            "variants": [{"id": v, "price": int(round(body.price * 100)), "is_enabled": True} for v in ids],
+            "print_areas": [{"variant_ids": ids, "placeholders": [{"position": body.position or "front", "images": [
+                {"id": image_id, "x": 0.5, "y": 0.5, "scale": max(0.1, min(float(body.scale), 2.0)), "angle": 0}]}]}],
+        }
+        if body.tags:
+            payload["tags"] = [str(t)[:40] for t in body.tags][:13]
+        cr = await client.post(f"{PRINTIFY_BASE}/shops/{conn.access_token}/products.json", headers=headers, json=payload)
+        if cr.status_code not in (200, 201) or not cr.json().get("id"):
+            raise HTTPException(status_code=502, detail=f"Printify could not create the product: {cr.status_code} {cr.text[:300]}")
+        pf_product_id = str(cr.json()["id"])
+
+        # 3. optional: publish to the store connected inside Printify
+        published = None
+        if body.publish:
+            pub = await client.post(f"{PRINTIFY_BASE}/shops/{conn.access_token}/products/{pf_product_id}/publish.json", headers=headers,
+                                    json={"title": True, "description": True, "images": True, "variants": True, "tags": True,
+                                          "keyFeatures": True, "shipping_template": True})
+            published = pub.status_code in (200, 201)
+
+    asset.meta = {**(asset.meta or {}), "printify_product_id": pf_product_id}
+    db.commit()
+
+    # 4. optional: sell it in ExiusCart too, linked so orders go to Printify by themselves
+    store_product = None
+    if body.import_to_store:
+        try:
+            store_product = await printify_import(shop_id, PrintifyImportIn(product_id=pf_product_id, selling_price=body.store_price),
+                                                  db=db, current_user=current_user)
+        except HTTPException as e:
+            store_product = {"error": e.detail if isinstance(e.detail, str) else (e.detail or {}).get("message", "Import failed")}
+
+    logger.info(f"[Printify push] shop={shop_id} asset={asset.id} product={pf_product_id} variants={len(ids)} published={published}")
+    return {"printify_product_id": pf_product_id, "published": published, "store_product": store_product}
