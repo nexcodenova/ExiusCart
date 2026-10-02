@@ -64,3 +64,6 @@ infrastructure/cdk.out/
 # Uploaded files (local dev)
 uploads/
 apps/exiuscart-website/public/video/
+
+# local test databases
+*.sqlite
