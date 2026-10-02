@@ -109,7 +109,7 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
             {top && (
               <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
                 Top <CountryFlag code={top.code} className="h-3 w-4" />
-                <span className="truncate font-medium text-foreground">{top.country}</span>
+                <span className="truncate text-foreground">{top.country}</span>
                 <span>{top.percentage}%</span>
               </span>
             )}
@@ -127,18 +127,18 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
               No {metric} data yet
             </div>
           ) : (
-            <ol className="mt-4 space-y-3">
+            <ol className="mt-4 space-y-2.5">
               {rows.map((r, i) => (
                 <li key={r.code}>
                   <div className="flex items-center gap-2.5">
                     <span className="w-4 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{selectedCode ? '' : i + 1}</span>
                     {r.code === 'Unknown' ? (
-                      <Globe2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Globe2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     ) : (
-                      <CountryFlag code={r.code} />
+                      <CountryFlag code={r.code} className="h-3 w-4" />
                     )}
-                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">{r.country}</span>
-                    <span className="text-sm font-medium tabular-nums text-foreground">{r.customers}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-normal text-foreground">{r.country}</span>
+                    <span className="text-[13px] tabular-nums text-foreground">{r.customers}</span>
                     <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{r.percentage}%</span>
                   </div>
                   <div className="ml-[26px] mt-1.5 h-1 overflow-hidden rounded-full bg-muted">

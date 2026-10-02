@@ -12,13 +12,12 @@ export const CHANNEL_META: Record<string, {
 }> = {
   shopify:     { label: 'Shopify',        icon: ShoppingBag, color: 'text-[#96BF48]', bg: 'bg-[#96BF48]/10', logo: '/channel-logos/shopify.svg' },
   etsy:        { label: 'Etsy',           icon: ShoppingBag, color: 'text-orange-600', bg: 'bg-orange-600/10', logo: '/channel-logos/etsy.svg', wide: true },
-  custom:      { label: 'Custom Website', icon: Globe, color: 'text-sky-500', bg: 'bg-sky-500/10' },
-  // Native order-taking methods, not third-party channels — no real brand
-  // logo, but each still gets its own distinct icon/color instead of all
-  // three falling back to the same generic gray Store icon.
-  pos:         { label: 'Point of Sale',  icon: ShoppingCart, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  online:      { label: 'Online Store',   icon: Globe, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  whatsapp:    { label: 'WhatsApp',       icon: MessageCircle, color: 'text-green-500', bg: 'bg-green-500/10' },
+  custom:      { label: 'Custom Website', icon: Globe, color: 'text-sky-500', bg: 'bg-sky-500/10', logo: '/channel-logos/custom-website.svg' },
+  // Native order-taking methods: POS and the Online Store are ExiusCart's own,
+  // so they carry the EC mark; WhatsApp gets its own logo.
+  pos:         { label: 'Point of Sale',  icon: ShoppingCart, color: 'text-emerald-500', bg: 'bg-emerald-500/10', logo: '/logo-ec-square.png' },
+  online:      { label: 'Online Store',   icon: Globe, color: 'text-blue-500', bg: 'bg-blue-500/10', logo: '/logo-ec-square.png' },
+  whatsapp:    { label: 'WhatsApp',       icon: MessageCircle, color: 'text-green-500', bg: 'bg-green-500/10', logo: '/channel-logos/whatsapp.svg' },
   woocommerce: { label: 'WooCommerce',    icon: ShoppingCart, color: 'text-[#7F54B3]', bg: 'bg-[#7F54B3]/10', logo: '/channel-logos/woocommerce.svg', wide: true },
   bigcommerce: { label: 'BigCommerce',    icon: Store, color: 'text-[#00C9A7]', bg: 'bg-[#00C9A7]/10', logo: '/channel-logos/bigcommerce.svg', wide: true },
   ebay:        { label: 'eBay',           icon: Tag, color: 'text-[#E53238]', bg: 'bg-[#E53238]/10', logo: '/channel-logos/ebay.svg', wide: true },

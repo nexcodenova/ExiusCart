@@ -115,18 +115,28 @@ const NATIVE_SOURCE_META: Record<string, { label: string; icon: React.ElementTyp
 function channelVisual(key: string): { key: string; label: string; icon: React.ReactNode; className: string } {
   const native = NATIVE_SOURCE_META[key];
   if (native) {
-    const Icon = native.icon;
-    return { key, label: native.label, icon: <Icon className="w-3 h-3" />, className: native.className };
+    return { key, label: native.label, icon: <ChannelLogo channelType={key} size={14} />, className: native.className };
   }
   const meta = channelMeta(key);
   return { key, label: meta.label, icon: <ChannelLogo channelType={key} size={12} />, className: 'bg-muted text-foreground' };
 }
 
+// POS sales note how they were paid ("Payment: cash" in Order.notes).
+function posPaymentMethod(order: Order): string | null {
+  if (order.source !== 'pos' || !order.notes) return null;
+  const m = order.notes.match(/Payment:\s*(\w+)/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+// One compact pill per order: short "POS" for till sales, with the payment
+// method on the same line ("POS · Cash") instead of a second line below.
 function ChannelPill({ order }: { order: Order }) {
   const v = channelVisual(order.channel_type ?? order.source);
+  const method = posPaymentMethod(order);
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full self-start ${v.className}`}>
-      {v.icon} {v.label}
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs px-2 py-1 rounded-full self-start ${v.className}`}>
+      {v.icon} {order.source === 'pos' ? 'POS' : v.label}
+      {method && <><span className="opacity-40">·</span><span className="capitalize">{method}</span></>}
     </span>
   );
 }
@@ -1090,7 +1100,8 @@ export default function OrdersPage() {
                   <SelectItem value="all">
                     <span className="flex items-center gap-2"><Globe className="w-3.5 h-3.5 text-muted-foreground" /> All channels</span>
                   </SelectItem>
-                  {channelFilterOptions.map((o) => (
+                  {/* WhatsApp / Online Store only appear once they have real orders; POS and connected channels always do */}
+                  {channelFilterOptions.filter((o) => o.key === channelFilter || !['whatsapp', 'online'].includes(o.key) || (channelCounts[o.key] ?? 0) > 0).map((o) => (
                     <SelectItem key={o.key} value={o.key}>
                       <span className="flex items-center gap-2">{o.icon} {o.label} ({channelCounts[o.key] ?? 0})</span>
                     </SelectItem>
@@ -1209,19 +1220,7 @@ export default function OrdersPage() {
                         <span className="text-xs text-muted-foreground">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</span>
                       </td>
                       <td className="p-3 hidden sm:table-cell">
-                        <div className="flex flex-col gap-1">
-                          <ChannelPill order={order} />
-                          {order.source === 'pos' && order.notes && (() => {
-                            const m = order.notes.match(/Payment:\s*(\w+)/i);
-                            if (!m) return null;
-                            const method = m[1].toLowerCase();
-                            const cls = method === 'cash' ? 'text-green-600 dark:text-green-400'
-                              : method === 'card' ? 'text-blue-600 dark:text-blue-400'
-                              : method === 'split' ? 'text-purple-600 dark:text-purple-400'
-                              : 'text-muted-foreground';
-                            return <p className={`text-xs capitalize font-medium ${cls}`}>{method}</p>;
-                          })()}
-                        </div>
+                        <ChannelPill order={order} />
                       </td>
                       <td className="p-3 text-right">
                         <span className="text-sm font-semibold text-foreground">{fmt(order.total)}</span>

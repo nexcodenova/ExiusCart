@@ -155,7 +155,7 @@ function Sparkline({ data, colorClass }: { data: number[]; colorClass: string })
   if (!data || data.length === 0) return null;
   const max = Math.max(...data, 1);
   return (
-    <div className="flex items-end gap-[2px] h-9 w-20 shrink-0">
+    <div className="flex items-end gap-[2px] h-6 w-16 shrink-0">
       {data.map((v, i) => (
         <div key={i} className={`flex-1 min-w-[2px] rounded-t-[1px] ${colorClass}`} style={{ height: `${Math.max(14, (v / max) * 100)}%` }} />
       ))}
@@ -180,31 +180,36 @@ function KpiCard({ icon: Icon, iconClass, label, value, changePct, sparkData, sp
   sparkData?: number[]; sparkClass?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
-          <Icon className="h-5 w-5" />
+    <div className="rounded-xl border border-border bg-card px-3.5 py-3">
+      <div className="flex items-center gap-2">
+        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${iconClass}`}>
+          <Icon className="h-3.5 w-3.5" />
         </div>
+        <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+      </div>
+      <div className="mt-1.5 flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground truncate">{label}</p>
-          <p className="text-xl font-bold leading-tight tracking-tight tabular-nums text-foreground">{value}</p>
-          <div className="mt-1 flex items-center gap-1.5">
+          <p className="text-xl font-semibold leading-tight tracking-tight tabular-nums text-foreground">{value}</p>
+          <div className="mt-0.5 flex items-center gap-1.5">
             <TrendBadge pct={changePct} />
             {changePct !== null && <span className="text-[11px] text-muted-foreground">vs last month</span>}
           </div>
         </div>
+        {sparkData && sparkData.length > 0 && <Sparkline data={sparkData} colorClass={sparkClass ?? 'bg-primary/40'} />}
       </div>
-      {sparkData && sparkData.length > 0 && <Sparkline data={sparkData} colorClass={sparkClass ?? 'bg-primary/40'} />}
     </div>
   );
 }
 
+const STATUS_DOT: Record<CustomerStatus, string> = {
+  vip: 'bg-purple-500', new: 'bg-emerald-500', returning: 'bg-blue-500', inactive: 'bg-muted-foreground/50',
+};
+
 function StatusBadge({ status }: { status: CustomerStatus }) {
   const meta = STATUS_META[status];
-  const Icon = meta.icon;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold ${meta.className}`}>
-      <Icon className="w-3 h-3" /> {meta.label}
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-0.5 text-[11px] text-foreground">
+      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[status]}`} /> {meta.label}
     </span>
   );
 }
@@ -646,23 +651,23 @@ export default function CustomersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Customers</h1>
-          <p className="text-sm text-muted-foreground">Manage your customer database, view orders, and build stronger relationships</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Customers</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage your customer database, view orders, and build stronger relationships</p>
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" accept=".csv" hidden onChange={handleImportFile} />
           <button type="button" onClick={() => fileInputRef.current?.click()} disabled={importing}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3.5 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition disabled:opacity-60">
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground hover:bg-muted transition disabled:opacity-60">
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Import
           </button>
           <button type="button" onClick={handleExport} disabled={exporting}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3.5 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition disabled:opacity-60">
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground hover:bg-muted transition disabled:opacity-60">
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Export
           </button>
           <button
             type="button"
             onClick={() => { setEditingCustomer(null); setShowAddModal(true); }}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-foreground px-3.5 text-sm font-medium text-background transition hover:opacity-90"
           >
             <Plus className="h-4 w-4" /> Add customer
           </button>
@@ -704,12 +709,12 @@ export default function CustomersPage() {
                 placeholder="Search by name, email, phone, or customer ID…"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full rounded-xl border border-border bg-card py-2.5 pl-11 pr-4 text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-foreground/10"
+                className="h-9 w-full rounded-md border border-border bg-background pl-10 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-foreground/10"
               />
             </div>
             <Popover>
               <PopoverTrigger asChild>
-                <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition">
+                <button type="button" className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground hover:bg-muted transition">
                   <SlidersHorizontal className="h-4 w-4" /> Filter
                   {(sourceFilter || statusTab === 'inactive') && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
                 </button>
@@ -736,19 +741,19 @@ export default function CustomersPage() {
               </PopoverContent>
             </Popover>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
-              className="sm:w-44 rounded-xl border border-border bg-card py-2.5 px-3.5 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-foreground/10">
+              className="h-9 sm:w-44 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-foreground/10">
               {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
 
           {/* Tabs */}
-          <div className="flex items-center gap-1 border-b border-border overflow-x-auto">
+          <div className="flex items-center gap-6 border-b border-border overflow-x-auto">
             {tabs.map((t) => (
               <button key={t.key} type="button" onClick={() => setStatusTab(t.key)}
-                className={`px-3.5 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition ${
-                  statusTab === t.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                className={`pb-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition ${
+                  statusTab === t.key ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}>
-                {t.label} <span className="text-xs opacity-70">({(counts[t.key] ?? 0).toLocaleString()})</span>
+                {t.label} <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{(counts[t.key] ?? 0).toLocaleString()}</span>
               </button>
             ))}
           </div>
@@ -769,7 +774,7 @@ export default function CustomersPage() {
           )}
 
           {/* Table */}
-          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             {loading ? (
               <div className="p-8 space-y-3">
                 {[1, 2, 3, 4].map((i) => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}
@@ -795,23 +800,23 @@ export default function CustomersPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                        <th className="p-3 w-8">
+                      <tr className="border-b border-border bg-muted/40 text-left text-xs text-muted-foreground">
+                        <th className="px-3 py-2.5 w-8">
                           <input type="checkbox" checked={selectedIds.size === customers.length && customers.length > 0}
                             onChange={toggleSelectAll} className="rounded border-border" />
                         </th>
-                        <th className="p-3 font-medium">Customer</th>
-                        <th className="p-3 font-medium hidden md:table-cell">Contact</th>
-                        <th className="p-3 font-medium">Orders</th>
-                        <th className="p-3 font-medium">
+                        <th className="px-3 py-2.5 font-medium">Customer</th>
+                        <th className="px-3 py-2.5 font-medium hidden md:table-cell">Contact</th>
+                        <th className="px-3 py-2.5 font-medium">Orders</th>
+                        <th className="px-3 py-2.5 font-medium">
                           <button type="button" onClick={() => setSortBy(sortBy === 'spent_desc' ? 'spent_asc' : 'spent_desc')}
                             className="inline-flex items-center gap-1 hover:text-foreground transition">
                             Total Spent
                           </button>
                         </th>
-                        <th className="p-3 font-medium hidden lg:table-cell">Last Order</th>
-                        <th className="p-3 font-medium">Status</th>
-                        <th className="p-3 font-medium text-right">Actions</th>
+                        <th className="px-3 py-2.5 font-medium hidden lg:table-cell">Last Order</th>
+                        <th className="px-3 py-2.5 font-medium">Status</th>
+                        <th className="px-3 py-2.5 font-medium text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -824,24 +829,24 @@ export default function CustomersPage() {
                           </td>
                           <td className="p-3">
                             <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-                                <span className="text-xs font-semibold text-foreground">{initials(customer.name)}</span>
+                              <div className="w-8 h-8 rounded-full border border-border bg-muted/50 flex items-center justify-center shrink-0">
+                                <span className="text-[11px] font-medium text-muted-foreground">{initials(customer.name)}</span>
                               </div>
                               <div className="min-w-0">
-                                <p className="font-medium text-foreground truncate">{customer.name}</p>
-                                <p className="text-xs text-muted-foreground">{customerIdLabel(customer.id)}</p>
+                                <p className="text-[13px] font-medium text-foreground truncate">{customer.name}</p>
+                                <p className="font-mono text-[11px] text-muted-foreground">{customerIdLabel(customer.id)}</p>
                               </div>
                             </div>
                           </td>
                           <td className="p-3 hidden md:table-cell">
                             <div className="space-y-0.5">
-                              {customer.email && <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="w-3 h-3" />{customer.email}</p>}
-                              {customer.phone && <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" />{customer.phone}</p>}
+                              {customer.email && <p className="truncate text-xs text-foreground">{customer.email}</p>}
+                              {customer.phone && <p className="text-[11px] text-muted-foreground">{customer.phone}</p>}
                             </div>
                           </td>
-                          <td className="p-3 tabular-nums text-foreground">{customer.totalOrders}</td>
-                          <td className="p-3 tabular-nums font-medium text-foreground">{fmt(customer.totalSpent, 0)}</td>
-                          <td className="p-3 text-muted-foreground hidden lg:table-cell">{timeAgoShort(customer.lastOrder)}</td>
+                          <td className="p-3 text-[13px] tabular-nums text-foreground">{customer.totalOrders}</td>
+                          <td className="p-3 text-[13px] tabular-nums text-foreground">{fmt(customer.totalSpent, 0)}</td>
+                          <td className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{timeAgoShort(customer.lastOrder)}</td>
                           <td className="p-3"><StatusBadge status={customer.status} /></td>
                           <td className="p-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
@@ -897,7 +902,7 @@ export default function CustomersPage() {
                     ) : (
                       <button key={p} type="button" onClick={() => setPage(p)}
                         className={`min-w-[2rem] px-2 py-1.5 rounded-lg text-xs font-medium transition ${
-                          p === page ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted'
+                          p === page ? 'bg-foreground text-background' : 'text-foreground hover:bg-muted'
                         }`}>
                         {p}
                       </button>

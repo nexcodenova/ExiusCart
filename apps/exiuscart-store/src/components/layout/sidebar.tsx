@@ -130,7 +130,7 @@ const GROUPS: MenuGroup[] = [
       { href: '/dashboard/dropshipping/import', label: 'Import Products',  icon: ShoppingBag },
       { href: '/dashboard/product-research',    label: 'Product Research', icon: Search      },
       { href: '/dashboard/prodora-imports', label: 'Prodora', icon: ProdoraIcon },
-      { href: '/dashboard/prodora-ai',      label: 'Prodora AI',   icon: Sparkles    },
+      { href: '/dashboard/prodora-ai',      label: 'Prodora AI',   icon: ProdoraIcon },
       { href: '/dashboard/price-coach',     label: 'Price Coach',  icon: Scale       },
     ],
   },
@@ -754,8 +754,9 @@ export function ShopSidebar() {
                               <SidebarMenuButton asChild isActive={active} tooltip={collapsed ? item.label : undefined}
                                 className={active ? 'bg-sidebar-accent text-sidebar-foreground font-medium hover:bg-sidebar-accent hover:text-sidebar-foreground' : 'text-sidebar-muted-foreground'}>
                                 <Link href={item.href}>
-                                  {/* Sub-items read as plain text (Apify-style); the icon only shows in the hidden-menu (icons only) mode */}
-                                  {collapsed && <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />}
+                                  {/* Sub-items read as plain text (Apify-style); the icon only shows in the hidden-menu (icons only)
+                                      mode, except Prodora's own logo, which always shows so its pages stand out as ours */}
+                                  {(collapsed || Icon === ProdoraIcon) && <Icon className="!w-[18px] !h-[18px] flex-shrink-0" />}
                                   <span className="font-medium">{item.label}</span>
                                 </Link>
                               </SidebarMenuButton>

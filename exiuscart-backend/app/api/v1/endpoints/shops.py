@@ -1051,6 +1051,24 @@ def adjust_inventory(
 _PERIOD_DAYS = {"7d": 7, "30d": 30, "90d": 90, "12m": 365, "all": None}
 
 
+def _fill_gallery_images(db: Session, images: dict) -> dict:
+    """Products with no main image_url fall back to their first gallery photo
+    (ProductImage, primary first), so the dashboard does not show a blank tile
+    for a product that does have pictures."""
+    missing = [pid for pid, url in images.items() if not url]
+    if not missing:
+        return images
+    from app.models.product_fields import ProductImage
+    rows = db.query(ProductImage.product_id, ProductImage.url).filter(
+        ProductImage.product_id.in_(missing),
+    ).order_by(ProductImage.product_id, ProductImage.is_primary.desc(), ProductImage.sort_order.asc(), ProductImage.id.asc()).all()
+    filled = dict(images)
+    for pid, url in rows:
+        if not filled.get(pid) and url:
+            filled[pid] = url
+    return filled
+
+
 def _resolve_period_start(period: str, shop_created_at) -> "datetime":
     """None days ('all') means since the shop itself was created, not a
     fixed lookback window — so a brand-new shop's "all time" isn't
@@ -1232,10 +1250,19 @@ def get_dashboard_stats(
     ).group_by(OrdItemModel.product_id, OrdItemModel.product_name).order_by(
         func.sum(OrdItemModel.total_price).desc()
     ).limit(5).all()
+    # Line items whose product_id was lost (deleted and re-imported product)
+    # still get matched to the shop's current product with the same name.
+    unlinked_names = [r[1] for r in top_products_rows if not r[0] and r[1]]
+    name_to_id = {
+        p.name: p.id for p in db.query(Product.id, Product.name).filter(
+            Product.shop_id == shop_id, Product.name.in_(unlinked_names)).all()
+    } if unlinked_names else {}
+    top_products_rows = [(r[0] or name_to_id.get(r[1]), r[1], r[2], r[3]) for r in top_products_rows]
     top_product_ids = [r[0] for r in top_products_rows if r[0]]
     top_product_images = {
         p.id: p.image_url for p in db.query(Product.id, Product.image_url).filter(Product.id.in_(top_product_ids)).all()
     } if top_product_ids else {}
+    top_product_images = _fill_gallery_images(db, top_product_images)
     # Real product-page loads (Product.view_count, all time), never guessed — shown next to the sales on one list.
     top_product_views = {
         p.id: int(p.view_count or 0) for p in db.query(Product.id, Product.view_count).filter(Product.id.in_(top_product_ids)).all()
@@ -1251,9 +1278,11 @@ def get_dashboard_stats(
     viewed_extra = db.query(Product).filter(Product.shop_id == shop_id, Product.view_count > 0)
     if top_product_ids:
         viewed_extra = viewed_extra.filter(~Product.id.in_(top_product_ids))
+    viewed_products = viewed_extra.order_by(Product.view_count.desc(), Product.id.asc()).limit(3).all()
+    viewed_images = _fill_gallery_images(db, {p.id: p.image_url for p in viewed_products})
     top_products += [
-        {"name": p.name, "revenue": 0.0, "qty": 0, "image_url": p.image_url, "views": int(p.view_count or 0)}
-        for p in viewed_extra.order_by(Product.view_count.desc(), Product.id.asc()).limit(3).all()
+        {"name": p.name, "revenue": 0.0, "qty": 0, "image_url": viewed_images.get(p.id), "views": int(p.view_count or 0)}
+        for p in viewed_products
     ]
 
     # KPI: avg order value (last 30 days, non-cancelled)
