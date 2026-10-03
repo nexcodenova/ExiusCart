@@ -568,6 +568,8 @@ async def ship_order(
 
     log_activity(db, shop_id, "order_shipped", "Order shipped", f"#{order.order_number}", order_id=order.id)
     _notify_channel_order(order_id, "shipped", db, tracking_number=data.tracking_number, tracking_courier=data.carrier, delivery_cost=data.delivery_cost)
+    from app.api.v1.endpoints.etsy import push_etsy_tracking
+    push_etsy_tracking(db, order, data.tracking_number, data.carrier)
 
     return order
 

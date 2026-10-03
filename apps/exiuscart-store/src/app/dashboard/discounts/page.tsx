@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import SectionBanner from '@/components/directory/SectionBanner';
 import {
   Percent, Plus, Search, Copy, Check, Edit, Trash2, X, Tag, DollarSign, Loader2, RefreshCcw,
 } from 'lucide-react';
@@ -102,13 +103,36 @@ export default function DiscountsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Discounts</h1>
-          <p className="text-sm text-muted-foreground">Create and manage discount codes for your storefront and POS</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Discounts</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Create and manage discount codes for your storefront and POS</p>
         </div>
         <button type="button" onClick={() => { setEditing(null); setShowModal(true); }}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90">
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-foreground px-3.5 text-sm font-medium text-background transition hover:opacity-90">
           <Plus className="h-4 w-4" /> Create discount
         </button>
+      </div>
+
+      <SectionBanner
+        title="Discounts that bring buyers back"
+        description="Create a code once and it works on your storefront and at the till. Set a percent or a fixed amount, a minimum order, an end date and how many times it can be used."
+        actionLabel="Create a discount" onAction={() => { setEditing(null); setShowModal(true); }} variant={0}
+      />
+
+      {/* How it works — three plain steps */}
+      <div className="grid gap-3 md:grid-cols-3">
+        {[
+          { n: 1, t: 'Create a code', d: 'Percent or fixed amount, with an optional minimum order and end date.' },
+          { n: 2, t: 'Share it', d: 'Post it, email it, or tell the customer at the counter.' },
+          { n: 3, t: 'It applies itself', d: 'The code works at checkout on your storefront and in POS.' },
+        ].map((x) => (
+          <div key={x.n} className="flex gap-3 rounded-xl border border-border bg-card p-4">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-xs font-medium text-foreground">{x.n}</span>
+            <div>
+              <p className="text-sm font-medium text-foreground">{x.t}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{x.d}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

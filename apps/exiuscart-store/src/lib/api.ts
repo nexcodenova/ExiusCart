@@ -991,6 +991,12 @@ export const gumroadApi = {
     api.post(`/shops/${shopId}/channels/gumroad/products/${productId}/link`, data),
   getListingStatus: (shopId: string, productId: number | string) =>
     api.get(`/shops/${shopId}/channels/gumroad/products/${productId}/listing`),
+  status: (shopId: string) =>
+    api.get<{
+      ping_url: string; error: string | null; last_sale_at: string | null;
+      products: { id: string; name: string; price: string | null; url: string | null; image: string | null; published: boolean; permalink: string | null }[];
+      links: Record<string, { product_id: number; product_name: string }>;
+    }>(`/shops/${shopId}/channels/gumroad/status`),
 };
 
 // Meta Ad Library search — real running ads pulled live, lets a seller
@@ -1081,6 +1087,8 @@ export const etsyApi = {
     api.get(`/shops/${shopId}/channels/etsy/products/${productId}/listing`),
   syncOrdersNow: (shopId: string, days: number = 7) =>
     api.post(`/shops/${shopId}/channels/etsy/sync-orders`, null, { params: { days } }),
+  listingOptions: (shopId: string) =>
+    api.get<{ categories: { id: number; path: string }[]; shipping_profiles: { id: number; title: string }[] }>(`/shops/${shopId}/channels/etsy/listing-options`),
   fulfillOrder: (shopId: string, orderId: number | string, data: { tracking_number: string; carrier_name: string }) =>
     api.post(`/shops/${shopId}/channels/etsy/orders/${orderId}/fulfill`, data),
 };

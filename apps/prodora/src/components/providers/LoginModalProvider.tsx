@@ -43,7 +43,9 @@ export default function LoginModalProvider({ children }: { children: React.React
       // confirm the same email again. The login box only appears if this fails.
       setOpening(true);
       prodoraAuth.requestAccess(emailFromLink)
-        .then(() => { try { localStorage.setItem(EMAIL_KEY, emailFromLink); } catch {} router.push(target || '/browse'); })
+        // The cover is lifted once signed in: this provider lives in the root layout and never unmounts,
+        // so leaving `opening` on kept "Opening Prodora…" over the page for good.
+        .then(() => { try { localStorage.setItem(EMAIL_KEY, emailFromLink); } catch {} router.push(target || '/browse'); setOpening(false); })
         .catch((err: any) => {
           setError(err.response?.data?.detail || 'Something went wrong. Please try again.');
           setOpening(false);

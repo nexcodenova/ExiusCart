@@ -468,6 +468,77 @@ def get_etsy_listing_status(
     return {"listed": True, "status": status.status, "external_id": status.external_item_id}
 
 
+# ── Listing options: real Etsy categories and the seller's own shipping profiles ──
+# GET /seller-taxonomy/nodes (Etsy's category tree, the same for every shop, so it is
+# cached in memory for a day) and GET /shops/{shop_id}/shipping-profiles. They feed the
+# "List on Etsy" dropdowns, so sellers pick names instead of typing Etsy's id numbers.
+
+_TAXONOMY_CACHE: dict = {"at": 0.0, "items": []}
+
+
+def _flatten_taxonomy(nodes: list, trail: list | None = None) -> list:
+    out = []
+    for n in nodes or []:
+        path = (trail or []) + [str(n.get("name") or "")]
+        children = n.get("children") or []
+        if children:
+            out.extend(_flatten_taxonomy(children, path))
+        elif n.get("id"):
+            out.append({"id": int(n["id"]), "path": " › ".join(p for p in path if p)})
+    return out
+
+
+@router.get("/shops/{shop_id}/channels/etsy/listing-options")
+def etsy_listing_options(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    import time as _time
+    _shop_or_404(shop_id, current_user, db)
+    conn = _get_etsy_connection(shop_id, db)
+
+    if not _TAXONOMY_CACHE["items"] or _time.time() - _TAXONOMY_CACHE["at"] > 86400:
+        resp = _etsy_api_request("GET", "/seller-taxonomy/nodes", conn, db)
+        if resp is not None and resp.status_code < 300:
+            _TAXONOMY_CACHE["items"] = sorted(_flatten_taxonomy(resp.json().get("results", [])), key=lambda x: x["path"])
+            _TAXONOMY_CACHE["at"] = _time.time()
+
+    profiles = []
+    resp = _etsy_api_request("GET", f"/shops/{conn.channel_seller_id}/shipping-profiles", conn, db)
+    if resp is not None and resp.status_code < 300:
+        profiles = [{"id": int(p["shipping_profile_id"]), "title": p.get("title") or f"Profile {p['shipping_profile_id']}"}
+                    for p in resp.json().get("results", []) if p.get("shipping_profile_id")]
+    return {"categories": _TAXONOMY_CACHE["items"], "shipping_profiles": profiles}
+
+
+def push_etsy_tracking(db: Session, order, tracking_number: str | None, carrier: str | None) -> bool:
+    """When an Etsy order is marked shipped in ExiusCart, send its tracking to Etsy so
+    Etsy marks the order shipped and tells the buyer. Never raises; False = not sent."""
+    from app.models.channel_order_meta import ChannelOrderMeta
+    if not tracking_number:
+        return False
+    try:
+        meta = db.query(ChannelOrderMeta).filter(ChannelOrderMeta.order_id == order.id,
+                                                 ChannelOrderMeta.channel_type == "etsy").first()
+        if not meta or not meta.channel_order_id:
+            return False
+        conn = db.query(ChannelConnection).filter(ChannelConnection.shop_id == order.shop_id,
+                                                  ChannelConnection.channel_type == "etsy",
+                                                  ChannelConnection.is_active == True).first()  # noqa: E712
+        if not conn:
+            return False
+        resp = _etsy_api_request("POST", f"/shops/{conn.channel_seller_id}/receipts/{meta.channel_order_id}/tracking",
+                                 conn, db, data={"tracking_code": tracking_number, "carrier_name": (carrier or "other").lower()})
+        if resp is None or resp.status_code >= 300:
+            logger.warning(f"[ETSY TRACKING] order={order.id} not accepted: {resp.text[:200] if resp is not None else 'no response'}")
+            return False
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[ETSY TRACKING] order={order.id} failed: {type(e).__name__}")
+        return False
+
+
 # ── Order sync (Etsy calls orders "receipts") ───────────────────────────────
 
 def fetch_etsy_receipts(conn: ChannelConnection, db: Session, days: int = 7) -> list | None:

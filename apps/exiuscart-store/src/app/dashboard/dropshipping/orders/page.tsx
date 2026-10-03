@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2, Package, CheckCircle2, Truck, AlertCircle, Clock, ExternalLink } from 'lucide-react';
 import { dropshipApi } from '@/lib/api';
+import SectionBanner from '@/components/directory/SectionBanner';
 import Link from 'next/link';
 import SupplierBadge, { SUPPLIER_NAMES } from '@/components/dropshipping/SupplierBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -58,21 +59,23 @@ export default function DropshipOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/dropshipping" className="text-sm text-muted-foreground hover:text-foreground">← Suppliers</Link>
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Supplier Orders</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">All orders forwarded to your dropshipping suppliers.</p>
-        </div>
+      <div>
+        <Link href="/dashboard/dropshipping" className="text-xs text-muted-foreground hover:text-foreground">← Suppliers</Link>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">Supplier orders</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Every order sent to a dropshipping supplier, and where it stands.</p>
       </div>
+
+      <SectionBanner title="Orders your suppliers ship for you"
+        description="When you click Fulfill, or auto-fulfil sends an order, it lands here with the supplier's order number, its status, tracking and what you paid."
+        variant={1} />
 
       {/* Status summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(['pending', 'processing', 'shipped', 'delivered'] as const).map((s) => (
           <button key={s} onClick={() => setFilterStatus(filterStatus === s ? '' : s)}
-            className={`border rounded-xl p-4 text-left transition ${filterStatus === s ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'}`}>
-            <p className="text-2xl font-bold text-foreground">{counts[s] ?? 0}</p>
-            <p className="text-xs text-muted-foreground capitalize mt-1">{s}</p>
+            className={`rounded-xl border bg-card px-3.5 py-3 text-left transition ${filterStatus === s ? 'border-foreground/40 ring-1 ring-foreground/10' : 'border-border hover:bg-muted/40'}`}>
+            <p className="flex items-center gap-1.5 text-xs capitalize text-muted-foreground"><span className={`h-1.5 w-1.5 rounded-full ${({ pending: 'bg-amber-500', processing: 'bg-sky-500', shipped: 'bg-indigo-500', delivered: 'bg-emerald-500' } as Record<string, string>)[s]}`} />{s}</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{counts[s] ?? 0}</p>
           </button>
         ))}
       </div>
@@ -80,7 +83,7 @@ export default function DropshipOrdersPage() {
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <Select value={filterSupplier || 'all'} onValueChange={(v) => setFilterSupplier(v === 'all' ? '' : v)}>
-          <SelectTrigger aria-label="Filter by supplier" className="h-[38px] w-56 bg-muted"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by supplier" className="h-9 w-56 bg-background"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All suppliers</SelectItem>
             {Object.keys(SUPPLIER_NAMES).map((k) => (
@@ -89,7 +92,7 @@ export default function DropshipOrdersPage() {
           </SelectContent>
         </Select>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground outline-none">
+          className="h-9 px-3 bg-background border border-border rounded-md text-sm text-foreground outline-none">
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
           <option value="processing">Processing</option>
@@ -105,8 +108,8 @@ export default function DropshipOrdersPage() {
           <span className="text-sm">Loading orders...</span>
         </div>
       ) : orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Package className="w-10 h-10 text-muted-foreground/40 mb-3" />
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
+          <Package className="w-8 h-8 text-muted-foreground/50 mb-3" />
           <p className="text-muted-foreground text-sm">No supplier orders yet.</p>
           <p className="text-muted-foreground/60 text-xs mt-1">
             When you fulfill an order through a supplier, it will appear here.
@@ -115,7 +118,7 @@ export default function DropshipOrdersPage() {
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 border-b border-border">
+            <thead className="bg-muted border-b border-border">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">ExiusCart Order</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Supplier</th>

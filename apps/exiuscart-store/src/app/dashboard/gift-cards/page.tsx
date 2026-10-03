@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Gift, Plus, X, Upload, Loader2, Edit, Trash2, Check, PackageOpen } from 'lucide-react';
 import { productsApi, imagesApi, channelsApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import SectionBanner from '@/components/directory/SectionBanner';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -23,28 +24,52 @@ type Tab = 'cards' | 'items';
 export default function GiftCardsPage() {
   const [shopId, setShopId] = useState('');
   const [tab, setTab] = useState<Tab>('cards');
+  // TheDersi sellers only get Free Gift Items (TheDersi's checkout gives them away); prepaid gift cards are not offered there
+  const [isTheDersi, setIsTheDersi] = useState(false);
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
+  useEffect(() => {
+    if (!shopId) return;
+    channelsApi.getConnections(shopId).then((r) => {
+      const dersi = (r.data ?? []).some((c: any) => c.channel_type === 'thedersi');
+      setIsTheDersi(dersi);
+      if (dersi) setTab('items');
+    }).catch(() => {});
+  }, [shopId]);
+
+  const tabs: { key: Tab; label: string }[] = isTheDersi
+    ? [{ key: 'items', label: 'Free gift items' }]
+    : [{ key: 'cards', label: 'Gift cards' }, { key: 'items', label: 'Free gift items' }];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Gift Cards</h1>
-        <p className="text-sm text-muted-foreground">Prepaid cards customers buy, and real products you give away free with an order.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{isTheDersi ? 'Free gift items' : 'Gift cards & items'}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {isTheDersi ? 'Real products you give away free with an order on TheDersi.' : 'Prepaid cards customers buy, and real products you give away free with an order.'}
+        </p>
       </div>
 
-      <div className="flex items-center gap-1 border-b border-border">
-        <button type="button" onClick={() => setTab('cards')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${tab === 'cards' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-          Gift Cards
-        </button>
-        <button type="button" onClick={() => setTab('items')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${tab === 'items' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-          Free Gift Items
-        </button>
-      </div>
+      <SectionBanner
+        title={tab === 'cards' ? 'Gift cards people love to give' : 'A free gift that wins the order'}
+        description={tab === 'cards'
+          ? 'Sell prepaid gift cards in set amounts. The buyer pays now, and the person they give it to spends it in your store later.'
+          : 'Pick a real product to give away free with qualifying orders. It is a simple, honest way to make an order feel special.'}
+        variant={tab === 'cards' ? 1 : 2}
+      />
 
-      {tab === 'cards' ? <GiftCardsTab shopId={shopId} /> : <FreeGiftItemsTab shopId={shopId} />}
+      {tabs.length > 1 && (
+        <div className="flex items-center gap-6 border-b border-border">
+          {tabs.map((t) => (
+            <button key={t.key} type="button" onClick={() => setTab(t.key)}
+              className={`-mb-px border-b-2 pb-2.5 text-sm font-medium transition ${tab === t.key ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === 'cards' && !isTheDersi ? <GiftCardsTab shopId={shopId} /> : <FreeGiftItemsTab shopId={shopId} />}
     </div>
   );
 }

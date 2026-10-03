@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { SUPPLIER_GUIDES } from './supplierGuides';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -403,6 +404,15 @@ export default function SupplierCard({ supplier, shopId, plan, onRefresh, stat }
   const [togglingAuto, setTogglingAuto] = useState(false);
   const [connectingAliexpress, setConnectingAliexpress] = useState(false);
   const [aliexpressError, setAliexpressError] = useState('');
+  // The page's "Connect Supplier" picker asks this card to open its own connect flow
+  const openConnectRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === supplier.supplier_type) openConnectRef.current();
+    };
+    window.addEventListener('open-supplier-connect', onOpen);
+    return () => window.removeEventListener('open-supplier-connect', onOpen);
+  }, [supplier.supplier_type]);
 
   // AliExpress is real OAuth2 (one shared ExiusCart app, the seller
   // authorizes their own AliExpress account) — no form/modal, just a
@@ -416,6 +426,11 @@ export default function SupplierCard({ supplier, shopId, plan, onRefresh, stat }
       setAliexpressError(e?.response?.data?.detail?.message ?? e?.response?.data?.detail ?? 'Could not start AliExpress connection. Try again.');
       setConnectingAliexpress(false);
     }
+  };
+  openConnectRef.current = () => {
+    if (supplier.locked) { window.location.href = '/dashboard/billing'; return; }
+    if (supplier.supplier_type === 'aliexpress') { connectAliexpress(); return; }
+    setShowModal(true);
   };
 
   const disconnect = async () => {
@@ -466,6 +481,12 @@ export default function SupplierCard({ supplier, shopId, plan, onRefresh, stat }
           </div>
 
           <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">{supplier.description}</p>
+          {SUPPLIER_GUIDES[supplier.supplier_type] && (
+            <Link href={`/dashboard/dropshipping/guide/${supplier.supplier_type}`}
+              className="inline-flex w-fit items-center gap-1 text-xs font-medium text-foreground underline-offset-2 hover:underline">
+              How to connect {supplier.name} <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
 
           {meta && (
             <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">

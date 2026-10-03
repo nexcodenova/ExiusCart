@@ -1599,17 +1599,16 @@ function ProductModal({
   const [listingTiktok, setListingTiktok] = useState(false);
   const [tiktokListingError, setTiktokListingError] = useState('');
 
-  // Etsy — like TikTok, own dedicated state with manually-typed fields
-  // (taxonomy_id/shipping_profile_id) rather than pickers, since no
-  // taxonomy-browsing or shipping-profile-listing endpoint is built yet
-  // even though Etsy's docs make those real, confirmed endpoints —
-  // scope for a later pass, not blocking this one.
+  // Etsy — category and shipping profile are picked from Etsy's real lists
+  // (category tree + the seller's own shipping profiles), loaded once connected.
   const [etsyConnection, setEtsyConnection] = useState<{ id: number } | null>(null);
   const [etsyEnabled, setEtsyEnabled] = useState(false);
   const [etsyTaxonomyId, setEtsyTaxonomyId] = useState('');
   const [etsyWhoMade, setEtsyWhoMade] = useState('i_did');
   const [etsyWhenMade, setEtsyWhenMade] = useState('made_to_order');
   const [etsyShippingProfileId, setEtsyShippingProfileId] = useState('');
+  const [etsyOptions, setEtsyOptions] = useState<{ categories: { id: number; path: string }[]; shipping_profiles: { id: number; title: string }[] } | null>(null);
+  const [etsyCategoryQuery, setEtsyCategoryQuery] = useState('');
   const [etsyListingStatus, setEtsyListingStatus] = useState<{ external_id: string } | null>(null);
   const [listingEtsy, setListingEtsy] = useState(false);
   const [etsyListingError, setEtsyListingError] = useState('');
@@ -1852,6 +1851,10 @@ function ProductModal({
         const etsy = data.find((c: any) => c.channel_type === 'etsy');
         if (etsy) {
           setEtsyConnection({ id: etsy.id });
+          etsyApi.listingOptions(shopId).then((r) => {
+            setEtsyOptions(r.data);
+            if (r.data.shipping_profiles.length === 1) setEtsyShippingProfileId(String(r.data.shipping_profiles[0].id));
+          }).catch(() => setEtsyOptions({ categories: [], shipping_profiles: [] }));
           if (product?.id) {
             etsyApi.getListingStatus(shopId, product.id)
               .then((r) => { if (r.data?.listed) setEtsyListingStatus({ external_id: r.data.external_id }); })
@@ -4054,15 +4057,41 @@ function ProductModal({
                   {etsyConnection && etsyEnabled && (
                     <div className="border-t border-border p-3 space-y-3">
                       <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs font-medium text-foreground mb-1 block">Taxonomy ID *</Label>
-                          <Input type="text" value={etsyTaxonomyId} onChange={(e) => setEtsyTaxonomyId(e.target.value)}
-                            placeholder="e.g. 1633" />
+                        <div className="col-span-2">
+                          <Label className="text-xs font-medium text-foreground mb-1 block">Etsy category *</Label>
+                          {etsyOptions && etsyOptions.categories.length > 0 ? (
+                            <div className="space-y-1.5">
+                              <Input type="text" value={etsyCategoryQuery} onChange={(e) => setEtsyCategoryQuery(e.target.value)}
+                                placeholder="Search categories, e.g. necklace" />
+                              <Select value={etsyTaxonomyId} onValueChange={setEtsyTaxonomyId}>
+                                <SelectTrigger><SelectValue placeholder="Choose a category" /></SelectTrigger>
+                                <SelectContent className="max-h-72">
+                                  {etsyOptions.categories
+                                    .filter((c) => String(c.id) === etsyTaxonomyId || !etsyCategoryQuery.trim() || c.path.toLowerCase().includes(etsyCategoryQuery.trim().toLowerCase()))
+                                    .slice(0, 150)
+                                    .map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.path}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : (
+                            <Input type="text" value={etsyTaxonomyId} onChange={(e) => setEtsyTaxonomyId(e.target.value)}
+                              placeholder={etsyOptions ? 'Etsy category number' : 'Loading categories…'} />
+                          )}
                         </div>
-                        <div>
-                          <Label className="text-xs font-medium text-foreground mb-1 block">Shipping Profile ID *</Label>
-                          <Input type="text" value={etsyShippingProfileId} onChange={(e) => setEtsyShippingProfileId(e.target.value)}
-                            placeholder="From your Etsy shop" />
+                        <div className="col-span-2">
+                          <Label className="text-xs font-medium text-foreground mb-1 block">Shipping profile *</Label>
+                          {etsyOptions && etsyOptions.shipping_profiles.length > 0 ? (
+                            <Select value={etsyShippingProfileId} onValueChange={setEtsyShippingProfileId}>
+                              <SelectTrigger><SelectValue placeholder="Choose a shipping profile" /></SelectTrigger>
+                              <SelectContent>
+                                {etsyOptions.shipping_profiles.map((sp) => <SelectItem key={sp.id} value={String(sp.id)}>{sp.title}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              {etsyOptions ? <>No shipping profile found in your Etsy shop. Create one in Etsy (Shop Manager › Settings › Delivery settings), then reopen this product.</> : 'Loading shipping profiles…'}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">

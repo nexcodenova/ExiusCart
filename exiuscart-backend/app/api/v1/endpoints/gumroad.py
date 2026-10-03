@@ -34,6 +34,7 @@ verify if the seller has actually provided a secret; never silently
 treat an unconfigured signature as verified.
 """
 import hashlib
+import os
 import hmac
 import logging
 from typing import Optional
@@ -56,6 +57,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 GUMROAD_API_BASE = "https://api.gumroad.com/v2"
+_PUBLIC_API = os.getenv("EXIUSCART_API_BASE", "https://api.exiuscart.com/api/v1").rstrip("/")
+
+
+def _ping_url(conn: ChannelConnection) -> str:
+    """The full Ping URL the seller pastes into Gumroad (Settings -> Advanced -> Ping)."""
+    return f"{_PUBLIC_API}/channels/webhook/gumroad/{conn.webhook_secret}"
 
 
 def _get_gumroad_connection(shop_id: int, db: Session) -> ChannelConnection:
@@ -139,8 +146,49 @@ def connect_gumroad(
         "connected": True,
         # One account-wide Ping URL — paste into Gumroad Settings ->
         # Advanced -> Ping endpoint, not per-product.
-        "ping_url": f"/api/v1/channels/webhook/gumroad/{conn.webhook_secret}",
+        "ping_url": _ping_url(conn),
     }
+
+
+@router.get("/shops/{shop_id}/channels/gumroad/status")
+def gumroad_status(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Everything the Gumroad page needs once connected: the Ping URL (always, not only
+    right after connecting), the seller's real Gumroad products, and which ExiusCart
+    product each one is linked to."""
+    from app.models.product import Product
+    from app.models.channel_product_status import ChannelProductStatus
+    _shop_or_404(shop_id, current_user, db)
+    conn = _get_gumroad_connection(shop_id, db)
+
+    products, error = [], None
+    try:
+        resp = _gumroad_request(conn.channel_api_key, "GET", "/products")
+        if resp.status_code < 300:
+            for g in resp.json().get("products", []) or []:
+                products.append({
+                    "id": str(g.get("id") or ""), "name": g.get("name") or "Untitled",
+                    "price": g.get("formatted_price"), "url": g.get("short_url"),
+                    "image": g.get("thumbnail_url") or g.get("preview_url"),
+                    "published": bool(g.get("published", True)),
+                    "permalink": g.get("custom_permalink") or (str(g.get("short_url") or "").rstrip("/").split("/")[-1] or None),
+                })
+        else:
+            error = "Gumroad rejected the access token. Reconnect with a new one." if resp.status_code == 401 else f"Gumroad answered {resp.status_code}."
+    except Exception as e:  # noqa: BLE001
+        error = f"Could not reach Gumroad ({type(e).__name__})."
+
+    links = {}
+    for st in db.query(ChannelProductStatus).filter(ChannelProductStatus.shop_id == shop_id,
+                                                    ChannelProductStatus.channel_type == "gumroad").all():
+        p = db.query(Product.id, Product.name).filter(Product.id == st.product_id).first()
+        if p and st.external_item_id:
+            links[st.external_item_id] = {"product_id": p.id, "product_name": p.name}
+    return {"ping_url": _ping_url(conn), "products": products, "links": links, "error": error,
+            "last_sale_at": conn.last_synced_at.isoformat() if conn.last_synced_at else None}
 
 
 @router.delete("/shops/{shop_id}/channels/gumroad/disconnect")

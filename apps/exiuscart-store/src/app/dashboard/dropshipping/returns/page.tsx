@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import SectionBanner from '@/components/directory/SectionBanner';
 import Link from 'next/link';
 import {
   Loader2, Undo2, Plus, X, Search, Trash2, ChevronDown, Package,
@@ -104,31 +105,29 @@ export default function SupplierReturnsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/dropshipping" className="text-sm text-muted-foreground hover:text-foreground">← Suppliers</Link>
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Supplier Returns</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Track a customer return through to a supplier refund.</p>
-          </div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+        <Link href="/dashboard/dropshipping" className="text-xs text-muted-foreground hover:text-foreground">← Suppliers</Link>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">Supplier returns</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Take a customer return all the way to the supplier refund.</p>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 bg-foreground text-background px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition">
+          className="inline-flex h-9 items-center gap-2 rounded-md bg-foreground px-3.5 text-sm font-medium text-background transition hover:opacity-90">
           <Plus className="w-4 h-4" /> Log a return
         </button>
       </div>
 
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
-        None of your connected suppliers (CJ, HyperSKU, Printful, AliExpress) expose an automated returns API yet, so you track the return with them by hand. But marking one <strong>Refunded</strong> here isn&apos;t just a log entry: it automatically refunds the order on your side too — cancels it, marks it refunded, and restores the stock — the same as clicking Refund on the order itself.
-      </div>
+      <SectionBanner title="Returns, from request to refund"
+        description="Suppliers do not offer a returns API yet, so you agree the return with them yourself. Marking it Refunded here also refunds the order on your side: it is cancelled, marked refunded, and the stock comes back."
+        actionLabel="Log a return" onAction={() => setShowModal(true)} variant={2} />
 
       {/* Status summary */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {(['requested', 'approved', 'shipped_back', 'refunded', 'rejected'] as const).map((s) => (
           <button key={s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
-            className={`border rounded-xl p-3 text-left transition ${statusFilter === s ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'}`}>
-            <p className="text-xl font-bold text-foreground">{counts[s] ?? 0}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{STATUS_META[s].label}</p>
+            className={`rounded-xl border bg-card px-3.5 py-3 text-left transition ${statusFilter === s ? 'border-foreground/40 ring-1 ring-foreground/10' : 'border-border hover:bg-muted/40'}`}>
+            <p className="text-xs text-muted-foreground">{STATUS_META[s].label}</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{counts[s] ?? 0}</p>
           </button>
         ))}
       </div>
@@ -139,8 +138,8 @@ export default function SupplierReturnsPage() {
           <span className="text-sm">Loading returns…</span>
         </div>
       ) : returns.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Undo2 className="w-10 h-10 text-muted-foreground/40 mb-3" />
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
+          <Undo2 className="w-8 h-8 text-muted-foreground/50 mb-3" />
           <p className="text-muted-foreground text-sm">No returns logged{statusFilter ? ' with this status' : ''}.</p>
           {!statusFilter && (
             <button onClick={() => setShowModal(true)} className="text-sm text-primary hover:underline mt-2">Log your first return</button>
@@ -149,7 +148,7 @@ export default function SupplierReturnsPage() {
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 border-b border-border">
+            <thead className="bg-muted border-b border-border">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Order</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Supplier</th>

@@ -1817,6 +1817,8 @@ def _aliexpress_fetch_product(access_token: str, product_id: str, target_currenc
             sku_currency = sku.get("currency_code")
         variants.append({
             "sku_id": sku.get("sku_id"),
+            # e.g. "14:200003699#Black;5:361386" — the place-order API names a variant by this, not by sku_id
+            "sku_attr": sku.get("sku_attr") or sku.get("id"),
             "color": color,
             "size": size,
             "price": price,
@@ -3129,6 +3131,7 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
             raise HTTPException(status_code=400, detail="Order has no items.")
 
         ae_items = []
+        sku_attr_cache: dict = {}   # AliExpress product id -> {sku_id: sku_attr}, fetched once per product
         for item in items:
             link = db.query(DropshipProductLink).filter(
                 DropshipProductLink.product_id == item.product_id,
@@ -3139,11 +3142,29 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
                     "error": "no_supplier_link",
                     "message": f"Product '{item.product_name}' does not have an AliExpress supplier link. Re-import it from AliExpress.",
                 })
-            ae_items.append({
-                "product_id": link.supplier_product_id,
-                "sku_id": _chosen_variant_sku(db, item) or link.supplier_sku,  # the buyer's variant (its sku_id), else default
-                "product_count": item.quantity,
-            })
+            sku_id = str(_chosen_variant_sku(db, item) or link.supplier_sku)   # the buyer's variant, else the default
+            # The place-order API identifies the variant by sku_attr, not sku_id (documented ProductBaseItem fields:
+            # product_id, product_count, sku_attr, logistics_service_name, order_memo). Looked up live, so products
+            # imported before sku_attr was kept work too.
+            pid = str(link.supplier_product_id)
+            if pid not in sku_attr_cache:
+                try:
+                    detail = _aliexpress_fetch_product(token, pid, "USD")
+                    sku_attr_cache[pid] = {str(v.get("sku_id")): v.get("sku_attr") for v in detail.get("variants") or [] if v.get("sku_id")}
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(f"[AliExpress order] could not read variants of {pid}: {type(e).__name__}")
+                    sku_attr_cache[pid] = {}
+            variants = sku_attr_cache[pid]
+            sku_attr = variants.get(sku_id) or (next(iter(variants.values())) if len(variants) == 1 else None)
+            if len(variants) > 1 and not sku_attr:
+                raise HTTPException(status_code=400, detail={
+                    "error": "aliexpress_variant_unknown",
+                    "message": f"Could not match the variant of '{item.product_name}' on AliExpress. Re-import the product from AliExpress and try again.",
+                })
+            row = {"product_id": int(pid) if pid.isdigit() else pid, "product_count": item.quantity}
+            if sku_attr:
+                row["sku_attr"] = sku_attr
+            ae_items.append(row)
 
         ship, _email = _order_shipping(db, order)
 
@@ -3154,26 +3175,30 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
         # \"param_place_order_request4_open_api_d_t_o\" that is mandatory ... is not supplied" —
         # the earlier name was my best reading of the docs, not yet tested; this is the real one.
         import json as _json
+        # Documented MaillingAddressRequestDto fields only (no "phone_number" / "out_order_id": not AliExpress fields)
+        phone = "".join(ch for ch in (ship.phone or "") if ch.isdigit() or ch == "+")
+        address = {
+            "address": ship.address, "city": ship.city, "country": ship.country_code,
+            "province": ship.province, "zip": ship.zip,
+            "contact_person": ship.name, "full_name": ship.name,
+            "mobile_no": phone.lstrip("+") if phone else None,
+        }
         result = _aliexpress_signed_request("/sync", {
             "method": "aliexpress.trade.buy.placeorder",
             "param_place_order_request4_open_api_d_t_o": _json.dumps({
                 "product_items": ae_items,
-                "logistics_address": {
-                    "address": ship.address,
-                    "city": ship.city,
-                    "country": ship.country_code,
-                    "phone_number": ship.phone,
-                    "zip": ship.zip,
-                    "contact_person": ship.name,
-                    "province": ship.province,
-                },
-                "out_order_id": order.order_number,
+                "logistics_address": {k: v for k, v in address.items() if v},
             }),
         }, access_token=token, method="POST")
 
-        result_data = (result or {}).get("aliexpress_trade_buy_placeorder_response") or (result or {}).get("result")
-        if not result_data or not result_data.get("order_list"):
-            error_msg = ((result or {}).get("error_response") or {}).get("msg") or "Unknown AliExpress error"
+        # The answer sits in <method>_response.result: {is_success, order_list, error_code, error_msg}
+        resp = (result or {}).get("aliexpress_trade_buy_placeorder_response") or {}
+        result_data = resp.get("result") if isinstance(resp.get("result"), dict) else (result or {}).get("result") or resp
+        if not isinstance(result_data, dict) or not result_data.get("order_list") or result_data.get("is_success") is False:
+            error_msg = ((result_data or {}).get("error_msg") if isinstance(result_data, dict) else None) \
+                or ((result or {}).get("error_response") or {}).get("msg") or "Unknown AliExpress error"
+            if isinstance(result_data, dict) and result_data.get("error_code"):
+                error_msg = f"{error_msg} ({result_data['error_code']})"
             ds_order = DropshipOrder(
                 shop_id=shop_id, order_id=order_id, supplier_type="aliexpress",
                 status="failed", error_message=str(error_msg)[:2000],
@@ -3186,7 +3211,10 @@ async def _fulfill_order_core(shop_id: int, order_id: int, supplier_type: str, d
                 "message": f"AliExpress rejected this order: {error_msg}",
             })
 
-        ae_order_id = str((result_data.get("order_list") or [None])[0])
+        orders_out = result_data.get("order_list")
+        if isinstance(orders_out, dict):           # TOP sometimes wraps arrays as {"number": [...]}
+            orders_out = next(iter(orders_out.values()), [])
+        ae_order_id = str((orders_out or [None])[0])
         ds_order = DropshipOrder(
             shop_id=shop_id, order_id=order_id, supplier_type="aliexpress",
             supplier_order_id=ae_order_id, status="processing",

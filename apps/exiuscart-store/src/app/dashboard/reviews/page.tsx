@@ -57,12 +57,14 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
 
 interface SimpleProduct { id: number; name: string; sku?: string | null; image?: string | null; }
 
-// Searchable product picker: photo + name, no internal ids.
+// Searchable product picker: photo, name and product ID; search by name, ID or SKU.
 function ProductPicker({ products, value, onChange }: { products: SimpleProduct[]; value: string; onChange: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const picked = products.find((p) => String(p.id) === value);
-  const shown = products.filter((p) => !q.trim() || p.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 50);
+  const needle = q.trim().toLowerCase().replace(/^#/, '');
+  const shown = products.filter((p) => !needle || p.name.toLowerCase().includes(needle) || String(p.id) === needle
+    || String(p.id).startsWith(needle) || (p.sku ?? '').toLowerCase().includes(needle)).slice(0, 50);
   const Thumb = ({ p }: { p: SimpleProduct }) => (
     <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -73,7 +75,7 @@ function ProductPicker({ products, value, onChange }: { products: SimpleProduct[
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" className="flex h-11 w-full items-center gap-2.5 rounded-md border border-border bg-background px-2 text-left text-sm transition hover:bg-muted/40">
-          {picked ? <><Thumb p={picked} /><span className="min-w-0 flex-1 truncate text-foreground">{picked.name}</span></>
+          {picked ? <><Thumb p={picked} /><span className="min-w-0 flex-1 truncate text-foreground">{picked.name}</span><span className="shrink-0 font-mono text-[11px] text-muted-foreground">ID {picked.id}</span></>
             : <span className="flex-1 px-1 text-muted-foreground">Choose a product…</span>}
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
@@ -81,7 +83,7 @@ function ProductPicker({ products, value, onChange }: { products: SimpleProduct[
       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
         <div className="flex items-center gap-2 border-b border-border px-3">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products"
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, product ID or SKU"
             className="h-10 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
         </div>
         <div className="max-h-64 overflow-y-auto p-1">
@@ -91,7 +93,10 @@ function ProductPicker({ products, value, onChange }: { products: SimpleProduct[
             <button key={p.id} type="button" onClick={() => { onChange(String(p.id)); setOpen(false); setQ(''); }}
               className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-muted">
               <Thumb p={p} />
-              <span className="min-w-0 flex-1 truncate text-foreground">{p.name}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-foreground">{p.name}</span>
+                <span className="block font-mono text-[11px] text-muted-foreground">ID {p.id}{p.sku ? ` · ${p.sku}` : ''}</span>
+              </span>
               {String(p.id) === value && <Check className="h-4 w-4 text-foreground" />}
             </button>
           ))}

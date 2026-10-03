@@ -5,7 +5,8 @@ import Link from 'next/link';
 import {
   ArrowLeft, Download, Loader2, CheckCircle2, KeyRound, Link2, FileText, Link2Off, LifeBuoy,
 } from 'lucide-react';
-import { channelsApi, gumroadApi } from '@/lib/api';
+import { channelsApi, gumroadApi, productsApi } from '@/lib/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ChannelListingActivity from '@/components/channels/ChannelListingActivity';
 import TheDersiRestrictionNotice, { useIsTheDersiUser } from '@/components/channels/TheDersiRestriction';
 import BeforeConnectLayout, { SidebarCard } from '@/components/channels/BeforeConnect';
@@ -17,13 +18,10 @@ interface ChannelConnection {
   channel_type: string;
 }
 
-// Unlike every other *-integration page, connecting here doesn't let you
-// create/push a listing — Gumroad's own API blocks programmatic product
-// creation (confirmed against their docs, 2026-03-03: the create-product
-// endpoint 404s). So this page connects the account, then the seller
-// pastes the ID of a product they've ALREADY created on Gumroad's own
-// dashboard to link it — orders start syncing once their Ping endpoint
-// is pointed at the URL shown after connecting.
+// Gumroad's API cannot create products (create on Gumroad first), so once
+// connected this page lists the seller's real Gumroad products and lets them
+// link each one to an ExiusCart product. Sales then arrive through the Ping
+// URL shown here (always, not only right after connecting).
 export default function GumroadIntegrationPage() {
   const [shopId, setShopId] = useState('');
   const isTheDersiUser = useIsTheDersiUser(shopId);
@@ -33,11 +31,24 @@ export default function GumroadIntegrationPage() {
   const [disconnecting, setDisconnecting] = useState(false);
 
   const [accessToken, setAccessToken] = useState('');
-  const [webhookSecret, setWebhookSecret] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
   const [pingUrl, setPingUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  type GStatus = Awaited<ReturnType<typeof gumroadApi.status>>['data'];
+  const [gStatus, setGStatus] = useState<GStatus | null>(null);
+  const [myProducts, setMyProducts] = useState<{ id: number; name: string }[]>([]);
+  const [linking, setLinking] = useState<string | null>(null);
+  const loadStatus = () => {
+    if (!shopId) return;
+    gumroadApi.status(shopId).then((r) => { setGStatus(r.data); setPingUrl(r.data.ping_url); }).catch(() => {});
+    productsApi.getAll(shopId).then((r) => setMyProducts((r.data ?? []).map((p: any) => ({ id: p.id, name: p.name })))).catch(() => {});
+  };
+  const linkTo = async (gumroadId: string, productId: string) => {
+    setLinking(gumroadId);
+    try { await gumroadApi.linkProduct(shopId, productId, { gumroad_product_id: gumroadId }); loadStatus(); }
+    finally { setLinking(null); }
+  };
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
 
@@ -52,16 +63,14 @@ export default function GumroadIntegrationPage() {
   };
 
   useEffect(() => { load(); }, [shopId]);
+  useEffect(() => { if (connection) loadStatus(); }, [connection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const connect = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessToken.trim()) return;
     setConnecting(true); setError('');
     try {
-      const res = await gumroadApi.connect(shopId, {
-        access_token: accessToken.trim(),
-        webhook_signing_secret: webhookSecret.trim() || undefined,
-      });
+      const res = await gumroadApi.connect(shopId, { access_token: accessToken.trim() });
       setPingUrl(res.data?.ping_url ?? '');
       load();
     } catch (err: any) {
@@ -83,8 +92,7 @@ export default function GumroadIntegrationPage() {
   };
 
   const copyPingUrl = () => {
-    const full = `${process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com'}/api/v1${pingUrl}`;
-    navigator.clipboard.writeText(full);
+    navigator.clipboard.writeText(pingUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -126,10 +134,10 @@ export default function GumroadIntegrationPage() {
           <div className="p-5 space-y-4">
             {pingUrl && (
               <div className="bg-muted/50 rounded-lg px-4 py-3 text-xs space-y-2">
-                <p className="text-foreground font-medium">Last step — paste this URL as your Ping endpoint (Gumroad Settings → Advanced → Ping endpoint). It's account-wide, not per-product.</p>
+                <p className="text-foreground font-medium">Paste this URL as your Ping endpoint in Gumroad (Settings → Advanced → Ping endpoint), then click Update settings. It is one URL for your whole Gumroad account.</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 bg-background border border-border rounded px-2 py-1.5 font-mono text-[11px] truncate">
-                    {(process.env.NEXT_PUBLIC_API_URL || 'https://api.exiuscart.com') + '/api/v1' + pingUrl}
+                    {pingUrl}
                   </code>
                   <button onClick={copyPingUrl} className="shrink-0 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-border hover:bg-muted transition">
                     {copied ? 'Copied!' : 'Copy'}
@@ -137,8 +145,49 @@ export default function GumroadIntegrationPage() {
                 </div>
               </div>
             )}
-            <div className="bg-amber-500/8 border border-amber-500/20 rounded-lg px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
-              <strong>Note:</strong> Gumroad's own API doesn't allow creating listings from outside their dashboard — create your product on Gumroad first, then link it to an ExiusCart product from that product's edit page.
+            {/* Link each Gumroad product to an ExiusCart product; a sale of an unlinked product cannot be recorded */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">Your Gumroad products</p>
+                <button onClick={loadStatus} className="text-xs text-muted-foreground hover:text-foreground">Refresh</button>
+              </div>
+              {!gStatus ? (
+                <p className="text-xs text-muted-foreground">Loading your Gumroad products…</p>
+              ) : gStatus.error ? (
+                <p className="text-xs text-destructive">{gStatus.error}</p>
+              ) : gStatus.products.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No products on Gumroad yet. Gumroad does not let other apps create products, so create one on Gumroad first, then click Refresh.</p>
+              ) : (
+                <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+                  {gStatus.products.map((g) => {
+                    const linked = gStatus.links[g.id] || (g.permalink ? gStatus.links[g.permalink] : undefined);
+                    return (
+                      <li key={g.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          {g.image ? <img src={g.image} alt="" className="h-full w-full object-cover" /> : <Download className="h-4 w-4 text-[#FF90E8]" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-foreground">{g.name}</p>
+                          <p className="text-xs text-muted-foreground">{g.price ?? ''}{!g.published && ' · not published'}</p>
+                        </div>
+                        <div className="w-full sm:w-64">
+                          <Select value={linked ? String(linked.product_id) : ''} onValueChange={(v) => linkTo(g.id, v)} disabled={linking === g.id}>
+                            <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Link to an ExiusCart product" /></SelectTrigger>
+                            <SelectContent className="max-h-72">
+                              {myProducts.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <span className={`text-[11px] ${linked ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {linking === g.id ? 'Saving…' : linked ? '● Linked' : '● Not linked'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {gStatus?.last_sale_at && <p className="mt-2 text-[11px] text-muted-foreground">Last sale received {new Date(gStatus.last_sale_at).toLocaleString()}.</p>}
             </div>
             <div className="pt-3 mt-1 border-t border-border">
               {confirming ? (
@@ -179,13 +228,13 @@ export default function GumroadIntegrationPage() {
               title="Need help?" desc={'The real 4-step flow is right below.'}
               action={<a href="#how-it-works" className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">Jump to "How it works" ↓</a>} />
             <SidebarCard icon={Download} iconClass="bg-[#FF90E8]/10 text-[#FF90E8]"
-              title="What syncs" desc="Create the product on Gumroad first, then link it from that ExiusCart product's edit page — orders sync in once your Ping endpoint is set." />
+              title="What syncs" desc="Create the product on Gumroad first, then link it on this page. Each sale then arrives here as a paid order once your Ping endpoint is set." />
           </>}
           steps={[
             { icon: KeyRound, title: '1. Generate an access token', desc: 'Gumroad Settings → Advanced → Applications.' },
-            { icon: Link2, title: '2. Paste token here', desc: 'Optionally add the webhook secret later.' },
+            { icon: Link2, title: '2. Paste token here', desc: 'We check it with Gumroad straight away.' },
             { icon: CheckCircle2, title: '3. Set your Ping endpoint', desc: "We'll show the exact URL once connected." },
-            { icon: FileText, title: '4. Link your product', desc: "From the product's edit page in ExiusCart." },
+            { icon: FileText, title: '4. Link your products', desc: 'Pick the matching ExiusCart product for each Gumroad product, right on this page.' },
           ]}
         >
           <div className="bg-card border border-border rounded-xl">
@@ -210,13 +259,6 @@ export default function GumroadIntegrationPage() {
                 <input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} required
                   placeholder="••••••••••••••••"
                   className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Webhook Signing Secret (optional)</label>
-                <input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)}
-                  placeholder="Paste after registering your Ping endpoint"
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground text-sm font-mono" />
-                <p className="text-xs text-muted-foreground mt-1.5">Can be added later — without it, incoming orders won't be signature-verified.</p>
               </div>
               <button type="submit" disabled={connecting}
                 className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">

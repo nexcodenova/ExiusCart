@@ -9,6 +9,7 @@ import {
   Loader2, CheckCircle2, TrendingUp, Users, Swords, Gauge, Store, Facebook, Instagram,
   Music2, ChevronRight, ChevronLeft, Trophy, Globe2, Truck, GalleryHorizontal, X,
   Wallet, Receipt, Coins, UserRound, MessageCircle, DollarSign, ShoppingCart, HelpCircle, Search,
+  PlayCircle,
 } from 'lucide-react';
 import { shoppingApi, Product, ShippingOption } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
@@ -570,7 +571,10 @@ function ProductDetailContent() {
                   </div>
                   <div className="rounded-xl border border-[#16A34A]/20 bg-[#16A34A]/5 p-3">
                     <p className="text-xs text-[#6B7280] flex items-center gap-1.5"><span className="w-5 h-5 rounded-full bg-[#16A34A]/10 text-[#16A34A] flex items-center justify-center shrink-0"><Coins className="w-3 h-3" /></span> Profit per Sale</p>
-                    <p className={`text-lg font-bold mt-1 ${profit != null && profit >= 0 ? 'text-[#16A34A]' : 'text-red-500'}`}>{profit != null ? fmt(profit) : '—'}</p>
+                    <p className="flex items-baseline gap-2 mt-0.5">
+                      <span className={`text-2xl font-extrabold tracking-tight ${profit != null && profit >= 0 ? 'text-[#16A34A]' : 'text-red-500'}`}>{profit != null ? fmt(profit) : '—'}</span>
+                      {profit != null && price > 0 && <span className="text-sm font-semibold text-[#16A34A]/80">{Math.round((profit / price) * 100)}%</span>}
+                    </p>
                   </div>
                 </div>
 
@@ -584,13 +588,15 @@ function ProductDetailContent() {
                     { key: 'trends', label: 'Google Trends', href: `https://trends.google.com/trends/explore?date=today%205-y&q=${encodeURIComponent(adLibraryKeyword(name))}`, hover: 'hover:bg-[#4285F4]/10 hover:border-[#4285F4]/40', icon: '/marketplace-icons/google.svg' },
                     { key: 'tiktok', label: 'TikTok videos', href: `https://www.tiktok.com/search?q=${encodeURIComponent(adLibraryKeyword(name))}`, hover: 'hover:bg-[#111827]/[0.06] hover:border-[#111827]/30', icon: '/marketplace-icons/tiktok.svg' },
                     { key: 'facebook', label: 'Facebook Ads', href: adLibrarySearchUrl(adLibraryKeyword(name)), hover: 'hover:bg-[#1877F2]/10 hover:border-[#1877F2]/40', icon: '/marketplace-icons/facebook-2023.svg' },
-                    { key: 'video', label: 'Product videos', href: hasVideo ? '#video' : `https://www.youtube.com/results?search_query=${encodeURIComponent(adLibraryKeyword(name) + ' review')}`, hover: 'hover:bg-[#FF0000]/10 hover:border-[#FF0000]/40', icon: '/marketplace-icons/youtube.svg', internal: hasVideo },
+                    { key: 'video', label: 'Product videos', href: hasVideo ? '#video' : `https://www.youtube.com/results?search_query=${encodeURIComponent(adLibraryKeyword(name) + ' review')}`, hover: 'hover:bg-[#111827]/[0.06] hover:border-[#111827]/30', icon: '', internal: hasVideo },
                   ] as { key: string; label: string; href: string; hover: string; icon: string; wide?: boolean; internal?: boolean }[]).map((b) => (
                     <a key={b.key} href={b.href} {...(b.internal ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
                       className={`flex items-center gap-2.5 rounded-lg border border-[#E5E7EB] bg-transparent p-1.5 pr-3 text-sm font-semibold text-[#111827] transition ${b.hover}`}>
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white shadow-sm ring-1 ring-black/5">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={b.icon} alt="" className={b.wide ? 'h-3 w-auto max-w-[26px]' : 'h-[18px] w-[18px] object-contain'} />
+                        {b.icon
+                          ? <img src={b.icon} alt="" className={b.wide ? 'h-3 w-auto max-w-[26px]' : 'h-[18px] w-[18px] object-contain'} />
+                          : <PlayCircle className="h-[18px] w-[18px] text-[#111827]" />}
                       </span>
                       <span className="flex-1 text-left">{b.label}</span>
                       {!b.internal && <ExternalLink className="h-3 w-3 text-[#9CA3AF]" />}

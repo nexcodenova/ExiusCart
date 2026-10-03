@@ -701,6 +701,53 @@ def _run_ebay_auto_sync_scheduler():
 _ebay_auto_sync_thread = threading.Thread(target=_run_ebay_auto_sync_scheduler, daemon=True)
 _ebay_auto_sync_thread.start()
 
+
+# Etsy auto order sync — on by default (Etsy has no order webhooks), every
+# sync_frequency_minutes (15 by default); a seller can switch it off with
+# sync_settings.auto_sync_orders = false. Same 5-minute tick as eBay above.
+def _run_etsy_auto_sync_scheduler():
+    from datetime import datetime, timezone
+    while True:
+        try:
+            from app.models.channel import ChannelConnection
+            from app.models.shop import Shop
+            from app.api.v1.endpoints.etsy import sync_etsy_orders
+            db = SessionLocal()
+            try:
+                now = datetime.now(timezone.utc)
+                conns = db.query(ChannelConnection).filter(
+                    ChannelConnection.channel_type == "etsy",
+                    ChannelConnection.is_active == True,
+                ).all()
+                for conn in conns:
+                    settings = conn.sync_settings or {}
+                    if settings.get("auto_sync_orders") is False:
+                        continue
+                    freq = int(settings.get("sync_frequency_minutes") or 15)
+                    last = conn.last_auto_synced_at
+                    if last:
+                        last_utc = last if last.tzinfo else last.replace(tzinfo=timezone.utc)
+                        if (now - last_utc).total_seconds() < freq * 60:
+                            continue
+                    shop = db.query(Shop).filter(Shop.id == conn.shop_id).first()
+                    if not shop:
+                        continue
+                    try:
+                        sync_etsy_orders(conn, shop, db, 2)   # 2-day overlap; already-known receipts are skipped
+                        conn.last_auto_synced_at = now
+                        db.commit()
+                    except Exception as exc:
+                        db.rollback()
+                        logger.error(f"[Etsy Auto Sync] shop={conn.shop_id} {exc}")
+            finally:
+                db.close()
+        except Exception as exc:
+            logger.error(f"[Etsy Auto Sync scheduler] {exc}")
+        time.sleep(5 * 60)
+
+_etsy_auto_sync_thread = threading.Thread(target=_run_etsy_auto_sync_scheduler, daemon=True)
+_etsy_auto_sync_thread.start()
+
 # CORS middleware
 # allow_origins=["*"] together with allow_credentials=True is invalid per the CORS
 # spec — browsers require an exact origin (not a wildcard) on any credentialed

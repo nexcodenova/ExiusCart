@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import SectionBanner from '@/components/directory/SectionBanner';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -99,13 +100,15 @@ export default function SupplierTrackingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/dropshipping" className="text-sm text-muted-foreground hover:text-foreground">← Suppliers</Link>
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Supplier Tracking</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Where every dropshipped order actually is right now, across all your suppliers.</p>
-        </div>
+      <div>
+        <Link href="/dashboard/dropshipping" className="text-xs text-muted-foreground hover:text-foreground">← Suppliers</Link>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">Supplier tracking</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Where every dropshipped order is right now, across all your suppliers.</p>
       </div>
+
+      <SectionBanner title="Every parcel, in one place"
+        description="Tracking numbers come straight from your suppliers. Orders stuck in transit for too long are flagged as delayed, so you can chase them before the buyer asks."
+        variant={0} />
 
       {/* Live shipment summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -116,12 +119,11 @@ export default function SupplierTrackingPage() {
           { key: 'awaiting', label: 'Awaiting tracking', count: buckets.awaiting.length, icon: Package, className: 'bg-muted text-muted-foreground' },
         ] as const).map((b) => (
           <button key={b.key} onClick={() => setView(view === b.key ? 'all' : b.key)}
-            className={`border rounded-xl p-4 text-left transition ${view === b.key ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted/50'}`}>
-            <div className="flex items-center justify-between">
-              <p className="text-2xl font-bold text-foreground">{loading ? '—' : b.count}</p>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${b.className}`}><b.icon className="w-4 h-4" /></div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">{b.label}</p>
+            className={`rounded-xl border bg-card px-3.5 py-3 text-left transition ${view === b.key ? 'border-foreground/40 ring-1 ring-foreground/10' : 'border-border hover:bg-muted/40'}`}>
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className={`flex h-5 w-5 items-center justify-center rounded-md ${b.className}`}><b.icon className="h-3 w-3" /></span>{b.label}
+            </p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{loading ? '—' : b.count}</p>
           </button>
         ))}
       </div>
@@ -146,7 +148,7 @@ export default function SupplierTrackingPage() {
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 border-b border-border">
+            <thead className="bg-muted border-b border-border">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Order</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Supplier</th>

@@ -14,6 +14,7 @@ import ConnectedSuppliersTable, { ConnectedSupplierRow } from '@/components/drop
 import TrustPanel from '@/components/dropshipping/TrustPanel';
 import SupplierCard, { Supplier, SUPPLIER_STYLE, DASHBOARD_LINKS } from '@/components/dropshipping/SupplierCard';
 import SectionBanner from '@/components/directory/SectionBanner';
+import ConnectSupplierModal from '@/components/dropshipping/ConnectSupplierModal';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
 
@@ -42,6 +43,7 @@ export default function DropshippingPage() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<typeof CATEGORY_FILTERS[number]>('All');
   const discoverRef = useRef<HTMLDivElement>(null);
+  const [connectOpen, setConnectOpen] = useState(false);
   const connectedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setShopId(shopIdFromStorage()); }, []);
@@ -159,12 +161,12 @@ export default function DropshippingPage() {
         </div>
         <div className="flex gap-2.5 shrink-0">
           <Button variant="outline" asChild>
-            <Link href="/dashboard/helpdesk"><FileText className="w-4 h-4" /> View Documentation</Link>
+            <Link href="/dashboard/dropshipping/guide"><FileText className="w-4 h-4" /> View Documentation</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/dashboard/dropshipping/import"><ArrowDownToLine className="w-4 h-4" /> Import Products</Link>
           </Button>
-          <Button onClick={() => discoverRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+          <Button onClick={() => setConnectOpen(true)}>
             <Plus className="w-4 h-4" /> Connect Supplier
           </Button>
         </div>
@@ -313,6 +315,7 @@ export default function DropshippingPage() {
           <TrustPanel />
         </>
       )}
+      <ConnectSupplierModal open={connectOpen} onClose={() => setConnectOpen(false)} suppliers={suppliers} />
     </div>
   );
 }
