@@ -457,4 +457,9 @@ def _run_image(order, prompt: str, ref) -> Tuple[bytes, str]:
             return out, name
     if last_error is None:
         raise StudioError("AI images aren't set up yet. Add GEMINI_API_KEY or OPENAI_API_KEY on the server.", "not_configured")
-    raise StudioError("The AI couldn't make this image right now. Try again, or try another photo.")
+    low = last_error.lower()
+    # Account-side problems (no credit, quota, billing) are not the seller's fault: say so plainly
+    if any(w in low for w in ("billing", "prepay", "credit", "quota", "resource_exhausted", "insufficient", "429", "payment")):
+        logger.error(f"[ai-studio] image provider account problem: {last_error[:300]}")
+        raise StudioError("AI images are paused on our side for a moment (provider account limit). Please try again later.", "provider_unavailable")
+    raise StudioError("The AI couldn't make this image right now. Please try again in a moment.")
