@@ -190,6 +190,44 @@ class DesignIn(BaseModel):
     text: Optional[str] = None
 
 
+class DesignIdeaIn(BaseModel):
+    idea: Optional[str] = None
+    style: Optional[str] = None
+    text: Optional[str] = None
+
+
+@router.post("/shops/{shop_id}/studio/design-idea")
+def write_design_idea(shop_id: int, data: DesignIdeaIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Turns a few plain words (and/or the text to print) into a vivid design brief for
+    Design Studio. A cheap text call (Claude, then GPT/Gemini); counts as one AI rewrite."""
+    from app.intel import ai
+    _shop(db, shop_id, current_user)
+    seed = " ".join(x.strip() for x in (data.idea or "", data.text or "") if x and x.strip())[:300]
+    if not seed:
+        raise HTTPException(status_code=400, detail={"error": "bad_request", "message": "Type a few words or the text to print first."})
+    try:
+        studio.check_text_allowance(db, shop_id)
+    except studio.StudioError as e:
+        _raise(e)
+    style = studio.DESIGN_STYLES.get(data.style or "", "")
+    prompt = (
+        "You write briefs for print-on-demand t-shirt designs. Turn the seller's words into ONE vivid description "
+        "of the artwork (2 to 3 sentences, under 60 words): the main subject, supporting elements, mood and colour palette, "
+        "composition (e.g. circular badge, stacked text). Do not mention t-shirts, mockups or backgrounds. "
+        "Never include brand names, logos or copyrighted characters. "
+        + (f"Style: {style}. " if style else "")
+        + (f'The design must include this text exactly: "{data.text.strip()[:80]}". ' if data.text and data.text.strip() else "")
+        + f'Seller words: "{seed}". '
+        'Answer as JSON: {"idea": "..."}'
+    )
+    out = ai.ask_json(prompt, max_tokens=300, purpose="design_idea")
+    idea = (out or {}).get("idea") if isinstance(out, dict) else None
+    if not idea:
+        raise HTTPException(status_code=503, detail={"error": "ai_failed", "message": "The AI couldn't write this right now. Try again."})
+    studio.log_call(db, shop_id, "text", "claude", "design_idea")
+    return {"idea": str(idea).strip()[:500]}
+
+
 @router.post("/shops/{shop_id}/studio/design")
 def create_design(shop_id: int, data: DesignIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     from app.core.storage import upload_studio_asset
@@ -197,12 +235,12 @@ def create_design(shop_id: int, data: DesignIn, db: Session = Depends(get_db), c
     plan = _plan(db, shop_id)
     try:
         studio.check_image_allowance(db, shop_id, plan)
-        content, provider = studio.generate_design(data.idea, data.style or "", data.text or "")
+        content, provider = studio.generate_design(data.idea.strip() or (data.text or ""), data.style or "", data.text or "")
     except studio.StudioError as e:
         _raise(e)
     url = upload_studio_asset(content, shop_id, "png", "image/png")
     studio.log_call(db, shop_id, "image", provider, "design")
-    a = save_asset(db, shop_id, "design", url, data.idea[:120], meta={"idea": data.idea[:400], "style": data.style, "text": data.text, "provider": provider})
+    a = save_asset(db, shop_id, "design", url, (data.idea.strip() or data.text or "Design")[:120], meta={"idea": data.idea[:400], "style": data.style, "text": data.text, "provider": provider})
     return {"asset": _out(a), "usage": studio.usage(db, shop_id, plan)}
 
 

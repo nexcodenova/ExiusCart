@@ -1039,6 +1039,8 @@ export const studioApi = {
     api.post(`/shops/${shopId}/studio/assets/${assetId}/add-to-product`, { product_id: productId, make_primary: makePrimary }),
   design: (shopId: string, data: { idea: string; style?: string; text?: string }) =>
     api.post(`/shops/${shopId}/studio/design`, data, { timeout: 240000 }),
+  designIdea: (shopId: string, data: { idea?: string; style?: string; text?: string }) =>
+    api.post<{ idea: string }>(`/shops/${shopId}/studio/design-idea`, data, { timeout: 60000 }),
   mockup: (shopId: string, data: { design_asset_id: number; garment: string; color: string; style: string; model_look?: string; extra?: string; placement?: string; scene?: string; fabric?: string }) =>
     api.post(`/shops/${shopId}/studio/mockup`, data, { timeout: 240000 }),
   mockupSet: (shopId: string, data: { design_asset_id: number; garment: string; color: string; style: string; model_look?: string; extra?: string; scene?: string; fabric?: string }) =>

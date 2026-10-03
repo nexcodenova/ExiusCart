@@ -35,6 +35,19 @@ export default function Page() {
   const [result, setResult] = useState<StudioAsset | null>(null);
   const [usage, setUsage] = useState<{ images_left: number; images_limit: number } | null>(null);
   const [toPrintify, setToPrintify] = useState<StudioAsset | null>(null);
+  const [writing, setWriting] = useState(false);
+
+  // Plain words in, a vivid design brief out (cheap text AI, not an image)
+  const writeForMe = async () => {
+    setWriting(true); setError('');
+    try {
+      const r = await studioApi.designIdea(shopId, { idea: idea.trim() || undefined, style, text: text.trim() || undefined });
+      setIdea(r.data.idea);
+    } catch (e: any) {
+      setError(aiErrorText(e, 'The AI could not write this right now.'));
+    } finally { setWriting(false); }
+  };
+  const canCreate = idea.trim().length >= 3 || text.trim().length >= 2;
 
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || ''); }, []);
   useEffect(() => { if (shopId) aiStudioApi.usage(shopId).then((r) => setUsage(r.data)).catch(() => {}); }, [shopId]);
@@ -75,9 +88,17 @@ export default function Page() {
             <CardHeader><CardTitle className="text-base">Your design</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="mb-1.5 block">What should it show? *</Label>
-                <Textarea value={idea} onChange={(e) => setIdea(e.target.value)} rows={3} maxLength={400}
-                  placeholder="e.g. a cat surfing a big wave at sunset, for summer lovers" />
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <Label>What should it show?</Label>
+                  <button type="button" onClick={writeForMe} disabled={writing || (!idea.trim() && !text.trim())}
+                    className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground transition hover:bg-muted disabled:opacity-50">
+                    {writing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-indigo-500" />}
+                    {writing ? 'Writing…' : 'Write it for me'}
+                  </button>
+                </div>
+                <Textarea value={idea} onChange={(e) => setIdea(e.target.value)} rows={3} maxLength={500}
+                  placeholder="Plain words are fine, e.g. coffee and flowers, happy morning. Or just fill in the text below and click Write it for me." />
+                <p className="mt-1 text-xs text-muted-foreground">Leave it empty to make a design from the text alone.</p>
               </div>
               <div>
                 <Label className="mb-1.5 block">Style</Label>
@@ -95,7 +116,7 @@ export default function Page() {
                 <Input value={text} onChange={(e) => setText(e.target.value)} maxLength={80} placeholder='e.g. "Salty but Sweet"' />
                 <p className="mt-1 text-xs text-muted-foreground">Keep it short. Always check the spelling on the result.</p>
               </div>
-              <Button onClick={make} disabled={loading || idea.trim().length < 3}>
+              <Button onClick={make} disabled={loading || !canCreate}>
                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Drawing… (up to a minute)</> : <><Sparkles className="h-4 w-4" /> Create design (uses 1)</>}
               </Button>
               {error && <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}</div>}
