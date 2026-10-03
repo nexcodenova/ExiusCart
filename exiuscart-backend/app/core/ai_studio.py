@@ -412,7 +412,21 @@ def generate_design(idea: str, style: str = "", text: str = "") -> Tuple[bytes, 
     if not idea.strip():
         raise StudioError("Describe the design you want.", "bad_request")
     prompt = design_prompt(idea, style, text)
-    order = [("openai", lambda p, r: _openai_image(p, r, transparent=True)), ("gemini", _gemini_image)]
+
+    def gemini_cutout(p, r):
+        # Gemini has no transparent output: draw on solid chroma green, then cut the green out for free
+        raw = _gemini_image(p + " Place the artwork on a solid, flat, pure bright green (#00FF00) background filling the whole image, "
+                                "with no shadow, no gradient and no green anywhere inside the artwork itself.", r)
+        if not raw:
+            return raw
+        from app.core.cutout import remove_green_background
+        try:
+            return remove_green_background(raw)
+        except Exception as e:  # noqa: BLE001 - a failed cut-out still returns the design
+            logger.warning(f"[ai-studio] background removal failed: {type(e).__name__}")
+            return raw
+
+    order = [("openai", lambda p, r: _openai_image(p, r, transparent=True)), ("gemini", gemini_cutout)]
     return _run_image(order, prompt, None)
 
 
