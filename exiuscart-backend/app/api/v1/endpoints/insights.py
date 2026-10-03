@@ -94,6 +94,13 @@ def generate_audience(shop_id: int, product_id: int, db: Session = Depends(get_d
         raise HTTPException(status_code=429, detail={"error": e.code, "message": e.message})
     log = db.query(ProdoraImportLog).filter(ProdoraImportLog.shop_id == shop_id, ProdoraImportLog.product_id == p.id).first()
     snap = audience.latest_snapshot(db, log.source_product_id) if log and log.source_product_id else None
+    # Imported from Prodora and the catalogue product already has it: copy it, no AI call, no charge
+    if log and log.source_product_id and not p.audience_json:
+        src = db.query(Product).filter(Product.id == log.source_product_id).first()
+        if src and src.audience_json:
+            p.audience_json = src.audience_json
+            db.commit()
+            return {"audience": p.audience_json}
     out = audience.build(audience.product_brief(p), snap)
     if not out:
         raise HTTPException(status_code=503, detail={"error": "not_configured", "message": "The AI couldn't answer right now. Try again in a minute."})

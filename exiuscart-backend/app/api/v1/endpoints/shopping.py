@@ -477,20 +477,14 @@ def _seller_tiktok(t: Optional[dict]) -> Optional[dict]:
             "fetched_at": t.get("fetched_at")}
 
 
-AUDIENCE_TTL_DAYS = 30
-
-
 def ensure_audience(db: Session, product: Product, force: bool = False) -> Optional[dict]:
-    """The product's cached "Who to target", made (once) when missing or a month old."""
+    """The product's "Who to target": made by the AI ONCE, saved on the product, and shown
+    from the database every time after that (no repeat AI cost). Copied into a seller's
+    store on import. Only regenerated when an admin forces it."""
     from app.intel import audience
     cur = product.audience_json
     if cur and not force:
-        try:
-            age = datetime.now(timezone.utc) - datetime.fromisoformat(cur.get("generated_at"))
-            if age.days < AUDIENCE_TTL_DAYS:
-                return cur
-        except (TypeError, ValueError):
-            return cur
+        return cur
     out = audience.build(audience.product_brief(product), audience.latest_snapshot(db, product.id))
     if out:
         product.audience_json = out
