@@ -1,5 +1,6 @@
 'use client';
 
+import StudioHeader, { UsagePill } from '@/components/ai-studio/StudioHeader';
 import { useEffect, useState } from 'react';
 import { Shapes } from 'lucide-react';
 import AssetLibrary from '@/components/ai-studio/AssetLibrary';
@@ -9,13 +10,9 @@ export default function Page() {
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || ''); }, []);
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Shapes className="h-5 w-5" /></div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Brand Assets</h1>
-          <p className="text-sm text-muted-foreground">Every design, mockup, AI image and upload in one place. Reuse them on products, Printify or Etsy.</p>
-        </div>
-      </div>
+      <StudioHeader icon={Shapes} title="Brand Assets" subtitle="Every design, mockup, AI image and upload in one place, ready to reuse."
+        banner={{ title: 'One home for every visual', description: 'Designs, mockups, AI product photos and your uploads, sorted and searchable. Reuse them on products, ads, Printify or Etsy.' }} bannerVariant={0}
+        steps={[{ title: 'Everything lands here', body: 'Each design, mockup and AI image is saved automatically.' }, { title: 'Find it fast', body: 'Filter by type and search by name.' }, { title: 'Reuse it', body: 'Add to a product, download, or send to print on demand.' }]} />
       {shopId && <AssetLibrary shopId={shopId} />}
     </div>
   );

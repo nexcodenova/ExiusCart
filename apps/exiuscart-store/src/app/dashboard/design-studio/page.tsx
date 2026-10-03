@@ -3,6 +3,7 @@
 // Design Studio: describe a print design, AI makes the artwork (a transparent
 // PNG when GPT makes it), saved to My Designs / Brand Assets, one click to mockups.
 
+import StudioHeader, { UsagePill } from '@/components/ai-studio/StudioHeader';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Palette, Sparkles, Loader2, AlertCircle, Shirt, Download, RefreshCw } from 'lucide-react';
@@ -53,16 +54,16 @@ export default function Page() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Palette className="h-5 w-5" /></div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Design Studio</h1>
-            <p className="text-sm text-muted-foreground">Describe a t-shirt design. AI draws print-ready artwork you can turn into mockups and sell on Printify or Etsy.</p>
-          </div>
-        </div>
-        {usage && <Badge variant="muted" className="py-1.5">{locked ? 'Growth & Scale plans' : `${usage.images_left} of ${usage.images_limit} AI images left`}</Badge>}
-      </div>
+      <StudioHeader icon={Palette} title="Design Studio"
+        subtitle="Describe an idea and get print-ready artwork for t-shirts, hoodies, mugs and more."
+        right={usage && <UsagePill text={locked ? 'Growth & Scale plans' : `${usage.images_left} of ${usage.images_limit} AI images left`} />}
+        banner={{ title: 'Artwork that sells, in seconds', description: 'Type the idea, pick a style, add the words. ExiusCart Studio draws a print-ready design with a transparent background, ready for mockups and print on demand.' }}
+        bannerVariant={1}
+        steps={[
+          { title: 'Describe it', body: 'An idea, a niche and any words to print, e.g. "iced coffee and sunshine".' },
+          { title: 'Pick a style', body: 'Vintage, minimal, retro, cartoon, streetwear and more.' },
+          { title: 'Use it', body: 'Open it in Mockup Studio, or send it to Printify, Printful or Gelato.' },
+        ]} />
 
       {locked ? (
         <Card><CardContent className="p-6 text-sm text-muted-foreground">

@@ -1,5 +1,6 @@
 'use client';
 
+import StudioHeader, { UsagePill } from '@/components/ai-studio/StudioHeader';
 import { useEffect, useState } from 'react';
 import { FolderOpen } from 'lucide-react';
 import AssetLibrary from '@/components/ai-studio/AssetLibrary';
@@ -9,13 +10,9 @@ export default function Page() {
   useEffect(() => { setShopId(localStorage.getItem('shop_id') || ''); }, []);
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FolderOpen className="h-5 w-5" /></div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Designs</h1>
-          <p className="text-sm text-muted-foreground">Your print designs, made with AI or uploaded. Turn any of them into mockups in one click.</p>
-        </div>
-      </div>
+      <StudioHeader icon={FolderOpen} title="My Designs" subtitle="Every print design you made with AI or uploaded, ready to turn into mockups."
+        banner={{ title: 'Your design library', description: 'All your artwork in one place. Open any design in Mockup Studio, or send it to Printify, Printful or Gelato.' }} bannerVariant={1}
+        steps={[{ title: 'Make or upload', body: 'Create with Design Studio, or upload a PNG.' }, { title: 'Mock it up', body: 'Open it in Mockup Studio for model and flat-lay photos.' }, { title: 'Sell it', body: 'Send it to a print-on-demand supplier or add it to a product.' }]} />
       {shopId && <AssetLibrary shopId={shopId} fixedKind="design" uploadKind="design" />}
     </div>
   );

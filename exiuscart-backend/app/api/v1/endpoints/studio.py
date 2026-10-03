@@ -213,6 +213,9 @@ class MockupIn(BaseModel):
     style: str = "model"
     model_look: Optional[str] = None
     extra: Optional[str] = None
+    placement: str = "front"     # front | back
+    scene: Optional[str] = None  # street | cafe | beach | home | park | studio
+    fabric: str = "standard"     # standard | garment_dyed
 
 
 @router.post("/shops/{shop_id}/studio/mockup")
@@ -223,12 +226,50 @@ def create_mockup(shop_id: int, data: MockupIn, db: Session = Depends(get_db), c
     plan = _plan(db, shop_id)
     try:
         studio.check_image_allowance(db, shop_id, plan)
-        content, provider = studio.generate_mockup(design.url, data.garment, data.color, data.style, data.model_look or "", data.extra or "")
+        content, provider = studio.generate_mockup(design.url, data.garment, data.color, data.style, data.model_look or "", data.extra or "",
+                                                   data.placement, data.scene or "", data.fabric)
     except studio.StudioError as e:
         _raise(e)
     url = upload_studio_asset(content, shop_id, "png", "image/png")
     studio.log_call(db, shop_id, "image", provider, f"mockup_{data.style}")
     title = f"{(design.title or 'Design')[:80]} · {data.color} {studio.GARMENTS.get(data.garment, data.garment)}"
     a = save_asset(db, shop_id, "mockup", url, title, meta={"design_asset_id": design.id, "garment": data.garment, "color": data.color,
-                                                             "style": data.style, "model_look": data.model_look, "provider": provider})
+                                                             "style": data.style, "model_look": data.model_look, "provider": provider,
+                                                             "placement": data.placement, "scene": data.scene, "fabric": data.fabric})
     return {"asset": _out(a), "usage": studio.usage(db, shop_id, plan)}
+
+
+@router.post("/shops/{shop_id}/studio/mockup-set")
+def create_mockup_set(shop_id: int, data: MockupIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """A full listing set in one go: front and back on a model, a print close-up and a flat lay.
+    Uses 4 AI images; needs 4 left. A shot that fails is skipped (and not counted)."""
+    from app.core.storage import upload_studio_asset
+    _shop(db, shop_id, current_user)
+    design = _asset(db, shop_id, data.design_asset_id)
+    plan = _plan(db, shop_id)
+    try:
+        studio.check_image_allowance(db, shop_id, plan)
+    except studio.StudioError as e:
+        _raise(e)
+    if studio.usage(db, shop_id, plan)["images_left"] < len(studio.MOCKUP_SET):
+        raise HTTPException(status_code=429, detail={"error": "limit_reached",
+                            "message": f"A full set uses {len(studio.MOCKUP_SET)} AI images. Make single mockups instead, or wait for next month."})
+    ref = studio.fetch_reference(design.url)
+    made, errors = [], []
+    for shot in studio.MOCKUP_SET:
+        try:
+            content, provider = studio.generate_mockup(design.url, data.garment, data.color, shot["style"], data.model_look or "",
+                                                       data.extra or "", shot["placement"], data.scene or "", data.fabric, ref=ref)
+        except studio.StudioError as e:
+            errors.append(f"{shot['label']}: {e.message}")
+            continue
+        url = upload_studio_asset(content, shop_id, "png", "image/png")
+        studio.log_call(db, shop_id, "image", provider, f"mockup_set_{shot['style']}_{shot['placement']}")
+        title = f"{(design.title or 'Design')[:70]} · {shot['label']}"
+        a = save_asset(db, shop_id, "mockup", url, title, meta={"design_asset_id": design.id, "garment": data.garment, "color": data.color,
+                                                                 "style": shot["style"], "placement": shot["placement"], "scene": data.scene,
+                                                                 "fabric": data.fabric, "provider": provider, "set": True})
+        made.append(_out(a))
+    if not made:
+        raise HTTPException(status_code=502, detail={"error": "ai_failed", "message": errors[0] if errors else "The AI could not make these mockups."})
+    return {"assets": made, "errors": errors, "usage": studio.usage(db, shop_id, plan)}

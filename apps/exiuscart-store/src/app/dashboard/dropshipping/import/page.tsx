@@ -1,5 +1,7 @@
 'use client';
 
+import SupplierBadge from '@/components/dropshipping/SupplierBadge';
+import StudioHeader from '@/components/ai-studio/StudioHeader';
 import { useState, useEffect, useRef } from 'react';
 import {
   CheckCircle2, X, Loader2, Package, Lock, Search, ShoppingBag, ChevronRight, AlertCircle, Shirt,
@@ -799,15 +801,11 @@ export default function ImportProductsPage() {
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-w-0 space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Import Products</h1>
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          </div>
-          <Badge variant="muted" className="w-fit gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> {connectedCount} supplier{connectedCount !== 1 ? 's' : ''} connected
-          </Badge>
-        </div>
+        <StudioHeader icon={Package} eyebrow="ExiusCart Sourcing" title="Import Products" subtitle={subtitle}
+          right={<span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> {connectedCount} supplier{connectedCount !== 1 ? 's' : ''} connected</span>}
+          banner={{ title: 'Millions of products, one click away', description: 'Search your connected suppliers, check real photos, cost and shipping, set your price, and the product lands in your store ready to sell. The supplier ships each order for you.' }}
+          bannerVariant={1} />
 
         {/* One control bar: pick the supplier, pick the list, search */}
         <Card>
@@ -815,17 +813,15 @@ export default function ImportProductsPage() {
             {suppliers.length > 1 && (
               <div className={`grid gap-2 sm:grid-cols-2 ${suppliers.length === 3 ? 'xl:grid-cols-3' : suppliers.length >= 4 ? 'xl:grid-cols-4' : ''}`}>
                 {suppliers.map((k) => {
-                  const Icon = SUPPLIER_ICON[k];
                   const on = supplier === k;
                   return (
                     <button key={k} onClick={() => setSupplier(k)}
-                      className={`flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-left text-sm font-medium transition ${
-                        on ? 'border-primary bg-primary/5 text-foreground ring-1 ring-primary' : 'border-border text-muted-foreground hover:bg-muted'
+                      className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm font-medium transition ${
+                        on ? 'border-foreground/30 bg-muted/60 text-foreground ring-1 ring-foreground/10' : 'border-border text-muted-foreground hover:bg-muted/40'
                       }`}>
-                      <span className={`flex h-8 w-8 items-center justify-center rounded-md ${on ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      {SUPPLIER_FULL[k]}
+                      <SupplierBadge supplier={k} label={false} size={32} />
+                      <span className="flex-1">{SUPPLIER_FULL[k]}</span>
+                      {on && <CheckCircle2 className="h-4 w-4 text-foreground" />}
                     </button>
                   );
                 })}
@@ -886,99 +882,91 @@ export default function ImportProductsPage() {
         {supplier !== 'aliexpress' && <ImportedBanner item={importedId} />}
 
       {supplier === 'aliexpress' && (
-        <div className="max-w-2xl space-y-4">
+        <div className="space-y-4">
           {importedId && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                  <p className="text-sm text-green-600 dark:text-green-400 font-medium">&ldquo;{importedId.name}&rdquo; imported successfully!</p>
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">&ldquo;{importedId.name}&rdquo; is in your store. Its AliExpress reviews are coming in as Pending.</p>
                 </div>
                 <Link href={`/dashboard/products?edit=${importedId.id}`}
-                  className="text-xs text-primary font-medium flex items-center gap-1 hover:underline shrink-0">
-                  Edit product <ChevronRight className="w-3.5 h-3.5" />
+                  className="flex shrink-0 items-center gap-1 text-xs font-medium text-foreground hover:underline">
+                  Edit product <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
               <MetaAdCheck shopId={shopId} defaultQuery={importedId.name} />
             </div>
           )}
 
-          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-5">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             {/* Header */}
-            <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-                <ShoppingBag className="w-5 h-5 text-red-500" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+              <div className="flex items-center gap-3">
+                <SupplierBadge supplier="aliexpress" label={false} size={36} />
+                <div>
                   <p className="font-semibold text-foreground">Import from AliExpress</p>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400">Recommended</span>
+                  <p className="text-xs text-muted-foreground">Paste a product link. Title, photos, variants, price and reviews come in for you.</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">Paste any AliExpress product link and import it directly to your store.</p>
               </div>
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Connected
+              </span>
             </div>
 
-            {/* Product link */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground block">AliExpress product link</label>
-              <div className="flex gap-2">
-                <div className="relative flex-1 min-w-0">
-                  <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input type="text" value={aliexpressUrl} onChange={(e) => setAliexpressUrl(e.target.value)}
-                    placeholder="https://www.aliexpress.com/item/…"
-                    className="w-full pl-9 pr-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary outline-none" />
+            <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+              <div className="space-y-5">
+                {/* Product link */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">AliExpress product link</label>
+                  <div className="flex gap-2">
+                    <div className="relative min-w-0 flex-1">
+                      <Link2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input type="text" value={aliexpressUrl} onChange={(e) => setAliexpressUrl(e.target.value)}
+                        placeholder="https://www.aliexpress.com/item/1005….html"
+                        className="h-10 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30" />
+                    </div>
+                    <button type="button"
+                      onClick={async () => {
+                        try {
+                          const text = await navigator.clipboard.readText();
+                          if (text) setAliexpressUrl(text.trim());
+                        } catch { /* clipboard permission denied — user can still paste manually */ }
+                      }}
+                      className="flex h-10 shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground transition hover:bg-muted">
+                      <ClipboardPaste className="h-3.5 w-3.5" /> Paste
+                    </button>
+                  </div>
+                  {aliexpressUrl.trim() && !/aliexpress\.[a-z.]+\/item\/\d+/i.test(aliexpressUrl) && (
+                    <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">This doesn&apos;t look like an AliExpress product link. It should contain /item/ followed by numbers.</p>
+                  )}
                 </div>
-                <button type="button"
-                  onClick={async () => {
-                    try {
-                      const text = await navigator.clipboard.readText();
-                      if (text) setAliexpressUrl(text.trim());
-                    } catch { /* clipboard permission denied — user can still paste manually */ }
-                  }}
-                  className="px-3 py-2.5 border border-border rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted transition flex items-center gap-1.5 shrink-0">
-                  <ClipboardPaste className="w-3.5 h-3.5" /> Paste
-                </button>
-              </div>
-            </div>
 
-            <div className="flex items-start gap-2 text-xs text-sky-700 dark:text-sky-300 bg-sky-500/10 rounded-lg px-3 py-2.5">
-              <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              <span>You can use any AliExpress product link. We&apos;ll automatically fetch the product title, images, variants, price, description and more.</span>
-            </div>
-
-            {/* Selling price */}
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <label className="text-sm font-medium text-foreground">Selling price <span className="font-normal text-muted-foreground">(optional)</span></label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>Leave blank to auto-calculate: 2x the product&apos;s cost, converted to your store&apos;s currency.</TooltipContent>
-                </Tooltip>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                  <input type="number" step="0.01" min="0" value={aliexpressSellingPrice} onChange={(e) => setAliexpressSellingPrice(e.target.value)}
-                    placeholder="Leave blank to use 2x cost"
-                    className="w-full pl-6 pr-3 py-2.5 bg-muted border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary outline-none" />
+                {/* Selling price */}
+                <div>
+                  <div className="mb-1.5 flex items-center gap-1.5">
+                    <label className="text-sm font-medium text-foreground">Selling price <span className="font-normal text-muted-foreground">(optional)</span></label>
+                    <Tooltip>
+                      <TooltipTrigger asChild><Info className="h-3.5 w-3.5 cursor-help text-muted-foreground" /></TooltipTrigger>
+                      <TooltipContent>Leave blank to auto-calculate: 2x the product&apos;s cost, converted to your store&apos;s currency.</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                    <input type="number" step="0.01" min="0" value={aliexpressSellingPrice} onChange={(e) => setAliexpressSellingPrice(e.target.value)}
+                      placeholder="Blank = 2x the AliExpress cost"
+                      className="h-10 w-full rounded-md border border-border bg-background pl-7 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30" />
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground">You can change the price, title and photos any time after importing.</p>
                 </div>
-                <span className="shrink-0 text-[11px] font-semibold pl-1.5 pr-2.5 py-1.5 rounded-full bg-primary/10 text-primary flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] flex items-center justify-center font-bold">2x</span>
-                  Auto-calculate
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">Set your selling price or leave blank to auto-calculate (2x cost, converted to your store&apos;s currency).</p>
-            </div>
 
-            {aliexpressError && (
-              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2.5">
-                <AlertCircle className="w-4 h-4 shrink-0" /> {aliexpressError}
-              </div>
-            )}
+                {aliexpressError && (
+                  <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 shrink-0" /> {aliexpressError}
+                  </div>
+                )}
 
-            <button
+                <button
               onClick={async () => {
                 if (!aliexpressUrl.trim()) return;
                 setImportingAliexpress(true); setAliexpressError('');
@@ -992,22 +980,34 @@ export default function ImportProductsPage() {
                 } finally { setImportingAliexpress(false); }
               }}
               disabled={importingAliexpress || !aliexpressUrl.trim()}
-              className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-              {importingAliexpress ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
-              {importingAliexpress ? 'Importing…' : 'Import to My Products'}
-            </button>
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-foreground text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-50">
+                  {importingAliexpress ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingBag className="h-4 w-4" />}
+                  {importingAliexpress ? 'Importing… (about 10 seconds)' : 'Import to my products'}
+                </button>
+                <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Lock className="h-3 w-3" /> We only read the product&apos;s public page. Nothing is bought until you fulfil an order.
+                </p>
+              </div>
 
-            <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-              <Lock className="w-3 h-3" /> Safe &amp; secure. We only use the product link to fetch public product information.
-            </p>
-          </div>
-
-          {/* Feature strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <FeatureChip icon={Zap} label="Fast Import" colorClass="bg-green-500/10 text-green-600 dark:text-green-400" />
-            <FeatureChip icon={ImageIcon} label="Complete Data" colorClass="bg-purple-500/10 text-purple-600 dark:text-purple-400" />
-            <FeatureChip icon={Settings2} label="Auto Pricing" colorClass="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
-            <FeatureChip icon={Tag} label="Start Selling" colorClass="bg-orange-500/10 text-orange-600 dark:text-orange-400" />
+              {/* What you get */}
+              <div className="rounded-lg border border-border bg-muted/30 p-4">
+                <p className="text-xs font-medium text-muted-foreground">What comes in</p>
+                <ul className="mt-3 space-y-2.5">
+                  {[
+                    ['Title and description', 'Cleaned up, with the spec table'],
+                    ['All photos', 'Main image and the gallery'],
+                    ['Every variant', 'Colours, sizes and their prices'],
+                    ['Real reviews', 'Up to 20, as Pending for you to approve'],
+                    ['Supplier link', 'So Fulfill sends the order to AliExpress'],
+                  ].map(([t, d]) => (
+                    <li key={t} className="flex gap-2">
+                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                      <span><span className="block text-[13px] text-foreground">{t}</span><span className="block text-[11px] text-muted-foreground">{d}</span></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -1039,8 +1039,10 @@ export const studioApi = {
     api.post(`/shops/${shopId}/studio/assets/${assetId}/add-to-product`, { product_id: productId, make_primary: makePrimary }),
   design: (shopId: string, data: { idea: string; style?: string; text?: string }) =>
     api.post(`/shops/${shopId}/studio/design`, data, { timeout: 240000 }),
-  mockup: (shopId: string, data: { design_asset_id: number; garment: string; color: string; style: string; model_look?: string; extra?: string }) =>
+  mockup: (shopId: string, data: { design_asset_id: number; garment: string; color: string; style: string; model_look?: string; extra?: string; placement?: string; scene?: string; fabric?: string }) =>
     api.post(`/shops/${shopId}/studio/mockup`, data, { timeout: 240000 }),
+  mockupSet: (shopId: string, data: { design_asset_id: number; garment: string; color: string; style: string; model_look?: string; extra?: string; scene?: string; fabric?: string }) =>
+    api.post<{ assets: StudioAsset[]; errors: string[]; usage: { images_left: number; images_limit: number } }>(`/shops/${shopId}/studio/mockup-set`, data, { timeout: 600000 }),
   printifyBlueprints: (shopId: string, q: string) => api.get(`/shops/${shopId}/printify/blueprints`, { params: { q } }),
   printifyProviders: (shopId: string, blueprintId: number) => api.get(`/shops/${shopId}/printify/blueprints/${blueprintId}/providers`),
   printifyVariants: (shopId: string, blueprintId: number, providerId: number) =>

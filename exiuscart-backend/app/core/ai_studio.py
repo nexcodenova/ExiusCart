@@ -343,7 +343,32 @@ MOCKUP_STYLES = {
     "folded": "neatly folded, styled product shot",
     "bundle": "a grid of several of these products in different garment colours, Etsy bundle listing style, all with the same print",
     "lifestyle": "in a real lifestyle scene where the buyer would use it",
+    "closeup": "a close-up detail shot of the print on the fabric, showing the ink texture and stitching",
 }
+
+# Ready-made scenes for "on a model" / "lifestyle" shots (Etsy best-seller look)
+MOCKUP_SCENES = {
+    "street": "on a sunny city street with cafés and old buildings behind",
+    "cafe": "at a cosy café table, holding an iced coffee",
+    "beach": "on a bright beach boardwalk in summer light",
+    "home": "relaxing at home in a bright, airy living room",
+    "park": "in a green park with soft golden-hour light",
+    "studio": "against a plain light studio backdrop",
+}
+
+# The washed, garment-dyed look of Comfort Colors style shirts
+FABRICS = {
+    "standard": "",
+    "garment_dyed": "Heavyweight garment-dyed cotton with a soft, washed, slightly faded vintage look (Comfort Colors style).",
+}
+
+# One click, a full listing set
+MOCKUP_SET = [
+    {"style": "model", "placement": "front", "label": "Front on a model"},
+    {"style": "model", "placement": "back", "label": "Back on a model"},
+    {"style": "closeup", "placement": "front", "label": "Print close-up"},
+    {"style": "flat_lay", "placement": "front", "label": "Flat lay"},
+]
 
 
 def design_prompt(idea: str, style: str = "", text: str = "") -> str:
@@ -360,13 +385,21 @@ def design_prompt(idea: str, style: str = "", text: str = "") -> str:
     return " ".join(parts)
 
 
-def mockup_prompt(garment: str, color: str, style: str, model_look: str = "", extra: str = "") -> str:
+def mockup_prompt(garment: str, color: str, style: str, model_look: str = "", extra: str = "",
+                  placement: str = "front", scene: str = "", fabric: str = "standard") -> str:
     g = GARMENTS.get(garment, "t-shirt")
     st = MOCKUP_STYLES.get(style, MOCKUP_STYLES["model"])
+    if placement == "back":
+        st = st.replace("the print clearly visible on the chest", "seen from behind, looking over the shoulder")
+        st += ", the print large on the BACK of the garment between the shoulder blades"
     p = (f"Photorealistic product mockup of a {color or 'white'} {g}, {st}. "
          "Print the reference artwork on it exactly as given: same design, colours, text and proportions, "
          "placed and scaled like a real screen print, following the fabric's folds. Do not change or redraw the artwork. "
          "Professional ecommerce photo, soft natural light, sharp focus.")
+    if FABRICS.get(fabric):
+        p += " " + FABRICS[fabric]
+    if scene in MOCKUP_SCENES and style in ("model", "lifestyle"):
+        p += f" Setting: {MOCKUP_SCENES[scene]}."
     if model_look and style in ("model", "lifestyle"):
         p += f" Model: {model_look.strip()[:120]}."
     if extra:
@@ -383,11 +416,13 @@ def generate_design(idea: str, style: str = "", text: str = "") -> Tuple[bytes, 
     return _run_image(order, prompt, None)
 
 
-def generate_mockup(design_url: str, garment: str, color: str, style: str, model_look: str = "", extra: str = "") -> Tuple[bytes, str]:
+def generate_mockup(design_url: str, garment: str, color: str, style: str, model_look: str = "", extra: str = "",
+                    placement: str = "front", scene: str = "", fabric: str = "standard", ref=None) -> Tuple[bytes, str]:
     if garment not in GARMENTS or style not in MOCKUP_STYLES:
         raise StudioError("Unknown product or mockup style.", "bad_request")
-    ref = fetch_reference(design_url)
-    prompt = mockup_prompt(garment, color.strip()[:40], style, model_look, extra)
+    ref = ref or fetch_reference(design_url)
+    prompt = mockup_prompt(garment, color.strip()[:40], style, model_look, extra,
+                           "back" if placement == "back" else "front", scene, fabric if fabric in FABRICS else "standard")
     return _run_image([("gemini", _gemini_image), ("openai", _openai_image)], prompt, ref)
 
 

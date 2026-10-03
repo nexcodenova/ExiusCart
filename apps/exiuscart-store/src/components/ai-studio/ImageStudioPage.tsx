@@ -9,9 +9,12 @@ import type { LucideIcon } from 'lucide-react';
 import { imagesApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ProductPicker, { PickedProduct } from './ProductPicker';
+import StudioHeader, { StudioStep } from './StudioHeader';
 import AiImageStudio, { ImageMode } from './AiImageStudio';
 
-export default function ImageStudioPage({ title, subtitle, icon: Icon, modes, tips }: {
+export default function ImageStudioPage({ title, subtitle, icon: Icon, modes, tips, banner, steps }: {
+  banner?: { title: string; description: string };
+  steps?: StudioStep[];
   title: string;
   subtitle: string;
   icon: LucideIcon;
@@ -38,13 +41,7 @@ export default function ImageStudioPage({ title, subtitle, icon: Icon, modes, ti
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
-        </div>
-      </div>
+      <StudioHeader icon={Icon} title={title} subtitle={subtitle} banner={banner} steps={steps} bannerVariant={0} />
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
