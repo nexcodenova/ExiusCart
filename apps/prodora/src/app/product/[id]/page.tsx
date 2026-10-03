@@ -224,7 +224,7 @@ function ProfitCalculator({ sellingPrice, costPrice, shippingCost }: { sellingPr
 function RelatedProductCard({ product }: { product: Product }) {
   const profit = product.cost_price != null ? product.price - product.cost_price : null;
   const [importing, setImporting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState(!!product.imported_product_id);
 
   const handleImport = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -301,7 +301,7 @@ function ProductDetailContent() {
     }
     shoppingApi
       .getProduct(productId)
-      .then((p) => { setProduct(p); setActiveImg(0); })
+      .then((p) => { setProduct(p); setActiveImg(0); setImported(p.imported_product_id ? { product_id: p.imported_product_id } : null); })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
     shoppingApi.getRelatedProducts(productId).then(setRelated).catch(() => setRelated([]));
@@ -578,53 +578,24 @@ function ProductDetailContent() {
                     live search for the product's short keyword), Google Trends, TikTok, Facebook Ads, and
                     Product videos (this product's own video, else real videos of it on YouTube). */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  <a href={amazon_url || `https://www.amazon.com/s?k=${encodeURIComponent(adLibraryKeyword(name))}`} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
-                    <Image src="/marketplace-icons/amazon.svg" alt="" width={16} height={16} className="shrink-0" />
-                    <span className="flex-1 text-left">Amazon</span>
-                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
-                  </a>
-                  <a href={ebay_url || `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(adLibraryKeyword(name))}`} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
-                    <Image src="/marketplace-icons/ebay.svg" alt="" width={16} height={16} className="shrink-0" />
-                    <span className="flex-1 text-left">eBay</span>
-                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
-                  </a>
-                  <a href={`https://trends.google.com/trends/explore?date=today%205-y&q=${encodeURIComponent(adLibraryKeyword(name))}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
-                    <TrendingUp className="w-4 h-4 shrink-0 text-[#2563EB]" />
-                    <span className="flex-1 text-left">Google Trends</span>
-                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
-                  </a>
-                  <a href={`https://www.tiktok.com/search?q=${encodeURIComponent(adLibraryKeyword(name))}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
-                    <Music2 className="w-4 h-4 shrink-0 text-[#111827]" />
-                    <span className="flex-1 text-left">TikTok videos</span>
-                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
-                  </a>
-                  <a href={adLibrarySearchUrl(adLibraryKeyword(name))}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
-                    <Image src="/marketplace-icons/facebook.svg" alt="" width={16} height={16} className="shrink-0" />
-                    <span className="flex-1 text-left">Facebook Ads</span>
-                    <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
-                  </a>
-                  {hasVideo ? (
-                    <a href="#video"
-                      className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
-                      <Play className="w-4 h-4 shrink-0 text-[#6B7280]" />
-                      <span className="flex-1 text-left">Product videos</span>
+                  {([
+                    { key: 'amazon', label: 'Amazon', href: amazon_url || `https://www.amazon.com/s?k=${encodeURIComponent(adLibraryKeyword(name))}`, hover: 'hover:bg-[#FF9900]/10 hover:border-[#FF9900]/40', icon: '/marketplace-icons/amazon-icon.svg' },
+                    { key: 'ebay', label: 'eBay', href: ebay_url || `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(adLibraryKeyword(name))}`, hover: 'hover:bg-[#0064D2]/10 hover:border-[#0064D2]/40', icon: '/marketplace-icons/ebay-wordmark.svg', wide: true },
+                    { key: 'trends', label: 'Google Trends', href: `https://trends.google.com/trends/explore?date=today%205-y&q=${encodeURIComponent(adLibraryKeyword(name))}`, hover: 'hover:bg-[#4285F4]/10 hover:border-[#4285F4]/40', icon: '/marketplace-icons/google.svg' },
+                    { key: 'tiktok', label: 'TikTok videos', href: `https://www.tiktok.com/search?q=${encodeURIComponent(adLibraryKeyword(name))}`, hover: 'hover:bg-[#111827]/[0.06] hover:border-[#111827]/30', icon: '/marketplace-icons/tiktok.svg' },
+                    { key: 'facebook', label: 'Facebook Ads', href: adLibrarySearchUrl(adLibraryKeyword(name)), hover: 'hover:bg-[#1877F2]/10 hover:border-[#1877F2]/40', icon: '/marketplace-icons/facebook-2023.svg' },
+                    { key: 'video', label: 'Product videos', href: hasVideo ? '#video' : `https://www.youtube.com/results?search_query=${encodeURIComponent(adLibraryKeyword(name) + ' review')}`, hover: 'hover:bg-[#FF0000]/10 hover:border-[#FF0000]/40', icon: '/marketplace-icons/youtube.svg', internal: hasVideo },
+                  ] as { key: string; label: string; href: string; hover: string; icon: string; wide?: boolean; internal?: boolean }[]).map((b) => (
+                    <a key={b.key} href={b.href} {...(b.internal ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+                      className={`flex items-center gap-2.5 rounded-lg border border-[#E5E7EB] bg-transparent p-1.5 pr-3 text-sm font-semibold text-[#111827] transition ${b.hover}`}>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white shadow-sm ring-1 ring-black/5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={b.icon} alt="" className={b.wide ? 'h-3 w-auto max-w-[26px]' : 'h-[18px] w-[18px] object-contain'} />
+                      </span>
+                      <span className="flex-1 text-left">{b.label}</span>
+                      {!b.internal && <ExternalLink className="h-3 w-3 text-[#9CA3AF]" />}
                     </a>
-                  ) : (
-                    <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(adLibraryKeyword(name) + ' review')}`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[#E5E7EB] text-sm font-medium text-[#374151] hover:text-[#111827] hover:border-gray-300 transition">
-                      <Play className="w-4 h-4 shrink-0 text-[#DC2626]" />
-                      <span className="flex-1 text-left">Product videos</span>
-                      <ExternalLink className="w-3 h-3 text-[#9CA3AF]" />
-                    </a>
-                  )}
+                  ))}
                 </div>
               </div>
               </div>
@@ -635,7 +606,7 @@ function ProductDetailContent() {
                 <a href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`} target="_blank" rel="noopener noreferrer"
                   className="absolute bottom-3 right-3 shrink-0 inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full bg-[#16A34A]/10 border border-[#16A34A]/20 text-[#15803D] text-sm font-semibold hover:bg-[#16A34A]/15 transition shadow-sm">
                   <span className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0"><CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" /></span>
-                  Added — Open
+                  Imported · Open in store
                 </a>
               ) : (
                 <button type="button" onClick={handleImport} disabled={importing}

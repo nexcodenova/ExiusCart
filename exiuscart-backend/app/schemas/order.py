@@ -75,6 +75,8 @@ class OrderResponse(BaseModel):
     # order not yet fulfilled).
     fulfillment_supplier: Optional[str] = None
     fulfillment_status: Optional[str] = None
+    # True when an item's product is linked to a dropship supplier (the supplier ships it)
+    supplier_linked: Optional[bool] = None
     # Real channel this order came through (ebay/daraz/custom/etc., resolved
     # from ChannelOrderMeta or Order.notes) — None for POS/WhatsApp/online/
     # Shopify orders, which are already distinguishable via `source`.

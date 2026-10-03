@@ -36,16 +36,34 @@ export default function TrendsSection({ productId }: { productId: number }) {
   const [data, setData] = useState<TrendsResponse | null>(null);
   const [failed, setFailed] = useState(false);
 
+  const [timedOut, setTimedOut] = useState(false);
+
+  // The first lookup of a search term runs in the background on the server (it can take a few
+  // minutes); while it says "pending" we ask again every 6 seconds, for up to 4 minutes.
   useEffect(() => {
     let cancelled = false;
-    setData(null); setFailed(false);
-    shoppingApi.getTrends(productId).then((d) => { if (!cancelled) setData(d); }).catch(() => { if (!cancelled) setFailed(true); });
-    return () => { cancelled = true; };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let tries = 0;
+    setData(null); setFailed(false); setTimedOut(false);
+    const ask = () => {
+      shoppingApi.getTrends(productId).then((d) => {
+        if (cancelled) return;
+        if (d.status === 'pending') {
+          tries += 1;
+          if (tries > 40) { setTimedOut(true); return; }
+          timer = setTimeout(ask, 6000);
+          return;
+        }
+        setData(d);
+      }).catch(() => { if (!cancelled) setFailed(true); });
+    };
+    ask();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [productId]);
 
-  // Hidden when it can't help (Trends not set up on the server, or the lookup failed); a product with too
-  // little search history still shows the section with a plain "not enough data" line.
-  if (failed || (data && !data.trends && data.status !== 'insufficient')) return null;
+  // Not shown at all unless the admin switched Trends on for this product, or the server has no Trends set up.
+  if (failed || data?.status === 'hidden' || data?.status === 'not_configured') return null;
+  const unavailable = timedOut || data?.status === 'error';
 
   const t = data?.trends;
   const exploreUrl = data?.keyword ? `https://trends.google.com/trends/explore?date=today%205-y&q=${encodeURIComponent(data.keyword)}` : null;
@@ -56,8 +74,10 @@ export default function TrendsSection({ productId }: { productId: number }) {
         <h2 className="flex items-center gap-2 text-xl font-semibold text-[#111827]"><TrendingUp className="h-5 w-5 text-[#2563EB]" /> Google Trends</h2>
         {exploreUrl && <a href={exploreUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm font-medium text-[#2563EB] hover:underline">Open in Google Trends <ExternalLink className="h-3.5 w-3.5" /></a>}
       </div>
-      {!data ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-[#6B7280]"><Loader2 className="h-5 w-5 animate-spin text-[#2563EB]" /> Fetching 5 years of Google searches… (only the first time, up to a minute)</div>
+      {unavailable ? (
+        <p className="py-4 text-sm text-[#6B7280]">Google Trends couldn&apos;t be loaded for this product right now. Please check again later, or open it in Google Trends above.</p>
+      ) : !data ? (
+        <div className="flex items-center gap-2 py-8 text-sm text-[#6B7280]"><Loader2 className="h-5 w-5 animate-spin text-[#2563EB]" /> Fetching 5 years of Google searches… (only the first time, can take a few minutes)</div>
       ) : !t ? (
         <p className="text-sm text-[#6B7280]">Not enough Google search data for &ldquo;{data.keyword}&rdquo; yet.</p>
       ) : (

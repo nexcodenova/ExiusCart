@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Globe2, X, MapPin } from 'lucide-react';
 import { CountryFlag } from '@/components/country-flag';
 import { WorldMap, REGION_FOCUS } from './world-map';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { DashboardStats } from '@/lib/dashboard/dashboard-types';
 
 type Metric = 'customers' | 'orders' | 'views';
@@ -51,14 +52,20 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
   const [metric, setMetric] = useState<Metric>(viewsTotal > 0 ? 'views' : 'orders');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const home = stats?.homeCountry ?? null;
-  const canZoom = !!home && !!REGION_FOCUS[home];
-  // Zoomed onto the home country by default when most orders are local (TheDersi, POS shops).
-  const homeShare = (stats?.ordersByCountry ?? []).find((r) => r.code === home)?.percentage ?? 0;
-  const [zoomed, setZoomed] = useState<boolean>(canZoom && homeShare >= 50);
+  // TheDersi sellers only sell in Sri Lanka: the map stays on Sri Lanka, no picker.
+  // Everyone else gets a region picker that opens on World.
+  const lockedToSriLanka = !!stats?.theDersiShop;
+  const [region, setRegion] = useState<string>('world');
+  const activeRegion = lockedToSriLanka ? 'LK' : region;
+  const zoomed = activeRegion !== 'world';
   useEffect(() => { if (viewsTotal === 0 && metric === 'views') setMetric('orders'); }, [viewsTotal]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setZoomed(canZoom && homeShare >= 50); }, [canZoom, homeShare]);
+  // Picker options: World, then the countries that have data, then the rest we can zoom on
+  const withData = new Set([...(stats?.ordersByCountry ?? []), ...(stats?.customersByCountry ?? []), ...(stats?.viewsByCountry ?? [])].map((r) => r.code));
+  const regionOptions = Object.keys(REGION_FOCUS)
+    .sort((a, b) => Number(withData.has(b) || b === home) - Number(withData.has(a) || a === home) || countryName(a, a).localeCompare(countryName(b, b)));
   const cities = stats?.ordersByCity ?? [];
-  const showCities = zoomed && cities.length > 0;
+  // Top cities are only known for the shop's own country
+  const showCities = zoomed && activeRegion === home && cities.length > 0;
   const maxCity = Math.max(...cities.map((c) => c.orders), 1);
   const [barsIn, setBarsIn] = useState(false);
   const source = metric === 'orders' ? stats?.ordersByCountry : metric === 'views' ? stats?.viewsByCountry : stats?.customersByCountry;
@@ -78,7 +85,7 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
     setBarsIn(false);
     const raf = requestAnimationFrame(() => requestAnimationFrame(() => setBarsIn(true)));
     return () => cancelAnimationFrame(raf);
-  }, [metric, stats, zoomed]);
+  }, [metric, stats, activeRegion]);
 
   const top = allRows.find((r) => r.code !== 'Unknown');
 
@@ -88,7 +95,7 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
         <div>
           <h2 className="font-semibold text-foreground">Where your {METRIC_LABEL[metric].toLowerCase()} come from</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {zoomed && home ? `Zoomed on ${countryName(home, home)}. Switch to World to see every country.` : 'Click a country on the map to focus on it.'}
+            {lockedToSriLanka ? 'TheDersi sells across Sri Lanka, so this map shows Sri Lanka.' : zoomed ? `Zoomed on ${countryName(activeRegion, activeRegion)}.` : 'Click a country on the map to focus on it.'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -108,16 +115,25 @@ export function CustomersByCountry({ stats }: { stats: DashboardStats | null }) 
       <div className="mt-3 grid border-t border-border lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         {/* Map always renders, even with zero rows — an empty map still confirms the widget works. */}
         <div className="relative h-64 w-full overflow-hidden bg-muted/30 sm:h-80 lg:h-full lg:min-h-[340px] lg:border-r lg:border-border">
-          <WorldMap data={mappable} metricLabel={METRIC_LABEL[metric]} selectedCode={selectedCode} onSelectCountry={setSelectedCode} focusCode={zoomed ? home : null} />
-          {/* World / home-country switch */}
-          {canZoom && home && (
-            <div className="absolute right-3 top-3 flex rounded-md border border-border bg-background/90 p-0.5 text-[11px] backdrop-blur">
-              {([false, true] as const).map((z) => (
-                <button key={String(z)} type="button" onClick={() => setZoomed(z)}
-                  className={`flex items-center gap-1 rounded px-2 py-1 transition ${zoomed === z ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-                  {z ? <><CountryFlag code={home} className="h-2.5 w-3.5" />{countryName(home, home)}</> : <><Globe2 className="h-3 w-3" />World</>}
-                </button>
-              ))}
+          <WorldMap data={mappable} metricLabel={METRIC_LABEL[metric]} selectedCode={selectedCode} onSelectCountry={setSelectedCode} focusCode={zoomed ? activeRegion : null} />
+          {/* Region picker (not for TheDersi shops, which stay on Sri Lanka) */}
+          {!lockedToSriLanka && (
+            <div className="absolute right-3 top-3 w-44">
+              <Select value={region} onValueChange={setRegion}>
+                <SelectTrigger className="h-8 bg-background/90 text-xs backdrop-blur">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="world">
+                    <span className="flex items-center gap-2"><Globe2 className="h-3.5 w-3.5 text-muted-foreground" /> World</span>
+                  </SelectItem>
+                  {regionOptions.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      <span className="flex items-center gap-2"><CountryFlag code={code} className="h-2.5 w-3.5" /> {countryName(code, code)}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
           {/* Colour key */}

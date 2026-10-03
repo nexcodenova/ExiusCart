@@ -401,6 +401,15 @@ async def get_orders(
         meta_by_order_id = {m.order_id: m.channel_type for m in metas}
         for o in orders:
             o.channel_type = meta_by_order_id.get(o.id) or ("custom" if o.notes == "Custom Website order" else None)
+
+        # Orders with a product linked to a dropship supplier are shipped by that supplier
+        # (through Fulfill / auto-fulfil), so the page offers Fulfill instead of Ship for them.
+        from app.models.dropship import DropshipProductLink
+        product_ids = {it.product_id for o in orders for it in (o.items or []) if it.product_id}
+        linked = {r[0] for r in db.query(DropshipProductLink.product_id).filter(
+            DropshipProductLink.product_id.in_(product_ids)).distinct().all()} if product_ids else set()
+        for o in orders:
+            o.supplier_linked = any(it.product_id in linked for it in (o.items or []))
     return orders
 
 

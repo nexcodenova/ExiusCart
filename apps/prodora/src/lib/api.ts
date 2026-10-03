@@ -56,6 +56,8 @@ export interface ProductVideo {
 
 export interface Product {
   id: number;
+  // Set when this seller's store already has a copy of this product (one import per product)
+  imported_product_id?: number | null;
   name: string;
   price: number;
   cost_price?: number | null;
@@ -205,7 +207,7 @@ export const aiApi = {
 };
 
 export const shoppingApi = {
-  getTrends: async (id: number): Promise<TrendsResponse> => (await apiClient.get(`/shopping/products/${id}/trends`, { timeout: 120000 })).data,
+  getTrends: async (id: number): Promise<TrendsResponse> => (await apiClient.get(`/shopping/products/${id}/trends`, { timeout: 30000 })).data,
   getAudience: async (id: number): Promise<AudienceResponse> => (await apiClient.get(`/shopping/products/${id}/audience`, { timeout: 90000 })).data,
   getIntelligence: async (id: number): Promise<IntelResponse> => {
     const response = await apiClient.get(`/shopping/products/${id}/intelligence`);
@@ -226,7 +228,7 @@ export const shoppingApi = {
     return response.data;
   },
 
-  importProduct: async (id: number): Promise<{ product_id: number; name: string; shop_id: number }> => {
+  importProduct: async (id: number): Promise<{ product_id: number; name: string; shop_id?: number; already_imported?: boolean }> => {
     const response = await apiClient.post(`/shopping/products/${id}/import`);
     return response.data;
   },

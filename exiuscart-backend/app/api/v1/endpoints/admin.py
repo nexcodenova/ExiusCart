@@ -1896,6 +1896,7 @@ def _shopping_product_out(p: Product) -> dict:
         "ad_pinterest_url": p.ad_pinterest_url,
         "amazon_url": p.amazon_url,
         "ebay_url": p.ebay_url,
+        "show_trends": bool(p.show_trends),
         "specs_json": p.specs_json,
         "tags": p.tags,
     }
@@ -1933,6 +1934,7 @@ class ShoppingProductExtras(BaseModel):
     ad_pinterest_url: Optional[str] = None
     amazon_url: Optional[str] = None
     ebay_url: Optional[str] = None
+    show_trends: Optional[bool] = None
     specs_json: Optional[str] = None
     tags: Optional[str] = None
 
@@ -2264,7 +2266,7 @@ SHOPPING_EXTRA_SCALAR_FIELDS = [
     "orders_count", "supplier_name", "supplier_rating", "fulfillment_rate",
     "processing_time", "shipping_time", "warehouse_country", "shipping_cost",
     "demand_trend_json", "orders_trend_json", "top_countries_json", "ad_facebook_url", "ad_tiktok_url",
-    "ad_instagram_url", "ad_pinterest_url", "amazon_url", "ebay_url", "specs_json", "tags",
+    "ad_instagram_url", "ad_pinterest_url", "amazon_url", "ebay_url", "show_trends", "specs_json", "tags",
 ]
 
 
@@ -2648,6 +2650,10 @@ def admin_create_shopping_product(
     _ensure_prodora_codes(db)
     _fill_ad_library_links_if_empty(product)
     db.commit()
+    from app.core.review_import import queue_catalog_reviews
+    queue_catalog_reviews(product.id)
+    from app.core.catalog_enrich import queue_amazon_link
+    queue_amazon_link(product.id)
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
     ).filter(Product.id == product.id).first()
@@ -2683,6 +2689,8 @@ def admin_update_shopping_product(
         _preserve_unique_description_images(db, product, raw_description, set(payload.get("images") or []))
     _fill_ad_library_links_if_empty(product)
     db.commit()
+    from app.core.review_import import queue_catalog_reviews
+    queue_catalog_reviews(product_id)
     product = db.query(Product).options(
         joinedload(Product.shop), joinedload(Product.category)
     ).filter(Product.id == product_id).first()

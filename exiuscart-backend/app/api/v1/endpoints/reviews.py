@@ -32,7 +32,20 @@ def _shop_or_404(shop_id: int, user: User, db: Session):
     shop = get_shop_for_member(db, shop_id, user)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
+    _block_thedersi(shop_id, db)
     return shop
+
+
+def _block_thedersi(shop_id: int, db: Session) -> None:
+    """TheDersi sellers' buyers review on TheDersi itself (its own review
+    system), so ExiusCart's review requests and storefront widget are not
+    offered to TheDersi-managed plans — same rule as Blog and Dropshipping."""
+    from app.core.thedersi import is_thedersi_restricted_shop
+    if is_thedersi_restricted_shop(shop_id, db):
+        raise HTTPException(status_code=403, detail={
+            "error": "not_available",
+            "message": "Product reviews aren't available for TheDersi sellers. Your buyers leave reviews on TheDersi.",
+        })
 
 
 # Marketplaces that already run their own native review system on their own platform —
@@ -43,6 +56,9 @@ MARKETPLACE_OWNED_REVIEWS = {"thedersi", "daraz", "ebay", "amazon", "tiktok"}
 def request_reviews_for_order(order: Order, db: Session) -> None:
     """Called when an order is marked delivered — creates review rows + sends one email."""
     if order.source in MARKETPLACE_OWNED_REVIEWS:
+        return
+    from app.core.thedersi import is_thedersi_restricted_shop
+    if is_thedersi_restricted_shop(order.shop_id, db):
         return
     if not order.customer or not order.customer.email:
         return
@@ -410,6 +426,8 @@ def get_product_reviews(product_id: int, db: Session = Depends(get_db)):
                 "comment": r.comment,
                 "photo_url": r.photo_url,
                 "submitted_at": r.submitted_at.isoformat() if r.submitted_at else None,
+                # Imported marketplace reviews are labelled on the storefront, never passed off as your own buyers'
+                "source_label": "Review from AliExpress" if r.channel_source == "aliexpress" else None,
             }
             for r in reviews
         ],
@@ -450,6 +468,12 @@ _REVIEWS_WIDGET_JS = r"""
     name.textContent = r.customer_name || 'Customer';
     name.style.cssText = 'font-weight:600;font-size:13px;color:#111;';
     head.appendChild(name);
+    if (r.source_label) {
+      var src = document.createElement('span');
+      src.textContent = r.source_label;
+      src.style.cssText = 'font-size:11px;color:#666;border:1px solid #ddd;border-radius:4px;padding:1px 6px;';
+      head.appendChild(src);
+    }
     el.appendChild(head);
 
     if (r.comment) {

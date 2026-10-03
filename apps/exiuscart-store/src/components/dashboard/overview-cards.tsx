@@ -14,6 +14,11 @@ export function OverviewCards({
   const revenueTrend = trendPoints.map((p) => p.revenue);
   const ordersTrend = trendPoints.map((p) => p.orders);
   const customersTrend = trendPoints.map((p) => p.newCustomers ?? 0);
+  // Dashed comparison line on each card: same months last year (yearly view) or the previous run of days
+  const compareLabel = stats?.trendComparison === 'last_year' ? 'Last year' : 'Before';
+  const prevRevenue = trendPoints.map((p) => p.prevRevenue ?? 0);
+  const prevOrders = trendPoints.map((p) => p.prevOrders ?? 0);
+  const prevCustomers = trendPoints.map((p) => p.prevNewCustomers ?? 0);
   // Storefront conversion per bucket: orders / views where there were views (Custom Website only)
   const conversionTrend = trendPoints.map((p) => ((p.views ?? 0) > 0 ? Math.round((p.orders / (p.views ?? 1)) * 1000) / 10 : 0));
 
@@ -27,19 +32,19 @@ export function OverviewCards({
         icon={Wallet} label="Total Revenue" color="indigo" href="/dashboard/reports"
         value={loading ? '—' : fmt(stats?.periodRevenue ?? 0, 0)}
         change={stats?.periodRevenueChange ?? null} comparison="vs. previous period"
-        trend={revenueTrend} trendLabels={labels} formatPoint={(n) => fmt(n, 0)}
+        trend={revenueTrend} trendLabels={labels} formatPoint={(n) => fmt(n, 0)} compare={prevRevenue} compareLabel={compareLabel}
       />
       <KpiCard
         icon={ShoppingBag} label="Total Orders" color="violet" href="/dashboard/orders"
         value={loading ? '—' : (stats?.periodOrders ?? 0).toLocaleString()}
         change={stats?.periodOrdersChange ?? null} comparison="vs. previous period"
-        trend={ordersTrend} trendLabels={labels}
+        trend={ordersTrend} trendLabels={labels} compare={prevOrders} compareLabel={compareLabel}
       />
       <KpiCard
         icon={Users} label="Total Customers" color="emerald" href="/dashboard/customers"
         value={loading ? '—' : (stats?.customers ?? 0).toLocaleString()}
         change={null} comparison={`${stats?.newCustomersMonth ?? 0} new this month`}
-        trend={customersTrend} trendLabels={labels} formatPoint={(n) => `${n} new`}
+        trend={customersTrend} trendLabels={labels} formatPoint={(n) => `${n} new`} compare={prevCustomers} compareLabel={compareLabel}
       />
       <KpiCard
         icon={Boxes} label="Active Products" color="amber" href="/dashboard/products"

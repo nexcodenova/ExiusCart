@@ -360,6 +360,8 @@ _MIGRATIONS = [
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS meta_description VARCHAR(200);",
     # "Who to target" audience suggestion, cached per product (app/intel/audience.py).
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS audience_json JSON;",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS show_trends BOOLEAN NOT NULL DEFAULT FALSE;",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS imported_reviews_json JSON;",
 ]
 
 for _sql in _MIGRATIONS:

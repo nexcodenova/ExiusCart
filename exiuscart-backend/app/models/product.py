@@ -106,6 +106,10 @@ class Product(Base):
     meta_description = Column(String(200), nullable=True)
     # "Who to target" (app/intel/audience.py): AI suggestion on top of real market data, cached here
     audience_json = Column(JSON, nullable=True)
+    # Prodora catalog: the admin switches Google Trends on per product (each first lookup costs an Apify run)
+    show_trends = Column(Boolean, nullable=False, default=False, server_default="false")
+    # Real AliExpress reviews fetched once (Apify) and kept, so later imports reuse them without scraping again
+    imported_reviews_json = Column(JSON, nullable=True)
 
     # Short per-product highlight facts shown under the price — [{icon,
     # label}, ...], e.g. {"icon": "calendar", "label": "1 Year Access"} or

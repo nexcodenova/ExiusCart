@@ -10,6 +10,7 @@ import { UsageBanner } from '@/components/usage-banner';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { channelMeta } from '@/components/channels/channelMeta';
+import { CountryFlag } from '@/components/country-flag';
 import ChannelLogo from '@/components/channels/ChannelLogo';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import DateRangePicker, { DateRangeValue } from '@/components/channels/listings/DateRangePicker';
@@ -53,6 +54,7 @@ interface Order {
   shipped_at: string | null;
   estimated_delivery: string | null;
   fulfillment_supplier: string | null;
+  supplier_linked?: boolean | null;
   fulfillment_status: string | null;
   // Real channel this order came through (ebay/daraz/custom/thedersi/etc.)
   // — resolved server-side from ChannelOrderMeta since `source` itself is
@@ -79,11 +81,37 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
 
-// International couriers, for every store. The three Sri Lanka-only local couriers (below) were previously
-// mixed into this same list and shown to every seller regardless of country — a UAE or US store had no reason
-// to see "Kapruka" in its own carrier dropdown. Now they only show for TheDersi orders (Sri Lanka only).
-const CARRIERS = ['DHL', 'FedEx', 'Aramex', 'Emirates Post', 'Smsa', 'Other'];
-const THEDERSI_CARRIERS = ['Lanka Speed Couriers', 'Kapruka', 'Pronto', ...CARRIERS];
+// Ship window: pick the country first, then a courier that delivers there. "Other" lets the
+// seller type the courier's name. TheDersi orders open on Sri Lanka (TheDersi is Sri Lanka only).
+const COURIERS_BY_COUNTRY: Record<string, { name: string; couriers: string[] }> = {
+  LK: { name: 'Sri Lanka', couriers: ['Lanka Speed Couriers', 'Kapruka', 'Pronto', 'Domex', 'Koombiyo', 'Citypak', 'Prompt Xpress', 'Sri Lanka Post', 'DHL', 'FedEx', 'Aramex'] },
+  AE: { name: 'United Arab Emirates', couriers: ['Aramex', 'Emirates Post', 'iMile', 'Jeebly', 'Shipa', 'Quiqup', 'SMSA', 'DHL', 'FedEx', 'UPS'] },
+  SA: { name: 'Saudi Arabia', couriers: ['SMSA', 'Aramex', 'SPL (Saudi Post)', 'Naqel', 'J&T Express', 'iMile', 'DHL', 'FedEx'] },
+  QA: { name: 'Qatar', couriers: ['Qatar Post', 'Aramex', 'SMSA', 'DHL', 'FedEx'] },
+  KW: { name: 'Kuwait', couriers: ['Aramex', 'Kuwait Post', 'SMSA', 'DHL', 'FedEx'] },
+  OM: { name: 'Oman', couriers: ['Oman Post', 'Aramex', 'DHL', 'FedEx'] },
+  BH: { name: 'Bahrain', couriers: ['Bahrain Post', 'Aramex', 'DHL', 'FedEx'] },
+  IN: { name: 'India', couriers: ['Delhivery', 'Blue Dart', 'DTDC', 'Ekart', 'Xpressbees', 'Shadowfax', 'India Post', 'DHL', 'FedEx'] },
+  PK: { name: 'Pakistan', couriers: ['TCS', 'Leopards Courier', 'M&P', 'PostEx', 'Trax', 'Pakistan Post', 'DHL'] },
+  BD: { name: 'Bangladesh', couriers: ['Pathao', 'RedX', 'Steadfast', 'Sundarban Courier', 'eCourier', 'DHL'] },
+  MY: { name: 'Malaysia', couriers: ['Pos Laju', 'J&T Express', 'Ninja Van', 'GDEX', 'City-Link', 'DHL eCommerce'] },
+  SG: { name: 'Singapore', couriers: ['SingPost', 'Ninja Van', 'J&T Express', 'Qxpress', 'DHL'] },
+  GB: { name: 'United Kingdom', couriers: ['Royal Mail', 'Evri', 'DPD', 'Parcelforce', 'Yodel', 'UPS', 'DHL'] },
+  US: { name: 'United States', couriers: ['USPS', 'UPS', 'FedEx', 'DHL'] },
+  INTL: { name: 'Another country', couriers: ['DHL', 'FedEx', 'UPS', 'Aramex'] },
+};
+const COUNTRY_NAME_TO_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(COURIERS_BY_COUNTRY).map(([code, v]) => [v.name.toLowerCase(), code]),
+);
+function courierCountryFor(shopCountry: string | null | undefined): string {
+  const raw = (shopCountry ?? '').trim();
+  if (raw.length === 2 && COURIERS_BY_COUNTRY[raw.toUpperCase()]) return raw.toUpperCase();
+  const lower = raw.toLowerCase();
+  if (lower === 'uae') return 'AE';
+  if (lower === 'uk') return 'GB';
+  if (lower === 'usa') return 'US';
+  return COUNTRY_NAME_TO_CODE[lower] ?? 'INTL';
+}
 
 interface ShipModalProps {
   order: Order;
@@ -215,6 +243,8 @@ function MiniSparkline({ data, dataKey, color }: { data: { day: string }[]; data
 function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [carrier, setCarrier] = useState('');
+  const [otherCarrier, setOtherCarrier] = useState('');
+  const [country, setCountry] = useState(order.channel_type === 'thedersi' ? 'LK' : 'INTL');
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
   const [deliveryCharge, setDeliveryCharge] = useState('');
   const [deliveryCost, setDeliveryCost] = useState('');
@@ -228,6 +258,15 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
   // modal's TheDersi-specific delivery-cost field was silently dead.
   const isTheDersi = order.channel_type === 'thedersi';
 
+  // Open on the shop's own country (TheDersi orders are always Sri Lanka)
+  useEffect(() => {
+    if (isTheDersi) return;
+    import('@/lib/api').then(({ shopApi }) => shopApi.getMyShop()
+      .then((r) => setCountry(courierCountryFor(r.data?.country)))
+      .catch(() => {}));
+  }, [isTheDersi]);
+  const finalCarrier = carrier === 'Other' ? otherCarrier.trim() : carrier;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -235,7 +274,7 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
     try {
       const res = await ordersApi.ship(shopId, String(order.id), {
         tracking_number: trackingNumber.trim() || undefined,
-        carrier: carrier || undefined,
+        carrier: finalCarrier || undefined,
         estimated_delivery: estimatedDelivery || undefined,
         delivery_charge: isFreeDelivery ? 0 : (deliveryCharge !== '' ? Number(deliveryCharge) : undefined),
         delivery_cost: isTheDersi && deliveryCost !== '' ? Number(deliveryCost) : undefined,
@@ -275,17 +314,51 @@ function ShipModal({ order, onClose, onShipped, shopId }: ShipModalProps) {
             <p className="text-xs text-muted-foreground mt-1">Only needed if you use a courier with tracking. Hand-delivering? Just leave it blank.</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Carrier</label>
-            <select
-              value={carrier}
-              onChange={e => setCarrier(e.target.value)}
-              className="w-full px-4 py-2.5 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-foreground"
-            >
-              <option value="">Select carrier</option>
-              {(isTheDersi ? THEDERSI_CARRIERS : CARRIERS).map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Ship within</label>
+              <Select value={country} onValueChange={(v) => { setCountry(v); setCarrier(''); setOtherCarrier(''); }} disabled={isTheDersi}>
+                <SelectTrigger className="h-10 bg-muted text-sm [&>span]:truncate [&>span]:whitespace-nowrap">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {Object.entries(COURIERS_BY_COUNTRY).map(([code, v]) => (
+                    <SelectItem key={code} value={code}>
+                      <span className="flex items-center gap-2">
+                        {code === 'INTL' ? <Globe className="h-3.5 w-3.5 text-muted-foreground" /> : <CountryFlag code={code} className="h-3 w-4" />}
+                        {v.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Courier</label>
+              <select
+                value={carrier}
+                onChange={e => setCarrier(e.target.value)}
+                className="w-full h-10 px-3 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm text-foreground"
+              >
+                <option value="">Select courier</option>
+                {(COURIERS_BY_COUNTRY[country]?.couriers ?? []).map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="Other">Other (type the name)</option>
+              </select>
+            </div>
           </div>
+          {carrier === 'Other' && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Courier name</label>
+              <input
+                type="text"
+                value={otherCarrier}
+                onChange={e => setOtherCarrier(e.target.value)}
+                placeholder="e.g. My local delivery service"
+                autoFocus
+                className="w-full h-10 px-3 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+          )}
 
           {isTheDersi && (
             <div>
@@ -906,7 +979,11 @@ export default function OrdersPage() {
     }
   };
 
-  const canShip = (o: Order) => (o.source === 'thedersi' ? ['packing', 'processing'] : ['pending', 'confirmed', 'processing']).includes(o.status);
+  // Ship is for orders the seller sends themselves (own products, TheDersi). Orders with a product
+  // linked to a dropship supplier, or already sent to one, are shipped by that supplier: Fulfill only.
+  const canShip = (o: Order) => o.source === 'thedersi'
+    ? ['packing', 'processing'].includes(o.status)
+    : ['pending', 'confirmed', 'processing'].includes(o.status) && !o.supplier_linked && !o.fulfillment_supplier;
 
   const canFulfillOrder = (o: Order) =>
     !hasTheDersi

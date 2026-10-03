@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Package, AlertTriangle, Plus, Minus, X, ChevronDown, Loader2, DollarSign, PackageX } from 'lucide-react';
+import { Search, Package, AlertTriangle, Plus, Minus, X, ChevronDown, Loader2 } from 'lucide-react';
 import { productsApi, inventoryApi } from '@/lib/api';
 import { useCurrency } from '@/components/providers/currency-provider';
+import SupplierBadge from '@/components/dropshipping/SupplierBadge';
 
 interface InventoryItem {
   id: string;
@@ -14,6 +15,9 @@ interface InventoryItem {
   minStock: number;
   cost: number;
   price: number;
+  image?: string | null;
+  // Set for products a dropship supplier holds and ships (their stock, not yours)
+  supplier?: string | null;
   lastUpdated?: string;
 }
 
@@ -45,6 +49,8 @@ export default function InventoryPage() {
         minStock: p.lowStockAlert ?? p.low_stock_threshold ?? 5,
         cost: p.costPrice ?? p.cost_price ?? 0,
         price: p.sellingPrice ?? p.price ?? 0,
+        image: p.image_url ?? p.image ?? null,
+        supplier: p.dropship_supplier ?? ((p.stock ?? p.quantity ?? 0) >= 999999 ? 'supplier' : null),
         lastUpdated: p.updatedAt ?? p.updated_at,
       })));
     } catch {
@@ -81,15 +87,21 @@ export default function InventoryPage() {
       item.sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStock =
       stockFilter === 'all' ? true :
-      stockFilter === 'out' ? item.stock === 0 :
-      stockFilter === 'low' ? item.stock > 0 && item.stock <= item.minStock :
+      stockFilter === 'out' ? !item.supplier && item.stock === 0 :
+      stockFilter === 'low' ? !item.supplier && item.stock > 0 && item.stock <= item.minStock :
       item.stock > item.minStock;
     return matchesSearch && matchesStock;
   });
 
-  const outOfStock = items.filter(i => i.stock === 0).length;
-  const lowStock = items.filter(i => i.stock > 0 && i.stock <= i.minStock).length;
-  const inventoryValue = items.reduce((sum, i) => sum + i.price * i.stock, 0);
+  const outOfStock = items.filter(i => !i.supplier && i.stock === 0).length;
+  const lowStock = items.filter(i => !i.supplier && i.stock > 0 && i.stock <= i.minStock).length;
+  // Your own stock and supplier-held stock are counted apart: a supplier's warehouse count is not money you have tied up
+  const own = items.filter((i) => !i.supplier);
+  const supplied = items.filter((i) => !!i.supplier);
+  const ownValue = own.reduce((sum, i) => sum + i.price * i.stock, 0);
+  const ownCost = own.reduce((sum, i) => sum + i.cost * i.stock, 0);
+  const ownUnits = own.reduce((sum, i) => sum + i.stock, 0);
+  const money = (n: number) => `${sym}${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   const missingSkuCount = items.filter(i => !i.sku).length;
 
   const handleGenerateSkus = async () => {
@@ -105,24 +117,23 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
-        <p className="text-muted-foreground text-sm">Track and manage your stock levels</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Inventory</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Your own stock, its value, and what needs restocking. Supplier products are counted apart.</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {[
-          { label: 'Total SKUs', icon: Package, value: loading ? '—' : String(items.length), color: '' },
-          { label: 'Low Stock', icon: AlertTriangle, value: loading ? '—' : String(lowStock), color: 'text-orange-600 dark:text-orange-400' },
-          { label: 'Out of Stock', icon: PackageX, value: loading ? '—' : String(outOfStock), color: 'text-red-600 dark:text-red-400' },
-          { label: 'Inventory Value', icon: DollarSign, value: loading ? '—' : `${inventoryValue.toLocaleString()} ${sym}`, color: '' },
-        ].map(({ label, icon: Icon, value, color }) => (
-          <div key={label} className="bg-card rounded-xl border border-border p-3 flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className="h-4 w-4 text-foreground/70" /></div>
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground truncate">{label}</p>
-              <p className={`text-lg font-bold leading-tight tracking-tight tabular-nums ${color || 'text-foreground'}`}>{value}</p>
-            </div>
+          { label: 'Products', value: loading ? '—' : String(items.length), sub: `${own.length} yours · ${supplied.length} from suppliers`, dot: 'bg-indigo-500' },
+          { label: 'Low stock', value: loading ? '—' : String(lowStock), sub: 'At or under the minimum', dot: 'bg-amber-500' },
+          { label: 'Out of stock', value: loading ? '—' : String(outOfStock), sub: 'Need restocking', dot: 'bg-red-500' },
+          { label: 'Your stock value', value: loading ? '—' : money(ownValue), sub: `${ownUnits.toLocaleString()} units · cost ${money(ownCost)}`, dot: 'bg-emerald-500' },
+          { label: 'Supplier products', value: loading ? '—' : String(supplied.length), sub: 'Stock held and shipped by the supplier', dot: 'bg-sky-500' },
+        ].map((c) => (
+          <div key={c.label} className="rounded-xl border border-border bg-card px-3.5 py-3">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />{c.label}</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{c.value}</p>
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{c.sub}</p>
           </div>
         ))}
       </div>
@@ -180,15 +191,15 @@ export default function InventoryPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-card rounded-2xl border border-border p-4 flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search by name or SKU..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-muted border border-border rounded-xl focus:ring-2 focus:ring-foreground/10 outline-none text-foreground placeholder:text-muted-foreground"
+            className="h-9 w-full pl-10 pr-4 bg-background border border-border rounded-md text-sm focus:ring-2 focus:ring-foreground/10 outline-none text-foreground placeholder:text-muted-foreground"
           />
         </div>
         <div className="relative">
@@ -196,27 +207,27 @@ export default function InventoryPage() {
             value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value as StockFilter)}
             aria-label="Filter by stock level"
-            className="appearance-none w-full sm:w-44 px-4 py-2.5 pr-10 bg-muted border border-border rounded-xl focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
+            className="h-9 appearance-none w-full sm:w-44 px-3 pr-9 bg-background border border-border rounded-md text-sm focus:ring-2 focus:ring-foreground/10 outline-none text-foreground"
           >
             <option value="all">All Items</option>
             <option value="low">Low Stock</option>
             <option value="out">Out of Stock</option>
             <option value="healthy">Healthy</option>
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
         {loading ? (
           <div className="p-8 space-y-3">
-            {[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}
+            {[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-muted rounded-lg animate-pulse" />)}
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">
-            <Package className="w-14 h-14 text-muted-foreground mx-auto mb-4 opacity-40" />
-            <h3 className="font-semibold text-foreground mb-1">
+            <Package className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+            <h3 className="font-medium text-foreground mb-1">
               {searchQuery || stockFilter !== 'all' ? 'No items found' : 'No products in inventory'}
             </h3>
             <p className="text-sm text-muted-foreground">
@@ -225,52 +236,63 @@ export default function InventoryPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
+            <table className="w-full whitespace-nowrap text-sm">
+              <thead className="bg-muted text-xs text-muted-foreground">
                 <tr>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">#</th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Product</th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">SKU</th>
-                  <th className="text-left p-4 text-sm font-medium text-muted-foreground">Category</th>
-                  <th className="text-center p-4 text-sm font-medium text-muted-foreground">Stock</th>
-                  <th className="text-center p-4 text-sm font-medium text-muted-foreground">Min</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Price</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total Value</th>
-                  <th className="text-right p-4 text-sm font-medium text-muted-foreground">Adjust</th>
+                  <th className="sticky left-0 z-10 w-12 min-w-12 bg-muted px-3 py-2.5 text-left font-medium">#</th>
+                  <th className="sticky left-12 z-10 bg-muted px-3 py-2.5 text-left font-medium shadow-[1px_0_0_hsl(var(--border))]">Product</th>
+                  <th className="px-3 py-2.5 text-left font-medium">SKU</th>
+                  <th className="px-3 py-2.5 text-left font-medium">Category</th>
+                  <th className="px-3 py-2.5 text-center font-medium">Stock</th>
+                  <th className="px-3 py-2.5 text-center font-medium">Min</th>
+                  <th className="px-3 py-2.5 text-right font-medium">Price</th>
+                  <th className="px-3 py-2.5 text-right font-medium">Stock value</th>
+                  <th className="sticky right-0 z-10 bg-muted px-3 py-2.5 text-right font-medium shadow-[-1px_0_0_hsl(var(--border))]">Adjust</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map((item, index) => {
                   const isOut = item.stock === 0;
                   const isLow = item.stock > 0 && item.stock <= item.minStock;
+                  const bySupplier = !!item.supplier;
                   return (
-                    <tr key={item.id} className="hover:bg-muted/30 transition">
-                      <td className="p-4"><span className="text-sm text-muted-foreground tabular-nums">{index + 1}</span></td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          {(isOut || isLow) && <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${isOut ? 'text-red-500' : 'text-orange-500'}`} />}
-                          <span className="font-medium text-foreground">{item.name}</span>
+                    <tr key={item.id} className="group h-[52px] transition hover:bg-muted/30">
+                      <td className="sticky left-0 z-[1] w-12 min-w-12 bg-card px-3 py-1.5 text-xs tabular-nums text-muted-foreground group-hover:bg-muted">{index + 1}</td>
+                      <td className="sticky left-12 z-[1] bg-card px-3 py-1.5 shadow-[1px_0_0_hsl(var(--border))] group-hover:bg-muted">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            {item.image ? <img src={item.image} alt="" className="h-full w-full object-cover" /> : <Package className="h-3.5 w-3.5 text-muted-foreground" />}
+                          </div>
+                          <span className="max-w-[260px] truncate text-[13px] font-medium text-foreground" title={item.name}>{item.name}</span>
                         </div>
                       </td>
-                      <td className="p-4">
+                      <td className="px-3 py-1.5">
                         {item.sku
-                          ? <span className="text-sm text-muted-foreground font-mono">{item.sku}</span>
-                          : <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">Missing</span>}
+                          ? <span className="font-mono text-xs text-muted-foreground">{item.sku}</span>
+                          : <span className="text-xs font-medium text-orange-600 dark:text-orange-400">Missing</span>}
                       </td>
-                      <td className="p-4"><span className="text-sm text-foreground">{item.category}</span></td>
-                      <td className="p-4 text-center">
-                        <span className={`text-sm font-semibold px-2 py-1 rounded-full ${isOut ? 'bg-red-500/10 text-red-600 dark:text-red-400' : isLow ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400' : 'bg-green-500/10 text-green-600 dark:text-green-400'}`}>
-                          {item.stock}
-                        </span>
+                      <td className="px-3 py-1.5 text-xs text-foreground">{item.category || <span className="text-muted-foreground">—</span>}</td>
+                      <td className="px-3 py-1.5 text-center">
+                        {bySupplier ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground" title="Stock held by the supplier">
+                            {item.supplier && item.supplier !== 'supplier' ? <SupplierBadge supplier={item.supplier} label={false} size={16} /> : null} Supplier
+                          </span>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1.5 text-[13px] tabular-nums ${isOut ? 'font-medium text-red-600 dark:text-red-400' : isLow ? 'font-medium text-orange-600 dark:text-orange-400' : 'text-foreground'}`}>
+                            {(isOut || isLow) && <span className={`h-1.5 w-1.5 rounded-full ${isOut ? 'bg-red-500' : 'bg-orange-500'}`} />}
+                            {item.stock.toLocaleString()}
+                          </span>
+                        )}
                       </td>
-                      <td className="p-4 text-center"><span className="text-sm text-muted-foreground">{item.minStock}</span></td>
-                      <td className="p-4 text-right"><span className="text-sm font-medium text-foreground">{item.price.toLocaleString()} {sym}</span></td>
-                      <td className="p-4 text-right"><span className="text-sm text-foreground">{(item.price * item.stock).toLocaleString()} {sym}</span></td>
-                      <td className="p-4 text-right">
+                      <td className="px-3 py-1.5 text-center text-xs text-muted-foreground">{bySupplier ? '—' : item.minStock}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-foreground">{money(item.price)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-foreground">{bySupplier ? <span className="text-xs text-muted-foreground">Supplier&apos;s</span> : money(item.price * item.stock)}</td>
+                      <td className="sticky right-0 z-[1] bg-card px-3 py-1.5 text-right shadow-[-1px_0_0_hsl(var(--border))] group-hover:bg-muted">
                         <button
                           type="button"
                           onClick={() => { setAdjustingItem(item); setAdjustQty(0); setAdjustReason(''); setNewPrice(''); }}
-                          className="text-xs px-3 py-1.5 bg-muted rounded-lg text-foreground hover:bg-muted/80 transition"
+                          className="h-8 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground transition hover:bg-muted"
                         >
                           Adjust
                         </button>

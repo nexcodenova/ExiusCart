@@ -33,6 +33,8 @@ ACTORS = {
     "amazon": ("APIFY_AMAZON_ACTOR", "junglee~amazon-crawler", "APIFY_AMAZON_USD_PER_ITEM", 0.003),
     "trends": ("APIFY_TRENDS_ACTOR", "apify~google-trends-scraper", "APIFY_TRENDS_USD_PER_ITEM", 0.0003),
     "tiktok": ("APIFY_TIKTOK_ACTOR", "clockworks~tiktok-scraper", "APIFY_TIKTOK_USD_PER_ITEM", 0.004),
+    # Public AliExpress reviews for a product id (about $0.06 per 1,000 reviews plus $0.005 a run)
+    "aliexpress_reviews": ("APIFY_ALIEXPRESS_REVIEWS_ACTOR", "fetch_cat~aliexpress-reviews-scraper", "APIFY_ALIEXPRESS_REVIEWS_USD_PER_ITEM", 0.0001),
 }
 
 
@@ -191,6 +193,32 @@ def trends_series(keyword: str, geo: str = "US"):
             break
     countries.sort(key=lambda c: c["index"], reverse=True)
     return sorted(series), countries, related
+
+
+# ── AliExpress reviews ───────────────────────────────────────────────────────
+
+def aliexpress_reviews(product_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+    """Real public reviews of one AliExpress product, written ones first:
+    [{rating, text, name, country, photo, date}]. Raises ApifyError."""
+    rows = run("aliexpress_reviews", {"productIds": [str(product_id)], "maxReviewsPerProduct": limit, "sort": "default"},
+               max_items=limit, timeout_s=150)
+    out = []
+    for it in rows:
+        rating = num(_first(it, "rating", "stars", "buyerEval"))
+        text = str(_first(it, "translatedReviewText", "reviewText", "originalReviewText", "text") or "").strip()
+        if rating is None or not (1 <= rating <= 5):
+            continue
+        media = _first(it, "mediaUrls", "images", "thumbnailUrls") or []
+        out.append({
+            "rating": int(round(rating)),
+            "text": text[:2000],
+            "name": str(_first(it, "buyerNameMasked", "buyerName", "name") or "").strip()[:80] or None,
+            "country": str(_first(it, "buyerCountry", "country") or "").strip()[:40] or None,
+            "photo": media[0] if isinstance(media, list) and media else None,
+            "date": _first(it, "reviewDate", "date", "createdAt"),
+        })
+    out.sort(key=lambda r: (0 if r["text"] else 1))
+    return out[:limit]
 
 
 # ── TikTok ───────────────────────────────────────────────────────────────────

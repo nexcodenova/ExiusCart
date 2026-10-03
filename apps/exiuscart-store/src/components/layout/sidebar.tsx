@@ -301,7 +301,8 @@ function isPremiumGroup(groupId: string): boolean {
 // Features no TheDersi-managed plan gets (Official excepted — it resolves to
 // plan "scale" and is never treated as restricted). Mirrors the backend's
 // is_thedersi_restricted_shop() gates: every dropshipping/supplier/import
-// route (blanket 403), the Blog (blog.py), and Wholesale (Scale only).
+// route (blanket 403), the Blog (blog.py), Reviews (reviews.py — buyers
+// review on TheDersi itself), and Wholesale (Scale only).
 // Locking them in the sidebar shows the "Not available on TheDersi Plans"
 // popup on click instead of navigating to a page that only then says no.
 function isTheDersiBlockedHref(href: string): boolean {
@@ -309,7 +310,8 @@ function isTheDersiBlockedHref(href: string): boolean {
     || href.startsWith('/dashboard/price-coach')
     || href.startsWith('/dashboard/prodora-ai')
     || href === '/dashboard/wholesale'
-    || href === '/dashboard/blog';
+    || href === '/dashboard/blog'
+    || href === '/dashboard/reviews';
 }
 
 // Marketing Hub pages that only TheDersi Free Forever lacks (Lite/Pro/

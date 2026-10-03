@@ -212,12 +212,16 @@ def check() -> dict:
 
 # ── Cache shared by everyone ─────────────────────────────────────────────────
 
+ERROR_TTL = timedelta(hours=6)   # a failed lookup is retried after this, not on every page view
+
+
 def cached(db: Session, keyword: str, geo: str = "US") -> Optional[dict]:
     row = db.query(KeywordTrend).filter(KeywordTrend.keyword == normalise(keyword), KeywordTrend.geo == geo).first()
     if not row:
         return None
     fetched = row.fetched_at if row.fetched_at.tzinfo else row.fetched_at.replace(tzinfo=timezone.utc)
-    if datetime.now(timezone.utc) - fetched > TTL:
+    ttl = TTL if (row.payload or {}).get("status") in ("ok", "insufficient") else ERROR_TTL
+    if datetime.now(timezone.utc) - fetched > ttl:
         return None
     return row.payload
 

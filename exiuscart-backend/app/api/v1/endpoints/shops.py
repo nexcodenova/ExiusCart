@@ -1357,7 +1357,7 @@ def get_dashboard_stats(
         "repeatCustomerRate": 0.0, "inventoryValue": 0.0,
         "outOfStockCount": 0, "topCustomers": [],
         "customersByCountry": [], "ordersByCountry": [], "viewsByCountry": [], "recentCustomers": [],
-        "homeCountry": None, "ordersByCity": [],
+        "homeCountry": None, "ordersByCity": [], "theDersiShop": False,
         "storeHealth": {"channelsConnected": 0, "lastSyncedAt": None},
         "periodRevenue": 0.0, "periodOrders": 0,
         "periodRevenueChange": None, "periodOrdersChange": None,
@@ -1545,6 +1545,53 @@ def get_dashboard_stats(
             new_by_label[label] = new_by_label.get(label, 0) + int(r.cnt)
         for entry in period_trend:
             entry["newCustomers"] = new_by_label.get(entry["label"], 0)
+
+        # The same buckets one step back, for the dashboard cards' comparison
+        # line: monthly view -> the same months last year, daily view -> the
+        # previous run of days (e.g. last 30 days vs the 30 before). Each past
+        # day is moved forward onto the current bucket it lines up with.
+        if use_monthly_view:
+            def _shift(dt):
+                try:
+                    return dt.replace(year=dt.year - 1)
+                except ValueError:  # 29 Feb
+                    return dt.replace(year=dt.year - 1, day=28)
+            prev_from, prev_to = _shift(views_from), _shift(views_to)
+            def _bucket(d):
+                return d.replace(year=d.year + 1).strftime("%b '%y") if not (d.month == 2 and d.day == 29) else d.replace(year=d.year + 1, day=28).strftime("%b '%y")
+        else:
+            prev_from, prev_to = views_from - timedelta(days=span_days), views_to - timedelta(days=span_days)
+            def _bucket(d):
+                return (d + timedelta(days=span_days)).strftime("%b %d")
+
+        def _as_date(v):
+            return v if hasattr(v, "strftime") else datetime.fromisoformat(str(v)[:10]).date()
+
+        prev_rev: dict[str, float] = {}
+        prev_ord: dict[str, int] = {}
+        for r in db.query(
+            func.date(Ord.created_at).label("d"),
+            func.coalesce(func.sum(Ord.total), 0).label("rev"), func.count(Ord.id).label("cnt"),
+        ).filter(
+            Ord.shop_id == shop_id, Ord.payment_status == "paid",
+            Ord.created_at >= prev_from, Ord.created_at <= prev_to,
+        ).group_by(func.date(Ord.created_at)).all():
+            k = _bucket(_as_date(r.d))
+            prev_rev[k] = prev_rev.get(k, 0.0) + float(r.rev or 0)
+            prev_ord[k] = prev_ord.get(k, 0) + int(r.cnt)
+        prev_new: dict[str, int] = {}
+        for r in db.query(
+            func.date(Cust.created_at).label("d"), func.count(Cust.id).label("cnt"),
+        ).filter(
+            Cust.shop_id == shop_id, Cust.created_at >= prev_from, Cust.created_at <= prev_to,
+        ).group_by(func.date(Cust.created_at)).all():
+            k = _bucket(_as_date(r.d))
+            prev_new[k] = prev_new.get(k, 0) + int(r.cnt)
+        for entry in period_trend:
+            entry["prevRevenue"] = round(prev_rev.get(entry["label"], 0.0), 2)
+            entry["prevOrders"] = prev_ord.get(entry["label"], 0)
+            entry["prevNewCustomers"] = prev_new.get(entry["label"], 0)
+        adv["trendComparison"] = "last_year" if use_monthly_view else "previous_period"
 
         for idx in range(len(period_trend)):
             if idx == 0:
@@ -1746,6 +1793,10 @@ def get_dashboard_stats(
             "channelsConnected": len(active_conns),
             "lastSyncedAt": last_sync.isoformat() if last_sync else None,
         }
+        # TheDersi sellers only sell in Sri Lanka, so their map stays on Sri Lanka (no region picker).
+        adv["theDersiShop"] = db.query(ChannelConnection.id).filter(
+            ChannelConnection.shop_id == shop_id, ChannelConnection.channel_type == "thedersi",
+        ).first() is not None
     except Exception as _adv_err:
         logger.error(f"[dashboard advanced stats] {_adv_err}")
 

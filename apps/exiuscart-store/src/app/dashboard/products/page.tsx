@@ -542,14 +542,14 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Products</h1>
-          <p className="text-muted-foreground text-sm">Manage your product catalog</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Products</h1>
+          <p className="mt-1 text-muted-foreground text-sm">Manage your product catalog</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => { fetchProducts(); fetchChannelStatuses(); }}
-            className="inline-flex items-center gap-2 border border-border px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition"
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
             title="Refresh products"
           >
             <RefreshCw className="w-4 h-4" />
@@ -557,7 +557,7 @@ export default function ProductsPage() {
           </button>
           {selectedForPrint.size > 0 && (
             isTheDersiBasic ? (
-              <div className="inline-flex items-center gap-2 border border-border text-muted-foreground px-4 py-2.5 rounded-lg text-sm cursor-not-allowed select-none" title="Upgrade to TheDersi Pro to bulk print">
+              <div className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm text-muted-foreground cursor-not-allowed select-none" title="Upgrade to TheDersi Pro to bulk print">
                 <Lock className="w-4 h-4" />
                 Bulk Print ({selectedForPrint.size}) — Pro only
               </div>
@@ -565,7 +565,7 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={handleBulkPrint}
-                className="inline-flex items-center gap-2 border border-primary text-primary px-4 py-2.5 rounded-lg font-medium hover:bg-primary/10 transition text-sm"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition hover:bg-muted"
               >
                 <Printer className="w-4 h-4" />
                 Print {selectedForPrint.size} Barcode{selectedForPrint.size !== 1 ? 's' : ''}
@@ -576,18 +576,17 @@ export default function ProductsPage() {
             <button
               type="button"
               onClick={() => { setCsvRows([]); setCsvError(''); setCsvResult(null); setShowCsvModal(true); }}
-              className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-muted transition"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition hover:bg-muted"
             >
-              <FileSpreadsheet className="w-5 h-5" /> Bulk Upload
+              <FileSpreadsheet className="w-4 h-4" /> Bulk upload
             </button>
           ) : (
             <div className="relative group/bulk">
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-2 border border-border text-muted-foreground/50 px-4 py-2.5 rounded-lg font-medium cursor-not-allowed select-none"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-muted-foreground/50 cursor-not-allowed select-none"
               >
-                <Lock className="w-4 h-4" />
-                <FileSpreadsheet className="w-5 h-5" /> Bulk Upload
+                <Lock className="w-4 h-4" /> Bulk upload
               </button>
               <div className="absolute right-0 top-full mt-1.5 z-20 hidden group-hover/bulk:block pointer-events-none">
                 <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
@@ -599,17 +598,17 @@ export default function ProductsPage() {
           <button
             type="button"
             onClick={() => { setEditingProduct(null); setAddModalProductType('physical'); setShowAddModal(true); }}
-            className="inline-flex items-center justify-center gap-2 bg-foreground text-background px-4 py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-foreground px-3.5 text-sm font-medium text-background transition hover:opacity-90"
           >
-            <Plus className="w-5 h-5" /> Add Product
+            <Plus className="w-4 h-4" /> Add product
           </button>
           {!isTheDersiShop && (
             <button
               type="button"
               onClick={() => { setDigitalChoiceStep('type'); setShowDigitalChoice(true); }}
-              className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 rounded-lg font-semibold hover:bg-muted transition text-sm text-foreground"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition hover:bg-muted"
             >
-              <Download className="w-4 h-4" /> Add Digital / Affiliate
+              <Download className="w-4 h-4" /> Add digital / affiliate
             </button>
           )}
         </div>
@@ -790,9 +789,9 @@ export default function ProductsPage() {
             {/* Desktop Table — compact: every row is one line, same height */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full whitespace-nowrap text-sm">
-                <thead className="bg-muted/50 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <thead className="bg-muted text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   <tr>
-                    <th className="w-10 py-2.5 pl-4 pr-1">
+                    <th className="sticky left-0 z-10 w-10 min-w-10 bg-muted py-2.5 pl-4 pr-1">
                       {(() => {
                         const withBarcode = displayedProducts.filter(p => (p as any).barcode);
                         const allSelected = withBarcode.length > 0 && withBarcode.every(p => selectedForPrint.has(p.id));
@@ -813,8 +812,8 @@ export default function ProductsPage() {
                         );
                       })()}
                     </th>
-                    <th className="px-2.5 py-2.5 text-left">#</th>
-                    <th className="px-2.5 py-2.5 text-left">Product</th>
+                    <th className="sticky left-10 z-10 w-12 min-w-12 bg-muted px-2.5 py-2.5 text-left">#</th>
+                    <th className="sticky left-[88px] z-10 bg-muted px-2.5 py-2.5 text-left shadow-[1px_0_0_hsl(var(--border))]">Product</th>
                     <th className="px-2.5 py-2.5 text-left">Supplier</th>
                     <th className="px-2.5 py-2.5 text-left">SKU</th>
                     <th className="px-2.5 py-2.5 text-left">ID</th>
@@ -824,7 +823,7 @@ export default function ProductsPage() {
                     <th className="px-2.5 py-2.5 text-center">Margin</th>
                     <th className="hidden px-2.5 py-2.5 text-right 2xl:table-cell">Revenue</th>
                     <th className="px-2.5 py-2.5 text-center">Stock</th>
-                    <th className="py-2.5 pl-3 pr-4 text-right">Actions</th>
+                    <th className="sticky right-0 z-10 bg-muted py-2.5 pl-3 pr-4 text-right shadow-[-1px_0_0_hsl(var(--border))]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -848,8 +847,8 @@ export default function ProductsPage() {
                         : { label: 'Pending', cls: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' }
                       : null;
                     return (
-                    <tr key={product.id} className={`h-[52px] transition hover:bg-muted/30 ${selectedForPrint.has(product.id) ? 'bg-primary/5' : ''}`}>
-                      <td className="w-10 py-1.5 pl-4 pr-1">
+                    <tr key={product.id} className={`group h-[52px] transition hover:bg-muted/30 ${selectedForPrint.has(product.id) ? 'bg-primary/5' : ''}`}>
+                      <td className="sticky left-0 z-[1] w-10 min-w-10 bg-card py-1.5 pl-4 pr-1 group-hover:bg-muted">
                         {(product as any).barcode ? (
                           <input
                             type="checkbox"
@@ -868,8 +867,8 @@ export default function ProductsPage() {
                           />
                         )}
                       </td>
-                      <td className="px-2.5 py-1.5 text-xs tabular-nums text-muted-foreground">#{idx + 1}</td>
-                      <td className="px-2.5 py-1.5">
+                      <td className="sticky left-10 z-[1] w-12 min-w-12 bg-card px-2.5 py-1.5 text-xs tabular-nums text-muted-foreground group-hover:bg-muted">{idx + 1}</td>
+                      <td className="sticky left-[88px] z-[1] bg-card px-2.5 py-1.5 shadow-[1px_0_0_hsl(var(--border))] group-hover:bg-muted">
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
                             {((product as any).image_url || product.image)
@@ -904,7 +903,7 @@ export default function ProductsPage() {
                           <div className="flex items-center gap-1.5">
                             {catEntries.slice(0, 3).map((entry, i) => (
                               <span key={i} title={channelLabel(entry.channel_type)}
-                                className="flex h-7 items-center rounded-md border border-border/60 bg-background px-1.5">
+                                className="flex h-7 items-center">
                                 <ChannelLogo channelType={entry.channel_type} size={16} />
                               </span>
                             ))}
@@ -917,12 +916,12 @@ export default function ProductsPage() {
                         )}
                       </td>
                       <td className="px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">{fmt(product.costPrice)}</td>
-                      <td className="px-2.5 py-1.5 text-right font-semibold tabular-nums text-primary">{fmt(product.sellingPrice)}</td>
+                      <td className="px-2.5 py-1.5 text-right font-medium tabular-nums text-foreground">{fmt(product.sellingPrice)}</td>
                       <td className="px-2.5 py-1.5 text-center">
                         <div className="flex items-center justify-center">
                         {margin !== null ? (
-                          <span className={`text-sm font-semibold tabular-nums ${
-                            margin < 20 ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                          <span className={`text-sm tabular-nums ${
+                            margin < 20 ? 'font-medium text-red-500' : 'text-foreground'}`}>
                             {margin}%
                           </span>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
@@ -947,7 +946,7 @@ export default function ProductsPage() {
                           {product.stock}
                         </div>
                       </td>
-                      <td className="py-1.5 pl-3 pr-4 text-right">
+                      <td className="sticky right-0 z-[1] bg-card py-1.5 pl-3 pr-4 text-right shadow-[-1px_0_0_hsl(var(--border))] group-hover:bg-muted">
                         <div className="flex items-center justify-end gap-0.5">
                           {(product as any).barcode && (
                             <button

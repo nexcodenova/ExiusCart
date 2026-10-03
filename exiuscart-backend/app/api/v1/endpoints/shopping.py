@@ -368,14 +368,27 @@ def get_shopping_product(
     product.view_count = (product.view_count or 0) + 1
     db.commit()
     record_event(db, "prodora_product_viewed", user_id=user.id, entity_type="prodora_product", entity_id=product.id)
-    return _product_out(product)
+    out = _product_out(product)
+    shop = db.query(Shop).filter(Shop.owner_id == user.id, Shop.is_active == True).order_by(Shop.id.asc()).first()  # noqa: E712
+    out["imported_product_id"] = _existing_import(db, shop.id, product.id) if shop else None
+    return out
+
+
+def _existing_import(db: Session, shop_id: int, source_id: int):
+    """The product this shop already made from this Prodora product, if it still exists."""
+    logs = db.query(ProdoraImportLog).filter(ProdoraImportLog.shop_id == shop_id,
+                                             ProdoraImportLog.source_product_id == source_id).order_by(ProdoraImportLog.id.desc()).all()
+    for log in logs:
+        if log.product_id and db.query(Product.id).filter(Product.id == log.product_id, Product.shop_id == shop_id).first():
+            return log.product_id
+    return None
 
 
 @router.get("/shopping/products/{product_id}/related")
 def get_related_shopping_products(
     product_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_prodora_user),
+    user: User = Depends(get_prodora_user),
 ):
     """Same-category products, excluding this one, for the 'Related Winning
     Products' rail — reuses the same active/shop filter as the main listing."""
@@ -396,7 +409,13 @@ def get_related_shopping_products(
         .limit(8)
         .all()
     )
-    return [_product_out(p) for p in rows]
+    shop = db.query(Shop).filter(Shop.owner_id == user.id, Shop.is_active == True).order_by(Shop.id.asc()).first()  # noqa: E712
+    out = []
+    for p in rows:
+        d = _product_out(p)
+        d["imported_product_id"] = _existing_import(db, shop.id, p.id) if shop else None
+        out.append(d)
+    return out
 
 
 def _seller_demand(d: Optional[dict]) -> Optional[dict]:
@@ -493,15 +512,47 @@ def get_shopping_product_trends(product_id: int, db: Session = Depends(get_db), 
     keyword = trends.normalise((snap.get("fingerprint") or {}).get("product_type") or ad_library_keyword(product.name))
     if not keyword:
         return {"keyword": None, "status": "insufficient"}
+    if not product.show_trends:
+        return {"keyword": keyword, "status": "hidden"}
     hit = trends.cached(db, keyword, "WW")
     if hit:
-        return {"keyword": keyword, "status": hit.get("status", "ok"), "trends": _public_trends(hit)}
+        ok = hit.get("status") == "ok"
+        return {"keyword": keyword, "status": hit.get("status", "ok"), "trends": _public_trends(hit) if ok else None}
     if not trends.configured():
         return {"keyword": keyword, "status": "not_configured"}
-    d = trends.fetch(keyword, "WW")
-    if d["status"] == "ok":
-        trends.store(db, keyword, "WW", d)
-    return {"keyword": keyword, "status": d["status"], "trends": _public_trends(d) if d["status"] == "ok" else None}
+    _start_trends_lookup(keyword)
+    return {"keyword": keyword, "status": "pending"}
+
+
+_TRENDS_IN_FLIGHT: set = set()
+_TRENDS_LOCK = __import__("threading").Lock()
+
+
+def _start_trends_lookup(keyword: str) -> None:
+    """The Apify run can take a few minutes, longer than a page request may wait, so it runs in
+    a background thread and saves its result (or its failure, briefly) to the shared cache; the
+    page asks again every few seconds. One lookup per keyword at a time."""
+    import threading
+    with _TRENDS_LOCK:
+        if keyword in _TRENDS_IN_FLIGHT:
+            return
+        _TRENDS_IN_FLIGHT.add(keyword)
+
+    def work():
+        from app.core.database import SessionLocal
+        from app.intel import trends
+        s = SessionLocal()
+        try:
+            d = trends.fetch(keyword, "WW")
+            trends.store(s, keyword, "WW", d)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[trends] background lookup failed: {type(e).__name__}")
+        finally:
+            s.close()
+            with _TRENDS_LOCK:
+                _TRENDS_IN_FLIGHT.discard(keyword)
+
+    threading.Thread(target=work, daemon=True).start()
 
 
 def _public_trends(d: dict) -> dict:
@@ -640,6 +691,11 @@ def import_shopping_product(
     if not shop:
         raise HTTPException(status_code=404, detail="No active ExiusCart shop found for this account")
 
+    # Already in this store: hand back that product instead of making a second copy (and do not count it)
+    existing = _existing_import(db, shop.id, source.id)
+    if existing:
+        return {"product_id": existing, "already_imported": True, "name": source.name}
+
     sub = _find_eligible_subscription(db, user)
     monthly_limit = PRODORA_MONTHLY_IMPORT_LIMIT.get(sub.plan_type if sub else "", 0)
     if monthly_limit is not None:
@@ -760,6 +816,12 @@ def import_shopping_product(
 
     db.add(ProdoraImportLog(shop_id=shop.id, product_id=new_product.id, source_product_id=source.id))
     db.commit()
+    # The catalog product's saved AliExpress reviews come along as Pending (no new scraping)
+    try:
+        from app.core.review_import import copy_to_seller
+        copy_to_seller(db, source, shop.id, new_product.id)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[prodora import] reviews not copied: {type(e).__name__}")
     db.refresh(new_product)
     # The event stream and supplier price history start filling from the very
     # first import (both are best-effort and can never fail the import).

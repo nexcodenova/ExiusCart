@@ -2017,6 +2017,8 @@ async def aliexpress_import(
     db.commit()
     db.refresh(product)
     logger.info(f"[AliExpress Import] shop={shop_id} imported product={product.id} ae_product_id={product_id} variants={len(detail['variants'])}")
+    from app.core.review_import import queue_aliexpress_reviews
+    queue_aliexpress_reviews(shop_id, product.id, product_id)
     return {"product_id": product.id, "name": product.name, "price": float(product.price)}
 
 

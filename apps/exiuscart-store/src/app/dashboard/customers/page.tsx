@@ -824,12 +824,12 @@ export default function CustomersPage() {
                         <tr key={customer.id}
                           onClick={() => setSelectedCustomer(customer)}
                           className={`cursor-pointer transition hover:bg-muted/30 ${selectedCustomer?.id === customer.id ? 'bg-primary/5' : ''}`}>
-                          <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                             <input type="checkbox" checked={selectedIds.has(customer.id)} onChange={() => toggleSelectOne(customer.id)} className="rounded border-border" />
                           </td>
-                          <td className="p-3">
+                          <td className="px-3 py-1.5">
                             <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-full border border-border bg-muted/50 flex items-center justify-center shrink-0">
+                              <div className="w-7 h-7 rounded-full border border-border bg-muted/50 flex items-center justify-center shrink-0">
                                 <span className="text-[11px] font-medium text-muted-foreground">{initials(customer.name)}</span>
                               </div>
                               <div className="min-w-0">
@@ -838,17 +838,17 @@ export default function CustomersPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-3 hidden md:table-cell">
+                          <td className="px-3 py-1.5 hidden md:table-cell">
                             <div className="space-y-0.5">
                               {customer.email && <p className="truncate text-xs text-foreground">{customer.email}</p>}
                               {customer.phone && <p className="text-[11px] text-muted-foreground">{customer.phone}</p>}
                             </div>
                           </td>
-                          <td className="p-3 text-[13px] tabular-nums text-foreground">{customer.totalOrders}</td>
-                          <td className="p-3 text-[13px] tabular-nums text-foreground">{fmt(customer.totalSpent, 0)}</td>
-                          <td className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{timeAgoShort(customer.lastOrder)}</td>
-                          <td className="p-3"><StatusBadge status={customer.status} /></td>
-                          <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-3 py-1.5 text-[13px] tabular-nums text-foreground">{customer.totalOrders}</td>
+                          <td className="px-3 py-1.5 text-[13px] tabular-nums text-foreground">{fmt(customer.totalSpent, 0)}</td>
+                          <td className="px-3 py-1.5 text-xs text-muted-foreground hidden lg:table-cell">{timeAgoShort(customer.lastOrder)}</td>
+                          <td className="px-3 py-1.5"><StatusBadge status={customer.status} /></td>
+                          <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                               <button type="button" onClick={() => setSelectedCustomer(customer)} aria-label={`View ${customer.name}`}
                                 className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition">

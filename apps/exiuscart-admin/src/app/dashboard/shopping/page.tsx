@@ -82,6 +82,7 @@ interface ShoppingProduct {
   ad_instagram_url: string | null;
   ad_pinterest_url: string | null;
   amazon_url: string | null;
+  show_trends?: boolean;
   ebay_url: string | null;
   specs_json: string | null;
   tags: string | null;
@@ -117,6 +118,7 @@ const emptyForm = {
   ad_instagram_url: '',
   ad_pinterest_url: '',
   amazon_url: '',
+  show_trends: false,
   ebay_url: '',
   tags: '',
 };
@@ -1353,6 +1355,7 @@ export default function TrendingDropshippingPage() {
       ad_instagram_url: p.ad_instagram_url || '',
       ad_pinterest_url: p.ad_pinterest_url || '',
       amazon_url: p.amazon_url || '',
+      show_trends: !!p.show_trends,
       ebay_url: p.ebay_url || '',
       tags: p.tags || '',
     });
@@ -1457,6 +1460,7 @@ export default function TrendingDropshippingPage() {
         ad_instagram_url: normalizeAdLink(form.ad_instagram_url) || null,
         ad_pinterest_url: form.ad_pinterest_url.trim() || null,
         amazon_url: form.amazon_url.trim() || null,
+        show_trends: !!form.show_trends,
         ebay_url: form.ebay_url.trim() || null,
         specs_json: Object.keys(specsObj).length ? JSON.stringify(specsObj) : null,
         tags: form.tags.trim() || null,
@@ -2555,7 +2559,18 @@ export default function TrendingDropshippingPage() {
               {/* Marketplace Links */}
               <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-3">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Marketplace Links</p>
-                <p className="text-xs text-gray-400 -mt-2">Optional — a real Amazon/eBay listing for this exact product. Shown as a compare-price button on the Prodora product page; hidden when left blank.</p>
+                <p className="text-xs text-gray-400 -mt-2">Optional — a real Amazon/eBay listing for this exact product. Leave Amazon blank on a new product and we find the top Amazon listing automatically; a link you paste always wins.</p>
+
+                {/* Google Trends: off by default; the first lookup of a search term is a paid Apify run */}
+                <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 cursor-pointer">
+                  <input type="checkbox" checked={!!form.show_trends}
+                    onChange={(e) => setForm((f) => ({ ...f, show_trends: e.target.checked }))}
+                    className="mt-0.5 h-4 w-4 accent-[#6B3FD9]" />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900">Show Google Trends on the Prodora product page</span>
+                    <span className="block text-xs text-gray-500">5 years of Google search interest for this product. Off = the section is hidden and no lookup is made.</span>
+                  </span>
+                </label>
 
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Amazon Listing URL</label>

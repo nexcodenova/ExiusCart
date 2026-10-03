@@ -1,41 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Star, CheckCircle2, XCircle, Trash2, MessageSquare, Copy, Check, Sparkles, Plus, X, ImageIcon } from 'lucide-react';
+import { Loader2, Star, CheckCircle2, XCircle, Trash2, MessageSquare, Plus, X, ImageIcon, ChevronDown, Search, Check } from 'lucide-react';
 import { reviewsApi, productsApi } from '@/lib/api';
+import SectionBanner from '@/components/directory/SectionBanner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 
 function shopIdFromStorage() { return localStorage.getItem('shop_id') || '1'; }
-
-function ReviewsEmbedBox() {
-  const [copied, setCopied] = useState(false);
-  const code = `<div data-exiuscart-reviews data-product-id="YOUR_PRODUCT_ID"></div>\n<script src="https://api.exiuscart.com/api/v1/widget/reviews.js" async></script>`;
-
-  const copy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-3">
-      <div className="flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-primary" />
-        <p className="text-sm font-medium text-foreground">Show reviews on your storefront</p>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Paste this on each product page (in your Custom Website HTML, or Shopify's product template). Replace{' '}
-        <code className="text-foreground">YOUR_PRODUCT_ID</code> with the product's ID — find it in the URL when editing the product in ExiusCart.
-      </p>
-      <div className="flex items-start gap-2 bg-background border border-border rounded-lg px-3 py-2.5">
-        <pre className="text-xs text-foreground flex-1 overflow-x-auto whitespace-pre-wrap break-all">{code}</pre>
-        <button onClick={copy} className="shrink-0 p-1.5 hover:bg-muted rounded-lg transition">
-          {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 interface Review {
   id: number;
@@ -57,7 +29,8 @@ const CHANNEL_LABELS: Record<string, string> = {
   online: 'Online',
   whatsapp: 'WhatsApp',
   shopify: 'Shopify',
-  manual: 'Manually added',
+  manual: 'Added by you',
+  aliexpress: 'From AliExpress',
 };
 
 function Stars({ rating }: { rating: number }) {
@@ -82,7 +55,51 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
   );
 }
 
-interface SimpleProduct { id: number; name: string; sku?: string | null; }
+interface SimpleProduct { id: number; name: string; sku?: string | null; image?: string | null; }
+
+// Searchable product picker: photo + name, no internal ids.
+function ProductPicker({ products, value, onChange }: { products: SimpleProduct[]; value: string; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const picked = products.find((p) => String(p.id) === value);
+  const shown = products.filter((p) => !q.trim() || p.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 50);
+  const Thumb = ({ p }: { p: SimpleProduct }) => (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {p.image ? <img src={p.image} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />}
+    </span>
+  );
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className="flex h-11 w-full items-center gap-2.5 rounded-md border border-border bg-background px-2 text-left text-sm transition hover:bg-muted/40">
+          {picked ? <><Thumb p={picked} /><span className="min-w-0 flex-1 truncate text-foreground">{picked.name}</span></>
+            : <span className="flex-1 px-1 text-muted-foreground">Choose a product…</span>}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+        <div className="flex items-center gap-2 border-b border-border px-3">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products"
+            className="h-10 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+        </div>
+        <div className="max-h-64 overflow-y-auto p-1">
+          {shown.length === 0 ? (
+            <p className="px-3 py-6 text-center text-xs text-muted-foreground">No products found</p>
+          ) : shown.map((p) => (
+            <button key={p.id} type="button" onClick={() => { onChange(String(p.id)); setOpen(false); setQ(''); }}
+              className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-muted">
+              <Thumb p={p} />
+              <span className="min-w-0 flex-1 truncate text-foreground">{p.name}</span>
+              {String(p.id) === value && <Check className="h-4 w-4 text-foreground" />}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function ReviewsPage() {
   const confirm = useConfirm();
@@ -92,6 +109,7 @@ export default function ReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | ''>('pending');
   const [actingId, setActingId] = useState<number | null>(null);
+  const [blockedMessage, setBlockedMessage] = useState('');
 
   // Manual add — for real sales ExiusCart never saw as an order (POS cash
   // sale, a WhatsApp order), where the seller already has the customer's
@@ -113,8 +131,10 @@ export default function ReviewsPage() {
     if (!shopId) return;
     setLoading(true);
     reviewsApi.list(shopId, { status: filter || undefined })
-      .then((r) => { setReviews(r.data?.reviews ?? []); setStats(r.data?.stats ?? stats); })
-      .catch(() => {})
+      .then((r) => { setReviews(r.data?.reviews ?? []); setStats(r.data?.stats ?? stats); setBlockedMessage(''); })
+      .catch((err) => {
+        if (err?.response?.status === 403) setBlockedMessage(err.response.data?.detail?.message ?? 'Product reviews are not available on your plan.');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -123,7 +143,7 @@ export default function ReviewsPage() {
   useEffect(() => {
     if (!shopId) return;
     productsApi.getAll(shopId).then((r) => {
-      setProducts((r.data ?? []).map((p: any) => ({ id: p.id, name: p.name, sku: p.sku })));
+      setProducts((r.data ?? []).map((p: any) => ({ id: p.id, name: p.name, sku: p.sku, image: p.image_url ?? p.images?.[0]?.url ?? null })));
     }).catch(() => {});
   }, [shopId]);
 
@@ -201,195 +221,221 @@ export default function ReviewsPage() {
     { key: '', label: 'All' },
   ];
 
+  if (blockedMessage) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Product reviews</h1>
+        <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">
+          <MessageSquare className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
+          <p className="text-sm font-medium text-foreground">Not available on your plan</p>
+          <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">{blockedMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const tabCount = (k: string) => (k === 'pending' ? stats.pending : k === 'approved' ? stats.approved : k === '' ? stats.total : null);
+
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Product Reviews</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Reviews are requested automatically when an order is marked delivered. Approve reviews to show them on your storefront.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Product reviews</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Collect real reviews from buyers, approve the good ones, and show them on your storefront.</p>
         </div>
         <button onClick={openAddModal}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition">
-          <Plus className="w-4 h-4" /> Add Review
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-foreground px-3.5 text-sm font-medium text-background transition hover:opacity-90">
+          <Plus className="h-4 w-4" /> Add review
         </button>
       </div>
 
-      <ReviewsEmbedBox />
+      <SectionBanner
+        title="Reviews that sell for you"
+        description="When an order is marked delivered, the buyer gets one email asking them to rate what they bought. You approve each review before it goes live."
+        actionLabel="Add a review by hand" onAction={openAddModal} variant={2}
+      />
+
+      {/* How it works — three plain steps */}
+      <div className="grid gap-3 md:grid-cols-3">
+        {[
+          { n: 1, t: 'Order delivered', d: 'The buyer gets a review email automatically, once per order.' },
+          { n: 2, t: 'You approve', d: 'New reviews wait under Pending until you approve or reject them.' },
+          { n: 3, t: 'Live on your store', d: 'Approved reviews show on your Custom Website through the reviews widget.' },
+        ].map((x) => (
+          <div key={x.n} className="flex gap-3 rounded-xl border border-border bg-card p-4">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-xs font-medium text-foreground">{x.n}</span>
+            <div>
+              <p className="text-sm font-medium text-foreground">{x.t}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{x.d}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="-mt-3 text-[11px] text-muted-foreground">
+        Marketplace orders (eBay, Daraz, Amazon, TikTok Shop, TheDersi) don&apos;t get our email: those buyers review on the marketplace itself.
+        Products you import from AliExpress bring their real AliExpress reviews here as Pending, labelled &ldquo;from AliExpress&rdquo;.
+        Widget code for your Custom Website is in the{' '}
+        <a href="https://exiuscart.com/developers" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground underline-offset-2 hover:underline">developer docs</a>.
+      </p>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="border border-border rounded-xl bg-card p-4">
-          <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Total reviews</p>
-        </div>
-        <div className="border border-amber-500/30 rounded-xl bg-amber-500/5 p-4">
-          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.pending}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Awaiting moderation</p>
-        </div>
-        <div className="border border-green-500/30 rounded-xl bg-green-500/5 p-4">
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.approved}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Live on storefront</p>
-        </div>
-        <div className="border border-border rounded-xl bg-card p-4">
-          <div className="flex items-center gap-1.5">
-            <p className="text-2xl font-bold text-foreground">{stats.avg_rating || '—'}</p>
-            {stats.avg_rating > 0 && <Star className="w-4 h-4 fill-amber-400 text-amber-400 mb-1" />}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: 'Total reviews', value: String(stats.total), dot: 'bg-muted-foreground/50' },
+          { label: 'Awaiting approval', value: String(stats.pending), dot: 'bg-amber-500' },
+          { label: 'Live on storefront', value: String(stats.approved), dot: 'bg-emerald-500' },
+          { label: 'Average rating', value: stats.avg_rating ? `${stats.avg_rating} ★` : '—', dot: 'bg-amber-400' },
+        ].map((c) => (
+          <div key={c.label} className="rounded-xl border border-border bg-card px-3.5 py-3">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />{c.label}</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{c.value}</p>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">Average rating</p>
-        </div>
+        ))}
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 border-b border-border">
+      <div className="flex gap-6 border-b border-border">
         {TABS.map((t) => (
           <button key={t.key} onClick={() => setFilter(t.key)}
-            className={`px-3 py-2 text-sm font-medium border-b-2 transition -mb-px ${
-              filter === t.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            className={`-mb-px border-b-2 pb-2.5 text-sm font-medium transition ${
+              filter === t.key ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}>
             {t.label}
+            {tabCount(t.key) !== null && <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{tabCount(t.key)}</span>}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
+        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm">Loading reviews...</span>
         </div>
       ) : reviews.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <MessageSquare className="w-10 h-10 text-muted-foreground/40 mb-3" />
-          <p className="text-muted-foreground text-sm">No reviews here yet.</p>
-          <p className="text-muted-foreground/60 text-xs mt-1">
-            Reviews appear once customers respond to the request email sent after delivery.
-          </p>
+        <div className="rounded-xl border border-dashed border-border py-14 text-center">
+          <MessageSquare className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
+          <p className="text-sm font-medium text-foreground">No reviews here yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">They appear once buyers answer the email sent after delivery.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {reviews.map((r) => (
-            <div key={r.id} className="border border-border rounded-xl bg-card p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-foreground">
-                      {r.product_name} <span className="font-normal text-muted-foreground">#{r.product_id}</span>
-                    </p>
-                    {r.status === 'requested' && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Awaiting customer</span>
-                    )}
-                    {r.channel_source && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                        {CHANNEL_LABELS[r.channel_source] ?? r.channel_source}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{r.customer_name || 'Customer'}</p>
-                  {r.rating != null && <div className="mt-2"><Stars rating={r.rating} /></div>}
-                  {r.comment && <p className="text-sm text-foreground/90 mt-2 leading-relaxed">{r.comment}</p>}
-                  {r.photo_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.photo_url} alt="Review" className="w-20 h-20 rounded-lg object-cover mt-2 border border-border" />
+            <li key={r.id} className="flex items-start gap-4 px-5 py-3.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-[11px] font-medium text-muted-foreground">
+                {(r.customer_name || 'C').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p className="text-[13px] font-medium text-foreground">{r.customer_name || 'Customer'}</p>
+                  {r.rating != null && <Stars rating={r.rating} />}
+                  {r.status === 'requested' && <span className="rounded-md border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground">Waiting for the buyer</span>}
+                  {r.channel_source && (
+                    <span className="rounded-md border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground">{CHANNEL_LABELS[r.channel_source] ?? r.channel_source}</span>
                   )}
                 </div>
-
-                {r.status === 'pending' && (
-                  <div className="flex gap-1.5 shrink-0">
-                    <button onClick={() => act(r.id, 'approved')} disabled={actingId === r.id}
-                      className="p-2 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20 transition disabled:opacity-50" title="Approve">
-                      <CheckCircle2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => act(r.id, 'rejected')} disabled={actingId === r.id}
-                      className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition disabled:opacity-50" title="Reject">
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-                {(r.status === 'approved' || r.status === 'rejected') && (
-                  <button onClick={() => remove(r.id)} disabled={actingId === r.id}
-                    className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition disabled:opacity-50 shrink-0" title="Delete">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{r.product_name} <span className="font-mono">#{r.product_id}</span></p>
+                {r.comment && <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">{r.comment}</p>}
+                {r.photo_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={r.photo_url} alt="Review" className="mt-2 h-16 w-16 rounded-md border border-border object-cover" />
                 )}
               </div>
-            </div>
+              {r.status === 'pending' && (
+                <div className="flex shrink-0 gap-1.5">
+                  <button onClick={() => act(r.id, 'approved')} disabled={actingId === r.id}
+                    className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground transition hover:bg-muted disabled:opacity-50">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Approve
+                  </button>
+                  <button onClick={() => act(r.id, 'rejected')} disabled={actingId === r.id}
+                    className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground transition hover:bg-muted disabled:opacity-50">
+                    <XCircle className="h-3.5 w-3.5" /> Reject
+                  </button>
+                </div>
+              )}
+              {(r.status === 'approved' || r.status === 'rejected') && (
+                <button onClick={() => remove(r.id)} disabled={actingId === r.id} title="Delete"
+                  className="shrink-0 rounded-md p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-xl border border-border w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <p className="font-semibold text-foreground">Add a review</p>
-              <button onClick={() => setShowAddModal(false)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground">
-                <X className="w-4 h-4" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowAddModal(false)}>
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+              <div>
+                <p className="font-semibold text-foreground">Add a review</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">For a real sale outside ExiusCart (a cash sale, a WhatsApp order). Write the buyer&apos;s own words. It goes live straight away.</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label="Close">
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="p-5 space-y-4">
-              <p className="text-xs text-muted-foreground -mt-1">
-                For a real sale ExiusCart never saw as an order — a POS cash sale, a WhatsApp order — where you already have the
-                customer's actual words. This goes live immediately, no separate approval step.
-              </p>
 
+            <div className="space-y-4 overflow-y-auto px-5 py-4">
               {addError && (
-                <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">{addError}</div>
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{addError}</div>
               )}
 
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Product *</label>
-                <select value={addProductId} onChange={(e) => setAddProductId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm">
-                  <option value="">Select a product…</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} — #{p.id}{p.sku ? ` (SKU: ${p.sku})` : ''}</option>
-                  ))}
-                </select>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="mb-1.5 block text-xs font-medium text-foreground">Product</label>
+                  <ProductPicker products={products} value={addProductId} onChange={setAddProductId} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-foreground">Buyer&apos;s name</label>
+                  <input type="text" value={addCustomerName} onChange={(e) => setAddCustomerName(e.target.value)}
+                    placeholder="e.g. Priya S."
+                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-foreground">Rating</label>
+                  <div className="flex h-9 items-center gap-2">
+                    <StarPicker value={addRating} onChange={setAddRating} />
+                    <span className="text-xs text-muted-foreground">{['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'][addRating]}</span>
+                  </div>
+                </div>
               </div>
 
               <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Customer name *</label>
-                <input type="text" value={addCustomerName} onChange={(e) => setAddCustomerName(e.target.value)}
-                  placeholder="e.g. Priya S."
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm" />
+                <label className="mb-1.5 block text-xs font-medium text-foreground">What they said</label>
+                <textarea value={addComment} onChange={(e) => setAddComment(e.target.value)} rows={4} maxLength={2000}
+                  placeholder="Their words, from the chat or what they told you"
+                  className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30" />
+                <p className="mt-1 text-right text-[11px] text-muted-foreground">{addComment.length}/2000</p>
               </div>
 
               <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Rating</label>
-                <StarPicker value={addRating} onChange={setAddRating} />
-              </div>
-
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">What they said</label>
-                <textarea value={addComment} onChange={(e) => setAddComment(e.target.value)} rows={3}
-                  placeholder="Transcribe their actual words — from the chat, or what they told you in person"
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm resize-none" />
-              </div>
-
-              <div>
-                <label className="text-sm text-muted-foreground mb-1.5 block">Photo (optional)</label>
+                <label className="mb-1.5 block text-xs font-medium text-foreground">Photo <span className="font-normal text-muted-foreground">(optional)</span></label>
                 {addPhotoPreview ? (
-                  <div className="relative w-20 h-20">
+                  <div className="relative h-20 w-20">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={addPhotoPreview} alt="Preview" className="w-20 h-20 rounded-lg object-cover border border-border" />
+                    <img src={addPhotoPreview} alt="Preview" className="h-20 w-20 rounded-md border border-border object-cover" />
                     <button type="button" onClick={() => { setAddPhotoFile(null); setAddPhotoPreview(''); }}
-                      className="absolute -top-2 -right-2 p-1 bg-destructive rounded-full text-white">
-                      <X className="w-3 h-3" />
+                      className="absolute -right-2 -top-2 rounded-full bg-foreground p-1 text-background" aria-label="Remove photo">
+                      <X className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
-                  <label className="inline-flex items-center gap-1.5 px-3 py-2 border border-dashed border-border rounded-lg text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition cursor-pointer">
-                    <ImageIcon className="w-3.5 h-3.5" /> Upload photo
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-4 text-xs text-muted-foreground transition hover:bg-muted/40 hover:text-foreground">
+                    <ImageIcon className="h-4 w-4" /> Upload a photo (JPG, PNG or WebP)
                     <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAddPhotoSelect} />
                   </label>
                 )}
               </div>
+            </div>
 
+            <div className="flex justify-end gap-2 border-t border-border bg-muted/30 px-5 py-3">
+              <button onClick={() => setShowAddModal(false)}
+                className="h-9 rounded-md border border-border bg-background px-3.5 text-sm font-medium text-foreground transition hover:bg-muted">Cancel</button>
               <button onClick={submitManualReview} disabled={addSaving || !addProductId || !addCustomerName.trim()}
-                className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2">
-                {addSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {addSaving ? 'Saving...' : 'Add Review'}
+                className="inline-flex h-9 items-center gap-2 rounded-md bg-foreground px-3.5 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-50">
+                {addSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {addSaving ? 'Saving…' : 'Add review'}
               </button>
             </div>
           </div>
