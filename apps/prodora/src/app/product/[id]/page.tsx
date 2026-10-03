@@ -538,7 +538,7 @@ function ProductDetailContent() {
                 )}
                 </div>
 
-              <div className="space-y-3">
+              <div className="flex flex-col gap-3 lg:self-stretch">
                 {category_name && (
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-[#6B7280] uppercase tracking-wider">
                     <Tag className="w-3 h-3" /> {category_name}
@@ -603,26 +603,27 @@ function ProductDetailContent() {
                     </a>
                   ))}
                 </div>
+                {/* Import CTA — right under the research buttons, in the same column */}
+                <div className="mt-auto flex justify-end pt-1">
+                {imported ? (
+                  <a href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`} target="_blank" rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full bg-[#16A34A]/10 border border-[#16A34A]/20 text-[#15803D] text-sm font-semibold hover:bg-[#16A34A]/15 transition shadow-sm">
+                    <span className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0"><CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" /></span>
+                    Imported · Open in store
+                  </a>
+                ) : (
+                  <button type="button" onClick={handleImport} disabled={importing}
+                    className="shrink-0 inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-[#111827] text-sm font-semibold hover:bg-blue-100 transition disabled:opacity-60 shadow-sm">
+                    <span className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+                      {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Image src="/exiuscart-logo.png" alt="" width={16} height={16} />}
+                    </span>
+                    {importing ? 'Adding…' : 'Import to ExiusCart'}
+                  </button>
+                )}
+                </div>
               </div>
               </div>
 
-              {/* Import CTA — pinned to the bottom-right corner of the hero section itself, light pill with the
-                  logo in its own white badge (same pattern as a "Continue with Google/Facebook" button) */}
-              {imported ? (
-                <a href={`https://store.exiuscart.com/dashboard/products?edit=${imported.product_id}`} target="_blank" rel="noopener noreferrer"
-                  className="absolute bottom-3 right-3 shrink-0 inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full bg-[#16A34A]/10 border border-[#16A34A]/20 text-[#15803D] text-sm font-semibold hover:bg-[#16A34A]/15 transition shadow-sm">
-                  <span className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0"><CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" /></span>
-                  Imported · Open in store
-                </a>
-              ) : (
-                <button type="button" onClick={handleImport} disabled={importing}
-                  className="absolute bottom-3 right-3 shrink-0 inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-[#111827] text-sm font-semibold hover:bg-blue-100 transition disabled:opacity-60 shadow-sm">
-                  <span className="w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
-                    {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Image src="/exiuscart-logo.png" alt="" width={16} height={16} />}
-                  </span>
-                  {importing ? 'Adding…' : 'Import to ExiusCart'}
-                </button>
-              )}
             </div>
 
             {/* Need help? — same real WhatsApp support card as the researcher-help banner on the Prodora AI page
@@ -652,6 +653,8 @@ function ProductDetailContent() {
             {/* Google Trends results on the page (no click needed) and who to target with ads */}
             <TrendsSection productId={productId} />
             <AudienceSection productId={productId} />
+            {/* Competition: real market prices and true profit (Growth and Scale) */}
+            <CompetitionSection productId={productId} />
 
             {/* Description — moved out of the hero so it doesn't compete with the buy decision; text on the
                 left, gallery photos on the right */}
@@ -846,8 +849,6 @@ function ProductDetailContent() {
             {/* Profit Calculator — plain math, editable, defaults to this listing's real numbers */}
             <ProfitCalculator sellingPrice={price} costPrice={cost_price ?? null} shippingCost={effectiveShippingCost ?? null} />
 
-            {/* Competition: real market prices, true profit and a verdict (Growth and Scale) */}
-            <CompetitionSection productId={productId} />
 
             {/* Trends — Demand on the left, Orders (social proof) on the right */}
             {(demandTrend.length >= 2 || ordersTrend.length >= 2) && (
@@ -990,14 +991,24 @@ function ProductDetailContent() {
                 <Search className="w-4 h-4" /> Find more ads for &ldquo;{adLibraryKeyword(name)}&rdquo; on Meta Ad Library
               </a>
 
-              <div className="mt-4 rounded-xl bg-[#F8FAFC] border border-[#E5E7EB] p-4">
-                <p className="text-sm font-semibold text-[#111827] mb-2">How to read the ads</p>
-                <ul className="space-y-1.5 text-sm text-[#4B5563]">
-                  <li><span className="font-medium text-[#111827]">&ldquo;Started running on&rdquo; 1–3+ months ago</span> — the ad is still paying for itself, a strong sign.</li>
-                  <li><span className="font-medium text-[#111827]">Many different stores</span> selling it — demand is proven.</li>
-                  <li><span className="font-medium text-[#111827]">&ldquo;Multiple versions&rdquo;</span> — the seller is testing and scaling it.</li>
-                  <li><span className="font-medium text-[#111827]">Only 1–2 ads, all started this week</span> — not proven yet, test carefully.</li>
-                </ul>
+              <div className="mt-5">
+                <p className="mb-3 text-sm font-semibold text-[#111827]">How to read the ads</p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    { good: true, title: 'Running 1–3+ months', body: 'Look at "Started running on". An old ad still live is paying for itself.' },
+                    { good: true, title: 'Many different stores', body: 'Several shops advertising it means real demand.' },
+                    { good: true, title: '"Multiple versions"', body: 'The seller is testing new angles and scaling it.' },
+                    { good: false, title: 'Only 1–2 ads, all new', body: 'Started this week: not proven yet, so test carefully.' },
+                  ].map((t) => (
+                    <div key={t.title} className={`rounded-xl border p-4 ${t.good ? 'border-[#16A34A]/20 bg-[#16A34A]/[0.04]' : 'border-amber-300/50 bg-amber-50/60'}`}>
+                      <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${t.good ? 'bg-[#16A34A]/10 text-[#16A34A]' : 'bg-amber-100 text-amber-700'}`}>
+                        {t.good ? <CheckCircle2 className="h-4 w-4" /> : <HelpCircle className="h-4 w-4" />}
+                      </span>
+                      <p className="mt-2 text-sm font-semibold text-[#111827]">{t.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-[#6B7280]">{t.body}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

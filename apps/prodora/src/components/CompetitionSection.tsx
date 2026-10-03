@@ -103,31 +103,12 @@ export default function CompetitionSection({ productId }: { productId: number })
   }
 
   const a = data.analysis;
-  const v = VERDICT[a.verdict];
   const rows = all ? a.competitors : a.competitors.slice(0, 6);
 
   return (
     <Shell>
-      <div className={`rounded-xl border p-4 ${v.box}`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className={`rounded px-2.5 py-1 text-sm font-bold ${v.chip}`}>{v.label}</span>
-            <span className="text-sm font-semibold">{a.headline}</span>
-          </div>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${CONF[a.confidence]}`}>Confidence: {a.confidence}</span>
-        </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {a.reasons_for.length > 0 && (
-            <ul className="space-y-1.5 text-sm">{a.reasons_for.map((r) => <li key={r} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{r}</li>)}</ul>
-          )}
-          {a.concerns.length > 0 && (
-            <ul className="space-y-1.5 text-sm">{a.concerns.map((r) => <li key={r} className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{r}</li>)}</ul>
-          )}
-        </div>
-      </div>
-
       {a.stale && (
-        <p className="mt-3 flex gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800"><Info className="mt-0.5 h-4 w-4 shrink-0" />
+        <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800"><Info className="mt-0.5 h-4 w-4 shrink-0" />
           These prices were checked {ago(a.captured_at)} and may have changed. Treat them as a guide.</p>
       )}
 

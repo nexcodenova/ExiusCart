@@ -78,7 +78,8 @@ def _generate_prompt_with_ai(image_bytes: bytes, media_type: str, product_name: 
         return None
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=key)
+        _ws = os.getenv("ANTHROPIC_WORKSPACE_ID", "").strip()
+        client = anthropic.Anthropic(api_key=key, default_headers={"anthropic-workspace-id": _ws} if _ws else None)
         b64 = base64.b64encode(image_bytes).decode("ascii")
         message = client.messages.create(
             model=CLAUDE_MODEL,

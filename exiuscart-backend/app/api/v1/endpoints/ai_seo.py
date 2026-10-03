@@ -26,7 +26,8 @@ def _ai_client():
     key = os.getenv("ANTHROPIC_API_KEY", "")
     if not key:
         raise HTTPException(status_code=503, detail="AI service not configured. Add ANTHROPIC_API_KEY to environment.")
-    return anthropic.Anthropic(api_key=key)
+    ws = os.getenv("ANTHROPIC_WORKSPACE_ID", "").strip()
+    return anthropic.Anthropic(api_key=key, default_headers={"anthropic-workspace-id": ws} if ws else None)
 
 
 # ── Product Description Generator ─────────────────────────────────────────────

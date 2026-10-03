@@ -23,7 +23,11 @@ def _get_client():
     if not key:
         return None
     import anthropic
-    return anthropic.Anthropic(api_key=key, timeout=30.0)
+    # A key made outside a workspace needs the workspace id on every call
+    # ("This API key is not scoped to a workspace..."); set ANTHROPIC_WORKSPACE_ID for that.
+    ws = os.getenv("ANTHROPIC_WORKSPACE_ID", "").strip()
+    headers = {"anthropic-workspace-id": ws} if ws else None
+    return anthropic.Anthropic(api_key=key, timeout=30.0, default_headers=headers)
 
 
 def _log_usage(purpose: str, msg: Any) -> None:
